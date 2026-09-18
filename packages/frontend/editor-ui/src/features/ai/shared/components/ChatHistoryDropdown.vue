@@ -4,7 +4,7 @@ import { N8nActionDropdown, N8nDropdownMenu, N8nIconButton, N8nText } from '@n8n
 import type { ActionDropdownItem, DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useEventListener } from '@vueuse/core';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, useId } from 'vue';
 
 export interface ChatHistoryItemData {
 	updatedAt?: string;
@@ -20,6 +20,7 @@ const props = withDefaults(
 		items: ChatHistoryItem[];
 		searchPlaceholder: string;
 		contentTestId: string;
+		contentId?: string;
 		actionButtonLabel: string;
 		modelValue?: boolean;
 		dataTestId?: string;
@@ -32,6 +33,7 @@ const props = withDefaults(
 	}>(),
 	{
 		modelValue: undefined,
+		contentId: undefined,
 		dataTestId: undefined,
 		maxHeight: undefined,
 		loading: false,
@@ -60,6 +62,8 @@ const slots = defineSlots<{
 }>();
 
 const i18n = useI18n();
+const generatedContentId = useId();
+const contentId = computed(() => props.contentId ?? generatedContentId);
 const dropdownRef = ref<{ close: () => void; highlightFirstItem: () => void } | null>(null);
 let pendingItemClick: ReturnType<typeof setTimeout> | undefined;
 const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
@@ -134,7 +138,7 @@ useEventListener(
 	(event: KeyboardEvent) => {
 		if (!(event.target instanceof HTMLElement)) return;
 		const menu = event.target.closest<HTMLElement>('[data-menu-content]');
-		if (menu?.getAttribute('data-test-id') !== props.contentTestId) return;
+		if (menu?.id !== contentId.value) return;
 
 		if (event.key === 'Tab') {
 			const focusableElements = [...menu.querySelectorAll<HTMLElement>('*')].filter(
@@ -162,6 +166,7 @@ defineExpose({ highlightFirstItem });
 <template>
 	<N8nDropdownMenu
 		ref="dropdownRef"
+		:id="contentId"
 		:model-value="props.modelValue"
 		:items="groupedItems"
 		:loading="props.loading"

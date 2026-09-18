@@ -4,7 +4,7 @@ import type { ActionDropdownItem, DropdownMenuItemProps } from '@n8n/design-syst
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useEventListener } from '@vueuse/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, useId, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -52,6 +52,7 @@ const toast = useToast();
 const { history, search, sentinelRef, loadMore } = useInstanceAiThreadHistory();
 
 const menuOpen = ref(false);
+const menuContentId = useId();
 const historyDropdownRef = ref<{ highlightFirstItem: () => void } | null>(null);
 const triggerRef = ref<HTMLElement | null>(null);
 const editingThreadId = ref<string | null>(null);
@@ -127,8 +128,8 @@ useEventListener(
 	'keydown',
 	(event: KeyboardEvent) => {
 		if (!menuOpen.value || !(event.target instanceof HTMLElement)) return;
-		const menu = event.target.closest<HTMLElement>('[data-test-id="instance-ai-thread-list"]');
-		if (!menu) return;
+		const menu = event.target.closest<HTMLElement>('[data-menu-content]');
+		if (menu?.id !== menuContentId) return;
 
 		if (event.target === renameInput.value && (event.key === 'Enter' || event.key === 'Escape')) {
 			event.preventDefault();
@@ -237,6 +238,7 @@ function handleThreadAction(action: string, threadId: string) {
 		:editing-item-id="editingThreadId ?? undefined"
 		:actions-disabled="disabled"
 		item-double-click-enabled
+		:content-id="menuContentId"
 		content-test-id="instance-ai-thread-list"
 		@search="search = $event"
 		@select="handleThreadSelect"
