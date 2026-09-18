@@ -26,7 +26,9 @@ import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrat
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
@@ -362,6 +364,60 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(fixtures.runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledExactlyOnceWith(
 				fixtures.runtime.agent,
 			);
+		});
+
+		it('settles prepared execution after finalization and runtime release', async () => {
+			const {
+				service,
+				executionService,
+				checkpointStorage,
+				runtimeCacheService,
+				runtime,
+				onExecutionRecorded,
+			} = makeTurn();
+			const testRunService = new AgentTestRunService(
+				executionService,
+				mock<AgentValidationService>(),
+				service,
+				checkpointStorage,
+			);
+			const finalization = createDeferredPromise<string>();
+			executionService.finalizeExecution.mockReturnValue(finalization.promise);
+			const onChunk = vi.fn();
+			const input = { agentId, projectId, user, onChunk, onExecutionRecorded };
+			let settled = false;
+			const execution = (
+				operation === 'start'
+					? testRunService.executePreparedDraftRun({
+							...input,
+							message: 'hello',
+							sessionId: 'thread-1',
+						})
+					: testRunService.resumePreparedDraftRun({
+							...input,
+							runId: 'run-1',
+							toolCallId: 'tc-1',
+							resumeData: { approved: true },
+						})
+			).then((result) => {
+				settled = true;
+				expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+				return result;
+			});
+			await vi.waitFor(() => expect(executionService.finalizeExecution).toHaveBeenCalled());
+
+			expect(onChunk).toHaveBeenCalledWith({ type: 'finish', finishReason: 'stop' });
+			expect(settled).toBe(false);
+			expect(onExecutionRecorded).not.toHaveBeenCalled();
+			expect(runtimeCacheService.releaseRuntimeLease).not.toHaveBeenCalled();
+
+			finalization.resolve('finalized-execution');
+			await expect(execution).resolves.toEqual({
+				status: 'completed',
+				response: '',
+				executionId: 'finalized-execution',
+			});
+			expect(onExecutionRecorded).toHaveBeenCalledWith('finalized-execution');
 		});
 
 		it('cancels an early-closed stream and finalizes before callbacks and lease release', async () => {
