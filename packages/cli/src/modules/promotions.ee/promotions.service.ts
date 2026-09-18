@@ -1,4 +1,5 @@
 import type {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	PromotePackageDto,
@@ -38,11 +39,7 @@ import {
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { ProjectService } from '@/services/project.service.ee';
 
-import {
-	BASE_BRANCH_DIRECTORIES,
-	parseBaseBranchFiles,
-	type PackageFile,
-} from './base-branch-files';
+import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
@@ -54,7 +51,11 @@ import {
 	checkoutBranchName,
 	repositoryUrl,
 } from './promotions-git.utils';
-import type { PromotionCacheDescriptor, PromotionOperationInput } from './promotions.types';
+import type {
+	BranchPackage,
+	PromotionCacheDescriptor,
+	PromotionOperationInput,
+} from './promotions.types';
 import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
@@ -362,8 +363,12 @@ export class PromotionsService {
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
-	async apply(connectionId: string, actor: User): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor);
+	async apply(
+		connectionId: string,
+		actor: User,
+		expectedSource?: ApplyPackageDto['expectedSource'],
+	): Promise<ApplyPackageResultDto> {
+		return await this.applyFromSource(connectionId, actor, expectedSource);
 	}
 
 	async continueApply(
@@ -377,7 +382,7 @@ export class PromotionsService {
 	private async applyFromSource(
 		connectionId: string,
 		actor: User,
-		expectedSource?: ContinueApplyPackageDto['expectedSource'],
+		expectedSource?: ApplyPackageDto['expectedSource'],
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
@@ -457,20 +462,42 @@ export class PromotionsService {
 		};
 	}
 
-	async listBaseBranchFiles(projectId: string): Promise<PackageFile[]> {
-		const input = await this.resolver.resolveForProject(projectId, 'promote');
+	async readBranchPackage(
+		projectId: string,
+		direction: PromotionDirection,
+	): Promise<BranchPackage> {
+		const input = await this.resolver.resolveForProject(projectId, direction);
 		await this.assertCheckoutReady(input, 'listing branch files');
 
-		const lsTreeOutput = await this.gitService.listBranchTree({
+		const paths = this.workingDirectory.paths(input.configId);
+		const branchName = checkoutBranchName(input.config);
+		const { commitSha, lsTreeOutput } = await this.gitService.listBranchTree({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
-			paths: this.workingDirectory.paths(input.configId),
-			branchName: checkoutBranchName(input.config),
+			paths,
+			branchName,
 			configId: input.configId,
 			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
 		});
 
-		return parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId });
+		return {
+			commitSha,
+			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
+			readFiles: async (filePaths) => {
+				if (commitSha === null) {
+					throw new BadRequestError(
+						'The remote branch has no exported package to import. Promote to it first.',
+					);
+				}
+				return await this.gitService.readFilesAtCommit({
+					paths,
+					branchName,
+					configId: input.configId,
+					commitSha,
+					filePaths,
+				});
+			},
+		};
 	}
 
 	/**

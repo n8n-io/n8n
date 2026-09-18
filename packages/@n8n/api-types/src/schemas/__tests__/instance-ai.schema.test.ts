@@ -12,6 +12,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -63,6 +64,36 @@ describe('Instance AI prompt version requests', () => {
 				false,
 			);
 		}
+	});
+
+	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+		const base = { message: 'Change this', timeZone: 'UTC' };
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: { artifacts: [] },
+			}).success,
+		).toBe(false);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: Array.from({ length: 21 }, (_, index) => ({
+						type: 'workflow' as const,
+						id: `wf-${index}`,
+					})),
+				},
+			}).success,
+		).toBe(false);
 	});
 });
 
@@ -675,6 +706,45 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+});
+
+describe('node execution session grant keys', () => {
+	it('scopes the key by resource and operation', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.slack', {
+				resource: 'message',
+				operation: 'post',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.slack:message:post');
+	});
+
+	it('falls back to the first scoping parameter a node without resource/operation declares', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.httpRequest', {
+				method: 'POST',
+				url: 'https://example.com/v4/sheets',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.httpRequest:https://example.com/v4/sheets');
+		// `mode` precedes `url` in the fallback order, so a node declaring both is scoped by mode.
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.set', { mode: 'manual', url: 'https://x' }),
+		).toBe('nodes:execute:n8n-nodes-base.set:manual');
+	});
+
+	it('refuses a key a fallback parameter would push past the column width', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.graphql', { query: 'q'.repeat(600) }),
+		).toBeNull();
+	});
+
+	it('keeps the key at the node type when nothing scopes the call', () => {
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter', { conditions: {} })).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter')).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
 	});
 });
 

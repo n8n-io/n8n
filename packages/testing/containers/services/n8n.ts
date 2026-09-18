@@ -10,7 +10,9 @@ import {
 	createSilentLogConsumer,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
+import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { applyEngineEnv, type EngineMode } from './engine';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
@@ -74,6 +76,7 @@ export interface N8NInstancesOptions {
 	serviceEnvironment: Record<string, string>;
 	userEnvironment?: Record<string, string>;
 	usePostgres: boolean;
+	engine?: EngineMode;
 	baseUrl?: string;
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -83,6 +86,7 @@ export interface N8NInstancesOptions {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
 	/**
 	 * Override the n8n image for these instances (default: the process-wide
 	 * TEST_IMAGE_N8N resolution). Lets one process boot different releases in
@@ -114,6 +118,7 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		workers,
 		webhooks = 0,
 		usePostgres,
+		engine,
 		baseUrl,
 		serviceEnvironment,
 		userEnvironment = {},
@@ -130,6 +135,8 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	if (!usePostgres) {
 		env.DB_TYPE = 'sqlite';
 	}
+
+	applyEngineEnv(env, { engine, isQueueMode });
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -171,6 +178,7 @@ interface SharedConfig {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
 	image?: string;
 	userHomeHostDir?: string;
 	user?: string;
@@ -203,6 +211,7 @@ async function createContainer(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		userHomeHostDir,
 		user,
@@ -213,7 +222,10 @@ async function createContainer(
 		'/healthz/readiness',
 		N8N_READINESS_PORT,
 		{
-			startupTimeoutMs: startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
+			startupTimeoutMs: Math.min(
+				startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
+				startupDeadline.remainingMs,
+			),
 			readTimeoutMs: N8N_READ_TIMEOUT_MS,
 		},
 	);
@@ -300,6 +312,7 @@ async function createContainer(
 	}
 
 	try {
+		startupDeadline.throwIfAborted();
 		const started = await container.start();
 		registerContainer?.(started);
 		return { container: started, getLogs, getLastReadinessBody };
@@ -335,6 +348,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		userHomeHostDir,
 		user,
@@ -354,6 +368,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		userHomeHostDir,
 		user,
@@ -368,6 +383,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		user,
 		startupTimeoutMs,
@@ -380,6 +396,7 @@ export async function createN8NInstances(
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
 		registerContainer,
+		startupDeadline,
 		image,
 		user,
 		startupTimeoutMs,
@@ -432,6 +449,7 @@ export async function createN8NInstances(
 		diagnostics.logs[instance.name] = result.getLogs();
 		diagnostics.readinessPayloads[instance.name] = result.getLastReadinessBody();
 	};
+	options.startupDeadline.throwIfAborted();
 
 	const rethrowWithDiagnostics = (error: unknown): never => {
 		const message =

@@ -56,6 +56,43 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/** Used to determine resource for nodes that have no resource and operation, like http request node*/
+export const NODE_RESOURCE_GRANT_FALLBACK_KEYS = ['mode', 'url', 'query', 'command', 'action'];
+
+/** Width of `instance_ai_thread_grants.grantKey`. */
+const MAX_GRANT_KEY_LENGTH = 512;
+
+/**
+ * Builds the thread-level grant key for `nodes(action="execute")`. Scoped per
+ * node type + resource + operation (the split the generated node TS types use).
+ * Extracts the discriminators from the parameters itself so backend and
+ * frontend cannot build diverging keys.
+ *
+ * Null when a fallback discriminator (a long URL, GraphQL query or command) pushes the key
+ * past the column width: the call then needs approval every time. Truncating instead would
+ * let one approved URL stand for every other URL sharing its prefix.
+ */
+export function buildExecuteNodeSessionGrantKey(
+	nodeType: string,
+	parameters?: Record<string, unknown>,
+): string | null {
+	const resourceParts = [
+		nodeType,
+		typeof parameters?.resource === 'string' ? parameters.resource : '',
+		typeof parameters?.operation === 'string' ? parameters.operation : '',
+	].filter(Boolean);
+	if (resourceParts.length === 1) {
+		for (const name of NODE_RESOURCE_GRANT_FALLBACK_KEYS) {
+			if (typeof parameters?.[name] === 'string' && parameters?.[name]) {
+				resourceParts.push(parameters?.[name]);
+				break;
+			}
+		}
+	}
+	const key = `nodes:execute:${resourceParts.join(':')}`;
+	return key.length <= MAX_GRANT_KEY_LENGTH ? key : null;
+}
+
 /**
  * Builds the thread-level "always allow" grant key for running one node of a
  * workflow ("execute step").
@@ -1467,6 +1504,29 @@ export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
 /**
+ * One preview tab in the current Instance AI thread. Ids and names only — the
+ * agent resolves contents with its tools. Cap matches the send-message field.
+ */
+export const instanceAiThreadArtifactSchema = z.object({
+	type: z.enum(['workflow', 'agent', 'data-table']),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	projectId: z.string().min(1).max(64).optional(),
+	pending: z.literal(true).optional(),
+	archived: z.literal(true).optional(),
+});
+export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
+
+/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+export const instanceAiThreadArtifactsContextSchema = z.object({
+	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	activeId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiThreadArtifactsContext = z.infer<
+	typeof instanceAiThreadArtifactsContextSchema
+>;
+
+/**
  * Build style for a run. `progressive` makes the agent build a minimal working
  * slice first, gate increments on real executions, and extend on actual
  * execution data. `default` uses the standard building policy.
@@ -1496,6 +1556,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
+	/** Preview tabs in this thread. The server injects them as a per-turn index. */
+	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 	/** Entries the client renders for this user. Omit to advertise none. The
@@ -1584,8 +1646,9 @@ export type InstanceAiThreadSourcePersisted =
  *   travels separately and is already catalog-prefixed
  * - `v1_opener` — the original empty-state openers ("I want to build a new
  *   workflow…")
- * - `workflow_attachment_opener` — a workflow opened in the assistant, which
- *   sends an empty message and lets the editor context greet
+ * - `workflow_attachment_opener` — legacy: a workflow opened in the assistant
+ *   used to send an empty message so the editor context would greet. New
+ *   hand-offs stash the attachment and wait for the user's first prompt.
  * - `contextual_followup` — the follow-up the composer offers as a placeholder
  *   after a build, accepted with Tab; lands mid-thread
  */
@@ -1769,6 +1832,8 @@ export interface InstanceAiAgentNode {
 	 * regardless of which agent emitted.
 	 */
 	setupItemsByWorkflowId?: Record<string, InstanceAiSetupItem[]>;
+	/** Latest setup announcement, including its emitting agent and replay-stable time. */
+	latestSetupAnnouncement?: { workflowId: string; agentId: string; timestamp: string };
 	result?: string;
 	error?: string;
 	errorDetails?: {

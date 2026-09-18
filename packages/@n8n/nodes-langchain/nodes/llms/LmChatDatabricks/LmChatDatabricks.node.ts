@@ -32,7 +32,6 @@ export class LmChatDatabricks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Databricks Chat Model',
 		name: 'lmChatDatabricks',
-		hidden: true,
 		icon: {
 			light: 'file:../../shared/icons/databricks.svg',
 			dark: 'file:../../shared/icons/databricks.dark.svg',

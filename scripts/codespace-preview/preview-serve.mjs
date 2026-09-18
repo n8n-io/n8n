@@ -13,7 +13,7 @@ import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { codespaceSecret } from './codespace-env.mjs';
+import { codespaceSecret } from '../codespace-env.mjs';
 import { envForSlugs } from './preview-labels.mjs';
 import { phaseMarkerLine } from './preview-phases.mjs';
 import { fetchRemoteEnv } from './preview-remote-env.mjs';
@@ -36,7 +36,7 @@ const OWNER_EMAIL = process.env.PREVIEW_OWNER_EMAIL ?? 'preview@n8n.io';
 const OWNER_PASSWORD = process.env.PREVIEW_OWNER_PASSWORD ?? 'PreviewInstance1';
 const HEAP_MB = process.env.PREVIEW_BUILD_HEAP_MB ?? '6144';
 // Resolve from this file, not cwd, so the tmux command lands in the right tree.
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const port = servePort();
 const healthPath = serveHealthPath();
 

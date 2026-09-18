@@ -24,6 +24,7 @@ import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBu
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -61,6 +62,8 @@ const executions = ref<AgentExecution[]>([]);
 const agent = ref<AgentResource | null>(null);
 const isPreviewOpen = useStorage(previewOpenStorageKey, false);
 const previewInitialized = ref(false);
+const { canUpdate } = useAgentPermissions(projectId);
+const canDeleteSession = computed(() => canUpdate.value);
 const {
 	activeChatSessionId,
 	effectiveSessionId,
@@ -68,9 +71,11 @@ const {
 	currentSessionIsEphemeral,
 	currentSessionTitle,
 	sessionMenu,
+	isDeletingSession,
 	onSessionPick,
 	onNewChat,
-} = useAgentBuilderSession({ routeBacked: computed(() => false) });
+	deleteSession,
+} = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
 /**
  * True while the docked preview sits on a brand-new session that has no thread
@@ -322,8 +327,10 @@ function onSessionSelect(nextThreadId: string) {
 	});
 }
 
-function onSessionDeleted(sessionId: string) {
-	if (sessionId !== threadId.value) return;
+async function onDeletePreviewSession(sessionId: string) {
+	if (!canDeleteSession.value) return;
+	const deleted = await deleteSession(sessionId);
+	if (!deleted || sessionId !== threadId.value) return;
 	void router.replace(agentExecutionsRoute.value);
 }
 
@@ -388,9 +395,11 @@ function viewPreviewTrace() {
 				:local-config="localConfig"
 				:connected-triggers="[]"
 				:effective-session-id="effectiveSessionId"
+				:can-delete-session="canDeleteSession"
+				:is-deleting-session="isDeletingSession"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
-				@session-deleted="onSessionDeleted"
+				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
 				@close="togglePreview"
 			/>
