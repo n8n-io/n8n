@@ -1,3 +1,4 @@
+import type { Response } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -6,6 +7,7 @@ import type { n8nPage } from '../../../pages/n8nPage';
 
 const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 const SLACK_NODE_NAME = 'Slack';
+const SLACK_NODE_ACTION = 'Get a channel';
 
 // The module loads only when the licence is present at boot, hence @licensed.
 test.use({
@@ -16,7 +18,7 @@ test.use({
 	},
 });
 
-function workflowWithSlackNode(): Partial<IWorkflowBase> {
+function workflowWithTriggerOnly(): Partial<IWorkflowBase> {
 	return {
 		name: `Policy violations ${nanoid(8)}`,
 		active: false,
@@ -27,14 +29,6 @@ function workflowWithSlackNode(): Partial<IWorkflowBase> {
 				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: nanoid(),
-				name: SLACK_NODE_NAME,
-				type: SLACK_NODE_TYPE,
-				typeVersion: 2.2,
-				position: [240, 0],
 				parameters: {},
 			},
 		],
@@ -50,14 +44,26 @@ async function denyType(n8n: n8nPage, nodeType: string): Promise<void> {
 }
 
 /**
- * Seeds the workflow before the deny rule exists: a workflow whose node type is
- * already denied is refused on its first save, so there would be nothing to open.
+ * The E2E controller answers the licence check from a feature map that every reset
+ * clears, so the feature is enabled here, before the first policy request.
  */
-async function openRefusedWorkflow(n8n: n8nPage): Promise<string> {
-	const workflow = await n8n.api.workflows.createWorkflow(workflowWithSlackNode());
-	await denyType(n8n, SLACK_NODE_TYPE);
+async function openWorkflowUnderDeny(n8n: n8nPage, nodeType: string): Promise<string> {
+	await n8n.api.enableFeature('nodeTypePolicies');
+	const workflow = await n8n.api.workflows.createWorkflow(workflowWithTriggerOnly());
+	await denyType(n8n, nodeType);
 	await n8n.start.fromExistingWorkflow(workflow.id);
 	return workflow.id;
+}
+
+/**
+ * A save is refused only when it adds a denied type: the check grandfathers every type
+ * the stored workflow already has. The node is added after the rule exists, so the
+ * autosave that follows is the refused request.
+ */
+async function addDeniedNodeAndSave(n8n: n8nPage): Promise<Response> {
+	const saved = n8n.canvas.waitForSaveWorkflowCompleted({ timeout: 15_000 });
+	await n8n.canvas.addNode(SLACK_NODE_NAME, { action: SLACK_NODE_ACTION, closeNDV: true });
+	return await saved;
 }
 
 test.describe(
@@ -71,11 +77,9 @@ test.describe(
 		});
 
 		test('a save refused by policy shows the refusal', async ({ n8n }) => {
-			await openRefusedWorkflow(n8n);
+			await openWorkflowUnderDeny(n8n, SLACK_NODE_TYPE);
 
-			const saved = n8n.canvas.waitForSaveWorkflowCompleted();
-			await n8n.canvasComposer.renameNodeViaShortcut(SLACK_NODE_NAME, `${SLACK_NODE_NAME} renamed`);
-			const response = await saved;
+			const response = await addDeniedNodeAndSave(n8n);
 
 			expect(response.status()).toBe(403);
 			await expect(n8n.notifications.getNotificationByContent(SLACK_NODE_TYPE)).toBeVisible();
