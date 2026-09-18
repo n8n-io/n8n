@@ -164,6 +164,61 @@ function isMcpListToolsRelay(value: unknown): value is McpListToolsRelayPayload 
 	);
 }
 
+/** Adds MCP queue metadata and returns whether the request was handled as a tools relay. */
+async function prepareMcpQueueExecution(
+	workflowStartNode: INode,
+	req: WebhookRequest,
+	webhookResultData: IWebhookResponseData,
+	runData: IWorkflowExecutionDataProcess,
+): Promise<boolean> {
+	const executionsConfig = Container.get(ExecutionsConfig);
+	if (workflowStartNode.type !== MCP_TRIGGER_NODE_TYPE || executionsConfig.mode !== 'queue') {
+		return false;
+	}
+
+	const querySessionId = req.query?.sessionId;
+	const headerSessionId = req.headers['mcp-session-id'];
+	const mcpSessionId =
+		typeof querySessionId === 'string'
+			? querySessionId
+			: typeof headerSessionId === 'string'
+				? headerSessionId
+				: '';
+
+	const firstItem = webhookResultData.workflowData?.[0]?.[0];
+	const mcpMessageId =
+		(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
+			? firstItem.json.mcpMessageId
+			: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+	runData.isMcpExecution = true;
+	runData.mcpType = 'trigger';
+	runData.mcpSessionId = mcpSessionId;
+	runData.mcpMessageId = mcpMessageId;
+
+	const mcpToolCallValue = firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
+	if (isMcpToolCall(mcpToolCallValue)) {
+		runData.mcpToolCall = mcpToolCallValue;
+	}
+
+	// The worker has no access to the request, so carry the node input the trigger built
+	runData.mcpToolInput = webhookResultData.toolInput;
+
+	const mcpListToolsRelayValue =
+		firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
+	if (!isMcpListToolsRelay(mcpListToolsRelayValue)) return false;
+
+	const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+	const publisher = Container.get(Publisher);
+	await publisher.publishMcpRelay({
+		sessionId: mcpListToolsRelayValue.sessionId,
+		messageId: mcpListToolsRelayValue.messageId,
+		response: mcpListToolsRelayValue.marker,
+	});
+
+	return true;
+}
+
 export function handleHostedChatResponse(
 	res: express.Response,
 	responseMode: WebhookResponseMode,
@@ -1005,53 +1060,13 @@ export async function executeWebhook(
 			runData.pushRef = runExecutionData.pushRef;
 		}
 
-		const executionsConfig = Container.get(ExecutionsConfig);
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
-			const querySessionId = req.query?.sessionId;
-			const headerSessionId = req.headers['mcp-session-id'];
-			const mcpSessionId =
-				typeof querySessionId === 'string'
-					? querySessionId
-					: typeof headerSessionId === 'string'
-						? headerSessionId
-						: '';
-
-			const firstItem = webhookResultData.workflowData?.[0]?.[0];
-			const mcpMessageId =
-				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
-					? firstItem.json.mcpMessageId
-					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-
-			runData.isMcpExecution = true;
-			runData.mcpType = 'trigger';
-			runData.mcpSessionId = mcpSessionId;
-			runData.mcpMessageId = mcpMessageId;
-
-			const mcpToolCallValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
-			if (isMcpToolCall(mcpToolCallValue)) {
-				runData.mcpToolCall = mcpToolCallValue;
-			}
-
-			// The worker has no access to the request, so carry the node input the trigger built
-			runData.mcpToolInput = webhookResultData.toolInput;
-
-			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
-			const mcpListToolsRelayValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
-			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
-				const publisher = Container.get(Publisher);
-				await publisher.publishMcpRelay({
-					sessionId: mcpListToolsRelayValue.sessionId,
-					messageId: mcpListToolsRelayValue.messageId,
-					response: mcpListToolsRelayValue.marker,
-				});
-				// Don't run workflow - the relay will be handled by the main with the transport
-				// Return undefined since no execution is started
-				return undefined;
-			}
-		}
+		const didPublishMcpRelay = await prepareMcpQueueExecution(
+			workflowStartNode,
+			req,
+			webhookResultData,
+			runData,
+		);
+		if (didPublishMcpRelay) return undefined;
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
