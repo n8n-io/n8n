@@ -16,8 +16,6 @@ import {
 } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
 
-// `type` is a varchar column, so a table created before a type was retired must still parse.
-// The documented values live in `.openapi()` metadata instead of a runtime enum.
 const dataTableColumnPublicSchema = z.object({
 	id: z.string().openapi(dataTableColumnFieldDocs.id),
 	name: z.string().openapi(dataTableColumnFieldDocs.name),
@@ -25,7 +23,6 @@ const dataTableColumnPublicSchema = z.object({
 	index: z.number().openapi(dataTableColumnFieldDocs.index),
 });
 
-/** The data table as the Public API publishes it. */
 export const dataTablePublicSchema = z.object({
 	id: z.string().openapi(dataTableFieldDocs.id),
 	name: z.string().openapi(dataTableFieldDocs.name),
