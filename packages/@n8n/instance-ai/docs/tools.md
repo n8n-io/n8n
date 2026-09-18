@@ -929,7 +929,9 @@ at runtime, so the node can still run and cause side effects.
 equivalent to running a one-node workflow, so the same `runWorkflow` admin
 policy applies (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
-workflow). Under the default `require_approval`, the tool suspends with
+workflow). A *scoped* `always_allow` — the checkpoint follow-up override, which
+names the workflow IDs it covers — does not skip the prompt: a standalone node
+run has no workflow ID to match. Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
 type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`) —
 the same split the generated node TS types use, so a future per-operation

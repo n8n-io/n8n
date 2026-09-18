@@ -939,6 +939,24 @@ describe('nodes tool', () => {
 			expect(result).toEqual(serviceResult);
 		});
 
+		it('should require approval when always_allow is scoped to specific workflows', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({
+					executeNodeService,
+					permissions: { runWorkflow: 'always_allow' } as never,
+					allowedRunWorkflowIds: new Set(['wf-under-verification']),
+				}),
+				'full',
+			);
+
+			await executeTool(tool, executeInput as never, { suspend: suspendFn } as never);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
 		it('should skip approval when a session grant exists for the node type', async () => {
 			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
 			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
