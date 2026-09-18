@@ -136,6 +136,13 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		await attachStagedResults(testInfo, dimensions, exec.throughputResult, stagedLoad);
 	} else {
 		await attachLoadTestResults(testInfo, dimensions, metrics);
+		await attachMetric(
+			testInfo,
+			'completion-pct',
+			(exec.throughputResult.totalCompleted / exec.expectedExecutions) * 100,
+			'%',
+			dimensions,
+		);
 		await attachPhaseMetrics(testInfo, dimensions, exec.throughputResult);
 		// Tail rate (last 60s) — closest to the architectural ceiling. Reporter
 		// surfaces this as the `tail/s` column. Skipped for staged runs where the

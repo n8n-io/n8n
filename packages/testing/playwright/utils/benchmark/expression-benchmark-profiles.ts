@@ -15,6 +15,7 @@ export const VM_EAGER_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 		N8N_EXPRESSION_ENGINE_COMPILE_CACHE: 'false',
 	},
 	dimensions: {
+		runtime_profile: 'v1 eager',
 		execution_engine: 'v1',
 		expression_engine: 'vm',
 		expression_lazy_acquire: 0,
@@ -31,6 +32,7 @@ export const VM_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 		N8N_EXPRESSION_ENGINE_COMPILE_CACHE: 'true',
 	},
 	dimensions: {
+		runtime_profile: 'v1 lazy/cache',
 		execution_engine: 'v1',
 		expression_engine: 'vm',
 		expression_lazy_acquire: 1,
@@ -46,6 +48,7 @@ export const ENGINE_V2_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	},
 	engineDatabase: 'shared',
 	dimensions: {
+		runtime_profile: 'v2 eager',
 		execution_engine: 'v2',
 		database_topology: 'shared-postgres',
 		database_metrics_scope: 'combined',
@@ -64,6 +67,7 @@ export const ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	engineDatabase: 'shared',
 	dimensions: {
 		...VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
+		runtime_profile: 'v2 lazy/cache',
 		execution_engine: 'v2',
 		database_topology: 'shared-postgres',
 		database_metrics_scope: 'combined',
@@ -76,6 +80,7 @@ export const ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkPr
 	engineDatabase: 'split',
 	dimensions: {
 		...ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
+		runtime_profile: 'v2 lazy/cache, split DB',
 		database_topology: 'split-postgres',
 		database_metrics_scope: 'control-plane',
 	},

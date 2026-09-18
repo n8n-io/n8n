@@ -131,6 +131,7 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 | Column | Meaning |
 |--------|---------|
 | `exec/s` | Workflow executions per second across the active window |
+| `complete` | Percentage of the published finite load observed as completed |
 | `tail/s` | Throughput across the final 60s of the run — closest to the architectural ceiling |
 | `actions/s` | `exec/s × nodeCount` — total node executions per second |
 | `p50/p99` | Per-execution duration percentiles (when execution data is saved) |
@@ -138,6 +139,8 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 | `ev lag` | Node.js event loop lag (sum across mains/workers) |
 | `pg tx/s` | Postgres `xact_commit` rate from postgres-exporter |
 | `queue` | Bull jobs waiting (queue specs only) |
+
+Runtime comparison rows include a `Profile` column such as `v1 eager`, `v1 lazy/cache`, or `v2 lazy/cache, split DB`.
 
 Tail and staged rates require at least three distinct counter samples and 80% coverage of the requested window. Duplicate polls between VictoriaMetrics scrapes do not count as samples. A short or incomplete window omits the tail metric instead of reporting a whole-run fallback or zero. Kafka stage rates use the publisher's actual boundaries.
 
