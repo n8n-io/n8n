@@ -84,19 +84,15 @@ function handleToggle(value: boolean) {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.toggleRow">
-			<div :class="$style.toggleText">
-				<N8nText size="small" :bold="true">
-					{{ i18n.baseText('agents.channels.approval.label') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.channels.approval.hint') }}
-				</N8nText>
-			</div>
 			<N8nSwitch2
 				:model-value="enabled"
+				:label="i18n.baseText('agents.channels.approval.label')"
 				data-test-id="agent-channel-approval-toggle"
 				@update:model-value="handleToggle"
 			/>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.channels.approval.hint') }}
+			</N8nText>
 		</div>
 
 		<AgentApprovalSelector
@@ -125,12 +121,5 @@ function handleToggle(value: boolean) {
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--2xs);
-}
-
-.toggleText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
 }
 </style>

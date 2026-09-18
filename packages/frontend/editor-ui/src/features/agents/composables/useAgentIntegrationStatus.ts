@@ -258,6 +258,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
+			state.integrationApproval.value[type] = undefined;
 			state.runtimeErrors.value[type] = '';
 			state.serverConfirmed.value.add(type);
 			return result;

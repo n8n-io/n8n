@@ -21,6 +21,7 @@ import {
 	executeActionToolBatch,
 	executeActionToolOperation,
 	executeContextToolOperation,
+	INTEGRATION_ACTION_RESUME_SCHEMA,
 } from './integration-tool-execution';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
@@ -66,8 +67,6 @@ const integrationActionSuspendSchema = z.object({
  * SDK payload so the chat bridge renders its Approve/Deny card unchanged.
  */
 const actionSuspendSchema = z.union([integrationActionSuspendSchema, APPROVAL_SUSPEND_SCHEMA]);
-
-const actionResumeSchema = z.record(z.string(), z.unknown());
 
 export function getIntegrationToolConnectionDescriptors(
 	integrations: AgentIntegrationConfig[],
@@ -170,7 +169,7 @@ export function createIntegrationActionTool(params: {
 		.description(buildActionToolDescription(descriptor))
 		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
 		.suspend(actionSuspendSchema)
-		.resume(actionResumeSchema)
+		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
 		.handler(async (input, ctx) => {
 			const interruptCtx = ctx as InterruptibleToolContext;
 			const approvalDecision = readApprovalDecision(interruptCtx);

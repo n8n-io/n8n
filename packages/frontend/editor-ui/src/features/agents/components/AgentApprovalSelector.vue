@@ -70,10 +70,12 @@ watch(
 watch(isValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 // Drop selections the caller no longer offers. An empty list means the entries
-// have not arrived yet, which must not wipe a saved selection.
+// have not arrived yet, which must not wipe a saved selection. Watching
+// modelValue alongside options covers a saved value that already holds stale
+// entries when the options are populated at mount.
 watch(
-	() => props.options,
-	(options) => {
+	[() => props.modelValue, () => props.options],
+	([, options]) => {
 		if (approvalMode.value !== 'selected' || options.length === 0) return;
 
 		const available = new Set(options.map((option) => option.value));
@@ -83,6 +85,7 @@ watch(
 			emitApproval();
 		}
 	},
+	{ immediate: true },
 );
 
 function toStringArray(value: unknown): string[] {

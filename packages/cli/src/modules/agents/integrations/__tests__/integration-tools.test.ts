@@ -12,6 +12,7 @@ import {
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
 } from '../integration-tools';
+import { INTEGRATION_ACTION_RESUME_SCHEMA } from '../integration-tool-execution';
 
 const slackA: AgentIntegrationConfig = {
 	type: 'slack',
@@ -1158,16 +1159,19 @@ describe('integration tools', () => {
 				messageId: '123.456',
 			}),
 		);
-		expect(ctx.suspend).toHaveBeenCalledWith({
-			type: 'integration_action',
-			action: 'send_channel_message',
-			integrationConnectionId: 'slack:cred-a',
-			messageContext: expect.objectContaining({
+		expect(ctx.suspend).toHaveBeenCalledWith(
+			{
+				type: 'integration_action',
+				action: 'send_channel_message',
 				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				messageId: '123.456',
-			}),
-		});
+				messageContext: expect.objectContaining({
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					messageId: '123.456',
+				}),
+			},
+			{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+		);
 	});
 
 	it('section accessory button sends first, updates message context, then suspends', async () => {
@@ -1237,16 +1241,19 @@ describe('integration tools', () => {
 				messageId: '123.789',
 			}),
 		);
-		expect(ctx.suspend).toHaveBeenCalledWith({
-			type: 'integration_action',
-			action: 'respond',
-			integrationConnectionId: 'slack:cred-a',
-			messageContext: expect.objectContaining({
+		expect(ctx.suspend).toHaveBeenCalledWith(
+			{
+				type: 'integration_action',
+				action: 'respond',
 				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				messageId: '123.789',
-			}),
-		});
+				messageContext: expect.objectContaining({
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					messageId: '123.789',
+				}),
+			},
+			{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+		);
 	});
 
 	it('action tool description forbids claiming an action succeeded before the tool call returns', () => {
@@ -1633,6 +1640,49 @@ describe('integration tools', () => {
 
 			expect(actionExecutor.execute).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ error: { code: 'ACTION_DECLINED' } });
+		});
+
+		it('does not leave an interactive follow-up card expecting an approval resume', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+			actionExecutor.execute.mockResolvedValue({
+				ok: true,
+				messageContext: {
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					target: { type: 'channel', channelId: 'slack:C999', threadId: 'slack:C999:1' },
+					messageId: '1',
+					updatedAt: '2026-05-18T10:00:00.000Z',
+				},
+			});
+			const ctx = makeInterruptibleCtx({
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'send_channel_message',
+					args: sendToChannel.input,
+				},
+				resumeData: { approved: true },
+			});
+
+			await tool.handler!(
+				{
+					action: 'send_channel_message',
+					input: {
+						channelId: 'slack:C999',
+						message: {
+							text: 'Choose',
+							card: {
+								components: [{ type: 'button', label: 'Go', value: 'go' }],
+							},
+						},
+					},
+				},
+				ctx,
+			);
+
+			expect(ctx.suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'integration_action', action: 'send_channel_message' }),
+				{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+			);
 		});
 
 		it('still hands a card resume straight back to the model', async () => {

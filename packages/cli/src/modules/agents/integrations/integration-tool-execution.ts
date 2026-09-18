@@ -4,7 +4,7 @@ import {
 	type ToolContext,
 } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import {
@@ -24,6 +24,9 @@ import type {
 	IntegrationToolConnectionDescriptor,
 } from './integration-tool-types';
 import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
+
+/** Resume shape for the action tool, including a follow-up interactive card. */
+export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
@@ -276,12 +279,18 @@ export async function executeActionToolOperation(params: {
 
 	if (!awaitsResponse) return actionResult;
 
-	return await interruptCtx?.suspend({
-		type: 'integration_action',
-		action: operation.action,
-		integrationConnectionId: descriptor.integrationConnectionId,
-		messageContext: actionResult.messageContext,
-	});
+	return await interruptCtx?.suspend(
+		{
+			type: 'integration_action',
+			action: operation.action,
+			integrationConnectionId: descriptor.integrationConnectionId,
+			messageContext: actionResult.messageContext,
+		},
+		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
+		// the action-tool schema here so a follow-up card is not still expecting
+		// `{ approved }`.
+		{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+	);
 }
 
 /**

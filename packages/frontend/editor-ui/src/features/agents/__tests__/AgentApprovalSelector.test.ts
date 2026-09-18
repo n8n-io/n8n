@@ -137,6 +137,17 @@ describe('AgentApprovalSelector', () => {
 		]);
 	});
 
+	it('prunes stale entries that are absent from the options at mount', () => {
+		const wrapper = renderComponent({
+			modelValue: { mode: 'selected', tools: ['send_dm', 'gone'] },
+			options: OPTIONS,
+		});
+
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+			{ mode: 'selected', tools: ['send_dm'] },
+		]);
+	});
+
 	it('keeps a saved selection while the entries have not arrived yet', async () => {
 		const wrapper = renderComponent({
 			modelValue: { mode: 'selected', tools: ['send_dm'] },
