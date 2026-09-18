@@ -361,7 +361,9 @@ export class AgentsService {
 	): Promise<{ count: number; data: Agent[] }> {
 		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options, {
+			withProject: true,
+		});
 	}
 
 	/**

@@ -288,6 +288,7 @@ onMounted(async () => {
 				class="mb-2xs"
 				:agent="data"
 				:project-id="data.projectId"
+				:show-ownership-badge="projectPages.isOverviewSubPage"
 				@select="onSelectAgent(data.id, data.projectId)"
 				@new-chat="onNewAgentChat"
 				@published="onAgentPublished"
