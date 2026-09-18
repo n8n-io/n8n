@@ -17,12 +17,20 @@ import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
 import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
-import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
+import type {
+	ToolMenuItem,
+	ToolOpenTarget,
+	ToolPickerMode,
+	ToolRow,
+	SingleToolRow,
+} from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentWebSearchSection from './AgentWebSearchSection.vue';
 
 export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
+type CapabilityRow = Exclude<AgentCapabilitySection, 'tasks'> | 'workflows';
 
 const props = withDefaults(
 	defineProps<{
@@ -63,7 +71,7 @@ function showSection(section: AgentCapabilitySection): boolean {
 const emit = defineEmits<{
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'add-tool': [];
+	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
@@ -344,9 +352,9 @@ function toolEntryReasons(entry: CapabilityToolEntry): string[] {
 	return toolIssueMessages.value.get(entry.index) ?? [];
 }
 
-const toolRows = computed<ToolRow[]>(() => {
+function buildCapabilityToolRows(entries: CapabilityToolEntry[]): ToolRow[] {
 	return buildToolRows(
-		capabilityTools.value.map((entry) => {
+		entries.map((entry) => {
 			const nodeType = toolNodeType(entry);
 			const reasons = toolEntryReasons(entry);
 			const warningReasons =
@@ -366,30 +374,41 @@ const toolRows = computed<ToolRow[]>(() => {
 			};
 		}),
 	);
-});
+}
 
-const capabilitySectionItemCounts = computed<
-	Record<Exclude<AgentCapabilitySection, 'tasks'>, number>
->(() => ({
+const toolRows = computed<ToolRow[]>(() =>
+	buildCapabilityToolRows(
+		capabilityTools.value.filter(
+			(entry) => entry.kind === 'mcpServer' || entry.tool.type !== 'workflow',
+		),
+	),
+);
+
+const workflowRows = computed<SingleToolRow[]>(() =>
+	buildCapabilityToolRows(
+		capabilityTools.value.filter(
+			(entry) => entry.kind === 'tool' && entry.tool.type === 'workflow',
+		),
+	).filter((row): row is SingleToolRow => !row.isGrouped),
+);
+
+const capabilityRowItemCounts = computed<Record<CapabilityRow, number>>(() => ({
 	tools: toolRows.value.length,
+	workflows: workflowRows.value.length,
 	skills: props.skills.length,
 	subAgents: selectedSubAgents.value.length,
 }));
 
-const orderedCapabilitySections = computed(() => {
-	const sections = props.sections.filter(
-		(section): section is Exclude<AgentCapabilitySection, 'tasks'> => section !== 'tasks',
-	);
-	const sectionsWithItems = sections.filter(
-		(section) => capabilitySectionItemCounts.value[section] > 0,
-	);
-
-	if (sectionsWithItems.length === 0 || sectionsWithItems.length === sections.length)
-		return sections;
+const orderedCapabilityRows = computed(() => {
+	const rows = props.sections.flatMap<CapabilityRow>((section) => {
+		if (section === 'tasks') return [];
+		if (section === 'tools') return ['tools', 'workflows'];
+		return [section];
+	});
 
 	return [
-		...sectionsWithItems,
-		...sections.filter((section) => capabilitySectionItemCounts.value[section] === 0),
+		...rows.filter((row) => capabilityRowItemCounts.value[row] > 0),
+		...rows.filter((row) => capabilityRowItemCounts.value[row] === 0),
 	];
 });
 
@@ -512,7 +531,7 @@ function openExistingSubAgentModal(subAgent: {
 <template>
 	<div>
 		<div :class="$style.section" data-testid="agent-capabilities-section">
-			<template v-for="section in orderedCapabilitySections" :key="section">
+			<template v-for="section in orderedCapabilityRows" :key="section">
 				<AgentChipRow
 					v-if="section === 'tools'"
 					:label="i18n.baseText('agents.builder.tools.title')"
@@ -520,7 +539,7 @@ function openExistingSubAgentModal(subAgent: {
 					:add-label="i18n.baseText('agents.builder.tools.add')"
 					add-button-test-id="agent-capabilities-add-tool"
 					:disabled="props.disabled"
-					@add="emit('add-tool')"
+					@add="emit('add-tool', 'tools')"
 				>
 					<div v-for="tool in toolRows" :key="`tool-${tool.index}`" :class="$style.chipGroup">
 						<N8nDropdownMenu
@@ -611,6 +630,36 @@ function openExistingSubAgentModal(subAgent: {
 				</AgentChipRow>
 
 				<AgentChipRow
+					v-else-if="section === 'workflows'"
+					:label="i18n.baseText('generic.workflows')"
+					:item-count="workflowRows.length"
+					:add-label="i18n.baseText('workflows.add')"
+					add-button-test-id="agent-capabilities-add-workflow"
+					:disabled="props.disabled"
+					@add="emit('add-tool', 'workflows')"
+				>
+					<div
+						v-for="workflow in workflowRows"
+						:key="`workflow-${workflow.index}`"
+						:class="$style.chipGroup"
+					>
+						<AgentChipButton
+							:icon="workflow.fallbackIcon"
+							:invalid="workflow.invalid"
+							:invalid-reasons="workflow.invalidReasons"
+							:warning="workflow.warning"
+							:warning-reasons="workflow.warningReasons"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-workflow-row"
+							@click="emit('open-tool', workflow.tool.openTarget)"
+						>
+							{{ workflow.label }}
+						</AgentChipButton>
+					</div>
+				</AgentChipRow>
+
+				<AgentChipRow
 					v-else-if="section === 'skills'"
 					:label="i18n.baseText('agents.builder.skills.title')"
 					:item-count="skills.length"
@@ -621,7 +670,7 @@ function openExistingSubAgentModal(subAgent: {
 				>
 					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
 						<AgentChipButton
-							icon="sparkles"
+							icon="book-open"
 							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
 							:invalid-reasons="skillIssueMessages.get(id) ?? []"
 							:disabled="props.disabled"
@@ -658,6 +707,13 @@ function openExistingSubAgentModal(subAgent: {
 					</div>
 				</AgentChipRow>
 			</template>
+			<div :class="$style.divider" aria-hidden="true" />
+			<AgentWebSearchSection
+				:config="props.config"
+				:disabled="props.disabled"
+				:project-id="props.projectId"
+				@update:config="emit('update:config', $event)"
+			/>
 		</div>
 	</div>
 </template>
@@ -688,5 +744,12 @@ function openExistingSubAgentModal(subAgent: {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 </style>

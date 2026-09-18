@@ -82,6 +82,22 @@ describe('Microsoft Excel V2 - listSearch', () => {
 			expect(result.results).toEqual([{ name: 'Q4', value: 'wb2', url: 'https://c/wb2' }]);
 		});
 
+		it('escapes quotes and URL control characters in a user search', async () => {
+			apiRequest.mockResolvedValue({ value: [] });
+
+			await searchWorkbooks.call(ctx, "a'b?#");
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				"/drive/root/search(q='a''b%3F%23')",
+				undefined,
+				DEFAULT_QS,
+				undefined,
+				undefined,
+				0,
+			);
+		});
+
 		it('treats a blank search as no search text', async () => {
 			apiRequest.mockResolvedValue({ value: [WORKBOOK] });
 

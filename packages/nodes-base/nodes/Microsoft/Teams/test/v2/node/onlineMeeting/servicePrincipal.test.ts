@@ -63,6 +63,12 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 		['get', byId, 'GET', `${MEETINGS}/${MEETING}`],
 		['createOrGet', { externalId: 'order-4711', options: {} }, 'POST', `${MEETINGS}/createOrGet`],
 		['deleteMeeting', byId, 'DELETE', `${MEETINGS}/${MEETING}`],
+		[
+			'update',
+			{ ...byId, updateFields: { subject: 'Renamed' } },
+			'PATCH',
+			`${MEETINGS}/${MEETING}`,
+		],
 	])(
 		"%s addresses the organizer's meetings instead of /me",
 		async (operation, params, method, path) => {
@@ -128,25 +134,25 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 		expect(calledPath).toBe(`/v1.0/me/onlineMeetings/${MEETING}`);
 	});
 
-	it.each([['deleteMeeting', {}, 'DELETE']])(
-		'%s resolves a join URL against the organizer first',
-		async (operation, params, method) => {
-			(transport.microsoftApiRequest as Mock)
-				.mockResolvedValueOnce({ value: [{ id: MEETING }] })
-				.mockResolvedValueOnce({});
+	it.each([
+		['deleteMeeting', {}, 'DELETE'],
+		['update', { updateFields: { subject: 'Renamed' } }, 'PATCH'],
+	])('%s resolves a join URL against the organizer first', async (operation, params, method) => {
+		(transport.microsoftApiRequest as Mock)
+			.mockResolvedValueOnce({ value: [{ id: MEETING }] })
+			.mockResolvedValueOnce({});
 
-			await run(operation, { ...byUrl, ...params });
+		await run(operation, { ...byUrl, ...params });
 
-			const calls = (transport.microsoftApiRequest as Mock).mock.calls.map((call) => [
-				call[0],
-				call[1],
-			]);
-			expect(calls).toEqual([
-				['GET', MEETINGS],
-				[method, `${MEETINGS}/${MEETING}`],
-			]);
-		},
-	);
+		const calls = (transport.microsoftApiRequest as Mock).mock.calls.map((call) => [
+			call[0],
+			call[1],
+		]);
+		expect(calls).toEqual([
+			['GET', MEETINGS],
+			[method, `${MEETINGS}/${MEETING}`],
+		]);
+	});
 
 	describe('a user principal name as the organizer', () => {
 		it('is resolved to the object ID before the meeting request', async () => {

@@ -9,6 +9,9 @@ description: >-
   data-table-manager first, then this skill. Do not load planning or
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
+  Don't use this skill for explicit one-off tasks that can be done by a single
+  node execution: load one-off-operations and run the node with
+  nodes(action="execute").
 recommended_tools:
   - read_file
   - write_file
@@ -516,7 +519,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` and let setup collect it. When the persistent
+   setup panel is enabled, the user can fill announced requirements during the
+   build. Do not tell them to wait until the build finishes.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -591,8 +596,12 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Avoid code node where possible, use n8n nodes that help do the same thing.
-  If it makes it simpler, go ahead and use code node.
+- Native node first: shape, compute, default or format fields with
+  **Edit Fields (Set)** and expressions (full JavaScript); **Filter**, **IF** /
+  **Switch**, **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out**,
+  **Limit** and **Merge** cover the rest. A Code node is only for multi-pass
+  algorithms, `$getWorkflowStaticData` state, fence-stripping model output,
+  try/catch around upstream node access, or a step needing three or more nodes.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
   `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
   (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
@@ -603,8 +612,8 @@ every reported error and warning before calling `build-workflow`.
   anything the runner would reject.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
-  literals; do runtime joining, aggregation, or transforms in a Code node or
-  `expr()`. Full allowed/forbidden list:
+  literals; do runtime joining, aggregation, or transforms with `expr()` in a
+  native node. Full allowed/forbidden list and "Native node mappings" table:
   `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.

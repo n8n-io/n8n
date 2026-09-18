@@ -1,8 +1,9 @@
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import {
 	dropInvalidWorkflowJsonGroups,
@@ -23,6 +24,7 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { describeSavedPublishState, savedWorkflowStateSchema } from './saved-workflow-state';
 import { isSetupPanelEnabled } from './setup-items';
 import { recordWorkflowSetupState } from './setup-panel-state';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
@@ -78,6 +80,7 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
+import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
 	groupingDecisionBlocker,
@@ -103,6 +106,7 @@ import {
 	type WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { approvalSummarySchema, formatApprovalMessage } from '../approval-copy';
 import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
@@ -113,6 +117,9 @@ const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	/** Workflow name shown in the approval card title. */
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
 	workflowId: z.string(),
@@ -135,38 +142,6 @@ interface BuildCtx {
  * AI_InvalidToolInputError instead of a recoverable tool result. The handler
  * does the authoritative normalization against the workspace root.
  */
-/**
- * Where this save landed relative to production. A save never republishes, so
- * on a published workflow the change sits in the draft while the previous
- * version keeps running. Verification reports the same fact through
- * `claim.liveState`, but a trigger-only workflow and any repair that skips
- * `verify-built-workflow` never produce a claim — this rides on every save
- * instead, from data the save already returned.
- */
-function describeSavedPublishState(saved: { versionId: string; activeVersionId?: string | null }): {
-	publishState?: { live: 'current' | 'stale'; activeVersionId: string; savedVersionId: string };
-	publishStateNote?: string;
-} {
-	const { activeVersionId, versionId } = saved;
-	if (!activeVersionId) return {};
-
-	const live = activeVersionId === versionId ? 'current' : 'stale';
-	return {
-		publishState: { live, activeVersionId, savedVersionId: versionId },
-		...(live === 'stale'
-			? {
-					// Fact only. A save happens before verification and setup, so a
-					// publish question here would jump the post-build flow and offer
-					// to publish a workflow that is not ready.
-					publishStateNote:
-						'This workflow is published, and this save is a draft. The live version is still ' +
-						'the previous one, so nothing changed for production yet. Do NOT describe the ' +
-						'workflow as fixed, live, or working in production until it is published again.',
-				}
-			: {}),
-	};
-}
-
 function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
 	try {
 		normalizeWorkflowSourceFilePath(value);
@@ -212,6 +187,7 @@ export const buildWorkflowInputSchema = z
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
+		approvalSummary: approvalSummarySchema,
 		workItemId: z
 			.string()
 			.optional()
@@ -448,6 +424,7 @@ async function directPostBuildFlowHandoff(
 }
 
 interface ValidationFailureArgs {
+	abortSignal?: AbortSignal;
 	context: InstanceAiContext;
 	blocking: ValidationWarning[];
 	informational: ValidationWarning[];
@@ -464,7 +441,7 @@ interface ValidationFailureArgs {
 	owner: WorkflowBuildOutcome['owner'];
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
-	withEscalation: (errors: string[]) => string[];
+	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
 }
@@ -525,8 +502,14 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	} = args;
 
+	const validationErrors = blocking.map(
+		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+	);
 	const formattedErrors = withEscalation(
-		blocking.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+		reason === 'workflow_source_validation_failed'
+			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
+			: validationErrors,
+		{ trackingErrors: validationErrors },
 	);
 	const remediation = createCodeFixableRemediation({ reason, guidance });
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
@@ -597,16 +580,7 @@ const buildWorkflowOutputSchema = z.object({
 	credentialResolutionNote: z.string().optional(),
 	referencedWorkflowIds: z.array(z.string()).optional(),
 	hasUnresolvedPlaceholders: z.boolean().optional(),
-	/** Where this save landed relative to production. Absent while unpublished. */
-	publishState: z
-		.object({
-			live: z.enum(['current', 'stale']),
-			activeVersionId: z.string(),
-			savedVersionId: z.string(),
-		})
-		.optional(),
-	/** Present only for `live: 'stale'` — the sentence to relay. */
-	publishStateNote: z.string().optional(),
+	...savedWorkflowStateSchema.shape,
 	grouping: groupingOutcomeSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
@@ -869,7 +843,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
+						message: formatApprovalMessage(
+							'Save the changes to this workflow',
+							input.approvalSummary,
+						),
+						resourceName: workflowName,
+						approvalDetails: { action: 'edit-workflow', summary: input.approvalSummary },
 						severity: 'warning',
 						workflowId: targetWorkflowId,
 					});
@@ -988,9 +967,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 			const withEscalation = (
 				errors: string[],
-				options: { includeSdkLanguageGuidance?: boolean } = {},
+				options: { includeSdkLanguageGuidance?: boolean; trackingErrors?: string[] } = {},
 			): string[] => {
-				const escalation = failureTracker.record(workItemKey, errors, options);
+				// Supplemental diagnostics can time out. Keep the original failure signature stable.
+				const escalation = failureTracker.record(
+					workItemKey,
+					options.trackingErrors ?? errors,
+					options,
+				);
 				return escalation ? [...errors, escalation] : errors;
 			};
 
@@ -1041,7 +1025,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 			if (!compiled.success) {
-				const errors = compiled.editable ? withEscalation(compiled.errors) : compiled.errors;
+				const buildErrors =
+					compiled.reason === 'workflow_source_build_failed'
+						? await appendWorkflowSourceDiagnostics(
+								context,
+								filePath,
+								compiled.errors,
+								ctx.abortSignal,
+							)
+						: compiled.errors;
+				const errors = compiled.editable
+					? withEscalation(buildErrors, { trackingErrors: compiled.errors })
+					: buildErrors;
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
@@ -1097,6 +1092,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedWarnings.blocking,
 					informational,
@@ -1212,6 +1208,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedChatModelWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedChatModelWarnings.blocking,
 					informational,
@@ -1322,6 +1319,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: informational;
 
 					return await handleValidationFailure({
+						abortSignal: ctx.abortSignal,
 						context,
 						blocking: [blocker],
 						informational: informationalWithoutDrops,
@@ -1401,7 +1399,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						id: string;
 						versionId: string;
 						/** Published version, null while the workflow is unpublished. */
-						activeVersionId?: string | null;
+						activeVersionId: string | null;
 						checksum?: string;
 						folder?: WorkflowFolderRef;
 					},

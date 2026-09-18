@@ -14,6 +14,7 @@ const {
 	ensureBrowserConnected,
 	computerUseTelemetry,
 	featureFlags,
+	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
 	settingsStore,
@@ -23,6 +24,7 @@ const {
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
 	featureFlags: { browserUse: true, computerUse: true, mcp: true },
+	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -36,8 +38,8 @@ const {
 		fetch: vi.fn(),
 		settings: { mcpAccessEnabled: true },
 		isLocalGatewayDisabled: false,
-		isLocalGatewayDisabledByAdmin: false,
-		isBrowserUseEnabledByAdmin: true,
+		isComputerUseAvailable: true,
+		isBrowserUseAvailable: true,
 		isGatewayConnected: false,
 		computerUseConnectionStatus: 'none',
 		browserUseConnectionStatus: 'none',
@@ -102,6 +104,10 @@ vi.mock('../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStore,
 }));
 
+vi.mock('../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({ ignorePendingConnectResult }),
+}));
+
 vi.mock('../instanceAiMcp.telemetry', () => ({
 	useInstanceAiMcpTelemetry: () => mcpTelemetry,
 }));
@@ -153,18 +159,18 @@ describe('useInstanceAiInputMenuItems', () => {
 		mcpStore.connections = [];
 		settingsStore.settings.mcpAccessEnabled = true;
 		settingsStore.isLocalGatewayDisabled = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = false;
-		settingsStore.isBrowserUseEnabledByAdmin = true;
+		settingsStore.isComputerUseAvailable = true;
+		settingsStore.isBrowserUseAvailable = true;
 		settingsStore.isGatewayConnected = false;
 		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
-	it('omits connection groups disabled by feature or admin settings', () => {
+	it('omits connection groups the store reports as unavailable', () => {
 		featureFlags.mcp = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = true;
-		settingsStore.isBrowserUseEnabledByAdmin = false;
+		settingsStore.isComputerUseAvailable = false;
+		settingsStore.isBrowserUseAvailable = false;
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
@@ -292,6 +298,10 @@ describe('useInstanceAiInputMenuItems', () => {
 			data: { connectionId: '1' },
 		});
 		expect(mcpStore.disconnect).toHaveBeenCalledWith('1');
+		expect(ignorePendingConnectResult).toHaveBeenCalledWith('server-1');
+		expect(ignorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
+			mcpStore.disconnect.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
 		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
 	});

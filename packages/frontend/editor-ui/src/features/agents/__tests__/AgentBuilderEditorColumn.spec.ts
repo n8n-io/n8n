@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type { AgentResource } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -150,6 +151,7 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		agent: AgentResource | null;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -172,7 +174,7 @@ async function mountColumn(
 				instructions: 'Help the user.',
 				memory: { enabled: true, storage: 'n8n' },
 			},
-			agent: null,
+			agent: overrides.agent ?? null,
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			agentFiles: [],
@@ -194,6 +196,7 @@ async function mountColumn(
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
 					props: ['showModel', 'showInstructions'],
+					emits: ['update:config'],
 				},
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
@@ -276,6 +279,29 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('generate-eval-cases')).toHaveLength(1);
 	});
 
+	it('forwards the auto-applied-default meta from AgentInfoPanel to the host', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper
+			.getComponent({ name: 'AgentInfoPanel' })
+			.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{ model: 'openai/gpt-5-mini' },
+			{ source: 'auto' },
+		]);
+	});
+
+	it('forwards a user-driven AgentInfoPanel config change without meta', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper
+			.getComponent({ name: 'AgentInfoPanel' })
+			.vm.$emit('update:config', { instructions: 'x' });
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
+	});
+
 	it('disables the evals CTA for a read-only agent', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
@@ -307,6 +333,14 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
+		expect(
+			knowledgeWrapper
+				.findAllComponents({ name: 'AgentPanel' })
+				.find(function hasFilesHeader(panel) {
+					return panel.props('header') === 'agents.builder.files.title';
+				})
+				?.props('description'),
+		).toBe('agents.builder.files.titleTooltip');
 	});
 
 	it('keeps vector stores under the collapsed Advanced disclosure on the Knowledge tab', async () => {
@@ -353,7 +387,7 @@ describe('AgentBuilderEditorColumn', () => {
 	});
 
 	it('opens preview chat from the Triggers card', async function opensPreviewChat() {
-		const wrapper = await mountColumn();
+		const wrapper = await mountColumn({ agent: { isRunnable: true } as AgentResource });
 
 		await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
 

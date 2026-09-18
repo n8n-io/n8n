@@ -9,6 +9,30 @@ export { isExpression };
 type ExternalSecretReferenceState = 'none' | 'known' | 'missing' | 'unknown';
 
 const SECRET_REFERENCE = /\$secrets\b/;
+
+// ponytail: regex heuristic — flags an expression that reads execution item
+// data. Ceiling: also matches "$json" inside a string literal. Upgrade path:
+// have the resolver report whether redacted data was actually read.
+const DATA_ACCESSOR = /\$json|\$binary|\$input\b|\$items\b|\$node\b|\$thisItem\b|\$\(/;
+
+/** Whether an expression reads execution item data (and so is emptied by redaction). */
+export const referencesExecutionData = (expression: string): boolean =>
+	DATA_ACCESSOR.test(expression);
+
+/**
+ * True when the expression is a single `{{ }}` block with no literal text around
+ * it. A mixed expression (literal text plus a block) is not single. Used to tell
+ * a fallback (`{{ $json.x ?? 'd' }}`, one block that still resolves to a value)
+ * apart from a mixed expression whose value comes from its literal text.
+ */
+export const isSingleResolvable = (expression: string): boolean => {
+	const chunks = ExpressionParser.splitExpression(removeExpressionPrefix(expression));
+	const codeChunks = chunks.filter((chunk) => chunk.type === 'code');
+	const hasLiteralText = chunks.some(
+		(chunk) => chunk.type === 'text' && chunk.text.trim().length > 0,
+	);
+	return codeChunks.length === 1 && !hasLiteralText;
+};
 /** The only key forms we can read at edit time: `.key`, `['key']`, `["key"]`. */
 const LITERAL_KEY_ACCESS =
 	/^\s*(?:\.\s*(?<dotKey>[a-zA-Z_$][\w$]*)|\[\s*(?<quote>['"])(?<quotedKey>[^\\]*?)\k<quote>\s*\])/;

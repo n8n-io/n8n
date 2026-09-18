@@ -8,6 +8,7 @@ type Props = {
 	highlight?: boolean;
 	singleLine?: boolean;
 	renderHTML?: boolean;
+	redacted?: boolean;
 };
 
 const hintTextRef = ref<HTMLDivElement>();
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
 	highlight: false,
 	singleLine: false,
 	renderHTML: false,
+	redacted: false,
 });
 
 onMounted(() => {
@@ -45,6 +47,7 @@ const simplyText = computed(() => {
 			:class="{
 				[$style.singleline]: singleLine,
 				[$style.highlight]: highlight,
+				[$style.redacted]: redacted,
 			}"
 		>
 			<span v-n8n-html="simplyText" data-test-id="parameter-input-hint"></span>
@@ -67,5 +70,8 @@ const simplyText = computed(() => {
 }
 .highlight {
 	color: var(--color--secondary);
+}
+.redacted {
+	font-style: italic;
 }
 </style>

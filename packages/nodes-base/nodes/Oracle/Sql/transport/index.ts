@@ -13,10 +13,24 @@ import type { OracleDBNodeOptions, OracleDBNodeCredentials } from '../helpers/in
 // used for thick mode to call initOracleClient API only once.
 let initializeDriverMode = false;
 
-const getOracleDBConfig = (credentials: OracleDBNodeCredentials) => {
+function toOptionalNumber(value: unknown) {
+	return value === undefined || value === null || value === '' ? undefined : Number(value);
+}
+
+export const getOracleDBConfig = (
+	credentials: OracleDBNodeCredentials,
+): oracledb.PoolAttributes => {
 	const { useThickMode, useSSL, ...dbConfig } = {
 		...credentials,
 		privilege: credentials.privilege || undefined,
+		poolMin: toOptionalNumber(credentials.poolMin),
+		poolMax: toOptionalNumber(credentials.poolMax),
+		poolIncrement: toOptionalNumber(credentials.poolIncrement),
+		maxLifetimeSession: toOptionalNumber(credentials.maxLifetimeSession),
+		poolTimeout: toOptionalNumber(credentials.poolTimeout),
+		connectTimeout: toOptionalNumber(credentials.connectTimeout),
+		transportConnectTimeout: toOptionalNumber(credentials.transportConnectTimeout),
+		expireTime: toOptionalNumber(credentials.expireTime),
 	};
 
 	return dbConfig;

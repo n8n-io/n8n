@@ -1,13 +1,35 @@
+import type { LookupFunction } from 'node:net';
 import type { Dispatcher } from 'undici';
 import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
-import type { SsrfBridge } from '../../ssrf';
-import type { ProxyOption, SsrfOption } from '../node-agents';
+import type { ProxyOption } from '../node-agents';
 
 /**
  * Drop-in replacement type for the global `fetch`.
  */
 export type CustomFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Structural SSRF policy for the dispatcher path: the subset of `SsrfBridge`
+ * this transport core consumes. Kept structural (and dependency-free) so
+ * DI-less callers can satisfy it with their own policy object.
+ */
+export interface TransportSsrfPolicy {
+	/** Pre-flight validation of a dispatched target (the initial request and every redirect hop). */
+	validateUrl(url: string | URL): Promise<{ ok: true } | { ok: false; error: Error }>;
+	/** Validation of a connection host no DNS lookup will see (e.g. an IP-literal proxy host). */
+	validateConnectionHost(host: string): { ok: true } | { ok: false; error: Error };
+	/** DNS lookup drop-in that pins the validated address to the socket at connect time. */
+	createSecureLookup(): LookupFunction;
+}
+
+/**
+ * Resolved SSRF policy for the dispatcher path: the policy to enforce, or
+ * `'disabled'` when none applies (instance protection off, no egress filter in
+ * the calling context, or an `'unsafe'` opt-out already resolved upstream).
+ * Intent is expressed at the client layer (`UseDefaultSsrfPolicy`), not here.
+ */
+export type TransportSsrfOption = TransportSsrfPolicy | 'disabled';
 
 /**
  * Per-request authorization gate run against the target of every dispatched request
@@ -45,7 +67,7 @@ export interface CreateDispatcherTransportOptions {
 	/** Proxy routing. Defaults to `'env'` (HTTP(S)_PROXY / NO_PROXY). */
 	proxy?: ProxyOption;
 	/** SSRF policy. Defaults to `'disabled'`. */
-	ssrf?: SsrfOption;
+	ssrf?: TransportSsrfOption;
 	/** Undici agent timeout overrides. */
 	timeouts?: TransportTimeoutOptions;
 	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check */
@@ -85,7 +107,7 @@ export interface BuildDispatcherOptions {
  */
 export function buildDispatcher(
 	proxy: ProxyOption,
-	ssrf: SsrfOption,
+	ssrf: TransportSsrfOption,
 	options: BuildDispatcherOptions = {},
 ): Dispatcher {
 	let dispatcher = buildDispatcherFromProxy(proxy, ssrf, options?.timeouts);
@@ -100,7 +122,7 @@ export function buildDispatcher(
 
 function buildDispatcherFromProxy(
 	proxy: ProxyOption,
-	ssrf: SsrfOption,
+	ssrf: TransportSsrfOption,
 	timeouts?: TransportTimeoutOptions,
 ): Dispatcher {
 	const agentOptions = toAgentTimeoutOptions(timeouts);
@@ -127,7 +149,7 @@ function buildDispatcherFromProxy(
  * A caller's `connect` does not reach it: `ProxyAgent` overwrites that with its own
  * tunnel handshake.
  */
-function secureProxyConnect(ssrf: SsrfOption) {
+function secureProxyConnect(ssrf: TransportSsrfOption) {
 	return ssrf === 'disabled' ? {} : { proxyTls: { lookup: ssrf.createSecureLookup() } };
 }
 
@@ -135,7 +157,7 @@ function secureProxyConnect(ssrf: SsrfOption) {
  * Catches an IP-literal proxy host, which no lookup sees.
  * Applies to an explicit proxy URI, the one form that can come from a request.
  */
-function assertProxyHostAllowed(ssrf: SsrfOption, proxyUri: string): void {
+function assertProxyHostAllowed(ssrf: TransportSsrfOption, proxyUri: string): void {
 	if (ssrf === 'disabled') {
 		return;
 	}
@@ -162,7 +184,7 @@ function proxyHostname(uri: string): string | undefined {
  * It pins the validated IP to the socket, so a hostname that passed the interceptor's pre-flight
  * `validateUrl` cannot be rebound to a private IP before undici resolves it again at connect time (DNS-rebinding / TOCTOU).
  */
-function secureConnect(ssrf: SsrfOption) {
+function secureConnect(ssrf: TransportSsrfOption) {
 	return ssrf === 'disabled' ? {} : { connect: { lookup: ssrf.createSecureLookup() } };
 }
 
@@ -222,7 +244,9 @@ function lazyValue<T>(factory: () => T): () => T {
  * That host is fixed for the dispatcher rather than per request, so
  * {@link buildDispatcherFromProxy} decides it where the dispatcher is built.
  */
-export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
+export function createSsrfInterceptor(
+	bridge: Pick<TransportSsrfPolicy, 'validateUrl'>,
+): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
 		let targetUrl: URL;
 		try {
@@ -309,9 +333,12 @@ function failDispatch(handler: FailableDispatchHandler, error: Error): void {
 	}
 }
 
-/** Performs a `fetch` bound to the given undici dispatcher (the engine behind `asCustomFetch`). */
+/**
+ * Performs a `fetch` bound to the given undici dispatcher (the engine behind `asCustomFetch`).
+ * Without a dispatcher it falls through to this undici's default dispatcher.
+ */
 export async function dispatchedFetch(
-	dispatcher: Dispatcher,
+	dispatcher: Dispatcher | undefined,
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ): Promise<Response> {

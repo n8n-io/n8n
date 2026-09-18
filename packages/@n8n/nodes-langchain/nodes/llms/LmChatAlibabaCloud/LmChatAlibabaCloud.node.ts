@@ -5,6 +5,7 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
+import { shouldIncludeAlibabaModel } from '@n8n/ai-utilities/model-discovery';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -12,10 +13,115 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type IExecuteSingleFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { COMPATIBLE_MODE_SUFFIX } from './alibaba-cloud-base-url';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+
+/** Drop non-chat models (embedding, rerank) from the model dropdown. */
+async function filterChatModels(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	return items.filter(
+		(item) => typeof item.json.id === 'string' && shouldIncludeAlibabaModel(item.json.id),
+	);
+}
+
+const modelRLC: INodeProperties = {
+	displayName: 'Model',
+	name: 'model',
+	type: 'options',
+	description:
+		'The model which will generate the completion. <a href="https://www.qwencloud.com/models">Learn more</a>.',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'data',
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.id}}',
+								value: '={{$responseItem.id}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'model',
+		},
+	},
+	default: 'qwen-plus',
+	builderHint: {
+		propertyHint:
+			'Default to the latest Qwen flagship (qwen3.6-max-preview or qwen3.6-plus). Use qwen-plus for cost-efficient builds. Avoid qwen-turbo, Qwen 3.5 and earlier, and older dated snapshots.',
+	},
+};
+
+// v1.1+: same routing as modelRLC, but the dropdown drops non-chat models
+// (embedding, rerank) through the shared `shouldIncludeAlibabaModel` predicate.
+const modelRLCV2: INodeProperties = {
+	...modelRLC,
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'data',
+							},
+						},
+						filterChatModels,
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.id}}',
+								value: '={{$responseItem.id}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+};
 
 export class LmChatAlibabaCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +130,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		name: 'lmChatAlibabaCloud',
 		icon: 'file:alibaba.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'Qwen Cloud Chat Model',
@@ -74,54 +180,19 @@ export class LmChatAlibabaCloud implements INodeType {
 				},
 			},
 			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://www.qwencloud.com/models">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
+				...modelRLC,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
+			},
+			{
+				...modelRLCV2,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
 					},
-				},
-				default: 'qwen-plus',
-				builderHint: {
-					propertyHint:
-						'Default to the latest Qwen flagship (qwen3.6-max-preview or qwen3.6-plus). Use qwen-plus for cost-efficient builds. Avoid qwen-turbo, Qwen 3.5 and earlier, and older dated snapshots.',
 				},
 			},
 			{
@@ -247,10 +318,14 @@ export class LmChatAlibabaCloud implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL,
 			fetchOptions: {
-				dispatcher: getProxyAgent(baseURL, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					baseURL,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

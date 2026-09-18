@@ -9,6 +9,7 @@ import {
 	getEscalationWarningKey,
 	isOptionImplied,
 	isOptionMandatory,
+	mandatoryOptionTooltipKey,
 	resolveOptionState,
 	toggleOptionInGroup,
 	type InstanceResource,
@@ -48,22 +49,23 @@ function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScope
 }
 
 /**
- * Tooltip shown for a permission option. When the option is implied by another
- * (e.g. "Manage own" under a checked "Manage all") the "Included in …" note
- * takes precedence; a mandatory option (granted to every role, see
- * `isOptionMandatory`) explains why it can't be turned off; otherwise it
- * explains what the permission grants.
+ * Tooltip shown for a permission option. A mandatory option (granted to every
+ * role, see `isOptionMandatory`) explains why it can't be turned off; an option
+ * implied by another (e.g. "Manage own" under a checked "Manage all") shows the
+ * "Included in …" note; otherwise it explains what the permission grants.
  */
 function optionTooltip(
 	resource: InstanceResource,
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 ): string {
+	// Mandatory wins over "Included in …": for an option that can never be unchecked,
+	// saying it is included in another implies unchecking that other one would remove
+	// it, which is false.
+	const mandatoryKey = mandatoryOptionTooltipKey(resource, option);
+	if (mandatoryKey) return i18n.baseText(mandatoryKey);
 	if (isOptionImplied(option, groupOptions, props.modelValue)) {
 		return impliedTooltip(option, groupOptions);
-	}
-	if (isOptionMandatory(resource, option)) {
-		return i18n.baseText('instanceRoles.option.mandatory');
 	}
 	return option.descriptionKey ? i18n.baseText(option.descriptionKey) : '';
 }

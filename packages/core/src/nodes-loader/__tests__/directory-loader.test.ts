@@ -496,6 +496,25 @@ describe('DirectoryLoader', () => {
 			expect(loader.known.nodes).toEqual({});
 			expect(loader.known.credentials).toEqual({});
 		});
+
+		it('should drop the require cache under the directory, but leave other entries', () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+			mockFs.readdirSync.mockReturnValue([]);
+
+			const loader = new PackageDirectoryLoader(directory);
+
+			const ownModule = `${directory}/dist/Node1/Node1.node.js`;
+			const foreignModule = '/somewhere/else/dist/Other.node.js';
+			require.cache[ownModule] = mock<NodeJS.Module>({ filename: ownModule });
+			require.cache[foreignModule] = mock<NodeJS.Module>({ filename: foreignModule });
+
+			loader.reset();
+
+			expect(require.cache[ownModule]).toBeUndefined();
+			expect(require.cache[foreignModule]).toBeDefined();
+
+			delete require.cache[foreignModule];
+		});
 	});
 
 	describe('getVersionedNodeTypeAll', () => {

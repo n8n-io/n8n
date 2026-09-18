@@ -1,4 +1,4 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
 import * as createOrGet from './createOrGet.operation';
@@ -6,7 +6,7 @@ import * as deleteMeeting from './deleteMeeting.operation';
 import * as get from './get.operation';
 import * as update from './update.operation';
 import { userRLC } from '../../descriptions';
-import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from '../../transport';
+import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 
 export { create, createOrGet, deleteMeeting, get, update };
 
@@ -24,43 +24,6 @@ const organizerRLC: INodeProperties = {
 	},
 };
 
-const operations: INodePropertyOptions[] = [
-	{
-		name: 'Create',
-		value: 'create',
-		description: 'Create an online meeting',
-		action: 'Create online meeting',
-	},
-	{
-		name: 'Create or Get',
-		value: 'createOrGet',
-		description:
-			'Create an online meeting with your own external ID, or get the existing meeting with that ID',
-		action: 'Create or get online meeting',
-	},
-	{
-		name: 'Delete',
-		value: 'deleteMeeting',
-		description: 'Delete an online meeting',
-		action: 'Delete online meeting',
-	},
-	{
-		name: 'Get',
-		value: 'get',
-		description: 'Get an online meeting by ID or join URL',
-		action: 'Get online meeting',
-	},
-	{
-		name: 'Update',
-		value: 'update',
-		description: 'Update an online meeting',
-		action: 'Update online meeting',
-	},
-];
-
-// Un-gated for the Service Principal credential so far; the rest stay delegated-only.
-const servicePrincipalOperations = ['create', 'get', 'createOrGet', 'deleteMeeting'];
-
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -71,28 +34,40 @@ export const description: INodeProperties[] = [
 			show: {
 				resource: ['onlineMeeting'],
 			},
-			hide: {
-				...SP_HIDE,
-			},
 		},
-		options: operations,
-		default: 'create',
-	},
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['onlineMeeting'],
-				'/authentication': [SERVICE_PRINCIPAL_AUTH],
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create an online meeting',
+				action: 'Create online meeting',
 			},
-		},
-		options: operations.filter(
-			(option) =>
-				typeof option.value === 'string' && servicePrincipalOperations.includes(option.value),
-		),
+			{
+				name: 'Create or Get',
+				value: 'createOrGet',
+				description:
+					'Create an online meeting with your own external ID, or get the existing meeting with that ID',
+				action: 'Create or get online meeting',
+			},
+			{
+				name: 'Delete',
+				value: 'deleteMeeting',
+				description: 'Delete an online meeting',
+				action: 'Delete online meeting',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an online meeting by ID or join URL',
+				action: 'Get online meeting',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an online meeting',
+				action: 'Update online meeting',
+			},
+		],
 		default: 'create',
 	},
 	{

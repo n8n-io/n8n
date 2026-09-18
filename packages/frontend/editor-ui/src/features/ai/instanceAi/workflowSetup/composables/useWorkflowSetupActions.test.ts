@@ -2,7 +2,7 @@ import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ThreadRuntime } from '../../instanceAi.store';
-import type { WorkflowSetupSection, WorkflowSetupStep } from '../workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 
@@ -20,10 +20,9 @@ interface Harness {
 	sectionA: WorkflowSetupSection;
 	sectionB: WorkflowSetupSection;
 	sections: ComputedRef<WorkflowSetupSection[]>;
-	steps: ComputedRef<WorkflowSetupStep[]>;
 	currentStepIndex: Ref<number>;
 	isReady: Ref<boolean>;
-	activeStep: ComputedRef<WorkflowSetupStep | undefined>;
+	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	completedSet: Set<string>;
 	skippedSet: Set<string>;
 	credentialSelections: Ref<Record<string, Record<string, string>>>;
@@ -37,7 +36,7 @@ interface Harness {
 	actions: ReturnType<typeof useWorkflowSetupActions>;
 }
 
-function setupHarness(): Harness {
+function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 	const sectionA = makeWorkflowSetupSection({
 		id: 'A:typeA',
 		targetNodeName: 'A',
@@ -49,14 +48,10 @@ function setupHarness(): Harness {
 		credentialType: 'typeB',
 	});
 	const sections = computed(() => [sectionA, sectionB]);
-	const steps = computed<WorkflowSetupStep[]>(() => [
-		{ kind: 'section', section: sectionA },
-		{ kind: 'section', section: sectionB },
-	]);
 	const currentStepIndex = ref(0);
-	const isReady = ref(true);
-	const activeStep = computed<WorkflowSetupStep | undefined>(
-		() => steps.value[currentStepIndex.value],
+	const isReady = ref(opts.isReady ?? true);
+	const activeSection = computed<WorkflowSetupSection | undefined>(
+		() => sections.value[currentStepIndex.value],
 	);
 
 	const completedSet = new Set<string>();
@@ -96,8 +91,7 @@ function setupHarness(): Harness {
 	const actions = useWorkflowSetupActions({
 		requestId: ref('req-1'),
 		sections,
-		steps,
-		activeStep,
+		activeSection,
 		currentStepIndex,
 		isReady,
 		goToStep,
@@ -105,6 +99,7 @@ function setupHarness(): Harness {
 			credentialSelections,
 			isSectionComplete: (section) => completedSet.has(section.id),
 			isSectionSkipped: (section) => skippedSet.has(section.id),
+			isSectionHandled: (section) => completedSet.has(section.id) || skippedSet.has(section.id),
 			markSectionSkipped,
 			buildCompletedSetupPayload,
 		},
@@ -116,10 +111,9 @@ function setupHarness(): Harness {
 		sectionA,
 		sectionB,
 		sections,
-		steps,
 		currentStepIndex,
 		isReady,
-		activeStep,
+		activeSection,
 		completedSet,
 		skippedSet,
 		credentialSelections,
@@ -157,7 +151,6 @@ describe('useWorkflowSetupActions', () => {
 				request_id: 'req-1',
 				step_index: 1,
 				step_count: 2,
-				step_kind: 'section',
 				setup_inputs: [
 					expect.objectContaining({
 						input_type: 'credential',
@@ -175,6 +168,15 @@ describe('useWorkflowSetupActions', () => {
 				label: expect.anything(),
 			}),
 		);
+	});
+
+	it('does not track a step as shown until bootstrap is ready', async () => {
+		const h = setupHarness({ isReady: false });
+		expect(getTelemetryCalls('Instance AI workflow setup step shown')).toHaveLength(0);
+
+		h.isReady.value = true;
+		await nextTick();
+		expect(getTelemetryCalls('Instance AI workflow setup step shown')).toHaveLength(1);
 	});
 
 	it('marks the active section skipped and advances to the next unhandled step without calling the API', async () => {
@@ -356,153 +358,5 @@ describe('useWorkflowSetupActions', () => {
 				num_tasks: 2,
 			}),
 		);
-	});
-
-	describe('group steps', () => {
-		it('skips only incomplete sections in a group, preserving complete ones', async () => {
-			const sectionA = makeWorkflowSetupSection({
-				id: 'Sub1:credA',
-				targetNodeName: 'Sub1',
-				credentialType: 'credA',
-			});
-			const sectionB = makeWorkflowSetupSection({
-				id: 'Sub2:credB',
-				targetNodeName: 'Sub2',
-				credentialType: 'credB',
-			});
-			const sections = computed(() => [sectionA, sectionB]);
-			const steps = computed<WorkflowSetupStep[]>(() => [
-				{
-					kind: 'group',
-					group: {
-						subnodeRootNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
-						subnodeSections: [sectionA, sectionB],
-					},
-				},
-			]);
-			const currentStepIndex = ref(0);
-			const activeStep = computed<WorkflowSetupStep | undefined>(() => steps.value[0]);
-
-			const completedSet = new Set<string>([sectionA.id]);
-			const skippedSet = new Set<string>();
-			const credentialSelections = ref<Record<string, Record<string, string>>>({
-				Sub1: { credA: 'cred-a' },
-			});
-			const skippedSectionIds = ref<Set<string>>(skippedSet);
-			const isReady = ref(true);
-			const goToStep = vi.fn();
-			const apply = vi.fn().mockResolvedValue(undefined);
-			const defer = vi.fn().mockResolvedValue(undefined);
-			const markSectionSkipped = vi.fn((section: WorkflowSetupSection) => {
-				skippedSet.add(section.id);
-				skippedSectionIds.value = new Set(skippedSet);
-			});
-			const buildCompletedSetupPayload = vi.fn(() => ({
-				nodeCredentials: { Sub1: { credA: 'cred-a' } },
-			}));
-
-			const thread = {
-				id: 'thread-1',
-				findToolCallByRequestId: vi.fn(() => ({
-					confirmation: { inputThreadId: 'input-thread-1' },
-				})),
-			};
-
-			const actions = useWorkflowSetupActions({
-				requestId: ref('req-1'),
-				sections,
-				steps,
-				activeStep,
-				currentStepIndex,
-				isReady,
-				goToStep,
-				inputs: {
-					credentialSelections,
-					isSectionComplete: (section) => completedSet.has(section.id),
-					isSectionSkipped: (section) => skippedSet.has(section.id),
-					markSectionSkipped,
-					buildCompletedSetupPayload,
-				},
-				applyMachine: { apply, defer },
-				thread: thread as unknown as ThreadRuntime,
-			});
-
-			await actions.skipCurrentStep();
-
-			// Only the incomplete sectionB was marked skipped — sectionA remains complete.
-			expect(markSectionSkipped).toHaveBeenCalledTimes(1);
-			expect(markSectionSkipped).toHaveBeenCalledWith(sectionB);
-			// Terminal — only one step. apply runs since at least one section is complete.
-			expect(apply).toHaveBeenCalledWith({ nodeCredentials: { Sub1: { credA: 'cred-a' } } });
-			expect(telemetryTrack).toHaveBeenCalledWith(
-				'Instance AI workflow setup step handled',
-				expect.objectContaining({
-					step_kind: 'group',
-					outcome: 'mixed',
-					setup_inputs: [
-						expect.objectContaining({
-							input_type: 'credential',
-							node_type: 'n8n-nodes-base.httpRequest',
-							credential_type: 'credA',
-						}),
-						expect.objectContaining({
-							input_type: 'credential',
-							node_type: 'n8n-nodes-base.httpRequest',
-							credential_type: 'credB',
-						}),
-					],
-				}),
-			);
-		});
-
-		it('reports group step as handled when every member is complete or skipped', () => {
-			const sectionA = makeWorkflowSetupSection({
-				id: 'Sub1:credA',
-				targetNodeName: 'Sub1',
-				credentialType: 'credA',
-			});
-			const sectionB = makeWorkflowSetupSection({
-				id: 'Sub2:credB',
-				targetNodeName: 'Sub2',
-				credentialType: 'credB',
-			});
-			const sections = computed(() => [sectionA, sectionB]);
-			const steps = computed<WorkflowSetupStep[]>(() => [
-				{
-					kind: 'group',
-					group: {
-						subnodeRootNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
-						subnodeSections: [sectionA, sectionB],
-					},
-				},
-			]);
-			const currentStepIndex = ref(0);
-			const isReady = ref(true);
-			const activeStep = computed<WorkflowSetupStep | undefined>(() => steps.value[0]);
-
-			const completedSet = new Set<string>([sectionA.id]);
-			const skippedSet = new Set<string>([sectionB.id]);
-
-			const actions = useWorkflowSetupActions({
-				requestId: ref('req-1'),
-				sections,
-				steps,
-				activeStep,
-				currentStepIndex,
-				isReady,
-				goToStep: vi.fn(),
-				inputs: {
-					credentialSelections: ref({}),
-					isSectionComplete: (s) => completedSet.has(s.id),
-					isSectionSkipped: (s) => skippedSet.has(s.id),
-					markSectionSkipped: vi.fn(),
-					buildCompletedSetupPayload: vi.fn(() => ({})),
-				},
-				applyMachine: { apply: vi.fn(), defer: vi.fn() },
-				thread: { id: 't', findToolCallByRequestId: vi.fn() } as unknown as ThreadRuntime,
-			});
-
-			expect(actions.isStepHandled(steps.value[0])).toBe(true);
-		});
 	});
 });

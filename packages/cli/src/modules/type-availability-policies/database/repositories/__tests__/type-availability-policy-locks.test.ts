@@ -15,6 +15,7 @@ vi.mock('@n8n/db', async (importOriginal) => ({
 }));
 
 const ROOT: OperationContext = {};
+const KIND = 'node-types';
 
 function setDriver(
 	entityManager: ReturnType<typeof mockEntityManager>,
@@ -246,30 +247,30 @@ describe('row locks depend on the driver', () => {
 		it('does not lock without forUpdate, even on Postgres', async () => {
 			setDriver(entityManager, 'postgres');
 
-			await repository.findById('policy-1', ROOT);
+			await repository.findByIdAndKind('policy-1', KIND, ROOT);
 
 			expect(entityManager.findOne).toHaveBeenCalledWith(TypeAvailabilityPolicy, {
-				where: { id: 'policy-1' },
+				where: { id: 'policy-1', kind: KIND },
 			});
 		});
 
 		it('does not lock on SQLite even when forUpdate is requested', async () => {
 			setDriver(entityManager, 'sqlite');
 
-			await repository.findById('policy-1', ROOT, true);
+			await repository.findByIdAndKind('policy-1', KIND, ROOT, true);
 
 			expect(entityManager.findOne).toHaveBeenCalledWith(TypeAvailabilityPolicy, {
-				where: { id: 'policy-1' },
+				where: { id: 'policy-1', kind: KIND },
 			});
 		});
 
 		it('locks the row on Postgres when forUpdate is requested', async () => {
 			setDriver(entityManager, 'postgres');
 
-			await repository.findById('policy-1', ROOT, true);
+			await repository.findByIdAndKind('policy-1', KIND, ROOT, true);
 
 			expect(entityManager.findOne).toHaveBeenCalledWith(TypeAvailabilityPolicy, {
-				where: { id: 'policy-1' },
+				where: { id: 'policy-1', kind: KIND },
 				lock: { mode: 'pessimistic_write' },
 			});
 		});

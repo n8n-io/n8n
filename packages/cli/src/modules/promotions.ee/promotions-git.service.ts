@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
@@ -16,7 +17,11 @@ import {
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
-import { GIT_COMMAND_STALL_TIMEOUT_MS, PROMOTION_KEY_COMMENT } from './constants';
+import {
+	GIT_COMMAND_STALL_TIMEOUT_MS,
+	GIT_READ_CONCURRENCY,
+	PROMOTION_KEY_COMMENT,
+} from './constants';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -36,6 +41,9 @@ type GitOperation = {
 	/** Only for logging, so a failure points at the right config. */
 	configId: string;
 };
+
+/** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
+const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
 const BASE_GIT_OPTIONS = {
 	binary: 'git',
@@ -435,7 +443,10 @@ export class PromotionsGitService {
 	async listBranchTree({
 		pathspecs,
 		...operation
-	}: GitOperation & { pathspecs: string[] }): Promise<string> {
+	}: GitOperation & { pathspecs: string[] }): Promise<{
+		commitSha: string | null;
+		lsTreeOutput: string;
+	}> {
 		const { remoteUrl, credentials, paths, branchName, configId } = operation;
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
@@ -450,17 +461,45 @@ export class PromotionsGitService {
 						{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 						async (git) => await git.listRemote(['origin']),
 					);
-					if (!refs.trim()) return '';
+					if (!refs.trim()) return { commitSha: null, lsTreeOutput: '' };
 					throw error;
 				}
-				return await git.raw([
-					'ls-tree',
-					'-r',
-					'-z',
-					`refs/remotes/origin/${branchName}`,
-					'--',
-					...pathspecs,
-				]);
+				const commitSha = (await git.revparse([`refs/remotes/origin/${branchName}`])).trim();
+				const lsTreeOutput = await git.raw(['ls-tree', '-r', '-z', commitSha, '--', ...pathspecs]);
+				return { commitSha, lsTreeOutput };
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
+	async readFilesAtCommit({
+		paths,
+		branchName,
+		configId,
+		commitSha,
+		filePaths,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+		commitSha: string;
+		filePaths: readonly string[];
+	}): Promise<Map<string, string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (filePaths.length === 0) return new Map();
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({
+					...BASE_GIT_OPTIONS,
+					baseDir: paths.repositoryFolder,
+					maxConcurrentProcesses: GIT_READ_CONCURRENCY,
+				});
+				const files = await Promise.all(
+					filePaths.map(
+						async (filePath) => [filePath, await git.show([`${commitSha}:${filePath}`])] as const,
+					),
+				);
+				return new Map(files);
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });

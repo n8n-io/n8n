@@ -42,6 +42,7 @@ function makeSeed(): ConversationSeed {
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		folders: [],
 		projects: [],
 	};
 }
@@ -72,6 +73,7 @@ function makeAgentSeed(): ConversationSeed {
 		],
 		workflows: [],
 		dataTables: [],
+		folders: [],
 		projects: [],
 		agents: [
 			{
@@ -308,6 +310,7 @@ describe('remapSeedArtifactIds', () => {
 			workflows: [],
 			dataTables: [],
 			agents: [],
+			folders: [],
 			projects: [],
 		};
 		expect(remapSeedArtifactIds(seed)).toBe(seed);
@@ -889,5 +892,89 @@ describe('seed project names', () => {
 		expect(
 			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar' }] }).success,
 		).toBe(true);
+	});
+});
+
+// A seeded folder is what gives a folder case its premise: a folder the agent
+// must FIND and list. Its id is server-generated, so like a data table it rides
+// outside the id-remap blob and could silently vanish.
+describe('seed folders', () => {
+	it('carries folders and workflow placement through the id remap', () => {
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: WF_ID,
+					name: 'Daily digest',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.folders).toEqual([{ id: 'odwFolder0001', name: 'ODW' }]);
+		// The workflow id is fresh; the folder reference still names the seed folder,
+		// which is the id the server resolves.
+		expect(remapped.workflows[0].id).not.toBe(WF_ID);
+		expect(remapped.workflows[0].parentFolderId).toBe('odwFolder0001');
+	});
+
+	it('never rewrites a folder reference, even when a workflow id is a prefix of the folder id', () => {
+		// Folder ids are not in the remapped id space, so the whole-document replace
+		// of `oddsWatch` must not reach into `oddsWatchFold1`.
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			messages: [],
+			folders: [{ id: 'oddsWatchFold1', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'oddsWatch',
+					name: 'Daily digest',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'oddsWatchFold1',
+				},
+			],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.workflows[0].id).not.toBe('oddsWatch');
+		expect(remapped.workflows[0].parentFolderId).toBe('oddsWatchFold1');
+		expect(remapped.folders).toEqual([{ id: 'oddsWatchFold1', name: 'ODW' }]);
+	});
+
+	it('accepts a seed that carries only folders', () => {
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects more than 20 folders', () => {
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects a folder name that is not trimmed, like a project name', () => {
+		expect(
+			ConversationSeedSchema.safeParse({
+				messages: [],
+				folders: [{ id: 'odwFolder0001', name: 'ODW ' }],
+			}).success,
+		).toBe(false);
 	});
 });

@@ -30,6 +30,7 @@ type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'ai-preferences'
 	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'

@@ -41,7 +41,7 @@ packages/@n8n/db/                                       @n8n-io/catalysts
 packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
 packages/@n8n/crdt/                                     @n8n-io/catalysts
 packages/@n8n/extension-sdk/                            @n8n-io/catalysts
-packages/@n8n/eslint-config/                            @n8n-io/qa-dx
+packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
 packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
@@ -234,6 +234,11 @@ packages/@n8n/client-oauth2/                            @n8n-io/iam
 # LiGo
 
 packages/extensions/insights/                           @n8n-io/ligo
+
+# Governance & Observability
+
+packages/modules/type-availability-policies/            @n8n-io/governance-and-observability
+packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
 
 # CI/CD
 

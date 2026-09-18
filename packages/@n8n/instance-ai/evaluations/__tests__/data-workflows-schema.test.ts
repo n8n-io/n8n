@@ -152,6 +152,77 @@ describe('EvalTestCaseSchema', () => {
 		expect(seed.messages).toEqual([]);
 	});
 
+	it('accepts a fixture-only inline seed that carries just a folder', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: { mode: 'inline', folders: [{ id: 'odwFolder0001', name: 'ODW' }] },
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(seed.folders).toEqual([{ id: 'odwFolder0001', name: 'ODW' }]);
+	});
+
+	// Folder references span two arrays, so only the case can check them. A stale
+	// reference would otherwise be refused mid-run by the restore.
+	it('rejects a workflow placed in a folder the seed does not declare', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+					workflows: [
+						{
+							id: 'odwSignal1Wf',
+							name: 'Odds Watch - 1',
+							nodes: [],
+							connections: {},
+							parentFolderId: 'nopeFolder001',
+						},
+					],
+				},
+			}),
+		).toThrow(/nopeFolder001/);
+	});
+
+	it('rejects two folders sharing an id', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [
+						{ id: 'odwFolder0001', name: 'ODW' },
+						{ id: 'odwFolder0001', name: 'Other' },
+					],
+				},
+			}),
+		).toThrow(/Duplicate seed folder id/);
+	});
+
+	it('rejects a folder whose parent is undeclared, and a parent cycle', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [{ id: 'odwArchive001', name: 'Archive', parentFolderId: 'missingFolder1' }],
+				},
+			}),
+		).toThrow(/missingFolder1/);
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [
+						{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+						{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+					],
+				},
+			}),
+		).toThrow(/cycle/);
+	});
+
 	it('rejects an unknown seed mode', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({ ...validFixture(), seed: { mode: 'prose', messages: [] } }),

@@ -44,7 +44,7 @@ import AgentEditorModalFileRow, {
 } from '@/features/ai/chatHub/components/AgentEditorModalFileRow.vue';
 import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';

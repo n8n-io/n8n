@@ -65,7 +65,7 @@
 		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
-		"POST /credentials/{id}/test": {
+		"POST /credentials/{credentialId}/test": {
 			"status": "gap"
 		},
 		"GET /community-packages": {
@@ -125,10 +125,10 @@
 		"GET /tags/{tagId}": {
 			"status": "gap"
 		},
-		"DELETE /tags/{id}": {
+		"DELETE /tags/{tagId}": {
 			"status": "gap"
 		},
-		"PUT /tags/{id}": {
+		"PUT /tags/{tagId}": {
 			"status": "gap"
 		},
 		"POST /workflows": {
@@ -284,6 +284,9 @@
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/apply": {
@@ -449,6 +452,24 @@
 			"status": "gap"
 		},
 		"PUT /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

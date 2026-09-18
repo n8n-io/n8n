@@ -2,6 +2,11 @@ export const DURATION_BUCKETS_SECONDS = [
 	0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600,
 ];
 
+/** Reaches a day: a coalesced in-memory fire lags by at least one cadence, and system tasks run up to daily. */
+export const LAG_BUCKETS_SECONDS = [
+	0.01, 0.1, 1, 5, 10, 30, 60, 300, 600, 1800, 3600, 21600, 86400,
+];
+
 export const SIZE_BUCKETS_BYTES = [
 	1_024, // 1 KiB
 	10_240, // 10 KiB
