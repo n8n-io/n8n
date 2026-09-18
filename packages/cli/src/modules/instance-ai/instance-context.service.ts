@@ -969,15 +969,8 @@ const toolNames = {
 	},
 } as const;
 
-const initialPreamble = (tools: SurfaceToolNames, surface: ResolvedScope['surface']) => [
-	...(surface === 'conversation'
-		? [
-				'What is going on in this project. Every section below is this project alone, not the whole',
-				'instance. This is work that already exists and that you can pick up:',
-			]
-		: [
-				'What is going on in this instance. This is work that already exists and that you can pick up:',
-			]),
+const initialPreamble = (tools: SurfaceToolNames) => [
+	'What is going on in this instance. This is work that already exists and that you can pick up:',
 	'when the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually',
 	'the most recent thing here, and often the most recent failure. Name what you think they mean',
 	'and act on it rather than asking them to choose from a list they can already see.',
@@ -985,8 +978,7 @@ const initialPreamble = (tools: SurfaceToolNames, surface: ResolvedScope['surfac
 	'what you do rather than what you say.',
 	`Call ${tools.expand} on a bracketed id to see that entry in full along with`,
 	`everything else that happened to the same resource, or ${tools.list} to look`,
-	'further back than this window. An entry may name a resource that was since deleted, or that',
-	'moved to another project — the entry records where the work happened, so it stays here.',
+	'further back than this window. An entry may name a resource that no longer exists.',
 ];
 
 /**
@@ -1013,7 +1005,7 @@ function renderInventory(
 	if (inventory.total === 0) {
 		return surface === 'mcp'
 			? ['No workflows here are exposed to MCP, so none can be named.', '']
-			: ['Workflows in this project: none right now.', ''];
+			: ['Nothing has been built here yet.', ''];
 	}
 
 	const named = inventory.workflows.map(
@@ -1025,7 +1017,7 @@ function renderInventory(
 	const more = inventory.total - inventory.workflows.length;
 
 	return [
-		`${surface === 'conversation' ? 'Workflows in this project' : 'Workflows that already exist here'}: ${inventory.total}. Most recently worked on:`,
+		`Workflows that already exist here: ${inventory.total}. Most recently worked on:`,
 		...named,
 		...(more > 0 ? [`  ... and ${more} more — ${tools.workflows} for the rest.`] : []),
 		'',
@@ -1075,7 +1067,7 @@ function renderBlock(input: {
 	const tools = toolNames[input.surface];
 
 	const prose = [
-		...(input.isUpdate ? updatePreamble(tools) : initialPreamble(tools, input.surface)),
+		...(input.isUpdate ? updatePreamble(tools) : initialPreamble(tools)),
 		'',
 		...(input.inventory ? renderInventory(input.inventory, tools, input.surface) : []),
 		...renderRuns(input.runs, input.isUpdate, input.now),

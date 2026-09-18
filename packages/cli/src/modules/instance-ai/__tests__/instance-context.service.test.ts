@@ -275,32 +275,9 @@ describe('InstanceContextService', () => {
 			});
 
 			expect(blockOf(built)).toContain('<instance-context>');
-			expect(blockOf(built)).toContain('Workflows in this project: 3');
+			expect(blockOf(built)).toContain('Workflows that already exist here: 3');
 			expect(blockOf(built)).toContain('"Lead enrichment" (workflow:wf-1) [published]');
 			expect(blockOf(built)).toContain('... and 2 more');
-		});
-
-		// Inventory describes the current project. Activity can describe work that has moved.
-		it('says the inventory is empty now rather than never written, beside a feed that shows work', async () => {
-			const service = serviceWith();
-			workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
-			activityEventRepository.findFeed.mockResolvedValue([entry({ action: 'created' })]);
-
-			const block = blockOf(
-				await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: { surface: 'conversation', projectId: PROJECT_ID },
-					cursor: null,
-					now: NOW,
-				}),
-			);
-
-			expect(block).toContain('Workflows in this project: none right now.');
-			expect(block).not.toContain('Nothing has been built');
-			// The scope the emptiness is claimed over, so "none" cannot be read instance-wide.
-			expect(block).toContain('this project alone, not the whole');
-			expect(block).toContain('What changed recently:');
 		});
 
 		it('reports runs with their counts and points at the failure, not the newest run', async () => {
@@ -540,7 +517,7 @@ describe('InstanceContextService', () => {
 				});
 
 				expect(blockOf(built)).toContain('since the list earlier in this conversation');
-				expect(blockOf(built)).not.toContain('Workflows in this project');
+				expect(blockOf(built)).not.toContain('Workflows that already exist here');
 				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
 			});
 
@@ -909,13 +886,11 @@ describe('InstanceContextService', () => {
 				expect(stoppedBefore).toEqual(NOW);
 			});
 
-			it('advances the mark past every entry it saw, and remembers only ids above the floor', async () => {
+			it('advances the mark past every entry it saw, and remembers every id it showed', async () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed
 					.mockResolvedValueOnce([entry({ id: 600 })])
-					// 450 sits above the floor, so it is still offerable; the repository would never
-					// return 350, which is below it.
-					.mockResolvedValueOnce([entry({ id: 450 })]);
+					.mockResolvedValueOnce([entry({ id: 350 })]);
 
 				const built = await service.buildBlock({
 					enabled: true,
@@ -926,9 +901,7 @@ describe('InstanceContextService', () => {
 				});
 
 				expect(cursorOf(built).activityMark).toBe(600);
-				// Nothing was cut, so the inherited floor stands and everything above it is kept.
-				expect(cursorOf(built).activityFloor).toBe(400);
-				expect(cursorOf(built).activitySeen).toEqual([600, 500, 499, 450]);
+				expect(cursorOf(built).activitySeen).toEqual([600, 500, 499, 350]);
 			});
 
 			it('builds nothing when the delta is empty', async () => {
@@ -1572,7 +1545,7 @@ describe('readInstanceContextCursor', () => {
 			activitySeenFloor: 1,
 			activityAnchor: { id: 12, createdAt: NOW.toISOString(), category: 'workflow' },
 			activityFloor: 4,
-			activityCategories: ['workflow', 'credential'],
+			activityCategories: ['workflow'],
 			activitySeen: [12, 11],
 			runsThrough: NOW.toISOString(),
 		};
@@ -1586,7 +1559,14 @@ describe('readInstanceContextCursor', () => {
 		['a cursor of the wrong shape', { instanceContext: { activityMark: 'nope' } }],
 		[
 			'an unparseable timestamp',
-			{ instanceContext: { activityMark: 1, activityFloor: 0, runsThrough: 'soon' } },
+			{
+				instanceContext: {
+					activityMark: 1,
+					activityFloor: 0,
+					activityCategories: [],
+					runsThrough: 'soon',
+				},
+			},
 		],
 		[
 			'a cursor written before the floor existed',
@@ -1601,7 +1581,7 @@ describe('readInstanceContextCursor', () => {
 			instanceContext: {
 				activityMark: 5,
 				activityFloor: 0,
-				activityCategories: ['workflow', 'credential'],
+				activityCategories: ['workflow'],
 				activitySeen: [5, 'four', null],
 				runsThrough: NOW.toISOString(),
 			},
