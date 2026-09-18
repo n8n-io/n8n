@@ -14,6 +14,8 @@ export type EmailSendOptions = {
 	fileAttachments?: string;
 	ccEmail?: string;
 	bccEmail?: string;
+	inReplyTo?: string;
+	references?: string;
 	replyTo?: string;
 };
 
