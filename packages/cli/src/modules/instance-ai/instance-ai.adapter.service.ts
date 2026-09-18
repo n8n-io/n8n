@@ -153,6 +153,11 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+
+import {
+	scopeCredentialProvider,
+	type AgentCredentialProvider,
+} from './eval/scoped-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -536,11 +541,11 @@ export class InstanceAiAdapterService {
 							// flow creates it after this context is built), so tag Gateway
 							// spend with the concrete id the delegate hands us each turn.
 							(targetAgentId) =>
-								new AgentsCredentialProvider(
-									this.credentialsService,
-									projectId,
+								this.createAgentCredentialProvider(
 									user,
+									projectId,
 									targetAgentId,
+									credentialIdAllowlist,
 								),
 							credentialService,
 							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
@@ -548,6 +553,24 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 		};
+	}
+
+	/** The builder's credential list, narrowed to the eval thread's allowlist when one is set. */
+	private createAgentCredentialProvider(
+		user: User,
+		projectId: string,
+		agentId: string,
+		credentialIdAllowlist?: string[],
+	): AgentCredentialProvider {
+		const provider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+			agentId,
+		);
+		return credentialIdAllowlist
+			? scopeCredentialProvider(provider, credentialIdAllowlist)
+			: provider;
 	}
 
 	/**
