@@ -251,3 +251,23 @@ describe('AgentChatStreamConsumer — silent outcome after a discrete post', () 
 		expect(discrete).toEqual([]);
 	});
 });
+
+describe('AgentChatStreamConsumer — delivery that must not stream', () => {
+	it('buffers a proactive send even on a streaming platform', async () => {
+		const { thread, streamed, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer();
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'Scheduled ' },
+				{ type: 'text-delta', id: 't-1', delta: 'reminder' },
+			]),
+			thread,
+			// What deliverWakeResponse passes, so a failure can be retried.
+			{ throwOnDeliveryError: true },
+		);
+
+		expect(streamed).toEqual([]);
+		expect(discrete).toEqual([{ markdown: 'Scheduled reminder' }]);
+	});
+});
