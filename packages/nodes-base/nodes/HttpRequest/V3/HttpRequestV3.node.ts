@@ -405,12 +405,12 @@ export class HttpRequestV3 implements INodeType {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 						let uploadData: Buffer | Readable;
-						let knownLength: number | undefined;
 
 						if (binaryData.id) {
-							uploadData = await this.helpers.getBinaryStream(binaryData.id);
-							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
-							knownLength = metadata.fileSize;
+							uploadData = await this.helpers.getBinaryDataBuffer(
+								itemIndex,
+								cur.inputDataFieldName,
+							);
 						} else {
 							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
@@ -420,7 +420,6 @@ export class HttpRequestV3 implements INodeType {
 							options: {
 								filename: binaryData.fileName ?? 'file',
 								contentType: binaryData.mimeType,
-								...(knownLength !== undefined && { knownLength }),
 							},
 						};
 						return accumulator;

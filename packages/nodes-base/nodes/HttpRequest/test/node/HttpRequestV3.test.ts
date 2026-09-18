@@ -68,6 +68,7 @@ describe('HttpRequestV3', () => {
 				requestWithAuthentication: vi.fn(),
 				requestWithAuthenticationPaginated: vi.fn(),
 				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
 				getBinaryStream: vi.fn(),
 				getBinaryMetadata: vi.fn(),
 				binaryToString: vi.fn((buffer: Buffer) => {
@@ -420,6 +421,71 @@ describe('HttpRequestV3', () => {
 		const body = (requestOptions.formData as FormData).getBuffer().toString('utf8');
 
 		expect(body).toContain('filename="file"');
+	});
+
+	it('should buffer filesystem binary data before building a multipart upload', async () => {
+		(executeFunctions.getNode as Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+						{
+							parameterType: 'formData',
+							name: 'user',
+							value: 'test',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
+			id: 'filesystem-binary-id',
+			fileName: 'invoice.pdf',
+			mimeType: 'application/pdf',
+		});
+		const binaryContent = Buffer.from('filesystem content');
+		(executeFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(binaryContent);
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+		const formData = requestOptions.formData as FormData;
+
+		expect(executeFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data0');
+		const multipartBody = formData.getBuffer();
+		expect(multipartBody.includes(binaryContent)).toBe(true);
+		expect(multipartBody.includes(Buffer.from('name="user"'))).toBe(true);
+		expect(multipartBody.includes(Buffer.from('test'))).toBe(true);
 	});
 
 	describe('Authentication Handling', () => {
