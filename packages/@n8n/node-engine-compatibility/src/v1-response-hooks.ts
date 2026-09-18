@@ -59,6 +59,7 @@ export function attachResponseHooks(
 function toJsonPayload(value: unknown): JsonValue {
 	assertCarriable(value);
 
+	// Match Engine 1 queue mode. Nested Buffers and streams are not supported.
 	if (typeof value === 'object' && value !== null && 'body' in value) {
 		assertCarriable(value.body);
 	}
