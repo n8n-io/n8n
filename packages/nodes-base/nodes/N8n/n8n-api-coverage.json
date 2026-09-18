@@ -65,7 +65,7 @@
 		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
-		"POST /credentials/{id}/test": {
+		"POST /credentials/{credentialId}/test": {
 			"status": "gap"
 		},
 		"GET /community-packages": {
