@@ -1,5 +1,10 @@
+import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
+
+import { ExternalSecretsConfig } from './external-secrets.config';
+import { withTimeout } from './with-timeout';
 
 export interface SecretsProviderSettings<T = IDataObject> {
 	connected: boolean;
@@ -43,6 +48,9 @@ export abstract class SecretsProvider {
 
 	state: SecretsProviderState = 'initializing';
 
+	/** Error carried by the most recent state transition, for callers that only see `state`. */
+	lastError?: Error;
+
 	protected stateHistory: StateTransition[] = [];
 
 	/**
@@ -53,7 +61,11 @@ export abstract class SecretsProvider {
 		this.setState('connecting');
 
 		try {
-			await this.doConnect();
+			// Bounded here rather than around connect() so a doConnect() that answers late loses
+			// the race and is discarded, instead of writing state over a newer attempt.
+			const timeoutMs =
+				Container.get(ExternalSecretsConfig).connectTimeout * Time.seconds.toMilliseconds;
+			await withTimeout(this.doConnect(), timeoutMs, `Timed out connecting after ${timeoutMs}ms`);
 			this.setState('connected');
 		} catch (error) {
 			const typedError = error instanceof Error ? error : new Error(String(error));
@@ -84,6 +96,7 @@ export abstract class SecretsProvider {
 		});
 
 		this.state = newState;
+		this.lastError = error;
 	}
 
 	/**

@@ -100,6 +100,9 @@ describe('NodeView', () => {
 					// test here needs it, and on a writable canvas the import can still be in
 					// flight when the environment tears down, which fails the whole run.
 					LazyNodeCreation: true,
+					// Same for the setup-credentials button: its import chain pulls in the
+					// ready-to-run stores and their bundled workflow fixtures.
+					LazySetupWorkflowCredentialsButton: true,
 					WorkflowCanvas: defineComponent({
 						emits: ['copy:nodes'],
 						setup(_, { expose }) {

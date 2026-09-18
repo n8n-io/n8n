@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.39.0",
+  "version": "1.40.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -72,7 +72,7 @@
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "axios": "catalog:",
     "csv-parse": "catalog:",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "langchain": "catalog:",
     "langsmith": "^0.4.6",
     "lodash": "catalog:",
@@ -86,14 +86,10 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/cli-progress": "^3.11.5",
     "@types/jsdom": "catalog:",
     "@types/lodash": "catalog:",
-    "@types/proxy-from-env": "catalog:",
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "cli-progress": "^3.12.0",
-    "cli-table3": "^0.6.3",
     "madge": "^8.0.0",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",

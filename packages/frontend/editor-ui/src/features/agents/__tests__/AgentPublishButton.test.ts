@@ -139,7 +139,7 @@ function getModalCallbacks() {
 vi.setConfig({ testTimeout: 30_000 });
 
 describe('AgentPublishButton', () => {
-	async function renderComponent(props: RenderProps = {}) {
+	async function renderComponent(props: RenderProps = {}, attachTo?: Element) {
 		const { default: AgentPublishButton } = await import('../components/AgentPublishButton.vue');
 		return mount(AgentPublishButton, {
 			props: {
@@ -149,11 +149,65 @@ describe('AgentPublishButton', () => {
 				...props,
 			},
 			global: { stubs: STUBS },
+			...(attachTo ? { attachTo } : {}),
 		});
 	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('publishes with Shift+P when Publish is enabled', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+		const wrapper = await renderComponent(
+			{
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'valid',
+			},
+			document.body,
+		);
+
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'P',
+				code: 'KeyP',
+				shiftKey: true,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+		await flushPromises();
+
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
+		wrapper.unmount();
+	});
+
+	it('does not publish with Shift+P when Publish is disabled', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const wrapper = await renderComponent(
+			{
+				agent: createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion }),
+				configValidationStatus: 'valid',
+			},
+			document.body,
+		);
+
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'P',
+				code: 'KeyP',
+				shiftKey: true,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+		await flushPromises();
+
+		expect(publishAgent).not.toHaveBeenCalled();
+		wrapper.unmount();
 	});
 
 	// Button states

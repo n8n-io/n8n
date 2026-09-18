@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsRepository,
@@ -11,8 +12,15 @@ import type {
 	SharedCredentials,
 	ListQueryDb,
 	DbLockService,
+	TransactionRunner,
 } from '@n8n/db';
-import { CredentialsEntity, DbLock, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import {
+	CredentialIdConflictError,
+	CredentialsEntity,
+	DbLock,
+	GLOBAL_OWNER_ROLE,
+	GLOBAL_MEMBER_ROLE,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -97,6 +105,7 @@ describe('CredentialsService', () => {
 	const instanceCredentialUseRegistry = mock<InstanceCredentialUseRegistry>();
 	const dbLockService = mock<DbLockService>();
 	const eventService = mock<EventService>();
+	const transactionRunner = mock<TransactionRunner>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -121,6 +130,7 @@ describe('CredentialsService', () => {
 		instanceCredentialUseRegistry,
 		dbLockService,
 		eventService,
+		transactionRunner,
 	);
 
 	beforeEach(() => {
@@ -311,6 +321,82 @@ describe('CredentialsService', () => {
 
 			const preparedData = prepared.data as unknown as ICredentialDataDecryptedObject;
 			expect(preparedData.authentication).toBeUndefined();
+		});
+	});
+
+	describe('prepareUpdateData description handling', () => {
+		const storedCredential = () => {
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({});
+			return mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Reporting DB',
+				description: 'Existing text',
+				type: 'apiKey',
+				usageScope: 'project',
+				shared: [{ role: 'credential:owner', projectId: 'project-1' }],
+			});
+		};
+
+		const prepare = async (description?: string | null) =>
+			await service.prepareUpdateData(
+				ownerUser,
+				{ name: 'Reporting DB', type: 'apiKey', data: {}, description },
+				storedCredential(),
+			);
+
+		beforeEach(() => {
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ extends: [], properties: [] }),
+			);
+			credentialsRepository.create.mockImplementation(
+				(data) => Object.assign(new CredentialsEntity(), data) as CredentialsEntity,
+			);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+		});
+
+		it('trims the written description', async () => {
+			const prepared = await prepare('  Read-only key for reporting.  ');
+
+			expect(prepared.description).toBe('Read-only key for reporting.');
+		});
+
+		it.each([
+			['an empty string', ''],
+			['a whitespace-only string', '   '],
+			['an explicit null', null],
+		])('stores %s as null', async (_label, input) => {
+			const prepared = await prepare(input);
+
+			expect(prepared.description).toBeNull();
+		});
+
+		it('leaves the description untouched when the field is absent', async () => {
+			const prepared = await prepare(undefined);
+
+			expect(prepared.description).toBeUndefined();
+		});
+
+		it('rejects a description over the cap', async () => {
+			const tooLong = prepare('a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1));
+
+			await expect(tooLong).rejects.toThrow(BadRequestError);
+			await expect(tooLong).rejects.toThrow(
+				`Credential description cannot be longer than ${CREDENTIAL_DESCRIPTION_MAX_LENGTH} characters`,
+			);
+		});
+
+		it('rejects a non-string description with a 400, not a crash', async () => {
+			const notAString = prepare(42 as unknown as string);
+
+			await expect(notAString).rejects.toThrow(BadRequestError);
+			await expect(notAString).rejects.toThrow('Expected string, received number');
+		});
+
+		it('accepts a description that only exceeds the cap before trimming', async () => {
+			const atCap = 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
+			const prepared = await prepare(`   ${atCap}   `);
+
+			expect(prepared.description).toBe(atCap);
 		});
 	});
 
@@ -955,13 +1041,10 @@ describe('CredentialsService', () => {
 		});
 
 		it('should redact sensitive values by default', async () => {
-			// ARRANGE
 			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
-			// ACT
 			const redactedData = await service.decrypt(credentialEntity);
 
-			// ASSERT
 			expect(redactedData).toEqual({
 				...data,
 				clientSecret: CREDENTIAL_BLANKING_VALUE,
@@ -1713,6 +1796,104 @@ describe('CredentialsService', () => {
 				data: unredactedData,
 			});
 			expect(result).toEqual(testResult);
+		});
+
+		it('discards a caller-supplied homeProject and resolves the owning project from storage', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+			});
+			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+			const owningProject = mock<Project>({
+				id: 'real-owning-project-id',
+				type: 'team',
+				name: 'Real Project',
+				icon: null,
+				createdAt: new Date('2024-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			vi.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			vi.spyOn(service, 'unredact').mockReturnValue(decryptedData);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(owningProject);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+
+			const payload = {
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				// A plain member naming a project they don't own
+				homeProject: {
+					id: 'some-other-project-id',
+					name: 'Some Other Project',
+					icon: null,
+					type: 'team' as const,
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+				data: decryptedData,
+			};
+
+			await service.testWithCredentials(memberUser, payload);
+
+			expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith(
+				storedCredential.id,
+			);
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
+				memberUser.id,
+				payload.type,
+				expect.objectContaining({
+					homeProject: expect.objectContaining({ id: owningProject.id }),
+				}),
+			);
+		});
+
+		it('does not fall back to a caller-supplied homeProject when no owning project is found', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+			});
+			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			vi.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			vi.spyOn(service, 'unredact').mockReturnValue(decryptedData);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+
+			const payload = {
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+				// A plain member naming a project unrelated to the credential's
+				// (unresolvable) owning project.
+				homeProject: {
+					id: 'attacker-chosen-project-id',
+					name: 'Attacker Project',
+					icon: null,
+					type: 'team' as const,
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+				data: { accessToken: 'live-token' },
+			};
+
+			await service.testWithCredentials(memberUser, payload);
+
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
+				memberUser.id,
+				payload.type,
+				expect.objectContaining({ homeProject: undefined }),
+			);
 		});
 	});
 
@@ -2951,6 +3132,20 @@ describe('CredentialsService', () => {
 			});
 		});
 
+		it.each([
+			['trims a written description', '  Read-only key.  ', 'Read-only key.'],
+			['stores a blank description as null', '   ', null],
+			['stores an absent description as null', undefined, null],
+		])('%s', async (_label, description, expected) => {
+			const payload = { ...credentialData, description };
+			const savedEntities: any[] = [];
+			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
+
+			await service.createUnmanagedCredential(payload, ownerUser);
+
+			expect(savedEntities[0].description).toBe(expected);
+		});
+
 		it('should throw error when non-owner tries to create global credential', async () => {
 			// ARRANGE
 			const payload = { ...credentialData, isGlobal: true };
@@ -3213,120 +3408,69 @@ describe('CredentialsService', () => {
 
 	describe('createStubCredential', () => {
 		const stubOpts = {
+			id: 'source-id',
 			name: 'Missing GitHub',
 			type: 'githubApi',
 			projectId: 'project-1',
 		};
-
 		beforeEach(() => {
 			credentialsRepository.create.mockImplementation((data) => ({ ...data }) as CredentialsEntity);
-			sharedCredentialsRepository.create.mockImplementation((data) => data as SharedCredentials);
-			externalHooks.run.mockResolvedValue();
-			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as Project);
+			credentialDependencyService.resolveProviderIdsFromCredentialData.mockResolvedValue([]);
+			credentialsRepository.insertProjectCredentialWithOwner.mockImplementation(
+				async (data) => data as CredentialsEntity,
+			);
 		});
 
-		it('creates an empty stub credential without field validation', async () => {
-			credentialsHelper.getCredentialsProperties.mockReturnValue([
-				{
-					displayName: 'Access Token',
-					name: 'accessToken',
-					type: 'string',
-					required: true,
-					default: '',
-					displayOptions: {},
-				},
-			] as never);
-			const checkCredentialDataSpy = vi.spyOn(service, 'checkCredentialData');
-
-			let credentialEntityInput: unknown;
-			const savedEntities: unknown[] = [];
-			credentialsRepository.create.mockImplementation((data) => {
-				credentialEntityInput = data;
-				return data as CredentialsEntity;
-			});
-			mockTransactionManager({
-				credentialId: 'stub-cred-id',
-				onSave: (entity) => {
-					savedEntities.push(entity);
-				},
-			});
-
+		it('inserts an empty stub without field validation', async () => {
+			const validate = vi.spyOn(service, 'checkCredentialData');
 			const result = await service.createStubCredential(stubOpts, ownerUser);
-
-			expect(checkCredentialDataSpy).not.toHaveBeenCalled();
-			expect(credentialsHelper.getCredentialsProperties).not.toHaveBeenCalled();
-			expect(credentialEntityInput).toMatchObject({
-				name: 'Missing GitHub',
-				type: 'githubApi',
-				isManaged: false,
-				isResolvable: false,
-			});
-			expect(savedEntities[0]).toMatchObject({
-				isManaged: false,
-				isResolvable: false,
-			});
-			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(
-				ownerUser,
-				'project-1',
-				['credential:create'],
-				expect.anything(),
-			);
+			expect(validate).not.toHaveBeenCalled();
 			expect(result).toMatchObject({
-				id: 'stub-cred-id',
-				name: 'Missing GitHub',
-				type: 'githubApi',
+				id: 'source-id',
+				name: stubOpts.name,
+				isManaged: false,
+				isResolvable: false,
 			});
-		});
-
-		it('mints a fresh id when none is supplied', async () => {
-			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
-			mockTransactionManager({ credentialId: 'stub-cred-id' });
-
-			await service.createStubCredential(stubOpts, ownerUser);
-
-			expect(createEncryptedDataSpy).toHaveBeenCalledWith(expect.objectContaining({ id: null }));
-		});
-
-		it('reuses a supplied id so id-based matching resolves the stub on a later import', async () => {
-			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
-			credentialsRepository.existsBy.mockResolvedValue(false);
-			mockTransactionManager({ credentialId: 'cred-source' });
-
-			await service.createStubCredential({ ...stubOpts, id: 'cred-source' }, ownerUser);
-
-			expect(createEncryptedDataSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'cred-source' }),
+			expect(credentialsRepository.insertProjectCredentialWithOwner).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'source-id' }),
+				'project-1',
+				[],
+				{},
+			);
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(ownerUser, 'project-1', [
+				'credential:create',
+			]);
+			expect(projectService.getProjectWithScope.mock.invocationCallOrder[0]).toBeLessThan(
+				transactionRunner.run.mock.invocationCallOrder[0],
 			);
 		});
 
-		it('rejects a supplied id that already belongs to another credential (no upsert)', async () => {
-			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
-			credentialsRepository.existsBy.mockResolvedValue(true);
-
-			await expect(
-				service.createStubCredential({ ...stubOpts, id: 'cred-existing' }, ownerUser),
-			).rejects.toThrow(BadRequestError);
-
-			expect(credentialsRepository.existsBy).toHaveBeenCalledWith({ id: 'cred-existing' });
-			expect(createEncryptedDataSpy).not.toHaveBeenCalled();
+		it('requests a generated ID when no ID is supplied', async () => {
+			const encrypt = vi.spyOn(service, 'createEncryptedData');
+			await service.createStubCredential({ ...stubOpts, id: undefined }, ownerUser);
+			expect(encrypt).toHaveBeenCalledWith(expect.objectContaining({ id: null }));
 		});
 
-		it('rejects when user lacks credential:create on the target project', async () => {
+		it('keeps the bad request response for an occupied ID', async () => {
+			credentialsRepository.insertProjectCredentialWithOwner.mockRejectedValue(
+				new CredentialIdConflictError(),
+			);
+			await expect(service.createStubCredential(stubOpts, ownerUser)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(credentialsRepository.existsBy).not.toHaveBeenCalled();
+		});
+
+		it('checks project access before opening the write transaction', async () => {
 			projectService.getProjectWithScope.mockResolvedValue(null);
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: vi.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						existsBy: vi.fn().mockResolvedValue(true),
-						save: vi.fn(),
-					};
-					return await callback(mockManager);
-				}),
-			};
-
+			projectRepository.existsBy.mockResolvedValue(true);
 			await expect(service.createStubCredential(stubOpts, memberUser)).rejects.toThrow(
-				"You don't have the permissions to save the credential in this project.",
+				ForbiddenError,
 			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(credentialsRepository.insertProjectCredentialWithOwner).not.toHaveBeenCalled();
 		});
 	});
 

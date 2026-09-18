@@ -18,7 +18,7 @@ import {
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
 	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from './mcp.service';
+import { McpService, type McpFeatureFlags } from './mcp.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type {
 	McpAuthContext,
@@ -145,16 +145,13 @@ export class McpController {
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
 			mcp_apps_enabled: featureFlags.mcpApps.enabled,
 			mcp_apps_variant: featureFlags.mcpApps.variant,
-			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body, {
-				isConnectionHandshake: isHandshake,
-			});
+			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
 			if (isHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
@@ -218,7 +215,6 @@ export class McpController {
 		res: FlushableResponse,
 		featureFlags: McpFeatureFlags,
 		body: unknown,
-		options: McpServerBuildOptions,
 	): Promise<string | undefined> {
 		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -239,8 +235,7 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () =>
-				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth, options),
+			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {

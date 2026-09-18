@@ -235,6 +235,11 @@ packages/@n8n/client-oauth2/                            @n8n-io/iam
 
 packages/extensions/insights/                           @n8n-io/ligo
 
+# Governance & Observability
+
+packages/modules/type-availability-policies/            @n8n-io/governance-and-observability
+packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
+
 # CI/CD
 
 .github/                                       					@n8n-io/qa-dx

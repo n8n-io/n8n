@@ -38,6 +38,11 @@ export type AgentBackgroundJobSettlement = {
 	error?: string | null;
 };
 
+export type BackgroundJobGroupItem = Pick<
+	AgentBackgroundJob,
+	'id' | 'kind' | 'title' | 'status' | 'createdAt' | 'settledAt' | 'notifiedAt'
+>;
+
 @Service()
 export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob> {
 	constructor(dataSource: DataSource) {
@@ -79,6 +84,17 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	async findByParentThread(parentThreadId: string, ids?: string[]): Promise<AgentBackgroundJob[]> {
 		return await this.find({
 			where: ids?.length ? { parentThreadId, id: In(ids) } : { parentThreadId },
+			order: { createdAt: 'ASC' },
+		});
+	}
+
+	async findGroupCandidates(
+		parentAgentId: string,
+		parentThreadId: string,
+	): Promise<BackgroundJobGroupItem[]> {
+		return await this.find({
+			where: { parentAgentId, parentThreadId },
+			select: ['id', 'kind', 'title', 'status', 'createdAt', 'settledAt', 'notifiedAt'],
 			order: { createdAt: 'ASC' },
 		});
 	}

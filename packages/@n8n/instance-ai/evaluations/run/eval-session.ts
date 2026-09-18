@@ -155,6 +155,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							timeoutMs: buildArgs.timeoutMs,
 							preRunWorkflowIds: lane.preRunWorkflowIds,
 							preRunDataTableIds: lane.preRunDataTableIds,
+							preRunFolderIds: lane.preRunFolderIds,
 							claimedWorkflowIds: lane.claimedWorkflowIds,
 							logger,
 							laneTag,

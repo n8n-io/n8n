@@ -1,6 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
+import {
+	computed,
+	ref,
+	toRef,
+	watch,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	nextTick,
+} from 'vue';
+import {
+	N8nAiActivityStepGroup,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nSendStopButton,
+} from '@n8n/design-system';
+import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	APPROVAL_TOOL_NAME,
@@ -24,7 +41,9 @@ import type {
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
-import { TOOL_CALL_STATE } from '../constants';
+import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
+import { TIME } from '@/app/constants/durations';
+import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +59,7 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
+		backgroundJobsActive?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -49,6 +69,7 @@ const props = withDefaults(
 		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
+		backgroundJobsActive: false,
 	},
 );
 
@@ -66,12 +87,180 @@ const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
+const {
+	messages,
+	isStreaming,
+	refresh,
+	isCancelling,
+	messagingState,
+	fatalError,
+	warnings,
+	loadHistory,
+	sendMessage,
+	stopGenerating,
+	resume,
+	cancelAndSteer,
+	dismissFatalError,
+	dismissWarning,
+} = useAgentChatStream({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	continueSessionId: toRef(props, 'continueSessionId'),
+	onHistoryLoaded: (count) => {
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
+	},
+});
+
+const { jobs: backgroundJobs } = useAgentBackgroundJobs({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	threadId: () => props.continueSessionId,
+	active: () => props.backgroundJobsActive,
+	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
+});
+const backgroundRunningCount = computed(
+	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
+);
+const backgroundTitle = computed(() => {
+	const count = backgroundRunningCount.value;
+	if (count === 0) {
+		return locale.baseText('agents.chat.backgroundTasks.finished', {
+			adjustToNumber: backgroundJobs.value.length,
+		});
+	}
+	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
+		adjustToNumber: count,
+		interpolate: { count },
+	});
+});
+const backgroundTraceRoute = computed(() => ({
+	name: AGENT_SESSION_DETAIL_VIEW,
+	params: {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		threadId: props.continueSessionId,
+	},
+}));
+const backgroundJobStatuses = computed(() => ({
+	running: {
+		icon: 'loader-circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.running'),
+	},
+	completed: {
+		icon: 'circle-check',
+		label: locale.baseText('agents.chat.backgroundTasks.status.completed'),
+	},
+	failed: { icon: 'circle-x', label: locale.baseText('agents.chat.backgroundTasks.status.failed') },
+	cancelled: {
+		icon: 'circle-x',
+		label: locale.baseText('agents.chat.backgroundTasks.status.cancelled'),
+	},
+	waiting: {
+		icon: 'circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.waiting'),
+	},
+}));
+const backgroundJobRows = computed(() =>
+	backgroundJobs.value.map((job) => ({
+		...job,
+		label: locale.baseText(
+			job.kind === 'workflow'
+				? 'agents.chat.backgroundTasks.workflow'
+				: 'agents.chat.backgroundTasks.subagent',
+			{ interpolate: { title: job.title } },
+		),
+		indicator:
+			backgroundJobStatuses.value[
+				job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
+			],
+	})),
+);
+const now = ref(Date.now());
+const documentVisibility = useDocumentVisibility();
+const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
+	() => {
+		now.value = Date.now();
+	},
+	TIME.SECOND,
+	{ immediate: false },
+);
+watch(
+	() =>
+		props.backgroundJobsActive &&
+		backgroundRunningCount.value > 0 &&
+		documentVisibility.value === 'visible',
+	(active) => {
+		if (active) {
+			now.value = Date.now();
+			resumeTimer();
+		} else pauseTimer();
+	},
+	{ immediate: true },
+);
+const backgroundElapsed = computed(() => {
+	const startedAt = backgroundJobs.value[0]?.startedAt;
+	const start = startedAt ? Date.parse(startedAt) : now.value;
+	const end = backgroundRunningCount.value
+		? now.value
+		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
+	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
+	const minutes = Math.floor(seconds / 60);
+	const remainder = String(seconds % 60).padStart(2, '0');
+	return minutes < 60
+		? `${minutes}:${remainder}`
+		: `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${remainder}`;
+});
+
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const showBackgroundJobs = computed(
+	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
+);
 
 function focusInput(options?: FocusOptions) {
 	chatInput.value?.focus(options);
 }
+
+watch(
+	[
+		showBackgroundJobs,
+		() => props.projectId,
+		() => props.agentId,
+		() => props.continueSessionId,
+		() => props.visible,
+	],
+	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+		if (
+			shown ||
+			!wasShown ||
+			!props.visible ||
+			target.some((value, index) => value !== previousTarget[index]) ||
+			!backgroundJobCard.value?.contains(document.activeElement)
+		) {
+			return;
+		}
+
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		// Check focus before the card disappears, then wait for the composer to update.
+		await nextTick();
+		if (
+			cancelled ||
+			disposed ||
+			!props.visible ||
+			showBackgroundJobs.value ||
+			document.activeElement !== document.body
+		) {
+			return;
+		}
+		focusInput({ preventScroll: true });
+	},
+);
 
 const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
@@ -137,32 +326,6 @@ const inputText = computed<string>({
 });
 const isPreparingToSend = ref(false);
 let disposed = false;
-
-const {
-	messages,
-	isStreaming,
-	refresh,
-	isCancelling,
-	messagingState,
-	fatalError,
-	warnings,
-	loadHistory,
-	sendMessage,
-	stopGenerating,
-	resume,
-	cancelAndSteer,
-	dismissFatalError,
-	dismissWarning,
-} = useAgentChatStream({
-	projectId: toRef(props, 'projectId'),
-	agentId: toRef(props, 'agentId'),
-	continueSessionId: toRef(props, 'continueSessionId'),
-	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) {
-			emit('continue-loaded', { sessionId: props.continueSessionId, count });
-		}
-	},
-});
 
 const RUNTIME_ISSUE_PATH_PREFIXES = [
 	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
@@ -464,6 +627,75 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
+				<template v-if="showBackgroundJobs" #header>
+					<div
+						ref="backgroundJobCard"
+						:class="$style.backgroundJobs"
+						data-testid="agent-background-jobs"
+					>
+						<N8nAiActivityStepGroup
+							:key="continueSessionId"
+							:label="backgroundTitle"
+							full-width
+							content-position="above"
+						>
+							<template #prefix>
+								<N8nIcon
+									:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
+									:spin="backgroundRunningCount > 0"
+									size="small"
+									:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
+									aria-hidden="true"
+								/>
+							</template>
+							<template #header-trailing>
+								<span
+									:class="$style.jobTimer"
+									aria-live="off"
+									data-testid="agent-background-jobs-timer"
+									>{{ backgroundElapsed }}</span
+								>
+							</template>
+							<div :class="$style.backgroundJobDetails">
+								<ul :class="$style.backgroundJobList">
+									<li v-for="job in backgroundJobRows" :key="job.id">
+										<span
+											role="img"
+											:aria-label="job.indicator.label"
+											:title="job.indicator.label"
+											:class="[
+												$style.jobStatus,
+												{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
+											]"
+											:data-status="job.status"
+										>
+											<N8nIcon
+												:icon="job.indicator.icon"
+												:spin="job.indicator.icon === 'loader-circle'"
+												size="small"
+												:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+											/>
+										</span>
+										<span>{{ job.label }}</span>
+									</li>
+								</ul>
+								<N8nLink
+									v-if="continueSessionId"
+									:to="backgroundTraceRoute"
+									theme="text"
+									size="small"
+									underline
+									data-testid="agent-background-jobs-trace"
+								>
+									<span :class="$style.jobTraceLabel">
+										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+									</span>
+								</N8nLink>
+							</div>
+						</N8nAiActivityStepGroup>
+					</div>
+				</template>
 				<template v-if="attachedFiles.length > 0" #attachments>
 					<div :class="$style.attachmentsStrip">
 						<AttachmentPreview
@@ -490,6 +722,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .panel {
 	position: relative;
 	width: 400px;
@@ -509,6 +743,7 @@ onBeforeUnmount(() => {
 }
 
 .inputArea {
+	flex-shrink: 0;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
@@ -516,6 +751,84 @@ onBeforeUnmount(() => {
 	width: 100%;
 	max-width: 800px;
 	margin: 0 auto;
+}
+
+.backgroundJobs {
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	border-bottom: var(--border);
+	min-width: 0;
+
+	--ai-activity-step--height: auto;
+	--ai-activity-step--min-height: var(--height--xl);
+	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--ai-activity-step--color: var(--text-color);
+}
+
+.backgroundJobDetails {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	border-bottom: var(--border);
+	border-bottom-style: dashed;
+}
+
+.backgroundJobList {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	max-height: 20vh;
+	overflow-y: auto;
+
+	li {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--spacing--2xs);
+		padding-block: var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		color: var(--text-color--subtle);
+		overflow-wrap: anywhere;
+		line-height: var(--line-height--lg);
+	}
+}
+
+.jobStatus {
+	display: inline-flex;
+	flex-shrink: 0;
+	line-height: inherit;
+	color: var(--color--foreground--shade-2);
+
+	&[data-status='completed'] {
+		color: var(--color--success);
+		@include motion.fade-in;
+	}
+
+	&[data-status='failed'] {
+		color: var(--color--danger);
+	}
+}
+
+.jobWaiting circle {
+	fill: currentColor;
+}
+
+.jobTraceLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.jobSpinner {
+	flex-shrink: 0;
+	color: var(--color--primary);
+}
+
+.jobTimer {
+	font-variant-numeric: tabular-nums;
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtler);
 }
 
 .attachmentsStrip {

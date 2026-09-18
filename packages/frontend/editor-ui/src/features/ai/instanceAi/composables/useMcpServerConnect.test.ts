@@ -91,6 +91,7 @@ describe('useMcpServerConnect', () => {
 	});
 
 	afterEach(async () => {
+		vi.useRealTimers();
 		await closeCredentialModal();
 	});
 
@@ -154,28 +155,157 @@ describe('useMcpServerConnect', () => {
 
 			await expect(useMcpServerConnect().connectServer(linear)).resolves.toBe('conn-new');
 
-			expect(mockCreateAndAuthorize).toHaveBeenCalledWith('linearMcpOAuth2Api');
+			expect(mockCreateAndAuthorize).toHaveBeenCalledWith('linearMcpOAuth2Api', undefined, {
+				onAuthorizationStarted: expect.any(Function),
+			});
 			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(false);
 		});
 
-		it('shares one attempt across concurrent quick-connect callers', async () => {
+		it('reopens one OAuth attempt after the two-second lock', async () => {
+			vi.useFakeTimers();
+			let finishAttempt: ((credential: { id: string }) => void) | undefined;
+			const reopen = vi.fn();
 			mockCanQuickConnect.mockReturnValue(true);
-			let authorize!: (credential: { id: string }) => void;
+			mockCreateAndAuthorize
+				.mockReturnValueOnce(
+					new Promise<{ id: string }>((resolve) => {
+						finishAttempt = resolve;
+					}),
+				)
+				.mockResolvedValue(null);
+			const { connectServer, isConnectLocked } = useMcpServerConnect();
+			const connecting = connectServer(linear);
+			mockCreateAndAuthorize.mock.calls[0]?.[2]?.onAuthorizationStarted(reopen);
+
+			const concurrent = connectServer(linear);
+			expect(reopen).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(1999);
+			void connectServer(linear);
+			expect(reopen).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1);
+			void connectServer(linear);
+			expect(reopen).toHaveBeenCalledOnce();
+			expect(isConnectLocked(linear.slug)).toBe(true);
+			void connectServer(linear);
+			expect(reopen).toHaveBeenCalledOnce();
+			await vi.advanceTimersByTimeAsync(2000);
+			void connectServer(linear);
+			expect(reopen).toHaveBeenCalledTimes(2);
+			expect(mockCreateAndAuthorize).toHaveBeenCalledOnce();
+
+			finishAttempt?.({ id: 'cred-new' });
+			await expect(connecting).resolves.toBe('conn-new');
+			await expect(concurrent).resolves.toBe('conn-new');
+			expect(mcpStore.connect).toHaveBeenCalledOnce();
+			expect(isConnectLocked(linear.slug)).toBe(false);
+			await connectServer(linear);
+			expect(mockCreateAndAuthorize).toHaveBeenCalledTimes(2);
+		});
+
+		it('ignores the OAuth result after another credential wins', async () => {
+			mockCanQuickConnect.mockReturnValue(true);
+			let finishAttempt: ((credential: { id: string }) => void) | undefined;
 			mockCreateAndAuthorize.mockReturnValue(
 				new Promise<{ id: string }>((resolve) => {
-					authorize = resolve;
+					finishAttempt = resolve;
 				}),
 			);
-			const { connectServer } = useMcpServerConnect();
+			const { connectServer, ignorePendingConnectResult } = useMcpServerConnect();
+			const connecting = connectServer(linear);
 
-			const first = connectServer(linear);
-			const second = connectServer(linear);
-			authorize({ id: 'cred-new' });
+			ignorePendingConnectResult(linear.slug);
+			finishAttempt?.({ id: 'cred-new' });
 
-			await expect(first).resolves.toBe('conn-new');
-			await expect(second).resolves.toBe('conn-new');
-			expect(mockCreateAndAuthorize).toHaveBeenCalledTimes(1);
-			expect(mcpStore.connect).toHaveBeenCalledTimes(1);
+			await expect(connecting).resolves.toBeNull();
+			expect(mcpStore.connect).not.toHaveBeenCalled();
+		});
+
+		it('keeps the credential request locked when an ignored OAuth attempt settles', async () => {
+			let finishAuthorization: ((credential: { id: string }) => void) | undefined;
+			let finishConnection: ((connection: InstanceAiMcpConnection) => void) | undefined;
+			const reopen = vi.fn();
+			mockCanQuickConnect.mockReturnValue(true);
+			mockCreateAndAuthorize.mockReturnValue(
+				new Promise<{ id: string }>((resolve) => {
+					finishAuthorization = resolve;
+				}),
+			);
+			mcpStore.connect.mockReturnValue(
+				new Promise<InstanceAiMcpConnection>((resolve) => {
+					finishConnection = resolve;
+				}),
+			);
+			const { connectServer, connectWithCredential, ignorePendingConnectResult, isConnectLocked } =
+				useMcpServerConnect();
+			const oauthAttempt = connectServer(linear);
+			mockCreateAndAuthorize.mock.calls[0]?.[2]?.onAuthorizationStarted(reopen);
+
+			ignorePendingConnectResult(linear.slug);
+			const credentialConnect = connectWithCredential(linear.slug, 'cred-existing');
+			expect(isConnectLocked(linear.slug)).toBe(true);
+			const concurrent = connectServer(linear);
+			expect(reopen).not.toHaveBeenCalled();
+
+			finishAuthorization?.({ id: 'cred-oauth' });
+
+			await expect(oauthAttempt).resolves.toBeNull();
+			await expect(concurrent).resolves.toBeNull();
+			expect(isConnectLocked(linear.slug)).toBe(true);
+			expect(mcpStore.connect).toHaveBeenCalledOnce();
+
+			finishConnection?.(makeConnection({ id: 'conn-new', credentialId: 'cred-existing' }));
+			await expect(credentialConnect).resolves.toBe('conn-new');
+			expect(isConnectLocked(linear.slug)).toBe(false);
+		});
+
+		it('resumes the ignored OAuth attempt instead of starting another one', async () => {
+			mockCanQuickConnect.mockReturnValue(true);
+			let finishAttempt: ((credential: { id: string }) => void) | undefined;
+			const reopen = vi.fn();
+			mockCreateAndAuthorize.mockReturnValue(
+				new Promise<{ id: string }>((resolve) => {
+					finishAttempt = resolve;
+				}),
+			);
+			const { connectServer, ignorePendingConnectResult } = useMcpServerConnect();
+			const connecting = connectServer(linear);
+			mockCreateAndAuthorize.mock.calls[0]?.[2]?.onAuthorizationStarted(reopen);
+
+			ignorePendingConnectResult(linear.slug);
+			const resumed = connectServer(linear);
+			expect(reopen).toHaveBeenCalledOnce();
+			expect(mockCreateAndAuthorize).toHaveBeenCalledOnce();
+			finishAttempt?.({ id: 'cred-new' });
+
+			await expect(connecting).resolves.toBe('conn-new');
+			await expect(resumed).resolves.toBe('conn-new');
+			expect(mcpStore.connect).toHaveBeenCalledOnce();
+		});
+
+		it('keeps the server locked while the MCP connection request is pending', async () => {
+			vi.useFakeTimers();
+			let finishConnection: ((connection: InstanceAiMcpConnection) => void) | undefined;
+			mockCanQuickConnect.mockReturnValue(true);
+			mockCreateAndAuthorize.mockResolvedValue({ id: 'cred-new' });
+			mcpStore.connect.mockReturnValue(
+				new Promise<InstanceAiMcpConnection>((resolve) => {
+					finishConnection = resolve;
+				}),
+			);
+			const { connectServer, isConnectLocked } = useMcpServerConnect();
+			const connecting = connectServer(linear);
+			await flushPromises();
+
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(isConnectLocked(linear.slug)).toBe(true);
+			const concurrent = connectServer(linear);
+			expect(mockCreateAndAuthorize).toHaveBeenCalledOnce();
+
+			finishConnection?.(makeConnection({ id: 'conn-new', credentialId: 'cred-new' }));
+			await expect(connecting).resolves.toBe('conn-new');
+			await expect(concurrent).resolves.toBe('conn-new');
+			expect(isConnectLocked(linear.slug)).toBe(false);
 		});
 
 		it('stops when the user aborts the OAuth flow', async () => {
@@ -363,6 +493,21 @@ describe('useMcpServerConnect', () => {
 			await closeCredentialModal();
 
 			expect(mcpStore.connect).toHaveBeenCalledTimes(1);
+			await expect(first).resolves.toBe('conn-new');
+			await expect(second).resolves.toBe('conn-new');
+		});
+
+		it('keeps sharing a manual credential attempt after two seconds', async () => {
+			vi.useFakeTimers();
+			const { connectServer } = useMcpServerConnect();
+			const first = connectServer(linear);
+			await vi.advanceTimersByTimeAsync(2000);
+			const second = connectServer(linear);
+
+			expect(credentialCreatedListeners.size).toBe(1);
+
+			emitCredentialCreated('cred-new');
+			await closeCredentialModal();
 			await expect(first).resolves.toBe('conn-new');
 			await expect(second).resolves.toBe('conn-new');
 		});

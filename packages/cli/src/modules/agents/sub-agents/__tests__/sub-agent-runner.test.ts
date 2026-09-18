@@ -148,6 +148,7 @@ describe('SubAgentRunner', () => {
 		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
 			agent: childAgent as never,
 			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
 		});
 
 		credentialProvider = mock<CredentialProvider>();
@@ -238,6 +239,45 @@ describe('SubAgentRunner', () => {
 		const startedAt = agentExecutionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+	});
+
+	it('appends the MCP registry attribution to the child answer and forwards it to the parent', async () => {
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map([['Databricks Genie', 'Powered by Genie']]),
+		});
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'Databricks_Genie_ask',
+					output: 'rows',
+					mcpServerName: 'Databricks Genie',
+				},
+				...defaultStreamChunks,
+			]),
+		);
+		const onChunk = vi.fn();
+
+		const result = await runner.run(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			onChunk,
+		});
+
+		expect(result.result.messages).toEqual([
+			expect.objectContaining({
+				content: [{ type: 'text', text: 'Child answer\n\nPowered by Genie' }],
+			}),
+		]);
+		expect(onChunk).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'text-delta', delta: '\n\nPowered by Genie' }),
+		);
+		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
+		expect(finalizedRecord.assistantResponse).toBe('Child answer\n\nPowered by Genie');
 	});
 
 	it('runs the child on a caller-supplied childThreadId instead of minting one', async () => {

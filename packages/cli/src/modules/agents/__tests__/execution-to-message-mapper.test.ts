@@ -4,16 +4,52 @@ import {
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
 
+const FIXED_CREATED_AT = new Date('2024-01-15T10:00:00.000Z');
+
 function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
 		timeline: null,
+		createdAt: FIXED_CREATED_AT,
 		...overrides,
 	} as unknown as AgentExecution;
 }
 
 describe('execution-to-message-mapper', () => {
+	it.each(['running', 'success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps a signal-only turn with status %s',
+		(status) => {
+			const signal = {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			} as const;
+			const result = executionsToMessagesDto([
+				execution({
+					userMessage: null,
+					status,
+					timeline: [
+						{
+							type: 'background-task-signal',
+							signal: { tasks: [...signal.tasks] },
+							timestamp: 100,
+						},
+					],
+				}),
+			]);
+			expect(result).toEqual([
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					executionId: 'execution-1',
+					content: [],
+					executionStatus: status,
+					backgroundTaskSignal: signal,
+					createdAt: FIXED_CREATED_AT.toISOString(),
+				},
+			]);
+		},
+	);
+
 	it('carries the recorded run error on the assistant message of an errored turn', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -157,6 +193,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -176,6 +213,7 @@ describe('execution-to-message-mapper', () => {
 					{ type: 'text', text: 'Done.' },
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -244,6 +282,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -261,6 +300,7 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -286,6 +326,7 @@ describe('execution-to-message-mapper', () => {
 				},
 			],
 			executionId: 'execution-1',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -328,6 +369,7 @@ describe('execution-to-message-mapper', () => {
 			executionId: 'execution-1',
 			executionStatus: 'error',
 			executionError: 'Model request failed',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -409,6 +451,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Show me an action' }],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-suspended:assistant',
@@ -437,12 +480,14 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-resumed:assistant',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Approved.' }],
 				executionId: 'execution-resumed',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});

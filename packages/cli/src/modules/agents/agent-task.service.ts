@@ -170,7 +170,10 @@ export class AgentTaskService {
 			}
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -253,7 +256,10 @@ export class AgentTaskService {
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 			return savedTask;
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -297,7 +303,10 @@ export class AgentTaskService {
 			await em.remove(task);
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 
 		this.modificationTelemetry.record({
 			agent,

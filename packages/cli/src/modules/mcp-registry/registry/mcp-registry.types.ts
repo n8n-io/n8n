@@ -9,6 +9,9 @@ type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
+const optionalField = <T extends z.ZodType>(schema: T) =>
+	schema.nullish().transform((value) => value ?? undefined);
+
 /**
  * Override values for the credential identified by `extends`. Only properties
  * defined on `oAuth2Api`/`mcpOAuth2Api` are accepted; `null`/missing values are
@@ -75,43 +78,38 @@ const mcpRegistryServerBaseSchema = z.object({
 	tagline: z.string(),
 	// Appended to every tool result from this server, for partners that require
 	// their attribution on the content the agent shows.
-	attribution: z
-		.string()
-		.nullish()
-		.transform((value) => value ?? undefined),
+	attribution: optionalField(z.string()),
 	version: z.string(),
 	updatedAt: z.string(),
 	icons: z.array(
 		z.object({
 			src: z.string(),
-			mimeType: z
-				.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'])
-				.optional(),
-			theme: z.enum(['light', 'dark']).optional(),
+			mimeType: optionalField(
+				z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']),
+			),
+			theme: optionalField(z.enum(['light', 'dark'])),
 		}),
 	),
-	websiteUrl: z
-		.string()
-		.nullish()
-		.transform((value) => value ?? undefined),
+	websiteUrl: optionalField(z.string()),
 	remotes: z.array(
 		z.object({
 			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
 			url: z.string(),
 			// Sent as-is on every request to this remote, e.g. a partner User-Agent.
-			headers: z.record(z.string(), z.string()).optional(),
+			headers: optionalField(z.record(z.string(), z.string())),
 		}),
 	),
 	tools: z.array(
 		z.object({
 			name: z.string(),
-			title: z.string().optional(),
-			annotations: z.object({ readOnlyHint: z.boolean().optional() }).optional(),
+			title: optionalField(z.string()),
+			annotations: optionalField(z.object({ readOnlyHint: optionalField(z.boolean()) })),
 		}),
 	),
 	isOfficial: z.boolean(),
 	origin: z.literal('registry'),
 	status: z.enum(serverStatuses),
+	requiredCapabilities: optionalField(z.array(z.string())),
 	// The API returns either a bare array or a `{ data }` envelope, and omits
 	// `data` entirely when there are no tags. Anything stricter drops the whole
 	// server over optional metadata.

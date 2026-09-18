@@ -13,12 +13,45 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval copy
+
+An approval card has a title and a description. The title names the asset without
+its ID, for example `Assistant wants to edit CRM Lead enrichment`. The text below
+it is a plain-language description of the change. Tools send the asset name as
+`resourceName` on the suspend payload and structured `approvalDetails`. The
+frontend builds the title from `resourceName` and the
+`instanceAi.tools.{tool}.{action}.imperativeWithResource` i18n key.
+It renders the details with `instanceAi.approval.*` keys in the current UI locale.
+This includes row and column previews, filters, workflow actions, and publish
+verification notices. Counts use locale plural rules. Names and data values stay
+unchanged. Add locale translations for these keys; missing translations fall back
+to English. The backend retains `message` for older clients and saved approvals
+that have no structured details.
+
+`build-workflow`, `workflows(action="publish")`,
+and `executions(action="run")` accept `approvalSummary`. The agent supplies one
+line in the user’s language that describes the concrete change or effect of the
+call, for example `Add a Slack notification after the payment check`. Live execution summaries
+describe the external actions that the workflow will perform. The field is
+optional so older saved tool calls can still resume. Calls without the field
+show a generic description such as `Save the changes to this workflow`.
+
+Data-table approvals build the description from the tool input: columns, row
+counts, and filter conditions. Insert previews show up to three rows, five columns
+per row, and 100 characters per JSON-formatted value, including quotes. The card states how many rows or columns
+the preview omits. Pass `dataTableName` and `currentColumnName` when known
+so the card shows names instead of IDs. No tool looks up names only for the
+card. These messages do not change approval permissions or group separate tool
+calls. Bare `like` and `ilike` values use contains matching: the data-table
+service adds `%` before and after a value when it has no `%`. Values with `%`
+keep their explicit pattern. `like` matches case; `ilike` ignores case.
+
 | Tool | Actions |
 |------|---------|
 | `workflows` | 12 |
 | `data-tables` | 11 |
 | `workspace` | 8 |
-| `executions` | 7 |
+| `executions` | 8 |
 | `credentials` | 6 |
 | `nodes` | 6 |
 | `mcp-servers` | 4 |
@@ -526,7 +559,7 @@ Update a version's name or description.
 
 ---
 
-## `executions` (7 actions)
+## `executions` (8 actions)
 
 ### `executions(action="list")`
 
@@ -560,6 +593,68 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 - **Webhook trigger**: flat `inputData` → `{ headers: {}, query: {}, params: {}, body: inputData }`; an envelope whose keys are only `body`/`query`/`headers`/`params` is passed through, so query- and header-driven expressions can be exercised
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
+
+### `executions(action="run-step")`
+
+Run ONE node of a saved workflow and return its real output — the canvas
+"Execute step". The node runs inside the real workflow, so expressions that
+reference other nodes resolve, sub-nodes (model, memory, tools) come along, and
+the run lands in the workflow's execution history. The execution is always
+manual: `WorkflowRunner.resolvePinData` returns pin data only for manual and
+evaluation mode, so any other mode would drop the workflow's pins.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `workflowId` | string | yes | — | Workflow that owns the node |
+| `nodeName` | string | yes | — | Node to run |
+| `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
+| `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `versionId` | string | no | current draft | Run a past version's graph |
+| `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
+
+**Returns**: `{ executionId, status, nodeName, inputMode, mockedNodeNames, replayedNodeNames?, reusedFromExecutionId?, executedNodeNames?, data?, error?, ... }`
+
+**Input modes**, in descending order of what the result proves:
+
+| `inputMode` | Set by | What it proves |
+|-------------|--------|----------------|
+| `reused-execution` | `reuseExecutionId` | The node ran on data the workflow really produced |
+| `chain` | neither option | The node ran on data its ancestors really produced in this run |
+| `mocked` | `mockInput` | Only that the node accepts *this* input — the upstream output is invented |
+
+`executedNodeNames` counts only what ran in *this* execution. Mocked and
+replayed nodes carry run data without having run, so they are excluded —
+otherwise a step run on a ten-node workflow would report ten nodes as executed
+when one was. `data` still shows their output, listed under
+`mockedNodeNames` and `replayedNodeNames`. `replayedNodeNames` names only
+what this run carried: a node of the reused execution that sits outside the
+trigger-to-target subgraph never enters the run and is not listed.
+
+`mocked` also invents a placeholder item for every node between the trigger
+and the target, because `findStartNodes` walks down from the trigger and stops
+at the first node with no run data. `mockedNodeNames` lists them. A
+placeholder on an upstream IF or Switch picks a branch that real data may pick
+differently, which is why a mocked step is never evidence that the workflow
+works.
+
+**Pin data**: the target's own pin, and any pin on a node whose output the
+mocked mode replaced, come off this run's copy — a pinned node never
+executes, so leaving them on would make the step replay stale output. The saved
+workflow keeps its pins. `workflowPinnedNodeNames` lists only the pins that fed
+the run.
+
+**Safety**: a step run is a real run, with the user's credentials against their
+systems. It suits reads and transforms. A node that writes
+(`create`/`update`/`delete`/`send`/`append`, non-GET HTTP Request) performs its
+effect again, so debug that from `debug` and `get-resolved-node-parameters`
+instead. `mockInput` does not change this: only the input is invented, the node
+still runs. See the `debugging-executions` skill.
+
+**Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
+the pre-authorized workflow list, and session grants. The session grant is per
+node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
+node stops prompting while the rest of the workflow still asks. A whole-workflow
+run grant covers a step of that workflow too.
 
 ### `executions(action="get")`
 

@@ -8,8 +8,13 @@
  */
 
 import { type BaseTextKey } from '@n8n/i18n';
-import { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS, type Scope } from '@n8n/permissions';
+import {
+	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
+	isMandatoryInstanceOption,
+	type Scope,
+} from '@n8n/permissions';
 export { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS as INSTANCE_SCOPE_GROUPS } from '@n8n/permissions';
+export { withMandatoryInstanceScopes } from '@n8n/permissions';
 
 export type InstanceResource = keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS;
 
@@ -20,6 +25,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'role',
 	'apiKey',
 	'tag',
+	'variable',
 	'project',
 	'insights',
 ];
@@ -31,6 +37,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	role: 'instanceRoles.resource.role',
 	apiKey: 'instanceRoles.resource.apiKey',
 	tag: 'instanceRoles.resource.tag',
+	variable: 'instanceRoles.resource.variable',
 	project: 'instanceRoles.resource.project',
 	insights: 'instanceRoles.resource.insights',
 };
@@ -91,7 +98,14 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		'Manage own': 'instanceRoles.description.apiKey.manageOwn',
 		'Manage all': 'instanceRoles.description.apiKey.manageAll',
 	},
-	tag: { Manage: 'instanceRoles.description.tag.manage' },
+	tag: {
+		View: 'instanceRoles.description.tag.view',
+		Manage: 'instanceRoles.description.tag.manage',
+	},
+	variable: {
+		View: 'instanceRoles.description.variable.view',
+		Manage: 'instanceRoles.description.variable.manage',
+	},
 	project: { Create: 'instanceRoles.description.project.create' },
 	insights: { View: 'instanceRoles.description.insights.view' },
 };
@@ -156,21 +170,28 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 ];
 
 /**
- * "Users: View" is baseline behavior every instance role carries — the default
- * Member role already has it — not something a custom role can opt out of.
- * Rendered checked and disabled in the editor. `withMandatoryInstanceScopes`
- * is applied to the form (and on save), not the persisted snapshot, so a
- * stored role that is missing these scopes stays unsaved until the next save.
+ * Tooltip overrides for the mandatory options declared in `@n8n/permissions`.
+ * The wording that explains *why* an option is locked lives here because
+ * `@n8n/permissions` must stay free of i18n types.
  */
-export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
-	return resource === 'user' && option.key === 'View';
+const MANDATORY_OPTION_TOOLTIP_KEYS: Partial<
+	Record<InstanceResource, Record<string, BaseTextKey>>
+> = {
+	user: { View: 'instanceRoles.option.mandatory' },
+	// tag View falls back to instanceRoles.description.tag.view
+};
+
+/** Tooltip key for a mandatory option, or undefined when the option is not mandatory. */
+export function mandatoryOptionTooltipKey(
+	resource: InstanceResource,
+	option: InstanceScopeOption,
+): BaseTextKey | undefined {
+	if (!isOptionMandatory(resource, option)) return undefined;
+	return MANDATORY_OPTION_TOOLTIP_KEYS[resource]?.[option.key] ?? option.descriptionKey;
 }
 
-const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View;
-
-/** Unions in the mandatory scopes (see `isOptionMandatory`) on top of an already-filtered scope list. */
-export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
-	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
+	return isMandatoryInstanceOption(resource, option.key);
 }
 
 export type OptionState = 'checked' | 'indeterminate' | 'unchecked';

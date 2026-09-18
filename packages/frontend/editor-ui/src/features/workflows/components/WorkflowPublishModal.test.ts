@@ -17,7 +17,9 @@ import {
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
+const mockShowError = vi.fn();
 const mockTelemetryTrack = vi.fn();
+const mockModalClosed = vi.fn();
 
 vi.mock('@/app/composables/useWorkflowActivate', () => ({
 	useWorkflowActivate: () => ({
@@ -28,6 +30,7 @@ vi.mock('@/app/composables/useWorkflowActivate', () => ({
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
+		showError: mockShowError,
 	}),
 }));
 
@@ -60,8 +63,12 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 	global: {
 		stubs: {
 			Modal: {
+				props: ['eventBus'],
 				template:
 					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+				created() {
+					this.eventBus?.on('close', mockModalClosed);
+				},
 			},
 			WorkflowVersionForm: {
 				template: `
@@ -143,6 +150,22 @@ describe('WorkflowPublishModal', () => {
 		});
 	});
 
+	/** Mirrors the push handler that flips the document to "published" out of band. */
+	function publishConfirmedByPush(versionId: string) {
+		workflowDocumentStore.setActiveState({
+			activeVersionId: versionId,
+			activeVersion: {
+				versionId,
+				authors: 'Test Author',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+				name: 'Published Version',
+				description: null,
+			},
+		});
+	}
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -221,6 +244,54 @@ describe('WorkflowPublishModal', () => {
 					workflow_id: 'workflow-1',
 				});
 			});
+		});
+	});
+
+	describe('publish never settles', () => {
+		it('stops the spinner and reports the failure when publishWorkflow throws', async () => {
+			mockPublishWorkflow.mockReset().mockRejectedValue(new Error('boom'));
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.type(getByTestId('workflow-publish-version-name-input'), 'v1.0.0');
+			await userEvent.click(getByTestId('workflow-publish-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-cancel-button')).not.toBeDisabled();
+			});
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('closes the modal and re-enables Cancel when the composable reports success', async () => {
+			// The composable resolves this way whether the response arrived or a
+			// push confirmed the publish first - the modal cannot tell the difference.
+			mockPublishWorkflow.mockReset().mockResolvedValue({ success: true, errorHandled: false });
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.type(getByTestId('workflow-publish-version-name-input'), 'v1.0.0');
+			await userEvent.click(getByTestId('workflow-publish-button'));
+
+			await waitFor(() => {
+				expect(mockModalClosed).toHaveBeenCalled();
+			});
+			expect(getByTestId('workflow-publish-cancel-button')).not.toBeDisabled();
+		});
+
+		it('does not claim "no changes to publish" while a publish is in flight', async () => {
+			mockPublishWorkflow.mockReset().mockReturnValue(new Promise(() => {}));
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await userEvent.type(getByTestId('workflow-publish-version-name-input'), 'v1.0.0');
+			await userEvent.click(getByTestId('workflow-publish-button'));
+
+			// The push makes versionId and activeVersion.versionId match again, which the
+			// change check reads as "nothing to publish" - the user just published it.
+			publishConfirmedByPush('new-version');
+			await waitFor(() => expect(mockPublishWorkflow).toHaveBeenCalled());
+
+			expect(queryByTestId('workflow-publish-callout-no-changes')).not.toBeInTheDocument();
 		});
 	});
 

@@ -75,6 +75,28 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(list.forLlm('base').messages).toHaveLength(1);
 	});
 
+	it('does nothing when midRunObservation is disabled, even past the threshold', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) Should not appear.'),
+		);
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			midRunObservation: false,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('a user message crossing the threshold')]);
+		list.addResponse([assistantMsg('an assistant reply with more work')]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(observe).not.toHaveBeenCalled();
+		expect(await store.getMessagesForObservationScope(THREAD_ID)).toHaveLength(0);
+		expect(list.forLlm('base').messages).toHaveLength(2);
+	});
+
 	it('persists the turn, writes observations, advances the cursor, and masks the window on crossing', async () => {
 		const store = new InMemoryMemory();
 		const { orchestrator } = buildOrchestrator(store, {
@@ -423,7 +445,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 	});
 
-	it('deduplicates an in-flight mid-run task without blocking later post-turn observation', async () => {
+	it('queues the tail observer behind an in-flight mid-run task at end of turn', async () => {
 		const store = new InMemoryMemory();
 		const pendingObservation = deferred<string>();
 		const observe = vi.fn(async () => await pendingObservation.promise);
@@ -435,19 +457,155 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		const list = new AgentMessageList();
 		list.addInput([userMsg('x'.repeat(750))]);
 
+		// Soft crossing schedules the mid-run observer in the background.
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		await vi.waitFor(() => expect(observe).toHaveBeenCalledTimes(1));
 
+		// The post-boundary tail is persisted at end of turn. The mid-run task
+		// only covers up to its boundary, so the tail observer must queue
+		// behind it on the per-scope runner instead of being joined and dropped.
 		list.addResponse([assistantMsg('y'.repeat(750))]);
 		await orchestrator.saveToMemory(list, runOptions());
 		pendingObservation.resolve('* CRITICAL (14:30) Observed.');
 		await tracker.flush();
 
+		// Mid-run observer plus the queued tail observer both ran, and the
+		// cursor now points at the turn's last message.
+		expect(observe).toHaveBeenCalledTimes(2);
+		const cursor = await store.getCursor(THREAD_ID);
+		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
+
+		// The follow-up turn starts clean: loadInto resets the per-run flag and
+		// history loads since the cursor (now at the previous turn's last
+		// message), so no catch-up observer is needed and the gate applies.
+		const nextList = new AgentMessageList();
+		await orchestrator.loadInto(nextList, runOptions());
+		nextList.addInput([userMsg('z'.repeat(250))]);
+		await orchestrator.saveToMemory(nextList, runOptions());
+		await tracker.flush();
+
+		expect(observe).toHaveBeenCalledTimes(2);
+	});
+
+	it('schedules the tail observer after a settled, activated mid-run observation even when the tail is below threshold', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(async () => await Promise.resolve('* CRITICAL (14:30) Observed.'));
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+		list.addResponse([assistantMsg('y'.repeat(750))]);
+
+		// Hard crossing runs the observer synchronously, advances the cursor,
+		// and masks the window — no in-flight mid-run task remains.
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		expect(observe).toHaveBeenCalledTimes(1);
+		expect(list.forLlm('base').messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+
+		// A small post-boundary tail is added before the turn ends. Its budget
+		// is below the threshold, so the gate alone would skip it.
+		list.addResponse([assistantMsg('z'.repeat(200))]);
+
+		await orchestrator.saveToMemory(list, runOptions());
+		await tracker.flush();
+
+		// The per-run flag forces the tail observer past the budget gate.
+		expect(observe).toHaveBeenCalledTimes(2);
+		const cursor = await store.getCursor(THREAD_ID);
+		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
+	});
+
+	it('schedules the tail observer after a soft mid-run task settled without a later boundary activating it', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(async () => await Promise.resolve('* CRITICAL (14:30) Observed.'));
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		// Soft crossing schedules in the background; the task settles and
+		// advances the cursor, but no later boundary activates it, so the
+		// window is never masked.
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
+		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
+		expect(list.forLlm('base').messages).toHaveLength(1);
+
+		// The whole unmasked turn (750 + 200) is still below the threshold, so
+		// the budget gate alone would skip the tail.
+		list.addResponse([assistantMsg('z'.repeat(200))]);
+		await orchestrator.saveToMemory(list, runOptions());
+		await tracker.flush();
+
+		expect(observe).toHaveBeenCalledTimes(2);
+		const cursor = await store.getCursor(THREAD_ID);
+		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
+	});
+
+	it('detaches a settled mid-run task before gating a new turn', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(async () => await Promise.resolve('* CRITICAL (14:30) Observed.'));
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
 		expect(observe).toHaveBeenCalledTimes(1);
 
 		const nextList = new AgentMessageList();
 		await orchestrator.loadInto(nextList, runOptions());
-		nextList.addInput([userMsg('z'.repeat(250))]);
+		nextList.addInput([userMsg('z'.repeat(100))]);
+		await orchestrator.saveToMemory(nextList, runOptions());
+		await tracker.flush();
+
+		expect(observe).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the gate on the next turn when the previous mid-run task settles after it started', async () => {
+		const store = new InMemoryMemory();
+		const pendingObservation = deferred<string>();
+		const observe = vi
+			.fn(async () => await Promise.resolve('* CRITICAL (14:30) Tail observed.'))
+			.mockImplementationOnce(async () => await pendingObservation.promise);
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await vi.waitFor(() => expect(observe).toHaveBeenCalledTimes(1));
+		list.addResponse([assistantMsg('y'.repeat(50))]);
+		await orchestrator.saveToMemory(list, runOptions());
+
+		// The follow-up turn starts while the previous mid-run task is still in
+		// flight, so it loads the full previous turn (no cursor yet). The task
+		// settles only afterwards; that settlement must not mark the new run as
+		// having advanced the cursor.
+		const nextList = new AgentMessageList();
+		await orchestrator.loadInto(nextList, runOptions());
+		pendingObservation.resolve('* CRITICAL (14:30) Observed.');
+		await tracker.flush();
+		expect(observe).toHaveBeenCalledTimes(2);
+
+		// 800 chars of history plus 100 of input stay below the threshold: with
+		// no mid-run observation this turn, the gate applies and skips.
+		nextList.addInput([userMsg('z'.repeat(100))]);
 		await orchestrator.saveToMemory(nextList, runOptions());
 		await tracker.flush();
 

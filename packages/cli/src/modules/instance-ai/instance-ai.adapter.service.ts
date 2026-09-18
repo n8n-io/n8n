@@ -3,6 +3,8 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -54,6 +56,7 @@ import type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	StepExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
@@ -119,7 +122,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -182,6 +184,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -196,7 +199,9 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
+import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
@@ -520,6 +525,7 @@ export class InstanceAiAdapterService {
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 							credentialService,
+							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
 					}
 				: {}),
@@ -584,6 +590,8 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
+		/** Saved AI preferences on the opening turn. */
+		aiPreferencesEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		try {
@@ -607,6 +615,7 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
@@ -625,22 +634,22 @@ export class InstanceAiAdapterService {
 		const instanceContext = this.instanceContext;
 		if (!instanceContext) throw new UnexpectedError('Instance context service is not available');
 
+		const scope: InstanceContextScope = {
+			surface: 'conversation',
+			...(projectId !== undefined ? { projectId } : {}),
+		};
+
 		return {
 			list: async (input) =>
 				await instanceContext.list({
 					user,
-					...(projectId !== undefined ? { projectId } : {}),
+					scope,
 					limit: input.limit,
 					...(input.category !== undefined ? { category: input.category } : {}),
 					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
-			expand: async (id) =>
-				await instanceContext.expand({
-					id,
-					user,
-					...(projectId !== undefined ? { projectId } : {}),
-				}),
+			expand: async (id) => await instanceContext.expand({ id, user, scope }),
 		};
 	}
 
@@ -1361,7 +1370,11 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!head) throw new WorkflowNotFoundError(workflowId);
-				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+				return {
+					versionId: head.versionId,
+					activeVersionId: head.activeVersionId,
+					updatedAt: head.updatedAt.getTime(),
+				};
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
@@ -1750,6 +1763,8 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			executionPersistence,
+			workflowHistoryService,
 			nodeTypes,
 			allowSendingParameterValues,
 			roleService,
@@ -1803,7 +1818,7 @@ export class InstanceAiAdapterService {
 
 				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
-					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
+					range: { limit: options?.limit ?? 20 },
 					order: { startedAt: 'DESC' as const },
 					user,
 					sharingOptions,
@@ -1835,6 +1850,7 @@ export class InstanceAiAdapterService {
 						startedAt: String(e.startedAt ?? ''),
 						finishedAt: e.stoppedAt ? String(e.stoppedAt) : undefined,
 						mode: e.mode,
+						workflowVersionId: e.workflowVersionId ?? null,
 					}),
 				);
 			},
@@ -2004,77 +2020,22 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const abortSignal = options?.abortSignal;
+					const waitOutcome = await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
 
-					if (activeExecutions.has(executionId)) {
-						let timeoutId: NodeJS.Timeout | undefined;
-						const timeoutPromise = new Promise<never>((_, reject) => {
-							timeoutId = setTimeout(() => {
-								reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-							}, timeoutMs);
-						});
-
-						let onAbort: (() => void) | undefined;
-						const abortPromise =
-							abortSignal === undefined
-								? undefined
-								: new Promise<never>((_, reject) => {
-										onAbort = () => {
-											const error = new Error(
-												typeof abortSignal.reason === 'string'
-													? abortSignal.reason
-													: 'This operation was aborted',
-											);
-											error.name = 'AbortError';
-											reject(error);
-										};
-										if (abortSignal.aborted) {
-											onAbort();
-											return;
-										}
-										abortSignal.addEventListener('abort', onAbort, { once: true });
-									});
-
-						try {
-							await Promise.race([
-								activeExecutions.getPostExecutePromise(executionId),
-								timeoutPromise,
-								...(abortPromise ? [abortPromise] : []),
-							]);
-							clearTimeout(timeoutId);
-							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
-						} catch (error) {
-							clearTimeout(timeoutId);
-							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
-							const isTimeout = error instanceof Error && error.message.includes('timed out');
-							const isAbort =
-								error instanceof Error &&
-								(error.name === 'AbortError' || abortSignal?.aborted === true);
-							// On timeout or abort, cancel the execution with the matching reason
-							if (isTimeout || isAbort) {
-								try {
-									activeExecutions.stopExecution(
-										executionId,
-										isAbort
-											? new ManualExecutionCancelledError(executionId)
-											: new TimeoutExecutionCancelledError(executionId),
-									);
-								} catch {
-									// Execution may have completed between timeout/abort and cancel
-								}
-								const result = {
-									executionId,
-									status: 'error',
-									error: isAbort
-										? 'Execution was cancelled'
-										: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-								} satisfies ExecutionResult;
-								await pruneVerificationPins();
-								trackBuilderExecutedWorkflow(result.status, result.error);
-								return result;
-							}
-							throw error;
-						}
+					if (waitOutcome.kind === 'cancelled') {
+						const result = {
+							executionId,
+							status: 'error',
+							error: waitOutcome.message,
+						} satisfies ExecutionResult;
+						await pruneVerificationPins();
+						trackBuilderExecutedWorkflow(result.status, result.error);
+						return result;
 					}
 
 					const { result, telemetryError } = await extractExecutionOutcome(
@@ -2087,9 +2048,18 @@ export class InstanceAiAdapterService {
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
-					return workflowPinnedNodeNames.length > 0
-						? { ...result, workflowPinnedNodeNames }
-						: result;
+					// The trigger did not fire when the assistant supplied its output.
+					const injectedTriggerNodeName =
+						triggerNode &&
+						(pinDataPlan.mockDataSources.includes('trigger_input') ||
+							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
+							? triggerNode.name
+							: undefined;
+					return {
+						...result,
+						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
+						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
@@ -2098,6 +2068,220 @@ export class InstanceAiAdapterService {
 						'error',
 						error instanceof Error ? error.message : String(error),
 					);
+					throw error;
+				}
+			},
+
+			async runStep(workflowId: string, nodeName: string, options) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+
+				if (!workflow) {
+					throw new WorkflowNotFoundError(workflowId);
+				}
+
+				// The draft is the default. A named version runs that graph instead,
+				// while the execution still belongs to the workflow.
+				let nodes: INode[] = workflow.nodes ?? [];
+				let connections: IConnections = workflow.connections ?? {};
+				const versionId = options?.versionId;
+				if (versionId !== undefined && versionId !== workflow.versionId) {
+					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+					nodes = version.nodes ?? [];
+					connections = version.connections ?? {};
+				}
+
+				const target = nodes.find((node) => node.name === nodeName);
+				if (!target) {
+					throw new UserError(
+						`The workflow has no node named "${nodeName}". Use workflows(action="get-as-code") to see the node names.`,
+					);
+				}
+				if (target.disabled) {
+					throw new UserError(`Node "${nodeName}" is disabled. Enable it before you run it.`);
+				}
+
+				// Read the run data to replay on the server. A run data payload is far
+				// too large to route through the agent's context.
+				let priorRunData: IRunData | undefined;
+				let reusedFromExecutionId: string | undefined;
+				if (options?.reuseExecutionId !== undefined) {
+					const execution = await assertExecutionAccess(options.reuseExecutionId);
+					if (execution.workflowId !== workflowId) {
+						throw new UserError(
+							`Execution ${options.reuseExecutionId} belongs to a different workflow.`,
+						);
+					}
+					const stored = await executionPersistence.findSingleExecution(options.reuseExecutionId, {
+						includeData: true,
+						unflattenData: true,
+					});
+					priorRunData = stored?.data?.resultData?.runData;
+					reusedFromExecutionId = options.reuseExecutionId;
+				}
+
+				const plan = planStepRun({
+					nodes,
+					connections,
+					targetName: nodeName,
+					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
+					priorRunData,
+				});
+
+				// A pinned node never executes, so the target's own pin — and any pin on
+				// a node whose output we just mocked — has to come off this run's
+				// copy. The saved workflow keeps them.
+				const stepPinData = pinDataForStepRun(workflow.pinData, {
+					targetName: nodeName,
+					mockedNodeNames: plan.mockedNodeNames,
+				});
+
+				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+				// A step run is always manual. `WorkflowRunner.resolvePinData` returns pin
+				// data only for manual and evaluation mode, so any other mode would drop
+				// the workflow's pins and the mocked path with them.
+				const runData: IWorkflowExecutionDataProcess = {
+					executionMode: 'manual',
+					workflowData: {
+						...workflow,
+						nodes,
+						connections,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+							executionTimeout: Math.ceil(timeoutMs / 1000),
+						},
+					},
+					userId: user.id,
+					pushRef,
+					destinationNode: { nodeName, mode: 'inclusive' },
+					pinData: stepPinData,
+					runData: plan.runData,
+					dirtyNodeNames: plan.dirtyNodeNames,
+					source: 'instance_ai',
+				};
+
+				// A trigger has no upstream to run, so the chain and the partial paths
+				// are the same thing. Naming it keeps the engine from auto-detecting a
+				// different trigger in a multi-trigger workflow.
+				if (isTriggerNodeType(target.type)) {
+					runData.triggerToStartFrom = { name: nodeName };
+				}
+
+				// In queue mode the worker rebuilds the run from `execution.data`, where
+				// the transient top-level fields do not survive. Mirror the shape
+				// `workflow-execution.service` persists. `runData` stays `null` when the
+				// plan has none, so `createRunExecutionData` does not initialize it and
+				// turn a chain run into a partial one.
+				const offloadingManualExecutionsInQueueMode =
+					globalConfig.executions?.mode === 'queue' &&
+					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+				if (offloadingManualExecutionsInQueueMode) {
+					runData.executionData = createRunExecutionData({
+						startData: { destinationNode: runData.destinationNode },
+						resultData: { pinData: stepPinData, runData: plan.runData ?? null },
+						manualData: {
+							userId: user.id,
+							dirtyNodeNames: plan.dirtyNodeNames,
+							triggerToStartFrom: runData.triggerToStartFrom,
+							source: 'instance_ai',
+						},
+						executionData: null,
+					});
+				}
+
+				const trackStepRun = (status: ExecutionResult['status'], error?: string) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(stepPinData ?? {}).length,
+						exec_type: 'step',
+						input_mode: plan.inputMode,
+						status,
+						...(error ? { error: redactTelemetryText(error) } : {}),
+					});
+				};
+
+				// Nodes the reused execution could contribute. The target is excluded:
+				// `dirtyNodeNames` forces it to re-run, and a step run stops there, so
+				// it is the only node of the reused set that executes again.
+				const offeredForReplay = priorRunData
+					? Object.keys(priorRunData).filter((name) => name !== nodeName)
+					: [];
+
+				const describe = (result: ExecutionResult): StepExecutionResult => {
+					// `findSubgraph` keeps only the nodes between the trigger and the
+					// target, so a sibling branch of the reused execution never enters
+					// this run. Report what the run really carried, not what was offered.
+					const inRunData = new Set(result.executedNodeNames ?? []);
+					const replayedNodeNames = offeredForReplay.filter((name) => inRunData.has(name));
+
+					// `extractExecutionOutcome` derives `executedNodeNames` from the run
+					// data keys, and both a mocked stub and a replayed entry carry run
+					// data without having run in *this* execution. Leaving them in reports
+					// a whole chain as executed when one node was — the false-coverage
+					// signal this tool must never emit.
+					const notExecutedHere = new Set([...plan.mockedNodeNames, ...replayedNodeNames]);
+
+					return {
+						...result,
+						...(result.executedNodeNames
+							? {
+									executedNodeNames: result.executedNodeNames.filter(
+										(name) => !notExecutedHere.has(name),
+									),
+								}
+							: {}),
+						nodeName,
+						inputMode: plan.inputMode,
+						mockedNodeNames: plan.mockedNodeNames,
+						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
+						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
+						// Report the pins that actually fed this run, not every pin the
+						// workflow carries: the ones this run dropped never applied.
+						...(Object.keys(stepPinData ?? {}).length > 0
+							? { workflowPinnedNodeNames: Object.keys(stepPinData ?? {}) }
+							: {}),
+					};
+				};
+
+				try {
+					const executionId = await workflowRunner.run(runData);
+
+					const waitOutcome = await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
+
+					if (waitOutcome.kind === 'cancelled') {
+						trackStepRun('error', waitOutcome.message);
+						return describe({
+							executionId,
+							status: 'error',
+							error: waitOutcome.message,
+						});
+					}
+
+					const { result, telemetryError } = await extractExecutionOutcome(
+						executionId,
+						allowSendingParameterValues,
+						nodeTypes,
+					);
+					trackStepRun(result.status, telemetryError);
+					return describe(result);
+				} catch (error) {
+					trackStepRun('error', error instanceof Error ? error.message : String(error));
 					throw error;
 				}
 			},
@@ -4163,6 +4347,7 @@ export async function extractExecutionOutcome(
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
 			finishedAt: execution.stoppedAt?.toISOString(),

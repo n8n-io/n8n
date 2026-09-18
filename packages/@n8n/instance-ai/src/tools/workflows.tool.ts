@@ -3,16 +3,19 @@
  * unarchive, setup, publish, unpublish, list-versions, restore-version,
  * update-version.
  */
-import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	buildCredentialDestinationGrantKey,
 	credentialDestinationSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
@@ -25,6 +28,10 @@ import {
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { formatClaimDisclosure } from '../workflow-loop/render-claim';
+import {
+	describeSavedPublishState,
+	type SavedWorkflowState,
+} from './workflows/saved-workflow-state';
 import { isSetupPanelEnabled } from './workflows/setup-items';
 import {
 	describeSetupItem,
@@ -311,6 +318,7 @@ const publishBaseAction = z.object({
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
+	approvalSummary: approvalSummarySchema,
 	acknowledgeUnverified: z
 		.boolean()
 		.optional()
@@ -364,7 +372,11 @@ const confirmationSuspendSchema = setupSuspendSchema
 		workflowId: true,
 	})
 	.partial({ workflowId: true })
-	.extend({ credentialDestination: credentialDestinationSchema.optional() });
+	.extend({
+		resourceName: z.string().optional(),
+		approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+		credentialDestination: credentialDestinationSchema.optional(),
+	});
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
@@ -894,6 +906,12 @@ async function handleDelete(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Archive ${workflowName} (ID: ${input.workflowId})`,
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'archive-workflow',
+				name: workflowName,
+				id: input.workflowId,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -926,6 +944,12 @@ async function handleUnarchive(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Restore ${workflowName} (ID: ${input.workflowId})`,
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'restore-workflow',
+				name: workflowName,
+				id: input.workflowId,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -1129,6 +1153,8 @@ async function handleSetupTestTrigger(
 		return {
 			success: false,
 			error: `Failed to apply setup before trigger test: ${applyFailures.map((f) => `${f.nodeName}: ${f.error}`).join('; ')}`,
+			publishState: preTestApply.publishState,
+			publishStateNote: preTestApply.publishStateNote,
 			failedNodes: applyFailures,
 		};
 	}
@@ -1163,6 +1189,8 @@ async function handleSetupTestTrigger(
 			error: 'invalid_credential_hints',
 			message: INVALID_SETUP_HINT_MESSAGE,
 			problems: destinationInspection.problems,
+			publishState: preTestApply.publishState,
+			publishStateNote: preTestApply.publishStateNote,
 		};
 	}
 
@@ -1331,6 +1359,8 @@ async function handleSetupApply(
 				success: true,
 				partial: true,
 				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
+				publishState: applyResult.publishState,
+				publishStateNote: applyResult.publishStateNote,
 				completedNodes: validCompletedNodes,
 				nodesStillNeedingSetup,
 				...skippedByUserReport,
@@ -1342,6 +1372,8 @@ async function handleSetupApply(
 
 		return {
 			success: true,
+			publishState: applyResult.publishState,
+			publishStateNote: applyResult.publishStateNote,
 			completedNodes: validCompletedNodes,
 			...skippedByUserReport,
 			failedNodes: mergedFailedNodes,
@@ -1395,22 +1427,56 @@ async function resolveSetupScopeNodeNames(
 async function resolveUnverifiedPublishDisclosure(
 	context: InstanceAiContext,
 	workflowId: string,
-): Promise<string | undefined> {
+): Promise<
+	| {
+			message: string;
+			details: NonNullable<
+				Extract<InstanceAiApprovalDetails, { action: 'publish-workflow' }>['verification']
+			>;
+	  }
+	| undefined
+> {
 	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
 	if (!workflowTaskService) return undefined;
 	try {
 		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
 		const verification = outcome?.verification;
 		const claim = verification?.claim;
-		if (claim) return claim.publishReady ? undefined : formatClaimDisclosure(claim);
+		if (claim) {
+			const message = claim.publishReady ? undefined : formatClaimDisclosure(claim);
+			if (!message || claim.level === 'verified') return undefined;
+			return {
+				message,
+				details: {
+					level: claim.level,
+					unprovenTargets: claim.unprovenTargets,
+					pendingTriggers: claim.pendingTriggers ?? [],
+					nodesNotReached: claim.nodesNotReached,
+					plannedNodeCount: claim.plannedNodeCount,
+					simulatedNodes: claim.simulatedNodes.map((node) => node.nodeName),
+					pinnedNodes: claim.pinnedNodes,
+				},
+			};
+		}
 
 		// A running or attempted verification must not pass as an absent record.
 		if (verification?.attempted || verification?.status === 'running') {
 			const cause = verification.failureSignature ?? verification.evidence?.errorMessage;
-			return (
-				'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
-				(cause ? ` It reported: ${cause}` : '')
-			);
+			return {
+				message:
+					'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
+					(cause ? ` It reported: ${cause}` : ''),
+				details: {
+					level: 'no-verdict',
+					cause,
+					unprovenTargets: [],
+					pendingTriggers: [],
+					nodesNotReached: [],
+					plannedNodeCount: 0,
+					simulatedNodes: [],
+					pinnedNodes: [],
+				},
+			};
 		}
 
 		// No record at all: the workflow is unknown, not unverified. Blocking here
@@ -1427,7 +1493,7 @@ async function resolveUnverifiedPublishDisclosure(
 }
 
 const SETUP_PANEL_ANNOUNCED_GUIDANCE =
-	'The setup panel next to the chat now lists what this workflow still needs (`open`); nothing is ' +
+	'The setup panel now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
 	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
@@ -1725,9 +1791,14 @@ async function handleSetup(
 
 	// State 2: User declined — revert any trigger-test changes
 	if (!resumeData.approved) {
+		let savedState: SavedWorkflowState = {};
 		if (state.preTestSnapshot) {
-			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
-			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+			const saved = await context.workflowService.updateFromWorkflowJSON(
+				input.workflowId,
+				state.preTestSnapshot,
+			);
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, saved);
+			savedState = describeSavedPublishState(saved);
 			state.preTestSnapshot = null;
 		}
 		// Re-analyze rather than remembering what was suspended: the closure state doesn't
@@ -1740,6 +1811,7 @@ async function handleSetup(
 		return {
 			success: true,
 			deferred: true,
+			...savedState,
 			reason: 'User skipped workflow setup for now.',
 			...(dismissed.length > 0
 				? {
@@ -1803,7 +1875,8 @@ async function handlePublish(
 	}
 
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
-	const unverifiedDisclosure = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+	const verification = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+	const unverifiedDisclosure = verification?.message;
 
 	const needsApproval =
 		context.permissions?.publishWorkflow !== 'always_allow' || unverifiedDisclosure !== undefined;
@@ -1825,17 +1898,24 @@ async function handlePublish(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const dependencyNote =
 			supportingWorkflowIds.length > 0
-				? ` and ${String(supportingWorkflowIds.length)} referenced supporting workflow(s)`
+				? `Also publish ${supportingWorkflowIds.length} supporting ${supportingWorkflowIds.length === 1 ? 'workflow' : 'workflows'}.`
 				: '';
-		const target = input.versionId
-			? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
-			: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`;
+		const summary = formatApprovalMessage(
+			`Make the ${input.versionId ? 'selected version' : 'latest draft'} live`,
+			input.approvalSummary,
+		);
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			// The user has to read this to approve, so the disclosure lands even if
-			// the assistant's own message left it out.
-			message: unverifiedDisclosure ? `${target}\n\n${unverifiedDisclosure}` : target,
+			message: [summary, dependencyNote, unverifiedDisclosure].filter(Boolean).join('\n\n'),
+			approvalDetails: {
+				action: 'publish-workflow',
+				summary: input.approvalSummary,
+				selectedVersion: !!input.versionId,
+				supportingCount: supportingWorkflowIds.length,
+				verification: verification?.details,
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: workflowName,
 			severity: 'warning' as const,
 		});
 	}
@@ -1984,6 +2064,12 @@ async function handleUnpublish(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Unpublish ${workflowName} (ID: ${input.workflowId})`,
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'unpublish-workflow',
+				name: workflowName,
+				id: input.workflowId,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -2029,6 +2115,7 @@ async function handleRestoreVersion(
 	const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const version = await context.workflowService.getVersion!(
 			input.workflowId,
 			input.versionId,
@@ -2041,6 +2128,12 @@ async function handleRestoreVersion(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Restore to version ${versionLabel}`,
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'restore-version',
+				version: version?.name || input.versionId,
+				createdAt: version?.createdAt,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -2077,6 +2170,7 @@ async function handleUpdateVersion(
 	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const fields: string[] = [];
 		if (input.name !== undefined) fields.push(`name to ${formatFieldValue(input.name)}`);
 		if (input.description !== undefined) {
@@ -2087,6 +2181,13 @@ async function handleUpdateVersion(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Update version ${input.versionId} — set ${summary}`,
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'update-version',
+				version: input.versionId,
+				name: input.name,
+				description: input.description,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'info' as const,
 		});
 	}

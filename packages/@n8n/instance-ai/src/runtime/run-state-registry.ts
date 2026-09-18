@@ -1,4 +1,5 @@
 import type {
+	ComputerUseChannel,
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
@@ -148,6 +149,11 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
+
+	/** Computer Use entries the client reported, reused by follow-up runs. Only the
+	 *  client can see its own rollout and the device, and a resumed or background
+	 *  run has no request of its own to ask. */
+	private readonly threadComputerUseChannels = new Map<string, ComputerUseChannel[]>();
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
@@ -495,6 +501,16 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadTimeZones.get(threadId);
 	}
 
+	/** An omitted list clears it, so a client that stops reporting advertises nothing. */
+	setComputerUseChannels(threadId: string, channels: ComputerUseChannel[] | undefined): void {
+		if (channels === undefined) this.threadComputerUseChannels.delete(threadId);
+		else this.threadComputerUseChannels.set(threadId, channels);
+	}
+
+	getComputerUseChannels(threadId: string): ComputerUseChannel[] | undefined {
+		return this.threadComputerUseChannels.get(threadId);
+	}
+
 	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
 	setBuildMode(threadId: string, buildMode: InstanceAiBuildMode | undefined): void {
 		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
@@ -672,6 +688,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
+		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
 
@@ -722,6 +739,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
+		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();

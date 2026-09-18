@@ -265,6 +265,14 @@ export const setTracePromptVersion: typeof LangsmithTracingMod.setTracePromptVer
 	() => loadLangsmithTracing().setTracePromptVersion,
 );
 
+export const setTraceModelId: typeof LangsmithTracingMod.setTraceModelId = lazyFunction(
+	() => loadLangsmithTracing().setTraceModelId,
+);
+
+export const modelIdTraceMetadata: typeof LangsmithTracingMod.modelIdTraceMetadata = lazyFunction(
+	() => loadLangsmithTracing().modelIdTraceMetadata,
+);
+
 export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().continueInstanceAiTraceContext);
 
@@ -684,6 +692,8 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	StepExecutionResult,
+	StepRunInputMode,
 	ExecutionDebugInfo,
 	NodeOutputBranch,
 	NodeOutputResult,
@@ -725,6 +735,9 @@ export type {
 	ConversationHistorySearchResult,
 	ConversationHistoryMessage,
 	ConversationHistoryMessagesResult,
+	ComputerUseChannel,
+	ComputerUseChannelState,
+	ComputerUseState,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
