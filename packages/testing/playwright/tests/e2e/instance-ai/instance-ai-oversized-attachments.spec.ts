@@ -136,9 +136,6 @@ test.describe(
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n, n8nContainer }) => {
 				test.skip(!n8nContainer, 'Requires the proxy service to simulate a provider refusal');
-				// Two full runs in one test: the refused turn plus the recovery turn.
-				test.setTimeout(240_000);
-				// Two full runs in one test: the refused turn plus the recovery turn.
 				test.setTimeout(240_000);
 
 				// A small image: our own guards accept it, so the refusal has to come from
@@ -212,14 +209,19 @@ test.describe(
 				});
 
 				await n8n.navigate.toInstanceAi();
+				const earlierMessage = 'Remember the word lantern.';
+				await n8n.instanceAi.sendMessage(earlierMessage);
+				await expect(n8n.instanceAi.getAssistantMessages().last()).toContainText(
+					'Back on track without the attachment.',
+					{ timeout: 90_000 },
+				);
+				await n8n.instanceAi.waitForRunComplete();
+
 				await n8n.instanceAi.getFileInput().setInputFiles(smallImage);
 				await n8n.instanceAi.getChatInput().fill('What is in this screenshot?');
 				await n8n.instanceAi.getSendButton().click();
 
-				// The first turn fails on the refusal. Matching either the provider text or
-				// our own guidance keeps this focused on behaviour — which surface renders
-				// the message is covered by the unit tests for getUserFacingErrorMessage.
-				await expect(n8n.instanceAi.getAssistantMessages().first()).toContainText(
+				await expect(n8n.instanceAi.getAssistantMessages().last()).toContainText(
 					/exceeds 10 MB maximum|too large/i,
 					{ timeout: 90_000 },
 				);
@@ -230,6 +232,8 @@ test.describe(
 				);
 				expect(persisted.status()).toBe(200);
 				const persistedBody = await persisted.text();
+				expect(persistedBody).toContain(earlierMessage);
+				expect(persistedBody).toContain('Back on track without the attachment.');
 				expect(persistedBody).not.toContain('What is in this screenshot?');
 				expect(persistedBody).not.toContain('"type":"file"');
 
@@ -238,9 +242,10 @@ test.describe(
 				// carried image bytes, matched the refusal expectation above, and failed
 				// identically — the "repeatedly crashes" half of INS-994.
 				await n8n.instanceAi.sendMessage('Never mind the image — just say hello.');
-				await expect(
-					n8n.instanceAi.getPanelText(/Back on track without the attachment/),
-				).toBeVisible({ timeout: 90_000 });
+				await expect(n8n.instanceAi.getAssistantMessages().last()).toContainText(
+					'Back on track without the attachment.',
+					{ timeout: 90_000 },
+				);
 			},
 		);
 	},
