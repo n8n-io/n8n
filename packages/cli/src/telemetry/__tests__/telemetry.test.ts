@@ -29,6 +29,7 @@ describe('Telemetry', () => {
 	const mockRudderStack = mock<RudderStack>();
 
 	let telemetry: Telemetry;
+	let postHog: PostHogClient;
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
@@ -54,7 +55,7 @@ describe('Telemetry', () => {
 		// @ts-expect-error Spying on private method
 		vi.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(function () {});
 
-		const postHog = new PostHogClient(instanceSettings, mock());
+		postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
 		telemetry = new Telemetry(
@@ -1015,6 +1016,7 @@ describe('Telemetry', () => {
 				traits,
 				context: { ip: '0.0.0.0' },
 			});
+			expect(postHog.groupIdentify).not.toHaveBeenCalled();
 		});
 
 		test('should call rudderStack.group() with composite userId when userId is provided', () => {
@@ -1027,6 +1029,11 @@ describe('Telemetry', () => {
 				userId: `${instanceId}#user-123`,
 				traits,
 				context: { ip: '0.0.0.0' },
+			});
+			expect(postHog.groupIdentify).toHaveBeenCalledWith({
+				distinctId: `${instanceId}#user-123`,
+				instanceId,
+				properties: traits,
 			});
 		});
 
@@ -1117,6 +1124,42 @@ describe('Telemetry', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('groupIdentify', () => {
+		const traits = { version: '1.0' } as Record<string, string | number>;
+
+		test('should send the PostHog override to PostHog only', () => {
+			telemetry.groupIdentify({ traits, postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: traits,
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits,
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should keep RudderStack traits unchanged when only PostHog gets them', () => {
+			telemetry.groupIdentify({ userId: 'owner-1', postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: traits,
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: `${instanceId}#owner-1`,
+				traits: undefined,
+				context: { ip: '0.0.0.0' },
+			});
 		});
 	});
 

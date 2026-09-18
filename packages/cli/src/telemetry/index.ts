@@ -523,18 +523,25 @@ export class Telemetry {
 	groupIdentify({
 		userId,
 		traits,
+		postHog = { userId, traits },
 	}: {
 		userId?: string;
 		traits?: Record<string, string | number>;
+		/**
+		 * PostHog-only override. PostHog refuses a group update with no real person
+		 * behind it, while RudderStack accepts the bare instance ID. Use it when the
+		 * two destinations must diverge, e.g. to attribute startup facts to the owner.
+		 */
+		postHog?: { userId?: string; traits?: Record<string, string | number> };
 	}): void {
 		const { instanceId } = this.instanceSettings;
 		if (!instanceId) return;
 
-		if (this.postHog) {
+		if (this.postHog && postHog.userId) {
 			this.postHog.groupIdentify({
-				...(userId && { distinctId: `${instanceId}#${userId}` }),
+				distinctId: `${instanceId}#${postHog.userId}`,
 				instanceId,
-				properties: traits,
+				properties: postHog.traits,
 			});
 		}
 
