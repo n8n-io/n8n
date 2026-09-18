@@ -108,7 +108,7 @@ async function buildImportPackage(
 	);
 	writer.writeFile(
 		`workflows/${wfId}/workflow-metadata.json`,
-		JSON.stringify({ versionId: 'wire-version-id', publishedVersionId: null }),
+		JSON.stringify({ versionId: WIRE_VERSION_ID, publishedVersionId: null }),
 	);
 
 	if (variable) {
