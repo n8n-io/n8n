@@ -812,11 +812,8 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('validates the optional Apply source the same way as Continue', async () => {
+		it('validates the optional Apply source like Continue and applies the tip without one', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
-			// Without a source the request is valid, so the unknown connection is what fails.
-			expect((await agent.post('/promotions/connections/someId/apply')).status).toBe(404);
-			expect((await agent.post('/promotions/connections/someId/apply').send({})).status).toBe(404);
 			for (const body of [
 				{ ...continueBody, force: true },
 				{ expectedSource: { ...continueBody.expectedSource, commitSha: 'HEAD' } },
@@ -824,6 +821,25 @@ describe('Promotions in Public API', () => {
 			]) {
 				const response = await agent.post('/promotions/connections/someId/apply').send(body);
 				expect(response.status).toBe(400);
+			}
+
+			const id = await createConnection(agent);
+			const initial = vi.spyOn(Container.get(PromotionsService), 'apply').mockResolvedValue({
+				status: 'source-changed',
+				connectionId: id,
+				configId: continueBody.expectedSource.configId,
+				git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
+			});
+			try {
+				const response = await agent.post(`/promotions/connections/${id}/apply`);
+				expect(response.status, JSON.stringify(response.body)).toBe(200);
+				expect(initial).toHaveBeenCalledWith(
+					id,
+					expect.objectContaining({ id: owner.id }),
+					undefined,
+				);
+			} finally {
+				initial.mockRestore();
 			}
 		});
 
