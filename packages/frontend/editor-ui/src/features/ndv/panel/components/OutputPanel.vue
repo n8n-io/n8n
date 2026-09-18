@@ -365,7 +365,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
-				compact-actions
+				has-compact-action
 			>
 				<template v-if="isTriggerNode" #icon>
 					<svg width="16" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -505,7 +505,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						v-else-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
-						compact-actions
+						has-compact-action
 					>
 						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>

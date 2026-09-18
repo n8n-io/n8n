@@ -6,7 +6,8 @@ const { icon } = defineProps<{
 	title?: string;
 	wide?: boolean;
 	icon?: IconName;
-	compactActions?: boolean;
+	/** Has a compact `#actions` fallback that replaces the description on a narrow pane (needs an `ndvPane` container). */
+	hasCompactAction?: boolean;
 }>();
 
 defineSlots<{
@@ -19,7 +20,7 @@ defineSlots<{
 <template>
 	<article
 		data-ndv-empty-state
-		:class="[$style.empty, { [$style.wide]: wide, [$style.compactActions]: compactActions }]"
+		:class="[$style.empty, { [$style.wide]: wide, [$style.compactActions]: hasCompactAction }]"
 	>
 		<slot name="icon">
 			<N8nIcon v-if="icon" :icon="icon" size="xlarge" />
