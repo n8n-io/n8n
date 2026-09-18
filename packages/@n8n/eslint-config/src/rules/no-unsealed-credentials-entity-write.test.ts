@@ -54,6 +54,7 @@ declare class CredentialsRepository extends Repository<CredentialsEntity> {
 }
 declare class SharedCredentialsRepository extends Repository<SharedCredentials> {}
 declare class WorkflowRepository extends Repository<WorkflowEntity> {}
+declare function persistGeneric<T extends CredentialsEntity>(r: Repository<T>, e: T): Promise<T>;
 declare const Container: { get<T>(c: new (...args: never[]) => T): T };
 declare const manager: EntityManager;
 declare const repo: CredentialsRepository;
@@ -126,6 +127,8 @@ ruleTester.run('no-unsealed-credentials-entity-write', NoUnsealedCredentialsEnti
 		typed("manager.query('UPDATE workflow_entity SET nodes = $1 WHERE id = $2', [[], id]);"),
 		typed("manager.query('SELECT data FROM credentials_entity WHERE id = $1', [id]);"),
 		typed("manager.query('DELETE FROM credentials_entity WHERE id = $1', [id]);"),
+		// A key the seal can resolve, and one that is not the policed key.
+		typed('const key = "data" as const; repo.update(id, { [key]: "" });'),
 		// Test files are exempt even with type information.
 		{ ...typed('repo.save(cred);'), filename: 'foo.test.ts' },
 		// The floor: untyped shapes the syntactic pass cannot inspect.
@@ -237,6 +240,50 @@ ruleTester.run('no-unsealed-credentials-entity-write', NoUnsealedCredentialsEnti
 		// Optional chaining and computed keys.
 		{ ...typed('repo?.save(cred);'), errors: unsealed },
 		{ ...typed("repo['save'](cred);"), errors: unsealed },
+		// An index signature carries `type` without declaring it.
+		{
+			...typed('declare const payload: Record<string, unknown>; repo.update(id, payload);'),
+			errors: opaque,
+		},
+		{
+			...typed('declare const payload: { [k: string]: string }; repo.update(id, payload);'),
+			errors: opaque,
+		},
+		// A key built from an expression only resolves at runtime.
+		{
+			...typed('declare const key: string; repo.update(id, { [key]: "" });'),
+			errors: opaque,
+		},
+		// A generic helper constrained to the entity still writes it.
+		{
+			...typed(
+				'function persist<T extends CredentialsEntity>(r: Repository<T>, e: T) { return r.save(e); }',
+			),
+			errors: unsealed,
+		},
+		{
+			...typed(
+				'function patch<T extends CredentialsEntity>(r: Repository<T>, p: T) { return r.update(id, p); }',
+			),
+			errors: unsealed,
+		},
+		// An unconstrained payload type parameter cannot be ruled out.
+		{
+			...typed('function patch<T>(p: T) { return repo.update(id, p); }'),
+			errors: opaque,
+		},
+		// TypeORM accepts the table name in place of the entity class.
+		{ ...typed("manager.save('credentials_entity', { type: 'slackApi' });"), errors: unsealed },
+		{
+			...typed("manager.update('credentials_entity', { id }, { type: 'slackApi' });"),
+			errors: unsealed,
+		},
+		{
+			...typed(
+				"manager.createQueryBuilder().insert().into('credentials_entity').values({ type: 'slackApi' }).execute();",
+			),
+			errors: unsealed,
+		},
 		// The floor: untyped shapes the syntactic pass does catch.
 		{ ...untyped('manager.save<CredentialsEntity>(cred);', businessLogic), errors: unsealed },
 		{ ...untyped("tx.upsert(CredentialsEntity, cred, ['id']);", businessLogic), errors: unsealed },

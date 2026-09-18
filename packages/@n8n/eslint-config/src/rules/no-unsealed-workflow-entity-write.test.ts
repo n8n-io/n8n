@@ -277,5 +277,19 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 		{ ...untyped('manager.save<WorkflowEntity>(wf);', dbService), errors: unsealed },
 		// A runtime folder that happens to be named `test` is not a test path.
 		{ ...untyped('this.workflowRepository.save(wf);', testFolderInRuntimeTree), errors: unsealed },
+		// Gaps the shared factory closes: index signatures, expression keys, constrained
+		// generics and the table name in place of the entity class.
+		{
+			...typed('declare const payload: Record<string, unknown>; repo.update(id, payload);'),
+			errors: opaque,
+		},
+		{ ...typed('declare const key: string; repo.update(id, { [key]: [] });'), errors: opaque },
+		{
+			...typed(
+				'function persist<T extends WorkflowEntity>(r: Repository<T>, e: T) { return r.save(e); }',
+			),
+			errors: unsealed,
+		},
+		{ ...typed("manager.save('workflow_entity', { nodes: [] });"), errors: unsealed },
 	],
 });

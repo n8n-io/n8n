@@ -70,6 +70,10 @@ const stringValue = (node: TSESTree.Node | undefined): string | undefined => {
 const isTypeReference = (type: ts.Type): type is ts.TypeReference =>
 	'target' in type && typeof type.target === 'object';
 
+// Keeps the narrowing local: an inline `isTypeParameter()` guard leaves the else-branch `never`.
+const asTypeParameter = (type: ts.Type): ts.TypeParameter | undefined =>
+	type.isTypeParameter() ? type : undefined;
+
 /**
  * True for the entity itself, its repository, or any generic over the entity
  * (`Repository<WorkflowEntity>`, a query builder, a subclass of either).
@@ -89,6 +93,10 @@ const refersToEntity = (
 
 	const name = (type.getSymbol() ?? type.aliasSymbol)?.getName();
 	if (name !== undefined && symbols.has(name)) return true;
+
+	// A generic helper over `T extends WorkflowEntity` still writes the entity.
+	const constraint = asTypeParameter(type)?.getConstraint();
+	if (constraint !== undefined) return refersToEntity(constraint, checker, symbols, seen);
 
 	const typeArguments = [
 		...(type.aliasTypeArguments ?? []),
@@ -112,9 +120,28 @@ const payloadTypeVerdict = (type: ts.Type, policedKey: string): PayloadVerdict =
 		return verdicts.includes('opaque') ? 'opaque' : 'clean';
 	}
 	if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return 'opaque';
+	// An index signature (`Record<string, unknown>`) carries the key without declaring it.
+	if (type.getStringIndexType() !== undefined) return 'opaque';
+	const parameter = asTypeParameter(type);
+	if (parameter) {
+		const constraint = parameter.getConstraint();
+		return constraint === undefined ? 'opaque' : payloadTypeVerdict(constraint, policedKey);
+	}
 	const policed = type.getProperty(policedKey);
 	if (policed === undefined) return 'clean';
 	return policed.flags & ts.SymbolFlags.Optional ? 'opaque' : 'policed';
+};
+
+// A computed key is only knowable when its type pins it to literals.
+const computedKeyVerdict = (type: ts.Type, policedKey: string): PayloadVerdict => {
+	if (type.isUnion()) {
+		const verdicts = type.types.map((t) => computedKeyVerdict(t, policedKey));
+		if (verdicts.includes('policed')) return 'policed';
+		return verdicts.includes('opaque') ? 'opaque' : 'clean';
+	}
+	if (type.isStringLiteral()) return type.value === policedKey ? 'policed' : 'clean';
+	if (type.isNumberLiteral()) return 'clean';
+	return 'opaque';
 };
 
 /** Finds the `.set(values)` chained after a query-builder `.update(...)`. */
@@ -136,8 +163,9 @@ const chainedSetPayload = (call: TSESTree.CallExpression): TSESTree.Node | undef
 /**
  * Builds a rule that seals one entity's content writes to the token-gated methods on its
  * repository. Type-aware where a program is available, with the syntactic name/literal
- * checks as a floor. Ceiling: SQL built from non-literal strings and `any`-typed
- * receivers; the runtime `assertClearedFor` gate in the repository is the enforcing half.
+ * checks as a floor. Ceiling: SQL built from non-literal strings, and a repository
+ * resolved from a runtime value (`getRepository(name)`), which types as `Repository<any>`.
+ * The runtime `assertClearedFor` gate in the repository is the enforcing half.
  */
 export const createUnsealedEntityWriteRule = (config: SealedEntityWriteConfig) => {
 	const {
@@ -157,9 +185,19 @@ export const createUnsealedEntityWriteRule = (config: SealedEntityWriteConfig) =
 	const isEntityIdentifier = (node: TSESTree.Node | undefined) =>
 		node?.type === AST_NODE_TYPES.Identifier && node.name === entityName;
 
-	const isPolicedKey = (key: TSESTree.Node) =>
-		(key.type === AST_NODE_TYPES.Identifier && key.name === policedKey) ||
-		(key.type === AST_NODE_TYPES.Literal && key.value === policedKey);
+	const keyVerdict = (
+		property: TSESTree.Property,
+		services: TypeServices | null,
+	): PayloadVerdict => {
+		const { key, computed } = property;
+		if (key.type === AST_NODE_TYPES.Literal) {
+			return key.value === policedKey ? 'policed' : 'clean';
+		}
+		if (!computed && key.type === AST_NODE_TYPES.Identifier) {
+			return key.name === policedKey ? 'policed' : 'clean';
+		}
+		return services ? computedKeyVerdict(services.typeOf(key), policedKey) : 'opaque';
+	};
 
 	const payloadVerdict = (
 		payload: TSESTree.Node,
@@ -168,8 +206,11 @@ export const createUnsealedEntityWriteRule = (config: SealedEntityWriteConfig) =
 		if (payload.type === AST_NODE_TYPES.ObjectExpression) {
 			let verdict: PayloadVerdict = 'clean';
 			for (const property of payload.properties) {
-				if (property.type === AST_NODE_TYPES.Property && isPolicedKey(property.key)) {
-					return 'policed';
+				if (property.type === AST_NODE_TYPES.Property) {
+					const key = keyVerdict(property, services);
+					if (key === 'policed') return 'policed';
+					if (key === 'opaque') verdict = 'opaque';
+					continue;
 				}
 				if (property.type === AST_NODE_TYPES.SpreadElement && services) {
 					const spread = payloadTypeVerdict(services.typeOf(property.argument), policedKey);
@@ -216,9 +257,13 @@ export const createUnsealedEntityWriteRule = (config: SealedEntityWriteConfig) =
 				return services;
 			};
 
+			// TypeORM accepts the table name in place of the entity class.
+			const targetsTable = (node: TSESTree.Node | undefined): boolean =>
+				node !== undefined && stringValue(node)?.toLowerCase() === tableName;
+
 			const targetsEntity = (node: TSESTree.Node | undefined): boolean => {
 				if (!node) return false;
-				if (isEntityIdentifier(node)) return true;
+				if (isEntityIdentifier(node) || targetsTable(node)) return true;
 				const typed = typeServices();
 				return typed !== null && refersToEntity(typed.typeOf(node), typed.checker, entitySymbols);
 			};
