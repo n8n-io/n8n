@@ -189,15 +189,10 @@ export function withOnboardingSkill(message: string, instructions: string): stri
 /**
  * The answer to an onboarding thread's opening card, in the `ask-user` result shape. The card
  * is not in the LLM history (it lives in the event log), so the answer rides a hidden user
- * turn; the parser drops that turn from the UI. `toolOptions` are the options of the next
- * card, resolved on the host from the role's use cases so the agent copies them as they are.
+ * turn; the parser drops that turn from the UI.
  */
-export function buildOnboardingAnswerMessage(
-	result: unknown,
-	roleId: string,
-	toolOptions: string[],
-): string {
-	return `${AUTO_FOLLOW_UP_MESSAGE}\n\n<onboarding-answer>\nThe user answered the opening question card:\n${JSON.stringify(result)}\nUse-case corpus role id: ${roleId}\nTools card options: ${toolOptions.join(', ')}\n</onboarding-answer>`;
+export function buildOnboardingAnswerMessage(result: unknown): string {
+	return `${AUTO_FOLLOW_UP_MESSAGE}\n\n<onboarding-answer>\nThe user answered the opening question card:\n${JSON.stringify(result)}\n</onboarding-answer>`;
 }
 
 export function getProjectContextSection(project: { name: string; type: string }): string {

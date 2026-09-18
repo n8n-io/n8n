@@ -9,7 +9,6 @@ import { Service } from '@n8n/di';
 import {
 	ASK_USER_TOOL_ID,
 	loadInstanceAiRuntimeSkillSource,
-	loadUseCaseToolOptions,
 	orchestratorAgentId,
 } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
@@ -36,16 +35,12 @@ export const ONBOARDING_SKILL_ID = 'probe-user';
 const OPENING_REQUEST_ID_PREFIX = 'onboarding-';
 /** Start of the `${N8N_*}` placeholders the sandbox materializer substitutes; split so the lint rule for interpolation does not fire. */
 const PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX = '$' + '{N8N_';
-/** `id` of the role question in the skill's `metadata.opening.questions`. */
-const ROLE_QUESTION_ID = 'role';
 
 /** `metadata.opening` in the skill frontmatter: the copy shown before the agent's first turn. */
 const openingSchema = z.object({
 	title: z.string().min(1),
 	greeting: z.string().min(1),
 	questions: z.array(instanceAiQuestionSchema).min(1),
-	/** Card option to use-case corpus role id; answers outside the map land in `other`. */
-	roles: z.record(z.string(), z.string()),
 });
 
 interface OnboardingSkill {
@@ -197,15 +192,6 @@ export class InstanceAiOnboardingService {
 						})),
 					}
 				: { answered: false };
-		// Resolved here, not by the agent, so the suggestions always come from an existing role file.
-		const roleAnswer =
-			request.kind === 'questions'
-				? request.answers.find((answer) => answer.questionId === ROLE_QUESTION_ID)
-				: undefined;
-		const roleId =
-			Object.entries(opening.roles).find(([label]) =>
-				roleAnswer?.selectedOptions.includes(label),
-			)?.[1] ?? 'other';
 		this.eventBus.publish(row.threadId, {
 			type: 'tool-result',
 			runId: row.runId,
@@ -217,7 +203,7 @@ export class InstanceAiOnboardingService {
 		await this.eventLog.flush(row.threadId);
 		return {
 			threadId: row.threadId,
-			message: buildOnboardingAnswerMessage(result, roleId, await loadUseCaseToolOptions(roleId)),
+			message: buildOnboardingAnswerMessage(result),
 		};
 	}
 }

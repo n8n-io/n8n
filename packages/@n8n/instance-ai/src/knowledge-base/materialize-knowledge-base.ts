@@ -33,10 +33,6 @@ import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 export const SANDBOX_KNOWLEDGE_BASE_DIR = 'knowledge-base';
 export const KNOWLEDGE_BASE_BEST_PRACTICES_DIR = 'best-practices';
 export const KNOWLEDGE_BASE_REFERENCE_DIR = 'reference';
-/** Role-indexed use cases for suggesting a first automation: one Markdown file per role. */
-export const KNOWLEDGE_BASE_USE_CASES_DIR = 'use-cases';
-export const KNOWLEDGE_BASE_USE_CASE_TEMPLATES_DIR = 'templates';
-const KNOWLEDGE_BASE_USE_CASES_RANK_SCRIPT = 'rank.sh';
 export const KNOWLEDGE_BASE_INDEX_FILE = 'index.json';
 export const INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR = resolve(
 	__dirname,
@@ -69,15 +65,6 @@ export interface KnowledgeBaseReferenceIndex {
 	entries: KnowledgeBaseReferenceIndexEntry[];
 }
 
-export interface KnowledgeBaseUseCasesIndexEntry {
-	role: string;
-	file: string;
-}
-
-export interface KnowledgeBaseUseCasesIndex {
-	entries: KnowledgeBaseUseCasesIndexEntry[];
-}
-
 export interface KnowledgeBaseRootIndex {
 	bestPractices: {
 		indexFile: string;
@@ -89,10 +76,6 @@ export interface KnowledgeBaseRootIndex {
 	reference: {
 		indexFile: string;
 		entries: KnowledgeBaseReferenceIndexEntry[];
-	};
-	useCases: {
-		indexFile: string;
-		entries: KnowledgeBaseUseCasesIndexEntry[];
 	};
 }
 
@@ -242,80 +225,6 @@ async function addReferenceFilesToKnowledgeBase(
 	return referenceEntries;
 }
 
-/**
- * Copy every `use-cases/<role>.md` as is; the file name is the role id.
- * Copy every `use-cases/templates/*.workflow.ts` as is; the corpus entries
- * reference them by file name so the agent can start a build from a template.
- * Copy `use-cases/rank.sh` as is; it ranks the entries of a role file for the
- * user's tools so the agent does not score them in prose.
- */
-async function addUseCaseFilesToKnowledgeBase(
-	files: Map<string, string>,
-	rootDir: string,
-): Promise<KnowledgeBaseUseCasesIndexEntry[]> {
-	const sourceDir = join(INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR, KNOWLEDGE_BASE_USE_CASES_DIR);
-	const fileNames = (await readdir(sourceDir)).filter((name) => name.endsWith('.md')).sort();
-	const entries: KnowledgeBaseUseCasesIndexEntry[] = [];
-	for (const fileName of fileNames) {
-		const relativeFilePath = posixJoin(KNOWLEDGE_BASE_USE_CASES_DIR, fileName);
-		const content = await readFile(join(sourceDir, fileName), 'utf-8');
-		files.set(posixJoin(rootDir, relativeFilePath), withTrailingNewline(content));
-		entries.push({ role: fileName.slice(0, -'.md'.length), file: relativeFilePath });
-	}
-	const templatesDir = join(sourceDir, KNOWLEDGE_BASE_USE_CASE_TEMPLATES_DIR);
-	const templateNames = (await readdir(templatesDir))
-		.filter((name) => name.endsWith('.workflow.ts'))
-		.sort();
-	for (const templateName of templateNames) {
-		const content = await readFile(join(templatesDir, templateName), 'utf-8');
-		files.set(
-			posixJoin(
-				rootDir,
-				KNOWLEDGE_BASE_USE_CASES_DIR,
-				KNOWLEDGE_BASE_USE_CASE_TEMPLATES_DIR,
-				templateName,
-			),
-			withTrailingNewline(content),
-		);
-	}
-	const rankScript = await readFile(join(sourceDir, KNOWLEDGE_BASE_USE_CASES_RANK_SCRIPT), 'utf-8');
-	files.set(
-		posixJoin(rootDir, KNOWLEDGE_BASE_USE_CASES_DIR, KNOWLEDGE_BASE_USE_CASES_RANK_SCRIPT),
-		withTrailingNewline(rankScript),
-	);
-	const index: KnowledgeBaseUseCasesIndex = { entries };
-	files.set(
-		posixJoin(rootDir, KNOWLEDGE_BASE_USE_CASES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
-		stringifyWorkspaceJson(index),
-	);
-	return entries;
-}
-
-/**
- * The options of the onboarding "Which tools do you use?" card for one role: the example tools
- * in brackets on the `- Tools:` lines of `use-cases/<roleId>.md`, most frequent first, ties in
- * corpus order. Built-in nodes (no brackets) are not options. Read on the host, so the card
- * needs no sandbox and the agent copies the options instead of writing its own.
- */
-export async function loadUseCaseToolOptions(roleId: string): Promise<string[]> {
-	const content = await readFile(
-		join(INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR, KNOWLEDGE_BASE_USE_CASES_DIR, `${roleId}.md`),
-		'utf-8',
-	);
-	const counts = new Map<string, number>();
-	for (const [, tools] of content.matchAll(/^- Tools: (.*)$/gm)) {
-		for (const item of tools.split(', ')) {
-			const example = /\(([^()]*)\)$/.exec(item.trim())?.[1];
-			if (example) counts.set(example, (counts.get(example) ?? 0) + 1);
-		}
-	}
-	// ponytail: ten options fit the card; the free-text field takes the rest.
-	return [...counts.entries()]
-		.sort(([, a], [, b]) => b - a)
-		.slice(0, 10)
-		.map(([example]) => example);
-}
-
 export async function buildKnowledgeBaseWorkspaceBundle(
 	options: BuildKnowledgeBaseWorkspaceBundleOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle> {
@@ -355,7 +264,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 		addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger);
 	}
 	const referenceEntries = await addReferenceFilesToKnowledgeBase(files, rootDir);
-	const useCaseEntries = await addUseCaseFilesToKnowledgeBase(files, rootDir);
 
 	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
 	const rootIndex: KnowledgeBaseRootIndex = {
@@ -369,10 +277,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 		reference: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),
 			entries: referenceEntries,
-		},
-		useCases: {
-			indexFile: posixJoin(KNOWLEDGE_BASE_USE_CASES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
-			entries: useCaseEntries,
 		},
 	};
 	files.set(rootIndexPath, stringifyWorkspaceJson(rootIndex));

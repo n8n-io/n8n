@@ -4,7 +4,6 @@ import './source-map-filter';
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
-import type * as MaterializeKnowledgeBaseMod from './knowledge-base/materialize-knowledge-base';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
@@ -127,10 +126,6 @@ const loadRuntimeSkills = lazyModule(
 );
 const loadPromptProfiles = lazyModule(
 	() => require('./prompts/prompt-profiles') as typeof PromptProfilesMod,
-);
-const loadMaterializeKnowledgeBase = lazyModule(
-	() =>
-		require('./knowledge-base/materialize-knowledge-base') as typeof MaterializeKnowledgeBaseMod,
 );
 const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
@@ -313,8 +308,6 @@ export type {
 } from './tracing/trace-replay';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
-export const loadUseCaseToolOptions: typeof MaterializeKnowledgeBaseMod.loadUseCaseToolOptions =
-	lazyFunction(() => loadMaterializeKnowledgeBase().loadUseCaseToolOptions);
 export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
