@@ -1,5 +1,5 @@
 import { ROLE } from '@n8n/api-types';
-import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
+import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -59,6 +59,26 @@ describe('ContactInstanceAdminModal', () => {
 			'mailto:ada@example.com?subject=Access%20request',
 		);
 		expect(getByText('Ask for the Slack node.')).toBeInTheDocument();
+	});
+
+	it('keeps loading until the latest owner lookup resolves after a reopen', async () => {
+		const lookups: Array<() => void> = [];
+		setup(
+			[owner],
+			vi.fn(async () => await new Promise<void>((resolve) => lookups.push(resolve))),
+		);
+		const { rerender, queryByTestId, findByTestId } = renderComponent();
+
+		await rerender({ open: false });
+		await rerender({ open: true });
+		expect(lookups).toHaveLength(2);
+
+		lookups[0]();
+		await waitAllPromises();
+		expect(queryByTestId('contact-instance-admin-list')).not.toBeInTheDocument();
+
+		lookups[1]();
+		expect(await findByTestId('contact-instance-admin-list')).toBeInTheDocument();
 	});
 
 	it('falls back to a generic hint when the owner lookup yields nothing', async () => {

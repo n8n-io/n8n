@@ -16,6 +16,7 @@ const i18n = useI18n();
 const usersStore = useUsersStore();
 
 const isLoading = ref(false);
+let lookupId = 0;
 
 const owners = computed(() =>
 	usersStore.allUsers.filter(
@@ -28,9 +29,11 @@ watch(
 	async (isOpen) => {
 		if (!isOpen) return;
 
+		// A reopen can start a second lookup before the first resolves; only the latest one ends loading.
+		const id = ++lookupId;
 		isLoading.value = true;
 		await usersStore.fetchUsers({ filter: { isOwner: true } }).catch(() => undefined);
-		isLoading.value = false;
+		if (id === lookupId) isLoading.value = false;
 	},
 	{ immediate: true },
 );
