@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
+import type { TextMapPropagator } from '@opentelemetry/api';
+import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
@@ -20,7 +21,7 @@ describe('ExecutionLevelTracer', () => {
 	};
 
 	beforeAll(() => {
-		otel = OtelTestProvider.create();
+		otel = OtelTestProvider.create({ withContextManager: true });
 	});
 
 	afterAll(async () => {
@@ -29,7 +30,7 @@ describe('ExecutionLevelTracer', () => {
 
 	beforeEach(() => {
 		otel.reset();
-		tracer = new ExecutionLevelTracer(makeOtelSettingsService(), logger);
+		tracer = new ExecutionLevelTracer(otel.asOtelService(), makeOtelSettingsService(), logger);
 	});
 
 	const inboundTracingContext = {
@@ -783,6 +784,7 @@ describe('ExecutionLevelTracer', () => {
 
 		it('should no-op when injectOutbound is false', () => {
 			const noInjectTracer = new ExecutionLevelTracer(
+				otel.asOtelService(),
 				makeOtelSettingsService({ injectOutbound: false }),
 				logger,
 			);
@@ -826,6 +828,59 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('trace context ownership', () => {
+		const traceparentPattern = /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/;
+
+		it('should start a new trace when no tracing context is given, even inside an active foreign span', () => {
+			const foreignSpan = trace.getTracer('foreign').startSpan('GET /webhook');
+
+			context.with(trace.setSpan(context.active(), foreignSpan), () => {
+				tracer.startWorkflow({ executionId: 'exec-root', workflow: defaultWorkflow });
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-root',
+				status: 'success',
+				mode: 'webhook',
+				isRetry: false,
+			});
+			foreignSpan.end();
+
+			const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+			expect(workflowSpan.parentSpanContext).toBeUndefined();
+			expect(workflowSpan.spanContext().traceId).not.toBe(foreignSpan.spanContext().traceId);
+		});
+
+		it('should emit W3C trace context while another library owns the global propagator', () => {
+			const foreignPropagator: TextMapPropagator = {
+				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),
+				extract: (ctx) => ctx,
+				fields: () => ['sentry-trace'],
+			};
+			propagation.setGlobalPropagator(foreignPropagator);
+
+			try {
+				const persisted = tracer.startWorkflow({
+					executionId: 'exec-w3c',
+					workflow: defaultWorkflow,
+				});
+				const headers: Record<string, string> = {};
+				tracer.injectTraceHeaders('exec-w3c', undefined, headers);
+				tracer.endWorkflow({
+					executionId: 'exec-w3c',
+					status: 'success',
+					mode: 'webhook',
+					isRetry: false,
+				});
+
+				expect(persisted.traceparent).toMatch(traceparentPattern);
+				expect(headers.traceparent).toMatch(traceparentPattern);
+				expect(headers['sentry-trace']).toBeUndefined();
+			} finally {
+				propagation.disable();
+			}
 		});
 	});
 
