@@ -31,7 +31,11 @@ interface ReportEntry {
 }
 
 function buildTrailer(unchecked: string[]): string {
-	return `note: errors block a build-workflow save, warnings do not — but warnings flag likely run-time defects, so resolve each one instead of shipping past it. Not checked here: ${unchecked.join('; ')}.`;
+	return (
+		'note: errors block new workflow builds; warnings do not. For edits, build-workflow compares against ' +
+		'the saved workflow and may keep existing node findings informational when their cause is unchanged. Preserve unrelated ' +
+		`existing nodes and report any remaining blocker. Not checked here: ${unchecked.join('; ')}.`
+	);
 }
 
 function usageAndExit(): never {
@@ -39,7 +43,7 @@ function usageAndExit(): never {
 	console.error('');
 	console.error('Load a workflow SDK TypeScript file via dynamic import, run graph');
 	console.error('validators (wf.validate), schema validateWorkflow, and source lint.');
-	console.error('Exit non-zero only for issues that would block a build-workflow save.');
+	console.error('Exit non-zero for blocking static validation findings.');
 	console.error('');
 	console.error('Node parameter validation needs generated node definitions. They are');
 	console.error('resolved from the workflow file and cwd; override with --node-types');

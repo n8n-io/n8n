@@ -48,6 +48,7 @@ export function detectUnparseableOpenAiSchema(json: WorkflowJSON): ValidationWar
 
 		if (resolved.storedAsArray) {
 			warnings.push({
+				scope: 'node',
 				code: 'OPENAI_STRUCTURED_OUTPUT_IGNORED',
 				nodeName,
 				message:
@@ -66,6 +67,7 @@ export function detectUnparseableOpenAiSchema(json: WorkflowJSON): ValidationWar
 
 		if (typeof schema !== 'string') {
 			warnings.push({
+				scope: 'node',
 				code: 'OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID',
 				nodeName,
 				message:
@@ -81,6 +83,7 @@ export function detectUnparseableOpenAiSchema(json: WorkflowJSON): ValidationWar
 			parsed = JSON.parse(schema);
 		} catch (error) {
 			warnings.push({
+				scope: 'node',
 				code: 'OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID',
 				nodeName,
 				message:
@@ -94,6 +97,7 @@ export function detectUnparseableOpenAiSchema(json: WorkflowJSON): ValidationWar
 
 		if (!isRecord(parsed) || parsed.type !== 'object') {
 			warnings.push({
+				scope: 'node',
 				code: 'OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID',
 				nodeName,
 				message:

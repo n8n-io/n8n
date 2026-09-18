@@ -413,6 +413,22 @@ provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
 replacement.
 
+For edits, the host validates the saved workflow with the same SDK and host
+checks. Existing node findings become informational only when the finding and
+the configuration that causes it are unchanged. The comparison never lowers the severity of workflow-wide or unscoped findings.
+New or worsened blockers still block. Missing
+or failed baseline validation also keeps findings blocking.
+
+Node comparison includes identity, type, version, parameters, runtime settings,
+credentials, and wiring. A Code diagnostic can identify an unchanged synchronous
+prefix so a later expression can be edited without repairing that finding.
+Programs with control-flow statements, functions, deferred execution, or
+ambiguous bindings require unchanged code. Upstream nodes named by the diagnostic must also be unchanged.
+
+The sandbox CLI has no saved-workflow baseline, so `build-workflow` makes the
+final decision. Preserve unrelated nodes and report any remaining blocker
+without expanding the edit.
+
 ### `workflows(action="delete")`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
@@ -1075,6 +1091,11 @@ Question type is `single`, `multi`, or `text`. The UI adds its own free-text
 choice to select questions. The result is `{ answered: false }` when the user
 dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
 question text added to every answer.
+
+A skipped question grants no additional permission. Defaults apply only to
+unspecified details within the requested task. A skipped request to expand scope
+leaves the existing state intact. Report any remaining blocker without asking
+the same question again.
 
 ---
 

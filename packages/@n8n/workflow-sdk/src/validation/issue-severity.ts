@@ -10,6 +10,9 @@
  */
 export type IssueSeverity = 'error' | 'warning' | 'informational';
 
+/** Node findings can be compared with saved state. Workflow constraints always apply. */
+export type ValidationScope = 'node' | 'workflow';
+
 export function isInformationalIssue(issue: unknown): boolean {
 	if (typeof issue !== 'object' || issue === null || !('severity' in issue)) {
 		return false;

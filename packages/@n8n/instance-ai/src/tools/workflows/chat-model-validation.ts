@@ -1,3 +1,4 @@
+import type { ValidationWarning } from './workflow-validation-warnings';
 import type { ModelInfo, ProviderCatalog, ProviderInfo } from '@n8n/agents/catalog';
 import { getCachedCatalog } from '@n8n/agents/catalog';
 import {
@@ -433,4 +434,29 @@ export async function collectChatModelRecoveryContext(
 	}
 
 	return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
+}
+
+/** Collect model findings with their configuration field for edit comparison. */
+export async function collectChatModelValidationWarnings(
+	context: InstanceAiContext,
+	nodes: NodeJSON[],
+): Promise<ValidationWarning[]> {
+	const warnings: ValidationWarning[] = [];
+	for (const node of nodes) {
+		if (!node.name || node.disabled) continue;
+		const issues = await computeChatModelValidationIssues(context, node);
+		for (const [parameterPath, messages] of Object.entries(issues)) {
+			for (const message of messages) {
+				warnings.push({
+					code: 'chat_model_validation',
+					message: `${node.name}: ${message}`,
+					nodeName: node.name,
+					parameterPath,
+					severity: 'error',
+					scope: 'node',
+				});
+			}
+		}
+	}
+	return warnings;
 }

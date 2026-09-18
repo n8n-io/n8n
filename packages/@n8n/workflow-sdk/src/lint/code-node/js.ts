@@ -33,10 +33,11 @@ export interface LintJsCodeOptions {
 	nodeName?: string;
 }
 
-function parseJs(code: string): Program | undefined {
+export function parseJs(code: string): Program | undefined {
 	const opts = {
 		ecmaVersion: 'latest' as const,
 		locations: true,
+		ranges: true,
 		// Code-node bodies are function bodies; agents often start with `return …`.
 		allowReturnOutsideFunction: true,
 	};

@@ -81,11 +81,11 @@ function normalizeWorkflowNodes(json: WorkflowJSON): void {
 	json.nodes = json.nodes.map((node) => normalizeNodeShape(node));
 }
 
-function validateCompiledWorkflow(
+async function validateCompiledWorkflow(
 	json: WorkflowJSON,
 	context: InstanceAiContext,
 	compilerWarnings: ValidationWarning[] = [],
-): ValidationWarning[] {
+): Promise<ValidationWarning[]> {
 	normalizeWorkflowNodes(json);
 
 	const schemaValidation = validateWorkflow(json, {
@@ -96,7 +96,7 @@ function validateCompiledWorkflow(
 	const warnings = [...compilerWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
-	warnings.push(...detectArrayInputCollapse(json));
+	warnings.push(...(await detectArrayInputCollapse(json)));
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
 	warnings.push(...detectUnparseableOpenAiSchema(json));
 	warnings.push(...detectPythonCodeConstraints(json));
@@ -198,6 +198,13 @@ function parseSandboxWarnings(value: unknown): ValidationWarning[] {
 			code: warning.code,
 			message: warning.message,
 			nodeName: typeof warning.nodeName === 'string' ? warning.nodeName : undefined,
+			parameterPath:
+				typeof warning.parameterPath === 'string'
+					? warning.parameterPath
+					: typeof warning.parameterName === 'string'
+						? warning.parameterName
+						: undefined,
+			scope: warning.scope === 'node' || warning.scope === 'workflow' ? warning.scope : undefined,
 			severity:
 				warning.severity === 'informational' ||
 				warning.severity === 'warning' ||
@@ -392,12 +399,14 @@ async function collectCredentialResolutionWarnings(
 		if (resolution.status === 'match') {
 			warnings.push({
 				code: 'PREFER_PREDEFINED_CREDENTIAL',
+				scope: 'node',
 				nodeName: node.name,
 				message: `This request targets a service with a dedicated n8n credential ("${resolution.credentialType}"). Use authentication: "predefinedCredentialType" with nodeCredentialType: "${resolution.credentialType}" instead of a generic credential.`,
 			});
 		} else if (resolution.status === 'ambiguous') {
 			warnings.push({
 				code: 'PREFER_PREDEFINED_CREDENTIAL',
+				scope: 'node',
 				nodeName: node.name,
 				message: `This request targets a service with dedicated n8n credentials (${resolution.candidates.join(', ')}). Prefer authentication: "predefinedCredentialType" with the matching nodeCredentialType.`,
 			});
@@ -405,6 +414,23 @@ async function collectCredentialResolutionWarnings(
 	}
 
 	return warnings;
+}
+
+/** Run the same SDK and host checks on a saved snapshot without executing workflow code. */
+export async function validateSavedWorkflow(
+	context: InstanceAiContext,
+	workflow: WorkflowJSON,
+): Promise<ValidationWarning[]> {
+	const snapshot = structuredClone(workflow);
+	normalizeWorkflowNodes(snapshot);
+	const graph = workflowBuilder.fromJSON(snapshot).validate();
+	const graphWarnings: ValidationWarning[] = [];
+	collectValidationIssues(graph.errors, graphWarnings);
+	collectValidationIssues(graph.warnings, graphWarnings);
+	return [
+		...(await validateCompiledWorkflow(snapshot, context, graphWarnings)),
+		...(await collectCredentialResolutionWarnings(snapshot, context)),
+	];
 }
 
 export async function compileWorkflowSource(
@@ -451,7 +477,7 @@ export async function compileWorkflowSource(
 
 			if (!result.success) return result;
 
-			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
+			const warnings = await validateCompiledWorkflow(result.workflow, context, result.warnings);
 			const credentialWarnings = await collectCredentialResolutionWarnings(
 				result.workflow,
 				context,

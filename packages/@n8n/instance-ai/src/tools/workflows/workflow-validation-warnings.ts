@@ -2,6 +2,7 @@ import {
 	partitionValidationIssues,
 	toEngineConnections,
 	type IssueSeverity,
+	type ValidationScope,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
 import {
@@ -32,6 +33,12 @@ export interface ValidationWarning {
 	nodeName?: string;
 	/** Set at the creation site; `informational` never blocks save. */
 	severity?: IssueSeverity;
+	scope?: ValidationScope;
+	parameterPath?: string;
+	/** Trusted host diagnostics can identify a stable prefix within a Code parameter. */
+	codeContext?: { parameter: string; fingerprint: string };
+	/** Nodes whose configuration affects this finding. */
+	relatedNodeNames?: string[];
 }
 
 export function collectValidationIssues(
@@ -40,6 +47,9 @@ export function collectValidationIssues(
 		message: string;
 		nodeName?: string;
 		severity?: IssueSeverity;
+		scope?: ValidationScope;
+		parameterPath?: string;
+		parameterName?: string;
 	}>,
 	allWarnings: ValidationWarning[],
 ): void {
@@ -49,6 +59,8 @@ export function collectValidationIssues(
 			message: issue.message,
 			nodeName: issue.nodeName,
 			severity: issue.severity,
+			scope: issue.scope,
+			parameterPath: issue.parameterPath ?? issue.parameterName,
 		});
 	}
 }

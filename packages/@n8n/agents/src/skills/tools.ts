@@ -15,8 +15,8 @@ import {
 	type RuntimeSkillContent,
 } from './types';
 
-const MAX_OUTPUT_BYTES = 64 * 1024;
-const TRUNCATION_FOOTER = '\n\n[... output truncated to 64 KB ...]';
+const MAX_OUTPUT_BYTES = 72 * 1024;
+const TRUNCATION_FOOTER = '\n\n[... output truncated to 72 KB ...]';
 const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'references',
 	'templates',
