@@ -116,6 +116,15 @@ export {
 	type GitKeyGeneratorType,
 } from './git-connections/git-connections.dto';
 
+export {
+	CreateCustomOperationDto,
+	UpdateCustomOperationDto,
+	SetActiveVersionDto,
+	CreateCustomNodeDto,
+	UpdateCustomNodeDto,
+	UploadCustomNodeIconDto,
+} from './custom-nodes/custom-nodes.dto';
+
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {

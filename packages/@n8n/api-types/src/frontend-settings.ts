@@ -362,6 +362,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the Custom Nodes & Custom Operations mockup module.
+	 */
+	'custom-nodes'?: {
+		/** Whether the mockup is enabled through `N8N_CUSTOM_NODES_MOCKUP`. */
+		enabled: boolean;
+	};
+
+	/**
 	 * Quick connect settings
 	 */
 	'quick-connect'?: {

@@ -580,6 +580,35 @@ export type {
 } from './schemas/mcp-registry.schema';
 
 export {
+	customOperationHttpMethodSchema,
+	customOperationTargetSchema,
+	customOperationBodyTypeSchema,
+	customOperationInputTypeSchema,
+	customNodeAuthSchema,
+	customOperationInputSchema,
+	customOperationFixedDataSchema,
+	customOperationRequestSchema,
+	customOperationVersionContentSchema,
+	customOperationVersionSchema,
+	customOperationDefinitionSchema,
+	customNodeDefinitionSchema,
+	CUSTOM_DEFINITIONS_PACKAGE_NAME,
+	type CustomOperationHttpMethod,
+	type CustomOperationTarget,
+	type CustomOperationBodyType,
+	type CustomOperationInputType,
+	type CustomNodeAuth,
+	type CustomOperationInput,
+	type CustomOperationFixedData,
+	type CustomOperationRequest,
+	type CustomOperationVersionContent,
+	type CustomOperationVersion,
+	type CustomOperationDefinition,
+	type CustomNodeDefinition,
+	type CustomNodeListItem,
+} from './schemas/custom-nodes.schema';
+
+export {
 	createInitialState,
 	reduceEvent,
 	findAgent,

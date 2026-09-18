@@ -2760,6 +2760,21 @@ export interface INodeTypeBaseDescription {
 
 	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
 	schemaPath?: string;
+
+	/**
+	 * Set on node types generated from a Custom Operation definition. The nodes
+	 * panel uses it to list the operation under its parent node.
+	 */
+	customDefinition?: CustomDefinitionNodeMarker;
+}
+
+export interface CustomDefinitionNodeMarker {
+	/** ID of the stored `custom_node_definition` row. */
+	definitionId: string;
+	/** Existing node type the operation extends, e.g. `n8n-nodes-base.stripe`. */
+	parentNodeType: string | null;
+	/** Custom Node the operation belongs to, when not attached to a built-in node. */
+	customNodeId: string | null;
 }
 
 /**
