@@ -13,10 +13,6 @@ export class InstanceAiSidebar {
 		return this.getThreadItems().filter({ hasText: title });
 	}
 
-	getThreadByHref(path: string): Locator {
-		return this.root.locator(`a[href="${path}"]`);
-	}
-
 	getRenameInput(): Locator {
 		return this.root.getByRole('textbox', { name: 'Rename conversation', exact: true });
 	}
@@ -41,6 +37,6 @@ export class InstanceAiSidebar {
 	}
 
 	getDeleteMenuItem(): Locator {
-		return this.root.page().getByRole('menuitem').filter({ hasText: 'Delete' });
+		return this.root.page().getByTestId('action-delete');
 	}
 }
