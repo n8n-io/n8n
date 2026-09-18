@@ -1,6 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
-	createRefreshingAuthFetch,
 	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -8,8 +7,6 @@ import {
 } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
-	assertUrlAllowed,
-	getCredentialAllowedDomains,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -21,18 +18,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { databricksAuthHeaders } from './constants';
+import { assertHttpsHost, createDatabricksAuthFetch } from './auth-fetch';
 import { makeDatabricksFailedAttemptHandler, wrapDatabricksErrorFetch } from './error-handling';
 import type { DatabricksOAuth2Credential } from './token-provider';
-import { getDatabricksTokenProvider } from './token-provider';
-
-// Every request carries a secret (bearer token, or the client secret on the
-// mint path), so an http host would ship it in cleartext
-function assertHttpsHost(ctx: ILoadOptionsFunctions | ISupplyDataFunctions, host: string) {
-	if (!URL.canParse(host) || new URL(host).protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Databricks host must use https');
-	}
-}
 
 interface ModelService {
 	name: string;
@@ -315,15 +303,6 @@ export class LmChatDatabricks implements INodeType {
 
 		const baseURL = `${credential.host.replace(/\/$/, '')}/ai-gateway/openai/v1`;
 
-		const node = this.getNode();
-		// baseURL derives from the credential's own host, so credentialOwnedSurface joins it to the allowlist
-		const allowedDomains = getCredentialAllowedDomains({
-			node,
-			credentialData: credential,
-			credentialOwnedSurface: true,
-			nodeEndpointUrl: baseURL,
-		});
-
 		const modelName = this.getNodeParameter('model', itemIndex, '', {
 			extractValue: true,
 		}) as string;
@@ -342,33 +321,14 @@ export class LmChatDatabricks implements INodeType {
 		const egressFilter = this.helpers.getSecureEgressFilter();
 
 		const timeout = options.timeout;
-		const tokenSource = getDatabricksTokenProvider(this, credential, egressFilter);
-		const { refreshAfterRejection } = tokenSource;
+		const { fetch: authFetch, tokenSource } = createDatabricksAuthFetch(this, credential, {
+			endpointUrl: baseURL,
+			egressFilter,
+			baseFetch: fetch,
+		});
 		const configuration: ClientOptions = {
 			baseURL,
-			// The model client builds its own transport, so it never reaches the
-			// request helpers: `resolveHeaders` runs the expiry clock before every
-			// request, and `refreshHeaders` covers the rejection the clock missed -
-			// revoked server-side, or clock skew
-			fetch: wrapDatabricksErrorFetch(
-				createRefreshingAuthFetch({
-					baseFetch: fetch,
-					expiredStatus: tokenSource.expiredStatus,
-					resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
-					...(refreshAfterRejection && {
-						refreshHeaders: async () => {
-							const refreshed = await refreshAfterRejection();
-							return refreshed ? databricksAuthHeaders(refreshed) : null;
-						},
-					}),
-					assertAllowedUrl: async (hopUrl) => {
-						assertUrlAllowed({ url: hopUrl, allowedDomains, node });
-						if (!egressFilter) return;
-						const result = await egressFilter.validateUrl(hopUrl);
-						if (!result.ok) throw result.error;
-					},
-				}),
-			),
+			fetch: wrapDatabricksErrorFetch(authFetch),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,
