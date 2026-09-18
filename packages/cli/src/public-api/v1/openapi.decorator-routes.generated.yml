@@ -180,6 +180,12 @@ paths:
   /tags/{tagId}:
     get:
       $ref: ./handlers/tags/spec/paths/getTag.generated.yml
+  /users:
+    get:
+      $ref: ./handlers/users/spec/paths/getUsers.generated.yml
+  /users/{userId}:
+    get:
+      $ref: ./handlers/users/spec/paths/getUser.generated.yml
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
