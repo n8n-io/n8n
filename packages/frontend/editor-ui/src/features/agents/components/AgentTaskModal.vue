@@ -38,6 +38,7 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
+	describeSchedule,
 	formatScheduleDateTime,
 	formatTimeOfDay,
 	getNextScheduleOccurrence,
@@ -251,6 +252,11 @@ const nextOccurrenceText = computed(() => {
 	const next = getNextScheduleOccurrence(cronExpression.value, timezone.value);
 	if (!next) return '';
 	return formatScheduleDateTime(next, timezone.value);
+});
+
+const scheduleDescription = computed(() => {
+	if (frequency.value !== 'custom' || !nextOccurrenceText.value) return '';
+	return describeSchedule(cronExpression.value) ?? '';
 });
 
 const objectiveError = computed(() => {
@@ -610,13 +616,18 @@ async function onSave() {
 							/>
 						</N8nSelect>
 					</div>
-					<N8nText v-if="nextOccurrenceText" :class="$style.help" size="small">
-						{{
-							i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
-								interpolate: { occurrence: nextOccurrenceText },
-							})
-						}}
-					</N8nText>
+					<div v-if="nextOccurrenceText" :class="$style.scheduleSummary">
+						<N8nText v-if="scheduleDescription" bold>
+							{{ scheduleDescription }}
+						</N8nText>
+						<N8nText :class="$style.help" size="small">
+							{{
+								i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
+									interpolate: { occurrence: nextOccurrenceText },
+								})
+							}}
+						</N8nText>
+					</div>
 				</div>
 
 				<N8nText
@@ -727,6 +738,12 @@ async function onSave() {
 
 .timezoneSelect {
 	width: 14rem;
+}
+
+.scheduleSummary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .help {
