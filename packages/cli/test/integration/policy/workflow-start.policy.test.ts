@@ -15,7 +15,8 @@ import type {
 } from '@n8n/decorators';
 import { PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { createRunExecutionData } from 'n8n-workflow';
+import { parse } from 'flatted';
+import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { getLifecycleHooksForScalingMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
@@ -79,7 +80,7 @@ class WorkflowStartDenyCheck implements RegisteredPolicyCheck {
 // enforcement implementation and imports the lifecycle handler. Without it every test here
 // would pass with nothing ever enforced.
 const testServer = utils.setupTestServer({
-	endpointGroups: ['workflows'],
+	endpointGroups: ['workflows', 'executions'],
 	modules: ['policy-infrastructure'],
 });
 
@@ -313,7 +314,26 @@ describe('manual run from the editor', () => {
 			.send({ triggerToStartFrom: { name: 'Trigger' } })
 			.expect(200);
 
-		await expectBlocked(response.body.data.executionId as string, workflow.id);
+		const executionId = response.body.data.executionId as string;
+
+		await expectBlocked(executionId, workflow.id);
+
+		// The push message carries no violations: the editor fetches the execution and reads
+		// them off the stored error, so this body is what the run surface renders from.
+		const fetched = await authOwnerAgent.get(`/executions/${executionId}`).expect(200);
+		const fetchedError = (parse(fetched.body.data.data) as IRunExecutionData).resultData
+			.error as unknown as { violations?: unknown[] };
+
+		expect(fetchedError?.violations).toEqual([
+			{
+				kind: VIOLATION_KIND,
+				checkId: CHECK_ID,
+				message: deniedMessage(workflow.id),
+				subject: workflow.id,
+				subjectType: 'workflow',
+				scope: 'project',
+			},
+		]);
 	});
 
 	test('runs as usual when no check objects', async () => {
