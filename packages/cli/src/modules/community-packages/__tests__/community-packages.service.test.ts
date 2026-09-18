@@ -61,6 +61,8 @@ describe('CommunityPackagesService', () => {
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
 		authToken: '',
+		aiNodeSdkVersion: 1,
+		nodesApiVersion: N8N_NODES_API_VERSION,
 	};
 	const config = mock<CommunityPackagesConfig>({ ...configDefaults });
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
@@ -1604,8 +1606,8 @@ describe('CommunityPackagesService', () => {
 					filters: { packageName: { $in: ['package-1'] } },
 					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 				},
-				config.aiNodeSdkVersion,
-				config.nodesApiVersion,
+				1,
+				N8N_NODES_API_VERSION,
 			);
 		});
 
@@ -1630,8 +1632,8 @@ describe('CommunityPackagesService', () => {
 						filters: { packageName: { $in: ['package-1'] } },
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
-					config.aiNodeSdkVersion,
-					config.nodesApiVersion,
+					1,
+					N8N_NODES_API_VERSION,
 				);
 			} finally {
 				// Restore original environment
