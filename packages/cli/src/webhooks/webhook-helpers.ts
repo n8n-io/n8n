@@ -1416,6 +1416,18 @@ function requiresMultipartFormData(node: INode): boolean {
 	);
 }
 
+function isParsableContentType(contentType: string | undefined): boolean {
+	if (!contentType) return false;
+
+	return (
+		contentType.startsWith('application/json') ||
+		contentType.startsWith('text/plain') ||
+		contentType.startsWith('application/x-www-form-urlencoded') ||
+		contentType.endsWith('/xml') ||
+		contentType.endsWith('+xml')
+	);
+}
+
 /**
  * Parses the request body (form, xml, json, form-urlencoded, etc.) if needed
  * into the `req.body` property.
@@ -1453,21 +1465,11 @@ async function parseRequestBody(
 		const { body, cleanup } = await parseFormData(req);
 		req.body = body;
 		return cleanup;
-	} else {
-		if (nodeVersion > 1) {
-			if (
-				contentType?.startsWith('application/json') ||
-				contentType?.startsWith('text/plain') ||
-				contentType?.startsWith('application/x-www-form-urlencoded') ||
-				contentType?.endsWith('/xml') ||
-				contentType?.endsWith('+xml')
-			) {
-				await parseBody(req);
-			}
-		} else {
-			await parseBody(req);
-		}
 	}
+
+	if (nodeVersion > 1 && !isParsableContentType(contentType)) return undefined;
+
+	await parseBody(req);
 
 	return undefined;
 }
