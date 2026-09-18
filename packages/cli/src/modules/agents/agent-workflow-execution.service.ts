@@ -39,6 +39,8 @@ import {
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import type { Agent } from './entities/agent.entity';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
+import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
@@ -102,6 +104,7 @@ export class AgentWorkflowExecutionService {
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 		private readonly aiConfig: AiConfig,
+		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -338,6 +341,10 @@ export class AgentWorkflowExecutionService {
 					hasParentContext: parentCtx !== undefined,
 				});
 
+				// Only stored agents have integration tools.
+				const messageContext = recordingParams
+					? await this.integrationMessageContextService.getLatest(threadId)
+					: null;
 				const options = {
 					// The memory store scopes message reads by `resourceId` (the
 					// "per-user scope"; chat integrations pass the chat user id there).
@@ -349,7 +356,10 @@ export class AgentWorkflowExecutionService {
 					persistence: {
 						resourceId: threadId,
 						threadId,
-						...(sandboxScope ? { hostMetadata: encodeAgentSandboxHostMetadata(sandboxScope) } : {}),
+						hostMetadata: {
+							...(sandboxScope ? encodeAgentSandboxHostMetadata(sandboxScope) : {}),
+							...encodeIntegrationMessageContext(messageContext),
+						},
 					},
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId: telemetryAgentId,

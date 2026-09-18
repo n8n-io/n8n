@@ -320,6 +320,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			}
 		}
 
+		// A malformed wire timestamp must not reach the transcript as NaN: it would
+		// silence every later timestamp divider in the chat.
+		const createdAt = msg.createdAt ? Date.parse(msg.createdAt) : NaN;
+
 		const chatMessage: ChatMessage = {
 			id: msg.id ?? crypto.randomUUID(),
 			role,
@@ -335,6 +339,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(role === 'assistant' && msg.backgroundTaskSignal
 				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
+			...(Number.isFinite(createdAt) && { createdAt }),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);
