@@ -59,6 +59,7 @@ import {
 	trackWorkflowSourceBuild,
 	type BuildTelemetryStage,
 } from './workflow-build-telemetry';
+import { declaredOutputFixturesForBinding } from './workflow-declared-outputs';
 import {
 	bindSourceFileToExistingWorkflow,
 	getWorkflowSourceFileBinding,
@@ -1457,12 +1458,21 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
+					// Declared `output` fixtures live in source only, so keep them on the
+					// binding: a later get-as-code regenerates the source from the saved
+					// workflow and would otherwise silently drop them.
+					const { declaredOutputFixtures: _previousFixtures, ...bindingWithoutFixtures } = binding;
+					const keptFixtures = declaredOutputFixturesForBinding(
+						compiled.declaredOutputFixtures,
+						json.nodes,
+					);
 					binding = await saveWorkflowSourceFileBinding(context, {
-						...binding,
+						...bindingWithoutFixtures,
 						workflowId: saved.id,
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
+						...(keptFixtures ? { declaredOutputFixtures: keptFixtures } : {}),
 					});
 					// Trace-only compiled-JSON event for eval seed reconstruction — never part
 					// of the tool result, so it never enters the agent's context.

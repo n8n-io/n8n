@@ -20,8 +20,8 @@ import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { lastSavedWorkflowIdFromEvents, savedWorkflowsFromEvents } from '../outcome/event-parser';
-import type { CapturedEvent } from '../types';
-import { USER_TURN_EVENT } from '../types';
+import type { CapturedEvent, ExternalEditFact } from '../types';
+import { EXTERNAL_EDIT_EVENT, USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
 import { getNestedRecord } from '../utils/safe-extract';
 
@@ -377,7 +377,10 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
  * agent's recovery, and killing the run here would report that as a build
  * failure instead.
  */
-async function applyExternalRename(config: MultiTurnConfig, rename: string): Promise<void> {
+export async function applyExternalRename(
+	config: Pick<MultiTurnConfig, 'client' | 'events' | 'logger'>,
+	rename: string,
+): Promise<void> {
 	// Only builds that actually SAVED. Failed builds are excluded deliberately:
 	// they still report a workflowId, and acting on one would rename a workflow
 	// this run never created (an attached or pre-existing one). Last rather than
@@ -385,9 +388,9 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 	// discussion" is the most recent one to reach the instance.
 	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
 	if (workflowId === undefined) {
-		config.logger.warn(
-			`[external-edit] Skipped rename to "${rename}": this run has saved no workflow yet, so there is nothing to conflict`,
-		);
+		const reason = 'this run has saved no workflow yet, so there is nothing to conflict';
+		config.logger.warn(`[external-edit] Skipped rename to "${rename}": ${reason}`);
+		recordExternalEdit(config.events, { kind: 'rename', to: rename, applied: false, reason });
 		return;
 	}
 
@@ -397,9 +400,16 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 			// Re-issuing the same rename advances the checksum a second time and
 			// re-conflicts a save the agent may already have recovered from, which
 			// would grade a successful recovery as a failure.
-			config.logger.warn(
-				`[external-edit] Skipped rename of ${workflowId}: it is already named "${rename}"`,
-			);
+			const reason = `it is already named "${rename}"`;
+			config.logger.warn(`[external-edit] Skipped rename of ${workflowId}: ${reason}`);
+			recordExternalEdit(config.events, {
+				kind: 'rename',
+				workflowId,
+				from: current.name,
+				to: rename,
+				applied: false,
+				reason,
+			});
 			return;
 		}
 
@@ -407,12 +417,40 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 		config.logger.info(
 			`[external-edit] Renamed ${workflowId} from "${current.name}" to "${rename}" outside the conversation`,
 		);
+		recordExternalEdit(config.events, {
+			kind: 'rename',
+			workflowId,
+			from: current.name,
+			to: rename,
+			applied: true,
+		});
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : String(error);
 		config.logger.warn(
 			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
 		);
+		recordExternalEdit(config.events, {
+			kind: 'rename',
+			workflowId,
+			to: rename,
+			applied: false,
+			reason: message,
+		});
 	}
+}
+
+/**
+ * Put the external edit into the captured event stream, next to the agent
+ * events it interleaves with. It lands in the turn it followed (turns split on
+ * `run-start`), so the metrics can say "after turn N the harness renamed X" and
+ * the judge does not have to infer the edit from the agent's own account of it.
+ */
+function recordExternalEdit(events: CapturedEvent[], fact: Omit<ExternalEditFact, 'turn'>): void {
+	events.push({
+		timestamp: Date.now(),
+		type: EXTERNAL_EDIT_EVENT,
+		data: { type: EXTERNAL_EDIT_EVENT, payload: { ...fact } },
+	});
 }
 
 /** Use the normal execution route so the agent can inspect user-run evidence. */

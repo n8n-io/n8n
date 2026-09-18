@@ -100,7 +100,30 @@ export interface TurnCounter {
 	confirmationAskedByKind: Record<string, number>;
 	replanAfterErrorCount: number;
 	repeatQuestionCount: number;
+	/** Saves the instance rejected because the workflow changed outside the
+	 *  conversation (`build-workflow` answered `workflow_modified_externally`).
+	 *  Ground truth for stale-state expectations: a judge cannot tell "recovered"
+	 *  from "never happened" without it. */
+	staleStateConflictCount: number;
 	runFinishStatus?: string;
+}
+
+/**
+ * A change the HARNESS made to a saved workflow from outside the conversation
+ * (a stage direction such as "renamed in another tab"). Recorded whether or not
+ * it landed, so a case that relies on the edit can see when it did not happen.
+ */
+export interface ExternalEditFact {
+	/** Agent turn the edit followed (1-based): applied after that turn settled,
+	 *  before the next user message. */
+	turn: number;
+	kind: 'rename';
+	workflowId?: string;
+	from?: string;
+	to: string;
+	applied: boolean;
+	/** Why the edit was skipped or failed, when `applied` is false. */
+	reason?: string;
 }
 
 export interface ConversationMetrics {
@@ -109,6 +132,11 @@ export interface ConversationMetrics {
 	confirmationAskedTotal: number;
 	confirmationAskedByKind: Record<string, number>;
 	reachedRunFinishCleanly: boolean;
+	/** Sum of `perTurn[].staleStateConflictCount`. */
+	staleStateConflictTotal: number;
+	/** Edits the harness applied outside the conversation, in order. Empty for
+	 *  the ordinary case. */
+	externalEdits: ExternalEditFact[];
 }
 
 // ---------------------------------------------------------------------------
@@ -407,6 +435,8 @@ export interface TranscriptTurn {
  *  each emit their own `run-start`) under the message that triggered them.
  *  Ignored by the metric/outcome consumers (unknown type → default case). */
 export const USER_TURN_EVENT = 'eval-user-turn';
+/** Harness-injected marker for an edit made outside the conversation; payload is an `ExternalEditFact` minus `turn`. */
+export const EXTERNAL_EDIT_EVENT = 'eval-external-edit';
 
 export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
