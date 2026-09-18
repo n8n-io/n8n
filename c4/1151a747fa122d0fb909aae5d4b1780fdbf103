@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_326dd039c6d306::t_6b7fa57c398070 38-41,118,179-180,182-185,650-651,702-704,732
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_326dd039c6d306::t_6b7fa57c398070 8-9
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_326dd039c6d306::t_6b7fa57c398070 2424-2433
+packages/modules/type-availability-policies/frontend/vite.config.ts
+  s_326dd039c6d306::t_034adc2dc6568e 2-3,15
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.test.ts
+  s_326dd039c6d306::t_20cb46e4d85dfb 2-7
+packages/modules/type-availability-policies/frontend/README.md
+  s_326dd039c6d306::t_d51385a4329986 30-33
+packages/modules/type-availability-policies/frontend/package.json
+  s_326dd039c6d306::t_034adc2dc6568e 31,47
+  s_326dd039c6d306::t_6b7fa57c398070 22,24,38,40
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.vue
+  s_326dd039c6d306::t_e80ec0163f9869 6-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c41151a747fa122d0fb909aae5d4b1780fdbf103",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}
