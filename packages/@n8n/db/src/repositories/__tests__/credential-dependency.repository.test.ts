@@ -157,7 +157,15 @@ describe('CredentialDependencyRepository', () => {
 
 describe('addCredentialDependencyExistsFilter', () => {
 	it('applies the EXISTS dependency filter using andWhere', () => {
+		const subQuery = {
+			select: vi.fn().mockReturnThis(),
+			from: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			getQuery: vi.fn().mockReturnValue('(SELECT 1 FROM "cd")'),
+		};
 		const qb = {
+			subQuery: vi.fn().mockReturnValue(subQuery),
 			andWhere: vi.fn().mockReturnThis(),
 		};
 		const filter = {
@@ -167,10 +175,9 @@ describe('addCredentialDependencyExistsFilter', () => {
 
 		const result = addCredentialDependencyExistsFilter(qb as never, filter);
 
-		expect(qb.andWhere).toHaveBeenCalledWith(
-			expect.stringContaining('FROM credential_dependency cd'),
-			filter,
-		);
+		expect(subQuery.from).toHaveBeenCalledWith(CredentialDependency, 'cd');
+		expect(subQuery.where).toHaveBeenCalledWith('cd.credentialId = credential.id');
+		expect(qb.andWhere).toHaveBeenCalledWith('EXISTS (SELECT 1 FROM "cd")', filter);
 		expect(result).toBe(qb);
 	});
 });
