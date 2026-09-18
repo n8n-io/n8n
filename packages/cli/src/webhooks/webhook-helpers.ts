@@ -106,6 +106,15 @@ import {
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'lastNode',
+	'responseNode',
+	'formPage',
+	'streaming',
+	'hostedChat',
+]);
+
 const deferCleanupUntilStreamEnds = (
 	stream: Readable,
 	res: express.Response,
@@ -689,11 +698,7 @@ export async function executeWebhook(
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
 
-	if (
-		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
-			responseMode,
-		)
-	) {
+	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
