@@ -1,24 +1,7 @@
 import type { JsonObject, JsonValue } from '../common';
 
-/**
- * Lifecycle status of an execution. `waiting` means every step it owes is
- * suspended: the execution runs no work now, but a step still owes an outcome.
- */
-export type ExecutionStatus =
-	| 'queued'
-	| 'running'
-	| 'waiting'
-	| 'completed'
-	| 'failed'
-	| 'cancelled';
-
-/**
- * A live execution can still make progress. It is the counterpart of a settled
- * step: work runs now, or a suspended step resumes later and moves it on.
- */
-export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
-	return status === 'running' || status === 'waiting';
-}
+/** Lifecycle status of an execution. */
+export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
