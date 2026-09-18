@@ -708,6 +708,12 @@ function renderFailureCategorySection(categories: FailureCategoryComparison[]): 
 	return lines;
 }
 
+// Which artifact the builder chose is a result, not a given: a case routed to
+// an Agent one night and a workflow the next shows up here, not as a crash.
+function builtAgent(tc: TestCaseAggregation): boolean {
+	return tc.runs.some((run) => run.agentId !== undefined);
+}
+
 function renderPerTestCaseDetails(
 	evaluation: MultiRunEvaluation,
 	slugByTestCase?: Map<WorkflowTestCase, string>,
@@ -719,7 +725,8 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
+		const name = slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
+		return builtAgent(tc) ? `${name} (agent)` : name;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Test case | Status | pass@${totalRuns} | pass^${totalRuns} |`);
@@ -1197,8 +1204,8 @@ function formatTerminalPerTestCase(
 	lines.push(TERMINAL_INDENT + heading);
 
 	const nameOf = (tc: TestCaseAggregation, max: number): string => {
-		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ?? caseDisplayPrompt(tc.testCase).slice(0, max);
+		const name = slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase).slice(0, max);
+		return builtAgent(tc) ? `${name} (agent)` : name;
 	};
 
 	if (totalRuns > 1) {
