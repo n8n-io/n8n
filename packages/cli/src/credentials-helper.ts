@@ -818,10 +818,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		await credentials.setData(data);
-		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
-
-		// Add special database related data
-		newCredentialsData.updatedAt = new Date();
+		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
+		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
+		const newCredentialsData: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
+			data: credentials.getDataToSave().data,
+			updatedAt: new Date(),
+		};
 
 		// Save the credentials in DB
 		const findQuery = {
@@ -875,10 +877,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
-		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
-
-		// Add special database related data
-		newCredentialsData.updatedAt = new Date();
+		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
+		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
+		const newCredentialsData: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
+			data: credentials.getDataToSave().data,
+			updatedAt: new Date(),
+		};
 
 		// Save the credentials in DB
 		const findQuery = {

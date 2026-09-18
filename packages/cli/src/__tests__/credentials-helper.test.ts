@@ -971,9 +971,6 @@ describe('CredentialsHelper', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				{ id: 'cred-123', type: 'oAuth2Api' },
 				expect.objectContaining({
-					id: 'cred-123',
-					name: 'Test OAuth2 Credential',
-					type: 'oAuth2Api',
 					data: expect.any(String),
 					updatedAt: expect.any(Date),
 				}),
@@ -1199,7 +1196,6 @@ describe('CredentialsHelper', () => {
 				expect(credentialsRepository.update).toHaveBeenCalledWith(
 					{ id: 'cred-789', type: 'oAuth2Api' },
 					expect.objectContaining({
-						id: 'cred-789',
 						data: expect.any(String),
 						updatedAt: expect.any(Date),
 					}),
@@ -1246,7 +1242,6 @@ describe('CredentialsHelper', () => {
 				expect(credentialsRepository.update).toHaveBeenCalledWith(
 					{ id: 'cred-789', type: 'oAuth2Api' },
 					expect.objectContaining({
-						id: 'cred-789',
 						data: expect.any(String),
 						updatedAt: expect.any(Date),
 					}),

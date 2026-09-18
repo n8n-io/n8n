@@ -57,6 +57,13 @@
 		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does.",
 		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
 	},
+	"n8n-local-rules/no-unsealed-credentials-entity-write": {
+		"layer": "base",
+		"native": null,
+		"reason": "Needs type information, the same way no-unsealed-workflow-entity-write does: oxlint gives jsPlugin rules a frozen empty `parserServices`, so `ESLintUtils.getParserServices` throws. It is in `localRulesPlugin.configs.recommended`, so this is a base-layer gap, not a backend-only one.",
+		"impact": "The CredentialsEntity type-write seal is unenforced in migrated packages. Of the packages that depend on @n8n/db, only packages/cli and @n8n/db itself name CredentialsEntity, and packages/cli keeps the rule on through its ESLint guardrail config.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
+	},
 	"n8n-local-rules/no-legacy-cipher-methods": {
 		"layer": "backend",
 		"native": null,

@@ -46,7 +46,8 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
-			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
+			// violation. The narrow ESLint guardrail config owns the entity-write seals and the
+			// two-file allowlist the credentials one still needs.
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{
@@ -67,6 +68,10 @@ export default defineConfig(
 						{
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+						{
+							rule: 'no-unsealed-credentials-entity-write',
+							message: 'Route the write through a token-gated `CredentialsRepository` method.',
 						},
 					],
 				},

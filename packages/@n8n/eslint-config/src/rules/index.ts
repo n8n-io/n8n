@@ -29,6 +29,7 @@ import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-ap
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoMisplacedCipherPrimitivesRule } from './no-misplaced-cipher-primitives.js';
@@ -66,6 +67,7 @@ export const rules = {
 	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
+	'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 	'no-misplaced-cipher-primitives': NoMisplacedCipherPrimitivesRule,
