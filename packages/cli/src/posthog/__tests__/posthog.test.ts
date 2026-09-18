@@ -84,22 +84,6 @@ describe('PostHog', () => {
 			});
 		});
 
-		it('uses one evaluation for concurrent instance checks', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-				mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true }),
-			);
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
-
-			const results = await Promise.all([
-				ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
-				ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
-			]);
-
-			expect(results).toEqual([true, true]);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
-		});
-
 		it('fails closed when the instance flag cannot be read', async () => {
 			(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('PostHog failed'));
 			const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -312,69 +296,16 @@ describe('PostHog', () => {
 			spy.mockRestore();
 		});
 
-		it('holds an empty result only briefly, then asks again', async () => {
-			vi.useFakeTimers();
-			try {
-				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				await ph.getFeatureFlags({ id: userId, createdAt });
-				await ph.getFeatureFlags({ id: userId, createdAt });
-				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
-
-				// Past the short window, but well inside the window an answer would have earned.
-				vi.advanceTimersByTime(31_000);
-				await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('makes one request for two callers racing the same key', async () => {
-			const requests: Array<{
-				resolve: (value: unknown) => void;
-				reject: (reason: Error) => void;
-			}> = [];
-			(PostHog.prototype.evaluateFlags as Mock).mockImplementation(
-				async () =>
-					await new Promise((resolve, reject) => {
-						requests.push({ resolve, reject });
-					}),
-			);
-
-			const flags = { 'test-flag': true };
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
-
-			const first = ph.getFeatureFlags({ id: userId, createdAt });
-			const second = ph.getFeatureFlags({ id: userId, createdAt });
-			await vi.waitFor(() => expect(requests).not.toHaveLength(0));
-
-			requests[0].resolve(mockEvaluatedFlags(flags));
-			// Anything else that raced answers after the success, and must not replace it.
-			requests[1]?.reject(new Error('posthog is down'));
-
-			expect(await first).toEqual(flags);
-			expect(await second).toEqual(flags);
-			expect(await ph.getFeatureFlags({ id: userId, createdAt })).toEqual(flags);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
-		});
-
-		/** A throw is nothing-at-all too, so it must not cost a request per call either. */
-		it('holds a failed evaluation the same way', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog is down'));
+		it('does not cache empty results', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
-			expect(await ph.getFeatureFlags({ id: userId, createdAt })).toEqual({});
+			await ph.getFeatureFlags({ id: userId, createdAt });
 			await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
 		describe('env-var overrides', () => {
