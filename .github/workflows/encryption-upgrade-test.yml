@@ -1,0 +1,152 @@
+name: 'Test: Encryption Rollout'
+
+on:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Which test to run'
+        type: choice
+        options:
+          - upgrade
+          - rotation
+        default: upgrade
+      db:
+        description: 'Database backends to run'
+        type: choice
+        options:
+          - both
+          - sqlite
+          - postgres
+        default: both
+      from-image:
+        description: 'Old release image to seed on (upgrade only; empty = pinned script default)'
+        type: string
+        default: ''
+  schedule:
+    # Twice a day, 09:00 and 21:00 UTC.
+    - cron: '0 9,21 * * *'
+  # PR events use the workflow file from the branch, so changes to the tests
+  # verify themselves (both modes) before the merge.
+  pull_request:
+    paths:
+      - 'packages/testing/playwright/tests/infrastructure/encryption/**'
+      - 'packages/testing/containers/services/n8n.ts'
+      - 'packages/testing/containers/services/types.ts'
+      - 'packages/testing/containers/stack.ts'
+      - '.github/workflows/encryption-upgrade-test.yml'
+
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the runs of the previous one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  encryption-cycle:
+    name: ${{ matrix.mode }} cycle (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # PRs run both modes; a dispatch runs the selected one; the cron runs
+        # the full upgrade cycle. Each database backend is its own job.
+        mode: ${{ fromJSON(github.event_name == 'pull_request' && '["upgrade","rotation"]' || format('["{0}"]', inputs.test || 'upgrade')) }}
+        db: ${{ fromJSON((inputs.db == 'sqlite' || inputs.db == 'postgres') && format('["{0}"]', inputs.db) || '["sqlite","postgres"]') }}
+    env:
+      MODE: ${{ matrix.mode }}
+      DB: ${{ matrix.db }}
+      # Not a hidden dir: upload-artifact skips hidden paths by default.
+      WORK_ROOT: ${{ github.workspace }}/upgrade-test-work
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # The image under test is the docker build of this checkout
+      # (n8nio/n8n:local) — the same artifact a release ships.
+      - name: Setup and build the image under test
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build:docker
+
+      - name: Run the test cycle
+        env:
+          FROM_IMAGE_INPUT: ${{ inputs.from-image }}
+          ENCRYPTION_CYCLE_REQUIRED: 'true'
+        run: |
+          mkdir -p "$WORK_ROOT"
+          if [ -n "$FROM_IMAGE_INPUT" ]; then export FROM_IMAGE="$FROM_IMAGE_INPUT"; fi
+          set -o pipefail
+          pnpm --filter=n8n-playwright test:encryption:"$MODE" 2>&1 | tee "$WORK_ROOT/run.log"
+          echo "PASS: ${MODE}-cycle — all requested backends green ($DB)" | tee -a "$WORK_ROOT/run.log"
+
+      - name: Write run summary
+        if: always()
+        run: |
+          LOG="$WORK_ROOT/run.log"
+          [ -f "$LOG" ] || { echo "## Encryption test ($MODE, $DB)" >> "$GITHUB_STEP_SUMMARY"; echo "No run log was produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          {
+            echo "## Encryption test ($MODE, $DB)"
+            echo
+            if grep -q "all requested backends green" "$LOG"; then
+              echo "**Result: PASS** :white_check_mark:"
+            else
+              echo "**Result: FAIL** :x:"
+            fi
+            echo
+            echo '```'
+            grep -E "PASS \[|PASS:|FAIL:" "$LOG" || true
+            echo '```'
+            echo
+            echo '```'
+            # Each metrics block ends at the first blank line (it may carry a
+            # "rotate api:" line after the totals row).
+            awk '/=== metrics \[/{f=1} f && /^$/{f=0; print ""} f{print}' "$LOG"
+            echo '```'
+            if ! grep -q "all requested backends green" "$LOG"; then
+              echo
+              echo '<details><summary>Last 80 log lines</summary>'
+              echo
+              echo '```'
+              tail -n 80 "$LOG"
+              echo '```'
+              echo '</details>'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: encryption-test-${{ matrix.mode }}-${{ matrix.db }}-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ github.workspace }}/upgrade-test-work/run.log
+            ${{ github.workspace }}/upgrade-test-work/*/metrics.csv
+            ${{ github.workspace }}/upgrade-test-work/*/n8n.log
+
+  # A scheduled run fails silently otherwise; the job-level gate is required
+  # because a step-level `if: failure()` never fires on a needs-failure.
+  notify-on-failure:
+    name: Notify on scheduled failure
+    runs-on: ubuntu-slim
+    needs: [encryption-cycle]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+
+      - name: Send Slack notification
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${RUN_URL}|Scheduled encryption rollout test failed>"

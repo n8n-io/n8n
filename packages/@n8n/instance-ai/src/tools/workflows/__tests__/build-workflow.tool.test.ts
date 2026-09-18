@@ -20,6 +20,7 @@ import { analyzeWorkflow } from '../setup-workflow.service';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
+import { appendWorkflowSourceDiagnostics } from '../workflow-source-diagnostics';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
 // Passthrough spy: real behavior (handle-fallback path in unit env), observable calls.
@@ -57,6 +58,12 @@ const generatedWorkflow = {
 	],
 	connections: {},
 };
+
+vi.mock('../workflow-source-diagnostics', () => ({
+	appendWorkflowSourceDiagnostics: vi.fn(
+		async (_context, _filePath, errors: string[]) => await Promise.resolve(errors),
+	),
+}));
 
 vi.mock('../workflow-source-compiler', () => ({
 	compileWorkflowSource: vi.fn(),
@@ -219,6 +226,9 @@ function workflowSourceBuildFailure(error: string) {
 describe('createBuildWorkflowTool', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(appendWorkflowSourceDiagnostics).mockImplementation(
+			async (_context, _filePath, errors) => await Promise.resolve(errors),
+		);
 		vi.mocked(compileWorkflowSource).mockResolvedValue({
 			success: true,
 			workflow: structuredClone(generatedWorkflow),
@@ -669,6 +679,7 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
 			expect(result.errors?.join('\n')).toContain('Step 0, Step 1');
 			expect(result.remediation?.reason).toBe('workflow_grouping_decision_missing');
+			expect(appendWorkflowSourceDiagnostics).not.toHaveBeenCalled();
 			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'missing' });
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 			expect(trackTelemetry).toHaveBeenCalledWith(
@@ -752,6 +763,7 @@ describe('createBuildWorkflowTool', () => {
 			// The error carries the drop reason; the matching warning is not repeated.
 			expect(result.warnings?.join('\n') ?? '').not.toContain('[NODE_GROUP_DROPPED]');
 			expect(result.remediation?.reason).toBe('workflow_group_dropped_over_ceiling');
+			expect(appendWorkflowSourceDiagnostics).not.toHaveBeenCalled();
 			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'grouped' });
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 		});
@@ -1349,6 +1361,7 @@ describe('createBuildWorkflowTool', () => {
 
 		expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
 		expect(result.warnings?.some((w) => w.includes('pre-existing node'))).toBe(true);
+		expect(appendWorkflowSourceDiagnostics).not.toHaveBeenCalled();
 	});
 
 	it('still fails the build on blocking findings for nodes the build changed', async () => {
@@ -2673,8 +2686,32 @@ describe('createBuildWorkflowTool', () => {
 		expect((result.warnings ?? []).join('\n')).not.toContain('chat_model_provider_mismatch');
 	});
 
-	it('returns source file metadata on validation failures', async () => {
+	it('skips supplemental diagnostics on a sandbox failure', async () => {
+		const { context, filePath } = makeContext({});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: false,
+			reason: 'workflow_source_sandbox_unavailable',
+			editable: false,
+			errors: ['Sandbox unavailable'],
+			summary: 'Sandbox unavailable',
+		});
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+		expect(result.success).toBe(false);
+		expect(result.errors).toEqual(['Sandbox unavailable']);
+		expect(appendWorkflowSourceDiagnostics).not.toHaveBeenCalled();
+	});
+
+	it('returns source file metadata and compiler findings on validation failures', async () => {
 		const { context, filePath } = makeContext({ source: 'invalid source' });
+		vi.mocked(appendWorkflowSourceDiagnostics).mockImplementationOnce(
+			async (_context, _path, errors) =>
+				await Promise.resolve([
+					...errors,
+					'[TS2322] src/workflows/main.workflow.ts:4:1: Type mismatch',
+				]),
+		);
 		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
 			success: true,
 			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
@@ -2699,11 +2736,44 @@ describe('createBuildWorkflowTool', () => {
 				shouldEdit: true,
 				reason: 'workflow_source_validation_failed',
 			},
+			errors: [
+				'[UNKNOWN_CONFIG_KEY]: Unknown config key "recipient"',
+				'[TS2322] src/workflows/main.workflow.ts:4:1: Type mismatch',
+			],
 		});
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
-	it('keeps repeated validation-error escalation generic', async () => {
+	it('returns chat-model validation errors without supplemental source diagnostics', async () => {
+		const { context, filePath } = makeContext({});
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce({ blocking: [], informational: [] })
+			.mockReturnValueOnce({
+				blocking: [
+					{
+						code: 'chat_model_validation',
+						nodeName: 'Chat Model',
+						message: 'The credential cannot use this model.',
+						severity: 'error',
+					},
+				],
+				informational: [],
+			});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			errors: ['[chat_model_validation] (Chat Model): The credential cannot use this model.'],
+			remediation: { reason: 'chat_model_validation_failed' },
+		});
+		expect(appendWorkflowSourceDiagnostics).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('keeps repeated validation-error escalation stable when diagnostics are unavailable', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const validationResult = {
 			success: true as const,
@@ -2722,6 +2792,10 @@ describe('createBuildWorkflowTool', () => {
 			.mockReturnValueOnce(partitionedWarnings)
 			.mockReturnValueOnce(partitionedWarnings);
 
+		vi.mocked(appendWorkflowSourceDiagnostics).mockImplementationOnce(
+			async (_context, _filePath, errors) =>
+				await Promise.resolve([...errors, '[TS2322] src/main.ts:1:1: Type mismatch']),
+		);
 		const tool = createBuildWorkflowTool(context);
 
 		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
@@ -2875,6 +2949,9 @@ describe('autoImportMissingSdkSymbols', () => {
 describe('auto-import recovery on compile failure', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		vi.mocked(appendWorkflowSourceDiagnostics).mockImplementation(
+			async (_context, _filePath, errors) => await Promise.resolve(errors),
+		);
 		// Real classifier: guards that auto_imported_sdk_symbols stays informational.
 		const actual = await vi.importActual<{ partitionWarnings: typeof partitionWarnings }>(
 			'../workflow-validation-warnings',
@@ -2911,6 +2988,7 @@ describe('auto-import recovery on compile failure', () => {
 			'Auto-added missing @n8n/workflow-sdk import(s): expr',
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+		expect(appendWorkflowSourceDiagnostics).not.toHaveBeenCalled();
 	});
 
 	it('returns the retried errors when the recovery retry still fails', async () => {
@@ -2920,6 +2998,17 @@ describe('auto-import recovery on compile failure', () => {
 		vi.mocked(compileWorkflowSource)
 			.mockResolvedValueOnce(workflowSourceBuildFailure('ReferenceError: expr is not defined'))
 			.mockResolvedValueOnce(workflowSourceBuildFailure("Cannot find name 'unrelated'"));
+		vi.mocked(appendWorkflowSourceDiagnostics).mockImplementationOnce(
+			async (_context, path, errors) => {
+				await Promise.resolve();
+				expect(files.get(path)).toContain("import { expr } from '@n8n/workflow-sdk';");
+				expect(errors).toEqual(["Cannot find name 'unrelated'"]);
+				return [
+					...errors,
+					'[TS2304] src/workflows/main.workflow.ts:2:1: Cannot find name unrelated',
+				];
+			},
+		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
 			filePath,
@@ -2930,6 +3019,8 @@ describe('auto-import recovery on compile failure', () => {
 		// Errors describe the persisted (import-injected) file, not the original source.
 		expect(result.errors?.join('\n')).toContain("Cannot find name 'unrelated'");
 		expect(result.errors?.join('\n')).not.toContain('expr is not defined');
+		expect(result.errors?.join('\n')).toContain('[TS2304]');
+		expect(appendWorkflowSourceDiagnostics).toHaveBeenCalledTimes(1);
 		expect(files.get(filePath)).toContain("import { expr } from '@n8n/workflow-sdk';");
 		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
 	});

@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useEventListener, useStorage } from '@vueuse/core';
+import { StorageSerializers, useEventListener, useLocalStorage, useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
-	N8nAssistantIcon,
-	N8nButton,
 	N8nCanvasPill,
 	N8nIcon,
 	N8nIconButton,
+	N8nResizeWrapper,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -19,6 +18,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type InstanceAiHandoffContext,
 	type PushMessage,
 	type PushPayload,
 } from '@n8n/api-types';
@@ -72,19 +72,18 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import {
-	useInstanceAiAgentPreviewHandoff,
-	type AgentPreviewHandoffParams,
-} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
+	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
+	PENDING_AGENT_ID_STATE,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
@@ -95,9 +94,20 @@ import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
-import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/constants';
+import {
+	buildInstanceAiAgentPreviewHandoffContext,
+	type InstanceAiThreadLaunch,
+	type PendingComposerDraft,
+} from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import {
+	useInstanceAiAvailable,
+	useInstanceAiReady,
+} from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
+import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
+import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
+import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
@@ -156,10 +166,8 @@ const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
-const { openAgentArtifactThread } = useInstanceAiHandoff();
 const instanceAiAvailable = useInstanceAiAvailable();
-const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
-	useInstanceAiAgentPreviewHandoff();
+const instanceAiReady = useInstanceAiReady();
 const sessionsStore = useAgentSessionsStore();
 const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
@@ -199,12 +207,11 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
-const pendingAgentIdFromHistory = (history.state as Record<string, unknown>)[
-	INSTANCE_AI_PENDING_AGENT_ID_STATE
-];
-const routePendingAgentId = ref(
-	typeof pendingAgentIdFromHistory === 'string' ? pendingAgentIdFromHistory : null,
-);
+function readPendingAgentIdFromHistory(): string | null {
+	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
+	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
+}
+const routePendingAgentId = ref(readPendingAgentIdFromHistory());
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
 	return routePendingAgentId.value === agentId.value;
@@ -220,6 +227,94 @@ const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 const isPreviewActive = computed(function isPreviewActive() {
 	return isStandalonePreview.value || isPreviewDockOpen.value;
 });
+
+// Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
+// Default open for a pending agent so a new agent lands with the assistant
+// already showing; closed otherwise. Persisted per agent, like the preview dock.
+// null = no preference yet, so the default is derived instead of stored — see
+// `InstanceAiThreadView`'s `persistedArtifactPreviewOpen` for the same pattern.
+const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
+	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
+});
+const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey, null, {
+	serializer: StorageSerializers.boolean,
+	writeDefaults: false,
+	flush: 'sync',
+});
+// The pending-agent default is decided once, when the agent opens. Persisting
+// the agent later (a real edit, or the assistant finishing a build) flips
+// `isRouteAgentPending` to false, which must not close the panel out from
+// under the user — so the default is snapshotted per agent instead of reread live.
+const openedForPendingAgent = ref(isRouteAgentPending.value);
+watch(agentId, () => {
+	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
+	// component instance, so `history.state` — just updated by that navigation —
+	// must be re-read here, before `isRouteAgentPending` (read below, and by the
+	// `initialize()` watcher) reflects the new agent instead of the mounted one.
+	routePendingAgentId.value = readPendingAgentIdFromHistory();
+	openedForPendingAgent.value = isRouteAgentPending.value;
+});
+const isAiPanelOpen = computed({
+	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
+	set: (value: boolean) => {
+		storedAiPanelOpen.value = value;
+	},
+});
+const showAiPanel = computed(
+	() =>
+		!isArtifactMode.value &&
+		!isStandalonePreview.value &&
+		instanceAiReady.value &&
+		isAiPanelOpen.value,
+);
+const aiThreadId = computed(() =>
+	typeof route.query[ASSISTANT_THREAD_PARAM] === 'string'
+		? route.query[ASSISTANT_THREAD_PARAM]
+		: undefined,
+);
+function onAiThreadIdChange(threadId: string) {
+	void router.replace({ query: { ...route.query, [ASSISTANT_THREAD_PARAM]: threadId } });
+}
+/** True while the embedded assistant is actively mutating this agent. */
+const embeddedAiBuilding = ref(false);
+const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
+// The standalone preview route doesn't render the AI dock (`showAiPanel`
+// requires the builder route), so a hand-off requested from there has nowhere
+// to land yet. Queue it and apply it once the panel actually mounts — closing
+// the preview navigates back to the builder, which renders the panel.
+const queuedAiHandoff = ref<{
+	context: InstanceAiHandoffContext;
+	initialDraft?: PendingComposerDraft;
+} | null>(null);
+watch(aiPanelRef, (panel) => {
+	if (!panel || !queuedAiHandoff.value) return;
+	const { context, initialDraft } = queuedAiHandoff.value;
+	queuedAiHandoff.value = null;
+	panel.handoff(context, initialDraft);
+});
+const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
+function onAiPanelResize({ width }: { width: number }) {
+	aiPanelWidth.value = width;
+}
+function toggleAiPanel() {
+	// Setup isn't finished — send the user to the assistant, where onboarding
+	// takes over, instead of opening a panel no model can answer in.
+	if (!instanceAiReady.value) {
+		void router.push({ name: INSTANCE_AI_VIEW });
+		return;
+	}
+	const opening = !isAiPanelOpen.value;
+	if (opening) {
+		telemetry.track('Instance AI opened from editor', {
+			source: 'agent_builder_page',
+			agent_id: agentId.value,
+			workflow_id: null,
+			execution_id: null,
+		});
+	}
+	isAiPanelOpen.value = opening;
+}
+
 const agentBuilderHref = computed(function getAgentBuilderHref() {
 	return router.resolve({
 		name: AGENT_BUILDER_VIEW,
@@ -235,11 +330,15 @@ const {
 	canExecute: canExecuteAgent,
 } = useAgentPermissions(projectId);
 // True while writes from this tab must not reach the backend: the AI is
-// mutating this agent (artifact build lock), or another client holds the
-// collaboration write lock (multi-tab / multi-user). Every write path — the
-// editor, the header actions, and the autosave loops — keys off this.
+// mutating this agent (artifact build lock or the embedded assistant), or
+// another client holds the collaboration write lock (multi-tab / multi-user).
+// Every write path — the editor, the header actions, and the autosave loops —
+// keys off this.
 const isEditingLocked = computed(
-	() => props.artifactEditingLocked || agentCollaborationStore.shouldBeReadOnly,
+	() =>
+		props.artifactEditingLocked ||
+		embeddedAiBuilding.value ||
+		agentCollaborationStore.shouldBeReadOnly,
 );
 // Combines permission with the lock: while locked, editing is disabled even
 // for a user who otherwise has permission — mirrors the workflow artifact's
@@ -316,10 +415,38 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 		return;
 	}
 
-	// Close the preview once the assistant has the request: coming back to an
-	// open preview chat beside the assistant reads as two places to ask.
-	// No route push — the hand-off already navigated to the assistant.
-	if (await sendPreviewSessionToInstanceAi(params)) persistedPreviewOpen.value = false;
+	// Setup isn't finished — send the user to the assistant, where onboarding
+	// takes over, instead of opening a panel no model can answer in.
+	if (!instanceAiReady.value) {
+		void router.push({ name: INSTANCE_AI_VIEW });
+		return;
+	}
+
+	// Open the dock (it's `v-if`) and wait a tick so `aiPanelRef` resolves
+	// before the hand-off is attempted.
+	isAiPanelOpen.value = true;
+	await nextTick();
+
+	const context = buildInstanceAiAgentPreviewHandoffContext(params);
+	if (aiPanelRef.value) {
+		const handed = aiPanelRef.value.handoff(context, params.initialDraft);
+		if (!handed) return;
+		// Close the preview once the assistant has the request: coming back to an
+		// open preview chat beside the assistant reads as two places to ask.
+		closePreviewDock();
+	} else {
+		// Standalone preview route: the panel isn't mounted here. Queue the
+		// hand-off and close the dock — on this route that navigates back to
+		// the builder, which mounts the panel and applies the queue.
+		queuedAiHandoff.value = { context, initialDraft: params.initialDraft };
+		closePreviewDock();
+	}
+
+	telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
+		agent_id: params.agentId,
+		preview_thread_id: params.threadId,
+		...(params.executionId ? { preview_execution_id: params.executionId } : {}),
+	});
 }
 
 /**
@@ -341,8 +468,24 @@ let latestSessionsFetchRequestId = 0;
 const isUnsaved = ref(false);
 /** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
 const pendingExternalRefresh = ref(false);
+/** The queued event's `source`, consumed by `onAgentUpdateRefreshed` once the replay resolves. */
+let pendingExternalRefreshSource: string | undefined;
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
+/** Scopes the embedded n8n Assistant panel to this agent's thread history. */
+const instanceAiEmbedSubject = computed<InstanceAiEmbedSubject>(() => ({
+	type: 'agent',
+	id: agentId.value,
+	projectId: projectId.value,
+	name: agent.value?.name,
+	// The attachment's `pending` is a `true`-only literal (absent means "not pending").
+	...((isRouteAgentPending.value || isUnsaved.value) && { pending: true as const }),
+}));
+const instanceAiEmbedLaunch = computed<InstanceAiThreadLaunch>(() => ({
+	source: 'agent_builder_page',
+	origin: 'internal',
+	sourceContext: { agentId: agentId.value },
+}));
 const agentFiles = ref<AgentFileDto[]>([]);
 const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
@@ -825,8 +968,8 @@ const persistedAgentsByTarget = new Map<string, AgentResource>();
 function clearRoutePendingState(targetAgentId: string) {
 	if (isArtifactMode.value) return;
 	const historyState = history.state as Record<string, unknown>;
-	if (historyState[INSTANCE_AI_PENDING_AGENT_ID_STATE] !== targetAgentId) return;
-	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
+	if (historyState[PENDING_AGENT_ID_STATE] !== targetAgentId) return;
+	const { [PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
 	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
@@ -906,11 +1049,22 @@ async function ensureAgentPersisted(): Promise<void> {
 	if (!flight) {
 		flight = (async () => {
 			const name = localConfig.value?.name ?? locale.baseText('agents.new.defaultName');
+			// A thread is bound (the embedded assistant may be building the same
+			// agent right now): adopt-or-create through the thread so a race with
+			// its own create converges on one row instead of a 409.
 			const created = props.artifactPersistAgent
 				? await props.artifactPersistAgent(name)
-				: await createAgent(rootStore.restApiContext, targetProjectId, name, {
-						id: targetAgentId,
-					});
+				: aiThreadId.value
+					? (
+							await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, {
+								projectId: targetProjectId,
+								agentId: targetAgentId,
+								name,
+							})
+						).agent
+					: await createAgent(rootStore.restApiContext, targetProjectId, name, {
+							id: targetAgentId,
+						});
 			persistedAgentsByTarget.set(targetKey, created);
 			upsertProjectAgentsListCache(targetProjectId, created);
 			clearRoutePendingState(targetAgentId);
@@ -1066,6 +1220,7 @@ const agentAvailableInMcp = computed(
 async function saveMcpAvailability(
 	snapshot: McpAvailabilitySnapshot,
 ): Promise<'skipped' | undefined> {
+	// The AI may be mutating this agent right now — mirrors `saveConfig`/`saveSkill`.
 	if (isEditingLocked.value) return 'skipped';
 	await ensureAgentPersisted();
 	await mcpStore.toggleAgentMcpAccess(snapshot.agentId, snapshot.enabled);
@@ -1173,7 +1328,13 @@ onBeforeRouteUpdate(async (to) => {
 		: to.params.projectId;
 	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
 	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
-	await flushPendingRouteDraftBeforeNavigation();
+	if (isRouteAgentPending.value) {
+		await flushPendingRouteDraftBeforeNavigation();
+		return;
+	}
+	// An in-place switch skips the unmount flush, so persist queued edits here.
+	// A failed save rejects and cancels the switch, so the edit stays for a retry.
+	await flushAutosave();
 });
 
 async function beforePreviewSend() {
@@ -1216,31 +1377,6 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
 }
 
-/** Open the current agent in Instance AI without sending an opening message. */
-async function onOpenInstanceAi() {
-	// Flush pending edits first so the assistant sees the latest config.
-	await flushAutosave();
-	telemetry.track('Instance AI opened from editor', {
-		source: 'agent_builder_page',
-		agent_id: agentId.value,
-		workflow_id: null,
-		execution_id: null,
-	});
-	await openAgentArtifactThread(
-		{
-			type: 'agent',
-			id: agentId.value,
-			name: agent.value?.name,
-			projectId: projectId.value,
-		},
-		{
-			source: 'agent_builder_page',
-			origin: 'internal',
-			sourceContext: { agentId: agentId.value },
-		},
-	);
-}
-
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 	return {
 		...config,
@@ -1252,7 +1388,7 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 	};
 }
 
-function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
+function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
 	if (!localConfig.value) return;
 	// Acquire the write lock before persisting any change — the lock is
 	// lazy (acquired on first edit, released on inactivity), matching the
@@ -1267,6 +1403,14 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (updates.name !== undefined) {
 		syncAgentIdentityFromConfig(localConfig.value);
 	}
+	// An auto-applied default (e.g. the seeded model) must not persist a pending
+	// agent on its own — it rides along with the draft and is saved by the first
+	// real edit or an assistant build instead. Except when a real edit's save is
+	// already queued OR in flight: that snapshot was deep-copied before this
+	// update landed, so it must be rescheduled (chained behind an in-flight one
+	// if needed) to pick up the merged config.
+	const ridesAlongWithDraft = meta?.source === 'auto' && isUnsaved.value;
+	if (ridesAlongWithDraft && !configAutosave.hasPendingSave.value) return;
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
@@ -1367,6 +1511,18 @@ function handleArtifactRefreshError(error: unknown) {
 	showError(error, locale.baseText('agents.builder.loadError'));
 }
 
+/**
+ * The assistant can build a route-pending agent under the id this view minted.
+ * Once the refetch above confirms the row exists, treat it as persisted the same
+ * way `ensureAgentPersisted` does, so a reload never re-enters pending mode.
+ */
+function onAgentUpdateRefreshed(source?: string) {
+	if (source !== 'instance-ai') return;
+	if (!isRouteAgentPending.value || !isUnsaved.value || !agent.value) return;
+	isUnsaved.value = false;
+	clearRoutePendingState(agentId.value);
+}
+
 let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 let externalUpdateTimer: ReturnType<typeof setTimeout> | undefined;
 let externalUpdateAgeTimer: ReturnType<typeof setInterval> | undefined;
@@ -1379,23 +1535,11 @@ const externalUpdateTime = computed(() =>
 		interpolate: { count: externalUpdateAgeMinutes.value },
 	}),
 );
-const externalUpdateMessage = computed(() => {
-	let key: BaseTextKey;
-	switch (recentExternalUpdate.value?.source) {
-		case 'mcp':
-			key = 'agents.builder.externalUpdate.mcp';
-			break;
-		case 'builder':
-			key = 'agents.builder.externalUpdate.builder';
-			break;
-		case 'user':
-			key = 'agents.builder.externalUpdate.user';
-			break;
-		default:
-			key = 'agents.builder.externalUpdate.unknown';
-	}
-	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
-});
+const externalUpdateMessage = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.mcp', {
+		interpolate: { time: externalUpdateTime.value },
+	}),
+);
 
 function clearExternalUpdate() {
 	clearTimeout(externalUpdateTimer);
@@ -1405,33 +1549,49 @@ function clearExternalUpdate() {
 	recentExternalUpdate.value = null;
 }
 
-function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
-	if (source === 'builder') return !isArtifactMode.value;
-	if (source === 'user') return isArtifactMode.value;
-	return true;
-}
-
 watch([projectId, agentId], clearExternalUpdate);
 
 const canApplyPushedAgentUpdate = computed(
 	() =>
-		!props.artifactEditingLocked &&
+		!isEditingLocked.value &&
 		!configAutosave.hasPendingSave.value &&
 		!skillAutosave.hasPendingSave.value &&
 		!mcpAutosave.hasPendingSave.value,
 );
 
-function scheduleExternalRefresh(onlyWhenIdle = false) {
+/**
+ * Refetch, then run the "mark pending agent persisted" continuation — but only
+ * against the agent the refresh was scheduled for. Both the timer callback and
+ * the idle replay below capture their target up front and race an `await`, so
+ * a target switch in between must not let A's refresh mark pending agent B
+ * persisted.
+ */
+async function refreshAndMarkUpdated(
+	targetProjectId: string,
+	targetAgentId: string,
+	source?: string,
+) {
+	await refreshArtifactShell();
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	onAgentUpdateRefreshed(source);
+}
+
+function scheduleExternalRefresh(onlyWhenIdle = false, source?: string) {
 	clearTimeout(externalRefreshTimer);
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	externalRefreshTimer = setTimeout(() => {
 		// A push that lands mid-autosave is deferred, not dropped: if the local
 		// write was accepted first there is no 409 to catch the newer remote
 		// state, so this tab would keep the older config. Replayed once idle.
 		if (onlyWhenIdle && !canApplyPushedAgentUpdate.value) {
 			pendingExternalRefresh.value = true;
+			pendingExternalRefreshSource = source;
 			return;
 		}
-		void refreshArtifactShell().catch(handleArtifactRefreshError);
+		void refreshAndMarkUpdated(targetProjectId, targetAgentId, source).catch(
+			handleArtifactRefreshError,
+		);
 	}, getDebounceTime(400));
 }
 
@@ -1448,9 +1608,10 @@ function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 	// fetch already resolved, so queue a replay instead of dropping the event.
 	if (!initialized.value) {
 		pendingExternalRefresh.value = true;
+		pendingExternalRefreshSource = event.source;
 		return;
 	}
-	scheduleExternalRefresh(event?.source === 'push');
+	scheduleExternalRefresh(event.source === 'push', event.source);
 }
 
 function onAgentPushMessage(event: PushMessage) {
@@ -1461,7 +1622,7 @@ function onAgentPushMessage(event: PushMessage) {
 	) {
 		return;
 	}
-	if (shouldShowExternalUpdate(event.data.source)) {
+	if (event.data.source === 'mcp') {
 		clearExternalUpdate();
 		recentExternalUpdate.value = event.data;
 		externalUpdateAt = Date.now();
@@ -1476,7 +1637,9 @@ function onAgentPushMessage(event: PushMessage) {
 async function replayPendingExternalRefresh() {
 	if (!pendingExternalRefresh.value) return;
 	pendingExternalRefresh.value = false;
-	await refreshArtifactShell();
+	const source = pendingExternalRefreshSource;
+	pendingExternalRefreshSource = undefined;
+	await refreshAndMarkUpdated(projectId.value, agentId.value, source);
 }
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
@@ -2173,10 +2336,12 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
+	// The assistant thread is bound to this agent; the next agent gets its own.
+	const { [ASSISTANT_THREAD_PARAM]: _assistantThread, ...query } = route.query;
 	void router.push({
 		name: isStandalonePreview.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
-		query: isStandalonePreview.value ? {} : route.query,
+		query: isStandalonePreview.value ? {} : query,
 	});
 }
 </script>
@@ -2210,6 +2375,8 @@ function onSwitchAgent(nextAgentId: string) {
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
+			:instance-ai-available="instanceAiAvailable"
+			:is-ai-panel-open="isAiPanelOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
@@ -2217,6 +2384,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@toggle-instance-ai="toggleAiPanel"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
@@ -2249,30 +2417,35 @@ function onSwitchAgent(nextAgentId: string) {
 				$style.builder,
 				{
 					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.aiPanelOpen]: showAiPanel,
 				},
 			]"
+			:style="{ '--agent-ai-panel-width': `${aiPanelWidth}px` }"
 		>
-			<div
-				v-if="!isPreviewActive && !isArtifactMode && instanceAiAvailable"
-				:class="$style.aiButtonWrapper"
-			>
-				<N8nButton
-					variant="subtle"
-					icon-only
-					size="large"
-					:disabled="!agent"
-					:aria-label="locale.baseText('aiAssistant.tooltip')"
-					:class="$style.aiButtonIcon"
-					data-testid="agent-builder-instance-ai-btn"
-					@click="onOpenInstanceAi"
+			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
+				<N8nResizeWrapper
+					:width="aiPanelWidth"
+					:min-width="320"
+					:max-width="720"
+					:supported-directions="['right']"
+					@resize="onAiPanelResize"
 				>
-					<template #default>
-						<div>
-							<N8nAssistantIcon size="large" />
-						</div>
-					</template>
-				</N8nButton>
-			</div>
+					<InstanceAiChatPanel
+						ref="aiPanelRef"
+						:key="agentId"
+						:subject="instanceAiEmbedSubject"
+						:launch="instanceAiEmbedLaunch"
+						:thread-id="aiThreadId"
+						:before-new-thread="flushAutosave"
+						:before-send="flushAutosave"
+						data-testid="agent-ai-chat-panel"
+						@update:thread-id="onAiThreadIdChange"
+						@update:building="embeddedAiBuilding = $event"
+						@close="isAiPanelOpen = false"
+					/>
+				</N8nResizeWrapper>
+			</aside>
+			<AgentBuildingIndicator v-if="embeddedAiBuilding" />
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
 			</div>
@@ -2287,7 +2460,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
 					@open-build="returnToBuilderFromPreview"
@@ -2371,7 +2544,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@view-trace="viewPreviewTrace"
 					@new-session="startNewPreviewSession"
@@ -2386,6 +2559,8 @@ function onSwitchAgent(nextAgentId: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .root {
 	position: relative;
 	display: flex;
@@ -2403,15 +2578,19 @@ function onSwitchAgent(nextAgentId: string) {
 	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	transition:
+		padding-left var(--duration--snappy) var(--easing--ease-out),
+		padding-right var(--duration--snappy) var(--easing--ease-out);
 
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
-		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
+	&.aiPanelOpen {
+		padding-left: var(--agent-ai-panel-width);
 	}
+
+	@include motion.reduced-motion;
 }
 
 .loading {
@@ -2433,14 +2612,14 @@ function onSwitchAgent(nextAgentId: string) {
 	min-width: 0;
 }
 
-.aiButtonWrapper {
+.aiDock {
 	position: absolute;
 	top: 0;
-	right: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
+	left: 0;
+	bottom: 0;
+	width: var(--agent-ai-panel-width);
+	border-right: var(--border);
+	background: var(--background--surface);
 	z-index: 1;
 }
 
@@ -2480,15 +2659,5 @@ function onSwitchAgent(nextAgentId: string) {
 	flex-shrink: 0;
 	color: var(--color--neutral-white);
 	pointer-events: auto;
-}
-
-.aiButtonIcon {
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-
-	svg {
-		display: block;
-	}
 }
 </style>

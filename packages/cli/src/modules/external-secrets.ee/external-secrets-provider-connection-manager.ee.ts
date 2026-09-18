@@ -11,15 +11,12 @@ import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import { ExternalSecretsRetryManager } from './retry-manager.service';
 import { ExternalSecretsSecretsCache } from './secrets-cache.service';
 import type { SecretsProvider, SecretsProviderSettings } from './types';
+import { TimeoutError } from './with-timeout';
 
 export interface ProviderConnectionInput {
 	providerKey: string;
 	providerType: string;
 	config: SecretsProviderSettings;
-}
-
-interface PreparedProviderConnection {
-	completion: Promise<void>;
 }
 
 interface ReplacementCandidate {
@@ -41,10 +38,6 @@ type ReplacementOutcome =
 			error: Error;
 	  };
 
-const COMPLETED_CONNECTION = {
-	completion: Promise.resolve(),
-} satisfies PreparedProviderConnection;
-
 @Service()
 export class ExternalSecretsProviderConnectionManager {
 	/**
@@ -64,24 +57,18 @@ export class ExternalSecretsProviderConnectionManager {
 	}
 
 	/**
-	 * Makes a provider configuration ready. For a new provider this resolves after its initial
-	 * cache refresh. For a replacement it resolves once background hydration has started; the
-	 * new configuration activates only when that hydration settles.
+	 * Makes a provider configuration ready. For a new provider this resolves after its first
+	 * connect and hydration attempt. For a replacement it resolves once background hydration has
+	 * started; the new configuration activates only when that hydration settles.
 	 */
 	async upsertProviderConnection(input: ProviderConnectionInput): Promise<void> {
-		const { completion } = await this.prepareProviderConnection(input);
-		await completion;
+		await this.prepareProviderConnection(input);
 	}
 
 	async upsertProviderConnections(inputs: ProviderConnectionInput[]): Promise<void> {
-		const completions: Array<Promise<void>> = [];
-
-		for (const input of inputs) {
-			const { completion } = await this.prepareProviderConnection(input);
-			completions.push(completion);
-		}
-
-		await Promise.all(completions);
+		// Concurrent, so one unreachable provider costs the connect timeout once for the whole
+		// batch instead of once per provider. Provider keys are unique, so no two entries race.
+		await Promise.all(inputs.map(async (input) => await this.prepareProviderConnection(input)));
 	}
 
 	shutdown(): void {
@@ -102,15 +89,15 @@ export class ExternalSecretsProviderConnectionManager {
 		providerKey,
 		providerType,
 		config,
-	}: ProviderConnectionInput): Promise<PreparedProviderConnection> {
+	}: ProviderConnectionInput): Promise<void> {
 		if (this.providerRegistry.has(providerKey) || this.replacementCandidates.has(providerKey)) {
 			// Replacement hydration is fire-and-forget: the old provider stays active until the
-			// candidate settles in the background, so there is no completion left to await.
+			// candidate settles in the background.
 			await this.replaceProviderConnection(providerKey, providerType, config);
-			return COMPLETED_CONNECTION;
+			return;
 		}
 
-		return await this.addProviderConnection(providerKey, providerType, config);
+		await this.addProviderConnection(providerKey, providerType, config);
 	}
 
 	async removeProviderConnection(providerKey: string): Promise<void> {
@@ -130,13 +117,6 @@ export class ExternalSecretsProviderConnectionManager {
 		}
 	}
 
-	private async connectProviderWithRetry(providerKey: string): Promise<ProviderConnectResult> {
-		return await this.retryManager.runWithRetry(
-			providerKey,
-			async () => await this.connectProvider(providerKey),
-		);
-	}
-
 	async disconnectProvider(providerKey: string): Promise<void> {
 		await this.invalidateReplacement(providerKey);
 
@@ -152,7 +132,7 @@ export class ExternalSecretsProviderConnectionManager {
 		providerKey: string,
 		providerType: string,
 		config: SecretsProviderSettings,
-	): Promise<PreparedProviderConnection> {
+	): Promise<void> {
 		this.logger.debug('Adding external secrets provider connection', {
 			providerKey,
 			providerType,
@@ -166,18 +146,48 @@ export class ExternalSecretsProviderConnectionManager {
 				providerType,
 				error: result.error,
 			});
-			return COMPLETED_CONNECTION;
+			return;
 		}
 
 		this.providerRegistry.set(providerKey, result.provider);
 
 		if (config.connected) {
-			await this.connectProviderWithRetry(providerKey);
+			const provider = result.provider;
+			await this.retryManager.runWithRetry(
+				providerKey,
+				async () => await this.connectAndHydrate(providerKey, provider),
+			);
+		}
+	}
+
+	/**
+	 * Connects only while the provider is not connected: doConnect() is not idempotent, so a
+	 * retry after a failed hydration must pull again without reconnecting. Reports success once
+	 * the slot holds another instance, so a superseded attempt neither re-arms nor touches it.
+	 */
+	private async connectAndHydrate(
+		providerKey: string,
+		provider: SecretsProvider,
+	): Promise<ProviderConnectResult> {
+		if (this.providerRegistry.get(providerKey) !== provider) return { success: true };
+
+		if (provider.state !== 'connected') {
+			const connectResult = await this.providerLifecycle.connect(provider);
+			if (!connectResult.success) return connectResult;
 		}
 
-		return {
-			completion: this.secretsCache.refreshProvider(providerKey, result.provider),
-		};
+		try {
+			await this.secretsCache.updateProvider(providerKey, provider);
+			return { success: true };
+		} catch (error) {
+			// A slow pull is not a failed one: it keeps running and fills the cache when it lands.
+			// Only a pull that rejects earns a retry.
+			if (error instanceof TimeoutError) {
+				this.logger.debug(`Hydration of provider ${providerKey} continues in the background`);
+				return { success: true };
+			}
+			return { success: false, error: ensureError(error) };
+		}
 	}
 
 	private async replaceProviderConnection(
@@ -497,15 +507,5 @@ export class ExternalSecretsProviderConnectionManager {
 		this.retryManager.cancelRetry(providerKey);
 
 		if (candidate) await this.disposeSupersededCandidate(candidate, 'invalidated');
-	}
-
-	private async connectProvider(providerKey: string): Promise<ProviderConnectResult> {
-		const provider = this.providerRegistry.get(providerKey);
-		if (!provider) {
-			this.logger.warn(`Cannot connect provider ${providerKey}: not found in registry`);
-			throw new Error(`Provider ${providerKey} not found in registry`);
-		}
-
-		return await this.providerLifecycle.connect(provider);
 	}
 }

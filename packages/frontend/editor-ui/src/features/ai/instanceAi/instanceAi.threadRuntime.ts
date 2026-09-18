@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildDataTablesSessionGrantKey,
+	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
@@ -16,11 +17,13 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
+	type InstanceAiThreadSummary,
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
 	type InstanceAiSetupItem,
+	type InstanceAiWorkflowAttachment,
 	type TaskList,
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
@@ -49,12 +52,14 @@ import type { InstanceAiMessageAuthorship } from './prefills';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
+import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
 	findToolCallInTree,
@@ -114,6 +119,25 @@ export interface ThreadRuntimeHooks {
 	onRunFinish: () => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+/**
+ * The title a thread shows in a header: the summary title once the server has
+ * generated one, else the first user message (truncated), else undefined —
+ * rendering only on a defined value avoids a "New conversation" → real title
+ * flash. Shared by `InstanceAiThreadView` and the embedded `InstanceAiChatPanel`.
+ */
+export function getThreadDisplayTitle(
+	summary: InstanceAiThreadSummary | undefined,
+	messages: InstanceAiMessage[],
+): string | undefined {
+	if (summary?.title && summary.title !== NEW_CONVERSATION_TITLE) return summary.title;
+	const firstUserMessage = messages.find((message) => message.role === 'user');
+	if (firstUserMessage?.content) {
+		const text = firstUserMessage.content.trim();
+		return text.length > 60 ? text.slice(0, 60) + '…' : text;
+	}
+	return undefined;
 }
 
 export function getAgentBuilderTargetFromThreadMetadata(
@@ -410,6 +434,8 @@ export function createThreadRuntime(
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
+	/** Focused preview tab id while the artifacts preview is open. */
+	const activeArtifactId = ref<string>();
 	// Event ids already applied on this thread — guards against replay overlap,
 	// e.g. an auto-reconnect replaying an id that already arrived just before
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
@@ -434,6 +460,15 @@ export function createThreadRuntime(
 		if (pending?.workflowId !== workflowId) return undefined;
 		pendingHandoff.value = null;
 		return { workflow: pending.workflow, execution: pending.execution };
+	}
+
+	/** Workflow stashed by a no-message hand-off; cleared after the first send. */
+	const pendingWorkflowAttachment = ref<InstanceAiWorkflowAttachment | null>(null);
+	function setPendingWorkflowAttachment(value: InstanceAiWorkflowAttachment | null): void {
+		pendingWorkflowAttachment.value = value;
+	}
+	function clearPendingWorkflowAttachment(): void {
+		pendingWorkflowAttachment.value = null;
 	}
 
 	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
@@ -482,6 +517,7 @@ export function createThreadRuntime(
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
+		() => pendingWorkflowAttachment.value ?? undefined,
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -684,7 +720,8 @@ export function createThreadRuntime(
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
 	// runtime is disposed and recreated. Prefer shared builders from
 	// `@n8n/api-types` so UI keys match persisted thread grants:
-	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
+	// `executions:run:<id>`, `executions:run-step:<id>:<node>`,
+	// `workflows:update:<id>`, `data-tables:<action>`.
 	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
@@ -722,6 +759,14 @@ export function createThreadRuntime(
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Running one node grants "always allow" per node, so a debug loop on one
+		// node stops prompting while the rest of the workflow still asks. Without
+		// a node name the key cannot be scoped — refuse to store one (fail closed).
+		if (toolName === 'executions' && action === 'run-step') {
+			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
+			if (!workflowId || !nodeName) return null;
+			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
 		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
 		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
@@ -1080,6 +1125,10 @@ export function createThreadRuntime(
 		sseState.value = 'disconnected';
 	}
 
+	function setActiveArtifactId(id?: string): void {
+		activeArtifactId.value = id;
+	}
+
 	/** Reset all state owned by this runtime. */
 	function resetState(): void {
 		hydrationGeneration += 1;
@@ -1098,6 +1147,9 @@ export function createThreadRuntime(
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
 		seenEventIds.clear();
+		activeArtifactId.value = undefined;
+		pendingWorkflowAttachment.value = null;
+		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
 
@@ -1279,6 +1331,7 @@ export function createThreadRuntime(
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 				instanceAiSettingsStore.computerUseChannels,
+				buildThreadArtifactsContext(producedArtifacts.values(), activeArtifactId.value),
 			);
 
 			if (runId) {
@@ -1544,6 +1597,8 @@ export function createThreadRuntime(
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
+		activeArtifactId,
+		setActiveArtifactId,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
@@ -1555,6 +1610,9 @@ export function createThreadRuntime(
 		// actions
 		setPendingHandoff,
 		consumePendingHandoff,
+		pendingWorkflowAttachment,
+		setPendingWorkflowAttachment,
+		clearPendingWorkflowAttachment,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,

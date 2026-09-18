@@ -2,11 +2,28 @@ import { baseUrl, byName, getJson } from '../request';
 import type { ListModelsFn } from '../types';
 
 /**
- * Source: LmChatGoogleGemini `loadOptions` routing (GET /v1beta/models,
- * embedding/imagen excluded). Ids keep Google's `models/` prefix, matching the
- * node dropdown values. Auth uses the `x-goog-api-key` header (Google's
- * preferred method) rather than the credential's `?key=` query auth, so the
- * key cannot leak through access logs or proxies.
+ * Keep only chat-capable Gemini models. A chat model reports `generateContent`
+ * in `supportedGenerationMethods`; embedding (`embedContent`), Veo
+ * (`predictLongRunning`), Imagen (`predict`) and AQA (`generateAnswer`) models
+ * do not, so require that method. Image and TTS models report
+ * `generateContent` but return non-text output a chat chain cannot use, so drop
+ * them by name too.
+ */
+export function shouldIncludeGoogleModel(model: {
+	name: string;
+	supportedGenerationMethods?: unknown;
+}): boolean {
+	const methods = model.supportedGenerationMethods;
+	const supportsChat = Array.isArray(methods) && methods.includes('generateContent');
+	return supportsChat && !model.name.includes('image') && !model.name.includes('tts');
+}
+
+/**
+ * Source: LmChatGoogleGemini `loadOptions` routing (GET /v1beta/models). Ids
+ * keep Google's `models/` prefix, matching the node dropdown values. Auth uses
+ * the `x-goog-api-key` header (Google's preferred method) rather than the
+ * credential's `?key=` query auth, so the key cannot leak through access logs
+ * or proxies.
  */
 export const listGoogleModels: ListModelsFn = async (options) => {
 	const base = baseUrl(options, 'https://generativelanguage.googleapis.com');
@@ -15,14 +32,16 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 		{ 'x-goog-api-key': options.apiKey },
 		options,
 		'google',
-	)) as { models?: Array<{ name?: unknown }> };
+	)) as { models?: Array<{ name?: unknown; supportedGenerationMethods?: unknown }> };
 
 	return (data.models ?? [])
 		.filter(
-			(model): model is { name: string } =>
+			(model): model is { name: string; supportedGenerationMethods?: unknown } =>
 				typeof model.name === 'string' &&
-				!model.name.includes('embedding') &&
-				!model.name.includes('imagen'),
+				shouldIncludeGoogleModel({
+					name: model.name,
+					supportedGenerationMethods: model.supportedGenerationMethods,
+				}),
 		)
 		.map((model) => ({ id: model.name, name: model.name }))
 		.sort(byName);

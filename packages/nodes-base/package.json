@@ -978,7 +978,7 @@
     "iso-639-1": "2.1.15",
     "isolated-vm": "catalog:",
     "js-nacl": "1.4.0",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "json-schema": "catalog:",
     "jsonwebtoken": "catalog:",
     "kafkajs": "catalog:",

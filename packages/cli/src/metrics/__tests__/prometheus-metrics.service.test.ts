@@ -23,6 +23,7 @@ import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.
 import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
 import type { PrometheusSchedulerMetricsService } from '../prometheus/scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
+import type { PrometheusSystemTaskMetricsService } from '../prometheus/system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
 import type { PrometheusWebhookAndFormMetricsService } from '../prometheus/webhook-and-form-metrics.service';
@@ -61,6 +62,7 @@ describe('PrometheusMetricsService', () => {
 	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
 	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
+	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -91,6 +93,7 @@ describe('PrometheusMetricsService', () => {
 			scheduler,
 			pollTrigger,
 			encryption,
+			systemTask,
 		);
 
 	beforeEach(() => {
@@ -128,6 +131,7 @@ describe('PrometheusMetricsService', () => {
 		scheduler = mock<PrometheusSchedulerMetricsService>({ enabled: true });
 		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
 		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
+		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -164,6 +168,7 @@ describe('PrometheusMetricsService', () => {
 			expect(scheduler.init).toHaveBeenCalledWith(app);
 			expect(pollTrigger.init).toHaveBeenCalledWith(app);
 			expect(encryption.init).toHaveBeenCalledWith(app);
+			expect(systemTask.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {
