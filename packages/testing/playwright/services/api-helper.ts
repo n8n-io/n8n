@@ -25,6 +25,7 @@ import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
+import { NodeTypePolicyApiHelper } from './node-type-policy-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -94,6 +95,7 @@ export class ApiHelpers {
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
 	securitySettings: SecuritySettingsApiHelper;
+	nodeTypePolicies: NodeTypePolicyApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
 	instanceAi: InstanceAiApiHelper;
 
@@ -119,6 +121,7 @@ export class ApiHelpers {
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
 		this.securitySettings = new SecuritySettingsApiHelper(this);
+		this.nodeTypePolicies = new NodeTypePolicyApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
 		this.instanceAi = new InstanceAiApiHelper(this);
 
