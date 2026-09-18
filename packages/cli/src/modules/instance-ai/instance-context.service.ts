@@ -153,8 +153,6 @@ export type InstanceContextCursor = {
 	activitySeen: number[];
 	/** The deduplication limit excludes forgotten ids, even after a scope change. */
 	activitySeenFloor?: number;
-	/** Compare the stored row identity, not the application clock, after pruning. */
-	activityAnchor?: { id: number; createdAt: string; category: ActivityEventCategory };
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
 };
@@ -185,38 +183,8 @@ export function readInstanceContextCursor(
 		...(typeof value.activitySeenFloor === 'number' && Number.isFinite(value.activitySeenFloor)
 			? { activitySeenFloor: value.activitySeenFloor }
 			: {}),
-		...(isRecord(value.activityAnchor) &&
-		typeof value.activityAnchor.id === 'number' &&
-		Number.isFinite(value.activityAnchor.id) &&
-		typeof value.activityAnchor.createdAt === 'string' &&
-		!Number.isNaN(Date.parse(value.activityAnchor.createdAt)) &&
-		typeof value.activityAnchor.category === 'string' &&
-		isKnownCategory(value.activityAnchor.category)
-			? {
-					activityAnchor: {
-						id: value.activityAnchor.id,
-						createdAt: value.activityAnchor.createdAt,
-						category: value.activityAnchor.category,
-					},
-				}
-			: {}),
 		runsThrough,
 	};
-}
-
-/** Reopens hidden rows when the caller gains access to more categories. */
-function cursorForScope(
-	cursor: InstanceContextCursor | null,
-	scope: ResolvedScope,
-): InstanceContextCursor | null {
-	if (cursor === null) return null;
-
-	const widened = scope.allowedCategories.some(
-		(category) => !cursor.activityCategories.includes(category),
-	);
-	if (!widened) return cursor;
-
-	return { ...cursor, activityFloor: 0, activityCategories: scope.allowedCategories };
 }
 
 type RunSummary = {
@@ -305,7 +273,7 @@ export class InstanceContextService {
 			// a total counting workflows the caller cannot see.
 			const mcpVisibleOnly = resolved.surface === 'mcp';
 
-			const cursor = cursorForScope(input.cursor, resolved);
+			const cursor = input.cursor;
 			const isUpdate = cursor !== null;
 
 			const [entries, runs, inventory] = await Promise.all([
@@ -343,7 +311,6 @@ export class InstanceContextService {
 					activityCategories: resolved.allowedCategories,
 					activitySeen: entries.seen,
 					activitySeenFloor: entries.seenFloor,
-					activityAnchor: entries.anchor,
 					runsThrough: now.toISOString(),
 				},
 			};
@@ -525,14 +492,13 @@ export class InstanceContextService {
 		floor: number;
 		seen: number[];
 		seenFloor: number;
-		anchor: InstanceContextCursor['activityAnchor'];
 		truncated: boolean;
 	}> {
 		const fetchLimit =
 			input.scope.surface === 'mcp' ? entryFetchLimit * withheldFetchMultiplier : entryFetchLimit;
 
 		// Newest first, and on a delta only what arrived above the mark.
-		let arrivals = await this.activityEventRepository.findFeed({
+		const arrivals = await this.activityEventRepository.findFeed({
 			limit: fetchLimit,
 			projectIds: input.scope.projectIds,
 			allowedCategories: input.scope.allowedCategories,
@@ -540,8 +506,8 @@ export class InstanceContextService {
 		});
 
 		// Read the lag band separately so new arrivals cannot push late commits out of the page.
-		let cursor = input.cursor;
-		let band = cursor
+		const cursor = input.cursor;
+		const band = cursor
 			? await this.activityEventRepository.findFeed({
 					limit: seenIdsCap,
 					projectIds: input.scope.projectIds,
@@ -551,19 +517,23 @@ export class InstanceContextService {
 				})
 			: [];
 
-		if (cursor !== null && (await this.idSpaceRestarted(cursor, input.scope))) {
-			// Reset only id-based state because SQLite reused ids from the old sequence.
-			cursor = null;
-			band = [];
-			arrivals = await this.activityEventRepository.findFeed({
-				limit: entryFetchLimit,
-				projectIds: input.scope.projectIds,
-				allowedCategories: input.scope.allowedCategories,
-			});
-		}
+		// New permissions expose older rows only in the newly allowed categories.
+		const addedCategories = input.scope.allowedCategories.filter(
+			(category) => cursor && !cursor.activityCategories.includes(category),
+		);
+		const reopened =
+			cursor && addedCategories.length > 0
+				? await this.activityEventRepository.findFeed({
+						limit: seenIdsCap,
+						projectIds: input.scope.projectIds,
+						allowedCategories: addedCategories,
+						afterId: cursor.activitySeenFloor ?? 0,
+						beforeId: cursor.activityFloor + 1,
+					})
+				: [];
 
-		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
-		const read = [...arrivals, ...band];
+		// The three ranges do not overlap and remain ordered from newest to oldest.
+		const read = [...arrivals, ...band, ...reopened];
 
 		// Entries are individual rows rather than an aggregate, so the same post-read filter the
 		// `list` tool uses applies here. The mark below still advances past what was filtered:
@@ -591,12 +561,11 @@ export class InstanceContextService {
 		);
 		// Keep the old floor unless this turn cuts the window.
 		const cut = fresh[windowSize];
-		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
+		const floor = Math.max(cursor?.activityFloor ?? 0, cut?.id ?? 0);
 
 		// Keep shown ids across scope changes so reopened rows do not repeat.
 		const seen = [...alreadyShown, ...shown.map((row) => row.id)].sort((a, b) => b - a);
 		const seenFloor = Math.max(cursor?.activitySeenFloor ?? 0, seen[seenIdsCap] ?? 0);
-		const anchor = read.find((row) => row.id === mark);
 
 		return {
 			rows: shown,
@@ -604,39 +573,10 @@ export class InstanceContextService {
 			floor,
 			seen: seen.filter((id) => id > seenFloor).slice(0, seenIdsCap),
 			seenFloor,
-			anchor: anchor
-				? { id: anchor.id, createdAt: anchor.createdAt.toISOString(), category: anchor.category }
-				: cursor?.activityAnchor,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
 			truncated: fresh.length > windowSize || arrivals.length === fetchLimit,
 		};
-	}
-
-	/** Detects when SQLite reused activity ids after retention emptied the table. */
-	private async idSpaceRestarted(
-		cursor: InstanceContextCursor,
-		scope: ResolvedScope,
-	): Promise<boolean> {
-		const anchor = cursor.activityAnchor;
-		if (!anchor || !scope.allowedCategories.includes(anchor.category)) return false;
-		const current = await this.activityEventRepository.findEntry({
-			id: anchor.id,
-			projectIds: scope.projectIds,
-			allowedCategories: scope.allowedCategories,
-		});
-		if (current) return current.createdAt.toISOString() !== anchor.createdAt;
-
-		// A higher id is a normal arrival, not a restarted sequence.
-		const newest = await this.activityEventRepository.findNewestEntry({
-			projectIds: scope.projectIds,
-			allowedCategories: scope.allowedCategories,
-		});
-		return (
-			newest !== null &&
-			newest.id <= anchor.id &&
-			newest.createdAt.getTime() > Date.parse(anchor.createdAt)
-		);
 	}
 
 	private async readRuns(input: {
