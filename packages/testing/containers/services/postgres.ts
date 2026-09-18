@@ -1,8 +1,9 @@
-import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { ENGINE_DATABASE } from './engine';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'postgres';
@@ -83,6 +84,8 @@ export const postgres: Service<PostgresResult> = {
 				'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;',
 			]);
 
+			if (ctx?.config.engine) await createEngineDatabase(container);
+
 			return {
 				container,
 				meta: {
@@ -108,6 +111,45 @@ export const postgres: Service<PostgresResult> = {
 	},
 };
 
+/**
+ * Gives the engine 2.0 data plane its own database, next to the n8n one. The
+ * separation is deliberate: neither plane can read the other's tables, so a
+ * cross-plane query fails in a test instead of passing by accident.
+ *
+ * `CREATE DATABASE` has no `IF NOT EXISTS`, so ask the catalog first. A reused
+ * container already has the database, and two stacks can reach this at the
+ * same time, so a failed create asks again before it gives up.
+ */
+async function createEngineDatabase(container: StartedPostgreSqlContainer): Promise<void> {
+	const psql = async (sql: string) =>
+		await container.exec([
+			'psql',
+			'-U',
+			container.getUsername(),
+			'-d',
+			container.getDatabase(),
+			'-tAc',
+			sql,
+		]);
+
+	const exists = async () => {
+		const result = await psql(`SELECT 1 FROM pg_database WHERE datname = '${ENGINE_DATABASE}';`);
+
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to look for the engine database: ${result.output}`);
+		}
+
+		return result.output.trim() === '1';
+	};
+
+	if (await exists()) return;
+
+	const created = await psql(`CREATE DATABASE ${ENGINE_DATABASE};`);
+	if (created.exitCode === 0 || (await exists())) return;
+
+	throw new Error(`Failed to create the engine database: ${created.output}`);
+}
+
 /** Runs introspection SQL via `psql` inside the container. */
 export class PostgresHelper {
 	constructor(
@@ -117,12 +159,44 @@ export class PostgresHelper {
 
 	/** Run an arbitrary SQL statement and return the raw psql output. */
 	async exec(sql: string): Promise<string> {
-		const result = await this.container.exec([
+		const { output } = await this.runIn(this.meta.database, sql);
+		return output;
+	}
+
+	/**
+	 * Empties the engine 2.0 data plane database. The E2E reset endpoint cannot:
+	 * it runs on the control plane connection, and Postgres does not read across
+	 * databases. Every table but the migration bookkeeping, so a new engine table
+	 * needs no change here.
+	 */
+	async truncateEngineDatabase(): Promise<void> {
+		const result = await this.runIn(
+			ENGINE_DATABASE,
+			`DO $$
+			DECLARE target text;
+			BEGIN
+				FOR target IN
+					SELECT tablename FROM pg_tables
+					WHERE schemaname = 'public' AND tablename <> 'migrations'
+				LOOP
+					EXECUTE format('TRUNCATE TABLE %I RESTART IDENTITY CASCADE', target);
+				END LOOP;
+			END $$;`,
+		);
+
+		// The caller gets no rows back, so a failure has no other way to show.
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to empty the engine database: ${result.output}`);
+		}
+	}
+
+	private async runIn(database: string, sql: string) {
+		return await this.container.exec([
 			'psql',
 			'-U',
 			this.meta.username,
 			'-d',
-			this.meta.database,
+			database,
 			'-A', // unaligned output
 			'-t', // tuples only (no headers)
 			'-F',
@@ -130,7 +204,6 @@ export class PostgresHelper {
 			'-c',
 			sql,
 		]);
-		return result.output;
 	}
 
 	/** Reset pg_stat_statements counters — call before measuring. */

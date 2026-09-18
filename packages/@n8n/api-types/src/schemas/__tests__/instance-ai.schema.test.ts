@@ -64,6 +64,36 @@ describe('Instance AI prompt version requests', () => {
 			);
 		}
 	});
+
+	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+		const base = { message: 'Change this', timeZone: 'UTC' };
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: { artifacts: [] },
+			}).success,
+		).toBe(false);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: Array.from({ length: 21 }, (_, index) => ({
+						type: 'workflow' as const,
+						id: `wf-${index}`,
+					})),
+				},
+			}).success,
+		).toBe(false);
+	});
 });
 
 describe('sandbox provider', () => {

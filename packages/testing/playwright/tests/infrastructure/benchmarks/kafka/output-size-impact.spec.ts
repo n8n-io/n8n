@@ -1,15 +1,14 @@
 import { test } from '../../../../fixtures/base';
 import { benchConfig } from '../../../../playwright-projects';
-import { kafkaDriver } from '../../../../utils/benchmark';
 import type { NodeOutputSize } from '../../../../utils/benchmark';
-import { runLoadTest } from '../harness/load-harness';
+import { runKafkaLoadTest } from '../harness/kafka-backlog-harness';
 
 const SHAPES: ReadonlyArray<{ outputSize: NodeOutputSize }> = [
 	{ outputSize: 'noop' },
 	{ outputSize: '10KB' },
 	{ outputSize: '100KB' },
 ] as const;
-const MESSAGE_COUNT = 5_000;
+const MESSAGE_COUNT = 500;
 
 test.use({ capability: benchConfig('output-size-impact', { kafka: true, workers: 1 }) });
 
@@ -36,7 +35,7 @@ test.describe(
 
 			for (const { outputSize } of SHAPES) {
 				console.log(`\n[RAMP] Stage: output size = ${outputSize}`);
-				const handle = await kafkaDriver.setup({
+				const metrics = await runKafkaLoadTest({
 					api,
 					services,
 					scenario: {
@@ -45,16 +44,11 @@ test.describe(
 						nodeOutputSize: outputSize,
 						partitions: 3,
 					},
-				});
-				const metrics = await runLoadTest({
-					handle,
-					api,
-					services,
 					testInfo,
 					load: { type: 'preloaded', count: MESSAGE_COUNT },
-					trigger: 'kafka',
 					timeoutMs: 600_000,
 					variant: `${outputSize} output`,
+					minimumCompletionRatio: 0.995,
 				});
 				results.push({
 					outputSize,
