@@ -729,7 +729,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 					!Array.isArray(parsed.triggerContent)
 						? parsed.triggerContent
 						: {};
-				const triggerEmitsNoItems = parsed.triggerEmitsNoItems === true;
+				// The model answers a bool as a word often enough to read both spellings.
+				const triggerEmitsNoItems =
+					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
 				if (Object.keys(triggerContent).length === 0 && !triggerEmitsNoItems) {
 					reason = 'empty triggerContent';
 				} else {
