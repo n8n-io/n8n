@@ -38,7 +38,9 @@ function workflowWithTriggerOnly(): Partial<IWorkflowBase> {
 
 async function denyType(n8n: n8nPage, nodeType: string): Promise<void> {
 	await n8n.api.nodeTypePolicies.putInstancePolicy({
-		rules: [{ id: `deny-${nodeType}`, action: 'deny', selector: { kind: 'name', value: nodeType } }],
+		rules: [
+			{ id: `deny-${nodeType}`, action: 'deny', selector: { kind: 'name', value: nodeType } },
+		],
 		defaultAction: 'allow',
 	});
 }
