@@ -886,6 +886,7 @@ export class RoutingNode {
 				runIndex,
 				'',
 				{ ...parameterKeys, $value: value },
+				true,
 			);
 
 			this.mergeOptions(scratch, tempOptions);
@@ -902,6 +903,7 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		baseUrlOnly = false,
 	): DeclarativeRestApiSettings.ResultOptions | undefined {
 		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
@@ -942,11 +944,13 @@ export class RoutingNode {
 				) as string;
 			}
 
-			if (nodeProperties.routing.operations) {
+			if (!baseUrlOnly && nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
+					if (baseUrlOnly && key !== 'baseURL') continue;
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
@@ -964,7 +968,7 @@ export class RoutingNode {
 				}
 			}
 
-			if (nodeProperties.routing.send) {
+			if (!baseUrlOnly && nodeProperties.routing.send) {
 				let propertyName = nodeProperties.routing.send.property;
 				if (propertyName !== undefined) {
 					// If the propertyName is an expression resolve it
@@ -1034,7 +1038,7 @@ export class RoutingNode {
 					returnData.preSend.push(...nodeProperties.routing.send.preSend);
 				}
 			}
-			if (nodeProperties.routing.output) {
+			if (!baseUrlOnly && nodeProperties.routing.output) {
 				if (nodeProperties.routing.output.maxResults !== undefined) {
 					let maxResultsValue = nodeProperties.routing.output.maxResults;
 					if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
@@ -1117,6 +1121,7 @@ export class RoutingNode {
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
 					{ ...additionalKeys, $value: optionValue, $version: node.typeVersion },
+					baseUrlOnly,
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1141,6 +1146,7 @@ export class RoutingNode {
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
 						{ ...additionalKeys, $version: node.typeVersion },
+						baseUrlOnly,
 					);
 
 					this.mergeOptions(returnData, tempOptions);
@@ -1189,6 +1195,7 @@ export class RoutingNode {
 								$index: i,
 								$parent: value[i],
 							},
+							baseUrlOnly,
 						);
 
 						this.mergeOptions(returnData, tempOptions);
