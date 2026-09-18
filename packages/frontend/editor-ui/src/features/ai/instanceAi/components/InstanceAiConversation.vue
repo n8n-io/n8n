@@ -150,7 +150,14 @@ const durableWorkflowIds = computed(
 const reservedComposerAttachments = computed(
 	() =>
 		Number(currentAgentAttachment.value !== null) +
-		Number(thread.pendingWorkflowAttachment !== null),
+		Number(
+			thread.pendingWorkflowAttachment !== null &&
+				!thread.draftMentions.some(
+					(mention) =>
+						mention.target.kind === 'workflow' &&
+						mention.target.workflowId === thread.pendingWorkflowAttachment?.id,
+				),
+		),
 );
 
 // Running builders render in a dedicated bottom section of the conversation.
@@ -603,9 +610,15 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
-			onAcceptedResourceAttachments: (accepted) => {
-				acceptedResourceAttachments = accepted;
-			},
+			...(submittedMentions.length > 0
+				? {
+						onAcceptedResourceAttachments: (
+							accepted: InstanceAiResourceAttachment[] | undefined,
+						) => {
+							acceptedResourceAttachments = accepted;
+						},
+					}
+				: {}),
 		})
 		.then((sent) => {
 			if (!sent) {
