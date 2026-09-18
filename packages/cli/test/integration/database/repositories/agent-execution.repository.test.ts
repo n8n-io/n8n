@@ -3,10 +3,31 @@ import type {
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { Agent as RuntimeAgent, Tool, type StreamChunk } from '@n8n/agents';
+import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
+import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
+import type { Telemetry } from '@/telemetry';
+import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
+import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
+import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
+import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
+import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
+import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
+import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
+import type { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -53,6 +74,255 @@ describe('AgentExecutionRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	function recordingServices() {
+		const executionService = new AgentExecutionService(
+			mockLogger(),
+			repository,
+			threadRepo,
+			mock<N8nMemory>(),
+			mock<Telemetry>(),
+			mock<AgentChatAttachmentService>(),
+			mock<AgentExecutionLogStore>(),
+			mock<StorageConfig>({ modeTag: 'db' }),
+			mock<ErrorReporter>(),
+			mock<AgentExecutionUpdateBroadcaster>(),
+		);
+		return {
+			executionService,
+			turns: new AgentTurnExecutionService(mockLogger(), executionService),
+		};
+	}
+
+	async function collect(stream: AsyncIterable<StreamChunk>) {
+		const chunks: StreamChunk[] = [];
+		for await (const chunk of stream) chunks.push(chunk);
+		return chunks;
+	}
+
+	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
+		const { turns } = recordingServices();
+		const threadId = uuid();
+		const recording = {
+			threadId,
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			userMessage: 'Start',
+		};
+		const checkpointRepo = Container.get(AgentCheckpointRepository);
+		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
+		type ModelStreamPart = Awaited<
+			ReturnType<MockLanguageModelV3['doStream']>
+		>['stream'] extends ReadableStream<infer Part>
+			? Part
+			: never;
+		let modelCalls = 0;
+		const model = new MockLanguageModelV3({
+			provider: 'mock',
+			modelId: 'recorded-turn',
+			doStream: async () => {
+				expect(await repository.existsRunningByThread(threadId)).toBe(true);
+				const first = modelCalls++ === 0;
+				return {
+					stream: convertArrayToReadableStream<ModelStreamPart>([
+						{ type: 'stream-start', warnings: [] },
+						...(first
+							? [
+									{
+										type: 'tool-call' as const,
+										toolCallId: 'approval-1',
+										toolName: 'approve',
+										input: '{}',
+									},
+								]
+							: []),
+						{
+							type: 'finish',
+							finishReason: { unified: first ? 'tool-calls' : 'stop', raw: undefined },
+							usage: {
+								inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+								outputTokens: { total: 1, text: 1, reasoning: 0 },
+							},
+						},
+					]),
+				};
+			},
+		});
+		const action = vi.fn();
+		const tool = new Tool('approve')
+			.description('Approve the action')
+			.input(z.object({}))
+			.suspend(z.object({}))
+			.resume(z.object({ approved: z.boolean() }))
+			.handler(async (_input, ctx) => {
+				if (!ctx.resumeData) return await ctx.suspend({});
+				action();
+				return 'approved';
+			});
+		const makeAgent = (store: ReturnType<N8NCheckpointStorage['getStorage']>) =>
+			new RuntimeAgent('Test Agent')
+				.instructions('Use the approval tool.')
+				.model(model)
+				.tool(tool)
+				.checkpoint(store);
+		const startAgent = makeAgent(storage.getStorage(agentId));
+		const common = {
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+		};
+		const firstChunks = await collect(
+			turns.execute({
+				...common,
+				agentInstance: startAgent,
+				prepare: async () => ({
+					type: 'start',
+					input: 'Start',
+					options: { persistence: { threadId, resourceId: 'user-1' } },
+					recording,
+				}),
+			}),
+		);
+		await startAgent.close();
+		const suspension = firstChunks.find((chunk) => chunk.type === 'tool-call-suspended');
+		expect(suspension).toBeDefined();
+		if (!suspension || suspension.type !== 'tool-call-suspended')
+			throw new Error('Expected suspension');
+
+		const secondConnection = await new DataSource({
+			...repository.manager.connection.options,
+			name: uuid(),
+		}).initialize();
+		try {
+			const otherStorage = new N8NCheckpointStorage(
+				new AgentCheckpointRepository(secondConnection),
+				mockLogger(),
+				new AgentsConfig(),
+			);
+			const bothLoaded = createDeferredPromise();
+			let loaded = 0;
+			const onResumeClaimed = vi.fn();
+			const attempts = [storage, otherStorage].map(async (checkpointStorage) => {
+				const store = checkpointStorage.getStorage(agentId);
+				const agent = makeAgent({
+					...store,
+					load: async (key) => {
+						const state = await store.load(key);
+						if (++loaded === 2) bothLoaded.resolve();
+						await bothLoaded.promise;
+						return state;
+					},
+				});
+				try {
+					return await collect(
+						turns.execute({
+							...common,
+							agentInstance: agent,
+							prepare: async () => ({
+								type: 'resume',
+								resumeData: { approved: true },
+								options: {
+									runId: suspension.runId,
+									toolCallId: suspension.toolCallId,
+									onResumeClaimed,
+								},
+								recording: { ...recording, userMessage: null },
+							}),
+						}),
+					);
+				} finally {
+					await agent.close();
+				}
+			});
+			const outcomes = await Promise.allSettled(attempts);
+			expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			expect(onResumeClaimed).toHaveBeenCalledOnce();
+			expect(action).toHaveBeenCalledOnce();
+			const executions = await repository.findByThreadIdOrdered(threadId);
+			expect(executions).toHaveLength(3);
+			expect(executions.map(({ status }) => status).sort()).toEqual([
+				'error',
+				'success',
+				'success',
+			]);
+			const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
+			expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
+			expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
+			const rejected = executions.find(({ status }) => status === 'error');
+			expect(rejected).toMatchObject({ userMessage: null, hitlStatus: null });
+			expect(rejected?.timeline ?? []).not.toContainEqual(
+				expect.objectContaining({ type: 'hitl-response' }),
+			);
+			expect(await checkpointRepo.findByRunId(suspension.runId)).toMatchObject({
+				expired: true,
+				state: null,
+			});
+		} finally {
+			await secondConnection.destroy();
+		}
+	});
+
+	it('recovers a failed finalization from the saved timeline and rejects a later terminal update', async () => {
+		const { executionService, turns } = recordingServices();
+		const params = {
+			threadId: uuid(),
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			userMessage: 'Run',
+		};
+		const recorder = new ExecutionRecorder();
+		const executionId = await turns.startExecution(params, recorder.startedAt);
+		const timeline: TimelineEvent[] = [{ type: 'text', content: 'Saved output', timestamp: 1 }];
+		executionService.recordTimelineSnapshot({ ...params, executionId, timeline });
+		await vi.waitFor(async () =>
+			expect((await repository.findOneByOrFail({ id: executionId })).timeline).toEqual(timeline),
+		);
+		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Unsaved final output' });
+		recorder.record({ type: 'finish', finishReason: 'stop' });
+		const record = recorder.getMessageRecord();
+		const update = vi
+			.spyOn(repository, 'updateIfRunning')
+			.mockRejectedValueOnce(new Error('database unavailable'));
+		try {
+			await expect(
+				turns.finalizeExecution({
+					executionId,
+					executionStarted: true,
+					params: { ...params, record },
+				}),
+			).rejects.toMatchObject({ phase: 'finalize', executionId });
+		} finally {
+			update.mockRestore();
+		}
+		expect(await repository.findOneByOrFail({ id: executionId })).toMatchObject({
+			status: 'running',
+			timeline,
+		});
+		await repository.update(executionId, {
+			updatedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS - 1),
+		});
+		const sweeper = new AgentInterruptedExecutionSweeper(
+			mockLogger(),
+			repository,
+			executionService,
+			mock<AgentBackgroundJobService>(),
+			mock<AgentWakeService>(),
+			new AgentsConfig(),
+		);
+		await sweeper.sweep();
+		const recovered = await repository.findOneByOrFail({ id: executionId });
+		expect(recovered).toMatchObject({ status: 'interrupted', timeline });
+		await expect(
+			turns.finalizeExecution({
+				executionId,
+				executionStarted: true,
+				params: { ...params, record },
+			}),
+		).rejects.toMatchObject({ phase: 'finalize', executionId });
+		expect(await repository.findOneByOrFail({ id: executionId })).toEqual(recovered);
 	});
 
 	const createThread = async (overrides: Partial<AgentExecutionThread> = {}) => {

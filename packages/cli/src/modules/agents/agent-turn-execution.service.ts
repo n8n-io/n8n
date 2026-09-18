@@ -10,6 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
@@ -87,6 +88,8 @@ export class AgentTurnExecutionService {
 		const { agentInstance, toolRegistry, backgroundJobSignal, onExecutionRecorded } = config;
 		let executionId: string | undefined;
 		let turn: AgentTurnRequest | undefined;
+		let executionStarted = false;
+		let executionError: unknown;
 		let receivedFinish = false;
 		const recorder = this.createRecorder(
 			toolRegistry,
@@ -97,16 +100,8 @@ export class AgentTurnExecutionService {
 
 		try {
 			turn = await config.prepare();
-			const result =
-				turn.type === 'start'
-					? await agentInstance.stream(turn.input, turn.options)
-					: await agentInstance.resume('stream', turn.resumeData, turn.options);
-			if (turn.type === 'resume') {
-				recorder.recordHitlResponse(turn.options.toolCallId, turn.resumeData);
-			}
-
-			// Keep SDK startup independent of execution-history storage.
-			executionId = await this.tryStartExecution(
+			turn.options.abortSignal?.throwIfAborted();
+			executionId = await this.startExecution(
 				{
 					...turn.recording,
 					...(backgroundJobSignal
@@ -114,16 +109,30 @@ export class AgentTurnExecutionService {
 						: {}),
 				},
 				recorder.startedAt,
-				turn.type === 'resume'
-					? 'Failed to start resumed agent execution recording'
-					: 'Failed to start agent execution recording',
 			);
+			turn.options.abortSignal?.throwIfAborted();
+			let result;
+			if (turn.type === 'start') {
+				executionStarted = true;
+				result = await agentInstance.stream(turn.input, turn.options);
+			} else {
+				const { options, resumeData } = turn;
+				result = await agentInstance.resume('stream', resumeData, {
+					...options,
+					onResumeClaimed: async () => {
+						executionStarted = true;
+						recorder.recordHitlResponse(options.toolCallId, resumeData);
+						await options.onResumeClaimed?.();
+					},
+				});
+			}
 			const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 			for await (const value of streamAgentChunks(result.stream)) {
 				const chunk = config.includeHitlToolDetails
 					? withApprovalToolDetails(value, toolRegistry)
 					: value;
 				recorder.record(chunk);
+				if (chunk.type === 'error') executionError = chunk.error;
 				if (chunk.type === 'finish') receivedFinish = true;
 				if (turn.type === 'start') {
 					if (chunk.type === 'tool-call-suspended') {
@@ -147,34 +156,33 @@ export class AgentTurnExecutionService {
 				yield chunk;
 			}
 		} catch (error) {
+			executionError = error;
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			if (turn) {
+			if (turn && executionId) {
 				const record = recorder.getMessageRecord();
 				const cancelled =
 					turn.options.abortSignal?.aborted ||
 					(!receivedFinish && !recorder.suspended && record.error === null);
-				await this.persistRecordedExecution({
+				await this.finalizeExecution({
 					executionId,
+					executionStarted,
+					executionError,
 					onExecutionRecorded,
-					failureMessage:
-						turn.type === 'resume'
-							? 'Failed to record resumed agent execution'
-							: 'Failed to record agent execution',
 					params: {
 						...turn.recording,
 						record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
 						hitlStatus: recorder.suspended
 							? 'suspended'
-							: turn.type === 'resume'
+							: turn.type === 'resume' && executionStarted
 								? 'resumed'
 								: undefined,
 					},
 				});
+				await config.onSettled?.(recorder.suspended);
 			}
-			await config.onSettled?.(recorder.suspended);
 		}
 	}
 
@@ -202,40 +210,56 @@ export class AgentTurnExecutionService {
 		);
 	}
 
-	async tryStartExecution(
+	async startExecution(
 		params: StartExecutionParams,
 		startedAt: Date,
-		failureMessage: string,
-	): Promise<string | undefined> {
+		executionError?: unknown,
+	): Promise<string> {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
-		} catch (error) {
-			this.logger.warn(failureMessage, {
-				agentId: params.agentId,
-				threadId: params.threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
+		} catch (cause) {
+			throw new AgentExecutionRecordingError({ phase: 'create', cause, executionError });
 		}
 	}
 
-	async persistRecordedExecution(args: {
-		executionId?: string;
+	async finalizeExecution(args: {
+		executionId: string;
+		executionStarted: boolean;
+		executionError?: unknown;
 		onExecutionRecorded?: (executionId: string) => void;
 		params: RecordMessageParams;
-		failureMessage: string;
 	}): Promise<void> {
-		const { executionId, onExecutionRecorded, params, failureMessage } = args;
-		if (!executionId) return;
+		const { executionId, executionStarted, executionError, onExecutionRecorded, params } = args;
+		let recordedId: string;
 		try {
-			const recordedId = await this.agentExecutionService.finalizeExecution(executionId, params);
-			onExecutionRecorded?.(recordedId);
-		} catch (error) {
-			this.logger.warn(failureMessage, {
-				agentId: params.agentId,
-				threadId: params.threadId,
-				error: error instanceof Error ? error.message : String(error),
+			recordedId = await this.agentExecutionService.finalizeExecution(executionId, params);
+		} catch (cause) {
+			throw new AgentExecutionRecordingError({
+				phase: 'finalize',
+				executionId,
+				executionStarted,
+				executionError,
+				cause,
 			});
 		}
+		onExecutionRecorded?.(recordedId);
+	}
+
+	async recordFailedStart(
+		params: StartExecutionParams,
+		executionError: unknown,
+		onExecutionRecorded?: (executionId: string) => void,
+	): Promise<void> {
+		const recorder = this.createRecorder();
+		recorder.record({ type: 'error', error: executionError });
+		recorder.record({ type: 'finish', finishReason: 'error' });
+		const executionId = await this.startExecution(params, recorder.startedAt, executionError);
+		await this.finalizeExecution({
+			executionId,
+			executionStarted: false,
+			executionError,
+			onExecutionRecorded,
+			params: { ...params, record: recorder.getMessageRecord() },
+		});
 	}
 }

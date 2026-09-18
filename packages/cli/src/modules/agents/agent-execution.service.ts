@@ -8,7 +8,7 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -159,11 +159,14 @@ export class AgentExecutionService {
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
+		if (!this.heartbeatTimers.has(executionId)) return;
 		this.pendingTimelineSnapshots.set(executionId, snapshot);
 		this.ensureTimelineSnapshotWrite(executionId);
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
+		this.stopHeartbeat(executionId);
+		this.pendingTimelineSnapshots.delete(executionId);
 		const { record, hitlStatus } = params;
 		const status = executionStatus(record);
 		const stoppedAt = new Date(record.startTime + record.duration);
@@ -173,23 +176,11 @@ export class AgentExecutionService {
 			error: record.error,
 			stoppedAt: stoppedAt.getTime(),
 		});
-		let storedAt: AgentExecution['storedAt'] =
+		const storedAt: AgentExecution['storedAt'] =
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
-			if (storedAt !== 'db') {
-				try {
-					await this.agentExecutionLogStore.write(
-						{ agentId: params.agentId, threadId: params.threadId, executionId },
-						{ timeline: record.timeline },
-						storedAt,
-					);
-				} catch (error) {
-					this.errorReporter.error(error);
-					storedAt = 'db';
-				}
-			}
-
+			await this.timelineSnapshotWrites.get(executionId);
 			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
 				status,
 				stoppedAt,
@@ -199,13 +190,31 @@ export class AgentExecutionService {
 				completionTokens: record.usage?.completionTokens ?? null,
 				totalTokens: record.usage?.totalTokens ?? null,
 				cost: record.totalCost,
-				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
-				storedAt,
+				timeline: record.timeline.length > 0 ? record.timeline : null,
+				storedAt: 'db',
 				error: record.error,
 				failureSummary,
 				hitlStatus: hitlStatus ?? null,
 			});
-			if (!finalized) return executionId;
+			if (!finalized) {
+				throw new OperationalError('Agent execution is no longer running', {
+					extra: { executionId },
+				});
+			}
+
+			// Save the terminal row first. A rejected finalization must not replace a stored blob.
+			if (storedAt !== 'db') {
+				try {
+					await this.agentExecutionLogStore.write(
+						{ agentId: params.agentId, threadId: params.threadId, executionId },
+						{ timeline: record.timeline },
+						storedAt,
+					);
+					await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
+				} catch (error) {
+					this.errorReporter.error(error);
+				}
+			}
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -219,7 +228,6 @@ export class AgentExecutionService {
 			this.errorReporter.error(error);
 			throw error;
 		} finally {
-			this.stopHeartbeat(executionId);
 			this.executionsNeedingTitleSync.delete(executionId);
 		}
 	}
@@ -325,6 +333,7 @@ export class AgentExecutionService {
 					executionId,
 				});
 			} catch (error) {
+				if (!this.heartbeatTimers.has(executionId)) return;
 				if (!this.pendingTimelineSnapshots.has(executionId)) {
 					this.pendingTimelineSnapshots.set(executionId, snapshot);
 				}
@@ -365,17 +374,29 @@ export class AgentExecutionService {
 		status: AgentExecution['status'],
 	): Promise<void> {
 		const { threadId, agentId, record, hitlStatus } = params;
+		const updates: Array<Promise<unknown>> = [];
 		if (hitlStatus === 'resumed' && record.model) {
-			await this.backfillSuspendedExecutions(threadId, record.model);
+			updates.push(this.backfillSuspendedExecutions(threadId, record.model));
 		}
 		if (record.usage) {
-			await this.agentExecutionThreadRepository.incrementUsage(
-				threadId,
-				record.usage.promptTokens,
-				record.usage.completionTokens,
-				record.totalCost ?? 0,
-				record.duration,
+			updates.push(
+				this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					record.usage.promptTokens,
+					record.usage.completionTokens,
+					record.totalCost ?? 0,
+					record.duration,
+				),
 			);
+		}
+		for (const result of await Promise.allSettled(updates)) {
+			if (result.status === 'rejected') {
+				this.logger.warn('Failed to update agent execution thread metadata', {
+					executionId,
+					threadId,
+					error: result.reason,
+				});
+			}
 		}
 		if (params.telemetry) {
 			try {

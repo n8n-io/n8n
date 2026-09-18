@@ -14,7 +14,7 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
@@ -97,12 +97,12 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 }
 
 export type AgentTestRunResult =
-	| { status: 'completed'; response: string; sessionId: string; executionId?: string }
+	| { status: 'completed'; response: string; sessionId: string; executionId: string }
 	| {
 			status: 'suspended';
 			response: string;
 			sessionId: string;
-			executionId?: string;
+			executionId: string;
 			suspensions: AgentTestRunSuspension[];
 	  }
 	| { status: 'session_not_found' }
@@ -350,10 +350,12 @@ export class AgentTestRunService {
 	): Promise<CollectedDraftRunResult> {
 		let response = initialResponse;
 		const suspensions: AgentTestRunSuspension[] = [];
+		let errorChunk: Extract<StreamChunk, { type: 'error' }> | undefined;
 
 		for await (const chunk of stream) {
 			if (chunk.type === 'error') {
-				throw chunk.error;
+				errorChunk = chunk;
+				break;
 			}
 			if (chunk.type === 'text-delta') {
 				response += chunk.delta;
@@ -369,11 +371,14 @@ export class AgentTestRunService {
 			}
 		}
 
+		// A break awaits iterator cleanup and preserves any finalization failure.
+		if (errorChunk) throw errorChunk.error;
 		const executionId = getExecutionId();
+		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
 		const metadata = {
 			response,
 			sessionId,
-			...(executionId ? { executionId } : {}),
+			executionId,
 		};
 		return suspensions.length > 0
 			? { status: 'suspended', ...metadata, suspensions }

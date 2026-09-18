@@ -69,6 +69,13 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return result.affected === 1;
 	}
 
+	async moveTimelineToBlob(
+		executionId: string,
+		storedAt: Exclude<AgentExecution['storedAt'], 'db'>,
+	): Promise<void> {
+		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
+	}
+
 	/**
 	 * The first user-message text in each of the given threads. Used by the
 	 * sessions list to render a preview before the LLM-generated title is
