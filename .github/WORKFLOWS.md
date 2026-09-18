@@ -889,14 +889,42 @@ PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
 does not show red CI; any non-success state blocks the merge equally. The
-ruleset for `master` must list
-that status as a required check for the block to take effect. Merge-queue runs
-report success on the queue head without re-evaluating: a PR cannot enter the
-queue unless the status is green on its head, and the queue does not change
-approvals.
+ruleset for a branch must list that status as a required check for the block
+to take effect. Merge-queue runs report success on the queue head without
+re-evaluating: a PR cannot enter the queue unless the status is green on its
+head, and the queue does not change approvals.
 
-The workflow reads OWNERS and its scripts from the base branch only, so a PR
-cannot lift its own review requirement.
+The status is evaluated for a PR into any base branch, from a same-repo head
+or a fork. Both matter because the ruleset that gates a PR is not always the
+one on its base branch: GitHub applies the ruleset of a stack's target branch
+to every PR in the stack, so a stacked PR into a feature branch is gated by
+the `master` ruleset. A required status that no run ever writes leaves the PR
+blocked on "Expected". Routes that skip the evaluation are listed in
+`REQUIRED_REVIEW_EXEMPTIONS` in
+`required-reviews.mjs`. An entry is `<head> -> <base>` or just `<base>`
+(any head); `*` matches any run of characters. An exempt PR reports
+`success` with the route in the description. Only heads in this repository
+can match, so a fork branch with a matching name is still evaluated. Add a
+route only when every commit it carries was already reviewed elsewhere, as
+with `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+
+The workflow reads OWNERS, its scripts and the exemption routes from `master`
+only, never from the base branch or the PR: any writable branch can be a base,
+so only `master` is trusted input. A PR cannot lift its own review
+requirement. A retarget re-evaluates the PR, so a verdict computed against the
+old base does not carry over.
+
+Every path that writes the status runs in the base repository context, because
+a fork-context run has no secrets and a read-only token. PR changes arrive
+through `pull_request_target`, which is safe here because no step checks out
+or runs PR code. Review events on a same-repo PR arrive through
+`pull_request_review`. Review events on a fork PR arrive through the
+`workflow_run` of `ci-pull-request-review.yml`, which runs on every submitted
+or dismissed review; the owners workflow looks the PR up from that run's head
+and skips same-repo heads, which the direct event already covers. A first
+contribution whose runs still wait for approval gets no review-event
+re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
+the PR number is the manual fallback.
 
 ### Transition from CODEOWNERS
 
