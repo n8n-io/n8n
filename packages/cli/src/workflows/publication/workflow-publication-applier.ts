@@ -167,13 +167,7 @@ export class WorkflowPublicationApplier {
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
-<<<<<<< HEAD
-		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
-=======
-		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
-			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
-		});
->>>>>>> 378e9265 (fix(core): Tear down workflow triggers when publication meets a node type the instance cannot load (#38754))
+		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes);
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
