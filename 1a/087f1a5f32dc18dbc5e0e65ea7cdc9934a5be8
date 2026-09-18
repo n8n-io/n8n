@@ -1,0 +1,21 @@
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.vue
+  s_326dd039c6d306::t_e80ec0163f9869 6,50,79
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.test.ts
+  s_326dd039c6d306::t_20cb46e4d85dfb 5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a087f1a5f32dc18dbc5e0e65ea7cdc9934a5be8",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}
