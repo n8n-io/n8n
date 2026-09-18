@@ -560,8 +560,8 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.expectOutputRunSelectorValue(value);
 	}
 
-	// Cross-panel run-linking updates a selector asynchronously, so retry the read
-	// instead of asserting a one-shot inputValue().
+	// Run-selector updates can land asynchronously (notably cross-panel via
+	// run-linking), so assert with a retrying matcher rather than reading once.
 	async expectInputRunSelectorValue(value: string) {
 		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
