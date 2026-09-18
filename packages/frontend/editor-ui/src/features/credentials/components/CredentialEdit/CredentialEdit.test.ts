@@ -1295,7 +1295,6 @@ describe('CredentialEdit', () => {
 				scopes?: Scope[];
 				isResolvable?: boolean;
 				connectedByMe?: boolean;
-				description?: string | null;
 				data?: Record<string, string>;
 			} = {},
 		) => {
@@ -1334,7 +1333,6 @@ describe('CredentialEdit', () => {
 				isManaged: false,
 				isResolvable: dataOverrides.isResolvable ?? false,
 				connectedByMe: dataOverrides.connectedByMe,
-				description: dataOverrides.description,
 				sharedWithProjects: [],
 				scopes: dataOverrides.scopes ?? ['credential:update'],
 				oauthTokenData: false,
@@ -1361,108 +1359,6 @@ describe('CredentialEdit', () => {
 
 			return { credentialsStore, uiStore, ...renderResult };
 		};
-
-		test.each([null, 'Production reports'])(
-			'tracks the saved description %s on creation and save',
-			async (description) => {
-				const credentialType: ICredentialType = {
-					name: 'testApi',
-					displayName: 'Test API',
-					properties: [],
-				};
-				const { credentialsStore, pinia } = setupNewCredential(credentialType);
-				credentialsStore.createNewCredential.mockResolvedValue(
-					createCredentialResponse({ type: credentialType.name, description }),
-				);
-				const { getByTestId } = renderComponent({
-					props: {
-						activeId: credentialType.name,
-						modalName: CREDENTIAL_EDIT_MODAL_KEY,
-						mode: 'new',
-					},
-					pinia,
-				});
-				await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
-				await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
-
-				for (const event of [
-					TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
-					TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
-				]) {
-					const calls = telemetryTrackMock.mock.calls.filter(([name]) => name === event);
-					expect(calls).toHaveLength(1);
-					expect(calls[0][1]).toMatchObject({
-						has_description: description !== null,
-						description_length: description?.length ?? 0,
-					});
-					expect(calls[0][1]).not.toHaveProperty('description');
-					if (event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS) {
-						expect(calls[0][1]).toHaveProperty('credential_saved', true);
-					}
-				}
-			},
-		);
-
-		test('tracks a direct OAuth save with metadata from the saved response', async () => {
-			const { credentialsStore, getByTestId, getByDisplayValue } = setupExistingOAuthCredential();
-			credentialsStore.updateCredential.mockResolvedValue(
-				createCredentialResponse({
-					id: 'oauth-cred',
-					type: oAuth2Api.name,
-					description: 'Production reports',
-				}),
-			);
-			await waitFor(() => expect(getByDisplayValue('client')).toBeVisible());
-			const clientIdInput = getByDisplayValue('client');
-			await userEvent.clear(clientIdInput);
-			await userEvent.type(clientIdInput, 'updated-client');
-			await userEvent.tab();
-			const saveButton = within(getByTestId('credential-save-button')).getByRole('button');
-			await waitFor(() => expect(saveButton).not.toBeDisabled());
-			await userEvent.click(saveButton);
-			await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalled());
-			const calls = telemetryTrackMock.mock.calls.filter(
-				([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
-			);
-			expect(calls).toHaveLength(1);
-			expect(calls[0][1]).toMatchObject({
-				has_description: true,
-				description_length: 18,
-				credential_saved: true,
-			});
-			expect(calls[0][1]).not.toHaveProperty('description');
-		});
-
-		test.each(['success', 'error'])(
-			'tracks one save after an OAuth %s callback',
-			async (result) => {
-				const { credentialsStore, getByTestId } = setupExistingOAuthCredential();
-				credentialsStore.updateCredential.mockResolvedValue(
-					createCredentialResponse({
-						id: 'oauth-cred',
-						type: oAuth2Api.name,
-						description: 'Production reports',
-					}),
-				);
-				await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
-				await userEvent.click(getByTestId('quick-connect-button'));
-				await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
-				const savedEvents = () =>
-					telemetryTrackMock.mock.calls.filter(
-						([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
-					);
-				expect(savedEvents()).toHaveLength(0);
-				broadcastMessageListener?.({ data: result } as MessageEvent);
-				await waitFor(() => expect(savedEvents()).toHaveLength(1));
-				expect(savedEvents()[0][1]).toMatchObject({
-					has_description: true,
-					description_length: 18,
-					credential_saved: true,
-					is_valid: result === 'success',
-				});
-				expect(savedEvents()[0][1]).not.toHaveProperty('description');
-			},
-		);
 
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {
@@ -1518,7 +1414,7 @@ describe('CredentialEdit', () => {
 			await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
 			expect(telemetryTrackMock).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
-				expect.objectContaining({ workflow_id: 'wf-artifact' }),
+				expect.objectContaining({ workflow_id: 'wf-artifact', source: 'frontend' }),
 			);
 		});
 
@@ -1763,41 +1659,24 @@ describe('CredentialEdit', () => {
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 
-		test.each(['success', 'error'])(
-			'reports an OAuth %s callback without a save for a connect-only user',
-			async (result) => {
-				const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
-					{},
-					{
-						scopes: ['credential:read', 'credential:connect'],
-						isResolvable: true,
-						connectedByMe: false,
-						description: 'Production reports',
-					},
-				);
+		test('authorizes a private credential without saving for a connect-only user', async () => {
+			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
+				{},
+				{
+					scopes: ['credential:read', 'credential:connect'],
+					isResolvable: true,
+					connectedByMe: false,
+				},
+			);
 
-				await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-				await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
-				await userEvent.click(getByTestId('quick-connect-button'));
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+			await userEvent.click(getByTestId('quick-connect-button'));
 
-				await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
-				// Connect-only users can't edit the blueprint, so it must not be re-saved.
-				expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
-				broadcastMessageListener?.({ data: result } as MessageEvent);
-				const savedEvents = () =>
-					telemetryTrackMock.mock.calls.filter(
-						([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
-					);
-				await waitFor(() => expect(savedEvents()).toHaveLength(1));
-				expect(savedEvents()[0][1]).toMatchObject({
-					has_description: true,
-					description_length: 18,
-					credential_saved: false,
-					is_valid: result === 'success',
-				});
-				expect(savedEvents()[0][1]).not.toHaveProperty('description');
-			},
-		);
+			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
+			// Connect-only users can't edit the blueprint, so it must not be re-saved.
+			expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
+		});
 
 		test('does not prompt to save again on a second connect click when nothing changed', async () => {
 			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(

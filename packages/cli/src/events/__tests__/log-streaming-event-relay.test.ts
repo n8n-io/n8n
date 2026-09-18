@@ -1350,6 +1350,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
 				credentialName: 'Rotated token',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user808',
 					email: 'updatecred@example.com',

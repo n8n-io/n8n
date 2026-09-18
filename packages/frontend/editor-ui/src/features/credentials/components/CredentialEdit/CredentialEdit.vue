@@ -1,10 +1,6 @@
 <script setup lang="ts">
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import {
-	getCredentialDescriptionTelemetry,
-	TELEMETRY_EVENT,
-	type InferTelemetryProps,
-} from '@n8n/telemetry';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
@@ -662,9 +658,7 @@ function scrollToBottom() {
 	}, 0);
 }
 
-async function saveCredential({
-	isOAuthConnection = false,
-}: { isOAuthConnection?: boolean } = {}): Promise<ICredentialsResponse | null> {
+async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
 		scrollToTop();
@@ -796,8 +790,6 @@ async function saveCredential({
 			credential_type: credentialDetails.type,
 			workflow_id: telemetryWorkflowId.value,
 			credential_id: credential.id,
-			...getCredentialDescriptionTelemetry(credential.description),
-			credential_saved: true,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: isNewCredential,
 			uses_external_secrets: usesExternalSecrets(credentialDetails.data ?? {}),
@@ -817,11 +809,13 @@ async function saveCredential({
 			trackProperties.authError = authError.value;
 		}
 
-		// A connection attempt reports its result in the OAuth callback.
-		if (!isOAuthType.value || !isOAuthConnection) {
-			telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, trackProperties);
-		}
+		/**
+		 * For non-OAuth credentials we track saving on clicking the `Save` button, but for
+		 * OAuth credentials we track saving at the end of the flow (BroastcastChannel event)
+		 * so that the `is_valid` property is correct.
+		 */
 		if (!isOAuthType.value) {
+			telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, trackProperties);
 			void handleDynamicNotification(!!trackProperties.is_valid);
 		}
 
@@ -926,9 +920,9 @@ async function createCredential(
 	});
 
 	telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
+		source: 'frontend',
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		...getCredentialDescriptionTelemetry(credential.description),
 		workflow_id: telemetryWorkflowId.value,
 	});
 
@@ -1086,9 +1080,7 @@ async function oAuthCredentialAuthorize() {
 	// connecting through saveCredential would be a no-op that returns null and
 	// aborts the flow — connect to the stored credential directly instead.
 	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
-	const credential = canEditBlueprint
-		? await saveCredential({ isOAuthConnection: true })
-		: currentCredential.value;
+	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
 		oauthPopup.close();
 		return;
@@ -1175,9 +1167,7 @@ async function oAuthCredentialAuthorize() {
 		> = {
 			credential_type: credential.type,
 			workflow_id: telemetryWorkflowId.value || null,
-			credential_id: credential.id,
-			...getCredentialDescriptionTelemetry(credential.description),
-			credential_saved: !!canEditBlueprint,
+			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
 			is_valid: successfullyConnected,
@@ -1430,7 +1420,7 @@ const { width } = useElementSize(credNameRef);
 									: i18n.baseText('credentialEdit.credentialEdit.saving')
 							"
 							data-test-id="credential-save-button"
-							@click="saveCredential()"
+							@click="saveCredential"
 						/>
 						<N8nIconButton
 							variant="subtle"

@@ -1,7 +1,6 @@
 export { buildCatalog, formatCatalog } from './catalog';
 export type { TelemetryCatalogEntry, TelemetryCatalogProperty } from './catalog';
 export { POSTHOG_EVENTS_BLACKLIST } from './constants';
-export { getCredentialDescriptionTelemetry } from './credential-description';
 export { defineTelemetryEvents } from './define';
 export type {
 	InferTelemetryProps,

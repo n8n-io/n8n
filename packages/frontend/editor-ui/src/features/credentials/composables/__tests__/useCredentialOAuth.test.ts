@@ -942,28 +942,6 @@ describe('useCredentialOAuth', () => {
 			);
 		});
 
-		it('tracks saved description metadata through quick connect', async () => {
-			const credentialsStore = setupSuccessfulOAuthFlow();
-			credentialsStore.createNewCredential.mockResolvedValue({
-				...createdCredential,
-				description: 'Production reports',
-			});
-			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api');
-
-			for (const event of [
-				TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
-				TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
-			]) {
-				const calls = mockTrack.mock.calls.filter(([name]) => name === event);
-				expect(calls).toHaveLength(1);
-				expect(calls[0][1]).toMatchObject({ has_description: true, description_length: 18 });
-				expect(calls[0][1]).not.toHaveProperty('description');
-				if (event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS) {
-					expect(calls[0][1]).toHaveProperty('credential_saved', true);
-				}
-			}
-		});
-
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();
 
@@ -971,10 +949,9 @@ describe('useCredentialOAuth', () => {
 			await createAndAuthorize('slackOAuth2Api');
 
 			expect(mockTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
+				source: 'frontend',
 				credential_type: 'slackOAuth2Api',
 				credential_id: 'new-cred-123',
-				has_description: false,
-				description_length: 0,
 				workflow_id: '',
 			});
 		});
@@ -989,9 +966,6 @@ describe('useCredentialOAuth', () => {
 				credential_type: 'slackOAuth2Api',
 				workflow_id: '',
 				credential_id: 'new-cred-123',
-				has_description: false,
-				description_length: 0,
-				credential_saved: true,
 				is_complete: true,
 				is_new: true,
 				is_valid: true,
@@ -1009,9 +983,6 @@ describe('useCredentialOAuth', () => {
 				credential_type: 'slackOAuth2Api',
 				workflow_id: '',
 				credential_id: 'new-cred-123',
-				has_description: false,
-				description_length: 0,
-				credential_saved: true,
 				is_complete: true,
 				is_new: true,
 				is_valid: false,

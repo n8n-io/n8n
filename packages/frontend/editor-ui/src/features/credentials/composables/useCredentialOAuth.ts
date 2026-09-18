@@ -1,12 +1,8 @@
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
-import {
-	getCredentialDescriptionTelemetry,
-	TELEMETRY_EVENT,
-	type InferTelemetryProps,
-} from '@n8n/telemetry';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import {
 	NodeHelpers,
@@ -454,9 +450,9 @@ export function useCredentialOAuth() {
 			);
 
 			telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
+				source: 'frontend',
 				credential_type: credential.type,
 				credential_id: credential.id,
-				...getCredentialDescriptionTelemetry(credential.description),
 				workflow_id: workflowsStore.workflowId,
 			});
 		} catch (error) {
@@ -481,8 +477,6 @@ export function useCredentialOAuth() {
 			credential_type: credentialTypeName,
 			workflow_id: workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
-			...getCredentialDescriptionTelemetry(credential.description),
-			credential_saved: true,
 			is_complete: true,
 			is_new: true,
 			is_valid: success,

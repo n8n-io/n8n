@@ -3,29 +3,38 @@
 ## Adoption
 
 Measure the share of users who save at least one nonempty credential description
-among users who create or save a credential in the same seven-day window.
+among users who create or update a credential through the internal credential API
+in the same seven-day window. The editor uses this API.
 Use identified users on instances with the instrumentation enabled.
-Exclude events that do not have the new description properties.
 
-Use `User created credentials` and `User saved credentials`.
-For `User saved credentials`, require `credential_saved` to be `true`.
-Exclude saved events with a false or missing flag from both counts.
-An OAuth callback can describe a connection to an existing credential without
-saving it. Such callbacks set `credential_saved` to `false` and do not count as
-adoption, even when the existing credential has a description.
-Join the user identity from the event envelope with the instance identity.
+Use these backend events:
+
+- `User created credentials` with `source = backend` and `public_api = false`.
+- `User updated credentials` with `source = backend`.
+
+Require both description properties on each event.
+Exclude frontend events and events that lack the required properties from both
+counts. Join `user_id` with the instance identity from the event envelope.
 Count each user once in the numerator and once in the denominator.
-The server and editor can both emit the creation event.
 Do not use raw event counts as counts of users or credentials.
+
+Public API creation stays tracked with `public_api = true` but does not count in
+this metric. Imports and writes that bypass these controllers are outside this
+metric. Calls to the internal API can also come from scripts. These events do not
+prove that a person used the editor.
 
 `has_description` reports whether the saved description is nonempty.
 `description_length` reports the length of the trimmed, saved text in UTF-16 code
 units. A missing or blank description has length zero.
-These values come from the saved credential, even when a connection test fails.
+The server emits these values after persistence. A later OAuth or connection
+test result does not change them. A connection without a save does not count.
 The events never include the description text.
 
 This measures use of descriptions among users who save credentials.
+An update can preserve an existing description without changing its text.
 It does not measure the share of all stored credentials that have a description.
+The existing telemetry transport is best effort. This change does not guarantee
+delivery after a server failure.
 
 ## Correctness
 

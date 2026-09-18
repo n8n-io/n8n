@@ -15,11 +15,14 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_CREDENTIALS: {
 		name: 'User created credentials',
 		description:
-			'A credential was created. The server and editor can both emit this event. Deduplicate by credential_id when counting credentials. Description text is never included.',
+			'A credential was created. The server and editor can both emit this event. Use source to select one emitter. Only the server reports description metadata. Description text is never included.',
 		properties: z.object({
 			credential_id: z.string(),
 			credential_type: z.string(),
-			...descriptionProperties,
+			source: z.enum(['frontend', 'backend']).describe('The emitter of the creation event.'),
+			public_api: z.boolean().optional().describe('Whether the server used the public API.'),
+			has_description: descriptionProperties.has_description.optional(),
+			description_length: descriptionProperties.description_length.optional(),
 			user_id: z.string().optional(),
 			user_role: z.string().optional(),
 			project_id: z.string().optional(),
@@ -33,19 +36,31 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			credential_uses_managed_auth: z.boolean().optional(),
 		}),
 	},
+	USER_UPDATED_CREDENTIALS: {
+		name: 'User updated credentials',
+		description:
+			'The server updated a credential through the internal credential API. Description metadata comes from the saved record. Description text is never included.',
+		properties: z.object({
+			user_id: z.string(),
+			user_role: z.string().optional(),
+			credential_id: z.string(),
+			credential_type: z.string(),
+			source: z.literal('backend'),
+			...descriptionProperties,
+			is_private: z.boolean(),
+			uses_external_secrets: z.boolean(),
+			jwe_enabled: z.boolean(),
+			credential_supports_managed_auth: z.boolean(),
+			credential_uses_managed_auth: z.boolean(),
+		}),
+	},
 	USER_SAVED_CREDENTIALS: {
 		name: 'User saved credentials',
 		description:
-			'The editor saved a credential, or an OAuth connection attempt finished. Description properties describe the saved credential, including when connection testing fails. Description text is never included.',
+			'The editor saved a non-OAuth credential, or an OAuth connection attempt finished. A connection attempt can finish without a credential save.',
 		properties: z.object({
 			credential_id: z.string(),
 			credential_type: z.string(),
-			...descriptionProperties,
-			credential_saved: z
-				.boolean()
-				.describe(
-					'Whether this action created or updated the credential before the event. False when OAuth connects without saving the credential.',
-				),
 			workflow_id: z.string().nullable().optional(),
 			is_complete: z.boolean(),
 			is_new: z.boolean(),

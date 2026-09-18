@@ -288,6 +288,7 @@ describe('CredentialsController', () => {
 		const existingCredential = mock<CredentialsEntity>({
 			id: credentialId,
 			name: 'Test Credential',
+			description: null,
 			type: 'apiKey',
 			isGlobal: false,
 			isManaged: false,
@@ -385,6 +386,7 @@ describe('CredentialsController', () => {
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
 				credentialName: 'Updated Credential',
+				credentialDescriptionLength: 0,
 				isDynamic: false,
 				usesExternalSecrets: false,
 				jweEnabled: false,
@@ -545,13 +547,14 @@ describe('CredentialsController', () => {
 			it.each([
 				[
 					'writes a description the payload sends',
-					'Read-only reporting key.',
+					'  Read-only reporting key.  ',
 					'Read-only reporting key.',
 				],
 				['clears a description the payload blanks out', '  ', null],
 			])('%s', async (_label, sent, prepared) => {
 				const req = updateRequest({ description: sent });
 				prepareUpdateDataSpy.mockResolvedValue({ ...req.body, description: prepared });
+				updateSpy.mockResolvedValue({ ...existingCredential, description: prepared });
 
 				await credentialsController.updateCredentials(req);
 
@@ -561,15 +564,27 @@ describe('CredentialsController', () => {
 					expect.anything(),
 					expect.any(Object),
 				);
+				expect(emitSpy).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialDescriptionLength: prepared?.length ?? 0 }),
+				);
+				const event = emitSpy.mock.calls.find(([name]) => name === 'credentials-updated')?.[1];
+				expect(event).not.toHaveProperty('description');
+				expect(event).not.toHaveProperty('credentialDescription');
 			});
 
 			it('leaves the stored description alone when the payload omits the field', async () => {
 				const req = updateRequest({});
 				prepareUpdateDataSpy.mockResolvedValue({ ...req.body });
+				updateSpy.mockResolvedValue({ ...existingCredential, description: 'Production reports' });
 
 				await credentialsController.updateCredentials(req);
 
 				expect(updateSpy.mock.calls[0][1]).not.toHaveProperty('description');
+				expect(emitSpy).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialDescriptionLength: 18 }),
+				);
 			});
 		});
 
