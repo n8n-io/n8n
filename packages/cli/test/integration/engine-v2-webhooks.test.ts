@@ -12,7 +12,11 @@ import { GlobalConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createInMemoryResponsePair, ExecutionResponseReceiver } from '@n8n/engine';
+import {
+	createInMemoryResponsePair,
+	ExecutionResponseReceiver,
+	ExecutionResponseSender,
+} from '@n8n/engine';
 import type { INode } from 'n8n-workflow';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -41,6 +45,7 @@ const getExecution = vi.fn();
 let builder: User;
 let webhookAgent: SuperAgentTest;
 let webhookTestEndpoint: string;
+let responseSender: ExecutionResponseSender;
 
 const webhookNode = (webhookId: string): INode => ({
 	id: randomUUID(),
@@ -79,10 +84,11 @@ beforeAll(async () => {
 	// The host hands the responder its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
 	// wires the same receiver by hand.
-	const { frameReceiver } = createInMemoryResponsePair();
+	const { frameReceiver, frameSender } = createInMemoryResponsePair();
 	Container.get(EngineV2WebhookResponder).useReceiver(
 		new ExecutionResponseReceiver(frameReceiver, Container.get(Logger)),
 	);
+	responseSender = new ExecutionResponseSender(frameSender, Container.get(Logger));
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.
 	class EditorFacingWebhookServer extends WebhookServer {
@@ -141,11 +147,40 @@ describe('webhook runs on engine 2.0', () => {
 		expect(executions.filter((e) => e.workflowId === workflow.id)).toHaveLength(0);
 	});
 
-	test('answers 400 with the reason when the response mode is unsupported', async () => {
+	test('streams the response from the data plane', async () => {
 		const webhookId = randomUUID();
 		const trigger = webhookNode(webhookId);
 		trigger.parameters.responseMode = 'streaming';
 		const workflow = await createV2Workflow(trigger);
+		const chunk = {
+			type: 'item',
+			content: 'hello',
+			metadata: {
+				nodeId: trigger.id,
+				nodeName: trigger.name,
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+			},
+		};
+
+		startExecution.mockImplementationOnce(async (request) => {
+			responseSender.send({ type: 'chunk', executionId: request.executionId, payload: chunk });
+			responseSender.send({
+				type: 'ended',
+				executionId: request.executionId,
+				workflowId: workflow.id,
+				status: 'completed',
+				lastStep: {
+					nodeId: trigger.id,
+					nodeName: trigger.name,
+					status: 'completed',
+					outputs: [],
+				},
+			});
+
+			return { executionId: request.executionId };
+		});
 
 		await startListening(workflow.id);
 
@@ -153,8 +188,12 @@ describe('webhook runs on engine 2.0', () => {
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
 			.send({ order: 42 });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain("does not support the 'streaming' response mode yet");
-		expect(startExecution).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(200);
+		expect(response.text).toBe(`${JSON.stringify(chunk)}\n`);
+		expect(startExecution).toHaveBeenCalledWith(
+			expect.objectContaining({
+				callerContext: expect.objectContaining({ streamingEnabled: true }),
+			}),
+		);
 	});
 });
