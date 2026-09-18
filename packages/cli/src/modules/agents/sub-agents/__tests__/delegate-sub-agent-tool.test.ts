@@ -91,13 +91,23 @@ describe('createN8nDelegateSubAgentTool', () => {
 		expect(
 			inlineOptions?.shouldRetrySubAgentResumeError?.(
 				new AgentExecutionRecordingError({
-					phase: 'finalize',
-					executionId: 'execution-1',
-					executionStarted: true,
+					phase: 'create',
 					cause: new Error('database unavailable'),
 				}),
 			),
-		).toBe(false);
+		).toBe(true);
+		for (const executionStarted of [false, true]) {
+			expect(
+				inlineOptions?.shouldRetrySubAgentResumeError?.(
+					new AgentExecutionRecordingError({
+						phase: 'finalize',
+						executionId: 'execution-1',
+						executionStarted,
+						cause: new Error('database unavailable'),
+					}),
+				),
+			).toBe(false);
+		}
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {

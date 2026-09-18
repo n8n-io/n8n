@@ -228,19 +228,20 @@ describe('AgentExecutionRepository', () => {
 			let loaded = 0;
 			const onResumeClaimed = vi.fn();
 			const attempts = [storage, otherStorage].map(async (checkpointStorage) => {
-				const store = checkpointStorage.getStorage(agentId);
-				const agent = makeAgent({
-					...store,
-					load: async (key) => {
-						const state = await store.load(key);
-						if (++loaded === 2) bothLoaded.resolve(true);
-						if (!(await bothLoaded.promise)) {
-							throw new Error('A resume attempt failed before both checkpoints loaded');
-						}
-						return state;
-					},
-				});
+				let agent: ReturnType<typeof makeAgent> | undefined;
 				try {
+					const store = checkpointStorage.getStorage(agentId);
+					agent = makeAgent({
+						...store,
+						load: async (key) => {
+							const state = await store.load(key);
+							if (++loaded === 2) bothLoaded.resolve(true);
+							if (!(await bothLoaded.promise)) {
+								throw new Error('A resume attempt failed before both checkpoints loaded');
+							}
+							return state;
+						},
+					});
 					return await collect(
 						turns.execute({
 							...common,
@@ -261,7 +262,7 @@ describe('AgentExecutionRepository', () => {
 					bothLoaded.resolve(false);
 					throw error;
 				} finally {
-					await agent.close();
+					await agent?.close();
 				}
 			});
 
