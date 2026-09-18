@@ -16,16 +16,17 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: hide-cubic-reviews-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   hide-old-cubic-reviews:
     if: >-
       github.event.review.user.login == 'cubic-dev-ai[bot]' &&
       github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
+    # Job-level, not workflow-level: a human review starts a run whose job is
+    # skipped, and that run must not cancel an in-flight cubic run.
+    concurrency:
+      group: hide-cubic-reviews-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       pull-requests: write
     steps:
