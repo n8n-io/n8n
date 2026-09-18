@@ -43,6 +43,10 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosaveParams<TSnapshot>) {
 	const saveStatus = ref<SaveStatus>('idle');
 	const hasPendingSave = ref(false);
+	/** A debounced snapshot is queued but hasn't fired yet — distinct from `hasPendingSave`,
+	 * which is also true once that snapshot moves in flight. Lets a caller detect "there's
+	 * a queued edit I can still merge into" before it's sent. */
+	const hasQueuedSnapshot = ref(false);
 	const debounceMs = params.debounceMs ?? 500;
 	const savedHoldMs = params.savedHoldMs ?? 2000;
 
@@ -70,6 +74,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 
 	function syncPendingState() {
 		hasPendingSave.value = pendingSnapshot !== null || autosaveInFlight !== null;
+		hasQueuedSnapshot.value = pendingSnapshot !== null;
 	}
 
 	async function runSave(
@@ -188,6 +193,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			pendingSnapshot = null;
 			pendingSnapshotRevision = 0;
 			pendingSnapshotGeneration = 0;
+			syncPendingState();
 			void chainSave(target, targetRevision, targetGeneration, false);
 		}, getDebounceTime(debounceMs));
 	}
@@ -212,6 +218,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		pendingSnapshot = null;
 		pendingSnapshotRevision = 0;
 		pendingSnapshotGeneration = 0;
+		syncPendingState();
 
 		if (target !== null) {
 			try {
@@ -276,6 +283,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 	return {
 		saveStatus,
 		hasPendingSave,
+		hasQueuedSnapshot,
 		scheduleAutosave,
 		settleAutosave,
 		flushAutosave,

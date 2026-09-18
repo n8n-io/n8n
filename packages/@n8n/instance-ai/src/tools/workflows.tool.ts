@@ -28,6 +28,10 @@ import {
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { formatClaimDisclosure } from '../workflow-loop/render-claim';
+import {
+	describeSavedPublishState,
+	type SavedWorkflowState,
+} from './workflows/saved-workflow-state';
 import { isSetupPanelEnabled } from './workflows/setup-items';
 import {
 	describeSetupItem,
@@ -343,7 +347,12 @@ const listVersionsAction = z.object({
 });
 
 const restoreVersionAction = z.object({
-	action: z.literal('restore-version').describe('Restore a workflow to a previous version'),
+	action: z
+		.literal('restore-version')
+		.describe(
+			'Restore a previous version into the current draft. This does not publish it. ' +
+				'For a production rollback, publish the restored draft through the normal approval flow.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
 });
@@ -1149,6 +1158,8 @@ async function handleSetupTestTrigger(
 		return {
 			success: false,
 			error: `Failed to apply setup before trigger test: ${applyFailures.map((f) => `${f.nodeName}: ${f.error}`).join('; ')}`,
+			publishState: preTestApply.publishState,
+			publishStateNote: preTestApply.publishStateNote,
 			failedNodes: applyFailures,
 		};
 	}
@@ -1183,6 +1194,8 @@ async function handleSetupTestTrigger(
 			error: 'invalid_credential_hints',
 			message: INVALID_SETUP_HINT_MESSAGE,
 			problems: destinationInspection.problems,
+			publishState: preTestApply.publishState,
+			publishStateNote: preTestApply.publishStateNote,
 		};
 	}
 
@@ -1351,6 +1364,8 @@ async function handleSetupApply(
 				success: true,
 				partial: true,
 				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
+				publishState: applyResult.publishState,
+				publishStateNote: applyResult.publishStateNote,
 				completedNodes: validCompletedNodes,
 				nodesStillNeedingSetup,
 				...skippedByUserReport,
@@ -1362,6 +1377,8 @@ async function handleSetupApply(
 
 		return {
 			success: true,
+			publishState: applyResult.publishState,
+			publishStateNote: applyResult.publishStateNote,
 			completedNodes: validCompletedNodes,
 			...skippedByUserReport,
 			failedNodes: mergedFailedNodes,
@@ -1481,7 +1498,7 @@ async function resolveUnverifiedPublishDisclosure(
 }
 
 const SETUP_PANEL_ANNOUNCED_GUIDANCE =
-	'The setup panel next to the chat now lists what this workflow still needs (`open`); nothing is ' +
+	'The setup panel now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
 	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
@@ -1779,9 +1796,14 @@ async function handleSetup(
 
 	// State 2: User declined — revert any trigger-test changes
 	if (!resumeData.approved) {
+		let savedState: SavedWorkflowState = {};
 		if (state.preTestSnapshot) {
-			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
-			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+			const saved = await context.workflowService.updateFromWorkflowJSON(
+				input.workflowId,
+				state.preTestSnapshot,
+			);
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, saved);
+			savedState = describeSavedPublishState(saved);
 			state.preTestSnapshot = null;
 		}
 		// Re-analyze rather than remembering what was suspended: the closure state doesn't
@@ -1794,6 +1816,7 @@ async function handleSetup(
 		return {
 			success: true,
 			deferred: true,
+			...savedState,
 			reason: 'User skipped workflow setup for now.',
 			...(dismissed.length > 0
 				? {
@@ -2125,9 +2148,27 @@ async function handleRestoreVersion(
 	}
 
 	try {
-		await context.workflowService.restoreVersion!(input.workflowId, input.versionId);
-		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
-		return { success: true };
+		const restored = await context.workflowService.restoreVersion!(
+			input.workflowId,
+			input.versionId,
+		);
+		await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, restored);
+		const { versionId, activeVersionId } = restored;
+		const isPublished = activeVersionId === versionId;
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			publishState: {
+				live: activeVersionId === null ? 'unpublished' : isPublished ? 'current' : 'stale',
+				activeVersionId,
+				savedVersionId: versionId,
+			},
+			publishStateNote: isPublished
+				? 'The restored draft matches the published version.'
+				: 'Restored the draft only. Production has not changed. ' +
+					'For a production rollback, publish the restored draft through the normal approval flow. ' +
+					'Do not report the rollback as live until it is published.',
+		};
 	} catch (error) {
 		return {
 			success: false,

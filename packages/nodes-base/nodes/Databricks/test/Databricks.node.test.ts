@@ -13,7 +13,7 @@ import nock from 'nock';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
-import { makePermissionErrorLegible } from '../actions/helpers';
+import { makePermissionErrorLegible, permissionHintFor } from '../actions/helpers';
 import { execute as runJob } from '../actions/job/run.operation';
 import { getCatalogs, getJobs, getRuns, getSchemas } from '../methods/listSearch';
 import { jobParameters } from '../resources/job/parameters';
@@ -638,6 +638,38 @@ describe('Databricks', () => {
 		});
 	});
 
+	describe('Job -> Get Run', () => {
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.2/jobs/runs/get')
+				.query({ run_id: '41847992357943' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					run_id: 41847992357943,
+					run_name: 'Nightly ETL',
+					run_page_url: `${HOST}/?o=123#job/281874479417551/run/41847992357943`,
+					start_time: 1789430400000,
+					end_time: 1789430460000,
+					status: {
+						state: 'TERMINATED',
+						termination_details: {
+							code: 'SUCCESS',
+							type: 'SUCCESS',
+							message: 'The run was completed successfully.',
+						},
+					},
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get-run.workflow.json'],
+		});
+	});
+
 	describe('Job -> Get Run Output', () => {
 		beforeAll(() => {
 			const databricksNock = nock(HOST);
@@ -672,10 +704,62 @@ describe('Databricks', () => {
 		});
 	});
 
-	describe('Router -> PERMISSION_DENIED surfaces the Databricks message', () => {
-		// A 403 PERMISSION_DENIED body must surface its legible Databricks message
-		// instead of the generic "Forbidden - perhaps check your credentials?" —
-		// deleting the makePermissionErrorLegible call in the router must fail this
+	describe('Job -> Get', () => {
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+			databricksNock
+				.get('/api/2.2/jobs/get')
+				.query({ job_id: '281874479417551', include_trigger_state: 'true' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					creator_user_name: 'owner@example.com',
+					run_as_user_name: 'owner@example.com',
+					created_time: 1757923200000,
+					settings: {
+						name: 'Nightly ETL',
+						tasks: [
+							{ task_key: 'extract', notebook_task: { notebook_path: '/Repos/etl/extract' } },
+						],
+						job_clusters: [
+							{
+								job_cluster_key: 'etl',
+								new_cluster: { spark_version: '15.4.x-scala2.12', num_workers: 2 },
+							},
+						],
+						schedule: {
+							quartz_cron_expression: '0 0 2 * * ?',
+							timezone_id: 'UTC',
+							pause_status: 'UNPAUSED',
+						},
+						max_concurrent_runs: 1,
+					},
+					trigger_state: { file_arrival: { using_file_events: false } },
+					has_more: true,
+					next_page_token: 'page-2',
+				});
+			databricksNock
+				.get('/api/2.2/jobs/get')
+				.query({ job_id: '281874479417551', include_trigger_state: 'true', page_token: 'page-2' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					settings: {
+						tasks: [{ task_key: 'load', notebook_task: { notebook_path: '/Repos/etl/load' } }],
+					},
+					has_more: false,
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get.workflow.json'],
+		});
+	});
+
+	describe('Router -> PERMISSION_DENIED replaces the generic Forbidden message with the Databricks message', () => {
 		beforeAll(() => {
 			nock(HOST)
 				.get('/api/2.1/unity-catalog/catalogs')
@@ -707,6 +791,32 @@ describe('makePermissionErrorLegible', () => {
 		makePermissionErrorLegible(error);
 
 		expect(error.message).toBe(PERMISSION_MESSAGE);
+		expect(error.description).toBe(
+			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
+	it('should use the hint it is given', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: 'User does not have Can View on job 281874479417551.',
+		});
+
+		makePermissionErrorLegible(error, permissionHintFor('job', 'getRun'));
+
+		expect(error.description).toBe(
+			'Grant at least Can View on the job to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
+	it('should fall back to the generic hint for a resource without one', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: PERMISSION_MESSAGE,
+		});
+
+		makePermissionErrorLegible(error, permissionHintFor('unityCatalog', 'getCatalog'));
+
 		expect(error.description).toBe(
 			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.',
 		);
@@ -767,6 +877,31 @@ describe('makePermissionErrorLegible', () => {
 		makePermissionErrorLegible(error);
 
 		expect(error.message).toBe(messageBefore);
+	});
+});
+
+describe('permissionHintFor', () => {
+	// Starting a run needs Can Manage Run, so the read hint would leave the user
+	// stuck in the same error after granting only Can View
+	it.each([
+		['run', 'Can Manage Run on the job'],
+		['getRun', 'Can View on the job'],
+		['getRunOutput', 'Can View on the job'],
+	])('should name the grant the job %s operation needs', (operation, grant) => {
+		expect(permissionHintFor('job', operation)).toBe(
+			`Grant at least ${grant} to the signed-in user or service principal in Databricks, then retry.`,
+		);
+	});
+
+	it('should hint the read grant for a job dropdown, which has no operation', () => {
+		expect(permissionHintFor('job')).toBe(permissionHintFor('job', 'getRun'));
+	});
+
+	it.each([
+		['a resource without hints', 'unityCatalog', 'getCatalog'],
+		['an object prototype member', 'constructor', 'toString'],
+	])('should return no hint for %s', (_label, resource, operation) => {
+		expect(permissionHintFor(resource, operation)).toBeUndefined();
 	});
 });
 

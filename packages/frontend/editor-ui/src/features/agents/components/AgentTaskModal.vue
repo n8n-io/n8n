@@ -474,6 +474,7 @@ async function onSave() {
 						:class="$style.objectiveEditor"
 						:model-value="objective"
 						:placeholder="i18n.baseText('agents.builder.tasks.objective.placeholder')"
+						show-toolbar="floating"
 						max-height="100%"
 						data-testid="agent-task-objective-input"
 						@update:model-value="onObjectiveInput"

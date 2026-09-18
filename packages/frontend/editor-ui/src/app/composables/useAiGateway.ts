@@ -53,7 +53,7 @@ export function useAiGateway() {
 	}
 
 	async function saveAfterToggle(): Promise<boolean> {
-		return await saveCurrentWorkflow({}, false, false, true);
+		return await saveCurrentWorkflow({}, false);
 	}
 
 	return {

@@ -31,7 +31,11 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import {
+	AI_GATEWAY_UNSUPPORTED_NODE_TYPES,
+	ChatHubToolContextKey,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+} from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -73,20 +77,6 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-
-// Nodes that let the user pick their own predefined credential type via a
-// parameter ("Authentication" → "Predefined Credential Type") rather than
-// declaring a fixed credential in their node type. Gateway credits mints a
-// managed credential for a specific, known provider — it can't stand in for
-// an arbitrary user-chosen one, so these nodes never offer it. Includes the
-// AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
-const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
-	'n8n-nodes-base.httpRequest',
-	'n8n-nodes-base.httpRequestTool',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
-	'n8n-nodes-base.graphql',
-	'n8n-nodes-base.graphqlTool',
-];
 
 type Props = {
 	node: INodeUi;
@@ -155,6 +145,8 @@ const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
 	valueChanged: [value: { name: string; value: NodeParameterValueType }];
 	blur: [source: string];
+	connectionStarted: [credentialId: string];
+	connectionCompleted: [credentialId: string];
 }>();
 
 const telemetry = useTelemetry();
@@ -301,7 +293,7 @@ function isCredentialResolvable(credentialType: string): boolean {
 	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
-	const credential = credentialsStore.getCredentialById(credentialId);
+	const credential = findDisplayedCredential(credentialType, credentialId);
 	return credential?.isResolvable === true;
 }
 
@@ -309,7 +301,7 @@ function getSelectedPrivateCredential(credentialType: string): ICredentialsRespo
 	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
-	const credential = credentialsStore.getCredentialById(id);
+	const credential = findDisplayedCredential(credentialType, id);
 	return credential?.isResolvable === true ? credential : null;
 }
 
@@ -330,9 +322,11 @@ function canConnectPrivateCredential(credentialType: string): boolean {
 async function onConnectFromRow(credentialType: string): Promise<void> {
 	const credential = getSelectedPrivateCredential(credentialType);
 	if (!credential) return;
+	emit('connectionStarted', credential.id);
 	const success = await authorize(credential);
 	if (success) {
 		credentialsStore.setConnectedByMe(credential.id, true, await fetchMyAccount(credential.id));
+		emit('connectionCompleted', credential.id);
 	}
 }
 
@@ -489,6 +483,7 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
+	if (props.workflowId) return { workflowId: props.workflowId };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
 		return { workflowId };
@@ -1175,6 +1170,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			nodeType: props.node.type,
 			source: 'node_type',
 			serviceName,
+			projectId: props.projectId,
+			workflowId: telemetryWorkflowId.value || undefined,
+			credentialFetchScope: getCredentialFetchScope(),
 		});
 
 		if (credential) {
@@ -1388,9 +1386,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							@visible-change="(isVisible: boolean) => onSelectVisibleChange(type.name, isVisible)"
 							@blur="emit('blur', 'credentials')"
 						>
-							<template #prefix>
+							<template v-if="selectedCredentialIcon(type.name)" #prefix>
 								<N8nIcon
-									v-if="selectedCredentialIcon(type.name)"
 									:icon="selectedCredentialIcon(type.name)!"
 									size="large"
 									:class="$style.optionIcon"

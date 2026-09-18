@@ -15,6 +15,7 @@ import type {
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
 
+import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
@@ -115,19 +116,39 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 * being exactly the work somebody might want picked up.
 	 */
 	async findRecentForProjects(
-		projectIds: string[],
+		projectIds: ActivityProjectScope,
 		limit: number,
+		options: { mcpVisibleOnly?: boolean } = {},
 	): Promise<{ total: number; workflows: Array<{ id: string; name: string; active: boolean }> }> {
-		if (projectIds.length === 0) return { total: 0, workflows: [] };
+		if (projectIds !== 'all-projects' && projectIds.length === 0) {
+			return { total: 0, workflows: [] };
+		}
 		if (!Number.isInteger(limit) || limit <= 0) return { total: 0, workflows: [] };
 
 		// A workflow can be shared into several projects, so the join multiplies rows when more than
 		// one of them is in scope. Both the count and the page are made distinct on the workflow.
-		const base = () =>
-			this.createQueryBuilder('workflow')
-				.innerJoin(SharedWorkflow, 'shared', 'shared.workflowId = workflow.id')
-				.where('shared.projectId IN (:...projectIds)', { projectIds })
-				.andWhere('workflow.isArchived = :archived', { archived: false });
+		// A whole-instance reader needs no project predicate, so it skips the join altogether.
+		const base = () => {
+			const qb = this.createQueryBuilder('workflow').where('workflow.isArchived = :archived', {
+				archived: false,
+			});
+
+			if (projectIds !== 'all-projects') {
+				qb.innerJoin(SharedWorkflow, 'shared', 'shared.workflowId = workflow.id').andWhere(
+					'shared.projectId IN (:...projectIds)',
+					{ projectIds },
+				);
+			}
+
+			// Pushed into the query rather than applied to the rows, because the caller reads a
+			// count as well as a page: filtering after the aggregate would report a total that
+			// includes workflows the caller may not see.
+			if (options.mcpVisibleOnly) {
+				applyWorkflowBooleanSettingFilter(qb, this.globalConfig, 'availableInMCP', true);
+			}
+
+			return qb;
+		};
 
 		const totalRow = await base()
 			.select('COUNT(DISTINCT workflow.id)', 'total')
@@ -154,6 +175,36 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				active: Boolean(Number(row.active)),
 			})),
 		};
+	}
+
+	/**
+	 * Whether each of the given workflows is readable over MCP. An id absent from the map names a
+	 * workflow that no longer exists, which a caller must tell apart from one that is merely
+	 * withheld: a deleted workflow cannot be withheld from anything.
+	 *
+	 * Archived counts as not readable, matching every other MCP read — `validateMcpWorkflow` and
+	 * the execution search both refuse an archived workflow before they look at the setting.
+	 *
+	 * Reads the rows and tests in memory rather than filtering in SQL, because the caller needs the
+	 * withheld ids too, not only the visible ones.
+	 */
+	async findMcpAvailabilityByIds(workflowIds: string[]): Promise<Map<string, boolean>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const availability = new Map<string, boolean>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				where: { id: In(chunk) },
+				select: ['id', 'settings', 'isArchived'],
+			});
+
+			for (const row of rows) {
+				availability.set(row.id, row.settings?.availableInMCP === true && !row.isArchived);
+			}
+		}
+
+		return availability;
 	}
 
 	async get(
@@ -255,6 +306,28 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	) {
 		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
 		await this.managerFor(ctx).update(WorkflowEntity, id, content);
+	}
+
+	/**
+	 * Creates the workflow together with its `workflow:owner` share in one transaction.
+	 *
+	 * Deliberately outside the `workflowSave` clearance the other writes here assert: the only
+	 * caller is standalone node execution, whose row is archived, single-node and deleted after
+	 * the run. The content is still policed where it matters — `PolicyLifecycleHandler` enforces
+	 * `workflowStart` on `workflowExecuteBefore`, which every execution path reaches.
+	 */
+	async createWorkflowWithOwner(
+		workflow: WorkflowEntity,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		return await this.runInTransaction(ctx, async (em) => {
+			const saved = await em.save(workflow);
+			await em.save(
+				em.create(SharedWorkflow, { role: 'workflow:owner', projectId, workflowId: saved.id }),
+			);
+			return saved;
+		});
 	}
 
 	/**

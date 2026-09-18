@@ -1,7 +1,10 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
+import { encodeIntegrationMessageContext } from '../integration-message-context';
 import { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { IntegrationMessageContext } from '../integration-tools';
 
@@ -34,9 +37,60 @@ describe('IntegrationMessageContextService — session binding', () => {
 				return undefined as never;
 			},
 		);
-		const service = new IntegrationMessageContextService(threadRepository, resourceRepository);
+		const service = new IntegrationMessageContextService(
+			threadRepository,
+			resourceRepository,
+			mockLogger(),
+		);
 		return { service, threadRepository, threads };
 	}
+
+	it.each([
+		['older checkpoint', {}, true],
+		['empty snapshot', { n8nIntegrationMessageContext: null }, false],
+		['malformed snapshot', { n8nIntegrationMessageContext: { platform: 'slack' } }, false],
+	] as const)(
+		'restores context for an %s without replacing explicit snapshots',
+		async (_name, hostMetadata, legacy) => {
+			const { service } = setup({ thread: { currentMessageContext: context } });
+			const snapshot = await service.getForResume({
+				threadId: 'thread',
+				resourceId: 'user',
+				hostMetadata,
+			});
+			expect(snapshot).toEqual(legacy ? context : null);
+		},
+	);
+
+	it('restores the serialized turn snapshot when the thread has a later context', async () => {
+		const persistence = {
+			threadId: 'thread',
+			resourceId: 'user',
+			hostMetadata: encodeIntegrationMessageContext(context),
+		};
+		const serialized = JSON.stringify(persistence);
+		const { service } = setup({
+			thread: { currentMessageContext: { ...context, messageId: 'later' } },
+		});
+		expect(await service.getForResume(jsonParse<typeof persistence>(serialized))).toEqual(context);
+	});
+
+	it('updates execution metadata when the platform metadata write fails', async () => {
+		const { service, threadRepository } = setup({
+			task: { continueAs: { threadId: 'origin', resourceId: 'owner' } },
+		});
+		threadRepository.save.mockRejectedValueOnce(new Error('database unavailable'));
+		await service.installIncoming(
+			context,
+			{ threadId: 'task', resourceId: 'task:task-1' },
+			{ threadId: 'platform', resourceId: 'actor' },
+		);
+		expect(await service.getLatest('task')).toEqual(context);
+		expect(await service.resolveSession('task')).toEqual({
+			threadId: 'origin',
+			resourceId: 'owner',
+		});
+	});
 
 	it('binds a derived thread to an origin and resolves it back', async () => {
 		const { service } = setup({

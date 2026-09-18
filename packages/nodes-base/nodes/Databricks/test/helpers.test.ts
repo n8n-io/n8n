@@ -11,7 +11,12 @@ import type {
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { databricksApiRequest, getActiveCredentialType, readIdParameter } from '../actions/helpers';
+import {
+	databricksApiRequest,
+	fetchDatabricksPage,
+	getActiveCredentialType,
+	readIdParameter,
+} from '../actions/helpers';
 
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
@@ -254,6 +259,46 @@ describe('databricksApiRequest rate limiting', () => {
 		).resolves.toEqual({ jobs: [] });
 
 		expect(sleep).toHaveBeenCalledWith(1000, undefined);
+	});
+});
+
+describe('fetchDatabricksPage', () => {
+	let httpRequestWithAuthentication: Mock;
+	let context: IExecuteFunctions;
+
+	beforeEach(() => {
+		httpRequestWithAuthentication = vi.fn().mockResolvedValue({ jobs: [] });
+		context = mock<IExecuteFunctions>({
+			getNode: () => mock<INode>({ typeVersion: 1 }),
+			helpers: { httpRequestWithAuthentication },
+		});
+	});
+
+	it.each([
+		['the first page', undefined, {}],
+		['a later page', 'page-2', { page_token: 'page-2' }],
+	])('should GET %s as JSON with the query and page token', async (_label, pageToken, tokenQs) => {
+		const qs = { job_id: 42, include_trigger_state: true };
+
+		await expect(
+			fetchDatabricksPage(
+				context,
+				'databricksOAuth2Api',
+				'https://example.databricks.com',
+				'/api/2.2/jobs/get',
+				qs,
+				pageToken,
+			),
+		).resolves.toEqual({ jobs: [] });
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith('databricksOAuth2Api', {
+			method: 'GET',
+			url: 'https://example.databricks.com/api/2.2/jobs/get',
+			qs: { job_id: 42, include_trigger_state: true, ...tokenQs },
+			headers: { Accept: 'application/json', 'User-Agent': 'n8n_DatabricksNode' },
+			json: true,
+		});
+		expect(qs).toEqual({ job_id: 42, include_trigger_state: true });
 	});
 });
 

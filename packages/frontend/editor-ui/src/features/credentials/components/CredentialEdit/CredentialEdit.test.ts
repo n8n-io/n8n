@@ -23,6 +23,7 @@ import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow'
 import type { Scope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { reactive } from 'vue';
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
@@ -1789,8 +1790,8 @@ describe('CredentialEdit', () => {
 			);
 		});
 
-		test('shows the Gateway credits nudge while the new credential slot is empty', async () => {
-			const contextNode: INode = {
+		test('shows the Gateway credits nudge after the new credential is assigned', async () => {
+			const contextNode = reactive<INode>({
 				id: 'node-1',
 				name: 'Test node',
 				type: 'n8n-nodes-base.test',
@@ -1800,25 +1801,21 @@ describe('CredentialEdit', () => {
 				credentials: {
 					otherApi: { id: 'cred-2', name: 'Other API account' },
 				},
-			};
-			const { getByTestId, workflowDocumentStore } = await setupGatewayCredentialError({
+			});
+			const { getByTestId, queryByTestId } = await setupGatewayCredentialError({
 				contextNode,
 			});
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+
+			contextNode.credentials = {
+				...contextNode.credentials,
+				testApi: { id: 'cred-1', name: 'Test API account' },
+			};
 
 			await waitFor(() =>
 				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
 			);
-			await userEvent.click(getByTestId('gateway-credits-credential-error-nudge-action'));
-
-			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledWith({
-				name: contextNode.name,
-				properties: {
-					credentials: {
-						testApi: { id: null, name: '', __aiGatewayManaged: true },
-						otherApi: { id: 'cred-2', name: 'Other API account' },
-					},
-				},
-			});
 		});
 
 		test('does not show the Gateway credits nudge for a different credential slot', async () => {

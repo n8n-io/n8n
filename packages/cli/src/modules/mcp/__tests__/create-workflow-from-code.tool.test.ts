@@ -7,10 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import {
-	createCreateWorkflowFromCodeTool,
-	type CreateWorkflowFromCodeToolOptions,
-} from '../tools/workflow-builder/create-workflow-from-code.tool';
+import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -179,7 +176,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		incrementPostSaveFailure: vi.fn(),
 	});
 
-	const createTool = (options?: CreateWorkflowFromCodeToolOptions) =>
+	const createTool = () =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
@@ -191,7 +188,6 @@ describe('create-workflow-from-code MCP tool', () => {
 			projectRepository,
 			dataTableOps as never,
 			aiGatewayService,
-			options,
 			logger,
 			postSaveMetrics,
 		);
@@ -1123,7 +1119,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 	});
 
-	describe('canvas groups (102_mcp_canvas_groups)', () => {
+	describe('canvas groups', () => {
 		const nodeGroups = [{ id: 'g1', name: 'Ingestion', nodeIds: ['node-1', 'node-2'] }];
 
 		/** results.data of the last tracked telemetry event */
@@ -1134,22 +1130,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			return payload.results?.data;
 		};
 
-		test('flag off: groups from the code are dropped and telemetry is unchanged', async () => {
-			mockParseAndValidate.mockResolvedValue({
-				workflow: { ...mockWorkflowJson, nodeGroups },
-				warnings: [],
-			});
-
-			const result = await callHandler({ code: 'const wf = ...' });
-
-			expect(parseResult(result).workflowId).toBe('wf-saved-1');
-			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
-			expect(passedWorkflow).not.toHaveProperty('nodeGroups');
-			// Telemetry payload is byte-identical to the pre-flag shape.
-			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2 });
-		});
-
-		test('flag on: groups from the code are persisted on the created workflow', async () => {
+		test('groups from the code are persisted on the created workflow', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: {
 					...mockWorkflowJson,
@@ -1161,10 +1142,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				warnings: [],
 			});
 
-			const result = await callHandler(
-				{ code: 'const wf = ...' },
-				createTool({ canvasGroupsEnabled: true }),
-			);
+			const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 			expect(parseResult(result).workflowId).toBe('wf-saved-1');
 			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
@@ -1172,10 +1150,10 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 1 });
 		});
 
-		test('flag on: code without groups persists an empty group list', async () => {
+		test('code without groups persists an empty group list', async () => {
 			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
 
-			await callHandler({ code: 'const wf = ...' }, createTool({ canvasGroupsEnabled: true }));
+			await callHandler({ code: 'const wf = ...' }, createTool());
 
 			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
 			expect(passedWorkflow.nodeGroups).toEqual([]);
@@ -1183,11 +1161,8 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 
 		// Structural group rules (no triggers, single connected subgraph, no non-main connection
-		// crossing the group boundary) aren't checked before `workflowCreationService.createWorkflow`
-		// yet — that service's own `validateWorkflowNodeGroups` (a shared safety net used by the public
-		// API, editor controller, importer, etc.) still rejects the whole creation for an invalid group.
-		// These tests describe the target behavior for that follow-up: with canvasGroupsEnabled on, an
-		// invalid group should be dropped and reported in `skippedGroups` instead, while the rest of the
+		// crossing the group boundary) are checked before `workflowCreationService.createWorkflow`,
+		// so an invalid group is dropped and reported in `skippedGroups` while the rest of the
 		// workflow is still created.
 		describe('structural validation', () => {
 			beforeEach(() => {
@@ -1214,10 +1189,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					warnings: [],
 				});
 
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 				expect(result.isError).toBeUndefined();
 				expect(parseResult(result).workflowId).toBe('wf-saved-1');
@@ -1269,10 +1241,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					warnings: [],
 				});
 
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 				expect(result.isError).toBeUndefined();
 
@@ -1319,10 +1288,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					warnings: [],
 				});
 
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 				expect(result.isError).toBeUndefined();
 
@@ -1380,10 +1346,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					warnings: [],
 				});
 
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 				expect(result.isError).toBeUndefined();
 
@@ -1408,10 +1371,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					warnings: [],
 				});
 
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 				expect(result.isError).toBeUndefined();
 
@@ -1430,10 +1390,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					warnings: [],
 				});
 
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
 				const response = parseResult(result);
 				expect(response.skippedGroups).toEqual([
@@ -1455,24 +1412,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				parameters: {},
 			}));
 
-			test('flag on: a saved canvas over the ceiling with no groups gets a warning', async () => {
-				mockParseAndValidate.mockResolvedValue({
-					workflow: { ...mockWorkflowJson, nodes: wideNodes },
-					warnings: [],
-				});
-
-				const result = await callHandler(
-					{ code: 'const wf = ...' },
-					createTool({ canvasGroupsEnabled: true }),
-				);
-
-				const response = parseResult(result);
-				expect(response.warnings).toEqual([
-					expect.objectContaining({ code: 'TOP_LEVEL_ITEMS_OVER_CEILING' }),
-				]);
-			});
-
-			test('flag off: no ceiling warning, groups cannot be kept anyway', async () => {
+			test('a saved canvas over the ceiling with no groups gets a warning', async () => {
 				mockParseAndValidate.mockResolvedValue({
 					workflow: { ...mockWorkflowJson, nodes: wideNodes },
 					warnings: [],
@@ -1480,7 +1420,10 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				const result = await callHandler({ code: 'const wf = ...' }, createTool());
 
-				expect(parseResult(result)).not.toHaveProperty('warnings');
+				const response = parseResult(result);
+				expect(response.warnings).toEqual([
+					expect.objectContaining({ code: 'TOP_LEVEL_ITEMS_OVER_CEILING' }),
+				]);
 			});
 		});
 	});

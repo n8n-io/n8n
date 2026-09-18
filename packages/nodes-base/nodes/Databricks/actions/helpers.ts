@@ -83,10 +83,28 @@ export function sanitizeApiMessage(message: string): string {
 	return message.replace(/[\x00-\x1f\x7f]+/g, ' ').slice(0, 500);
 }
 
+export const DEFAULT_PERMISSION_HINT =
+	'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
+
+const grantHint = (grant: string) =>
+	`Grant at least ${grant} to the signed-in user or service principal in Databricks, then retry.`;
+
+const PERMISSION_HINTS = new Map<string, string>([
+	['job', grantHint('Can View on the job')],
+	['job:run', grantHint('Can Manage Run on the job')],
+]);
+
+export function permissionHintFor(resource: string, operation?: string): string | undefined {
+	return PERMISSION_HINTS.get(`${resource}:${operation}`) ?? PERMISSION_HINTS.get(resource);
+}
+
 // Called at every request entry point (router catch, listSearch wrapper) because
 // databricksApiRequest() does not wrap errors. Keyed on error_code, not HTTP 403, so
 // expired-token 403s are not mislabeled. Mutates: re-wrapping a NodeApiError returns the same instance.
-export function makePermissionErrorLegible(error: unknown): void {
+export function makePermissionErrorLegible(
+	error: unknown,
+	hint: string = DEFAULT_PERMISSION_HINT,
+): void {
 	if (!(error instanceof NodeApiError)) return;
 
 	// File downloads receive the 403 body as raw bytes
@@ -105,8 +123,7 @@ export function makePermissionErrorLegible(error: unknown): void {
 	const apiMessage = body.message;
 	if (typeof apiMessage === 'string' && apiMessage) {
 		error.message = sanitizeApiMessage(apiMessage);
-		error.description =
-			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
+		error.description = hint;
 	}
 }
 
@@ -375,4 +392,21 @@ export function validateRequestBody(
 			}
 			break;
 	}
+}
+
+export async function fetchDatabricksPage<T>(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	host: string,
+	path: string,
+	qs: IDataObject,
+	pageToken?: string,
+): Promise<T> {
+	return await databricksApiRequest(context, credentialType, {
+		method: 'GET',
+		url: `${host}${path}`,
+		qs: pageToken ? { ...qs, page_token: pageToken } : { ...qs },
+		headers: { Accept: 'application/json' },
+		json: true,
+	});
 }
