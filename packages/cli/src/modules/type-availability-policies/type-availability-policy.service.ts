@@ -34,10 +34,9 @@ const UNCONFIGURED_VERSION = 0;
 
 /**
  * A backstop, not the staleness control — every write drops the entry it changed, and a read
- * that raced that delete is caught by `scopeEpochs` and by the follow-up delete. What is left
- * for the TTL to heal is operator-level: a process given its own cache with
- * `N8N_CACHE_BACKEND=memory`, a delete that failed after its write committed, and a row edited
- * outside this service.
+ * that raced that delete never publishes what it fetched. What is left for the TTL to heal is
+ * operator-level: a process given its own cache with `N8N_CACHE_BACKEND=memory`, a delete that
+ * failed after its write committed, and a row edited outside this service.
  */
 const SCOPE_CACHE_TTL_MS = 10 * Time.minutes.toMilliseconds;
 
@@ -58,11 +57,13 @@ const LOCAL_READ_MAX_ENTRIES = 512;
 /**
  * How long after an invalidation the same keys are dropped a second time.
  *
- * A read that hit the database before a write committed can `set` the pre-commit snapshot
- * back after the write's delete. `scopeEpochs` catches that on the process that wrote, but a
- * read on another process is invisible to it and `CacheService` has no compare-and-set to
- * build on. Long enough for any in-flight fill to have landed, and it bounds that resurrection
- * here rather than leaving it to the TTL.
+ * A read that hit the database before a write committed can `set` the pre-commit snapshot back
+ * after the write's delete. `invalidations` catches that on the process that wrote, but a read
+ * on another process is invisible to it and `CacheService` has no compare-and-set to build on.
+ *
+ * This delay is therefore also the bound `canPublish` holds a read to: a read that finishes
+ * within it cannot outlive this second delete, so resurrection is impossible rather than
+ * unlikely.
  */
 const INVALIDATION_REPEAT_DELAY_MS = 1 * Time.seconds.toMilliseconds;
 
@@ -245,11 +246,14 @@ export class TypeAvailabilityPolicyService {
 	>();
 
 	/**
-	 * Bumped by each invalidation. A read whose epoch moved while it was running must not write
-	 * its now-stale snapshot to the shared cache. Written only by invalidation, so it stays
-	 * small.
+	 * Counts invalidations on this process, so a read can notice one that overtook it. Deliberately
+	 * not per scope: a read that raced a write to any scope simply does not publish, which costs
+	 * one extra read of an unrelated scope and keeps this to one number that cannot grow.
 	 */
-	private readonly scopeEpochs = new Map<string, number>();
+	private invalidations = 0;
+
+	/** Pending repeat deletes, so `resetLocalCaches` leaves nothing running behind it. */
+	private readonly repeatDeletes = new Set<NodeJS.Timeout>();
 
 	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
@@ -969,8 +973,11 @@ export class TypeAvailabilityPolicyService {
 
 		const read = this.readScope(kind, projectId, key);
 
-		// A failed read must not be the answer for the rest of the second.
-		read.catch(() => this.localReads.delete(key));
+		// A failed read must not be the answer for the rest of the window. Only drop it while it
+		// is still the current one, or a slow failure evicts the read that replaced it.
+		read.catch(() => {
+			if (this.localReads.get(key)?.read === read) this.localReads.delete(key);
+		});
 
 		this.localReads.set(key, { read, expiresAt: Date.now() + LOCAL_READ_TTL_MS });
 		this.pruneLocalReads();
@@ -987,7 +994,8 @@ export class TypeAvailabilityPolicyService {
 		projectId: string | null,
 		key: string,
 	): Promise<EffectivePolicy> {
-		const epoch = this.scopeEpochs.get(key) ?? 0;
+		const startedAt = Date.now();
+		const invalidations = this.invalidations;
 
 		try {
 			const cached = await withCacheTimeout(this.cacheService.get<EffectivePolicy>(key));
@@ -998,9 +1006,7 @@ export class TypeAvailabilityPolicyService {
 
 		const effective = await this.getEffectivePolicy(kind, projectId);
 
-		// An invalidation landed while this read was running, so the snapshot it holds is
-		// already old. Serve it to this caller, but do not publish it.
-		if ((this.scopeEpochs.get(key) ?? 0) !== epoch) return effective;
+		if (!this.canPublish(invalidations, startedAt)) return effective;
 
 		try {
 			// An unconfigured scope is cached as its allow-all object, never as an absent
@@ -1011,6 +1017,20 @@ export class TypeAvailabilityPolicyService {
 		}
 
 		return effective;
+	}
+
+	/**
+	 * Whether a read may write what it fetched to the shared cache. Either way the caller is
+	 * served — this decides only what the rest of the cluster sees.
+	 *
+	 * Two reads must stay unpublished. One an invalidation overtook, whose snapshot is already
+	 * old. And one slower than `INVALIDATION_REPEAT_DELAY_MS`, because its write could land
+	 * after both deletes of a write it raced on another process, which no counter here can see.
+	 */
+	private canPublish(invalidations: number, startedAt: number): boolean {
+		if (this.invalidations !== invalidations) return false;
+
+		return Date.now() - startedAt < INVALIDATION_REPEAT_DELAY_MS;
 	}
 
 	/** Drops expired entries, then the oldest ones, while the map is over its cap. */
@@ -1034,7 +1054,12 @@ export class TypeAvailabilityPolicyService {
 	 */
 	resetLocalCaches(): void {
 		this.localReads.clear();
-		this.scopeEpochs.clear();
+
+		// Bumped, not zeroed: a read already in flight must not publish a pre-reset snapshot.
+		this.invalidations += 1;
+
+		for (const repeat of this.repeatDeletes) clearTimeout(repeat);
+		this.repeatDeletes.clear();
 	}
 
 	/**
@@ -1055,18 +1080,19 @@ export class TypeAvailabilityPolicyService {
 
 		const cacheKeys = keys.map(({ kind, projectId }) => scopeCacheKey(kind, projectId));
 
-		for (const key of cacheKeys) {
-			this.localReads.delete(key);
-			this.scopeEpochs.set(key, (this.scopeEpochs.get(key) ?? 0) + 1);
-		}
+		this.invalidations += 1;
+		for (const key of cacheKeys) this.localReads.delete(key);
 
 		await this.dropCacheKeys(cacheKeys);
 
 		// Not awaited: the write has committed and its response must not wait on a delete.
-		setTimeout(
-			async () => await this.dropCacheKeys(cacheKeys),
-			INVALIDATION_REPEAT_DELAY_MS,
-		).unref();
+		const repeat = setTimeout(async () => {
+			this.repeatDeletes.delete(repeat);
+			await this.dropCacheKeys(cacheKeys);
+		}, INVALIDATION_REPEAT_DELAY_MS);
+
+		repeat.unref();
+		this.repeatDeletes.add(repeat);
 	}
 
 	/**

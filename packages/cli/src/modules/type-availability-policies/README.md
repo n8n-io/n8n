@@ -148,9 +148,10 @@ different time scales:
   entry costs one database read rather than one for each. Nothing survives from before here —
   the first caller registers its promise before any I/O, so the rest find it. The window is
   that one read.
-- **Callers that arrive after it finished share it too, for 1 second.** A warm decision then
-  costs no round trip and no parse of every rule. That parse is what makes a decision on Redis
-  grow more expensive as an admin writes more rules.
+- **Callers that arrive after it finished share it too, until 1 second after it began.** The
+  window runs from the start of the read, not from its result, so a slow read leaves less of
+  it. A warm decision then costs no round trip and no parse of every rule. That parse is what
+  makes a decision on Redis grow more expensive as an admin writes more rules.
 
 The 1 second must stay longer than one read, or the first of those leaks: a caller arriving
 late in a slow read would find the entry expired and start a second read.
@@ -191,12 +192,17 @@ through a sealed repository method, and the lint rule that guards that has no al
   mode. What is left is each process's 1-second shared read, so that is the staleness window a
   builder or an execution can see.
 
-  A fill that read the database before the write committed can put its old snapshot back after
-  the delete. On the process that wrote, a per-scope counter makes that fill skip its
-  write-back. Elsewhere the counter cannot see it, so the same keys are dropped a second time a
-  second later, which is long enough for any fill in flight at commit time to have landed.
-  `CacheService` has no compare-and-set to make this airtight; pubsub invalidation would, and
-  is the step that would also let that 1 second grow and the TTL go away.
+  A read that hit the database before the write committed can put its old snapshot back after
+  the delete. Two rules stop it. On the process that wrote, a counter of invalidations makes
+  that read skip its write-back. And any read that took longer than a second skips it as well,
+  whichever process it ran on — because the invalidated keys are also dropped a second time one
+  second later, so a read that finished inside that second cannot outlive both deletes. A read
+  that skips the write-back still answers its own caller; only the rest of the cluster waits
+  for the next read.
+
+  `CacheService` has no compare-and-set, so a slow read pays for this by not populating the
+  cache at all. Pubsub invalidation would remove the need, and is the step that would also let
+  that 1 second grow and the TTL go away.
 
 - **The 10-minute TTL heals only what invalidation cannot reach.** Three cases, all
   operator-level: that forced memory backend, where each process keeps its own copy and no

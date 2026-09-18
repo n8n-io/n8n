@@ -1377,6 +1377,26 @@ describe('TypeAvailabilityPolicyService', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it('cancels a pending repeat delete when the local state is reset', async () => {
+			vi.useFakeTimers();
+			try {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+					makeScope({ defaultAction: 'allow', version: 4 }),
+				);
+				scopeRepository.updateDefaultAction.mockResolvedValue(
+					makeScope({ defaultAction: 'deny', version: 5 }),
+				);
+
+				await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
+				service.resetLocalCaches();
+				await vi.advanceTimersByTimeAsync(1_000);
+
+				expect(cacheService.deleteMany).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	/**
@@ -1468,6 +1488,83 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(cacheService.deleteMany).toHaveBeenCalledWith([INSTANCE_KEY]);
 			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * A read slower than the repeat delete could `set` its snapshot after both deletes of a
+		 * write that committed on another process, which this one cannot see.
+		 */
+		it('does not publish a read that outlived the repeat delete', async () => {
+			// Only `Date` is faked, because faking `setTimeout` would hang the cache timeout.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				const { open, gated } = gate();
+				scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
+					await gated;
+					return makeScope({ defaultAction: 'deny', version: 7 });
+				});
+
+				const decision = decide();
+				vi.setSystemTime(Date.now() + 1_001);
+				open();
+
+				expect((await decision).verdicts[0].action).toBe('deny');
+				expect(cacheService.set).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		/**
+		 * `clearPolicyCache()` in the integration suites resets this state after truncating the
+		 * tables, so a read in flight must not put the pre-truncation rows back.
+		 */
+		it('does not publish a read that a reset overtook', async () => {
+			const { open, gated } = gate();
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
+				await gated;
+				return makeScope({ defaultAction: 'deny', version: 7 });
+			});
+
+			const decision = decide();
+			service.resetLocalCaches();
+			open();
+
+			expect((await decision).verdicts[0].action).toBe('deny');
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		it('keeps the read that replaced a failed one', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				const failing = gate();
+				const replacing = gate();
+				scopeRepository.findScopeByKindAndProject
+					.mockImplementationOnce(async () => {
+						await failing.gated;
+						throw new Error('db is down');
+					})
+					.mockImplementationOnce(async () => {
+						await replacing.gated;
+						return makeScope({ defaultAction: 'deny', version: 7 });
+					});
+
+				const first = decide();
+				vi.setSystemTime(Date.now() + 1_001);
+				const second = decide();
+
+				failing.open();
+				await expect(first).rejects.toThrow('db is down');
+
+				// Must share the second read rather than start a third.
+				const third = decide();
+				replacing.open();
+				await Promise.all([second, third]);
+
+				expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
