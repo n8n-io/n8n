@@ -330,48 +330,6 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
-<<<<<<< HEAD
-	private async findAllGlobalCredentialsByDependencyFilter(options: {
-		dependencyFilter: CredentialDependencyFilter;
-		includeData?: boolean;
-		type?: string;
-	}): Promise<CredentialsEntity[]> {
-		const { includeData, dependencyFilter, type } = options;
-
-		const qb = this.createQueryBuilder('credential');
-		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
-		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
-		if (type) {
-			qb.andWhere('credential.type LIKE :type', { type: `%${type}%` });
-		}
-		addCredentialDependencyExistsFilter(qb, dependencyFilter);
-
-		const defaultSelect: Array<keyof CredentialsEntity> = [
-			'id',
-			'name',
-			'type',
-			'isManaged',
-			'createdAt',
-			'updatedAt',
-			'isGlobal',
-			'isResolvable',
-			'resolverId',
-		];
-		const selectColumns = defaultSelect.map((k) => `credential.${k}`);
-		if (includeData) {
-			selectColumns.push('credential.data');
-		}
-
-		qb.select(selectColumns);
-		qb.leftJoinAndSelect('credential.shared', 'shared');
-		qb.leftJoinAndSelect('shared.project', 'project');
-		qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
-
-		return await qb.getMany();
-	}
-
-=======
->>>>>>> b3b5939e (perf(core): Stop loading project members when listing credentials (#39068))
 	/**
 	 * Find all credentials that are owned by a personal project.
 	 */
