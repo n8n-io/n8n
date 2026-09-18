@@ -353,7 +353,14 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     needs:
-      [unit-test-backend, unit-test-cli, integration-test-backend, integration-test-cli, unit-test-nodes, unit-test-frontend]
+      [
+        unit-test-backend,
+        unit-test-cli,
+        integration-test-backend,
+        integration-test-cli,
+        unit-test-nodes,
+        unit-test-frontend,
+      ]
     if: always()
     steps:
       - name: Fail if tests failed

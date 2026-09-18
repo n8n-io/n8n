@@ -51,6 +51,7 @@ import {
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
+	SEND_AND_WAIT_OPERATION,
 	tryToParseUrl,
 	UnexpectedError,
 	UserError,
@@ -68,6 +69,7 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -85,15 +87,18 @@ import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
 import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
-import type { WebhookResponse } from '@/webhooks/webhook-response';
-import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
+import {
+	createStaticResponse,
+	createStreamResponse,
+	type WebhookResponse,
+} from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EngineV2Webhooks } from './engine-v2-webhooks';
-import { applySandboxCSP } from './webhook-response-headers';
 import {
+	applySandboxCSP,
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
@@ -790,6 +795,14 @@ export async function executeWebhook(
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
 		}
 
+		if (
+			req.method === 'POST' &&
+			requiresMultipartFormData(workflowStartNode) &&
+			req.contentType !== 'multipart/form-data'
+		) {
+			throw new UnsupportedMediaTypeError('Expected multipart/form-data');
+		}
+
 		cleanupMultipartFiles = await parseRequestBody(
 			req,
 			workflowStartNode,
@@ -1375,6 +1388,17 @@ function evaluateResponseOptions(context: WebhookExecutionContext, req: WebhookR
 		responseContentType,
 		responseBinaryPropertyName,
 	};
+}
+
+function requiresMultipartFormData(node: INode): boolean {
+	if (node.type === FORM_TRIGGER_NODE_TYPE) return true;
+	if (node.type === FORM_NODE_TYPE) return node.parameters.operation !== 'completion';
+	if (node.type === WAIT_NODE_TYPE) return node.parameters.resume === 'form';
+
+	return (
+		node.parameters.operation === SEND_AND_WAIT_OPERATION &&
+		node.parameters.responseType === 'customForm'
+	);
 }
 
 /**

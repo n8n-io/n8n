@@ -18,6 +18,11 @@ export class FloatingUiHelper {
 		);
 	}
 
+	/** Tooltip content is teleported out of its trigger, so scope it to the page. */
+	getTooltip() {
+		return this.page.getByTestId('tooltip-content').filter({ visible: true });
+	}
+
 	getVisiblePopoverMenuItem(name?: GetByRoleName, options: GetByRoleOptionsWithoutName = {}) {
 		return this.getVisiblePopper()
 			.getByRole('menuitem', { name, ...options })

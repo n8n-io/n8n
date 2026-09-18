@@ -98,6 +98,7 @@ describe('LoadOptionsContext', () => {
 				expect.objectContaining({ node }),
 				false,
 				undefined,
+				undefined,
 			);
 		});
 	});

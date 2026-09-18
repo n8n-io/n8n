@@ -254,7 +254,7 @@ export function buildOutputs({
 			? [
 					'',
 					'> [!NOTE]',
-					'> `pnpm-lock.yaml` still carries its conflict markers because a manifest (`package.json` / `pnpm-workspace.yaml`) is conflicted too, or its regeneration failed. After resolving the manifests, regenerate it with `pnpm install --lockfile-only` and commit the result.',
+					'> `pnpm-lock.yaml` still carries its conflict markers. Resolve the other conflicts first. Then regenerate it with `pnpm install --lockfile-only` and commit the result.',
 				]
 			: []),
 		'',

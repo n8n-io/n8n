@@ -572,6 +572,55 @@ describe('getSessionId', () => {
 		expect(sessionId).toBe('12345');
 	});
 
+	it('should reject a non-primitive sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: { $ne: null } });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should reject an array sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: [{ $regex: '^a' }] });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should coerce a numeric sessionId from bodyData to a string', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: 12345 });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should coerce a boolean sessionId from bodyData to a string', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: false });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('false');
+	});
+
+	it('should throw "No session ID found" for a null sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: null });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should reject a non-primitive sessionId resolved from an expression', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue({ $ne: null });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
 	it('should retrieve sessionId from chat trigger', () => {
 		mockCtx.getNodeParameter.mockReturnValue('fromInput');
 		mockCtx.evaluateExpression.mockReturnValueOnce(undefined);

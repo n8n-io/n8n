@@ -294,7 +294,7 @@ export function toV1ExecuteContext({
 		data: inputData,
 		source: source.length > 0 ? { main: source } : null,
 	};
-	const mode: WorkflowExecuteMode = stepContext.mode === 'production' ? 'trigger' : 'manual';
+	const mode = toV1ExecuteMode(stepContext);
 
 	return new ExecuteContext(
 		workflow,

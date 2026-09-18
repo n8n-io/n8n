@@ -2,7 +2,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError } from 'n8n-workflow';
 
 import { findSessionExpiredError } from '../../../utils/oauth2-token-provider';
-import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 /**
  * Databricks error bodies are `{ error_code, message }`. The OpenAI client only
@@ -57,8 +56,13 @@ function isExpiredTokenResponse(error: unknown, expiredStatus: number): boolean 
  * A dead session arrives either as a rejected response or as a wrapped throw.
  * `expiredStatus` is undefined for grants that cannot be reconnected, such as a
  * service principal — those keep the generic "check your credentials" advice.
+ * On a 429 the thrown error names Databricks and `modelName` (the configured model
+ * service) and keeps the Databricks text, which carries the endpoint-specific fix.
  */
-export function makeDatabricksFailedAttemptHandler(expiredStatus?: number) {
+export function makeDatabricksFailedAttemptHandler(
+	expiredStatus: number | undefined,
+	modelName: string,
+) {
 	return (error: unknown) => {
 		const sessionExpired = findSessionExpiredError(error);
 		if (sessionExpired) throw sessionExpired;
@@ -70,6 +74,16 @@ export function makeDatabricksFailedAttemptHandler(expiredStatus?: number) {
 			);
 		}
 
-		openAiFailedAttemptHandler(error);
+		if (isRecord(error) && error.status === 429) {
+			const detail =
+				isRecord(error.error) && typeof error.error.message === 'string'
+					? `: ${error.error.message}`
+					: '';
+			throw new OperationalError(`Databricks rate limit reached for ${modelName}${detail}`, {
+				description:
+					"Databricks is throttling requests to this model service. Wait and retry, reduce concurrent requests, or ask your workspace admin to raise the endpoint's rate limit.",
+				cause: error,
+			});
+		}
 	};
 }

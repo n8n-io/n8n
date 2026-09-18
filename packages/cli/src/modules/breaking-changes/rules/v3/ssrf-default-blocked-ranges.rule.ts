@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -39,7 +40,7 @@ export class SsrfDefaultBlockedRangesRule implements IBreakingChangeInstanceRule
 				.some((r) => r.trim() === 'default');
 
 		if (!this.globalConfig.ssrfProtection.enabled || !usesDefaultList) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

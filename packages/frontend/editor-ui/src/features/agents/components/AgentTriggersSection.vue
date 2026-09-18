@@ -123,7 +123,6 @@ async function loadChannelDetails() {
 	}
 
 	try {
-		credentialsStore.setCredentials([]);
 		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
 		});

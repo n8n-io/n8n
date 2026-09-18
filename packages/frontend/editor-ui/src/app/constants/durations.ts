@@ -44,6 +44,8 @@ export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
+export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;
+
 /** Keeps short agent tool and skill calls perceptible without adding continuous motion. */
 export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
 

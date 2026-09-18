@@ -120,7 +120,10 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -193,7 +196,10 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -245,7 +251,10 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,

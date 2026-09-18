@@ -372,3 +372,223 @@ describe('N8nClient.restoreThread — agent seeding contract', () => {
 		await expect(client.restoreThread('thread-1', [], [])).resolves.toMatchObject({ agentIds: [] });
 	});
 });
+
+describe('N8nClient.restoreThread — folder seeding contract', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	const FOLDER = { id: 'odwFolder0001', name: 'ODW' };
+
+	function restoreBody(over: Record<string, unknown> = {}) {
+		return {
+			data: {
+				ok: true,
+				threadId: 'thread-1',
+				restored: 0,
+				workflowIds: [],
+				dataTableIds: [],
+				agentIds: [],
+				...over,
+			},
+		};
+	}
+
+	it('fails when folders were requested but the response carries none', async () => {
+		// `folderIds` defaults to [] for older backends, which would otherwise read as
+		// "restored fine, zero folders" — grading the agent on a folder that does not exist.
+		stubFetch(restoreBody());
+		const client = new N8nClient(BASE_URL);
+
+		await expect(
+			client.restoreThread('thread-1', [], [], [], [], { folders: [FOLDER] }),
+		).rejects.toThrow(/predates folder seeding/);
+	});
+
+	it('passes when every requested folder comes back, and sends the folders in the body', async () => {
+		const fetchMock = stubFetch(restoreBody({ folderIds: ['real-odw'] }));
+		const client = new N8nClient(BASE_URL);
+
+		await expect(
+			client.restoreThread('thread-1', [], [], [], [], { folders: [FOLDER] }),
+		).resolves.toMatchObject({ folderIds: ['real-odw'] });
+
+		const [, init] = fetchMock.mock.calls[0] as [string, { body: string }];
+		expect(JSON.parse(init.body)).toMatchObject({ folders: [FOLDER] });
+	});
+
+	it('still accepts a missing folderIds when no folders were requested', async () => {
+		stubFetch(restoreBody());
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.restoreThread('thread-1', [], [])).resolves.toMatchObject({
+			folderIds: [],
+		});
+	});
+});
+
+describe('N8nClient.deleteWorkflow', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('still deletes a workflow whose archive step answers 400 (already archived)', async () => {
+		// A folder delete archives the workflows it held, so a leftover from a
+		// crashed folder case arrives here archived. The archive 400 must not stop
+		// the delete, or the leftover survives every eviction and cleanup. Keyed on
+		// the status, not the message text, so a reworded server error cannot
+		// reintroduce it.
+		const fetchMock = vi.fn(async (url: string | URL) => {
+			if (String(url).endsWith('/archive')) {
+				return new Response(JSON.stringify({ code: 400, message: 'reworded by the server' }), {
+					status: 400,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+			return jsonResponse({ data: true });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.deleteWorkflow('wf-1')).resolves.toBeUndefined();
+
+		const calls = fetchMock.mock.calls.map(([url]) => String(url));
+		expect(calls).toEqual([
+			`${BASE_URL}/rest/workflows/wf-1/archive`,
+			`${BASE_URL}/rest/workflows/wf-1`,
+		]);
+	});
+
+	it('propagates any other archive failure without deleting', async () => {
+		const fetchMock = vi.fn(
+			async () => new Response('nope', { status: 500, headers: { 'Content-Type': 'text/plain' } }),
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.deleteWorkflow('wf-1')).rejects.toThrow(/500/);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('N8nClient.deleteFolderTree', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('deletes every workflow in the subtree, then the folder, and reports the count', async () => {
+		const calls: string[] = [];
+		const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+			const path = String(url).replace(BASE_URL, '');
+			calls.push(`${init?.method ?? 'GET'} ${path.split('?')[0]}`);
+			if (path.startsWith('/rest/projects/project-1/folders?')) {
+				// The whole project, flat: `stale-odw` holds `archive-1`; `other` is
+				// unrelated and must survive.
+				return jsonResponse({
+					count: 3,
+					data: [
+						{ id: 'stale-odw', name: 'ODW', parentFolder: null },
+						{ id: 'archive-1', name: 'Archive', parentFolder: { id: 'stale-odw' } },
+						{ id: 'other', name: 'Finance', parentFolder: null },
+					],
+				});
+			}
+			if (path === '/rest/workflows') {
+				return jsonResponse({
+					data: [
+						{
+							id: 'wf-in-root',
+							name: 'A',
+							active: false,
+							nodes: [],
+							parentFolder: { id: 'stale-odw' },
+						},
+						{
+							id: 'wf-in-child',
+							name: 'B',
+							active: false,
+							nodes: [],
+							parentFolder: { id: 'archive-1' },
+						},
+						{ id: 'wf-elsewhere', name: 'C', active: false, nodes: [], parentFolder: null },
+					],
+				});
+			}
+			return jsonResponse({ data: true });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.deleteFolderTree('project-1', 'stale-odw')).resolves.toBe(2);
+
+		expect(calls).toEqual([
+			'GET /rest/projects/project-1/folders',
+			'GET /rest/workflows',
+			'POST /rest/workflows/wf-in-root/archive',
+			'DELETE /rest/workflows/wf-in-root',
+			'POST /rest/workflows/wf-in-child/archive',
+			'DELETE /rest/workflows/wf-in-child',
+			'DELETE /rest/projects/project-1/folders/stale-odw',
+		]);
+	});
+});
+
+describe('N8nClient.getPersonalProjectId', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('fetches the personal project once per client and reuses it', async () => {
+		const fetchMock = stubFetch({ data: { id: 'project-1' } });
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.getPersonalProjectId()).resolves.toBe('project-1');
+		await expect(client.getPersonalProjectId()).resolves.toBe('project-1');
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries after a failed lookup instead of caching the failure', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response('down', { status: 503, headers: { 'Content-Type': 'text/plain' } }),
+			)
+			.mockResolvedValueOnce(jsonResponse({ data: { id: 'project-1' } }));
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.getPersonalProjectId()).rejects.toThrow(/503/);
+		await expect(client.getPersonalProjectId()).resolves.toBe('project-1');
+	});
+});
+
+describe('N8nClient.listFolders', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('pages through the whole project, so a folder past the first page is still seen', async () => {
+		const first = Array.from({ length: 250 }, (_, i) => ({
+			id: `f${String(i)}`,
+			name: `Folder ${String(i)}`,
+			parentFolder: null,
+		}));
+		const fetchMock = vi.fn(async (url: string | URL) => {
+			const skip = new URL(String(url)).searchParams.get('skip');
+			return jsonResponse(
+				skip === '0'
+					? { count: 251, data: first }
+					: { count: 251, data: [{ id: 'late', name: 'ODW', parentFolder: { id: 'f0' } }] },
+			);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new N8nClient(BASE_URL);
+
+		const folders = await client.listFolders('project-1');
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(folders).toHaveLength(251);
+		expect(folders.at(-1)).toEqual({ id: 'late', name: 'ODW', parentFolderId: 'f0' });
+	});
+});

@@ -59,18 +59,6 @@ const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
 export type CreateWorkflowFromCodeToolOptions = {
 	/**
-	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
-	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
-	 * default — groups are then dropped at the entity assembly, exactly like
-	 * before groups were supported. With the flag on, an invalid group does not
-	 * fail the creation: it is dropped and reported in `skippedGroups` instead,
-	 * while the rest of the workflow is still created. This tool pre-validates
-	 * with the same rules `WorkflowCreationService.createWorkflow` enforces, so
-	 * that shared service's own (fatal) group check never actually triggers here.
-	 */
-	canvasGroupsEnabled?: boolean;
-
-	/**
 	 * Reports which of the workflow's node types are verified community nodes
 	 * that are not installed here, so creation can warn that the workflow will
 	 * not run yet. Supplied only on surfaces that offer community-node
@@ -438,8 +426,7 @@ export const createCreateWorkflowFromCodeTool = (
 				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
-				// Flag off: groups keep being dropped here, exactly like before.
-				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
+				nodeGroups: workflowJson.nodeGroups ?? [],
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
@@ -454,11 +441,10 @@ export const createCreateWorkflowFromCodeTool = (
 			// parser above. Validate them here, before the shared persistence layer's
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
-			const skippedGroups = options.canvasGroupsEnabled
-				? dropInvalidWorkflowGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
-						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
-					)
-				: [];
+			const skippedGroups = dropInvalidWorkflowGroups(
+				newWorkflow,
+				makeGetNodeTypeForGrouping(nodeTypes),
+			).map((violation) => ({ groupName: violation.groupName, reason: violation.message }));
 
 			landingProject = projectId
 				? await projectRepository.findOneBy({ id: projectId })
@@ -553,10 +539,7 @@ export const createCreateWorkflowFromCodeTool = (
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
 
-			// Groups are dropped on save when the flag is off, so only warn when they can be kept.
-			const ceilingWarning = options.canvasGroupsEnabled
-				? topLevelItemsWarning(savedWorkflow)
-				: undefined;
+			const ceilingWarning = topLevelItemsWarning(savedWorkflow);
 
 			const uninstalledWarnings = await buildUninstalledNodeWarnings(
 				savedWorkflow.nodes,
@@ -590,11 +573,7 @@ export const createCreateWorkflowFromCodeTool = (
 					data: {
 						workflowId: savedWorkflow.id,
 						nodeCount: savedWorkflow.nodes.length,
-						// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
-						// flag is off so the payload stays identical across cohorts.
-						...(options.canvasGroupsEnabled
-							? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
-							: {}),
+						groupCount: workflowJson.nodeGroups?.length ?? 0,
 					},
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
