@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 
 import {
 	type InputMenuItem,
@@ -165,6 +166,30 @@ describe('useInstanceAiInputMenuItems', () => {
 
 		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+	});
+
+	it('fetches MCP connections when MCP becomes available', async () => {
+		const isMcpAvailable = ref(false);
+		const originalDescriptor = Object.getOwnPropertyDescriptor(settingsStore, 'isMcpAvailable');
+		Object.defineProperty(settingsStore, 'isMcpAvailable', {
+			configurable: true,
+			get: () => isMcpAvailable.value,
+			set: (value: boolean) => {
+				isMcpAvailable.value = value;
+			},
+		});
+
+		try {
+			useInstanceAiInputMenuItems(vi.fn());
+			expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+
+			settingsStore.isMcpAvailable = true;
+			await nextTick();
+
+			expect(mcpStore.fetchConnectionsLazy).toHaveBeenCalledOnce();
+		} finally {
+			Object.defineProperty(settingsStore, 'isMcpAvailable', originalDescriptor!);
+		}
 	});
 
 	it.each(mcpStatusCases)(

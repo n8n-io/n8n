@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -34,7 +34,13 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 
 	void settingsStore.fetch();
-	if (settingsStore.isMcpAvailable) void mcpStore.fetchConnectionsLazy();
+	watch(
+		() => settingsStore.isMcpAvailable,
+		(isAvailable) => {
+			if (isAvailable) void mcpStore.fetchConnectionsLazy();
+		},
+		{ immediate: true },
+	);
 
 	// The store owns this, so the + menu and the message payload cannot disagree.
 	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
