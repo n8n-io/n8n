@@ -104,6 +104,9 @@ export class AuthService {
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 
+			// Custom node logos render via <img> tags, which can't send the browser-id header
+			`/${restEndpoint}/custom-nodes/:id/icon`,
+
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
 			`/${restEndpoint}/instance-ai/events/:threadId`,
 
