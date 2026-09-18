@@ -255,7 +255,7 @@ describe('AgentMcpAccessService', () => {
 			agentRepository.findMcpAvailabilityCandidates.mockResolvedValue([
 				candidate('a1', 'p1', false),
 			]);
-			collaborationService.validateAgentWriteLock.mockRejectedValue(
+			collaborationService.validateAgentWriteLocks.mockRejectedValue(
 				new LockedError(
 					'Cannot toggle MCP availability for agent - another user currently has write access',
 				),
@@ -272,11 +272,10 @@ describe('AgentMcpAccessService', () => {
 				),
 			).rejects.toThrow(LockedError);
 
-			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			expect(collaborationService.validateAgentWriteLocks).toHaveBeenCalledWith(
 				'user-1',
 				'push-ref-1',
-				'p1',
-				'a1',
+				['a1'],
 				'toggle MCP availability for',
 			);
 			expect(agentRepository.setAvailableInMCP).not.toHaveBeenCalled();

@@ -29,10 +29,6 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 	const collaborators = ref<Collaborator[]>([]);
 	const currentWriterLock = ref<{ userId: string; clientId: string } | null>(null);
-	// True between requesting the lock and receiving writeAccessAcquired.
-	// Keeps the tab read-only until it actually holds the lock, so a
-	// released/expired lock does not make every tab writable at once.
-	const isRequestingWriteAccess = ref(false);
 
 	const lastActivityTime = ref<number>(Date.now());
 	const activityCheckInterval = ref<number | null>(null);
@@ -52,7 +48,8 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 	const collaboratingAgentId = ref<string | null>(null);
 
 	const isCurrentTabWriter = computed(
-		() => currentWriterLock.value?.clientId === rootStore.pushRef,
+		() =>
+			currentWriterLock.value !== null && currentWriterLock.value.clientId === rootStore.pushRef,
 	);
 
 	const isCurrentUserWriter = computed(
@@ -65,9 +62,10 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 	const isAnyoneWriting = computed(() => currentWriterLock.value !== null);
 
-	const shouldBeReadOnly = computed(
-		() => (isAnyoneWriting.value || isRequestingWriteAccess.value) && !isCurrentTabWriter.value,
-	);
+	// The lock is lazy: a tab stays editable while no one holds it and
+	// acquires the lock on its first edit. Only another client's lock makes
+	// this tab read-only — mirrors the workflow collaboration store.
+	const shouldBeReadOnly = computed(() => isAnyoneWriting.value && !isCurrentTabWriter.value);
 
 	async function fetchWriteLockState(
 		projectId: string,
@@ -159,12 +157,11 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 			return;
 		}
 
-		// If lock is gone on backend but still exists in frontend, clear it
-		// and request the lock so this tab becomes the next writer.
+		// If the lock expired on the backend but still exists in the frontend,
+		// clear it. The lock stays free until a tab edits — do not grab it here.
 		if (!writeLock && currentWriterLock.value) {
 			currentWriterLock.value = null;
 			stopLockStatePolling();
-			requestWriteAccess();
 		}
 	};
 
@@ -214,18 +211,13 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 			return false;
 		}
 
-		isRequestingWriteAccess.value = true;
-
 		try {
 			pushStore.send({
 				type: 'agentWriteAccessRequested',
 				agentId: collaboratingAgentId.value,
 			});
 		} catch {
-			// send threw (e.g. WebSocket tearing down). Reset the pending
-			// flag so the tab is not trapped read-only — the lock-state
-			// poll will re-request once the connection recovers.
-			isRequestingWriteAccess.value = false;
+			// send threw (e.g. WebSocket tearing down). The next edit retries.
 			return false;
 		}
 
@@ -330,7 +322,6 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 				event.type === 'writeAccessAcquired' &&
 				event.data.agentId === collaboratingAgentId.value
 			) {
-				isRequestingWriteAccess.value = false;
 				currentWriterLock.value = {
 					clientId: event.data.clientId,
 					userId: event.data.userId,
@@ -350,12 +341,13 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 				event.type === 'writeAccessReleased' &&
 				event.data.agentId === collaboratingAgentId.value
 			) {
+				// The lock is free again. Do not grab it here — an idle tab that
+				// auto-acquires would lock out the tab that just released, and
+				// two idle tabs would ping-pong the lock every inactivity
+				// timeout. The next edit in any tab acquires it.
 				currentWriterLock.value = null;
 				stopWriteLockHeartbeat();
 				stopLockStatePolling();
-				// The lock is gone — request it immediately so this tab becomes the
-				// next writer instead of leaving every tab writable with no lock.
-				requestWriteAccess();
 				return;
 			}
 		});
@@ -384,7 +376,6 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		}
 		collaboratingAgentId.value = null;
 		currentWriterLock.value = null;
-		isRequestingWriteAccess.value = false;
 		collaborators.value = [];
 		lockStatePollingSuspended = false;
 	}

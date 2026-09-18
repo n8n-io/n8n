@@ -80,27 +80,21 @@ export class AgentMcpAccessService {
 
 		const toUpdate = accessible.filter((agent) => agent.availableInMCP !== dto.availableInMCP);
 
+		const agentIds = toUpdate.map((agent) => agent.id);
+
 		// Refuse the whole bulk if any target agent is locked by another client.
 		// A partial update would silently leave some agents in the old state.
-		// Doing the check in batches for better performance.
-		for (let start = 0; start < toUpdate.length; start += BULK_CHUNK_SIZE) {
-			await Promise.all(
-				toUpdate
-					.slice(start, start + BULK_CHUNK_SIZE)
-					.map(
-						async (agent) =>
-							await this.collaborationService.validateAgentWriteLock(
-								user.id,
-								pushRef,
-								agent.projectId,
-								agent.id,
-								'toggle MCP availability for',
-							),
-					),
+		// One cache round-trip per chunk; the candidates already came from the
+		// repository, so no per-agent project check is needed.
+		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
+			await this.collaborationService.validateAgentWriteLocks(
+				user.id,
+				pushRef,
+				agentIds.slice(start, start + BULK_CHUNK_SIZE),
+				'toggle MCP availability for',
 			);
 		}
 
-		const agentIds = toUpdate.map((agent) => agent.id);
 		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
 			await this.agentRepository.setAvailableInMCP(
 				agentIds.slice(start, start + BULK_CHUNK_SIZE),

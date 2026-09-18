@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
-import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -29,7 +28,6 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
-	agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>(),
 	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
@@ -38,7 +36,6 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
-	agentUpdateBroadcaster?: Mocked<AgentUpdateBroadcaster>;
 	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
@@ -52,7 +49,6 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
-			agentUpdateBroadcaster,
 			collaborationService,
 		),
 		managementService,
@@ -60,7 +56,6 @@ function makeController({
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
-		agentUpdateBroadcaster,
 		collaborationService,
 	};
 }

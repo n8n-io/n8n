@@ -32,6 +32,11 @@ vi.mock('../composables/useAgentApi', () => ({
 	getAgentWriteLock: (...args: unknown[]) => mockGetAgentWriteLock(...args),
 }));
 
+type PushHandler = (event: {
+	type: string;
+	data: { agentId: string; clientId?: string; userId?: string };
+}) => void;
+
 describe('useAgentCollaborationStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -151,7 +156,7 @@ describe('useAgentCollaborationStore', () => {
 	});
 
 	describe('requestWriteAccess', () => {
-		test('sends agentWriteAccessRequested and sets isRequestingWriteAccess', async () => {
+		test('sends agentWriteAccessRequested and keeps the tab editable while waiting', async () => {
 			const store = useAgentCollaborationStore();
 
 			await store.initialize('project-1', 'agent-1');
@@ -163,7 +168,9 @@ describe('useAgentCollaborationStore', () => {
 				type: 'agentWriteAccessRequested',
 				agentId: 'agent-1',
 			});
-			expect(store.shouldBeReadOnly).toBe(true);
+			// The lock is lazy: the edit that triggered the request must not be
+			// blocked (or its autosave cancelled) during the round-trip.
+			expect(store.shouldBeReadOnly).toBe(false);
 		});
 
 		test('is a no-op when already the current tab writer', async () => {
@@ -202,11 +209,6 @@ describe('useAgentCollaborationStore', () => {
 	});
 
 	describe('push event handling', () => {
-		type PushHandler = (event: {
-			type: string;
-			data: { agentId: string; clientId?: string; userId?: string };
-		}) => void;
-
 		test('sets the write lock and starts heartbeat on writeAccessAcquired for the current tab', async () => {
 			const store = useAgentCollaborationStore();
 
@@ -237,7 +239,7 @@ describe('useAgentCollaborationStore', () => {
 			expect(store.shouldBeReadOnly).toBe(true);
 		});
 
-		test('stays read-only on writeAccessReleased until this tab acquires the lock', async () => {
+		test('becomes editable on writeAccessReleased without grabbing the lock', async () => {
 			const store = useAgentCollaborationStore();
 
 			await store.initialize('project-1', 'agent-1');
@@ -248,25 +250,20 @@ describe('useAgentCollaborationStore', () => {
 				data: { agentId: 'agent-1', clientId: 'otherClient', userId: 'otherUser' },
 			});
 			expect(store.shouldBeReadOnly).toBe(true);
+			mockPushStore.send.mockClear();
 
 			handler({
 				type: 'writeAccessReleased',
 				data: { agentId: 'agent-1' },
 			});
 
-			// Still read-only: the tab requested the lock but has not received it yet
-			expect(store.shouldBeReadOnly).toBe(true);
-			expect(mockPushStore.send).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'agentWriteAccessRequested', agentId: 'agent-1' }),
-			);
-
-			// Now this tab acquires the lock
-			handler({
-				type: 'writeAccessAcquired',
-				data: { agentId: 'agent-1', clientId: 'push-1', userId: 'user-1' },
-			});
-
+			// The lock stays free until this tab edits. Auto-acquiring here would
+			// lock out the tab that just released and ping-pong between idle tabs.
 			expect(store.shouldBeReadOnly).toBe(false);
+			expect(store.isAnyoneWriting).toBe(false);
+			expect(mockPushStore.send).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'agentWriteAccessRequested' }),
+			);
 		});
 
 		test('ignores push events for a different agent', async () => {

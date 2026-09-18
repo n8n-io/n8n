@@ -21,7 +21,7 @@ import type {
 	AgentWriteAccessHeartbeatMessage,
 } from './collaboration.message';
 
-import { CollaborationState } from '@/collaboration/collaboration.state';
+import { CollaborationState, type WriteLock } from '@/collaboration/collaboration.state';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -559,11 +559,10 @@ export class CollaborationService {
 		clientId: string,
 	) {
 		const collaborators = await this.state.getAgentCollaborators(agentId);
-		const userIds = collaborators.map((user) => user.userId);
-
-		if (userIds.length === 0) {
-			return;
-		}
+		const collaboratorUserIds = collaborators.map((user) => user.userId);
+		// Always include the requesting user — push messages are handled
+		// concurrently, so agentOpened may not have registered this tab yet.
+		const userIds = [...new Set([...collaboratorUserIds, userId])];
 
 		const msgData: PushPayload<'writeAccessAcquired'> = {
 			agentId,
@@ -649,11 +648,39 @@ export class CollaborationService {
 		}
 
 		const lock = await this.state.getAgentWriteLock(agentId);
+		if (lock) {
+			this.assertAgentLockHeldBy(lock, userId, clientId, action);
+		}
+	}
 
-		if (!lock) {
+	/**
+	 * Batch variant of `validateAgentWriteLock` for agents the caller already
+	 * loaded from the repository, so the project boundary is established and
+	 * the per-agent existence query is skipped. All locks are read in one
+	 * cache round-trip. Throws on the first agent locked by another client.
+	 */
+	async validateAgentWriteLocks(
+		userId: User['id'],
+		clientId: string | undefined,
+		agentIds: string[],
+		action: string,
+	): Promise<void> {
+		if (!clientId || agentIds.length === 0) {
 			return;
 		}
 
+		const locks = await this.state.getAgentWriteLocks(agentIds);
+		for (const lock of locks.values()) {
+			this.assertAgentLockHeldBy(lock, userId, clientId, action);
+		}
+	}
+
+	private assertAgentLockHeldBy(
+		lock: WriteLock,
+		userId: User['id'],
+		clientId: string,
+		action: string,
+	): void {
 		if (lock.clientId === clientId) {
 			if (lock.userId === userId) {
 				return;
@@ -665,9 +692,8 @@ export class CollaborationService {
 		if (lock.userId === userId) {
 			// Same user, different tab
 			throw new ConflictError(`Cannot ${action} agent - you have this agent open in another tab`);
-		} else {
-			// Different user
-			throw new LockedError(`Cannot ${action} agent - another user currently has write access`);
 		}
+		// Different user
+		throw new LockedError(`Cannot ${action} agent - another user currently has write access`);
 	}
 }

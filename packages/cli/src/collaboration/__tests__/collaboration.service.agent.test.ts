@@ -263,6 +263,51 @@ describe('CollaborationService — agent messages', () => {
 		});
 	});
 
+	describe('validateAgentWriteLocks', () => {
+		it('skips the cache when no client id is given or the list is empty', async () => {
+			await service.validateAgentWriteLocks(userId, undefined, ['agent-1'], 'update');
+			await service.validateAgentWriteLocks(userId, 'client-1', [], 'update');
+
+			expect(state.getAgentWriteLocks).not.toHaveBeenCalled();
+			expect(agentRepository.existsByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		it('reads all locks in one call and passes when none is held by another client', async () => {
+			state.getAgentWriteLocks.mockResolvedValue(
+				new Map([['agent-2', { clientId: 'client-1', userId: 'user-1' }]]),
+			);
+
+			await expect(
+				service.validateAgentWriteLocks(userId, 'client-1', ['agent-1', 'agent-2'], 'update'),
+			).resolves.toBeUndefined();
+
+			expect(state.getAgentWriteLocks).toHaveBeenCalledTimes(1);
+			expect(state.getAgentWriteLocks).toHaveBeenCalledWith(['agent-1', 'agent-2']);
+			// The caller already loaded the agents; no per-agent project query.
+			expect(agentRepository.existsByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		it('throws a ConflictError when any agent is held by the same user from another tab', async () => {
+			state.getAgentWriteLocks.mockResolvedValue(
+				new Map([['agent-2', { clientId: 'other-client', userId: 'user-1' }]]),
+			);
+
+			await expect(
+				service.validateAgentWriteLocks(userId, 'client-1', ['agent-1', 'agent-2'], 'update'),
+			).rejects.toThrow(/another tab/);
+		});
+
+		it('throws a LockedError when any agent is held by a different user', async () => {
+			state.getAgentWriteLocks.mockResolvedValue(
+				new Map([['agent-1', { clientId: 'other-client', userId: 'other-user' }]]),
+			);
+
+			await expect(
+				service.validateAgentWriteLocks(userId, 'client-1', ['agent-1'], 'update'),
+			).rejects.toThrow(/another user/);
+		});
+	});
+
 	describe('ensureAgentEditable', () => {
 		it('passes when no lock exists', async () => {
 			state.getAgentWriteLock.mockResolvedValue(null);

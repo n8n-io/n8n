@@ -86,6 +86,17 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		return this.cache.kind === 'redis';
 	}
 
+	/**
+	 * Like `isRedis()`, but safe before the lazy `init()` has run — `get`/`set`
+	 * initialize on first use, so a caller that branches on the backend before
+	 * touching the cache must use this variant.
+	 */
+	async isRedisBackend() {
+		if (!this.cache) await this.init();
+
+		return this.cache.kind === 'redis';
+	}
+
 	isMemory() {
 		return this.cache.kind === 'memory';
 	}
@@ -210,6 +221,21 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		}
 
 		return fallbackValue;
+	}
+
+	/**
+	 * Retrieve primitive values under many keys in one round-trip. The result
+	 * is positional: `result[i]` is the value for `keys[i]`, or `undefined`
+	 * when the key is missing.
+	 */
+	async getMany<T = unknown>(keys: string[]): Promise<Array<T | undefined>> {
+		if (!this.cache) await this.init();
+
+		if (keys.length === 0) return [];
+
+		// The store's `mget` is untyped (`unknown[]`); `get<T>` makes the same
+		// caller-asserted promise through the store's generic.
+		return (await this.cache.store.mget(...keys)) as Array<T | undefined>;
 	}
 
 	/** Atomically retrieve and delete a primitive value. */

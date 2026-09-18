@@ -27,6 +27,7 @@ const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const pushConnectMock = vi.fn();
+const pushSendMock = vi.fn();
 const pushListeners = new Set<(event: PushMessage) => void>();
 const sendPreviewSessionToInstanceAiMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -137,7 +138,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
 		pushConnect: pushConnectMock,
 		pushDisconnect: vi.fn(),
-		send: vi.fn(),
+		send: pushSendMock,
 		clearQueue: vi.fn(),
 		addEventListener: (listener: (event: PushMessage) => void) => {
 			pushListeners.add(listener);
@@ -719,10 +720,9 @@ function resetViewMocks() {
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
 	getAgentWriteLockMock.mockResolvedValue(null);
-	// Keep pushRef unset by default: isCurrentTabWriter resolves to
-	// `undefined === undefined` = true, so existing tests stay editable.
-	// Collaboration lock tests override pushRef in their own beforeEach.
-	rootStoreMock.pushRef = undefined as unknown as string;
+	// No lock is held by default, so the tab is editable and the first edit
+	// requests the (lazy) write lock — the same state as a fresh builder tab.
+	rootStoreMock.pushRef = 'tab-1';
 	usersStoreMock.currentUserId = 'user-1';
 	usersStoreMock.usersById = {};
 	listAgentFilesMock.mockReset();
@@ -732,6 +732,7 @@ function resetViewMocks() {
 	showErrorMock.mockReset();
 	showMessageMock.mockReset();
 	pushConnectMock.mockReset();
+	pushSendMock.mockReset();
 	pushListeners.clear();
 	fetchConfigMock.mockClear();
 	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
@@ -3979,6 +3980,42 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
 			false,
 		);
+
+		wrapper.unmount();
+	});
+
+	it('requests the lock on the first edit while staying editable and autosaving', async () => {
+		getAgentWriteLockMock.mockResolvedValue(null);
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+		pushSendMock.mockClear();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await flushPromises();
+
+		// The edit requests the lazy lock…
+		expect(pushSendMock).toHaveBeenCalledWith({
+			type: 'agentWriteAccessRequested',
+			agentId: 'a1',
+		});
+		// …but the round-trip must not disable the editor or cancel the
+		// autosave the same edit scheduled.
+		expect(editor.props('canEditAgent')).toBe(true);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		// Once acknowledged, this tab is the writer and stays editable.
+		const acquired: PushMessage = {
+			type: 'writeAccessAcquired',
+			data: { agentId: 'a1', userId: 'user-1', clientId: 'tab-1' },
+		};
+		for (const listener of pushListeners) listener(acquired);
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
+		expect(editor.props('canEditAgent')).toBe(true);
 
 		wrapper.unmount();
 	});
