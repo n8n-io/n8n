@@ -756,6 +756,34 @@ describe('StepReadyHandler waits', () => {
 		expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', openWait);
 	});
 
+	it('fails the step when the declaration names a deadline it cannot parse', async () => {
+		// `wait_till` is derived from `resumeAt` in the statement that suspends the
+		// step, so a value no date can be made from fails that write and leaves the
+		// claimed step running. The declaration crosses the executor seam, so this
+		// is the executor's bug, and the step that ran is recorded as failed.
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor({
+				wait: {
+					resumeAt: 'the day after tomorrow',
+					outputsAtDeadline: [[{ json: {} }]],
+					acceptsResumeRequest: false,
+				},
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({
+				message: expect.stringContaining('deadline that is not a date') as string,
+			}),
+		);
+	});
+
 	it('fails the step when the declaration can never resume', async () => {
 		// No deadline and no resume request means nothing would ever end this
 		// wait, so suspending would strand the execution. The declaration comes

@@ -185,6 +185,15 @@ export class StepReadyHandler {
 			);
 		}
 
+		// `suspendStep` derives `wait_till` from this value, so one no date can be
+		// made from fails that write and leaves the claimed step running. Rejecting
+		// it here records the step as failed instead, like the check above.
+		if (result.wait?.resumeAt !== undefined && Number.isNaN(Date.parse(result.wait.resumeAt))) {
+			throw new UnexpectedError(
+				`step ${step.id} declares a wait with a deadline that is not a date: ${result.wait.resumeAt}`,
+			);
+		}
+
 		return result;
 	}
 
