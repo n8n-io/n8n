@@ -801,7 +801,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
-		service.areMcpConnectionsAvailable = vi.fn(() => false);
+		service.areMcpConnectionsAvailable = vi.fn(() => true);
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -905,6 +905,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
 			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
