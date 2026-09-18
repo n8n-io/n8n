@@ -61,6 +61,34 @@ interface WorkflowSandboxScope {
 	principalHash: AgentSandboxPrincipalHash;
 }
 
+interface WorkflowAgentStreamParams {
+	agentInstance: BuiltAgent;
+	message: string;
+	threadId: string;
+	telemetryAgentId: string;
+	telemetryUserId?: string;
+	runType: AgentRunTelemetryType;
+	outputSchema?: JSONSchema7;
+	tracing: {
+		projectId: string;
+		executionId?: string;
+		workflowId?: string;
+		nodeId?: string;
+		nodeName?: string;
+	};
+	recordingParams?: StartExecutionParams;
+	streamObserver?: WorkflowAgentStreamObserver;
+	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
+}
+
+interface WorkflowAgentStreamConsumption {
+	structuredOutput: unknown;
+	toolCalls: ExecuteAgentData['toolCalls'];
+	streamError: Error | undefined;
+	executionError: unknown;
+	executionStarted: boolean;
+}
+
 function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
 	let lastToolCallIndex = -1;
 	for (let index = messageRecord.timeline.length - 1; index >= 0; index--) {
@@ -260,26 +288,11 @@ export class AgentWorkflowExecutionService {
 		return extraTools;
 	}
 
-	/** Stream one workflow-invoked agent run and collect its outcome. */
-	private async streamWorkflowAgent(params: {
-		agentInstance: BuiltAgent;
-		message: string;
-		threadId: string;
-		telemetryAgentId: string;
-		telemetryUserId?: string;
-		runType: AgentRunTelemetryType;
-		outputSchema?: JSONSchema7;
-		tracing: {
-			projectId: string;
-			executionId?: string;
-			workflowId?: string;
-			nodeId?: string;
-			nodeName?: string;
-		};
-		recordingParams?: StartExecutionParams;
-		streamObserver?: WorkflowAgentStreamObserver;
-		sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
-	}): Promise<WorkflowAgentRunOutcome> {
+	private async consumeWorkflowAgentStream(
+		params: WorkflowAgentStreamParams,
+		recorder: ExecutionRecorder,
+		streamAdapter: WorkflowAgentStreamAdapter,
+	): Promise<WorkflowAgentStreamConsumption> {
 		const {
 			agentInstance,
 			message,
@@ -290,30 +303,14 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			tracing,
 			recordingParams,
-			streamObserver,
 			sandboxScope,
 		} = params;
-		const streamAdapter = new WorkflowAgentStreamAdapter(streamObserver);
-
-		let agentExecutionId: string | undefined;
-		const recorder = this.turnExecutionService.createRecorder(
-			undefined,
-			() => agentExecutionId,
-			recordingParams,
-		);
-		if (recordingParams) {
-			agentExecutionId = await this.turnExecutionService.startExecution(
-				recordingParams,
-				recorder.startedAt,
-			);
-		}
-		let executionStarted = false;
-
 		let structuredOutput: unknown = null;
 		const toolCalls: ExecuteAgentData['toolCalls'] = [];
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
 		let streamError: Error | undefined;
 		let executionError: unknown;
+		let executionStarted = false;
 
 		try {
 			// Nest the agent's root span under the calling node's OTel span (rather
@@ -412,6 +409,31 @@ export class AgentWorkflowExecutionService {
 			streamError = normalizedError;
 			streamAdapter.fail();
 		}
+
+		return { structuredOutput, toolCalls, streamError, executionError, executionStarted };
+	}
+
+	/** Stream one workflow-invoked agent run and collect its outcome. */
+	private async streamWorkflowAgent(
+		params: WorkflowAgentStreamParams,
+	): Promise<WorkflowAgentRunOutcome> {
+		const { recordingParams } = params;
+		const streamAdapter = new WorkflowAgentStreamAdapter(params.streamObserver);
+		let agentExecutionId: string | undefined;
+		const recorder = this.turnExecutionService.createRecorder(
+			undefined,
+			() => agentExecutionId,
+			recordingParams,
+		);
+		if (recordingParams) {
+			agentExecutionId = await this.turnExecutionService.startExecution(
+				recordingParams,
+				recorder.startedAt,
+			);
+		}
+
+		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
+			await this.consumeWorkflowAgentStream(params, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
 		if (recordingParams && agentExecutionId) {

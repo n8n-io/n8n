@@ -101,18 +101,7 @@ describe('AgentExecutionRepository', () => {
 		return chunks;
 	}
 
-	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
-		const { turns } = recordingServices();
-		const threadId = uuid();
-		const recording = {
-			threadId,
-			agentId,
-			agentName: 'Test Agent',
-			projectId,
-			userMessage: 'Start',
-		};
-		const checkpointRepo = Container.get(AgentCheckpointRepository);
-		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
+	function createApprovalAgentFactory(threadId: string) {
 		type ModelStreamPart = Awaited<
 			ReturnType<MockLanguageModelV3['doStream']>
 		>['stream'] extends ReadableStream<infer Part>
@@ -167,16 +156,32 @@ describe('AgentExecutionRepository', () => {
 				.model(model)
 				.tool(tool)
 				.checkpoint(store);
-		const startAgent = makeAgent(storage.getStorage(agentId));
+		return { action, makeAgent };
+	}
+
+	async function startSuspendedApprovalRun() {
+		const { turns } = recordingServices();
+		const threadId = uuid();
+		const recording = {
+			threadId,
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			userMessage: 'Start',
+		};
+		const checkpointRepo = Container.get(AgentCheckpointRepository);
+		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
+		const { action, makeAgent } = createApprovalAgentFactory(threadId);
 		const common = {
 			toolRegistry: new Map(),
 			mcpServerAttributions: new Map(),
 			context: recording,
 		};
-		const firstChunks = await collect(
+		const agent = makeAgent(storage.getStorage(agentId));
+		const chunks = await collect(
 			turns.execute({
 				...common,
-				agentInstance: startAgent,
+				agentInstance: agent,
 				prepare: async () => ({
 					type: 'start',
 					input: 'Start',
@@ -185,12 +190,30 @@ describe('AgentExecutionRepository', () => {
 				}),
 			}),
 		);
-		await startAgent.close();
-		const suspension = firstChunks.find((chunk) => chunk.type === 'tool-call-suspended');
+		await agent.close();
+		const suspension = chunks.find((chunk) => chunk.type === 'tool-call-suspended');
 		expect(suspension).toBeDefined();
-		if (!suspension || suspension.type !== 'tool-call-suspended')
+		if (!suspension || suspension.type !== 'tool-call-suspended') {
 			throw new Error('Expected suspension');
+		}
 
+		return {
+			action,
+			checkpointRepo,
+			common,
+			makeAgent,
+			recording,
+			storage,
+			suspension,
+			threadId,
+			turns,
+		};
+	}
+
+	async function resumeApprovalFromSeparateConnections(
+		fixture: Awaited<ReturnType<typeof startSuspendedApprovalRun>>,
+	) {
+		const { common, makeAgent, recording, storage, suspension, turns } = fixture;
 		const secondConnection = await new DataSource({
 			...repository.manager.connection.options,
 			name: uuid(),
@@ -236,32 +259,35 @@ describe('AgentExecutionRepository', () => {
 					await agent.close();
 				}
 			});
-			const outcomes = await Promise.allSettled(attempts);
-			expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
-			expect(onResumeClaimed).toHaveBeenCalledOnce();
-			expect(action).toHaveBeenCalledOnce();
-			const executions = await repository.findByThreadIdOrdered(threadId);
-			expect(executions).toHaveLength(3);
-			expect(executions.map(({ status }) => status).sort()).toEqual([
-				'error',
-				'success',
-				'success',
-			]);
-			const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
-			expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
-			expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
-			const rejected = executions.find(({ status }) => status === 'error');
-			expect(rejected).toMatchObject({ userMessage: null, hitlStatus: null });
-			expect(rejected?.timeline ?? []).not.toContainEqual(
-				expect.objectContaining({ type: 'hitl-response' }),
-			);
-			expect(await checkpointRepo.findByRunId(suspension.runId)).toMatchObject({
-				expired: true,
-				state: null,
-			});
+
+			return { outcomes: await Promise.allSettled(attempts), onResumeClaimed };
 		} finally {
 			await secondConnection.destroy();
 		}
+	}
+
+	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
+		const fixture = await startSuspendedApprovalRun();
+		const { outcomes, onResumeClaimed } = await resumeApprovalFromSeparateConnections(fixture);
+
+		expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+		expect(onResumeClaimed).toHaveBeenCalledOnce();
+		expect(fixture.action).toHaveBeenCalledOnce();
+		const executions = await repository.findByThreadIdOrdered(fixture.threadId);
+		expect(executions).toHaveLength(3);
+		expect(executions.map(({ status }) => status).sort()).toEqual(['error', 'success', 'success']);
+		const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
+		expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
+		expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
+		const rejected = executions.find(({ status }) => status === 'error');
+		expect(rejected).toMatchObject({ userMessage: null, hitlStatus: null });
+		expect(rejected?.timeline ?? []).not.toContainEqual(
+			expect.objectContaining({ type: 'hitl-response' }),
+		);
+		expect(await fixture.checkpointRepo.findByRunId(fixture.suspension.runId)).toMatchObject({
+			expired: true,
+			state: null,
+		});
 	});
 
 	it('recovers a failed finalization from the saved timeline and rejects a later terminal update', async () => {

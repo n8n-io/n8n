@@ -366,27 +366,18 @@ export class AgentExecutionOrchestratorService {
 		return true;
 	}
 
-	/**
-	 * Resume a suspended tool call and yield the resulting stream chunks.
-	 * Used by chat integration handlers to continue an agent run after
-	 * a human-in-the-loop action (button click, modal submission).
-	 */
-	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const {
-			agentId,
-			projectId,
-			runId,
-			toolCallId,
-			resumeData,
-			expectedMemory,
-			source,
-			integrationType,
-			user,
-			usePublishedVersion = true,
-			onExecutionRecorded,
-			abortSignal,
-		} = config;
-
+	private async loadResumeCheckpoint(params: {
+		agentId: string;
+		projectId: string;
+		runId: string;
+		expectedMemory: Partial<AgentMemoryScope> | undefined;
+		user: User | undefined;
+		usePublishedVersion: boolean;
+	}): Promise<{
+		memoryScope: NonNullable<SerializableAgentState['persistence']>;
+		sandboxPrincipalHash: AgentSandboxPrincipalHash | undefined;
+	}> {
+		const { agentId, projectId, runId, expectedMemory, user, usePublishedVersion } = params;
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
@@ -411,6 +402,7 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
 		}
+
 		const sandboxScope = decodeAgentSandboxHostMetadata(memoryScope.hostMetadata);
 		const sandboxPrincipalHash = sandboxScope?.principalHash;
 		if (
@@ -425,6 +417,38 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError(`Checkpoint ${runId} is unavailable and cannot be resumed`);
 		}
+
+		return { memoryScope, sandboxPrincipalHash };
+	}
+
+	/**
+	 * Resume a suspended tool call and yield the resulting stream chunks.
+	 * Used by chat integration handlers to continue an agent run after
+	 * a human-in-the-loop action (button click, modal submission).
+	 */
+	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+		const {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			expectedMemory,
+			source,
+			integrationType,
+			user,
+			usePublishedVersion = true,
+			onExecutionRecorded,
+			abortSignal,
+		} = config;
+		const { memoryScope, sandboxPrincipalHash } = await this.loadResumeCheckpoint({
+			agentId,
+			projectId,
+			runId,
+			expectedMemory,
+			user,
+			usePublishedVersion,
+		});
 
 		const threadId = memoryScope.threadId;
 
