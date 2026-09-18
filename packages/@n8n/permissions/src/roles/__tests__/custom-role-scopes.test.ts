@@ -2,7 +2,10 @@ import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
 	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
 	GLOBAL_CUSTOM_ROLE_SCOPES,
+	isMandatoryInstanceOption,
+	MANDATORY_INSTANCE_SCOPES,
 	PROJECT_CUSTOM_ROLE_SCOPES,
+	withMandatoryInstanceScopes,
 } from '@/roles/custom-role-scopes.ee';
 import { GLOBAL_MEMBER_SCOPES } from '@/roles/scopes/global-scopes.ee';
 import { ALL_SCOPES } from '@/scope-information';
@@ -150,8 +153,8 @@ describe('custom role scope whitelists', () => {
 
 	it('keeps "Tags: View" within GLOBAL_MEMBER_SCOPES', () => {
 		// "Tags: View" is granted to every instance role by default (see
-		// instanceRoleScopes.ts), so it must never exceed what the built-in Member
-		// role already has.
+		// MANDATORY_INSTANCE_OPTIONS), so it must never exceed what the built-in
+		// Member role already has.
 		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View) {
 			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
 		}
@@ -159,12 +162,69 @@ describe('custom role scope whitelists', () => {
 
 	it('exposes "Users: View" as exactly user:list, matching GLOBAL_MEMBER_SCOPES', () => {
 		// "Users: View" is granted to every instance role by default (see
-		// instanceRoleScopes.ts). It must never exceed what the built-in Member
-		// role already has, or a custom role mirroring Member ends up more
+		// MANDATORY_INSTANCE_OPTIONS). It must never exceed what the built-in
+		// Member role already has, or a custom role mirroring Member ends up more
 		// privileged than Member itself
 		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View).toEqual(['user:list']);
 		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View) {
 			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
 		}
+	});
+});
+
+describe('mandatory instance options', () => {
+	it('resolves to the user and tag view scopes', () => {
+		expect(MANDATORY_INSTANCE_SCOPES).toEqual(['user:list', 'tag:read', 'tag:list']);
+	});
+
+	it('stays inside the global custom-role whitelist', () => {
+		// resolveScopes unions these in before the whitelist check, so a mandatory
+		// scope outside the whitelist would make every global-role write fail.
+		for (const scope of MANDATORY_INSTANCE_SCOPES) {
+			expect(GLOBAL_CUSTOM_ROLE_SCOPES.has(scope)).toBe(true);
+		}
+	});
+
+	it('stays within GLOBAL_MEMBER_SCOPES', () => {
+		// Added to every custom instance role, so they must never exceed what the
+		// built-in Member role already grants.
+		for (const scope of MANDATORY_INSTANCE_SCOPES) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
+		}
+	});
+
+	it('identifies mandatory options and only those', () => {
+		expect(isMandatoryInstanceOption('user', 'View')).toBe(true);
+		expect(isMandatoryInstanceOption('tag', 'View')).toBe(true);
+		expect(isMandatoryInstanceOption('user', 'Manage')).toBe(false);
+		expect(isMandatoryInstanceOption('insights', 'View')).toBe(false);
+		expect(isMandatoryInstanceOption('nonsense', 'View')).toBe(false);
+	});
+
+	it('withMandatoryInstanceScopes adds the mandatory scopes to an empty list', () => {
+		expect(withMandatoryInstanceScopes([])).toEqual(['user:list', 'tag:read', 'tag:list']);
+	});
+
+	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
+		const result = withMandatoryInstanceScopes(['user:list', 'tag:read']);
+		expect(result.filter((scope) => scope === 'user:list')).toHaveLength(1);
+		expect(result.filter((scope) => scope === 'tag:read')).toHaveLength(1);
+		expect(new Set(result).size).toBe(result.length);
+	});
+
+	it('withMandatoryInstanceScopes dedups a repeated input slug', () => {
+		expect(withMandatoryInstanceScopes(['insights:read', 'insights:read'])).toEqual([
+			'insights:read',
+			'user:list',
+			'tag:read',
+			'tag:list',
+		]);
+	});
+
+	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {
+		const result = withMandatoryInstanceScopes(['insights:read', 'insights:list']);
+		expect(result).toContain('insights:read');
+		expect(result).toContain('insights:list');
+		expect(result).toEqual(expect.arrayContaining([...MANDATORY_INSTANCE_SCOPES]));
 	});
 });

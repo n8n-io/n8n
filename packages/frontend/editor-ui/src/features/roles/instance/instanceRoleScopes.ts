@@ -8,8 +8,13 @@
  */
 
 import { type BaseTextKey } from '@n8n/i18n';
-import { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS, type Scope } from '@n8n/permissions';
+import {
+	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
+	isMandatoryInstanceOption,
+	type Scope,
+} from '@n8n/permissions';
 export { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS as INSTANCE_SCOPE_GROUPS } from '@n8n/permissions';
+export { withMandatoryInstanceScopes } from '@n8n/permissions';
 
 export type InstanceResource = keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS;
 
@@ -164,55 +169,29 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes))),
 ];
 
-type MandatoryInstanceOption = {
-	resource: InstanceResource;
-	option: string;
-	/** Overrides the option's own description where the "why it's locked" wording differs. */
-	tooltipKey?: BaseTextKey;
-};
-
 /**
- * Options every instance role carries regardless of what is saved — the default
- * Member role already grants them, so they are baseline behaviour rather than
- * something a custom role opts into. Rendered checked and disabled.
- * `withMandatoryInstanceScopes` is applied to the form (and on save), not the
- * persisted snapshot, so a stored role missing these scopes stays unsaved until
- * the next save.
+ * Tooltip overrides for the mandatory options declared in `@n8n/permissions`.
+ * The wording that explains *why* an option is locked lives here because
+ * `@n8n/permissions` must stay free of i18n types.
  */
-const MANDATORY_INSTANCE_OPTIONS: readonly MandatoryInstanceOption[] = [
-	{ resource: 'user', option: 'View', tooltipKey: 'instanceRoles.option.mandatory' },
-	{ resource: 'tag', option: 'View' }, // falls back to instanceRoles.description.tag.view
-];
+const MANDATORY_OPTION_TOOLTIP_KEYS: Partial<
+	Record<InstanceResource, Record<string, BaseTextKey>>
+> = {
+	user: { View: 'instanceRoles.option.mandatory' },
+	// tag View falls back to instanceRoles.description.tag.view
+};
 
 /** Tooltip key for a mandatory option, or undefined when the option is not mandatory. */
 export function mandatoryOptionTooltipKey(
 	resource: InstanceResource,
 	option: InstanceScopeOption,
 ): BaseTextKey | undefined {
-	const entry = MANDATORY_INSTANCE_OPTIONS.find(
-		(m) => m.resource === resource && m.option === option.key,
-	);
-	return entry ? (entry.tooltipKey ?? option.descriptionKey) : undefined;
+	if (!isOptionMandatory(resource, option)) return undefined;
+	return MANDATORY_OPTION_TOOLTIP_KEYS[resource]?.[option.key] ?? option.descriptionKey;
 }
 
 export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
-	return MANDATORY_INSTANCE_OPTIONS.some((m) => m.resource === resource && m.option === option.key);
-}
-
-/** Derived from the group list so a typo in the table contributes nothing silently. */
-const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = [
-	...new Set(
-		INSTANCE_SCOPE_GROUP_LIST.flatMap((group) =>
-			group.options
-				.filter((option) => isOptionMandatory(group.resource, option))
-				.flatMap((option) => option.scopes),
-		),
-	),
-];
-
-/** Unions in the mandatory scopes (see `isOptionMandatory`) on top of an already-filtered scope list. */
-export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
-	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+	return isMandatoryInstanceOption(resource, option.key);
 }
 
 export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
