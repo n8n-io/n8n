@@ -39,6 +39,9 @@ Use this section when the system prompt describes the persistent setup panel,
 setup returns `announced: true`, or the current user input contains
 `<workflow-test-request>`. Otherwise, keep the setup card flow below.
 
+- Setup requirements can appear while the workflow is being built. The user can
+  complete them immediately. Refer to the "setup panel" without a position or
+  a claim that setup must wait until the build finishes.
 - Verify what the build can simulate before asking the user to finish setup.
   Missing credentials do not prevent this verification. Report which outputs
   were simulated. A simulated result does not prove a live connection.

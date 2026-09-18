@@ -1170,6 +1170,8 @@ describe('Promote a selection', () => {
 
 describe('Promotion base branch listing', () => {
 	let project: Project;
+	const listBaseBranchFiles = async (projectId: string) =>
+		(await service.readBranchPackage(projectId, 'promote')).files;
 
 	beforeEach(async () => {
 		project = await createTeamProject('Orders', owner);
@@ -1258,7 +1260,7 @@ describe('Promotion base branch listing', () => {
 				]),
 		);
 
-		const files = await service.listBaseBranchFiles(project.id);
+		const files = await listBaseBranchFiles(project.id);
 
 		expect(files.map(({ entityId, type }) => ({ entityId, type }))).toEqual(
 			expect.arrayContaining([
@@ -1295,7 +1297,7 @@ describe('Promotion base branch listing', () => {
 			promote: 'main',
 		});
 		await service.clone(instance.id, 'promote');
-		expect(await service.listBaseBranchFiles(project.id)).toEqual([
+		expect(await listBaseBranchFiles(project.id)).toEqual([
 			{
 				entityId: project.id,
 				slug: 'orders',
@@ -1322,7 +1324,7 @@ describe('Promotion base branch listing', () => {
 		await linkRepository.linkProject(project.id, connection.id);
 		await service.clone(connection.id, 'promote');
 
-		expect(await service.listBaseBranchFiles(project.id)).toEqual([
+		expect(await listBaseBranchFiles(project.id)).toEqual([
 			{
 				entityId: project.id,
 				slug: 'orders',
@@ -1357,7 +1359,7 @@ describe('Promotion base branch listing', () => {
 		const headBefore = (await checkoutGit.revparse(['HEAD'])).trim();
 		const treeBefore = await snapshotWorkingTree(checkout);
 
-		const firstListing = await service.listBaseBranchFiles(project.id);
+		const firstListing = await listBaseBranchFiles(project.id);
 		expect(firstListing).toHaveLength(2);
 		expect(firstListing).toContainEqual({
 			entityId: 'Va45zz67',
@@ -1373,7 +1375,7 @@ describe('Promotion base branch listing', () => {
 		await writeRemoteFile(remote, workflowPath, '{"name":"My hyphen-ated workflow"}');
 		await commitAndPushRemote(remote, 'Add workflow');
 
-		const secondListing = await service.listBaseBranchFiles(project.id);
+		const secondListing = await listBaseBranchFiles(project.id);
 
 		expect(secondListing).toContainEqual({
 			entityId: 'Wf99zz88',
@@ -1394,9 +1396,40 @@ describe('Promotion base branch listing', () => {
 		const connection = await createInstanceConnection(bareDir);
 		await service.clone(connection.id, 'promote');
 
-		const files = await service.listBaseBranchFiles(project.id);
+		const branch = await service.readBranchPackage(project.id, 'promote');
 
-		expect(files).toEqual([]);
+		expect(branch).toMatchObject({ commitSha: null, files: [] });
+	});
+
+	it('reads the package of the apply branch at one commit, contents included', async () => {
+		const remote = await createRemote();
+		const projectPath = `n8n-export/projects/orders-${project.id}/project.json`;
+		await writeRemoteFile(remote, projectPath, '{"name":"Orders"}');
+		await writeRemoteFile(remote, 'n8n-export/manifest.json', '{"packageFormatVersion":"1"}');
+		await commitAndPushRemote(remote, 'Export');
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'apply');
+
+		const branch = await service.readBranchPackage(project.id, 'apply');
+
+		expect(branch.commitSha).toBe((await simpleGit(remote.bareDir).revparse(['main'])).trim());
+		expect(branch.files).toEqual([
+			expect.objectContaining({ entityId: project.id, path: projectPath }),
+		]);
+		await expect(branch.readFiles([projectPath, 'n8n-export/manifest.json'])).resolves.toEqual(
+			new Map([
+				[projectPath, '{"name":"Orders"}'],
+				['n8n-export/manifest.json', '{"packageFormatVersion":"1"}'],
+			]),
+		);
+
+		// A later push is read at its own commit, and the earlier commit stays readable.
+		await writeRemoteFile(remote, projectPath, '{"name":"Renamed"}');
+		await commitAndPushRemote(remote, 'Rename');
+		const later = await service.readBranchPackage(project.id, 'apply');
+		expect(later.commitSha).not.toBe(branch.commitSha);
+		expect((await later.readFiles([projectPath])).get(projectPath)).toBe('{"name":"Renamed"}');
+		expect((await branch.readFiles([projectPath])).get(projectPath)).toBe('{"name":"Orders"}');
 	});
 
 	it('preserves files with matching IDs or variable slugs across collections and scopes', async () => {
@@ -1455,7 +1488,7 @@ describe('Promotion base branch listing', () => {
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
 
-		const files = await service.listBaseBranchFiles(project.id);
+		const files = await listBaseBranchFiles(project.id);
 
 		expect(files.map(({ blobSha, ...entity }) => entity)).toEqual(expect.arrayContaining(entities));
 		expect(files).toHaveLength(entities.length);
@@ -1468,7 +1501,7 @@ describe('Promotion base branch listing', () => {
 		await service.clone(connection.id, 'promote');
 		await rename(bareDir, `${bareDir}.offline`);
 
-		await expect(service.listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
+		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
 	});
 
 	it('requires a fresh clone after a base-branch change and reports a deleted branch', async () => {
@@ -1487,10 +1520,10 @@ describe('Promotion base branch listing', () => {
 			name: 'Promote',
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
-		await expect(service.listBaseBranchFiles(project.id)).rejects.toThrow('not cloned');
+		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not cloned');
 		await service.clone(connection.id, 'promote');
 
-		const files = await service.listBaseBranchFiles(project.id);
+		const files = await listBaseBranchFiles(project.id);
 
 		expect(files).toEqual([
 			{
@@ -1506,6 +1539,6 @@ describe('Promotion base branch listing', () => {
 
 		await remote.git.raw(['push', 'origin', '--delete', 'production']);
 		await simpleGit(remote.bareDir).raw(['update-ref', '-d', 'refs/heads/main']);
-		await expect(service.listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
+		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
 	});
 });

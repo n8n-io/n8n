@@ -516,7 +516,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` and let setup collect it. When the persistent
+   setup panel is enabled, the user can fill announced requirements during the
+   build. Do not tell them to wait until the build finishes.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.

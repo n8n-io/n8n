@@ -602,6 +602,9 @@ catalogs:
     js-tiktoken:
       specifier: 1.0.21
       version: 1.0.21
+    jsdom:
+      specifier: 23.0.1
+      version: 23.0.1
     json-schema:
       specifier: 0.4.0
       version: 0.4.0
@@ -1473,7 +1476,7 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       langchain:
         specifier: 'catalog:'
@@ -2018,6 +2021,9 @@ importers:
       '@lezer/generator':
         specifier: 'catalog:'
         version: 1.8.0
+      '@lezer/javascript':
+        specifier: 1.5.4
+        version: 1.5.4
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -3072,7 +3078,7 @@ importers:
         specifier: 'catalog:'
         version: 0.26.0
       jsdom:
-        specifier: ^23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       nanoid:
         specifier: 'catalog:'
@@ -3506,7 +3512,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.21
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonwebtoken:
         specifier: 'catalog:'
@@ -3771,6 +3777,9 @@ importers:
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -6099,6 +6108,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/expression-runtime':
+        specifier: workspace:*
+        version: link:../../@n8n/expression-runtime
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../@n8n/frontend-constants
@@ -6336,6 +6348,9 @@ importers:
       humanize-duration:
         specifier: ^3.27.2
         version: 3.27.3
+      jsdom:
+        specifier: 'catalog:'
+        version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonpath-plus:
         specifier: ^10.3.0
         version: 10.4.0
@@ -6408,6 +6423,9 @@ importers:
       timeago.js:
         specifier: ^4.0.2
         version: 4.0.2
+      type-fest:
+        specifier: 5.8.0
+        version: 5.8.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -7038,7 +7056,7 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       json-schema:
         specifier: 'catalog:'
@@ -7269,9 +7287,18 @@ importers:
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
+      '@unicode/unicode-18.0.0':
+        specifier: 2.0.7
+        version: 2.0.7
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
+      confusables:
+        specifier: 1.1.1
+        version: 1.1.1
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
@@ -7500,6 +7527,9 @@ importers:
       axe-html-reporter:
         specifier: ^2.2.11
         version: 2.2.11(axe-core@4.13.0)
+      debug:
+        specifier: ^4.3.4
+        version: 4.4.3(supports-color@8.1.1)
       eslint-plugin-playwright:
         specifier: catalog:e2e
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -7728,6 +7758,9 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      jsdom:
+        specifier: 'catalog:'
+        version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -14938,6 +14971,9 @@ packages:
     resolution: {integrity: sha512-jIXhD0eWQ1JA6ln/5Dltyx22UxWNrw0hZmhy2rlv6m6KgF7kplHx3g0fzi09lNmTJQRR91OlemYp3xFnvDK9og==}
     engines: {node: '>=20.0.0'}
 
+  '@unicode/unicode-18.0.0@2.0.7':
+    resolution: {integrity: sha512-sxWcUPwfbWVcSt+RPixHI468bs97A2+ftrC9b6wsGEkUTp2eod0qp7J59A+ngd4mFRISElQhPkYClhtXwNuLQw==}
+
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
     resolution: {integrity: sha512-tS+lqTU3N0kkthU+rYp0spAYq15DU8ld9kXkaKg9sbQqJNF+WPMuNHZQGCgdxrUOEO0j22RKMwRVhF1HTl+X8A==}
     cpu: [arm]
@@ -16612,6 +16648,10 @@ packages:
 
   config-chain@1.1.13:
     resolution: {integrity: sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ==}
+
+  confusables@1.1.1:
+    resolution: {integrity: sha512-BzFtzUrufackm00Wb2zvrZV0ItRqPdWaUprU5FXHeZiJRrOWxGmXmQl/muGTF9EQl+MdBXz+Irk99meskGZmXw==}
+    engines: {node: '>=10', npm: '>=6'}
 
   consola@3.4.2:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
@@ -29005,7 +29045,7 @@ snapshots:
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
-      pg: 8.21.0
+      pg: 8.21.0(pg-native@3.8.0)
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -33673,6 +33713,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@unicode/unicode-18.0.0@2.0.7': {}
+
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
     optional: true
 
@@ -35596,6 +35638,8 @@ snapshots:
     dependencies:
       ini: 1.3.8
       proto-list: 1.2.4
+
+  confusables@1.1.1: {}
 
   consola@3.4.2: {}
 
@@ -41459,14 +41503,9 @@ snapshots:
       libpq: 1.11.0
       pg-types: 2.2.0
 
-  pg-pool@3.14.0(pg@8.21.0(pg-native@3.8.0)):
-    dependencies:
-      pg: 8.21.0(pg-native@3.8.0)
-
   pg-pool@3.14.0(pg@8.21.0):
     dependencies:
-      pg: 8.21.0
-    optional: true
+      pg: 8.21.0(pg-native@3.8.0)
 
   pg-promise@11.9.1(pg-native@3.8.0):
     dependencies:
@@ -41492,21 +41531,10 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.21.0:
-    dependencies:
-      pg-connection-string: 2.14.0
-      pg-pool: 3.14.0(pg@8.21.0)
-      pg-protocol: 1.15.0
-      pg-types: 2.2.0
-      pgpass: 1.0.5
-    optionalDependencies:
-      pg-cloudflare: 1.4.0
-    optional: true
-
   pg@8.21.0(pg-native@3.8.0):
     dependencies:
       pg-connection-string: 2.14.0
-      pg-pool: 3.14.0(pg@8.21.0(pg-native@3.8.0))
+      pg-pool: 3.14.0(pg@8.21.0)
       pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5

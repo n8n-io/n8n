@@ -3,6 +3,7 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -39,6 +40,7 @@ const props = defineProps<Props>();
 const thread = useThread();
 const i18n = useI18n();
 const rootStore = useRootStore();
+const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
 
@@ -651,7 +653,18 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 									<N8nText size="large" bold>
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
+									<N8nText
+										v-if="
+											settingsStore.isInstanceAiSetupPanelEnabled &&
+											chunk.item.toolCall.confirmation.credentialDestination
+										"
+										tag="p"
+										size="small"
+										:class="$style.credentialDescription"
+										>{{ buildApprovalSubtitle(chunk.item) }}</N8nText
+									>
 									<ConfirmationPreview
+										v-else
 										:class="$style.approvalDescription"
 										role="region"
 										:aria-label="i18n.baseText('instanceAi.confirmation.details')"
@@ -731,6 +744,12 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+
+.credentialDescription {
+	margin: 0;
+	overflow-wrap: anywhere;
+	word-break: normal;
 }
 
 .textInputRow {

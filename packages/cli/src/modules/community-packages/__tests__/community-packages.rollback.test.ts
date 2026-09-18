@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -61,6 +62,9 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 	let packageDirectory: string;
 	let communityPackagesService: CommunityPackagesService;
 
+	/** The `package.json` the mocked `tar` extracts, i.e. what the download delivers. */
+	let downloadedPackageJson: Record<string, unknown>;
+
 	/** The file that proves the originally installed directory is still the one on disk. */
 	const markerPath = () => path.join(packageDirectory, 'marker.txt');
 
@@ -93,6 +97,8 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		);
 		await writeFile(markerPath(), 'installed-and-working', 'utf-8');
 
+		downloadedPackageJson = { name: PACKAGE_NAME, version: '2.0.0' };
+
 		// `npm pack` drops a tarball in the download folder; `npm install` is a no-op here.
 		vi.mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
 			if (args[0] === 'pack') {
@@ -116,7 +122,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			// callback uncalled and the test hanging.
 			void writeFile(
 				path.join(target, 'package.json'),
-				JSON.stringify({ name: PACKAGE_NAME, version: '2.0.0' }),
+				JSON.stringify(downloadedPackageJson),
 				'utf-8',
 			).then(
 				() => callback(null, 'Done', ''),
@@ -237,6 +243,127 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledTimes(2);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
 			expect(await nodeModulesEntries()).toEqual([]);
+		});
+	});
+
+	describe('node API version guard', () => {
+		beforeEach(() => {
+			installedPackageRepository.replaceInstalledPackageWithNodes.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '2.0.0' }),
+			);
+			publisher.publishCommand.mockResolvedValue(undefined);
+		});
+
+		const updateToIncompatible = async (n8nNodesApiVersion: unknown) => {
+			downloadedPackageJson = { name: PACKAGE_NAME, version: '2.0.0', n8n: { n8nNodesApiVersion } };
+			return await communityPackagesService.updatePackage(
+				PACKAGE_NAME,
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '1.0.0' }),
+				'2.0.0',
+			);
+		};
+
+		test('rejects an update and leaves directory, ledger, and database unchanged', async () => {
+			await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
+				"isn't compatible with your version of n8n",
+			);
+
+			// The original directory is still the one on disk, marker and all.
+			expect(existsSync(markerPath())).toBe(true);
+			expect(
+				JSON.parse(await readFile(path.join(packageDirectory, 'package.json'), 'utf-8')),
+			).toEqual({ name: PACKAGE_NAME, version: '1.0.0' });
+			// The ledger still points at the installed version, `npm outdated` keeps working.
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
+			// The database never records the rejected version.
+			expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+			// The rejected version's node code was never imported.
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			// No backup directory is left behind.
+			expect(await nodeModulesEntries()).toEqual([PACKAGE_NAME]);
+		});
+
+		test('rejects an update with a malformed declared version', async () => {
+			await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
+
+			expect(existsSync(markerPath())).toBe(true);
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		});
+
+		test('installs a package that declares the supported node API version', async () => {
+			await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBeDefined();
+
+			// The new version replaced the old one, marker and all.
+			expect(existsSync(markerPath())).toBe(false);
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '2.0.0' });
+		});
+
+		describe('fresh install with no pre-existing directory', () => {
+			beforeEach(async () => {
+				// Nothing on disk and no ledger entry, unlike the shared beforeEach. The rollback
+				// has to remove the entry the download added, not restore a previous one.
+				await rm(packageDirectory, { recursive: true, force: true });
+				await writeFile(
+					path.join(nodesDownloadDir, 'package.json'),
+					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+					'utf-8',
+				);
+			});
+
+			test('rejects the install and leaves no directory, ledger entry, or database row', async () => {
+				downloadedPackageJson = {
+					name: PACKAGE_NAME,
+					version: '2.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+				};
+
+				await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
+					"isn't compatible with your version of n8n",
+				);
+
+				expect(await nodeModulesEntries()).toEqual([]);
+				expect(await ledgerDependencies()).toEqual({});
+				expect(installedPackageRepository.saveInstalledPackageWithNodes).not.toHaveBeenCalled();
+				// The rejected version's node code was never imported.
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('pub/sub follower', () => {
+			test('keeps the existing package and logs both node API versions when the leader sends an incompatible one', async () => {
+				downloadedPackageJson = {
+					name: PACKAGE_NAME,
+					version: '2.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+				};
+				// The follower resolves the version to install from the leader's database record.
+				installedPackageRepository.findOne.mockResolvedValue(
+					mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '2.0.0' }),
+				);
+
+				await communityPackagesService.handleInstallEvent({
+					packageName: PACKAGE_NAME,
+					packageVersion: '2.0.0',
+				});
+
+				// The follower keeps the version it can load.
+				expect(existsSync(markerPath())).toBe(true);
+				expect(
+					JSON.parse(await readFile(path.join(packageDirectory, 'package.json'), 'utf-8')),
+				).toEqual({ name: PACKAGE_NAME, version: '1.0.0' });
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(await nodeModulesEntries()).toEqual([PACKAGE_NAME]);
+				expect(logger.error).toHaveBeenCalledWith(
+					'Failed to install community package',
+					expect.objectContaining({
+						packageName: PACKAGE_NAME,
+						reason: expect.stringContaining("isn't compatible with your version of n8n"),
+						// The operator log names both versions, unlike the user-facing message.
+						requiredNodesApiVersion: N8N_NODES_API_VERSION + 1,
+						supportedNodesApiVersion: N8N_NODES_API_VERSION,
+					}),
+				);
+			});
 		});
 	});
 

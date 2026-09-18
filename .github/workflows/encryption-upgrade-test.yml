@@ -46,6 +46,9 @@ concurrency:
 jobs:
   encryption-cycle:
     name: ${{ matrix.mode }} cycle (${{ matrix.db }})
+    # The mirror repository must not run this suite: its runners run out of
+    # disk during the image build, and the cron would fire twice.
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:

@@ -1,5 +1,6 @@
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
+import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
 import { kent, createKentHelper } from './kent';
@@ -25,6 +26,7 @@ import { victoriaMetrics } from './victoria-metrics';
 /** Service registry - must include all ServiceName entries */
 export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgres,
+	enginePostgres,
 	redis,
 	mailpit,
 	gitea,
@@ -49,6 +51,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 
 export const helperFactories: Partial<HelperFactories> = {
 	postgres: createPostgresHelper,
+	enginePostgres: createEnginePostgresHelper,
 	mailpit: createMailpitHelper,
 	gitea: createGiteaHelper,
 	keycloak: createKeycloakHelper,

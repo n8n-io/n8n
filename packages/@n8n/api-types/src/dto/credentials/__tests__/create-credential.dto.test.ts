@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '../../../schemas/credential-description.schema';
 import { CreateCredentialDto } from '../create-credential.dto';
 
 describe('CreateCredentialDto', () => {
@@ -45,6 +46,33 @@ describe('CreateCredentialDto', () => {
 					},
 				},
 			},
+			{
+				name: 'with optional description',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					description: 'Read-only key for the reporting database. Do not use for writes.',
+				},
+			},
+			{
+				name: 'description at the cap',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					description: 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH),
+				},
+			},
+			{
+				name: 'null description',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					description: null,
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateCredentialDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -69,6 +97,18 @@ describe('CreateCredentialDto', () => {
 					otherProperty: 'otherValue',
 				},
 			});
+		});
+
+		test('should trim the description before applying the cap', () => {
+			const result = CreateCredentialDto.safeParse({
+				name: 'My API Credentials',
+				type: 'apiKey',
+				data: {},
+				description: `  ${'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)}  `,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.description).toBe('a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH));
 		});
 	});
 
@@ -142,6 +182,26 @@ describe('CreateCredentialDto', () => {
 					data: 'invalid',
 				},
 				expectedErrorPath: ['data'],
+			},
+			{
+				name: 'description too long',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					description: 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1),
+				},
+				expectedErrorPath: ['description'],
+			},
+			{
+				name: 'invalid description type',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					description: 42,
+				},
+				expectedErrorPath: ['description'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateCredentialDto.safeParse(request);
