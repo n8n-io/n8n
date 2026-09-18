@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { makeDatabricksFailedAttemptHandler } from '@utils/databricks/error-handling';
+import { DATABRICKS_REQUEST_TIMEOUT_MS } from '@utils/databricks/constants';
 import { createDatabricksGatewayConfig } from '@utils/databricks/gateway-config';
 import { EMBEDDINGS_CAPABILITY, makeModelSearch } from '@utils/databricks/model-services';
 import {
@@ -150,11 +151,8 @@ export class EmbeddingsDatabricks implements INodeType {
 			maxRetries?: number;
 		};
 
-		const { configuration, tokenSource, timeout } = createDatabricksGatewayConfig(
-			this,
-			credential,
-			options.timeout,
-		);
+		const timeout = options.timeout ?? DATABRICKS_REQUEST_TIMEOUT_MS;
+		const { configuration, tokenSource } = createDatabricksGatewayConfig(this, credential, timeout);
 
 		const embeddings = new OpenAIEmbeddings({
 			// Placeholder only - the fetch wrapper overwrites the Authorization header

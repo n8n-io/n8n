@@ -113,7 +113,6 @@ describe('LmChatDatabricks', () => {
 				expect.objectContaining({
 					apiKey: 'databricks-oauth',
 					model: 'my-chat-endpoint',
-					timeout: 360000,
 					maxRetries: 2,
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),

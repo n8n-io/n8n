@@ -6,12 +6,7 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import {
-	assertHttpsHost,
-	DATABRICKS_REQUEST_TIMEOUT_MS,
-	databricksAuthHeaders,
-	gatewayBaseUrl,
-} from './constants';
+import { assertHttpsHost, databricksAuthHeaders, gatewayBaseUrl } from './constants';
 import { wrapDatabricksErrorFetch } from './error-handling';
 import type { RefreshingTokenSource } from '../oauth2-token-provider';
 import { getDatabricksTokenProvider, type DatabricksOAuth2Credential } from './token-provider';
@@ -22,17 +17,15 @@ import { getDatabricksTokenProvider, type DatabricksOAuth2Credential } from './t
  * Databricks error bodies, and a proxy dispatcher honouring the egress policy.
  *
  * The token source comes back so the caller can build its own failed-attempt
- * handler, which needs `expiredStatus`. The resolved timeout comes back too, so
- * the model client and this transport cannot disagree about it.
+ * handler, which needs `expiredStatus`. `timeout` is optional and applied as
+ * given: each node decides whether an unset Timeout option means a default.
  */
 export function createDatabricksGatewayConfig(
 	ctx: ISupplyDataFunctions,
 	credential: DatabricksOAuth2Credential,
 	timeout?: number,
-): { configuration: ClientOptions; tokenSource: RefreshingTokenSource; timeout: number } {
+): { configuration: ClientOptions; tokenSource: RefreshingTokenSource } {
 	assertHttpsHost(ctx, credential.host);
-
-	const requestTimeout = timeout ?? DATABRICKS_REQUEST_TIMEOUT_MS;
 
 	const baseURL = gatewayBaseUrl(credential.host);
 	const node = ctx.getNode();
@@ -77,13 +70,13 @@ export function createDatabricksGatewayConfig(
 			dispatcher: getProxyAgent(
 				baseURL,
 				{
-					headersTimeout: requestTimeout,
-					bodyTimeout: requestTimeout,
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
 				},
 				egressFilter,
 			),
 		},
 	};
 
-	return { configuration, tokenSource, timeout: requestTimeout };
+	return { configuration, tokenSource };
 }

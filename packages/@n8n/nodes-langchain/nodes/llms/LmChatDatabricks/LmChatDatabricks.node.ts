@@ -221,11 +221,8 @@ export class LmChatDatabricks implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const { configuration, tokenSource, timeout } = createDatabricksGatewayConfig(
-			this,
-			credential,
-			options.timeout,
-		);
+		const timeout = options.timeout;
+		const { configuration, tokenSource } = createDatabricksGatewayConfig(this, credential, timeout);
 
 		const modelKwargs: Record<string, unknown> = {};
 		if (options.responseFormat) {
