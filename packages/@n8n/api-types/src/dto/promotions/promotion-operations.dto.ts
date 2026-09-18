@@ -88,7 +88,7 @@ const expectedSourceSchema = z
 	.object({
 		configId: n8nIdSchema,
 		branchName: z.string().min(1),
-		commitSha: z.string().regex(/^[0-9a-f]{40}$/),
+		commitSha: z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/),
 	})
 	.strict();
 

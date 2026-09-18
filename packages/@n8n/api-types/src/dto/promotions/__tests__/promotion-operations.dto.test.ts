@@ -1,4 +1,5 @@
 import {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	PromotePackageDto,
@@ -30,6 +31,13 @@ describe('ContinueApplyPackageDto', () => {
 		expect(ContinueApplyPackageDto.parse({ expectedSource })).toEqual({ expectedSource });
 	});
 
+	it('accepts a SHA-256 object name', () => {
+		const source = { ...expectedSource, commitSha: 'b'.repeat(64) };
+		expect(ContinueApplyPackageDto.parse({ expectedSource: source })).toEqual({
+			expectedSource: source,
+		});
+	});
+
 	it.each([
 		{},
 		{ expectedSource: {} },
@@ -48,6 +56,8 @@ describe('ContinueApplyPackageDto', () => {
 		'a'.repeat(7),
 		'a'.repeat(39),
 		'a'.repeat(41),
+		'a'.repeat(63),
+		'a'.repeat(65),
 		'A'.repeat(40),
 		'g'.repeat(40),
 	])('rejects commit identity %s', (commitSha) => {
@@ -55,6 +65,23 @@ describe('ContinueApplyPackageDto', () => {
 			ContinueApplyPackageDto.safeParse({ expectedSource: { ...expectedSource, commitSha } })
 				.success,
 		).toBe(false);
+	});
+});
+
+describe('ApplyPackageDto', () => {
+	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+
+	it('accepts a request without a source and one with the reviewed source', () => {
+		expect(ApplyPackageDto.parse({})).toEqual({});
+		expect(ApplyPackageDto.parse({ expectedSource })).toEqual({ expectedSource });
+	});
+
+	it.each([
+		{ force: true },
+		{ expectedSource: {} },
+		{ expectedSource: { ...expectedSource, commitSha: 'HEAD' } },
+	])('rejects unsupported or incomplete fields: %j', (body) => {
+		expect(ApplyPackageDto.safeParse(body).success).toBe(false);
 	});
 });
 
