@@ -6,6 +6,7 @@ import {
 	formatSize,
 	formatTable,
 	parsePorcelain,
+	preferPr,
 	trashPathFor,
 } from './worktree-clean.mjs';
 
@@ -121,6 +122,26 @@ describe('parsePorcelain', () => {
 		assert.equal(b.branch, undefined);
 		assert.equal(b.detached, true);
 		assert.equal(b.prunable, true);
+	});
+});
+
+describe('preferPr', () => {
+	const open = { number: 1, state: 'OPEN' };
+	const merged = { number: 2, state: 'MERGED' };
+	const closed = { number: 3, state: 'CLOSED' };
+
+	it('keeps an OPEN result whatever arrives after it', () => {
+		assert.equal(preferPr(open, closed), open);
+		assert.equal(preferPr(closed, open), open);
+		assert.equal(preferPr(open, null), open);
+		assert.equal(preferPr(null, open), open);
+	});
+
+	it('ranks MERGED above CLOSED and any PR above none', () => {
+		assert.equal(preferPr(closed, merged), merged);
+		assert.equal(preferPr(merged, closed), merged);
+		assert.equal(preferPr(null, closed), closed);
+		assert.equal(preferPr(null, null), null);
 	});
 });
 

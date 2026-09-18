@@ -132,6 +132,18 @@ export function trashPathFor(worktreePath, name = basename(worktreePath), now = 
 	return join(dirname(worktreePath), TRASH_DIR, `${name}-${now}`);
 }
 
+/**
+ * Picks the PR state that matters when two repositories answer for one branch.
+ * OPEN wins: it blocks removal. MERGED beats CLOSED so the branch is force-deleted
+ * only when its work landed.
+ */
+export function preferPr(a, b) {
+	const rank = { OPEN: 3, MERGED: 2, CLOSED: 1 };
+	if (!a) return b ?? null;
+	if (!b) return a;
+	return (rank[b.state] ?? 0) > (rank[a.state] ?? 0) ? b : a;
+}
+
 export function formatSize(kb) {
 	if (kb == null) return '-';
 	if (kb >= 1024 * 1024) return `${(kb / 1024 / 1024).toFixed(1)}G`;
@@ -291,8 +303,8 @@ async function lookupPrs(slugs, branches) {
 						{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
 					);
 					const [pr] = JSON.parse(stdout);
-					if (pr) prs.set(branch, { number: pr.number, state: pr.state });
-					else if (!prs.has(branch)) prs.set(branch, null);
+					const found = pr ? { number: pr.number, state: pr.state } : null;
+					prs.set(branch, preferPr(prs.get(branch), found));
 				} catch {
 					failed.add(branch);
 				}
@@ -344,11 +356,16 @@ function gather(wt, { root, prs, cwds, measureSize, now }) {
 // ---------------------------------------------------------------------------
 // Actions.
 
+let trashCounter = 0;
+
 /** Renames `path` into the worktree's trash folder. Returns the trash path. */
 function moveToTrash(worktreePath, path = worktreePath) {
+	// Two `dist` directories in one worktree must not collide: name by relative path.
 	const name =
-		path === worktreePath ? basename(path) : `${basename(worktreePath)}-${basename(path)}`;
-	const dest = trashPathFor(worktreePath, name);
+		path === worktreePath
+			? basename(path)
+			: `${basename(worktreePath)}-${relative(worktreePath, path).replaceAll(sep, '_')}`;
+	const dest = trashPathFor(worktreePath, `${name}-${trashCounter++}`);
 	mkdirSync(dirname(dest), { recursive: true });
 	renameSync(path, dest);
 	return dest;
