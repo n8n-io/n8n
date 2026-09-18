@@ -14,7 +14,9 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
+import { BASE_NODE_SURVEY_URL, HTTP_REQUEST_NODE_TYPE, VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CUSTOM_NODE_WIZARD_MODAL_KEY } from '@/features/customNodes/customNodes.constants';
 
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -63,7 +65,7 @@ import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/componen
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nButton, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -175,6 +177,25 @@ const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
+
+const uiStore = useUIStore();
+
+// Custom Nodes mockup: turn this HTTP Request configuration into a reusable operation
+const showSaveAsCustomOperation = computed(
+	() =>
+		settingsStore.isCustomNodesMockupEnabled &&
+		node.value?.type === HTTP_REQUEST_NODE_TYPE &&
+		openPanel.value === 'params',
+);
+
+function openSaveAsCustomOperation() {
+	if (!node.value) return;
+	uiStore.openModalWithData({
+		name: CUSTOM_NODE_WIZARD_MODAL_KEY,
+		data: { httpNodeParameters: deepCopy(node.value.parameters) },
+	});
+}
+
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -726,6 +747,20 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
+			<div
+				v-if="showSaveAsCustomOperation"
+				class="parameter-item"
+				data-test-id="save-as-custom-operation"
+			>
+				<N8nButton
+					variant="subtle"
+					size="small"
+					icon="blocks"
+					:label="i18n.baseText('customNodes.ndv.saveAsOperation')"
+					:title="i18n.baseText('customNodes.ndv.saveAsOperation.tooltip')"
+					@click="openSaveAsCustomOperation"
+				/>
+			</div>
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"

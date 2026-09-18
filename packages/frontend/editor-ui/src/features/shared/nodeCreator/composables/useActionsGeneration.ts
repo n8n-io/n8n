@@ -26,6 +26,7 @@ import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { formatTriggerActionName } from '../nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -460,10 +461,47 @@ export function useActionsGenerator() {
 				}
 			});
 
+		injectCustomOperations(actions, mergedNodes);
+
 		return {
 			actions,
 			mergedNodes,
 		};
+	}
+
+	/**
+	 * Custom operations are hidden node types generated from user definitions
+	 * (see the `custom-nodes` backend module). They carry a `customDefinition`
+	 * marker naming the parent node, and are listed under that node's actions in
+	 * a "Custom operations" group. Selecting one adds the generated node type.
+	 */
+	function injectCustomOperations(
+		actions: ActionsRecord<SimplifiedNodeType[]>,
+		mergedNodes: SimplifiedNodeType[],
+	) {
+		const customOperations = useNodeTypesStore().allLatestNodeTypes.filter(
+			(nodeType) => typeof nodeType.customDefinition?.parentNodeType === 'string',
+		);
+
+		for (const operation of customOperations) {
+			const parentNodeType = operation.customDefinition?.parentNodeType;
+			if (!parentNodeType || !mergedNodes.some((node) => node.name === parentNodeType)) continue;
+
+			const action: ActionTypeDescription = {
+				...getSimplifiedNodeType(operation),
+				displayName:
+					typeof operation.defaults.name === 'string'
+						? operation.defaults.name
+						: operation.displayName,
+				actionKey: operation.name,
+				codex: {
+					label: cachedBaseText('nodeCreator.actionsCategory.customOperations'),
+					categories: [cachedBaseText('nodeCreator.actionsCategory.actions')],
+				},
+			};
+
+			actions[parentNodeType] = [...(actions[parentNodeType] ?? []), action];
+		}
 	}
 
 	return {

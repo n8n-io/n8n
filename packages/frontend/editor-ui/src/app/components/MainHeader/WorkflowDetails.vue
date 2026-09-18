@@ -30,7 +30,9 @@ import {
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nInlineTextEdit } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { CUSTOM_NODE_WIZARD_MODAL_KEY } from '@/features/customNodes/customNodes.constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -48,6 +50,11 @@ const props = defineProps<{
 const $style = useCssModule();
 
 const uiStore = useUIStore();
+const settingsStore = useSettingsStore();
+
+function openCustomNodeWizard() {
+	uiStore.openModalWithData({ name: CUSTOM_NODE_WIZARD_MODAL_KEY, data: {} });
+}
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
@@ -392,6 +399,16 @@ onBeforeUnmount(() => {
 			</span>
 		</span>
 
+		<N8nButton
+			v-if="settingsStore.isCustomNodesMockupEnabled"
+			variant="subtle"
+			size="small"
+			icon="blocks"
+			:label="locale.baseText('customNodes.header.create')"
+			data-test-id="create-custom-node-button"
+			:class="$style.customNodeButton"
+			@click="openCustomNodeWizard"
+		/>
 		<ConnectionTracker class="actions">
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
@@ -491,5 +508,9 @@ $--header-spacing: 20px;
 	width: 100%;
 	flex: 1;
 	margin: 0 var(--spacing--md);
+}
+
+.customNodeButton {
+	margin-right: var(--spacing--xs);
 }
 </style>
