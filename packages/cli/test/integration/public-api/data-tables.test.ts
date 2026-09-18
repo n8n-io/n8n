@@ -712,17 +712,6 @@ describe('table endpoint request validation', () => {
 		expect(response.body.message).toContain("request/body must have required property 'name'");
 	});
 
-	test('should reject a create body with an unknown property', async () => {
-		const response = await authOwnerAgent.post('/data-tables').send({
-			name: 'unknown-prop-table',
-			columns: [{ name: 'col1', type: 'string' }],
-			unknownProperty: true,
-		});
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('unknownProperty');
-	});
-
 	test('should reject an update body with an empty name', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'validation-table',

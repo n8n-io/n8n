@@ -42,7 +42,6 @@ requestBody:
               required:
                 - name
                 - type
-              additionalProperties: false
             description: Column definitions for the table
           projectId:
             type: string
@@ -51,7 +50,6 @@ requestBody:
         required:
           - name
           - columns
-        additionalProperties: false
 responses:
   '201':
     description: Operation successful.

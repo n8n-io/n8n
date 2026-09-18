@@ -45,25 +45,17 @@ export class DataTableListPublicDto extends Z.class({
 	nextCursor: z.string().nullable().openapi(dataTableListFieldDocs.nextCursor),
 }) {}
 
-const createDataTableColumnPublicSchema = z
-	.object({
-		name: dataTableColumnNameSchema.openapi(dataTableColumnFieldDocs.name),
-		type: dataTableColumnTypeSchema.openapi(dataTableColumnFieldDocs.type),
-	})
-	.strict();
+const createDataTableColumnPublicSchema = z.object({
+	name: dataTableColumnNameSchema.openapi(dataTableColumnFieldDocs.name),
+	type: dataTableColumnTypeSchema.openapi(dataTableColumnFieldDocs.type),
+});
 
-export class CreateDataTablePublicDto extends Z.class(
-	{
-		name: dataTableNameSchema.openapi(createDataTableFieldDocs.name),
-		columns: z.array(createDataTableColumnPublicSchema).openapi(createDataTableFieldDocs.columns),
-		projectId: z.string().optional().openapi(createDataTableFieldDocs.projectId),
-	},
-	{ strict: true },
-) {}
+export class CreateDataTablePublicDto extends Z.class({
+	name: dataTableNameSchema.openapi(createDataTableFieldDocs.name),
+	columns: z.array(createDataTableColumnPublicSchema).openapi(createDataTableFieldDocs.columns),
+	projectId: z.string().optional().openapi(createDataTableFieldDocs.projectId),
+}) {}
 
-export class UpdateDataTablePublicDto extends Z.class(
-	{
-		name: dataTableNameSchema.openapi(updateDataTableFieldDocs.name),
-	},
-	{ strict: true },
-) {}
+export class UpdateDataTablePublicDto extends Z.class({
+	name: dataTableNameSchema.openapi(updateDataTableFieldDocs.name),
+}) {}
