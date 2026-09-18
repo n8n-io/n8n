@@ -475,22 +475,38 @@ export class CredentialsTester {
 			currentNodeParameters: node.parameters,
 		});
 		// OAuth1/OAuth2 helpers re-read the stored credential by id via credentialsHelper.getDecrypted.
-		// Serve the posted data instead; other methods delegate through the prototype to the real
-		// singleton, including the token write-back (it must keep persisting rotated refresh tokens).
+		// Serve the posted data instead; every other method runs on the real singleton, including the
+		// token write-back (it must keep persisting rotated refresh tokens).
 		// Raw reads come only from the OAuth2 refresh race check, which must see the stored token so
 		// a refresh already done by another process is reused rather than repeated.
-		// Relies on CredentialsHelper using TS `private`, not `#` fields.
 		const storedCredentialsHelper = additionalData.credentialsHelper;
-		additionalData.credentialsHelper = Object.create(storedCredentialsHelper, {
-			getDecrypted: {
-				value: async (...args: Parameters<ICredentialsHelper['getDecrypted']>) => {
-					const raw = args[5];
-					return raw
-						? await storedCredentialsHelper.getDecrypted(...args)
-						: (credentialsDecrypted.data ?? {});
-				},
+		const getDecrypted: ICredentialsHelper['getDecrypted'] = async (
+			data,
+			nodeCredentials,
+			type,
+			mode,
+			executeData,
+			raw,
+			...rest
+		) =>
+			raw
+				? await storedCredentialsHelper.getDecrypted(
+						data,
+						nodeCredentials,
+						type,
+						mode,
+						executeData,
+						raw,
+						...rest,
+					)
+				: (credentialsDecrypted.data ?? {});
+		additionalData.credentialsHelper = new Proxy(storedCredentialsHelper, {
+			get(target, prop) {
+				if (prop === 'getDecrypted') return getDecrypted;
+				const value = Reflect.get(target, prop);
+				return typeof value === 'function' ? value.bind(target) : value;
 			},
-		}) as ICredentialsHelper;
+		});
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(
