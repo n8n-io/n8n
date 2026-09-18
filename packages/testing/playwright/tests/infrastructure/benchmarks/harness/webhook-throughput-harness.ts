@@ -43,6 +43,8 @@ export interface WebhookThroughputOptions {
 	counterReader?: CompletionCounterReader;
 	/** Additional dimensions attached to every metric and the run report. */
 	dimensions?: BenchmarkDimensions;
+	/** Human-readable label for sibling runs in one benchmark summary. */
+	variant?: string;
 	/**
 	 * Seconds of discarded load BEFORE the measurement window. Warms V8 JIT,
 	 * PG connection pool, webhook cache, and BullMQ worker hot paths so the
@@ -97,6 +99,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		duration_s: durationSeconds,
 	};
 	if (nodeOutputSize !== undefined) dimensions.output = nodeOutputSize;
+	if (options.variant !== undefined) dimensions.variant = options.variant;
 
 	// Warm-up runs inside setupBenchmarkRun so the baseline counter is captured
 	// AFTER the probe POST — otherwise warm-up traffic would offset the measurement.
