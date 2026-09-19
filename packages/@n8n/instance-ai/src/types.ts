@@ -1415,8 +1415,54 @@ export interface InstanceAiBuilderDelegate {
 	readAgentArtifact?(agentId: string): Promise<{
 		config: AgentJsonConfig;
 		skills: Record<string, AgentSkill>;
+
 		configHash: string | null;
 	} | null>;
+	/**
+	 * Persist a compiled agent artifact. Writes the config fenced on
+	 * `baseConfigHash`, creates skill bodies and attaches their refs, and
+	 * creates tasks (which attach their own refs). Used by the agent compiler
+	 * behind `build-agent`; never by a model directly.
+	 */
+	writeAgentArtifact?(
+		agentId: string,
+		artifact: {
+			config: AgentJsonConfig;
+			skills?: Record<string, AgentSkill>;
+			tasks?: Array<{
+				name: string;
+				objective: string;
+				cronExpression: string;
+				timezone: string;
+				enabled: boolean;
+			}>;
+		},
+		options: { baseConfigHash: string | null },
+	): Promise<
+		| { ok: true; configHash: string; skillIds: string[]; taskIds: string[] }
+		| { ok: false; errors: string[] }
+	>;
+	/** Workflows in the project an agent can call as tools (Execute Workflow Trigger). */
+	listAttachableWorkflows?(
+		searchTerm?: string,
+	): Promise<Array<{ id: string; name: string; published: boolean }>>;
+	/** Host default model and credential for a new agent, when one can be resolved. */
+	resolveDefaultModel?(): Promise<{ model: string; credential: string } | null>;
+	/** Run one draft-agent turn in Preview and report which tools it called. */
+	runAgentPreview?(
+		agentId: string,
+		message: string,
+		options?: { sessionId?: string; abortSignal?: AbortSignal },
+	): Promise<
+		| {
+				status: 'completed' | 'suspended';
+				response: string;
+				toolCalls: string[];
+				sessionId: string;
+				executionId?: string;
+		  }
+		| { status: 'misconfigured'; missing: string[] }
+	>;
 }
 
 // ── Computer Use state ──────────────────────────────────────────────────────

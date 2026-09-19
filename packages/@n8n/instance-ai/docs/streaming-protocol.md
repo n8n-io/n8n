@@ -214,7 +214,7 @@ The orchestrator has started a child or embedded specialist agent.
   "agentId": "agent-002",
   "payload": {
     "parentId": "agent-001",
-    "role": "agent-builder",
+    "role": "agent-builder",  // historical example; build-agent now compiles in-process and spawns no sub-agent
     "tools": [],
     "kind": "agent-builder",
     "title": "Building agent"

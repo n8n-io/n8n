@@ -1,4 +1,5 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -17,10 +18,14 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
+import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentTaskService } from './agent-task.service';
+import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
+import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -99,6 +104,10 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentTasks: AgentTaskService,
+		private readonly attachableWorkflows: AttachableWorkflowsService,
+		private readonly defaultModelResolver: AgentDefaultModelResolverService,
+		private readonly agentTestRun: AgentTestRunService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -250,6 +259,90 @@ export class InstanceAiBuilderDelegateAdapterService {
 			resolveAgentName: async (agentId) => {
 				await assertProjectScope('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
+			},
+			writeAgentArtifact: async (agentId, artifact, options) => {
+				await assertProjectScope('agent:update');
+				const telemetryContext = { user, modifiedBy: 'builder' as const };
+				const validated = await this.agentConfig.validateConfig(artifact.config);
+				if (!validated.valid) return { ok: false, errors: [validated.error] };
+				const skillIds: string[] = [];
+				const skillBodies = Object.values(artifact.skills ?? {});
+				if (skillBodies.length > 0) {
+					const created = await this.agentSkills.createSkills(agentId, projectId, skillBodies, telemetryContext);
+					skillIds.push(...created.map((entry) => entry.id));
+				}
+				const config: AgentJsonConfig = {
+					...validated.config,
+					...(skillIds.length > 0
+						? { skills: [...(validated.config.skills ?? []), ...skillIds.map((id) => ({ type: 'skill' as const, id }))] }
+						: {}),
+				};
+				try {
+					await this.agentConfig.updateConfig(agentId, projectId, config, user, {
+						baseConfigHash: options.baseConfigHash,
+						modifiedBy: 'builder',
+					});
+				} catch (error) {
+					return { ok: false, errors: [error instanceof Error ? error.message : String(error)] };
+				}
+				const taskIds: string[] = [];
+				if (artifact.tasks && artifact.tasks.length > 0) {
+					const created = await this.agentTasks.createTasks(
+						agentId,
+						projectId,
+						artifact.tasks.map((task) => ({
+							name: task.name,
+							objective: task.objective,
+							cronExpression: task.cronExpression,
+							timezone: task.timezone,
+							enabled: task.enabled,
+						})),
+						telemetryContext,
+					);
+					taskIds.push(...created.map((task) => task.id));
+				}
+				const saved = await this.agentConfig.getConfig(agentId, projectId);
+				return { ok: true, configHash: getAgentConfigHash(saved), skillIds, taskIds };
+			},
+			listAttachableWorkflows: async (searchTerm) => {
+				await assertProjectScope('agent:read');
+				const workflows = await this.attachableWorkflows.list(user, projectId, searchTerm ?? '');
+				return workflows.map((workflow) => ({ id: workflow.id, name: workflow.name, published: workflow.published }));
+			},
+			resolveDefaultModel: async () => {
+				await assertProjectScope('agent:read');
+				return await this.defaultModelResolver.resolve(user, projectId);
+			},
+			runAgentPreview: async (agentId, message, previewOptions) => {
+				await assertProjectScope('agent:update');
+				const toolCalls: string[] = [];
+				const prepared = await this.agentTestRun.prepareDraftRun({
+					agentId,
+					projectId,
+					...(previewOptions?.sessionId ? { sessionId: previewOptions.sessionId } : {}),
+					credentialProvider: credentialProviderFor(agentId),
+				});
+				if (prepared.status === 'agent_misconfigured') return { status: 'misconfigured', missing: prepared.missing };
+				if (prepared.status === 'session_not_found') return { status: 'misconfigured', missing: ['session'] };
+				const result = await this.agentTestRun.executePreparedDraftRun({
+					agentId,
+					projectId,
+					message,
+					user,
+					source: 'instance-ai-compiler-verify',
+					sessionId: prepared.sessionId,
+					abortSignal: previewOptions?.abortSignal,
+					onChunk: (chunk) => {
+						if (chunk.type === 'tool-call') toolCalls.push(chunk.toolName);
+					},
+				});
+				return {
+					status: result.status,
+					response: result.response,
+					toolCalls,
+					sessionId: prepared.sessionId,
+					...(result.executionId ? { executionId: result.executionId } : {}),
+				};
 			},
 			readAgentArtifact: async (agentId) => {
 				await assertProjectScope('agent:read');

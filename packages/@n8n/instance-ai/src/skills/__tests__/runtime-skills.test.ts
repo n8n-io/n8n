@@ -11,7 +11,7 @@ import {
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
-const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
+const AGENTS_MODULE_SKILL_IDS = ['intent-recognition'] as const;
 
 describe('Instance AI runtime skills', () => {
 	afterEach(() => {

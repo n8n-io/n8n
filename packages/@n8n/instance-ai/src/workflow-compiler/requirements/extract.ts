@@ -49,15 +49,6 @@ const INTEGRATIONS: Array<{ name: string; patterns: RegExp[] }> = [
 ];
 
 const METHOD_PATH = /\b(GET|POST|PUT|PATCH|DELETE)\s+(\/[A-Za-z0-9_\-/{}:.]*)/g;
-const CRON_WORDS: Array<{ pattern: RegExp; cron: string }> = [
-	{ pattern: /\bevery (night|day at 2ам|midnight)\b/i, cron: '0 2 * * *' },
-	{ pattern: /\bnightly\b/i, cron: '0 2 * * *' },
-	{ pattern: /\b(daily|every day|once a day)\b/i, cron: '0 9 * * *' },
-	{ pattern: /\bevery hour|hourly\b/i, cron: '0 * * * *' },
-	{ pattern: /\bevery (\d+) minutes?\b/i, cron: '*/$1 * * * *' },
-	{ pattern: /\bweekly|every week\b/i, cron: '0 9 * * 1' },
-];
-const EXPLICIT_CRON = /\b(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\b(?=\s*(cron|schedule)?)/;
 
 export interface ExtractionContext {
 	/** Text of an existing workflow name, when editing. */
@@ -77,14 +68,45 @@ export function detectIntegrations(text: string): string[] {
 	);
 }
 
-function detectSchedule(text: string): string | undefined {
-	for (const { pattern, cron } of CRON_WORDS) {
-		const match = text.match(pattern);
-		if (match) return cron.replace('$1', match[1] ?? '');
-	}
+const WEEKDAYS: Record<string, number> = {
+	sunday: 0,
+	monday: 1,
+	tuesday: 2,
+	wednesday: 3,
+	thursday: 4,
+	friday: 5,
+	saturday: 6,
+};
+
+/** Deterministic phrase → cron. Returns undefined when the phrase is not precise enough. */
+export function detectScheduleCron(text: string): string | undefined {
 	const explicit = text.match(/cron\s*[:=]?\s*["'`]?([0-9*,/-]+(?:\s+[0-9*,/-]+){4})/i);
 	if (explicit) return explicit[1];
-	void EXPLICIT_CRON;
+	const lower = text.toLowerCase();
+	const time = lower.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+	let hour: number | undefined;
+	let minute = 0;
+	if (time) {
+		hour = Number(time[1]);
+		minute = time[2] ? Number(time[2]) : 0;
+		if (time[3] === 'pm' && hour < 12) hour += 12;
+		if (time[3] === 'am' && hour === 12) hour = 0;
+	}
+	const minutes = lower.match(/\bevery\s+(\d+)\s+minutes?\b/);
+	if (minutes) return `*/${minutes[1]} * * * *`;
+	if (/\bevery hour\b|\bhourly\b/.test(lower)) return '0 * * * *';
+	const weekday = Object.keys(WEEKDAYS).find((day) =>
+		new RegExp(`\\b(every|each|on)\\s+${day}s?\\b`).test(lower),
+	);
+	if (weekday) return `${minute} ${hour ?? 9} * * ${WEEKDAYS[weekday]}`;
+	if (/\b(every\s+)?weekdays?\b|\bmonday (to|through) friday\b/.test(lower))
+		return `${minute} ${hour ?? 9} * * 1-5`;
+	if (/\bweekly\b|\bevery week\b/.test(lower)) return `${minute} ${hour ?? 9} * * 1`;
+	if (/\bevery (night|evening)\b|\bnightly\b|\bmidnight\b/.test(lower))
+		return `${minute} ${hour ?? 2} * * *`;
+	if (/\bevery (morning|day)\b|\bdaily\b|\bonce a day\b|\beach (day|morning)\b/.test(lower))
+		return `${minute} ${hour ?? 9} * * *`;
+	if (hour !== undefined) return `${minute} ${hour} * * *`;
 	return undefined;
 }
 
@@ -134,7 +156,7 @@ export function extractRequirements(
 ): Requirements {
 	const intent = detectIntent(request);
 	const methods = [...request.matchAll(METHOD_PATH)];
-	const cron = detectSchedule(request);
+	const cron = detectScheduleCron(request);
 	const integrations = detectIntegrations(request);
 
 	let trigger: Requirements['trigger'];

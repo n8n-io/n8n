@@ -10,7 +10,7 @@ description: >-
   including compound requests, independent automations introduced mid-build,
   one-off questions or reports that need external systems you cannot query
   directly, and requests that need clarification before an anchor can be
-  chosen. An explicit Agent request routes to agent-builder before ask-user.
+  chosen. An explicit Agent request routes to build-agent before ask-user.
   Do not load for routine edits or extensions when the conversation already
   targets a workflow or Agent.
 ---
@@ -127,9 +127,11 @@ tools on the agent. For example, looking up and inserting Data Table rows are
 two direct node tools; an atomic lookup-transform-write procedure is one
 workflow tool.
 
-After choosing an agent-anchored design, load `agent-builder` before calling
-`build-agent`. It owns prerequisite creation and the handoff to the delegated
-builder.
+After choosing an agent-anchored design, call `build-agent` with the user's
+words (action "create" for a new agent, "edit" for the bound one). It compiles
+the agent, asks for what it cannot derive through `needs_clarification`, and
+reports workflows it needs through `needs_artifacts`; build those with
+`build-workflow` first and pass them in `workflowContext`.
 
 ## Decision Steps
 
@@ -142,10 +144,10 @@ builder.
    even when it could implement the same behavior. You may explain a simpler
    workflow alternative, but switch only after the user chooses it. Route
    missing setup and implementation choices to Agent Builder. The immediate
-   next routing action is to load `agent-builder`. Do not call `ask-user`
+   next routing action is to call `build-agent`. Do not call `ask-user`
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
-   details. Agent Builder owns those questions. An explicit
+   details. The agent compiler owns those questions. An explicit
    workflow request normally selects a workflow. If its required interaction is
    unambiguously Agent-shaped, such as ongoing open-ended chat, explain why an
    Agent fits and say that you are deviating from the named workflow. The
