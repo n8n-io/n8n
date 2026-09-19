@@ -84,7 +84,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
 		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
@@ -107,7 +110,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['2', '3']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			['2', '3'],
+			'start-failure',
+		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,
@@ -121,7 +127,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['1']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			['1'],
+			'start-failure',
+		);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
@@ -142,7 +151,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,

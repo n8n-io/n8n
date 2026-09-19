@@ -249,11 +249,14 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
+
 	const crashableRow = (id: string) =>
-		mock<ExecutionEntity>({
+		Object.assign(new ExecutionEntity(), {
 			id,
 			workflowId: `workflow-${id}`,
 			mode: 'trigger',
+			startedAt: crashedStartedAt,
 			workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
 		});
 
@@ -291,7 +294,7 @@ describe('ExecutionRepository', () => {
 			);
 		});
 
-		test('should report the workflow, name and mode of each execution it transitioned', async () => {
+		test('should report the workflow, name, mode and start time of each execution it transitioned', async () => {
 			entityManager.find.mockResolvedValue([crashableRow('1')]);
 
 			const crashed = await executionRepository.markAsCrashed(['1', '2']);
@@ -302,6 +305,8 @@ describe('ExecutionRepository', () => {
 					workflowId: 'workflow-1',
 					workflowName: 'Workflow 1',
 					mode: 'trigger',
+					startedAt: crashedStartedAt,
+					stoppedAt: expect.any(Date),
 				},
 			]);
 		});
@@ -352,7 +357,14 @@ describe('ExecutionRepository', () => {
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
 			expect(crashed).toEqual([
-				{ id: '1', workflowId: 'workflow-1', workflowName: 'Workflow 1', mode: 'trigger' },
+				{
+					id: '1',
+					workflowId: 'workflow-1',
+					workflowName: 'Workflow 1',
+					mode: 'trigger',
+					startedAt: crashedStartedAt,
+					stoppedAt: expect.any(Date),
+				},
 			]);
 		});
 	});

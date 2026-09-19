@@ -189,17 +189,18 @@ describe('ExecutionRepository', () => {
 	describe('markAsCrashed', () => {
 		const createExecution = async (status: ExecutionStatus, extra: { waitTill?: Date } = {}) => {
 			const workflow = await createWorkflow();
+			const startedAt = new Date();
 			const { identifiers } = await Container.get(ExecutionRepository).insert({
 				workflowId: workflow.id,
 				mode: 'manual',
-				startedAt: new Date(),
+				startedAt,
 				status,
 				finished: status === 'success',
 				createdAt: new Date(),
 				...extra,
 			});
 			// Postgres returns the inserted id as a number, SQLite as a string.
-			return { id: String(identifiers[0].id), workflow };
+			return { id: String(identifiers[0].id), workflow, startedAt };
 		};
 
 		it('should crash in-progress and indeterminate executions', async () => {
@@ -283,7 +284,7 @@ describe('ExecutionRepository', () => {
 
 		it('should crash a soft-deleted in-progress execution', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
-			const { id: runningId, workflow } = await createExecution('running');
+			const { id: runningId, workflow, startedAt } = await createExecution('running');
 			await executionRepo.softDelete(runningId);
 
 			const crashed = await executionRepo.markAsCrashed([runningId]);
@@ -299,6 +300,8 @@ describe('ExecutionRepository', () => {
 					workflowId: workflow.id,
 					workflowName: workflow.name,
 					mode: 'manual',
+					startedAt,
+					stoppedAt: expect.any(Date),
 				},
 			]);
 		});

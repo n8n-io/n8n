@@ -10,6 +10,9 @@ import type {
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
@@ -46,7 +49,15 @@ export class OtelLifecycleHandler {
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 		private readonly licenseState: LicenseState,
+		private readonly eventService: EventService,
 	) {}
+
+	init() {
+		this.eventService.on(
+			'execution-crashed',
+			async (event) => await this.onExecutionCrashed(event),
+		);
+	}
 
 	@OnPubSubEvent('reload-otel-config')
 	async onReloadOtelConfig(): Promise<void> {
@@ -160,6 +171,23 @@ export class OtelLifecycleHandler {
 			error: ctx.runData.data.resultData.error,
 			isRetry: ctx.runData.mode === 'retry',
 			retryOf: ctx.retryOf,
+		});
+	}
+
+	async onExecutionCrashed(event: RelayEventMap['execution-crashed']): Promise<void> {
+		if (!this.shouldTrace({ type: 'executionCrashed', mode: event.mode })) return;
+		const tracingContext = this.tracer.hasWorkflowSpan(event.executionId)
+			? undefined
+			: await this.traceContextService.get(event.executionId);
+		this.tracer.endCrashedWorkflow({
+			executionId: event.executionId,
+			workflowId: event.workflowId,
+			workflowName: event.workflowName,
+			mode: event.mode,
+			detector: event.detector,
+			startedAt: event.startedAt,
+			stoppedAt: event.stoppedAt,
+			tracingContext,
 		});
 	}
 
