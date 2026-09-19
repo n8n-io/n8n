@@ -432,7 +432,7 @@ function parseJson(value: string): unknown {
 }
 
 function toBoolean(value: string): boolean {
-	const normalized = value.toLowerCase();
+	const normalized = value.trim().toLowerCase();
 	const FALSY = new Set(['false', 'no', '0']);
 	return normalized.length > 0 && !FALSY.has(normalized);
 }
