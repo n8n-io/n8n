@@ -39,6 +39,16 @@ export default defineConfig(
 		plugins: { 'n8n-local-rules': localRulesPlugin },
 	},
 	functionalGuardrailsConfig,
+	{
+		// Shrink-only ratchet: the two import paths that upsert a whole credential row,
+		// including `type`. There is no sealed credential import method yet. NEVER add to
+		// this list — the override is per file, so a second write here goes unreported.
+		files: [
+			'./src/commands/import/credentials.ts',
+			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
+		],
+		rules: { 'n8n-local-rules/no-unsealed-credentials-entity-write': 'off' },
+	},
 	...directivePluginConfigs,
 	...dependencyRuleConfigs,
 );
