@@ -26,7 +26,10 @@ test('reloads Codespaces secrets before the worker starts', () => {
 	);
 	assert.match(postStart, /installAgentHarness\(\)/);
 	assert.match(postStart, /harness\.status === 'active' &&\s+tryRun\('worker start'/);
-	assert.match(postStart, /JSON\.stringify\(\{ installed, failed, harness, workerStarted \}/);
+	assert.match(
+		postStart,
+		/JSON\.stringify\(\{ installed, failed, harness, workerStarted, worktreesCleaned \}/,
+	);
 });
 
 function slackRecorder() {
