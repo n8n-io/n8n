@@ -31,15 +31,13 @@ export { default as N8nCombobox2Item } from './v2/components/Combobox/ComboboxIt
 export type { ComboboxItemProps } from 'reka-ui';
 export type {
 	ComboboxEmits,
-	ComboboxGroupItem,
+	ComboboxHeaderItem,
 	ComboboxItem,
 	ComboboxItemSlots,
 	ComboboxOptionBase,
 	ComboboxProps,
-	ComboboxSeparatorItem,
 	ComboboxSizes,
 	ComboboxSlots,
-	ComboboxStructuralItem,
 	ComboboxValue,
 } from './v2/components/Combobox/Combobox.types';
 export { default as N8nTagsInput2 } from './v2/components/TagsInput/TagsInput.vue';
