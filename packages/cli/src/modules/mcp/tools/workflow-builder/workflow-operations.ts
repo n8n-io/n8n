@@ -45,7 +45,8 @@ const isValidIanaTimezone = (tz: string): boolean => IANAZone.isValidZone(tz);
  * left unchanged. Enterprise/internal settings (redactionPolicy,
  * credentialResolverId, customTelemetryTags, binaryMode) are intentionally
  * excluded — they need dedicated license/scope handling. `availableInMCP` is
- * excluded so an agent cannot silently revoke a workflow's own MCP access.
+ * included, as it is in the public REST API: `create_workflow_from_code` sets
+ * it, so the agent that granted MCP access must be able to revoke it too.
  */
 export const workflowSettingsObjectSchema = z.object({
 	errorWorkflow: z
@@ -112,6 +113,12 @@ export const workflowSettingsObjectSchema = z.object({
 		.string()
 		.describe(
 			'Comma-separated workflow IDs allowed to call this workflow (only used with callerPolicy "workflowsFromAList").',
+		)
+		.optional(),
+	availableInMCP: z
+		.boolean()
+		.describe(
+			'Whether this workflow is reachable over the Model Context Protocol. The workflow must be active and must hold at least one active Webhook node.',
 		)
 		.optional(),
 });
