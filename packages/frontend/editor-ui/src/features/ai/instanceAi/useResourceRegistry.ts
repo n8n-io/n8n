@@ -227,7 +227,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// the name, so fall back to the existing entry before regressing to
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
-	if (tc.toolName === 'build-agent' && typeof result.agentId === 'string') {
+	if (
+		tc.toolName === 'build-agent' &&
+		typeof result.agentId === 'string' &&
+		(result.agentChange === 'created' ||
+			result.agentChange === 'updated' ||
+			result.agentChange === undefined)
+	) {
 		const existing = col.produced.get(result.agentId);
 		recordProduced(col, {
 			type: 'agent',
@@ -319,6 +325,9 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const existing = col.produced.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
+		// New events report the target before the result is known. Only the
+		// build-agent result can confirm that this Agent changed.
+		if (node.activity !== undefined) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);
 		return;

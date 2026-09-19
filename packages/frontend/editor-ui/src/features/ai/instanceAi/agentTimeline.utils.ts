@@ -307,7 +307,14 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	const seenIds = new Set<string>();
 
 	// Check targetResource first (single-resource agents)
-	if (node.targetResource?.id && node.targetResource.type) {
+	if (
+		node.targetResource?.id &&
+		node.targetResource.type &&
+		(node.targetResource.type !== 'agent' ||
+			node.agentChange === 'created' ||
+			node.agentChange === 'updated' ||
+			node.agentChange === undefined)
+	) {
 		const type = node.targetResource.type;
 		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);

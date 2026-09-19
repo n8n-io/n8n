@@ -47,7 +47,7 @@ export class AgentCustomToolsService {
 		descriptor: ToolDescriptor,
 		context: AgentMutationTelemetryContext,
 		options: { recordTelemetry?: boolean } = {},
-	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor }> {
+	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor; changed: boolean }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
@@ -60,7 +60,7 @@ export class AgentCustomToolsService {
 		const toolId = descriptor.name;
 		const nextEntry = { code, descriptor };
 		if (isEqual(entity.tools?.[toolId], nextEntry)) {
-			return { ok: true, id: toolId, descriptor };
+			return { ok: true, id: toolId, descriptor, changed: false };
 		}
 
 		const previousSchema = entity.schema ?? null;
@@ -98,7 +98,7 @@ export class AgentCustomToolsService {
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
-		return { ok: true, id: toolId, descriptor };
+		return { ok: true, id: toolId, descriptor, changed: true };
 	}
 
 	/**

@@ -378,6 +378,18 @@ export const agentSpawnedTargetResourceSchema = z.object({
 });
 export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
 
+export const agentActivitySchema = z.enum([
+	'creating',
+	'editing',
+	'exploring',
+	'testing',
+	'publishing',
+	'working',
+]);
+export type InstanceAiAgentActivity = z.infer<typeof agentActivitySchema>;
+export const agentChangeSchema = z.enum(['created', 'updated', 'none']);
+export type InstanceAiAgentChange = z.infer<typeof agentChangeSchema>;
+
 export const agentSpawnedPayloadSchema = z.object({
 	parentId: z.string().describe("Orchestrator's agentId"),
 	role: z.string().describe('Free-form role description'),
@@ -385,6 +397,7 @@ export const agentSpawnedPayloadSchema = z.object({
 	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
 	// Display metadata — enriched identity for the UI
 	kind: instanceAiAgentKindSchema.optional().describe('Agent kind for card dispatch'),
+	activity: agentActivitySchema.optional().describe('Current activity for the Agent card'),
 	title: z.string().optional().describe('Short display title, e.g. "Building workflow"'),
 	subtitle: z
 		.string()
@@ -399,6 +412,7 @@ export const agentSpawnedPayloadSchema = z.object({
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
+	agentChange: agentChangeSchema.optional().describe('Whether this sub-agent changed its Agent'),
 	error: z.string().optional(),
 	/**
 	 * Terminal state of the sub-agent. Optional: events written before this
@@ -1800,6 +1814,10 @@ export interface InstanceAiAgentNode {
 	taskId?: string;
 	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
+	/** Current activity for the Agent card. */
+	activity?: InstanceAiAgentActivity;
+	/** Whether this sub-agent changed its Agent. */
+	agentChange?: InstanceAiAgentChange;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */

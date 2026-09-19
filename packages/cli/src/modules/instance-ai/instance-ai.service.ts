@@ -141,6 +141,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
@@ -2763,6 +2764,22 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Wire project-scoped, read-only Agent context for the current user. */
+	private async bindAgentContextReader(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
+	): Promise<void> {
+		const projectId = context.projectId;
+		if (!projectId) return;
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
+
+		if (!Container.get(ModuleRegistry).isActive('agents')) return;
+		context.agentContextService = Container.get(InstanceAiAgentContextAdapterService).createReader(
+			user,
+			projectId,
+		);
+	}
+
 	/**
 	 * Hydrate the thread-persisted preview-session reference (if any) and wire
 	 * the on-demand transcript resolver. Must run before createInstanceAgent so
@@ -4842,6 +4859,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentContextReader(environment.context, user);
 		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,

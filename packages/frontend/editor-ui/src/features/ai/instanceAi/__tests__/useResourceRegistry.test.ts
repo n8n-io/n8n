@@ -643,6 +643,32 @@ describe('useResourceRegistry', () => {
 			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
 		});
 
+		test('does not register an Agent after a read-only builder turn', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								activity: 'exploring',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('agent-1')).toBe(false);
+		});
+
 		test('a later build-agent result without agentName does not regress a known name', async () => {
 			const { messages, producedArtifacts } = setup();
 

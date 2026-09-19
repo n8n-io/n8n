@@ -29,6 +29,10 @@ vi.mock('../data-tables.tool', () => ({
 	})),
 }));
 
+vi.mock('../agent-context.tool', () => ({
+	createAgentContextTool: vi.fn(() => ({ id: 'agent-context' })),
+}));
+
 vi.mock('../executions.tool', () => ({
 	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
 }));
@@ -229,13 +233,19 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
 
-	it('pairs list-agent-capabilities with build-agent in the always-loaded set', () => {
-		// Both are gated on the agents feature flag at module load time, so they
-		// must always be in or out together — the orchestrator needs to check
-		// support during intent recognition on the same footing as build-agent.
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('list-agent-capabilities')).toBe(
-			ALWAYS_LOADED_TOOL_NAMES.has('build-agent'),
-		);
+	it('gates Agent context on the project-scoped reader', () => {
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('agent-context')).toBeUndefined();
+
+		const enabled = makeContext({
+			agentContextService: {} as InstanceAiContext['agentContextService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('agent-context')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('agent-context');
+	});
+
+	it('never defers Agent context lookup behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});
 
 	it('constructs create-tasks for the agent to apply profile exclusions', () => {
@@ -264,7 +274,6 @@ describe('domain tool construction', () => {
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
-			'list-agent-capabilities': { id: 'list-agent-capabilities' },
 		});
 	});
 

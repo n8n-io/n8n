@@ -8,7 +8,8 @@ vi.mock('@n8n/i18n', () => ({
 			const translations: Record<string, string> = {
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
-				'instanceAi.tools.build-agent': 'Building agent',
+				'instanceAi.tools.build-agent': 'Working with agent',
+				'instanceAi.tools.build-agent.exploring': 'Exploring agent',
 				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
@@ -147,7 +148,9 @@ describe('useToolLabel', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('read_config')).toBe('Reading agent config');
 		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
-		expect(getToolLabel('build-agent')).toBe('Building agent');
+		expect(getToolLabel('build-agent')).toBe('Working with agent');
+		expect(getToolLabel('build-agent', { operation: 'exploring' })).toBe('Exploring agent');
+		expect(getToolLabel('build-agent', { operation: 'creating' })).toBe('Working with agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
