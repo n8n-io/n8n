@@ -557,6 +557,54 @@ describe('nodes tool', () => {
 			});
 		});
 
+		it('should accept up to 10 node types in a single request', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockImplementation(async (nodeType: string) => ({
+						content: `export type ${nodeType} = unknown;`,
+						version: '1.0',
+					})),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const tenNodes = Array.from({ length: 10 }, (_, i) => `n8n-nodes-base.node${i}`);
+			const result = await executeTool(
+				tool,
+				{ action: 'type-definition', nodeTypes: tenNodes } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				definitions: expect.arrayContaining([
+					expect.objectContaining({ nodeType: 'n8n-nodes-base.node0' }),
+					expect.objectContaining({ nodeType: 'n8n-nodes-base.node9' }),
+				]),
+			});
+			expect((result as { definitions: unknown[] }).definitions).toHaveLength(10);
+		});
+
+		it('should return a Zod-derived error when nodeTypes exceeds 10 items', async () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+			const elevenNodes = Array.from({ length: 11 }, (_, i) => `n8n-nodes-base.node${i}`);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'type-definition', nodeTypes: elevenNodes } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				definitions: [],
+				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
 		it('should surface node-level builder hints from type definitions', async () => {
 			const context = createMockContext({
 				nodeService: {

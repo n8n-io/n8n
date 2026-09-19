@@ -863,12 +863,12 @@ Get detailed node description including properties, credentials, inputs, and out
 
 ### `nodes(action="type-definition")`
 
-Get TypeScript definitions for one to five node types, including exact
+Get TypeScript definitions for one to 10 node types, including exact
 parameters, credentials, display conditions, and builder annotations.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `nodeTypes` | array | yes | One to five node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
+| `nodeTypes` | array | yes | One to 10 node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
 
 **Returns**: `{ definitions, error? }`.
 

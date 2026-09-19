@@ -191,7 +191,7 @@ follow its build → publish → assign steps.
    (short service names like "Gmail", not task phrases — results include
    resource/operation/mode discriminators).
 2. Call `nodes(action="type-definition")` with the exact node IDs you will use
-   (up to five per call), including discriminators. Do not speculatively fetch
+   (up to 10 per call), including discriminators. Do not speculatively fetch
    definitions for nodes you will not use.
 3. Read `@builderHint`, `@default`, `@searchListMethod`, `@loadOptionsMethod`,
    valid enum values, credential types, and display conditions in the returned

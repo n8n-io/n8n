@@ -46,8 +46,8 @@ export const materializeNodeTypeInputSchema = z.object({
 	nodeIds: z
 		.array(nodeRequestSchema)
 		.min(1)
-		.max(5)
-		.describe('Node IDs to materialize definitions for (max 5)'),
+		.max(10)
+		.describe('Node IDs to materialize definitions for (max 10)'),
 });
 
 export function createMaterializeNodeTypeTool(
