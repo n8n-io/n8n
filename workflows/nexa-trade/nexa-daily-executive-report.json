@@ -9,7 +9,8 @@
               "field": "days",
               "daysInterval": 1,
               "triggerAtHour": 18,
-              "triggerAtMinute": 0
+              "triggerAtMinute": 0,
+              "timezone": "UTC"
             }
           ]
         }

@@ -36,7 +36,8 @@
     },
     {
       "parameters": {
-        "jsCode": "const incident = $json; const allowed = ['backend_unavailable', 'repeated_api_failures', 'scheduler_stopped', 'robot_heartbeat_missing', 'kill_switch_unknown', 'kill_switch_persistence_failure', 'risk_control_failure', 'repeated_authentication_failures']; if (!incident.verified || !allowed.includes(incident.category)) return [{ json: { ...incident, alert: 'not_sent', reason: 'unverified_or_unsupported' } }]; return [{ json: { ...incident, alert: 'MOCK_ONLY', deduplicationKey: `${incident.category}:${incident.source}`, cooldownMinutes: 30, recoveryNotification: true, retry: { enabled: true, maxAttempts: 2, backoffSeconds: 30 } } }];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "const incident = $input.first().json; const allowed = ['backend_unavailable', 'repeated_api_failures', 'scheduler_stopped', 'robot_heartbeat_missing', 'kill_switch_unknown', 'kill_switch_persistence_failure', 'risk_control_failure', 'repeated_authentication_failures']; if (!incident.verified || !allowed.includes(incident.category)) return [{ json: { ...incident, alert: 'not_sent', reason: 'unverified_or_unsupported' } }]; return [{ json: { ...incident, alert: 'MOCK_ONLY', deduplicationKey: `${incident.category}:${incident.source}`, cooldownMinutes: 30, recoveryNotification: true, retry: { enabled: true, maxAttempts: 2, backoffSeconds: 30 } } }];"
       },
       "id": "5e817e50-5f6f-4fa2-9e8f-000000000003",
       "name": "Validate, deduplicate, and notify",
