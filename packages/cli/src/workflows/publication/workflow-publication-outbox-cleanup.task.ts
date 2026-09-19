@@ -1,6 +1,6 @@
 import { WorkflowsConfig } from '@n8n/config';
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowPublicationOutboxCleanupService } from './workflow-publication-outbox-cleanup.service';
 
@@ -19,10 +19,12 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
-
-	/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
-	readonly runOnTakeover = true;
+	readonly placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: false,
+		/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
+		runOnTakeover: true,
+	};
 
 	constructor(
 		private readonly workflowsConfig: WorkflowsConfig,

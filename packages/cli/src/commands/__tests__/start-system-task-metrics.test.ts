@@ -143,7 +143,7 @@ describe('Start system task metrics', () => {
 		return (await metric?.get())?.values ?? [];
 	}
 
-	const inMemoryDummy = { task: 'dummy', mode: 'in_memory' };
+	const leaderTimerDummy = { task: 'dummy', mode: 'leader_timer' };
 
 	it('seeds the in-memory series although a takeover preceded the collector', async () => {
 		const events = Container.get(EventService);
@@ -161,14 +161,14 @@ describe('Start system task metrics', () => {
 			['scheduled', 1],
 			['runs_in_flight', 0],
 		] as const) {
-			expect(await seriesOf(name)).toContainEqual({ labels: inMemoryDummy, value });
+			expect(await seriesOf(name)).toContainEqual({ labels: leaderTimerDummy, value });
 		}
 
 		await vi.advanceTimersByTimeAsync(interval);
 
 		expect(dummy.runCount).toBe(1);
 		expect(await seriesOf('last_success_timestamp_seconds')).toContainEqual({
-			labels: inMemoryDummy,
+			labels: leaderTimerDummy,
 			value: now.getTime() / 1000 + 60,
 		});
 	});
