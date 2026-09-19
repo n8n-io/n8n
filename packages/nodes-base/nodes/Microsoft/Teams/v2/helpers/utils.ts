@@ -273,6 +273,17 @@ export async function resolveUserTarget(
 }
 
 /**
+ * Builds one `aadUserConversationMember` entry for `POST /chats` and `POST /chats/{id}/members`.
+ * The bind has two escaping layers: percent-encode the id for the URL (a B2B guest UPN
+ * truncates at its `#` otherwise), then double any quote for the OData literal.
+ */
+export const aadUserConversationMember = (baseUrl: string, id: string, role: string) => ({
+	'@odata.type': '#microsoft.graph.aadUserConversationMember',
+	roles: [role],
+	'user@odata.bind': `${baseUrl}/v1.0/users('${escapeODataValue(encodeURIComponent(id))}')`,
+});
+
+/**
  * Resolves every mention row to a Graph user or team tag. Graph stores `mentions[].mentioned`
  * verbatim and resolves nothing: a UPN, a well-formed but nonexistent GUID or a bogus tag ID is
  * accepted with a 200 and a mention that notifies nobody. So each row is looked up first, which

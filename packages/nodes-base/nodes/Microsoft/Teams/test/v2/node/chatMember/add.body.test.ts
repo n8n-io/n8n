@@ -67,7 +67,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['owner'],
 			visibleHistoryStartDateTime: '0001-01-01T00:00:00Z',
 		});
@@ -84,7 +84,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['owner'],
 			visibleHistoryStartDateTime: '2026-08-01T00:00:00Z',
 		});
@@ -116,7 +116,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['owner'],
 		});
 	});
@@ -135,7 +135,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['guest'],
 		});
 	});
@@ -149,6 +149,41 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it("doubles the quote and percent-encodes the @ of a UPN inside users('...')", async () => {
+		setParams(addParams({ userId: "o'brien@contoso.com", options: {} }));
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
+			'@odata.type': '#microsoft.graph.aadUserConversationMember',
+			'user@odata.bind': "https://graph.microsoft.com/v1.0/users('o''brien%40contoso.com')",
+			roles: ['owner'],
+		});
+	});
+
+	// Teams deep links carry the UPN percent-encoded. The validator decodes it once and the
+	// helper encodes it once, so the bind must not end up double-encoded (`%2540`).
+	it('decodes a URL-copied UPN once, so the bind is not double-encoded', async () => {
+		setParams(addParams({ userId: 'jacob%40contoso.com', options: {} }));
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
+			'@odata.type': '#microsoft.graph.aadUserConversationMember',
+			'user@odata.bind': "https://graph.microsoft.com/v1.0/users('jacob%40contoso.com')",
+			roles: ['owner'],
+		});
+	});
+
+	// `encodeURIComponent` throws a raw `URIError` on a lone surrogate; the validator has to
+	// reject it first with the node's own error.
+	it('rejects a lone surrogate in the user id before any request', async () => {
+		setParams(addParams({ userId: `${userId}\uD800`, options: {} }));
+
+		await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('uses the credential graphApiBaseUrl in user@odata.bind (sovereign cloud)', async () => {
 		ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
 		setParams(addParams({ options: {} }));
@@ -157,7 +192,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.us/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.us/v1.0/users('${userId}')`,
 			roles: ['owner'],
 		});
 	});
