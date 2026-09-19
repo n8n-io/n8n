@@ -1,0 +1,82 @@
+{
+  "name": "NEXA — Critical Incident Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "5e817e50-5f6f-4fa2-9e8f-000000000001",
+      "name": "Mock incident schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { category: 'backend_unavailable', severity: 'HIGH', state: 'FAILED', verified: true, source: 'mock-health-monitor', observedAt: new Date().toISOString() } }];"
+      },
+      "id": "5e817e50-5f6f-4fa2-9e8f-000000000002",
+      "name": "Mock verified incident",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const incident = $json; const allowed = ['backend_unavailable', 'repeated_api_failures', 'scheduler_stopped', 'robot_heartbeat_missing', 'kill_switch_unknown', 'kill_switch_persistence_failure', 'risk_control_failure', 'repeated_authentication_failures']; if (!incident.verified || !allowed.includes(incident.category)) return [{ json: { ...incident, alert: 'not_sent', reason: 'unverified_or_unsupported' } }]; return [{ json: { ...incident, alert: 'MOCK_ONLY', deduplicationKey: `${incident.category}:${incident.source}`, cooldownMinutes: 30, recoveryNotification: true, retry: { enabled: true, maxAttempts: 2, backoffSeconds: 30 } } }];"
+      },
+      "id": "5e817e50-5f6f-4fa2-9e8f-000000000003",
+      "name": "Validate, deduplicate, and notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Mock incident schedule": {
+      "main": [
+        [
+          {
+            "node": "Mock verified incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock verified incident": {
+      "main": [
+        [
+          {
+            "node": "Validate, deduplicate, and notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "5e817e50-5f6f-4fa2-9e8f-000000000004",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

@@ -1,0 +1,106 @@
+{
+  "name": "NEXA — System Health Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "1a4d3a10-1c2f-4b62-9a4e-000000000001",
+      "name": "Mock monitoring schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { service: 'nexa-api', endpoint: 'https://mock.nexa.invalid/health', statusCode: 200, body: { status: 'ok', version: 'mock-1' }, responseTimeMs: 42, observedAt: new Date().toISOString() } }];"
+      },
+      "id": "1a4d3a10-1c2f-4b62-9a4e-000000000002",
+      "name": "Mock approved health response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json; const valid = input.statusCode === 200 && input.body?.status === 'ok'; return [{ json: { ...input, state: valid ? 'VERIFIED' : 'FAILED', errorCategory: valid ? null : 'invalid_response', alertKey: `${input.service}:health`, retryable: input.statusCode >= 500 || input.statusCode === 0 } }];"
+      },
+      "id": "1a4d3a10-1c2f-4b62-9a4e-000000000003",
+      "name": "Validate and classify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, deduplication: { key: $json.alertKey, cooldownMinutes: 15, action: $json.state === 'FAILED' ? 'notify_if_new_or_recovered' : 'record_recovery_or_healthy' }, notification: { mode: 'MOCK_ONLY', destination: 'owner-approved-channel-required' }, executionLog: { recorded: true, sensitiveHeadersLogged: false } } }];"
+      },
+      "id": "1a4d3a10-1c2f-4b62-9a4e-000000000004",
+      "name": "Deduplicate and log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Mock monitoring schedule": {
+      "main": [
+        [
+          {
+            "node": "Mock approved health response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock approved health response": {
+      "main": [
+        [
+          {
+            "node": "Validate and classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and classify": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate and log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1a4d3a10-1c2f-4b62-9a4e-000000000005",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

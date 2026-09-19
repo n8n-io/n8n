@@ -1,0 +1,84 @@
+{
+  "name": "NEXA — Daily Executive Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 18,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "3c6f5c30-3d4f-4d82-9c6f-000000000001",
+      "name": "Mock daily schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { reportDate: new Date().toISOString().slice(0, 10), timezone: 'UTC', systemAvailability: { state: 'VERIFIED', value: 'mock data' }, monitoringWorkflows: { state: 'VERIFIED', value: 5 }, paperTrading: { state: 'VERIFIED', value: 'PAPER only; mock activity' }, killSwitch: { state: 'VERIFIED', value: 'ARMED' }, riskControls: { state: 'VERIFIED', value: '40_percent concentration guard' }, schedulerRobot: { state: 'VERIFIED', value: 'mock heartbeat present' }, criticalIncidents: { state: 'NOT CHECKED', value: null }, failedAutomations: { state: 'NOT CHECKED', value: null }, technicalIssues: { state: 'UNKNOWN', value: null }, ownerApprovalItems: { state: 'VERIFIED', value: 'approve integrations before activation' } } }];"
+      },
+      "id": "3c6f5c30-3d4f-4d82-9c6f-000000000002",
+      "name": "Mock report inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const labels = ['VERIFIED', 'UNKNOWN', 'NOT CHECKED', 'FAILED']; const invalid = Object.values($json).filter((value) => value && typeof value === 'object' && value.state && !labels.includes(value.state)); if (invalid.length) throw new Error('Report contains an invalid status label'); return [{ json: { ...$json, reportType: 'NEXA daily executive report', delivery: { mode: 'MOCK_ONLY', destination: 'owner-approved-channel-required' }, investmentPerformanceClaim: false } }];"
+      },
+      "id": "3c6f5c30-3d4f-4d82-9c6f-000000000003",
+      "name": "Validate report status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Mock daily schedule": {
+      "main": [
+        [
+          {
+            "node": "Mock report inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock report inputs": {
+      "main": [
+        [
+          {
+            "node": "Validate report status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "3c6f5c30-3d4f-4d82-9c6f-000000000004",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

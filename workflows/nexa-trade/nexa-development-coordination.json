@@ -1,0 +1,82 @@
+{
+  "name": "NEXA — Development Coordination",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "4d706d40-4e5f-4e92-9d7f-000000000001",
+      "name": "Mock coordination schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { taskId: 'NEXA-MOCK-001', title: 'Verify paper monitoring', status: 'in_progress', blocker: null, sourceEvidence: ['https://example.invalid/mock-report'], reportedResult: 'Mock report received', independentlyVerified: false, approvalRequired: true, receivedAt: new Date().toISOString() } }];"
+      },
+      "id": "4d706d40-4e5f-4e92-9d7f-000000000002",
+      "name": "Mock approved task record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const task = $json; const validStatuses = ['backlog', 'in_progress', 'blocked', 'done']; if (!validStatuses.includes(task.status)) throw new Error('Unsupported task status'); return [{ json: { ...task, evidenceState: task.independentlyVerified ? 'VERIFIED' : 'REPORTED', notification: { mode: 'MOCK_ONLY', action: task.approvalRequired ? 'notify_owner_once' : 'none' }, executionPolicy: { shellCommands: false, sourceChanges: false, gitWrites: false } } }];"
+      },
+      "id": "4d706d40-4e5f-4e92-9d7f-000000000003",
+      "name": "Classify evidence and approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Mock coordination schedule": {
+      "main": [
+        [
+          {
+            "node": "Mock approved task record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock approved task record": {
+      "main": [
+        [
+          {
+            "node": "Classify evidence and approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "4d706d40-4e5f-4e92-9d7f-000000000004",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

@@ -1,0 +1,106 @@
+{
+  "name": "NEXA — PAPER Trading Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "2b5e4b20-2c3f-4c72-9b5f-000000000001",
+      "name": "Mock monitoring schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { mode: 'PAPER', portfolio: { status: 'available', equity: 100000, currency: 'USD' }, killSwitch: { state: 'ARMED' }, riskControl: { state: 'VERIFIED', concentrationGuard: '40_percent' }, scheduler: { state: 'RUNNING' }, robotHeartbeat: { state: 'VERIFIED', ageSeconds: 12 }, failedPaperExecutions: 0, dataProvider: { state: 'VERIFIED' }, observedAt: new Date().toISOString() } }];"
+      },
+      "id": "2b5e4b20-2c3f-4c72-9b5f-000000000002",
+      "name": "Mock read-only portfolio data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json; const required = ['mode', 'portfolio', 'killSwitch', 'riskControl', 'scheduler', 'robotHeartbeat', 'dataProvider']; const missing = required.filter((key) => data[key] === undefined); return [{ json: { ...data, state: missing.length ? 'UNKNOWN' : data.mode === 'PAPER' ? 'VERIFIED' : 'FAILED', missingFields: missing, orderOperations: { submitted: false, modified: false, cancelled: false }, controlOperations: { killSwitchChanged: false, riskParametersChanged: false, portfolioChanged: false } } }];"
+      },
+      "id": "2b5e4b20-2c3f-4c72-9b5f-000000000003",
+      "name": "Validate PAPER controls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, notification: { mode: 'MOCK_ONLY', alert: $json.state === 'VERIFIED' ? 'none' : 'owner_review_required' }, executionLog: { readOnly: true, credentialsLogged: false } } }];"
+      },
+      "id": "2b5e4b20-2c3f-4c72-9b5f-000000000004",
+      "name": "Record PAPER status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Mock monitoring schedule": {
+      "main": [
+        [
+          {
+            "node": "Mock read-only portfolio data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock read-only portfolio data": {
+      "main": [
+        [
+          {
+            "node": "Validate PAPER controls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate PAPER controls": {
+      "main": [
+        [
+          {
+            "node": "Record PAPER status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "2b5e4b20-2c3f-4c72-9b5f-000000000005",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
