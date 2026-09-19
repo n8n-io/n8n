@@ -1,0 +1,22 @@
+{
+	"description": "TRUST-569 context-consumption probe. Two LIVE turns about the SAME node: turn 1 forces a real node/docs lookup, turn 2 asks a related follow-up that turn 1's fetched definition already answers. Forced antecedent: re-verifying its own prior research is a plausible agent behaviour, so a redundant second lookup is a real miss rather than a formality. Graded on process, not on a workflow — nothing is built. Note on the token expectations: input tokens necessarily GROW turn over turn (history accumulates), so the honest signals are tool calls, output size, and cache reads — never 'turn 2 costs less than turn 1'. The cache expectation assumes a provider that reports cache usage (Anthropic does); it is worded so a provider that reports none does not red out.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I'm using the Notion node to list pages from a database. What credential type does it need, and does it paginate automatically if the database has thousands of pages?"
+		},
+		{
+			"role": "user",
+			"text": "For that same Notion node — can I filter which pages come back by a property value, or do I have to fetch everything and filter downstream myself?"
+		}
+	],
+	"complexity": "simple",
+	"tags": ["behaviour", "context-consumption", "token-efficiency"],
+	"datasets": ["context"],
+	"processExpectations": [
+		"Turn 2 does not call a node type-definition or documentation tool for the Notion node again — turn 1 already retrieved that node's details, and the follow-up is answerable from them.",
+		"Turn 2's output tokens stay modest next to turn 1's: it answers a narrow follow-up about filtering, it does not re-explain the node from scratch.",
+		"If the run reports cache reads at all, turn 2's cached input is a large share of its total input — it replays turn 1's prefix from cache rather than paying for it again. A turn 2 with large input and zero cached tokens is the regression this checks for.",
+		"Answers the filtering question directly instead of asking the user to restate which node or which database they mean."
+	]
+}

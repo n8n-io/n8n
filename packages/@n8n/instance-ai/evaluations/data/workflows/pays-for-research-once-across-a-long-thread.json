@@ -1,0 +1,34 @@
+{
+	"description": "TRUST-569 / context eval: does the thread's context grow with NEW content only, or does every turn re-pay for what it already read? Turn 1 is a real build, so it generates the expensive part of the window — node searches, type definitions, generated SDK source. Turns 2-4 are short questions answerable from that same material, with nothing new to fetch. The shape a healthy thread makes: input tokens grow turn over turn, but the growth is cache reads, and the UNCACHED part of each later turn stays near the size of the new question. The regression this catches is a runtime or prompt change that busts the cached prefix, or re-serializes the accumulated tool results, so each turn pays full price for the whole history again. Expectations are written as shape, not thresholds: an absolute token budget rots on the next prompt edit. Graded on process only — the build itself is checked by the always-on workflow checks.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Every weekday at 8am, pull yesterday's closed tickets from Linear, group them by assignee, and post one summary message per assignee to Slack #standup.",
+				"[Answer any setup question with a plausible value and let the build proceed. Do not set up credentials — say you will do that later.]"
+			]
+		},
+		{
+			"role": "user",
+			"text": "Which node in there decides the date range for 'yesterday'?"
+		},
+		{
+			"role": "user",
+			"text": "And if an assignee closed nothing yesterday, do they still get a message?"
+		},
+		{
+			"role": "user",
+			"text": "Last thing — is the Slack step posting one message per assignee, or one message with everyone in it?"
+		}
+	],
+	"complexity": "medium",
+	"tags": ["behaviour", "context-consumption", "token-efficiency", "cache"],
+	"datasets": ["context"],
+	"messageBudget": 8,
+	"processExpectations": [
+		"Turns 2, 3 and 4 answer from the workflow the agent already built, without searching for nodes or fetching node type definitions again. Every one of those three questions is about a node it configured itself in turn 1.",
+		"If the run reports cache reads at all, each turn after the first shows most of its input tokens as cache reads. A later turn with large input and little or no cached input means the prefix was re-paid rather than replayed, which is the specific regression this case looks for.",
+		"No turn after the first pays more uncached input tokens than turn 1. Turn 1 is where the research happens; turns 2 to 4 add only a short question each, so they must not cost turn 1's research over again.",
+		"Output tokens fall away after turn 1: each follow-up gets a direct short answer, not the whole workflow re-explained."
+	]
+}
