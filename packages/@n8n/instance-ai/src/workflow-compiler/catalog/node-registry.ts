@@ -3,10 +3,7 @@ import { PHASE_ONE_OPERATIONS } from './operations';
 import type { NodeOperation, OperationKind } from './types';
 import { NODE_REGISTRY_VERSION } from '../versions';
 
-/**
- * Optional live source of node descriptions (parameter schemas, credentials).
- * Matches `InstanceAiNodeService.getDescription`.
- */
+/** Optional live source of node descriptions. Matches `InstanceAiNodeService.getDescription`. */
 export interface NodeDescriptionSource {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 }
@@ -19,10 +16,8 @@ export interface NodeRegistryOptions {
 }
 
 /**
- * Version-aware registry of supported operations. Static entries drive
- * retrieval, binding and compilation; live descriptions (when a source is
- * wired) back parameter validation. Descriptions are cached per node
- * type/version so a build never pays for repeated lookups.
+ * Version-aware registry of supported operations. Static entries drive retrieval, binding and
+ * compilation. Live descriptions back parameter validation and are cached per node type/version.
  */
 export class NodeRegistry {
 	readonly version = NODE_REGISTRY_VERSION;
@@ -32,10 +27,9 @@ export class NodeRegistry {
 	private readonly descriptionCache = new Map<string, Promise<NodeDescription | null>>();
 
 	constructor(private readonly options: NodeRegistryOptions = {}) {
+		const installed = options.installedNodeTypes;
 		for (const operation of options.operations ?? PHASE_ONE_OPERATIONS) {
-			if (options.installedNodeTypes && !options.installedNodeTypes.has(operation.nodeType))
-				continue;
-			this.byId.set(operation.id, operation);
+			if (!installed || installed.has(operation.nodeType)) this.byId.set(operation.id, operation);
 		}
 	}
 
@@ -45,9 +39,8 @@ export class NodeRegistry {
 
 	require(operationId: string): NodeOperation {
 		const operation = this.byId.get(operationId);
-		if (!operation)
-			throw new Error(`Unknown operation "${operationId}" (registry ${this.version}).`);
-		return operation;
+		if (operation) return operation;
+		throw new Error(`Unknown operation "${operationId}" (registry ${this.version}).`);
 	}
 
 	list(filter: { kind?: OperationKind; integration?: string } = {}): NodeOperation[] {

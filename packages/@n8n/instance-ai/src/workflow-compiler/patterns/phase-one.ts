@@ -1,7 +1,9 @@
 import { CORE_OPERATION_IDS } from '../catalog/operations';
 import { expr, field, input, template } from '../expressions/expression';
-import type { StepIR, TriggerIR } from '../ir/schema';
-import type { WorkflowPattern } from './types';
+import type { ActionIR, BranchIR, Condition, StepIR, TriggerIR } from '../ir/schema';
+import type { PatternContext, PatternInputDefinition, WorkflowPattern } from './types';
+
+type InputExtra = Partial<Pick<PatternInputDefinition, 'question' | 'options' | 'default'>>;
 
 function asString(value: unknown, fallback = ''): string {
 	return typeof value === 'string' ? value : fallback;
@@ -21,56 +23,77 @@ function asStringList(value: unknown): string[] {
 	return [];
 }
 
+/** Splits a comma-separated keyword list. Keywords may contain spaces. */
+const kw = (list: string): string[] => list.split(',').map((keyword) => keyword.trim());
+const inputDef =
+	(required: boolean) =>
+	(
+		name: string,
+		type: PatternInputDefinition['type'],
+		description: string,
+		extra: InputExtra = {},
+	): PatternInputDefinition => ({ name, type, required, description, ...extra });
+const reqInput = inputDef(true);
+const optInput = inputDef(false);
+/** Builds a pattern at version 1 and splits the keyword list. */
+const pattern = (
+	definition: Omit<WorkflowPattern, 'version' | 'keywords'> & { keywords: string },
+): WorkflowPattern => ({ version: 1, ...definition, keywords: kw(definition.keywords) });
+const trigger = (
+	context: PatternContext,
+	triggerKind: TriggerIR['triggerKind'],
+	operationId: string,
+	label: string,
+	params: TriggerIR['params'],
+): TriggerIR => ({
+	id: context.triggerStepId,
+	kind: 'trigger',
+	triggerKind,
+	label,
+	operation: { operationId },
+	params,
+});
+const action = (
+	id: string,
+	label: string,
+	operationId: string,
+	params: ActionIR['params'],
+): ActionIR => ({ id, kind: 'action', label, operation: { operationId }, params });
+const branch = (id: string, label: string, condition: Condition, then: StepIR[]): BranchIR => ({
+	id,
+	kind: 'branch',
+	label,
+	condition,
+	then,
+	else: [],
+});
+const slackNotify = (id: string, channel: unknown, text: unknown) =>
+	action(id, 'Notify Slack', 'slack.message.post', { channel: asString(channel), text });
+
 /** Webhook trigger that answers from a Respond node, with optional payload validation. */
-export const WEBHOOK_REQUEST_RESPONSE: WorkflowPattern = {
+export const WEBHOOK_REQUEST_RESPONSE = pattern({
 	id: 'webhook_request_response',
-	version: 1,
 	title: 'Webhook request/response',
 	description: 'HTTP endpoint that validates the payload and responds from the workflow.',
-	keywords: ['webhook', 'api', 'endpoint', 'post', 'get', 'request', 'respond', 'http'],
+	keywords: 'webhook, api, endpoint, post, get, request, respond, http',
 	requiredOperations: [CORE_OPERATION_IDS.WEBHOOK_TRIGGER],
 	inputs: [
-		{
-			name: 'method',
-			type: 'enum',
-			required: true,
+		reqInput('method', 'enum', 'HTTP method.', {
 			options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-			description: 'HTTP method.',
 			question: 'Which HTTP method should the endpoint accept?',
-		},
-		{
-			name: 'path',
-			type: 'string',
-			required: true,
-			description: 'Endpoint path.',
+		}),
+		reqInput('path', 'string', 'Endpoint path.', {
 			question: 'What path should the endpoint use?',
-		},
-		{
-			name: 'requiredFields',
-			type: 'string[]',
-			required: false,
-			description: 'Body fields that must be present.',
-		},
-		{
-			name: 'emailFields',
-			type: 'string[]',
-			required: false,
-			description: 'Body fields that must be valid emails.',
-		},
+		}),
+		optInput('requiredFields', 'string[]', 'Body fields that must be present.'),
+		optInput('emailFields', 'string[]', 'Body fields that must be valid emails.'),
 	],
 	instantiate(inputs, context) {
-		const trigger: TriggerIR = {
-			id: context.triggerStepId,
-			kind: 'trigger',
-			triggerKind: 'webhook',
-			label: 'Webhook',
-			operation: { operationId: CORE_OPERATION_IDS.WEBHOOK_TRIGGER },
-			params: {
-				method: asString(inputs.method, 'POST'),
-				path: asString(inputs.path).replace(/^\/+/, ''),
-				responseMode: 'responseNode',
-			},
-		};
+		const webhook = trigger(context, 'webhook', CORE_OPERATION_IDS.WEBHOOK_TRIGGER, 'Webhook', {
+			method: asString(inputs.method, 'POST'),
+			path: asString(inputs.path).replace(/^\/+/, ''),
+			responseMode: 'responseNode',
+		});
 		const steps: StepIR[] = [];
 		const required = asStringList(inputs.requiredFields);
 		const emails = asStringList(inputs.emailFields);
@@ -86,353 +109,209 @@ export const WEBHOOK_REQUEST_RESPONSE: WorkflowPattern = {
 				onInvalid: 'respond_400',
 			});
 		}
-		return { triggers: [trigger], steps };
+		return { triggers: [webhook], steps };
 	},
-};
+});
 
-export const SCHEDULED_JOB: WorkflowPattern = {
+export const SCHEDULED_JOB = pattern({
 	id: 'scheduled_job',
-	version: 1,
 	title: 'Scheduled job',
 	description: 'Runs on a cron schedule.',
-	keywords: ['schedule', 'nightly', 'daily', 'hourly', 'every', 'cron', 'reconcile', 'periodic'],
+	keywords: 'schedule, nightly, daily, hourly, every, cron, reconcile, periodic',
 	requiredOperations: [CORE_OPERATION_IDS.SCHEDULE_TRIGGER],
 	inputs: [
-		{
-			name: 'cron',
-			type: 'string',
-			required: true,
-			description: 'Cron expression.',
+		reqInput('cron', 'string', 'Cron expression.', {
 			question: 'How often should the workflow run (for example "every night at 2am")?',
-		},
+		}),
 	],
-	instantiate(inputs, context) {
-		return {
-			triggers: [
-				{
-					id: context.triggerStepId,
-					kind: 'trigger',
-					triggerKind: 'schedule',
-					label: 'Schedule',
-					operation: { operationId: CORE_OPERATION_IDS.SCHEDULE_TRIGGER },
-					params: { cron: asString(inputs.cron, '0 2 * * *') },
-				},
-			],
-			steps: [],
-		};
-	},
-};
+	instantiate: (inputs, context) => ({
+		triggers: [
+			trigger(context, 'schedule', CORE_OPERATION_IDS.SCHEDULE_TRIGGER, 'Schedule', {
+				cron: asString(inputs.cron, '0 2 * * *'),
+			}),
+		],
+		steps: [],
+	}),
+});
 
-export const MANUAL_RUN: WorkflowPattern = {
+export const MANUAL_RUN = pattern({
 	id: 'manual_run',
-	version: 1,
 	title: 'Manual run',
 	description: 'Runs when a user clicks execute.',
-	keywords: ['manual', 'one-off', 'once', 'test'],
+	keywords: 'manual, one-off, once, test',
 	requiredOperations: [CORE_OPERATION_IDS.MANUAL_TRIGGER],
 	inputs: [],
-	instantiate(_inputs, context) {
-		return {
-			triggers: [
-				{
-					id: context.triggerStepId,
-					kind: 'trigger',
-					triggerKind: 'manual',
-					label: 'Manual Trigger',
-					operation: { operationId: CORE_OPERATION_IDS.MANUAL_TRIGGER },
-					params: {},
-				},
-			],
-			steps: [],
-		};
-	},
-};
+	instantiate: (_inputs, context) => ({
+		triggers: [trigger(context, 'manual', CORE_OPERATION_IDS.MANUAL_TRIGGER, 'Manual Trigger', {})],
+		steps: [],
+	}),
+});
 
-export const CRM_UPSERT_AND_NOTIFY: WorkflowPattern = {
+export const CRM_UPSERT_AND_NOTIFY = pattern({
 	id: 'crm_upsert_and_notify',
-	version: 1,
 	title: 'CRM upsert and notify when new',
 	description: 'Upserts a contact and posts to Slack only when the contact was created.',
-	keywords: ['hubspot', 'crm', 'upsert', 'contact', 'notify', 'slack', 'new', 'lead', 'customer'],
+	keywords: 'hubspot, crm, upsert, contact, notify, slack, new, lead, customer',
 	requiredOperations: ['hubspot.contact.upsert', 'slack.message.post', CORE_OPERATION_IDS.IF],
 	inputs: [
-		{
-			name: 'emailField',
-			type: 'string',
-			required: true,
-			description: 'Path to the email on the trigger payload.',
+		reqInput('emailField', 'string', 'Path to the email on the trigger payload.', {
 			default: 'body.email',
-		},
-		{
-			name: 'slackChannel',
-			type: 'string',
-			required: true,
-			description: 'Channel for new-contact notifications.',
+		}),
+		reqInput('slackChannel', 'string', 'Channel for new-contact notifications.', {
 			question: 'Which Slack channel should receive new-contact notifications?',
-		},
-		{
-			name: 'notifyOnlyWhenNew',
-			type: 'boolean',
-			required: false,
-			description: 'Notify only for created contacts.',
+		}),
+		optInput('notifyOnlyWhenNew', 'boolean', 'Notify only for created contacts.', {
 			default: true,
-		},
+		}),
 	],
 	instantiate(inputs, context) {
 		const emailPath = asString(inputs.emailField, 'body.email').split('.');
 		const upsertId = context.stepId('upsert-contact');
 		const notifyId = context.stepId('notify-sales');
-		const notify: StepIR = {
-			id: notifyId,
-			kind: 'action',
-			label: 'Notify Slack',
-			operation: { operationId: 'slack.message.post' },
-			params: {
-				channel: asString(inputs.slackChannel),
-				text: expr(template('New contact: ', field(context.triggerStepId, ...emailPath))),
-			},
-		};
+		const notify = slackNotify(
+			notifyId,
+			inputs.slackChannel,
+			expr(template('New contact: ', field(context.triggerStepId, ...emailPath))),
+		);
 		const steps: StepIR[] = [
-			{
-				id: upsertId,
-				kind: 'action',
-				label: 'Upsert Contact',
-				operation: { operationId: 'hubspot.contact.upsert' },
-				params: { email: expr(field(context.triggerStepId, ...emailPath)) },
-			},
+			action(upsertId, 'Upsert Contact', 'hubspot.contact.upsert', {
+				email: expr(field(context.triggerStepId, ...emailPath)),
+			}),
 		];
-		if (inputs.notifyOnlyWhenNew === false) {
-			steps.push(notify);
-		} else {
-			steps.push({
-				id: context.stepId('is-new'),
-				kind: 'branch',
-				label: 'Is New Contact?',
-				condition: { op: 'is_true', left: field(upsertId, 'isNew') },
-				then: [notify],
-				else: [],
-			});
+		if (inputs.notifyOnlyWhenNew === false) steps.push(notify);
+		else {
+			const condition: Condition = { op: 'is_true', left: field(upsertId, 'isNew') };
+			steps.push(branch(context.stepId('is-new'), 'Is New Contact?', condition, [notify]));
 		}
 		return { steps };
 	},
-};
+});
 
-export const AUDIT_PERSIST: WorkflowPattern = {
+export const AUDIT_PERSIST = pattern({
 	id: 'audit_persist',
-	version: 1,
 	title: 'Persist audit record',
 	description: 'Stores every incoming item in a Postgres table.',
-	keywords: ['postgres', 'store', 'save', 'persist', 'audit', 'record', 'log', 'database'],
+	keywords: 'postgres, store, save, persist, audit, record, log, database',
 	requiredOperations: ['postgres.row.insert'],
 	inputs: [
-		{
-			name: 'table',
-			type: 'string',
-			required: true,
-			description: 'Target table.',
+		reqInput('table', 'string', 'Target table.', {
 			question: 'Which Postgres table should store the records?',
-		},
+		}),
 	],
-	instantiate(inputs, context) {
-		return {
-			steps: [
-				{
-					id: context.stepId('store-audit'),
-					kind: 'action',
-					label: 'Store Audit Record',
-					operation: { operationId: 'postgres.row.insert' },
-					params: { table: asString(inputs.table) },
-				},
-			],
-		};
-	},
-};
+	instantiate: (inputs, context) => ({
+		steps: [
+			action(context.stepId('store-audit'), 'Store Audit Record', 'postgres.row.insert', {
+				table: asString(inputs.table),
+			}),
+		],
+	}),
+});
 
-export const CONDITIONAL_NOTIFICATION: WorkflowPattern = {
+export const CONDITIONAL_NOTIFICATION = pattern({
 	id: 'conditional_notification',
-	version: 1,
 	title: 'Notify Slack when a field is set',
 	description: 'Posts to Slack when a field on the current item is truthy.',
-	keywords: ['notify', 'slack', 'alert', 'when', 'only if', 'message'],
+	keywords: 'notify, slack, alert, when, only if, message',
 	requiredOperations: ['slack.message.post', CORE_OPERATION_IDS.IF],
 	inputs: [
-		{
-			name: 'slackChannel',
-			type: 'string',
-			required: true,
-			description: 'Channel.',
+		reqInput('slackChannel', 'string', 'Channel.', {
 			question: 'Which Slack channel should receive the notification?',
-		},
-		{
-			name: 'conditionField',
-			type: 'string',
-			required: false,
-			description: 'Item field that must be truthy; omit to always notify.',
-		},
-		{
-			name: 'text',
-			type: 'string',
-			required: false,
-			description: 'Message text.',
-			default: 'Notification from n8n',
-		},
+		}),
+		optInput('conditionField', 'string', 'Item field that must be truthy; omit to always notify.'),
+		optInput('text', 'string', 'Message text.', { default: 'Notification from n8n' }),
 	],
 	instantiate(inputs, context) {
-		const notify: StepIR = {
-			id: context.stepId('notify'),
-			kind: 'action',
-			label: 'Notify Slack',
-			operation: { operationId: 'slack.message.post' },
-			params: {
-				channel: asString(inputs.slackChannel),
-				text: asString(inputs.text, 'Notification from n8n'),
-			},
-		};
+		const text = asString(inputs.text, 'Notification from n8n');
+		const notify = slackNotify(context.stepId('notify'), inputs.slackChannel, text);
 		const conditionField = asString(inputs.conditionField);
 		if (!conditionField) return { steps: [notify] };
+		const condition: Condition = { op: 'is_true', left: input(...conditionField.split('.')) };
 		return {
-			steps: [
-				{
-					id: context.stepId('should-notify'),
-					kind: 'branch',
-					label: 'Should Notify?',
-					condition: { op: 'is_true', left: input(...conditionField.split('.')) },
-					then: [notify],
-					else: [],
-				},
-			],
+			steps: [branch(context.stepId('should-notify'), 'Should Notify?', condition, [notify])],
 		};
 	},
-};
+});
 
-export const SUBWORKFLOW_ORCHESTRATION: WorkflowPattern = {
+export const SUBWORKFLOW_ORCHESTRATION = pattern({
 	id: 'subworkflow_orchestration',
-	version: 1,
 	title: 'Call a sub-workflow',
 	description: 'Delegates work to another workflow and waits for its output.',
-	keywords: [
-		'sub-workflow',
-		'subworkflow',
-		'call workflow',
-		'execute workflow',
-		'delegate',
-		'child',
-	],
+	keywords: 'sub-workflow, subworkflow, call workflow, execute workflow, delegate, child',
 	requiredOperations: [CORE_OPERATION_IDS.EXECUTE_WORKFLOW],
 	inputs: [
-		{ name: 'workflowId', type: 'string', required: false, description: 'Saved workflow id.' },
-		{
-			name: 'workflowRef',
-			type: 'string',
-			required: false,
-			description: 'Bundle-local workflow id.',
-		},
+		optInput('workflowId', 'string', 'Saved workflow id.'),
+		optInput('workflowRef', 'string', 'Bundle-local workflow id.'),
 	],
-	instantiate(inputs, context) {
-		return {
-			steps: [
-				{
-					id: context.stepId('call-workflow'),
-					kind: 'call_workflow',
-					label: 'Call Sub-workflow',
-					...(typeof inputs.workflowId === 'string' ? { workflowId: inputs.workflowId } : {}),
-					...(typeof inputs.workflowRef === 'string' ? { workflowRef: inputs.workflowRef } : {}),
-					inputs: {},
-					wait: true,
-				},
-			],
-		};
-	},
-};
+	instantiate: (inputs, context) => ({
+		steps: [
+			{
+				id: context.stepId('call-workflow'),
+				kind: 'call_workflow',
+				label: 'Call Sub-workflow',
+				...(typeof inputs.workflowId === 'string' ? { workflowId: inputs.workflowId } : {}),
+				...(typeof inputs.workflowRef === 'string' ? { workflowRef: inputs.workflowRef } : {}),
+				inputs: {},
+				wait: true,
+			},
+		],
+	}),
+});
 
-export const FAN_OUT_PROCESSING: WorkflowPattern = {
+export const FAN_OUT_PROCESSING = pattern({
 	id: 'fan_out_processing',
-	version: 1,
 	title: 'Fan-out processing',
 	description: 'Processes items in rate-limited batches through an HTTP call.',
-	keywords: ['each', 'every item', 'batch', 'loop', 'fan out', 'rate limit', 'bulk'],
+	keywords: 'each, every item, batch, loop, fan out, rate limit, bulk',
 	requiredOperations: [CORE_OPERATION_IDS.LOOP, CORE_OPERATION_IDS.HTTP_REQUEST],
 	inputs: [
-		{
-			name: 'url',
-			type: 'string',
-			required: true,
-			description: 'URL called per batch.',
+		reqInput('url', 'string', 'URL called per batch.', {
 			question: 'Which URL should be called for each item?',
-		},
-		{
-			name: 'batchSize',
-			type: 'number',
-			required: false,
-			description: 'Items per batch.',
-			default: 10,
-		},
+		}),
+		optInput('batchSize', 'number', 'Items per batch.', { default: 10 }),
 	],
-	instantiate(inputs, context) {
-		return {
-			steps: [
-				{
-					id: context.stepId('process-batches'),
-					kind: 'map',
-					label: 'Loop Over Items',
-					batchSize: asNumber(inputs.batchSize, 10),
-					steps: [
-						{
-							id: context.stepId('call-api'),
-							kind: 'action',
-							label: 'Call API',
-							operation: { operationId: CORE_OPERATION_IDS.HTTP_REQUEST },
-							params: { url: asString(inputs.url), method: 'POST' },
-							onError: 'retry_exponential',
-							retry: { maxAttempts: 3, backoff: 'exponential', waitMs: 1000 },
-						},
-					],
-				},
-			],
-		};
-	},
-};
+	instantiate: (inputs, context) => ({
+		steps: [
+			{
+				id: context.stepId('process-batches'),
+				kind: 'map',
+				label: 'Loop Over Items',
+				batchSize: asNumber(inputs.batchSize, 10),
+				steps: [
+					{
+						...action(context.stepId('call-api'), 'Call API', CORE_OPERATION_IDS.HTTP_REQUEST, {
+							url: asString(inputs.url),
+							method: 'POST',
+						}),
+						onError: 'retry_exponential',
+						retry: { maxAttempts: 3, backoff: 'exponential', waitMs: 1000 },
+					},
+				],
+			},
+		],
+	}),
+});
 
-export const RESPOND_WITH_RESULT: WorkflowPattern = {
+export const RESPOND_WITH_RESULT = pattern({
 	id: 'respond_with_result',
-	version: 1,
 	title: 'Respond with a result field',
 	description: 'Returns selected fields from an earlier step as the HTTP response.',
-	keywords: ['respond', 'return', 'response', 'reply with'],
+	keywords: 'respond, return, response, reply with',
 	requiredOperations: [CORE_OPERATION_IDS.RESPOND],
 	inputs: [
-		{
-			name: 'fields',
-			type: 'json',
-			required: false,
-			description: 'Response body mapping (IR expressions).',
-		},
-		{
-			name: 'status',
-			type: 'number',
-			required: false,
-			description: 'HTTP status code.',
-			default: 200,
-		},
+		optInput('fields', 'json', 'Response body mapping (IR expressions).'),
+		optInput('status', 'number', 'HTTP status code.', { default: 200 }),
 	],
 	instantiate(inputs, context) {
 		const body =
 			typeof inputs.fields === 'object' && inputs.fields !== null
 				? (inputs.fields as Record<string, unknown>)
 				: { ok: true };
+		const status = asNumber(inputs.status, 200);
 		return {
-			steps: [
-				{
-					id: context.stepId('respond'),
-					kind: 'respond',
-					label: 'Respond',
-					status: asNumber(inputs.status, 200),
-					body,
-				},
-			],
+			steps: [{ id: context.stepId('respond'), kind: 'respond', label: 'Respond', status, body }],
 		};
 	},
-};
+});
 
 export const PHASE_ONE_PATTERNS: readonly WorkflowPattern[] = [
 	WEBHOOK_REQUEST_RESPONSE,

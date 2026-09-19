@@ -46,9 +46,8 @@ export class PatternRegistry {
 			}
 			if (score > 0) matches.push({ pattern, score });
 		}
-		return matches
-			.sort((a, b) => b.score - a.score || a.pattern.id.localeCompare(b.pattern.id))
-			.slice(0, limit);
+		matches.sort((a, b) => b.score - a.score || a.pattern.id.localeCompare(b.pattern.id));
+		return matches.slice(0, limit);
 	}
 }
 

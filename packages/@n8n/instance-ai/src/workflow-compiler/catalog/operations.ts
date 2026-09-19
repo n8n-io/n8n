@@ -1,4 +1,4 @@
-import type { NodeOperation } from './types';
+import type { NodeOperation, ParameterDefinition } from './types';
 
 /**
  * Phase-1 operation index. Every entry is reviewed: the node version, the
@@ -6,682 +6,74 @@ import type { NodeOperation } from './types';
  * this list (or generate it from node descriptions) to widen the catalog.
  */
 
-const WEBHOOK_TRIGGER: NodeOperation = {
-	id: 'webhook.trigger',
-	nodeType: 'n8n-nodes-base.webhook',
-	version: 2.1,
-	integration: 'webhook',
-	kind: 'trigger',
-	title: 'Webhook',
-	description: 'Starts the workflow when an HTTP request reaches a path.',
-	keywords: ['webhook', 'http', 'endpoint', 'api', 'post', 'get', 'request', 'rest', 'receive'],
-	baseParameters: { options: {} },
-	requiredParameters: [
-		{
-			name: 'method',
-			path: 'httpMethod',
-			type: 'enum',
-			required: true,
-			options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-			description: 'HTTP method the endpoint accepts.',
-			question: 'Which HTTP method should the endpoint accept?',
-		},
-		{
-			name: 'path',
-			path: 'path',
-			type: 'string',
-			required: true,
-			description: 'Path segment of the endpoint URL.',
-			question: 'What path should the endpoint use?',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'responseMode',
-			path: 'responseMode',
-			type: 'enum',
-			required: false,
-			options: ['onReceived', 'lastNode', 'responseNode'],
-			description: 'When the HTTP response is sent.',
-		},
-	],
-	credentials: [],
-	outputContract: {
-		cardinality: 'one',
-		fields: [
-			{ name: 'body', type: 'object', nullable: false },
-			{ name: 'headers', type: 'object', nullable: false },
-			{ name: 'query', type: 'object', nullable: false },
-		],
-	},
-};
-
-const SCHEDULE_TRIGGER: NodeOperation = {
-	id: 'schedule.trigger',
-	nodeType: 'n8n-nodes-base.scheduleTrigger',
-	version: 1.2,
-	integration: 'schedule',
-	kind: 'trigger',
-	title: 'Schedule',
-	description: 'Starts the workflow on a fixed interval or cron expression.',
-	keywords: [
-		'schedule',
-		'cron',
-		'every',
-		'daily',
-		'nightly',
-		'hourly',
-		'weekly',
-		'interval',
-		'timer',
-		'periodic',
-		'reconcile',
-	],
-	baseParameters: {},
-	requiredParameters: [
-		{
-			name: 'cron',
-			path: 'rule',
-			type: 'json',
-			required: true,
-			description: 'Cron expression compiled into the schedule rule.',
-			question: 'How often should the workflow run?',
-		},
-	],
-	optionalParameters: [],
-	credentials: [],
-	outputContract: {
-		cardinality: 'one',
-		fields: [{ name: 'timestamp', type: 'string', nullable: false }],
-	},
-};
-
-const MANUAL_TRIGGER: NodeOperation = {
-	id: 'manual.trigger',
-	nodeType: 'n8n-nodes-base.manualTrigger',
-	version: 1,
-	integration: 'manual',
-	kind: 'trigger',
-	title: 'Manual trigger',
-	description: 'Starts the workflow when a user runs it in the editor.',
-	keywords: ['manual', 'click', 'test', 'run', 'button', 'one-off', 'once'],
+type Defaulted = 'kind' | 'credentials' | `${'base' | 'required' | 'optional'}Parameters`;
+type OperationInput = Omit<NodeOperation, Defaulted | 'keywords'> &
+	Partial<Pick<NodeOperation, Defaulted>> & { keywords: string };
+type ParameterExtra = Partial<
+	Pick<ParameterDefinition, 'options' | 'locatorMode' | 'question' | 'derivable'>
+>;
+/** Splits a comma-separated keyword list. Keywords may contain spaces. */
+const kw = (list: string): string[] => list.split(',').map((keyword) => keyword.trim());
+const param =
+	(required: boolean) =>
+	(
+		name: string,
+		path: string,
+		type: ParameterDefinition['type'],
+		description: string,
+		extra: ParameterExtra = {},
+	): ParameterDefinition => ({ name, path, type, required, description, ...extra });
+const req = param(true);
+const opt = param(false);
+const cred = (type: string) => [{ type, required: true }];
+/** Builds an operation. Fills the action defaults and splits the keyword list. */
+const op = (input: OperationInput): NodeOperation => ({
+	kind: 'action',
 	baseParameters: {},
 	requiredParameters: [],
 	optionalParameters: [],
 	credentials: [],
-	outputContract: { cardinality: 'one', fields: [] },
-};
+	...input,
+	keywords: kw(input.keywords),
+});
 
-const HTTP_REQUEST: NodeOperation = {
-	id: 'http.request',
-	label: 'HTTP Request',
-	nodeType: 'n8n-nodes-base.httpRequest',
-	version: 4.2,
-	integration: 'http',
-	kind: 'action',
-	title: 'HTTP Request',
-	description: 'Calls an HTTP API.',
-	keywords: ['http', 'api', 'call', 'fetch', 'rest', 'request', 'enrich', 'lookup', 'external'],
-	baseParameters: { options: {} },
-	requiredParameters: [
-		{
-			name: 'url',
-			path: 'url',
-			type: 'string',
-			required: true,
-			description: 'URL to call.',
-			question: 'Which URL should the request call?',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'method',
-			path: 'method',
-			type: 'enum',
-			required: false,
-			options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-			description: 'HTTP method.',
-		},
-		{ name: 'body', path: 'jsonBody', type: 'json', required: false, description: 'JSON body.' },
-	],
-	credentials: [],
-	outputContract: { cardinality: 'many', fields: [] },
-	rateLimit: { requestsPerSecond: 5 },
-};
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+const pgBase = (operation: string) => ({
+	operation,
+	schema: { __rl: true, mode: 'list', value: 'public' },
+	options: {},
+});
+const pgTable = (description: string, question: string) =>
+	req('table', 'table', 'resource_locator', description, { locatorMode: 'name', question });
+const slackChannel = (description: string, question: string) =>
+	req('channel', 'channelId', 'resource_locator', description, { locatorMode: 'name', question });
+const hubspotBase = (operation: string, fields: Record<string, unknown>) => ({
+	resource: 'contact',
+	operation,
+	authentication: 'appToken',
+	...fields,
+});
+const hubspotContactId = (question: string) =>
+	req('contactId', 'contactId', 'string', 'Contact id.', { question });
 
-const IF_NODE: NodeOperation = {
-	id: 'control.if',
-	nodeType: 'n8n-nodes-base.if',
-	version: 2.2,
-	integration: 'control',
-	kind: 'control',
-	title: 'If',
-	description: 'Routes items to the true or false output.',
-	keywords: ['if', 'condition', 'branch', 'only when', 'check'],
-	baseParameters: {},
-	requiredParameters: [
-		{
-			name: 'conditions',
-			path: 'conditions',
-			type: 'json',
-			required: true,
-			derivable: true,
-			description: 'Filter conditions.',
-		},
-	],
-	optionalParameters: [],
-	credentials: [],
-	outputs: ['true', 'false'],
-};
+/** Operation ids the compiler relies on for control flow and pattern expansion. */
+export const CORE_OPERATION_IDS = {
+	WEBHOOK_TRIGGER: 'webhook.trigger',
+	SCHEDULE_TRIGGER: 'schedule.trigger',
+	MANUAL_TRIGGER: 'manual.trigger',
+	HTTP_REQUEST: 'http.request',
+	IF: 'control.if',
+	SWITCH: 'control.switch',
+	SET: 'transform.set',
+	CODE: 'transform.code',
+	RESPOND: 'webhook.respond',
+	EXECUTE_WORKFLOW: 'workflow.execute',
+	MERGE: 'control.merge',
+	LOOP: 'control.loop',
+	NOOP: 'control.noop',
+} as const;
 
-const SWITCH_NODE: NodeOperation = {
-	id: 'control.switch',
-	nodeType: 'n8n-nodes-base.switch',
-	version: 3.2,
-	integration: 'control',
-	kind: 'control',
-	title: 'Switch',
-	description: 'Routes items to one of several outputs by value.',
-	keywords: ['switch', 'route', 'case', 'depending on', 'by type'],
-	baseParameters: {},
-	requiredParameters: [
-		{
-			name: 'rules',
-			path: 'rules',
-			type: 'json',
-			required: true,
-			derivable: true,
-			description: 'Routing rules.',
-		},
-	],
-	optionalParameters: [],
-	credentials: [],
-};
-
-const SET_NODE: NodeOperation = {
-	id: 'transform.set',
-	nodeType: 'n8n-nodes-base.set',
-	version: 3.4,
-	integration: 'transform',
-	kind: 'action',
-	title: 'Edit Fields',
-	description: 'Sets or renames fields on each item.',
-	keywords: ['set', 'edit fields', 'map', 'rename', 'transform', 'format', 'normalize', 'shape'],
-	baseParameters: { mode: 'manual', options: {} },
-	requiredParameters: [
-		{
-			name: 'assignments',
-			path: 'assignments',
-			type: 'json',
-			required: true,
-			derivable: true,
-			description: 'Field assignments.',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'includeOtherFields',
-			path: 'includeOtherFields',
-			type: 'boolean',
-			required: false,
-			description: 'Keep incoming fields.',
-		},
-	],
-	credentials: [],
-};
-
-const CODE_NODE: NodeOperation = {
-	id: 'transform.code',
-	nodeType: 'n8n-nodes-base.code',
-	version: 2,
-	integration: 'transform',
-	kind: 'action',
-	title: 'Code',
-	description: 'Runs custom JavaScript or Python.',
-	keywords: ['code', 'script', 'javascript', 'python', 'custom logic', 'compute'],
-	baseParameters: {},
-	requiredParameters: [
-		{
-			name: 'source',
-			path: 'jsCode',
-			type: 'string',
-			required: true,
-			derivable: true,
-			description: 'Source code.',
-		},
-	],
-	optionalParameters: [],
-	credentials: [],
-};
-
-const RESPOND_TO_WEBHOOK: NodeOperation = {
-	id: 'webhook.respond',
-	nodeType: 'n8n-nodes-base.respondToWebhook',
-	version: 1.1,
-	integration: 'webhook',
-	kind: 'respond',
-	title: 'Respond to Webhook',
-	description: 'Sends the HTTP response for the webhook that started the workflow.',
-	keywords: ['respond', 'response', 'reply', 'return', 'status code', 'json'],
-	baseParameters: { respondWith: 'json' },
-	requiredParameters: [
-		{
-			name: 'body',
-			path: 'responseBody',
-			type: 'json',
-			required: true,
-			derivable: true,
-			description: 'Response body.',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'status',
-			path: 'options.responseCode',
-			type: 'number',
-			required: false,
-			description: 'HTTP status code.',
-		},
-	],
-	credentials: [],
-};
-
-const EXECUTE_WORKFLOW: NodeOperation = {
-	id: 'workflow.execute',
-	nodeType: 'n8n-nodes-base.executeWorkflow',
-	version: 1.2,
-	integration: 'workflow',
-	kind: 'action',
-	title: 'Execute Workflow',
-	description: 'Calls another workflow and waits for its result.',
-	keywords: [
-		'execute workflow',
-		'sub-workflow',
-		'subworkflow',
-		'call workflow',
-		'child workflow',
-		'delegate',
-	],
-	baseParameters: { source: 'database', options: {} },
-	requiredParameters: [
-		{
-			name: 'workflowId',
-			path: 'workflowId',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'id',
-			description: 'Workflow to call.',
-			question: 'Which workflow should be called?',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'inputs',
-			path: 'workflowInputs',
-			type: 'json',
-			required: false,
-			description: 'Input mapping.',
-		},
-	],
-	credentials: [],
-};
-
-const MERGE_NODE: NodeOperation = {
-	id: 'control.merge',
-	nodeType: 'n8n-nodes-base.merge',
-	version: 3,
-	integration: 'control',
-	kind: 'control',
-	title: 'Merge',
-	description: 'Waits for several branches and combines their items.',
-	keywords: ['merge', 'join', 'combine', 'wait for both'],
-	baseParameters: { mode: 'append', numberInputs: 2 },
-	requiredParameters: [],
-	optionalParameters: [],
-	credentials: [],
-};
-
-const SPLIT_IN_BATCHES: NodeOperation = {
-	id: 'control.loop',
-	nodeType: 'n8n-nodes-base.splitInBatches',
-	version: 3,
-	integration: 'control',
-	kind: 'control',
-	title: 'Loop Over Items',
-	description: 'Processes items in batches.',
-	keywords: ['loop', 'batch', 'each', 'for every', 'iterate', 'fan out', 'rate limit'],
-	baseParameters: { options: {} },
-	requiredParameters: [
-		{
-			name: 'batchSize',
-			path: 'batchSize',
-			type: 'number',
-			required: true,
-			derivable: true,
-			description: 'Items per batch.',
-		},
-	],
-	optionalParameters: [],
-	credentials: [],
-	outputs: ['done', 'loop'],
-};
-
-const NOOP: NodeOperation = {
-	id: 'control.noop',
-	nodeType: 'n8n-nodes-base.noOp',
-	version: 1,
-	integration: 'control',
-	kind: 'control',
-	title: 'No Operation',
-	description: 'Passes items through unchanged.',
-	keywords: ['noop', 'nothing', 'pass through'],
-	baseParameters: {},
-	requiredParameters: [],
-	optionalParameters: [],
-	credentials: [],
-};
-
-const SLACK_POST_MESSAGE: NodeOperation = {
-	id: 'slack.message.post',
-	label: 'Send Slack Message',
-	nodeType: 'n8n-nodes-base.slack',
-	version: 2.2,
-	integration: 'slack',
-	resource: 'message',
-	operation: 'post',
-	kind: 'action',
-	title: 'Slack: post channel message',
-	description: 'Posts a message to a Slack channel.',
-	keywords: [
-		'slack',
-		'message',
-		'notify',
-		'notification',
-		'post',
-		'channel',
-		'alert',
-		'tell',
-		'ping',
-		'team',
-	],
-	baseParameters: { resource: 'message', operation: 'post', select: 'channel', otherOptions: {} },
-	requiredParameters: [
-		{
-			name: 'channel',
-			path: 'channelId',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'name',
-			description: 'Channel name such as #sales.',
-			question: 'Which Slack channel should receive the message?',
-		},
-		{
-			name: 'text',
-			path: 'text',
-			type: 'string',
-			required: true,
-			derivable: true,
-			description: 'Message text.',
-		},
-	],
-	optionalParameters: [],
-	credentials: [{ type: 'slackApi', required: true }],
-	rateLimit: { requestsPerSecond: 1 },
-};
-
-const SLACK_REPLY_THREAD: NodeOperation = {
-	id: 'slack.message.reply',
-	label: 'Reply In Thread',
-	nodeType: 'n8n-nodes-base.slack',
-	version: 2.2,
-	integration: 'slack',
-	resource: 'message',
-	operation: 'post',
-	kind: 'action',
-	title: 'Slack: reply in thread',
-	description: 'Posts a reply into an existing Slack thread.',
-	keywords: ['slack', 'reply', 'thread', 'respond in thread'],
-	baseParameters: { resource: 'message', operation: 'post', select: 'channel' },
-	requiredParameters: [
-		{
-			name: 'channel',
-			path: 'channelId',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'name',
-			description: 'Channel name.',
-			question: 'Which Slack channel holds the thread?',
-		},
-		{
-			name: 'text',
-			path: 'text',
-			type: 'string',
-			required: true,
-			derivable: true,
-			description: 'Reply text.',
-		},
-		{
-			name: 'threadTs',
-			path: 'otherOptions.thread_ts.replyValues.thread_ts',
-			type: 'string',
-			required: true,
-			description: 'Timestamp of the parent message.',
-			question: 'Which message timestamp (thread_ts) should the reply go to?',
-		},
-	],
-	optionalParameters: [],
-	credentials: [{ type: 'slackApi', required: true }],
-};
-
-const SLACK_UPDATE_MESSAGE: NodeOperation = {
-	id: 'slack.message.update',
-	label: 'Update Slack Message',
-	nodeType: 'n8n-nodes-base.slack',
-	version: 2.2,
-	integration: 'slack',
-	resource: 'message',
-	operation: 'update',
-	kind: 'action',
-	title: 'Slack: update message',
-	description: 'Edits an existing Slack message.',
-	keywords: ['slack', 'update message', 'edit message'],
-	baseParameters: { resource: 'message', operation: 'update' },
-	requiredParameters: [
-		{
-			name: 'channel',
-			path: 'channelId',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'name',
-			description: 'Channel name.',
-		},
-		{
-			name: 'ts',
-			path: 'ts',
-			type: 'string',
-			required: true,
-			description: 'Timestamp of the message.',
-			question: 'Which message timestamp (ts) should be updated?',
-		},
-		{
-			name: 'text',
-			path: 'text',
-			type: 'string',
-			required: true,
-			derivable: true,
-			description: 'New text.',
-		},
-	],
-	optionalParameters: [],
-	credentials: [{ type: 'slackApi', required: true }],
-};
-
-const POSTGRES_INSERT: NodeOperation = {
-	id: 'postgres.row.insert',
-	label: 'Insert Row',
-	nodeType: 'n8n-nodes-base.postgres',
-	version: 2.5,
-	integration: 'postgres',
-	resource: 'database',
-	operation: 'insert',
-	kind: 'action',
-	title: 'Postgres: insert row',
-	description: 'Inserts each item as a row.',
-	keywords: [
-		'postgres',
-		'postgresql',
-		'database',
-		'insert',
-		'store',
-		'save',
-		'persist',
-		'audit',
-		'record',
-		'log',
-		'sql',
-	],
-	baseParameters: {
-		operation: 'insert',
-		schema: { __rl: true, mode: 'list', value: 'public' },
-		options: {},
-	},
-	requiredParameters: [
-		{
-			name: 'table',
-			path: 'table',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'name',
-			description: 'Target table.',
-			question: 'Which Postgres table should receive the rows?',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'columns',
-			path: 'columns',
-			type: 'json',
-			required: false,
-			description: 'Column mapping; defaults to auto-map input fields.',
-		},
-	],
-	credentials: [{ type: 'postgres', required: true }],
-};
-
-const POSTGRES_UPSERT: NodeOperation = {
-	id: 'postgres.row.upsert',
-	label: 'Upsert Row',
-	nodeType: 'n8n-nodes-base.postgres',
-	version: 2.5,
-	integration: 'postgres',
-	resource: 'database',
-	operation: 'upsert',
-	kind: 'action',
-	title: 'Postgres: upsert row',
-	description: 'Inserts or updates a row by a unique column.',
-	keywords: ['postgres', 'upsert', 'insert or update', 'database'],
-	baseParameters: {
-		operation: 'upsert',
-		schema: { __rl: true, mode: 'list', value: 'public' },
-		options: {},
-	},
-	requiredParameters: [
-		{
-			name: 'table',
-			path: 'table',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'name',
-			description: 'Target table.',
-			question: 'Which Postgres table should be upserted?',
-		},
-	],
-	optionalParameters: [
-		{
-			name: 'columns',
-			path: 'columns',
-			type: 'json',
-			required: false,
-			description: 'Column mapping.',
-		},
-	],
-	credentials: [{ type: 'postgres', required: true }],
-};
-
-const POSTGRES_SELECT: NodeOperation = {
-	id: 'postgres.row.select',
-	label: 'Select Rows',
-	nodeType: 'n8n-nodes-base.postgres',
-	version: 2.5,
-	integration: 'postgres',
-	resource: 'database',
-	operation: 'select',
-	kind: 'action',
-	title: 'Postgres: select rows',
-	description: 'Reads rows from a table.',
-	keywords: [
-		'postgres',
-		'select',
-		'read',
-		'query',
-		'find',
-		'lookup',
-		'look up',
-		'rows',
-		'row',
-		'database',
-		'stuck',
-		'stalled',
-	],
-	baseParameters: {
-		operation: 'select',
-		schema: { __rl: true, mode: 'list', value: 'public' },
-		options: {},
-	},
-	requiredParameters: [
-		{
-			name: 'table',
-			path: 'table',
-			type: 'resource_locator',
-			required: true,
-			locatorMode: 'name',
-			description: 'Table to read.',
-			question: 'Which Postgres table should be read?',
-		},
-	],
-	optionalParameters: [],
-	credentials: [{ type: 'postgres', required: true }],
-	outputContract: { cardinality: 'many', fields: [] },
-};
-
-const POSTGRES_QUERY: NodeOperation = {
-	id: 'postgres.query.execute',
-	label: 'Run SQL Query',
-	nodeType: 'n8n-nodes-base.postgres',
-	version: 2.5,
-	integration: 'postgres',
-	resource: 'database',
-	operation: 'executeQuery',
-	kind: 'action',
-	title: 'Postgres: execute query',
-	description: 'Runs a SQL statement.',
-	keywords: ['postgres', 'sql', 'query', 'execute', 'statement'],
-	baseParameters: { operation: 'executeQuery', options: {} },
-	requiredParameters: [
-		{
-			name: 'query',
-			path: 'query',
-			type: 'string',
-			required: true,
-			description: 'SQL statement.',
-			question: 'Which SQL statement should run?',
-		},
-	],
-	optionalParameters: [],
-	credentials: [{ type: 'postgres', required: true }],
-};
-
-const HUBSPOT_UPSERT_CONTACT: NodeOperation = {
+const HUBSPOT_UPSERT_CONTACT = op({
 	id: 'hubspot.contact.upsert',
 	label: 'Upsert Contact',
 	nodeType: 'n8n-nodes-base.hubspot',
@@ -689,47 +81,15 @@ const HUBSPOT_UPSERT_CONTACT: NodeOperation = {
 	integration: 'hubspot',
 	resource: 'contact',
 	operation: 'upsert',
-	kind: 'action',
 	title: 'HubSpot: create or update contact',
 	description: 'Creates the contact by email or updates it when it exists.',
-	keywords: [
-		'hubspot',
-		'crm',
-		'contact',
-		'upsert',
-		'create or update',
-		'add',
-		'lead',
-		'customer',
-		'sync',
-	],
-	baseParameters: {
-		resource: 'contact',
-		operation: 'upsert',
-		authentication: 'appToken',
-		additionalFields: {},
-		options: {},
-	},
-	requiredParameters: [
-		{
-			name: 'email',
-			path: 'email',
-			type: 'string',
-			required: true,
-			derivable: true,
-			description: 'Contact email.',
-		},
-	],
+	keywords: 'hubspot, crm, contact, upsert, create or update, add, lead, customer, sync',
+	baseParameters: hubspotBase('upsert', { additionalFields: {}, options: {} }),
+	requiredParameters: [req('email', 'email', 'string', 'Contact email.', { derivable: true })],
 	optionalParameters: [
-		{
-			name: 'additionalFields',
-			path: 'additionalFields',
-			type: 'json',
-			required: false,
-			description: 'Extra contact properties.',
-		},
+		opt('additionalFields', 'additionalFields', 'json', 'Extra contact properties.'),
 	],
-	credentials: [{ type: 'hubspotAppToken', required: true }],
+	credentials: cred('hubspotAppToken'),
 	outputContract: {
 		cardinality: 'one',
 		fields: [
@@ -737,119 +97,389 @@ const HUBSPOT_UPSERT_CONTACT: NodeOperation = {
 			{ name: 'isNew', type: 'boolean', nullable: false },
 		],
 	},
-};
-
-const HUBSPOT_CREATE_CONTACT: NodeOperation = {
-	...HUBSPOT_UPSERT_CONTACT,
-	id: 'hubspot.contact.create',
-	label: 'Create Contact',
-	operation: 'create',
-	title: 'HubSpot: create contact',
-	description: 'Creates a new contact.',
-	keywords: ['hubspot', 'crm', 'contact', 'create', 'new'],
-	baseParameters: {
-		resource: 'contact',
-		operation: 'create',
-		authentication: 'appToken',
-		additionalFields: {},
-		options: {},
-	},
-};
-
-const HUBSPOT_UPDATE_CONTACT: NodeOperation = {
-	...HUBSPOT_UPSERT_CONTACT,
-	id: 'hubspot.contact.update',
-	label: 'Update Contact',
-	operation: 'update',
-	title: 'HubSpot: update contact',
-	description: 'Updates an existing contact by id.',
-	keywords: ['hubspot', 'crm', 'contact', 'update', 'change'],
-	baseParameters: {
-		resource: 'contact',
-		operation: 'update',
-		authentication: 'appToken',
-		updateFields: {},
-	},
-	requiredParameters: [
-		{
-			name: 'contactId',
-			path: 'contactId',
-			type: 'string',
-			required: true,
-			description: 'Contact id.',
-			question: 'Which HubSpot contact should be updated?',
-		},
-	],
-	optionalParameters: [],
-};
-
-const HUBSPOT_GET_CONTACT: NodeOperation = {
-	...HUBSPOT_UPSERT_CONTACT,
-	id: 'hubspot.contact.get',
-	label: 'Get Contact',
-	operation: 'get',
-	title: 'HubSpot: get contact',
-	description: 'Reads one contact by id.',
-	keywords: ['hubspot', 'crm', 'contact', 'get', 'read', 'fetch', 'lookup'],
-	baseParameters: {
-		resource: 'contact',
-		operation: 'get',
-		authentication: 'appToken',
-		additionalFields: {},
-	},
-	requiredParameters: [
-		{
-			name: 'contactId',
-			path: 'contactId',
-			type: 'string',
-			required: true,
-			description: 'Contact id.',
-			question: 'Which HubSpot contact id should be read?',
-		},
-	],
-	optionalParameters: [],
-};
+});
 
 export const PHASE_ONE_OPERATIONS: readonly NodeOperation[] = [
-	WEBHOOK_TRIGGER,
-	SCHEDULE_TRIGGER,
-	MANUAL_TRIGGER,
-	HTTP_REQUEST,
-	IF_NODE,
-	SWITCH_NODE,
-	SET_NODE,
-	CODE_NODE,
-	RESPOND_TO_WEBHOOK,
-	EXECUTE_WORKFLOW,
-	MERGE_NODE,
-	SPLIT_IN_BATCHES,
-	NOOP,
-	SLACK_POST_MESSAGE,
-	SLACK_REPLY_THREAD,
-	SLACK_UPDATE_MESSAGE,
-	POSTGRES_INSERT,
-	POSTGRES_UPSERT,
-	POSTGRES_SELECT,
-	POSTGRES_QUERY,
+	op({
+		id: CORE_OPERATION_IDS.WEBHOOK_TRIGGER,
+		nodeType: 'n8n-nodes-base.webhook',
+		version: 2.1,
+		integration: 'webhook',
+		kind: 'trigger',
+		title: 'Webhook',
+		description: 'Starts the workflow when an HTTP request reaches a path.',
+		keywords: 'webhook, http, endpoint, api, post, get, request, rest, receive',
+		baseParameters: { options: {} },
+		requiredParameters: [
+			req('method', 'httpMethod', 'enum', 'HTTP method the endpoint accepts.', {
+				options: HTTP_METHODS,
+				question: 'Which HTTP method should the endpoint accept?',
+			}),
+			req('path', 'path', 'string', 'Path segment of the endpoint URL.', {
+				question: 'What path should the endpoint use?',
+			}),
+		],
+		optionalParameters: [
+			opt('responseMode', 'responseMode', 'enum', 'When the HTTP response is sent.', {
+				options: ['onReceived', 'lastNode', 'responseNode'],
+			}),
+		],
+		outputContract: {
+			cardinality: 'one',
+			fields: [
+				{ name: 'body', type: 'object', nullable: false },
+				{ name: 'headers', type: 'object', nullable: false },
+				{ name: 'query', type: 'object', nullable: false },
+			],
+		},
+	}),
+	op({
+		id: CORE_OPERATION_IDS.SCHEDULE_TRIGGER,
+		nodeType: 'n8n-nodes-base.scheduleTrigger',
+		version: 1.2,
+		integration: 'schedule',
+		kind: 'trigger',
+		title: 'Schedule',
+		description: 'Starts the workflow on a fixed interval or cron expression.',
+		keywords:
+			'schedule, cron, every, daily, nightly, hourly, weekly, interval, timer, periodic, reconcile',
+		requiredParameters: [
+			req('cron', 'rule', 'json', 'Cron expression compiled into the schedule rule.', {
+				question: 'How often should the workflow run?',
+			}),
+		],
+		outputContract: {
+			cardinality: 'one',
+			fields: [{ name: 'timestamp', type: 'string', nullable: false }],
+		},
+	}),
+	op({
+		id: CORE_OPERATION_IDS.MANUAL_TRIGGER,
+		nodeType: 'n8n-nodes-base.manualTrigger',
+		version: 1,
+		integration: 'manual',
+		kind: 'trigger',
+		title: 'Manual trigger',
+		description: 'Starts the workflow when a user runs it in the editor.',
+		keywords: 'manual, click, test, run, button, one-off, once',
+		outputContract: { cardinality: 'one', fields: [] },
+	}),
+	op({
+		id: CORE_OPERATION_IDS.HTTP_REQUEST,
+		label: 'HTTP Request',
+		nodeType: 'n8n-nodes-base.httpRequest',
+		version: 4.2,
+		integration: 'http',
+		title: 'HTTP Request',
+		description: 'Calls an HTTP API.',
+		keywords: 'http, api, call, fetch, rest, request, enrich, lookup, external',
+		baseParameters: { options: {} },
+		requiredParameters: [
+			req('url', 'url', 'string', 'URL to call.', {
+				question: 'Which URL should the request call?',
+			}),
+		],
+		optionalParameters: [
+			opt('method', 'method', 'enum', 'HTTP method.', { options: HTTP_METHODS }),
+			opt('body', 'jsonBody', 'json', 'JSON body.'),
+		],
+		outputContract: { cardinality: 'many', fields: [] },
+		rateLimit: { requestsPerSecond: 5 },
+	}),
+	op({
+		id: CORE_OPERATION_IDS.IF,
+		nodeType: 'n8n-nodes-base.if',
+		version: 2.2,
+		integration: 'control',
+		kind: 'control',
+		title: 'If',
+		description: 'Routes items to the true or false output.',
+		keywords: 'if, condition, branch, only when, check',
+		requiredParameters: [
+			req('conditions', 'conditions', 'json', 'Filter conditions.', { derivable: true }),
+		],
+		outputs: ['true', 'false'],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.SWITCH,
+		nodeType: 'n8n-nodes-base.switch',
+		version: 3.2,
+		integration: 'control',
+		kind: 'control',
+		title: 'Switch',
+		description: 'Routes items to one of several outputs by value.',
+		keywords: 'switch, route, case, depending on, by type',
+		requiredParameters: [req('rules', 'rules', 'json', 'Routing rules.', { derivable: true })],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.SET,
+		nodeType: 'n8n-nodes-base.set',
+		version: 3.4,
+		integration: 'transform',
+		title: 'Edit Fields',
+		description: 'Sets or renames fields on each item.',
+		keywords: 'set, edit fields, map, rename, transform, format, normalize, shape',
+		baseParameters: { mode: 'manual', options: {} },
+		requiredParameters: [
+			req('assignments', 'assignments', 'json', 'Field assignments.', { derivable: true }),
+		],
+		optionalParameters: [
+			opt('includeOtherFields', 'includeOtherFields', 'boolean', 'Keep incoming fields.'),
+		],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.CODE,
+		nodeType: 'n8n-nodes-base.code',
+		version: 2,
+		integration: 'transform',
+		title: 'Code',
+		description: 'Runs custom JavaScript or Python.',
+		keywords: 'code, script, javascript, python, custom logic, compute',
+		requiredParameters: [req('source', 'jsCode', 'string', 'Source code.', { derivable: true })],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.RESPOND,
+		nodeType: 'n8n-nodes-base.respondToWebhook',
+		version: 1.1,
+		integration: 'webhook',
+		kind: 'respond',
+		title: 'Respond to Webhook',
+		description: 'Sends the HTTP response for the webhook that started the workflow.',
+		keywords: 'respond, response, reply, return, status code, json',
+		baseParameters: { respondWith: 'json' },
+		requiredParameters: [
+			req('body', 'responseBody', 'json', 'Response body.', { derivable: true }),
+		],
+		optionalParameters: [opt('status', 'options.responseCode', 'number', 'HTTP status code.')],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.EXECUTE_WORKFLOW,
+		nodeType: 'n8n-nodes-base.executeWorkflow',
+		version: 1.2,
+		integration: 'workflow',
+		title: 'Execute Workflow',
+		description: 'Calls another workflow and waits for its result.',
+		keywords:
+			'execute workflow, sub-workflow, subworkflow, call workflow, child workflow, delegate',
+		baseParameters: { source: 'database', options: {} },
+		requiredParameters: [
+			req('workflowId', 'workflowId', 'resource_locator', 'Workflow to call.', {
+				locatorMode: 'id',
+				question: 'Which workflow should be called?',
+			}),
+		],
+		optionalParameters: [opt('inputs', 'workflowInputs', 'json', 'Input mapping.')],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.MERGE,
+		nodeType: 'n8n-nodes-base.merge',
+		version: 3,
+		integration: 'control',
+		kind: 'control',
+		title: 'Merge',
+		description: 'Waits for several branches and combines their items.',
+		keywords: 'merge, join, combine, wait for both',
+		baseParameters: { mode: 'append', numberInputs: 2 },
+	}),
+	op({
+		id: CORE_OPERATION_IDS.LOOP,
+		nodeType: 'n8n-nodes-base.splitInBatches',
+		version: 3,
+		integration: 'control',
+		kind: 'control',
+		title: 'Loop Over Items',
+		description: 'Processes items in batches.',
+		keywords: 'loop, batch, each, for every, iterate, fan out, rate limit',
+		baseParameters: { options: {} },
+		requiredParameters: [
+			req('batchSize', 'batchSize', 'number', 'Items per batch.', { derivable: true }),
+		],
+		outputs: ['done', 'loop'],
+	}),
+	op({
+		id: CORE_OPERATION_IDS.NOOP,
+		nodeType: 'n8n-nodes-base.noOp',
+		version: 1,
+		integration: 'control',
+		kind: 'control',
+		title: 'No Operation',
+		description: 'Passes items through unchanged.',
+		keywords: 'noop, nothing, pass through',
+	}),
+	op({
+		id: 'slack.message.post',
+		label: 'Send Slack Message',
+		nodeType: 'n8n-nodes-base.slack',
+		version: 2.2,
+		integration: 'slack',
+		resource: 'message',
+		operation: 'post',
+		title: 'Slack: post channel message',
+		description: 'Posts a message to a Slack channel.',
+		keywords: 'slack, message, notify, notification, post, channel, alert, tell, ping, team',
+		baseParameters: { resource: 'message', operation: 'post', select: 'channel', otherOptions: {} },
+		requiredParameters: [
+			slackChannel(
+				'Channel name such as #sales.',
+				'Which Slack channel should receive the message?',
+			),
+			req('text', 'text', 'string', 'Message text.', { derivable: true }),
+		],
+		credentials: cred('slackApi'),
+		rateLimit: { requestsPerSecond: 1 },
+	}),
+	op({
+		id: 'slack.message.reply',
+		label: 'Reply In Thread',
+		nodeType: 'n8n-nodes-base.slack',
+		version: 2.2,
+		integration: 'slack',
+		resource: 'message',
+		operation: 'post',
+		title: 'Slack: reply in thread',
+		description: 'Posts a reply into an existing Slack thread.',
+		keywords: 'slack, reply, thread, respond in thread',
+		baseParameters: { resource: 'message', operation: 'post', select: 'channel' },
+		requiredParameters: [
+			slackChannel('Channel name.', 'Which Slack channel holds the thread?'),
+			req('text', 'text', 'string', 'Reply text.', { derivable: true }),
+			req(
+				'threadTs',
+				'otherOptions.thread_ts.replyValues.thread_ts',
+				'string',
+				'Timestamp of the parent message.',
+				{
+					question: 'Which message timestamp (thread_ts) should the reply go to?',
+				},
+			),
+		],
+		credentials: cred('slackApi'),
+	}),
+	op({
+		id: 'slack.message.update',
+		label: 'Update Slack Message',
+		nodeType: 'n8n-nodes-base.slack',
+		version: 2.2,
+		integration: 'slack',
+		resource: 'message',
+		operation: 'update',
+		title: 'Slack: update message',
+		description: 'Edits an existing Slack message.',
+		keywords: 'slack, update message, edit message',
+		baseParameters: { resource: 'message', operation: 'update' },
+		requiredParameters: [
+			req('channel', 'channelId', 'resource_locator', 'Channel name.', { locatorMode: 'name' }),
+			req('ts', 'ts', 'string', 'Timestamp of the message.', {
+				question: 'Which message timestamp (ts) should be updated?',
+			}),
+			req('text', 'text', 'string', 'New text.', { derivable: true }),
+		],
+		credentials: cred('slackApi'),
+	}),
+	op({
+		id: 'postgres.row.insert',
+		label: 'Insert Row',
+		nodeType: 'n8n-nodes-base.postgres',
+		version: 2.5,
+		integration: 'postgres',
+		resource: 'database',
+		operation: 'insert',
+		title: 'Postgres: insert row',
+		description: 'Inserts each item as a row.',
+		keywords:
+			'postgres, postgresql, database, insert, store, save, persist, audit, record, log, sql',
+		baseParameters: pgBase('insert'),
+		requiredParameters: [pgTable('Target table.', 'Which Postgres table should receive the rows?')],
+		optionalParameters: [
+			opt('columns', 'columns', 'json', 'Column mapping; defaults to auto-map input fields.'),
+		],
+		credentials: cred('postgres'),
+	}),
+	op({
+		id: 'postgres.row.upsert',
+		label: 'Upsert Row',
+		nodeType: 'n8n-nodes-base.postgres',
+		version: 2.5,
+		integration: 'postgres',
+		resource: 'database',
+		operation: 'upsert',
+		title: 'Postgres: upsert row',
+		description: 'Inserts or updates a row by a unique column.',
+		keywords: 'postgres, upsert, insert or update, database',
+		baseParameters: pgBase('upsert'),
+		requiredParameters: [pgTable('Target table.', 'Which Postgres table should be upserted?')],
+		optionalParameters: [opt('columns', 'columns', 'json', 'Column mapping.')],
+		credentials: cred('postgres'),
+	}),
+	op({
+		id: 'postgres.row.select',
+		label: 'Select Rows',
+		nodeType: 'n8n-nodes-base.postgres',
+		version: 2.5,
+		integration: 'postgres',
+		resource: 'database',
+		operation: 'select',
+		title: 'Postgres: select rows',
+		description: 'Reads rows from a table.',
+		keywords:
+			'postgres, select, read, query, find, lookup, look up, rows, row, database, stuck, stalled',
+		baseParameters: pgBase('select'),
+		requiredParameters: [pgTable('Table to read.', 'Which Postgres table should be read?')],
+		credentials: cred('postgres'),
+		outputContract: { cardinality: 'many', fields: [] },
+	}),
+	op({
+		id: 'postgres.query.execute',
+		label: 'Run SQL Query',
+		nodeType: 'n8n-nodes-base.postgres',
+		version: 2.5,
+		integration: 'postgres',
+		resource: 'database',
+		operation: 'executeQuery',
+		title: 'Postgres: execute query',
+		description: 'Runs a SQL statement.',
+		keywords: 'postgres, sql, query, execute, statement',
+		baseParameters: { operation: 'executeQuery', options: {} },
+		requiredParameters: [
+			req('query', 'query', 'string', 'SQL statement.', {
+				question: 'Which SQL statement should run?',
+			}),
+		],
+		credentials: cred('postgres'),
+	}),
 	HUBSPOT_UPSERT_CONTACT,
-	HUBSPOT_CREATE_CONTACT,
-	HUBSPOT_UPDATE_CONTACT,
-	HUBSPOT_GET_CONTACT,
+	{
+		...HUBSPOT_UPSERT_CONTACT,
+		id: 'hubspot.contact.create',
+		label: 'Create Contact',
+		operation: 'create',
+		title: 'HubSpot: create contact',
+		description: 'Creates a new contact.',
+		keywords: kw('hubspot, crm, contact, create, new'),
+		baseParameters: hubspotBase('create', { additionalFields: {}, options: {} }),
+	},
+	{
+		...HUBSPOT_UPSERT_CONTACT,
+		id: 'hubspot.contact.update',
+		label: 'Update Contact',
+		operation: 'update',
+		title: 'HubSpot: update contact',
+		description: 'Updates an existing contact by id.',
+		keywords: kw('hubspot, crm, contact, update, change'),
+		baseParameters: hubspotBase('update', { updateFields: {} }),
+		requiredParameters: [hubspotContactId('Which HubSpot contact should be updated?')],
+		optionalParameters: [],
+	},
+	{
+		...HUBSPOT_UPSERT_CONTACT,
+		id: 'hubspot.contact.get',
+		label: 'Get Contact',
+		operation: 'get',
+		title: 'HubSpot: get contact',
+		description: 'Reads one contact by id.',
+		keywords: kw('hubspot, crm, contact, get, read, fetch, lookup'),
+		baseParameters: hubspotBase('get', { additionalFields: {} }),
+		requiredParameters: [hubspotContactId('Which HubSpot contact id should be read?')],
+		optionalParameters: [],
+	},
 ];
-
-/** Operation ids the compiler relies on for control flow and pattern expansion. */
-export const CORE_OPERATION_IDS = {
-	WEBHOOK_TRIGGER: WEBHOOK_TRIGGER.id,
-	SCHEDULE_TRIGGER: SCHEDULE_TRIGGER.id,
-	MANUAL_TRIGGER: MANUAL_TRIGGER.id,
-	HTTP_REQUEST: HTTP_REQUEST.id,
-	IF: IF_NODE.id,
-	SWITCH: SWITCH_NODE.id,
-	SET: SET_NODE.id,
-	CODE: CODE_NODE.id,
-	RESPOND: RESPOND_TO_WEBHOOK.id,
-	EXECUTE_WORKFLOW: EXECUTE_WORKFLOW.id,
-	MERGE: MERGE_NODE.id,
-	LOOP: SPLIT_IN_BATCHES.id,
-	NOOP: NOOP.id,
-} as const;

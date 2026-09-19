@@ -15,39 +15,10 @@ export interface RetrievalOptions {
 	minScore?: number;
 }
 
-const STOP_WORDS = new Set([
-	'a',
-	'an',
-	'the',
-	'to',
-	'of',
-	'in',
-	'on',
-	'and',
-	'or',
-	'for',
-	'with',
-	'it',
-	'is',
-	'be',
-	'that',
-	'this',
-	'when',
-	'then',
-	'also',
-	'every',
-	'each',
-	'into',
-	'from',
-	'as',
-	'at',
-	'by',
-	'if',
-	'we',
-	'i',
-	'my',
-	'our',
-]);
+const STOP_WORDS = new Set(
+	`a an the to of in on and or for with it is be that this when then also every
+	each into from as at by if we i my our`.split(/\s+/),
+);
 
 export function tokenize(text: string): string[] {
 	return text
@@ -98,9 +69,7 @@ export function retrieveCandidates(
 				matched.push(keyword);
 			}
 		}
-		if (tokens.has(stem(operation.integration))) {
-			score += 2;
-		}
+		if (tokens.has(stem(operation.integration))) score += 2;
 		if (score >= (options.minScore ?? 1)) results.push({ operation, score, matched });
 	}
 	results.sort((a, b) => b.score - a.score || a.operation.id.localeCompare(b.operation.id));
