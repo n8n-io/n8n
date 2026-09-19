@@ -7,6 +7,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	MCP_INSTANCE_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -74,6 +75,7 @@ const mockAiGatewayService = () =>
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
+	instanceActivityEnabled: false,
 	aiPreferencesEnabled: false,
 	...overrides,
 });
@@ -410,7 +412,7 @@ describe('McpService', () => {
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-		it('resolves every feature with a single PostHog lookup', async () => {
+		it('resolves user flags and the instance activity flag', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
@@ -420,10 +422,48 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
+				instanceActivityEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([true, false])(
+			'uses the same instance activity answer for two users: %s',
+			async (enabled) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true })
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false });
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				const service = buildResolutionService({ postHogClient });
+				const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
+
+				const results = await Promise.all([
+					service.resolveFeatureFlags(user),
+					service.resolveFeatureFlags(secondUser),
+				]);
+
+				expect(results.map((result) => result.instanceActivityEnabled)).toEqual([enabled, enabled]);
+				expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				]);
+			},
+		);
+
+		it('keeps activity off when its flag fails without disabling user features', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_INSTANCE_CONTEXT_FLAG]: true });
+			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
+
+			await expect(
+				buildResolutionService({ postHogClient }).resolveFeatureFlags(user),
+			).resolves.toMatchObject({
+				instanceContextEnabled: true,
+				instanceActivityEnabled: false,
+			});
 		});
 
 		describe('MCP Apps', () => {
@@ -480,6 +520,7 @@ describe('McpService', () => {
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
 					instanceContextEnabled: true,
+					instanceActivityEnabled: false,
 				});
 			});
 
@@ -493,6 +534,7 @@ describe('McpService', () => {
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
 					instanceContextEnabled: false,
+					instanceActivityEnabled: false,
 				});
 			});
 		});
@@ -552,6 +594,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
+				instanceActivityEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
@@ -572,6 +615,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
+				instanceActivityEnabled: false,
 				aiPreferencesEnabled: true,
 			});
 

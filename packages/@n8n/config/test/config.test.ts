@@ -201,7 +201,6 @@ describe('GlobalConfig', () => {
 			override: {},
 		},
 		activityLog: {
-			enabled: false,
 			retentionDays: 0,
 			maxEntries: 1_000,
 		},
@@ -386,7 +385,6 @@ describe('GlobalConfig', () => {
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
-			instanceContextEnabled: false,
 		},
 		queue: {
 			health: {

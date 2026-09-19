@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	ActivityEventRepository,
@@ -222,7 +221,6 @@ export type InstanceContextBlock = {
 export class InstanceContextService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -230,10 +228,6 @@ export class InstanceContextService {
 		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-	}
-
-	get enabled(): boolean {
-		return this.globalConfig.instanceAi.instanceContextEnabled;
 	}
 
 	/**
@@ -258,11 +252,11 @@ export class InstanceContextService {
 		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
 		 */
 		isMachineFollowUp?: boolean;
+		/** Instance gate result shared with the activity tool for this turn. */
+		enabled: boolean;
 		now?: Date;
 	}): Promise<InstanceContextBlock | null> {
-		// The flag gates Instance AI's own block. The MCP surface has its own flag, checked where
-		// its tools are registered, so it does not answer to this one.
-		if (input.scope.surface === 'conversation' && !this.enabled) return null;
+		if (!input.enabled) return null;
 		if (input.isMachineFollowUp) return null;
 
 		try {

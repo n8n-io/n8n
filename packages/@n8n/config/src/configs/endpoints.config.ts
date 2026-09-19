@@ -206,19 +206,7 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
 
-	/**
-	 * Force-enable the instance-context read surface on the MCP server. That is four tools —
-	 * `get_instance_context`, `get_instance_activity`, `expand_instance_activity` and
-	 * `get_node_usage` — plus the `n8n://instance/context` resource and the one sentence in the
-	 * server instructions that points a client at them.
-	 *
-	 * Acts as an operator-level override of the PostHog rollout flag. Cannot
-	 * force-disable: setting this to `false` falls back to PostHog.
-	 *
-	 * The activity tools read what `N8N_ACTIVITY_LOG_ENABLED` writes, so with
-	 * only this flag on they answer from an empty log. The node-usage tool has
-	 * its own index and works either way.
-	 */
+	/** Enables the MCP context surface. Activity reads also need the instance activity flag. */
 	@Env('N8N_MCP_INSTANCE_CONTEXT_ENABLED')
 	mcpInstanceContextEnabled: boolean = false;
 

@@ -67,6 +67,7 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
+	instanceActivityEnabled: true,
 	// On by default so the drift guards below cover `get_user_preferences`. Its own
 	// registration tests set it explicitly either way.
 	aiPreferencesEnabled: true,
@@ -142,7 +143,6 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
-		activityLogEnabled = true,
 	} = {}) =>
 		new McpService(
 			mockLogger(),
@@ -161,7 +161,6 @@ describe('McpService scope enforcement', () => {
 					mcpBuilderEnabled: builderEnabled,
 				},
 				tags: { disabled: false },
-				activityLog: { enabled: activityLogEnabled },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
 			mockInstance(Telemetry),
@@ -380,18 +379,22 @@ describe('McpService scope enforcement', () => {
 	 * The log is off by default, and a tool answering from a store nothing writes to reports an
 	 * empty feed — which an agent reads as "nothing has happened here".
 	 */
-	it('withholds the activity tools when the activity log is not being written', async () => {
+	it('withholds activity tools when the instance activity flag is off', async () => {
 		mockInstance(InstanceContextService);
 		mockInstance(WorkflowDependencyQueryService);
 
 		const server = await buildService({
 			instanceAiActive: true,
-			activityLogEnabled: false,
-		}).getServer(user, mcpFeatureFlags({ instanceContextEnabled: true }));
+		}).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true, instanceActivityEnabled: false }),
+		);
 
 		const registered = getRegisteredToolNames(server);
 		expect(registered).not.toContain('get_instance_activity');
 		expect(registered).not.toContain('expand_instance_activity');
+		expect(registered).not.toContain('get_instance_context');
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 		// Node usage reads its own index, so the log has no bearing on it.
 		expect(registered).toContain('get_node_usage');
 	});

@@ -4,7 +4,6 @@ import {
 	createWorkflow,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ActivityEventRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -31,7 +30,6 @@ describe('InstanceContextService', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
-		Container.get(GlobalConfig).instanceAi.instanceContextEnabled = true;
 		service = Container.get(InstanceContextService);
 		activity = Container.get(ActivityEventRepository);
 		user = await createMember();
@@ -63,6 +61,7 @@ describe('InstanceContextService', () => {
 		await createExecution({ status: 'error', stoppedAt: recently() }, workflow);
 
 		const built = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: null,
@@ -75,15 +74,11 @@ describe('InstanceContextService', () => {
 	});
 
 	it('builds nothing with the reader disabled', async () => {
-		const config = Container.get(GlobalConfig);
 		await createWorkflow({ name: 'Lead enrichment' }, project);
-		config.instanceAi.instanceContextEnabled = false;
 
-		try {
-			expect(await service.buildBlock({ user, scope: bound(project.id), cursor: null })).toBeNull();
-		} finally {
-			config.instanceAi.instanceContextEnabled = true;
-		}
+		expect(
+			await service.buildBlock({ user, scope: bound(project.id), cursor: null, enabled: false }),
+		).toBeNull();
 	});
 
 	describe('scoping', () => {
@@ -103,6 +98,7 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Ours' }, project);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
@@ -160,6 +156,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const delta = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: {
@@ -189,11 +186,17 @@ describe('InstanceContextService', () => {
 				});
 			}
 
-			const opening = await service.buildBlock({ user, scope: bound(project.id), cursor: null });
+			const opening = await service.buildBlock({
+				enabled: true,
+				user,
+				scope: bound(project.id),
+				cursor: null,
+			});
 			expect(shownIds(opening?.block ?? '')).toHaveLength(40);
 			expect(opening?.block).toContain('and more than these');
 
 			const next = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: opening?.cursor ?? null,
@@ -221,6 +224,7 @@ describe('InstanceContextService', () => {
 			const straggler = seeded[5];
 
 			const delta = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: {
@@ -251,6 +255,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const first = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
@@ -266,6 +271,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const delta = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: first!.cursor,
@@ -280,6 +286,7 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Lead enrichment' }, project);
 
 			const first = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
@@ -287,6 +294,7 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user,
 					scope: bound(project.id),
 					cursor: first!.cursor,
@@ -304,6 +312,7 @@ describe('InstanceContextService', () => {
 		await createWorkflow({ name: 'Theirs' }, otherProject);
 
 		const built = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(otherProject.id),
 			cursor: null,
@@ -317,6 +326,7 @@ describe('InstanceContextService', () => {
 		await createExecution({ status: 'error', mode: 'evaluation', stoppedAt: recently() }, workflow);
 
 		const built = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: null,
@@ -360,7 +370,12 @@ describe('InstanceContextService', () => {
 		});
 
 		expect(
-			await service.buildBlock({ user, scope: { surface: 'conversation' }, cursor: null }),
+			await service.buildBlock({
+				enabled: true,
+				user,
+				scope: { surface: 'conversation' },
+				cursor: null,
+			}),
 		).toBeNull();
 	});
 
@@ -446,7 +461,7 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Withheld two' }, project);
 			await createExecution({ status: 'error', stoppedAt: recently() }, visible);
 
-			const built = await service.buildBlock({ user, scope: mcp(), cursor: null });
+			const built = await service.buildBlock({ enabled: true, user, scope: mcp(), cursor: null });
 
 			expect(built?.block).toContain('Workflows that already exist here: 1');
 			expect(built?.block).toContain('Visible');
@@ -457,7 +472,7 @@ describe('InstanceContextService', () => {
 			const withheld = await createWorkflow({ name: 'Nightly sync' }, project);
 			await createExecution({ status: 'error', stoppedAt: recently() }, withheld);
 
-			const built = await service.buildBlock({ user, scope: mcp(), cursor: null });
+			const built = await service.buildBlock({ enabled: true, user, scope: mcp(), cursor: null });
 
 			expect(built?.block ?? '').not.toContain('Nightly sync');
 		});
@@ -473,12 +488,12 @@ describe('InstanceContextService', () => {
 				.mockRejectedValueOnce(new Error('db is down'));
 
 			try {
-				await expect(service.buildBlock({ user, scope: mcp(), cursor: null })).rejects.toThrow(
-					'db is down',
-				);
+				await expect(
+					service.buildBlock({ enabled: true, user, scope: mcp(), cursor: null }),
+				).rejects.toThrow('db is down');
 
 				await expect(
-					service.buildBlock({ user, scope: bound(project.id), cursor: null }),
+					service.buildBlock({ enabled: true, user, scope: bound(project.id), cursor: null }),
 				).resolves.toBeNull();
 			} finally {
 				spy.mockRestore();
@@ -771,12 +786,19 @@ describe('InstanceContextService', () => {
 					resourceName: `Batch ${batch}`,
 				});
 			}
-			const built = await service.buildBlock({ user, scope: bound(project.id), cursor });
+			const built = await service.buildBlock({
+				enabled: true,
+				user,
+				scope: bound(project.id),
+				cursor,
+			});
 			expect(built?.block.match(/^\[\d+\]/gm)).toHaveLength(30);
 			cursor = built!.cursor;
 		}
 		for (let turn = 0; turn < 2; turn++) {
-			expect(await service.buildBlock({ user, scope: bound(project.id), cursor })).toBeNull();
+			expect(
+				await service.buildBlock({ enabled: true, user, scope: bound(project.id), cursor }),
+			).toBeNull();
 		}
 	});
 });

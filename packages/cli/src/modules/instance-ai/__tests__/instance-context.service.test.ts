@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
 import type {
 	ActivityEvent,
 	ActivityEventRepository,
@@ -85,7 +84,7 @@ describe('InstanceContextService', () => {
 
 	beforeEach(() => userHasScopes.mockResolvedValue(true));
 
-	function serviceWith(enabled = true) {
+	function serviceWith() {
 		activityEventRepository = mock<ActivityEventRepository>();
 		executionRepository = mock<ExecutionRepository>();
 		workflowRepository = mock<WorkflowRepository>();
@@ -102,7 +101,6 @@ describe('InstanceContextService', () => {
 
 		return new InstanceContextService(
 			logger,
-			mock<GlobalConfig>({ instanceAi: { instanceContextEnabled: enabled } }),
 			activityEventRepository,
 			executionRepository,
 			workflowRepository,
@@ -113,10 +111,16 @@ describe('InstanceContextService', () => {
 
 	describe('buildBlock', () => {
 		it('builds nothing with the flag off, and reads nothing either', async () => {
-			const service = serviceWith(false);
+			const service = serviceWith();
 
 			expect(
-				await service.buildBlock({ user: USER, scope: BOUND, cursor: null, now: NOW }),
+				await service.buildBlock({
+					enabled: false,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				}),
 			).toBeNull();
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
@@ -130,6 +134,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -160,6 +165,7 @@ describe('InstanceContextService', () => {
 			userHasScopes.mockResolvedValue(false);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -191,6 +197,7 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: unboundConversation,
 					cursor: null,
@@ -207,6 +214,7 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -224,6 +232,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -243,6 +252,7 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -260,6 +270,7 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -277,6 +288,7 @@ describe('InstanceContextService', () => {
 			);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -293,6 +305,7 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 1 }), entry({ id: 2 })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -310,6 +323,7 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -326,6 +340,7 @@ describe('InstanceContextService', () => {
 			});
 
 			await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -357,6 +372,7 @@ describe('InstanceContextService', () => {
 				for (let id = 1; id <= 201; id++) {
 					table.unshift(entry({ id }));
 					const built = await service.buildBlock({
+						enabled: true,
 						user: USER,
 						scope: BOUND,
 						cursor: carried,
@@ -368,7 +384,13 @@ describe('InstanceContextService', () => {
 
 				for (let turn = 0; turn < 2; turn++) {
 					expect(
-						await service.buildBlock({ user: USER, scope: BOUND, cursor: carried, now: NOW }),
+						await service.buildBlock({
+							enabled: true,
+							user: USER,
+							scope: BOUND,
+							cursor: carried,
+							now: NOW,
+						}),
 					).toBeNull();
 				}
 			});
@@ -386,6 +408,7 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
@@ -407,6 +430,7 @@ describe('InstanceContextService', () => {
 					]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
@@ -433,6 +457,7 @@ describe('InstanceContextService', () => {
 				);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -451,6 +476,7 @@ describe('InstanceContextService', () => {
 				const service = serviceWith();
 
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -466,6 +492,7 @@ describe('InstanceContextService', () => {
 				const service = serviceWith();
 
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -492,6 +519,7 @@ describe('InstanceContextService', () => {
 				]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: {
@@ -542,6 +570,7 @@ describe('InstanceContextService', () => {
 				});
 
 				const first = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -551,6 +580,7 @@ describe('InstanceContextService', () => {
 
 				table = [...Array.from({ length: 41 }, (_, index) => 44 - index), 3, 2, 1];
 				const second = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: first!.cursor,
@@ -560,6 +590,7 @@ describe('InstanceContextService', () => {
 
 				userHasScopes.mockResolvedValue(true);
 				const third = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: second!.cursor,
@@ -569,7 +600,13 @@ describe('InstanceContextService', () => {
 				expect(idsIn(third?.block)).toEqual(['[2]']);
 				expect(third?.cursor.activityFloor).toBe(4);
 				expect(
-					await service.buildBlock({ user: USER, scope: BOUND, cursor: third!.cursor, now: NOW }),
+					await service.buildBlock({
+						enabled: true,
+						user: USER,
+						scope: BOUND,
+						cursor: third!.cursor,
+						now: NOW,
+					}),
 				).toBeNull();
 			});
 
@@ -588,6 +625,7 @@ describe('InstanceContextService', () => {
 				});
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: {
@@ -617,6 +655,7 @@ describe('InstanceContextService', () => {
 					.mockResolvedValueOnce([entry({ id: 498, resourceName: 'Committed late' })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
@@ -633,6 +672,7 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
@@ -653,6 +693,7 @@ describe('InstanceContextService', () => {
 					.mockResolvedValueOnce([entry({ id: 350 })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
@@ -668,6 +709,7 @@ describe('InstanceContextService', () => {
 
 				expect(
 					await service.buildBlock({
+						enabled: true,
 						user: USER,
 						scope: BOUND,
 						cursor,
@@ -683,6 +725,7 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -707,6 +750,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -726,6 +770,7 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ resourceName: hostile })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -745,6 +790,7 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -762,6 +808,7 @@ describe('InstanceContextService', () => {
 				workflows: [{ id: 'wf-1', name: hostile, active: false }],
 			});
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
@@ -929,7 +976,13 @@ describe('InstanceContextService', () => {
 					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
 				});
 
-				await service.buildBlock({ user: USER, scope: MCP_BOUND, cursor: null, now: NOW });
+				await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: MCP_BOUND,
+					cursor: null,
+					now: NOW,
+				});
 
 				// A count filtered after the fact would report workflows the caller cannot see.
 				expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith(
@@ -951,6 +1004,7 @@ describe('InstanceContextService', () => {
 				});
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: MCP_BOUND,
 					cursor: null,
@@ -972,6 +1026,7 @@ describe('InstanceContextService', () => {
 				});
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
@@ -983,22 +1038,28 @@ describe('InstanceContextService', () => {
 				expect(built?.block).not.toContain('get_instance_activity');
 			});
 
-			/** The MCP surface answers to its own flag, checked where its tools are registered. */
-			it('builds over MCP even with the Instance AI read flag off', async () => {
-				const service = serviceWith(false);
+			it.each([true, false])('uses the shared activity gate for MCP: %s', async (enabled) => {
+				const service = serviceWith();
 				workflowRepository.findRecentForProjects.mockResolvedValue({
 					total: 1,
 					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
 				});
 
 				const built = await service.buildBlock({
+					enabled,
 					user: USER,
 					scope: MCP_BOUND,
 					cursor: null,
 					now: NOW,
 				});
 
-				expect(built?.block).toBeTruthy();
+				if (enabled) {
+					expect(built?.block).toBeTruthy();
+				} else {
+					expect(built).toBeNull();
+					expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
+					expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+				}
 			});
 		});
 
