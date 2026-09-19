@@ -308,6 +308,12 @@
 	--easing--ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
 	--easing--ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 
+	/* Stronger "out" siblings from the same set, for motion that should land
+	 * fast and settle softly (icon swaps, small reveals). */
+	--easing--ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+	--easing--ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+	--easing--ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+
 	--shadow-color: var(--color--black-alpha-100);
 	--shadow-color--outline: var(--color--black-alpha-100);
 
