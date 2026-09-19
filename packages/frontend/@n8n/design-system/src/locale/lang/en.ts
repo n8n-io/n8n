@@ -51,6 +51,7 @@ export default {
 	'pagination.pageSizeOption': '{size}/page',
 	'pagination.goTo': 'Go to',
 	'pagination.goToPage': 'Go to page',
+	'contextMenu.noItems': 'No items',
 	'codeDiff.couldNotReplace': 'Could not replace code',
 	'codeDiff.codeReplaced': 'Code replaced',
 	'codeDiff.replaceMyCode': 'Replace my code',
