@@ -1,0 +1,68 @@
+{
+	"name": "n8n execution get",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-execution-get",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "execution",
+				"operation": "get",
+				"executionId": "1000"
+			},
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "n8n-execution-get",
+			"name": "Get an execution",
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get an execution": [
+			{
+				"json": {
+					"id": "1000",
+					"finished": true,
+					"mode": "manual",
+					"retryOf": null,
+					"retrySuccessId": null,
+					"status": "success",
+					"createdAt": "2026-09-16T17:00:00.000Z",
+					"startedAt": "2026-09-16T17:00:00.000Z",
+					"stoppedAt": "2026-09-16T17:00:01.000Z",
+					"deletedAt": null,
+					"workflowId": "42",
+					"waitTill": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get an execution",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
