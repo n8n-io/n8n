@@ -359,8 +359,8 @@ const baseTextFn = (
 	options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
 ) => {
 	const map: Record<string, string> = {
-		'agents.builder.preview.button': 'Preview',
-		'agents.builder.preview.close.ariaLabel': 'Close preview',
+		'agents.builder.preview.button': 'Test agent',
+		'agents.builder.preview.close.ariaLabel': 'Hide test',
 		'projects.menu.personal': 'Personal',
 	};
 	if (key === 'agents.builder.externalUpdate.time') {

@@ -60,7 +60,7 @@ function onClick() {
 			:model-value="props.isPreviewOpen"
 			variant="ghost"
 			size="medium"
-			icon="play"
+			icon="flask-conical"
 			:label="label"
 			:disabled="isDisabled"
 			:data-testid="props.testId"
@@ -70,7 +70,7 @@ function onClick() {
 			v-else
 			variant="subtle"
 			size="medium"
-			icon="play"
+			icon="flask-conical"
 			:label="label"
 			:disabled="isDisabled"
 			:data-testid="props.testId"
