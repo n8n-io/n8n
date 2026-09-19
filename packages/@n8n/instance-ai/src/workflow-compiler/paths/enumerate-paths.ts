@@ -45,11 +45,17 @@ function outputLabel(node: NodeJSON, outputIndex: number, outputCount: number): 
 				: undefined;
 		const key = values?.[outputIndex]?.outputKey;
 		if (typeof key === 'string' && key) return key;
-		if (outputIndex >= (values?.length ?? 0)) return 'fallback';
-		return `case ${outputIndex}`;
+		return outputIndex >= (values?.length ?? 0) ? 'fallback' : `case ${outputIndex}`;
 	}
 	if (node.onError === 'continueErrorOutput') return outputIndex === 0 ? 'success' : 'error';
 	return outputCount > 1 ? `output ${outputIndex}` : 'main';
+}
+
+/** A partial path: the trigger, the decisions taken so far and the nodes visited (the last one is current). */
+interface Frame {
+	trigger: string;
+	decisions: PathDecision[];
+	visited: string[];
 }
 
 /**
@@ -71,11 +77,6 @@ export function enumerateExecutionPaths(
 	for (const node of workflow.nodes)
 		if (node.name && !node.disabled) nodesByName.set(node.name, node);
 
-	const outputs = (name: string): Array<Array<{ node: string }>> =>
-		(workflow.connections[name]?.main ?? []).map((slot) =>
-			(slot ?? []).filter((c) => nodesByName.has(c.node)),
-		);
-
 	const triggers = [...nodesByName.values()].filter(
 		(node) =>
 			isTriggerNodeType(node.type) &&
@@ -83,69 +84,49 @@ export function enumerateExecutionPaths(
 	);
 
 	const paths: ExecutionPath[] = [];
-	interface Frame {
-		trigger: string;
-		current: string;
-		decisions: PathDecision[];
-		visited: string[];
-	}
-	const queue: Frame[] = triggers.map((trigger) => ({
-		trigger: trigger.name ?? '',
-		current: trigger.name ?? '',
-		decisions: [],
-		visited: [trigger.name ?? ''],
-	}));
+	const finish = ({ trigger, decisions, visited: nodes }: Frame) =>
+		paths.push({
+			id: pathId(trigger, decisions),
+			trigger,
+			decisions,
+			nodes,
+			end: nodes[nodes.length - 1],
+		});
+	const queue: Frame[] = triggers.map((trigger) => {
+		const name = trigger.name ?? '';
+		return { trigger: name, decisions: [], visited: [name] };
+	});
 
 	while (queue.length > 0 && paths.length < maxPaths) {
 		const frame = queue.shift();
 		if (!frame) break;
-		const node = nodesByName.get(frame.current);
+		const current = frame.visited[frame.visited.length - 1];
+		const node = nodesByName.get(current);
 		if (!node) continue;
-		const slots = outputs(frame.current);
-		const connectedSlots = slots
+		const slots = (workflow.connections[current]?.main ?? []).map((slot) =>
+			(slot ?? []).filter((c) => nodesByName.has(c.node)),
+		);
+		const connected = slots
 			.map((slot, index) => ({ slot, index }))
 			.filter(({ slot }) => slot.length > 0);
-		if (connectedSlots.length === 0) {
-			paths.push({
-				id: pathId(frame.trigger, frame.decisions),
-				trigger: frame.trigger,
-				decisions: frame.decisions,
-				nodes: frame.visited,
-				end: frame.current,
-			});
+		if (connected.length === 0) {
+			finish(frame);
 			continue;
 		}
-		const isDecision = connectedSlots.length > 1;
-		for (const { slot, index } of connectedSlots) {
-			const decisions = isDecision
-				? [
-						...frame.decisions,
-						{
-							node: frame.current,
-							outputIndex: index,
-							label: outputLabel(node, index, slots.length),
-						},
-					]
-				: frame.decisions;
+		for (const { slot, index } of connected) {
+			const decisions =
+				connected.length > 1
+					? [
+							...frame.decisions,
+							{ node: current, outputIndex: index, label: outputLabel(node, index, slots.length) },
+						]
+					: frame.decisions;
 			// Fan-out to several targets on one output is one path per target so each terminal is covered.
 			for (const target of slot) {
-				if (frame.visited.includes(target.node)) {
-					// Loop back edge: record the decision once and stop here.
-					paths.push({
-						id: pathId(frame.trigger, decisions),
-						trigger: frame.trigger,
-						decisions,
-						nodes: [...frame.visited, target.node],
-						end: target.node,
-					});
-					continue;
-				}
-				queue.push({
-					trigger: frame.trigger,
-					current: target.node,
-					decisions,
-					visited: [...frame.visited, target.node],
-				});
+				const next = { ...frame, decisions, visited: [...frame.visited, target.node] };
+				// Loop back edge: record the decision once and stop here.
+				if (frame.visited.includes(target.node)) finish(next);
+				else queue.push(next);
 			}
 		}
 	}
@@ -153,21 +134,18 @@ export function enumerateExecutionPaths(
 }
 
 function pathId(trigger: string, decisions: readonly PathDecision[]): string {
-	return [trigger, ...decisions.map((decision) => `${decision.node}=${decision.label}`)].join(
-		' > ',
-	);
+	const taken = decisions.map((decision) => `${decision.node}=${decision.label}`);
+	return [trigger, ...taken].join(' > ');
 }
 
 function dedupe(paths: ExecutionPath[]): ExecutionPath[] {
 	const seen = new Set<string>();
-	const result: ExecutionPath[] = [];
-	for (const path of paths) {
+	return paths.filter((path) => {
 		const key = `${path.id}|${path.end}`;
-		if (seen.has(key)) continue;
+		if (seen.has(key)) return false;
 		seen.add(key);
-		result.push(path);
-	}
-	return result;
+		return true;
+	});
 }
 
 export interface PathCoverage {
@@ -192,6 +170,7 @@ export function pathCoverage(
 			covered += 1;
 			continue;
 		}
+		// The execution that got furthest along the path names the first node it missed.
 		const best = executedNodeSets.reduce<string | undefined>((missing, executed) => {
 			const firstMissing = path.nodes.find((node) => !executed.has(node));
 			if (!firstMissing) return missing;

@@ -18,30 +18,23 @@ export function validateContracts(
 	for (const [source, outputs] of Object.entries(workflow.connections)) {
 		const producer = outputContracts.get(source);
 		if (!producer) continue;
-		for (const slot of outputs.main ?? []) {
-			for (const connection of slot ?? []) {
-				const consumer = inputContracts.get(connection.node);
-				if (!consumer) continue;
-				for (const field of consumer.fields) {
-					if (field.nullable) continue;
-					if (!producer.fields.some((candidate) => candidate.name === field.name)) {
-						issues.push({
-							severity: 'error',
-							code: 'contract_missing_field',
-							message: `"${connection.node}" needs "${field.name}" but "${source}" does not produce it.`,
-							nodeName: connection.node,
-							parameter: field.name,
-						});
-					}
-				}
-				if (consumer.cardinality === 'one' && producer.cardinality === 'many') {
-					issues.push({
-						severity: 'warning',
-						code: 'contract_cardinality',
-						message: `"${connection.node}" expects one item but "${source}" produces many.`,
-						nodeName: connection.node,
-					});
-				}
+		for (const { node: nodeName } of (outputs.main ?? []).flatMap((slot) => slot ?? [])) {
+			const consumer = inputContracts.get(nodeName);
+			if (!consumer) continue;
+			for (const field of consumer.fields) {
+				if (field.nullable || producer.fields.some((candidate) => candidate.name === field.name))
+					continue;
+				issues.push({
+					severity: 'error',
+					code: 'contract_missing_field',
+					message: `"${nodeName}" needs "${field.name}" but "${source}" does not produce it.`,
+					nodeName,
+					parameter: field.name,
+				});
+			}
+			if (consumer.cardinality === 'one' && producer.cardinality === 'many') {
+				const message = `"${nodeName}" expects one item but "${source}" produces many.`;
+				issues.push({ severity: 'warning', code: 'contract_cardinality', message, nodeName });
 			}
 		}
 	}

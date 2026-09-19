@@ -32,12 +32,7 @@ export type DecisionOutcome =
 			/** Answers dropped or nulled during reconciliation. */
 			problems: string[];
 	  }
-	| {
-			ok: false;
-			reason: DecisionFailureReason;
-			message: string;
-			latencyMs: number;
-	  };
+	| { ok: false; reason: DecisionFailureReason; message: string; latencyMs: number };
 
 export interface DecisionService {
 	/** Identifies the backend for logs: `systemone`, `model`, or `none`. */
@@ -50,12 +45,8 @@ export class NullDecisionService implements DecisionService {
 	readonly kind = 'none';
 
 	async decide(): Promise<DecisionOutcome> {
-		return {
-			ok: false,
-			reason: 'unavailable',
-			message: 'No decision service is configured.',
-			latencyMs: 0,
-		};
+		const message = 'No decision service is configured.';
+		return { ok: false, reason: 'unavailable', message, latencyMs: 0 };
 	}
 }
 

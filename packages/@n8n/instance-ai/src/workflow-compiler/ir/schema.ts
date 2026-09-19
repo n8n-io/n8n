@@ -98,26 +98,21 @@ export const conditionSchema: z.ZodType<Condition, z.ZodTypeDef, unknown> = z.la
 /** Parameter values are plain JSON with `{ $expr }` wrappers for expressions. */
 export const parametersSchema = z.record(z.string(), z.unknown());
 
-const stepBase = {
+const stepBase = z.object({
 	id: z.string().min(1),
 	/** Human label, becomes the node name. Defaults to a name derived from the operation. */
 	label: z.string().min(1).optional(),
 	notes: z.string().optional(),
-};
+});
 
-export const triggerKindSchema = z.enum([
-	'webhook',
-	'schedule',
-	'manual',
-	'form',
-	'chat',
-	'poll',
-	'event',
-]);
+/** A step schema: the shared base fields plus a `kind` discriminator. */
+const step = <K extends string, S extends z.ZodRawShape>(kind: K, shape: S) =>
+	stepBase.extend({ kind: z.literal(kind), ...shape });
 
-export const triggerIrSchema = z.object({
-	...stepBase,
-	kind: z.literal('trigger'),
+const triggerKinds = ['webhook', 'schedule', 'manual', 'form', 'chat', 'poll', 'event'] as const;
+export const triggerKindSchema = z.enum(triggerKinds);
+
+export const triggerIrSchema = step('trigger', {
 	triggerKind: triggerKindSchema,
 	operation: operationRefSchema,
 	params: parametersSchema.default({}),
@@ -125,6 +120,57 @@ export const triggerIrSchema = z.object({
 	outputContract: dataContractSchema.optional(),
 });
 export type TriggerIR = z.infer<typeof triggerIrSchema>;
+
+/** Steps without nested sequences infer their types from the schema. */
+const actionIrSchema = step('action', {
+	operation: operationRefSchema,
+	params: parametersSchema.default({}),
+	credential: credentialRefSchema.optional(),
+	onError: errorPolicySchema.optional(),
+	retry: retryPolicySchema.optional(),
+	outputContract: dataContractSchema.optional(),
+});
+const callWorkflowIrSchema = step('call_workflow', {
+	/** Saved workflow id, or a bundle-local reference resolved at publish time. */
+	workflowId: z.string().optional(),
+	workflowRef: z.string().optional(),
+	inputs: parametersSchema.default({}),
+	wait: z.boolean().default(true),
+});
+const respondIrSchema = step('respond', {
+	status: z.number().int().min(100).max(599).default(200),
+	body: parametersSchema.default({}),
+});
+const transformIrSchema = step('transform', {
+	fields: parametersSchema,
+	includeInput: z.boolean().default(true),
+});
+const validateIrSchema = step('validate', {
+	rules: z
+		.array(
+			z.object({
+				field: z.array(z.string()).min(1),
+				rule: z.enum(['required', 'email', 'string', 'number', 'boolean']),
+			}),
+		)
+		.min(1),
+	/** `respond_400` needs a webhook trigger with `responseMode: responseNode`. */
+	onInvalid: z.enum(['respond_400', 'stop']),
+});
+const codeIrSchema = step('code', {
+	language: z.enum(['javascript', 'python']),
+	source: z.string().min(1),
+	mode: z.enum(['all_items', 'each_item']).default('all_items'),
+});
+const noopIrSchema = step('noop', {});
+
+export type ActionIR = z.infer<typeof actionIrSchema>;
+export type CallWorkflowIR = z.infer<typeof callWorkflowIrSchema>;
+export type RespondIR = z.infer<typeof respondIrSchema>;
+export type TransformIR = z.infer<typeof transformIrSchema>;
+export type ValidateIR = z.infer<typeof validateIrSchema>;
+export type CodeIR = z.infer<typeof codeIrSchema>;
+export type NoopIR = z.infer<typeof noopIrSchema>;
 
 export type StepIR =
 	| TriggerIR
@@ -140,195 +186,65 @@ export type StepIR =
 	| CodeIR
 	| NoopIR;
 
-export interface ActionIR {
+/** Steps with nested sequences are recursive, so their types are declared by hand. */
+interface StepBase {
 	id: string;
 	label?: string;
 	notes?: string;
-	kind: 'action';
-	operation: OperationRef;
-	params: Record<string, unknown>;
-	credential?: CredentialRef;
-	onError?: ErrorPolicy;
-	retry?: RetryPolicy;
-	outputContract?: DataContract;
 }
 
-export interface BranchIR {
-	id: string;
-	label?: string;
-	notes?: string;
+export interface BranchIR extends StepBase {
 	kind: 'branch';
 	condition: Condition;
 	then: StepIR[];
 	else: StepIR[];
 }
 
-export interface SwitchIR {
-	id: string;
-	label?: string;
-	notes?: string;
+export interface SwitchIR extends StepBase {
 	kind: 'switch';
 	on: Expression;
 	cases: Array<{ value: string; steps: StepIR[] }>;
 	fallback?: StepIR[];
 }
 
-export interface ParallelIR {
-	id: string;
-	label?: string;
-	notes?: string;
+export interface ParallelIR extends StepBase {
 	kind: 'parallel';
 	branches: StepIR[][];
 	/** `all` joins the branches with a Merge node; `none` leaves them open. */
 	join: 'all' | 'none';
 }
 
-export interface MapIR {
-	id: string;
-	label?: string;
-	notes?: string;
+export interface MapIR extends StepBase {
 	kind: 'map';
 	batchSize: number;
 	steps: StepIR[];
 }
 
-export interface CallWorkflowIR {
-	id: string;
-	label?: string;
-	notes?: string;
-	kind: 'call_workflow';
-	/** Saved workflow id, or a bundle-local reference resolved at publish time. */
-	workflowId?: string;
-	workflowRef?: string;
-	inputs: Record<string, unknown>;
-	wait: boolean;
-}
-
-export interface RespondIR {
-	id: string;
-	label?: string;
-	notes?: string;
-	kind: 'respond';
-	status: number;
-	body: Record<string, unknown>;
-}
-
-export interface TransformIR {
-	id: string;
-	label?: string;
-	notes?: string;
-	kind: 'transform';
-	fields: Record<string, unknown>;
-	includeInput: boolean;
-}
-
-export interface ValidateIR {
-	id: string;
-	label?: string;
-	notes?: string;
-	kind: 'validate';
-	rules: Array<{ field: string[]; rule: 'required' | 'email' | 'string' | 'number' | 'boolean' }>;
-	/** `respond_400` needs a webhook trigger with `responseMode: responseNode`. */
-	onInvalid: 'respond_400' | 'stop';
-}
-
-export interface CodeIR {
-	id: string;
-	label?: string;
-	notes?: string;
-	kind: 'code';
-	language: 'javascript' | 'python';
-	source: string;
-	mode: 'all_items' | 'each_item';
-}
-
-export interface NoopIR {
-	id: string;
-	label?: string;
-	notes?: string;
-	kind: 'noop';
-}
-
 export const stepIrSchema: z.ZodType<StepIR, z.ZodTypeDef, unknown> = z.lazy(() =>
 	z.discriminatedUnion('kind', [
 		triggerIrSchema,
-		z.object({
-			...stepBase,
-			kind: z.literal('action'),
-			operation: operationRefSchema,
-			params: parametersSchema.default({}),
-			credential: credentialRefSchema.optional(),
-			onError: errorPolicySchema.optional(),
-			retry: retryPolicySchema.optional(),
-			outputContract: dataContractSchema.optional(),
-		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('branch'),
+		actionIrSchema,
+		step('branch', {
 			condition: conditionSchema,
 			then: z.array(stepIrSchema),
 			else: z.array(stepIrSchema),
 		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('switch'),
+		step('switch', {
 			on: expressionSchema,
 			cases: z.array(z.object({ value: z.string(), steps: z.array(stepIrSchema) })).min(1),
 			fallback: z.array(stepIrSchema).optional(),
 		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('parallel'),
+		step('parallel', {
 			branches: z.array(z.array(stepIrSchema)).min(2),
 			join: z.enum(['all', 'none']),
 		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('map'),
-			batchSize: z.number().int().min(1),
-			steps: z.array(stepIrSchema).min(1),
-		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('call_workflow'),
-			workflowId: z.string().optional(),
-			workflowRef: z.string().optional(),
-			inputs: parametersSchema.default({}),
-			wait: z.boolean().default(true),
-		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('respond'),
-			status: z.number().int().min(100).max(599).default(200),
-			body: parametersSchema.default({}),
-		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('transform'),
-			fields: parametersSchema,
-			includeInput: z.boolean().default(true),
-		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('validate'),
-			rules: z
-				.array(
-					z.object({
-						field: z.array(z.string()).min(1),
-						rule: z.enum(['required', 'email', 'string', 'number', 'boolean']),
-					}),
-				)
-				.min(1),
-			onInvalid: z.enum(['respond_400', 'stop']),
-		}),
-		z.object({
-			...stepBase,
-			kind: z.literal('code'),
-			language: z.enum(['javascript', 'python']),
-			source: z.string().min(1),
-			mode: z.enum(['all_items', 'each_item']).default('all_items'),
-		}),
-		z.object({ ...stepBase, kind: z.literal('noop') }),
+		step('map', { batchSize: z.number().int().min(1), steps: z.array(stepIrSchema).min(1) }),
+		callWorkflowIrSchema,
+		respondIrSchema,
+		transformIrSchema,
+		validateIrSchema,
+		codeIrSchema,
+		noopIrSchema,
 	]),
 );
 
@@ -369,28 +285,27 @@ export const bundleIrSchema = z.object({
 });
 export type BundleIR = z.infer<typeof bundleIrSchema>;
 
+/** Nested sequences of a step, flattened in walk order. */
+function children(step: StepIR): readonly StepIR[] {
+	switch (step.kind) {
+		case 'branch':
+			return [...step.then, ...step.else];
+		case 'switch':
+			return [...step.cases.flatMap((c) => c.steps), ...(step.fallback ?? [])];
+		case 'parallel':
+			return step.branches.flat();
+		case 'map':
+			return step.steps;
+		default:
+			return [];
+	}
+}
+
 /** Depth-first walk over every step (nested steps included). */
 export function* walkSteps(steps: readonly StepIR[]): Generator<StepIR> {
 	for (const step of steps) {
 		yield step;
-		switch (step.kind) {
-			case 'branch':
-				yield* walkSteps(step.then);
-				yield* walkSteps(step.else);
-				break;
-			case 'switch':
-				for (const c of step.cases) yield* walkSteps(c.steps);
-				if (step.fallback) yield* walkSteps(step.fallback);
-				break;
-			case 'parallel':
-				for (const branch of step.branches) yield* walkSteps(branch);
-				break;
-			case 'map':
-				yield* walkSteps(step.steps);
-				break;
-			default:
-				break;
-		}
+		yield* walkSteps(children(step));
 	}
 }
 

@@ -89,31 +89,26 @@ export function compileExpressionBody(
 	expression: Expression,
 	resolveName: StepNameResolver,
 ): string {
+	const body = (inner: Expression) => compileExpressionBody(inner, resolveName);
 	switch (expression.type) {
 		case 'literal':
 			return JSON.stringify(expression.value ?? null);
 		case 'field': {
 			const nodeName = resolveName(expression.stepId);
 			if (!nodeName) {
-				throw new ExpressionCompileError(
-					`Expression references unknown step "${expression.stepId}".`,
-					expression.stepId,
-				);
+				const message = `Expression references unknown step "${expression.stepId}".`;
+				throw new ExpressionCompileError(message, expression.stepId);
 			}
 			return `$(${JSON.stringify(nodeName)}).item.json${compilePath(expression.path)}`;
 		}
 		case 'input':
 			return `$json${compilePath(expression.path)}`;
 		case 'coalesce':
-			return expression.values
-				.map((value) => `(${compileExpressionBody(value, resolveName)})`)
-				.join(' ?? ');
+			return expression.values.map((value) => `(${body(value)})`).join(' ?? ');
 		case 'template':
 			return expression.parts
 				.map((part) =>
-					typeof part === 'string'
-						? JSON.stringify(part)
-						: `String(${compileExpressionBody(part, resolveName)} ?? '')`,
+					typeof part === 'string' ? JSON.stringify(part) : `String(${body(part)} ?? '')`,
 				)
 				.join(' + ');
 		case 'raw':
@@ -127,31 +122,18 @@ export function compileExpressionBody(
  */
 export function compileExpression(expression: Expression, resolveName: StepNameResolver): unknown {
 	if (expression.type === 'literal') return expression.value;
-	if (expression.type === 'template') {
-		return `=${expression.parts
-			.map((part) =>
-				typeof part === 'string' ? part : `{{ ${compileExpressionBody(part, resolveName)} }}`,
-			)
-			.join('')}`;
-	}
-	return `={{ ${compileExpressionBody(expression, resolveName)} }}`;
+	const wrap = (inner: Expression) => `{{ ${compileExpressionBody(inner, resolveName)} }}`;
+	if (expression.type !== 'template') return `=${wrap(expression)}`;
+	return `=${expression.parts.map((part) => (typeof part === 'string' ? part : wrap(part))).join('')}`;
 }
 
 /** Collects every step reference in an expression tree. */
 export function referencedSteps(expression: Expression, into = new Set<string>()): Set<string> {
-	switch (expression.type) {
-		case 'field':
-			into.add(expression.stepId);
-			break;
-		case 'coalesce':
-			for (const value of expression.values) referencedSteps(value, into);
-			break;
-		case 'template':
-			for (const part of expression.parts)
-				if (typeof part !== 'string') referencedSteps(part, into);
-			break;
-		default:
-			break;
+	if (expression.type === 'field') into.add(expression.stepId);
+	if (expression.type === 'coalesce')
+		for (const value of expression.values) referencedSteps(value, into);
+	if (expression.type === 'template') {
+		for (const part of expression.parts) if (typeof part !== 'string') referencedSteps(part, into);
 	}
 	return into;
 }

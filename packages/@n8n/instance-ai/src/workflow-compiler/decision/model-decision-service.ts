@@ -5,6 +5,8 @@ import type { DecisionOutcome, DecisionRequest, DecisionService } from './decisi
 import { decisionAnswerSchema, reconcileAnswers, type DecisionQuestions } from './schemas';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 
+const responseSchema = z.object({ answers: z.record(z.string(), decisionAnswerSchema) });
+
 /**
  * Fallback decision backend that asks a general language model to score the
  * same bounded questions. It keeps the structured-read contract (probabilities
@@ -24,12 +26,12 @@ export class ModelDecisionService implements DecisionService {
 		if (request.abortSignal?.aborted) {
 			return { ok: false, reason: 'aborted', message: 'Request aborted.', latencyMs: 0 };
 		}
-		const responseSchema = z.object({ answers: z.record(z.string(), decisionAnswerSchema) });
+		const { state, questions } = request;
 		const result = await generateValidatedJson('workflow-compiler-decisions', {
 			model: this.options.model,
 			fallbackModelConfig: this.modelConfig,
-			instructions: buildInstructions(request.questions),
-			userText: JSON.stringify({ state: request.state, questions: request.questions }),
+			instructions: buildInstructions(questions),
+			userText: JSON.stringify({ state, questions }),
 			schema: responseSchema,
 		});
 		const latencyMs = Date.now() - started;
@@ -41,7 +43,7 @@ export class ModelDecisionService implements DecisionService {
 				latencyMs,
 			};
 		}
-		const { answers, problems } = reconcileAnswers(request.questions, result.data.answers);
+		const { answers, problems } = reconcileAnswers(questions, result.data.answers);
 		return { ok: true, answers, problems, model: this.options.model ?? 'host-model', latencyMs };
 	}
 }

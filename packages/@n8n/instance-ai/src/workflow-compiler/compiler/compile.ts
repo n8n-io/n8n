@@ -1,9 +1,9 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { deepCopy, type IConnection, type IConnections, type IDataObject } from 'n8n-workflow';
+import { deepCopy, type IConnections, type IDataObject } from 'n8n-workflow';
 
 import type { NodeRegistry } from '../catalog/node-registry';
 import { CORE_OPERATION_IDS } from '../catalog/operations';
-import type { NodeOperation, ParameterDefinition } from '../catalog/types';
+import type { NodeOperation } from '../catalog/types';
 import {
 	compileExpression,
 	compileExpressionBody,
@@ -14,7 +14,9 @@ import {
 } from '../expressions/expression';
 import {
 	isCompoundCondition,
+	type ComparisonOp,
 	type Condition,
+	type CredentialRef,
 	type ErrorPolicy,
 	type RetryPolicy,
 	type StepIR,
@@ -78,17 +80,22 @@ interface Outlet {
 const COLUMN_WIDTH = 260;
 const ROW_HEIGHT = 180;
 
-interface Emitter {
+interface Emitter extends Pick<CompiledWorkflow, 'stepNodeNames' | 'nodeStepIds' | 'warnings'> {
 	registry: NodeRegistry;
 	options: CompileOptions;
 	nodes: NodeJSON[];
 	connections: IConnections;
-	stepNodeNames: Record<string, string>;
-	nodeStepIds: Record<string, string>;
 	usedNames: Set<string>;
-	warnings: CompileWarning[];
 	workflowId: string;
 	nextRow: number;
+}
+
+/** Where a step compiles: the emitter, the outlets that feed it and its column. */
+interface Site {
+	emitter: Emitter;
+	incoming: Outlet[];
+	column: number;
+	ir: WorkflowIR;
 }
 
 /**
@@ -112,30 +119,24 @@ export function compileWorkflow(
 		workflowId: ir.id,
 		nextRow: 0,
 	};
-
-	const triggerOutlets: Outlet[] = [];
-	ir.triggers.forEach((trigger, index) => {
-		const node = emitTrigger(emitter, trigger, index);
-		triggerOutlets.push({ node: node.name ?? '', outputIndex: 0 });
+	const incoming = ir.triggers.map((trigger, index) => {
+		emitter.nextRow = index;
+		return outlet(emitTrigger(emitter, trigger));
 	});
-
-	const trailing = compileSequence(emitter, ir.steps, triggerOutlets, 1, ir);
-	void trailing;
-
-	layout(emitter);
-
-	const workflow: WorkflowJSON = {
-		name: ir.name,
-		nodes: emitter.nodes,
-		connections: emitter.connections,
-		settings: {
-			executionOrder: ir.settings.executionOrder,
-			...(ir.settings.timezone ? { timezone: ir.settings.timezone } : {}),
-		},
-	};
-
+	compileSequence({ emitter, incoming, column: 1, ir }, ir.steps);
+	// Positions were assigned during emission; normalize so the canvas starts at the origin.
+	const minY = Math.min(0, ...emitter.nodes.map((node) => node.position[1]));
+	for (const node of emitter.nodes) node.position = [node.position[0], node.position[1] - minY];
 	return {
-		workflow,
+		workflow: {
+			name: ir.name,
+			nodes: emitter.nodes,
+			connections: emitter.connections,
+			settings: {
+				executionOrder: ir.settings.executionOrder,
+				...(ir.settings.timezone ? { timezone: ir.settings.timezone } : {}),
+			},
+		},
 		stepNodeNames: emitter.stepNodeNames,
 		nodeStepIds: emitter.nodeStepIds,
 		generator: {
@@ -153,19 +154,9 @@ export function compileWorkflow(
 
 function uniqueName(emitter: Emitter, base: string): string {
 	let name = base;
-	let suffix = 1;
-	while (emitter.usedNames.has(name)) {
-		suffix += 1;
-		name = `${base} ${suffix}`;
-	}
+	for (let suffix = 2; emitter.usedNames.has(name); suffix += 1) name = `${base} ${suffix}`;
 	emitter.usedNames.add(name);
 	return name;
-}
-
-function nodeId(emitter: Emitter, key: string): string {
-	// Deterministic, stable across recompiles of the same IR. Persistence keeps
-	// saved ids by name, so this only needs to be unique inside the artifact.
-	return `${slug(emitter.workflowId)}-${slug(key)}`;
 }
 
 function slug(value: string): string {
@@ -177,55 +168,41 @@ function slug(value: string): string {
 	);
 }
 
-interface EmitNodeInput {
-	key: string;
-	name: string;
-	type: string;
-	typeVersion: number;
-	parameters: IDataObject;
-	stepId?: string;
-	column: number;
-	credentials?: NodeJSON['credentials'];
-	extra?: Partial<NodeJSON>;
+type NodeInput = Omit<NodeJSON, 'id' | 'position' | 'name'> & { name: string };
+
+/** Emits one node at `column` and returns its unique name. A `stepId` registers the node to that step. */
+function emitNode(
+	emitter: Emitter,
+	key: string,
+	column: number,
+	stepId: string | undefined,
+	node: NodeInput,
+): string {
+	const { name: base, type, typeVersion, ...rest } = node;
+	const name = uniqueName(emitter, base);
+	const position: [number, number] = [column * COLUMN_WIDTH, emitter.nextRow * ROW_HEIGHT];
+	// Ids stay stable across recompiles; they only need to be unique inside the artifact.
+	const id = `${slug(emitter.workflowId)}-${slug(key)}`;
+	emitter.nodes.push({ id, name, type, typeVersion, position, ...rest });
+	if (stepId) {
+		emitter.stepNodeNames[stepId] = name;
+		emitter.nodeStepIds[name] = stepId;
+	}
+	return name;
 }
 
-function emitNode(emitter: Emitter, input: EmitNodeInput): NodeJSON {
-	const name = uniqueName(emitter, input.name);
-	const node: NodeJSON = {
-		id: nodeId(emitter, input.key),
-		name,
-		type: input.type,
-		typeVersion: input.typeVersion,
-		position: [input.column * COLUMN_WIDTH, emitter.nextRow * ROW_HEIGHT],
-		parameters: input.parameters,
-		...(input.credentials ? { credentials: input.credentials } : {}),
-		...input.extra,
-	};
-	emitter.nodes.push(node);
-	if (input.stepId) {
-		emitter.stepNodeNames[input.stepId] = name;
-		emitter.nodeStepIds[name] = input.stepId;
-	}
-	return node;
-}
+const outlet = (node: string, outputIndex = 0): Outlet => ({ node, outputIndex });
 
 function connect(emitter: Emitter, from: Outlet, toNode: string, inputIndex = 0): void {
-	const source = (emitter.connections[from.node] ??= {});
-	const main = (source.main ??= []);
+	const main = ((emitter.connections[from.node] ??= {}).main ??= []);
 	while (main.length <= from.outputIndex) main.push([]);
 	const slot = (main[from.outputIndex] ??= []);
-	const connection: IConnection = { node: toNode, type: 'main', index: inputIndex };
 	if (!slot.some((existing) => existing.node === toNode && existing.index === inputIndex))
-		slot.push(connection);
+		slot.push({ node: toNode, type: 'main', index: inputIndex });
 }
 
-function connectAll(
-	emitter: Emitter,
-	from: readonly Outlet[],
-	toNode: string,
-	inputIndex = 0,
-): void {
-	for (const outlet of from) connect(emitter, outlet, toNode, inputIndex);
+function connectAll(emitter: Emitter, from: readonly Outlet[], toNode: string, index = 0): void {
+	for (const source of from) connect(emitter, source, toNode, index);
 }
 
 function resolver(emitter: Emitter): StepNameResolver {
@@ -239,24 +216,11 @@ function setPath(target: IDataObject, path: string, value: unknown): void {
 	let cursor: IDataObject = target;
 	for (const segment of segments.slice(0, -1)) {
 		const next = cursor[segment];
-		if (typeof next === 'object' && next !== null && !Array.isArray(next)) {
+		if (typeof next === 'object' && next !== null && !Array.isArray(next))
 			cursor = next as IDataObject;
-		} else {
-			const created: IDataObject = {};
-			cursor[segment] = created;
-			cursor = created;
-		}
+		else cursor = cursor[segment] = {};
 	}
 	cursor[segments[segments.length - 1]] = value as IDataObject[string];
-}
-
-function locator(mode: ParameterDefinition['locatorMode'], value: unknown): unknown {
-	if (isExpressionParam(value)) return { __rl: true, mode: mode ?? 'id', value };
-	return { __rl: true, mode: mode ?? 'id', value };
-}
-
-function clone<T extends object>(value: T): T {
-	return deepCopy(value);
 }
 
 /** Applies the operation's discriminators and binds semantic params to node parameter paths. */
@@ -266,10 +230,9 @@ export function bindParameters(
 	emitter: Pick<Emitter, 'warnings'>,
 	stepId: string,
 ): IDataObject {
-	const parameters: IDataObject = clone(operation.baseParameters) as IDataObject;
+	const parameters = deepCopy(operation.baseParameters) as IDataObject;
 	const definitions = [...operation.requiredParameters, ...operation.optionalParameters];
-	const shaped = shapeParameters(operation, params);
-	for (const [name, value] of Object.entries(shaped)) {
+	for (const [name, value] of Object.entries(shapeParameters(operation, params))) {
 		if (value === undefined) continue;
 		const definition = definitions.find((candidate) => candidate.name === name);
 		if (!definition) {
@@ -281,11 +244,8 @@ export function bindParameters(
 			setPath(parameters, name, value);
 			continue;
 		}
-		setPath(
-			parameters,
-			definition.path,
-			definition.type === 'resource_locator' ? locator(definition.locatorMode, value) : value,
-		);
+		const locator = { __rl: true, mode: definition.locatorMode ?? 'id', value };
+		setPath(parameters, definition.path, definition.type === 'resource_locator' ? locator : value);
 	}
 	return parameters;
 }
@@ -319,22 +279,13 @@ function shapeParameters(
 	}
 }
 
-function credentialsFor(step: {
-	credential?: { credentialType: string; credentialId?: string; name?: string };
-}): NodeJSON['credentials'] | undefined {
-	if (!step.credential?.credentialId) return undefined;
-	return {
-		[step.credential.credentialType]: {
-			id: step.credential.credentialId,
-			name: step.credential.name ?? '',
-		},
-	};
+function credentialsFor({ credential }: { credential?: CredentialRef }): NodeJSON['credentials'] {
+	if (!credential?.credentialId) return undefined;
+	const { credentialType, credentialId: id, name = '' } = credential;
+	return { [credentialType]: { id, name } };
 }
 
-function errorSettings(
-	policy: ErrorPolicy | undefined,
-	retry: RetryPolicy | undefined,
-): Partial<NodeJSON> {
+function errorSettings(policy: ErrorPolicy | undefined, retry: RetryPolicy | undefined) {
 	const settings: Partial<NodeJSON> = {};
 	if (policy === 'retry' || policy === 'retry_exponential' || retry) {
 		const attempts = retry?.maxAttempts ?? 3;
@@ -355,39 +306,58 @@ function errorSettings(
 
 // ── step compilation ─────────────────────────────────────────────────────────
 
-function emitTrigger(emitter: Emitter, trigger: TriggerIR, index: number): NodeJSON {
-	const operation = emitter.registry.require(trigger.operation.operationId);
-	const parameters = bindParameters(operation, trigger.params, emitter, trigger.id);
-	const compiledParameters = compileParameterTree(parameters, resolver(emitter)) as IDataObject;
-	emitter.nextRow = index;
-	return emitNode(emitter, {
-		key: trigger.id,
-		name: trigger.label ?? operation.label ?? operation.title,
+interface OperationSpec {
+	operation: string;
+	/** Node name; defaults to the operation label. */
+	name?: string;
+	params: Record<string, unknown>;
+	extra?: Partial<NodeJSON>;
+	credentials?: NodeJSON['credentials'];
+}
+
+/** Emits a registry operation node. A `helperKey` marks a helper node not registered to the step. */
+function emitOperation(
+	emitter: Emitter,
+	step: { id: string; notes?: string },
+	spec: OperationSpec,
+	column: number,
+	helperKey?: string,
+): string {
+	const operation = emitter.registry.require(spec.operation);
+	const parameters = bindParameters(operation, spec.params, emitter, step.id);
+	return emitNode(emitter, helperKey ?? step.id, column, helperKey ? undefined : step.id, {
+		name: spec.name ?? operation.label ?? operation.title,
 		type: operation.nodeType,
 		typeVersion: operation.version,
-		parameters: compiledParameters,
-		stepId: trigger.id,
-		column: 0,
-		credentials: credentialsFor(trigger),
-		...(trigger.notes ? { extra: { notes: trigger.notes } } : {}),
+		parameters: compileParameterTree(parameters, resolver(emitter)) as IDataObject,
+		...(spec.credentials ? { credentials: spec.credentials } : {}),
+		...(step.notes ? { notes: step.notes } : {}),
+		...spec.extra,
 	});
 }
 
-function compileSequence(
+/** Emits a control node (If, Switch, Merge, Loop) for a step, without notes. */
+function emitControl(
 	emitter: Emitter,
-	steps: readonly StepIR[],
-	incoming: Outlet[],
+	step: { id: string; label?: string },
+	name: string,
+	operationId: string,
+	parameters: IDataObject,
 	column: number,
-	ir: WorkflowIR,
-): Outlet[] {
-	let current = incoming;
-	let currentColumn = column;
-	for (const step of steps) {
-		const result = compileStep(emitter, step, current, currentColumn, ir);
-		current = result.outlets;
-		currentColumn = result.nextColumn;
-	}
-	return current;
+): string {
+	const { nodeType: type, version: typeVersion } = emitter.registry.require(operationId);
+	return emitNode(emitter, step.id, column, step.id, {
+		name: step.label ?? name,
+		type,
+		typeVersion,
+		parameters,
+	});
+}
+
+function emitTrigger(emitter: Emitter, trigger: TriggerIR): string {
+	const { label: name, params } = trigger;
+	const spec = { operation: trigger.operation.operationId, name, params };
+	return emitOperation(emitter, trigger, { ...spec, credentials: credentialsFor(trigger) }, 0);
 }
 
 interface StepResult {
@@ -395,39 +365,71 @@ interface StepResult {
 	nextColumn: number;
 }
 
-function compileStep(
+function compileSequence(site: Site, steps: readonly StepIR[]): Outlet[] {
+	let current = site;
+	for (const step of steps) {
+		const { outlets: incoming, nextColumn: column } = compileStep(current, step);
+		current = { ...current, incoming, column };
+	}
+	return current.incoming;
+}
+
+type Group = [steps: readonly StepIR[], incoming: Outlet[]];
+
+/** Compiles sibling sequences on consecutive rows, then restores the row. */
+function compileGroups(
+	site: Site,
+	groups: readonly Group[],
+): { outlets: Outlet[][]; width: number } {
+	const outlets: Outlet[][] = [];
+	let width = 0;
+	groups.forEach(([steps, incoming], index) => {
+		if (index > 0) site.emitter.nextRow += 1;
+		outlets.push(compileSequence({ ...site, incoming }, steps));
+		width = Math.max(width, depth(steps));
+	});
+	site.emitter.nextRow -= groups.length - 1;
+	return { outlets, width };
+}
+
+function compileStep(site: Site, step: StepIR): StepResult {
+	if (step.kind === 'trigger') {
+		throw new CompileError(
+			`Trigger "${step.id}" must be listed under triggers, not steps.`,
+			step.id,
+		);
+	}
+	if (step.kind === 'action') return compileAction(site, step);
+	if (step.kind === 'validate') return compileValidate(site, step);
+	if (step.kind === 'branch') return compileBranch(site, step);
+	if (step.kind === 'switch') return compileSwitch(site, step);
+	if (step.kind === 'parallel') return compileParallel(site, step);
+	if (step.kind === 'map') return compileMap(site, step);
+	return single(site, step, simpleSpec(site.emitter, step));
+}
+
+type StepOf<K extends StepIR['kind']> = Extract<StepIR, { kind: K }>;
+
+function simpleSpec(
 	emitter: Emitter,
-	step: StepIR,
-	incoming: Outlet[],
-	column: number,
-	ir: WorkflowIR,
-): StepResult {
+	step: StepOf<'transform' | 'code' | 'respond' | 'call_workflow' | 'noop'>,
+): OperationSpec {
 	switch (step.kind) {
-		case 'trigger':
-			throw new CompileError(
-				`Trigger "${step.id}" must be listed under triggers, not steps.`,
-				step.id,
-			);
-		case 'action':
-			return compileAction(emitter, step, incoming, column);
-		case 'transform':
-			return single(emitter, step, incoming, column, {
+		case 'transform': {
+			const assignments = Object.entries(step.fields).map(([name, value], index) => ({
+				id: `assignment-${index + 1}`,
+				name,
+				value,
+				type: inferAssignmentType(value),
+			}));
+			return {
 				operation: CORE_OPERATION_IDS.SET,
 				name: step.label ?? 'Edit Fields',
-				params: {
-					assignments: {
-						assignments: Object.entries(step.fields).map(([name, value], index) => ({
-							id: `assignment-${index + 1}`,
-							name,
-							value,
-							type: inferAssignmentType(value),
-						})),
-					},
-					includeOtherFields: step.includeInput,
-				},
-			});
+				params: { assignments: { assignments }, includeOtherFields: step.includeInput },
+			};
+		}
 		case 'code':
-			return single(emitter, step, incoming, column, {
+			return {
 				operation: CORE_OPERATION_IDS.CODE,
 				name: step.label ?? 'Code',
 				params: {
@@ -435,13 +437,13 @@ function compileStep(
 					mode: step.mode === 'each_item' ? 'runOnceForEachItem' : 'runOnceForAllItems',
 					...(step.language === 'python' ? { language: 'python' } : {}),
 				},
-			});
+			};
 		case 'respond':
-			return single(emitter, step, incoming, column, {
+			return {
 				operation: CORE_OPERATION_IDS.RESPOND,
 				name: step.label ?? 'Respond to Webhook',
 				params: { body: objectExpression(step.body, resolver(emitter)), status: step.status },
-			});
+			};
 		case 'call_workflow': {
 			const workflowId =
 				step.workflowId ??
@@ -453,7 +455,7 @@ function compileStep(
 					stepId: step.id,
 				});
 			}
-			return single(emitter, step, incoming, column, {
+			return {
 				operation: CORE_OPERATION_IDS.EXECUTE_WORKFLOW,
 				name: step.label ?? 'Execute Workflow',
 				params: {
@@ -461,362 +463,175 @@ function compileStep(
 					...(Object.keys(step.inputs).length > 0 ? { inputs: step.inputs } : {}),
 					...(step.wait ? {} : { 'options.waitForSubWorkflow': false }),
 				},
-			});
+			};
 		}
 		case 'noop':
-			return single(emitter, step, incoming, column, {
-				operation: CORE_OPERATION_IDS.NOOP,
-				name: step.label ?? 'No Operation',
-				params: {},
-			});
-		case 'validate':
-			return compileValidate(emitter, step, incoming, column, ir);
-		case 'branch':
-			return compileBranch(emitter, step, incoming, column, ir);
-		case 'switch':
-			return compileSwitch(emitter, step, incoming, column, ir);
-		case 'parallel':
-			return compileParallel(emitter, step, incoming, column, ir);
-		case 'map':
-			return compileMap(emitter, step, incoming, column, ir);
+			return { operation: CORE_OPERATION_IDS.NOOP, name: step.label ?? 'No Operation', params: {} };
 	}
 }
 
 function inferAssignmentType(value: unknown): string {
 	if (isExpressionParam(value)) return 'string';
-	if (typeof value === 'number') return 'number';
-	if (typeof value === 'boolean') return 'boolean';
+	if (typeof value === 'number' || typeof value === 'boolean') return typeof value;
 	if (Array.isArray(value)) return 'array';
-	if (typeof value === 'object' && value !== null) return 'object';
-	return 'string';
+	return typeof value === 'object' && value !== null ? 'object' : 'string';
 }
 
-function single(
-	emitter: Emitter,
-	step: { id: string; notes?: string },
-	incoming: Outlet[],
-	column: number,
-	spec: {
-		operation: string;
-		name: string;
-		params: Record<string, unknown>;
-		extra?: Partial<NodeJSON>;
-		credentials?: NodeJSON['credentials'];
-	},
-): StepResult {
-	const operation = emitter.registry.require(spec.operation);
-	const parameters = bindParameters(operation, spec.params, emitter, step.id);
-	const node = emitNode(emitter, {
-		key: step.id,
-		name: spec.name,
-		type: operation.nodeType,
-		typeVersion: operation.version,
-		parameters: compileParameterTree(parameters, resolver(emitter)) as IDataObject,
-		stepId: step.id,
-		column,
-		credentials: spec.credentials,
-		extra: { ...(step.notes ? { notes: step.notes } : {}), ...spec.extra },
-	});
-	connectAll(emitter, incoming, node.name ?? '');
-	for (const limitation of operation.limitations ?? []) {
-		emitter.warnings.push({
-			code: 'limitation',
-			message: `${node.name}: ${limitation}`,
-			stepId: step.id,
-			nodeName: node.name,
-		});
+function single(site: Site, step: { id: string; notes?: string }, spec: OperationSpec): StepResult {
+	const { emitter, column } = site;
+	const node = emitOperation(emitter, step, spec, column);
+	connectAll(emitter, site.incoming, node);
+	for (const limitation of emitter.registry.require(spec.operation).limitations ?? []) {
+		const message = `${node}: ${limitation}`;
+		emitter.warnings.push({ code: 'limitation', message, stepId: step.id, nodeName: node });
 	}
-	return { outlets: [{ node: node.name ?? '', outputIndex: 0 }], nextColumn: column + 1 };
+	return { outlets: [outlet(node)], nextColumn: column + 1 };
 }
 
-function compileAction(
-	emitter: Emitter,
-	step: Extract<StepIR, { kind: 'action' }>,
-	incoming: Outlet[],
-	column: number,
-): StepResult {
-	const operation = emitter.registry.require(step.operation.operationId);
-	const result = single(emitter, step, incoming, column, {
-		operation: operation.id,
-		name: step.label ?? operation.label ?? operation.title,
+function compileAction(site: Site, step: StepOf<'action'>): StepResult {
+	const { emitter } = site;
+	const result = single(site, step, {
+		operation: step.operation.operationId,
+		name: step.label,
 		params: step.params,
 		credentials: credentialsFor(step),
 		extra: errorSettings(step.onError, step.retry),
 	});
 	if (step.onError === 'dead_letter') {
-		const sourceName = result.outlets[0].node;
-		const deadLetter = emitNode(emitter, {
-			key: `${step.id}:dead-letter`,
-			name: `Dead Letter: ${sourceName}`,
+		const source = result.outlets[0].node;
+		const deadLetter = emitNode(emitter, `${step.id}:dead-letter`, result.nextColumn, undefined, {
+			name: `Dead Letter: ${source}`,
 			type: 'n8n-nodes-base.noOp',
 			typeVersion: 1,
 			parameters: {},
-			column: result.nextColumn,
-			extra: {
-				notes: 'Failed items land here. Connect a dead-letter workflow or notification.',
-				notesInFlow: true,
-			},
+			notes: 'Failed items land here. Connect a dead-letter workflow or notification.',
+			notesInFlow: true,
 		});
-		connect(emitter, { node: sourceName, outputIndex: 1 }, deadLetter.name ?? '');
+		connect(emitter, outlet(source, 1), deadLetter);
 		emitter.warnings.push({
 			code: 'dead_letter_stub',
-			message: `${sourceName}: failed items route to "${deadLetter.name}"; wire a handler there.`,
+			message: `${source}: failed items route to "${deadLetter}"; wire a handler there.`,
 			stepId: step.id,
-			nodeName: deadLetter.name,
+			nodeName: deadLetter,
 		});
 	}
 	return result;
 }
 
-function compileValidate(
-	emitter: Emitter,
-	step: Extract<StepIR, { kind: 'validate' }>,
-	incoming: Outlet[],
-	column: number,
-	ir: WorkflowIR,
-): StepResult {
-	const triggerStepId = ir.triggers[0]?.id;
-	const conditions = step.rules.map((rule, index) => {
+function compileValidate(site: Site, step: StepOf<'validate'>): StepResult {
+	const { emitter, column } = site;
+	const triggerStepId = site.ir.triggers[0]?.id;
+	const rows = step.rules.map(({ field: path, rule }, index) => {
 		const left: Expression = triggerStepId
-			? { type: 'field', stepId: triggerStepId, path: rule.field }
-			: { type: 'input', path: rule.field };
-		return conditionRow(`rule-${index + 1}`, ruleCondition(rule.rule, left), resolver(emitter));
+			? { type: 'field', stepId: triggerStepId, path }
+			: { type: 'input', path };
+		const condition: Condition =
+			rule === 'email'
+				? { op: 'contains', left, right: { type: 'literal', value: '@' } }
+				: { op: 'exists', left };
+		return conditionRow(`rule-${index + 1}`, condition, resolver(emitter));
 	});
-	const ifOperation = emitter.registry.require(CORE_OPERATION_IDS.IF);
-	const node = emitNode(emitter, {
-		key: step.id,
-		name: step.label ?? 'Validate',
-		type: ifOperation.nodeType,
-		typeVersion: ifOperation.version,
-		parameters: { conditions: filterParameter(conditions, 'and'), options: {} },
-		stepId: step.id,
-		column,
-	});
-	connectAll(emitter, incoming, node.name ?? '');
-	const valid: Outlet = { node: node.name ?? '', outputIndex: 0 };
+	const parameters = { conditions: filterParameter(rows, 'and'), options: {} };
+	const node = emitControl(emitter, step, 'Validate', CORE_OPERATION_IDS.IF, parameters, column);
+	connectAll(emitter, site.incoming, node);
 	if (step.onInvalid === 'respond_400') {
-		const respond = emitter.registry.require(CORE_OPERATION_IDS.RESPOND);
-		emitter.nextRow += 1;
-		const errorNode = emitNode(emitter, {
-			key: `${step.id}:invalid`,
+		const spec: OperationSpec = {
+			operation: CORE_OPERATION_IDS.RESPOND,
 			name: 'Respond 400',
-			type: respond.nodeType,
-			typeVersion: respond.version,
-			parameters: bindParameters(
-				respond,
-				{ body: JSON.stringify({ error: 'Invalid request' }), status: 400 },
-				emitter,
-				step.id,
-			),
-			column: column + 1,
-		});
-		connect(emitter, { node: node.name ?? '', outputIndex: 1 }, errorNode.name ?? '');
+			params: { body: JSON.stringify({ error: 'Invalid request' }), status: 400 },
+		};
+		emitter.nextRow += 1;
+		const errorNode = emitOperation(
+			emitter,
+			{ id: step.id },
+			spec,
+			column + 1,
+			`${step.id}:invalid`,
+		);
+		connect(emitter, outlet(node, 1), errorNode);
 		emitter.nextRow -= 1;
 	}
-	return { outlets: [valid], nextColumn: column + 1 };
+	return { outlets: [outlet(node)], nextColumn: column + 1 };
 }
 
-function ruleCondition(
-	rule: Extract<StepIR, { kind: 'validate' }>['rules'][number]['rule'],
-	left: Expression,
-): Condition {
-	switch (rule) {
-		case 'required':
-			return { op: 'exists', left };
-		case 'email':
-			return { op: 'contains', left, right: { type: 'literal', value: '@' } };
-		case 'string':
-		case 'number':
-		case 'boolean':
-			return { op: 'exists', left };
-	}
-}
-
-function compileBranch(
-	emitter: Emitter,
-	step: Extract<StepIR, { kind: 'branch' }>,
-	incoming: Outlet[],
-	column: number,
-	ir: WorkflowIR,
-): StepResult {
-	const ifOperation = emitter.registry.require(CORE_OPERATION_IDS.IF);
-	const node = emitNode(emitter, {
-		key: step.id,
-		name: step.label ?? 'If',
-		type: ifOperation.nodeType,
-		typeVersion: ifOperation.version,
-		parameters: { conditions: compileCondition(step.condition, resolver(emitter)), options: {} },
-		stepId: step.id,
-		column,
-	});
-	connectAll(emitter, incoming, node.name ?? '');
-	const trueOutlet: Outlet = { node: node.name ?? '', outputIndex: 0 };
-	const falseOutlet: Outlet = { node: node.name ?? '', outputIndex: 1 };
-	const thenOutlets = compileSequence(emitter, step.then, [trueOutlet], column + 1, ir);
-	emitter.nextRow += 1;
-	const elseOutlets = compileSequence(emitter, step.else, [falseOutlet], column + 1, ir);
-	emitter.nextRow -= 1;
-	const width = Math.max(depth(step.then), depth(step.else));
-	return { outlets: [...thenOutlets, ...elseOutlets], nextColumn: column + 1 + width };
-}
-
-function compileSwitch(
-	emitter: Emitter,
-	step: Extract<StepIR, { kind: 'switch' }>,
-	incoming: Outlet[],
-	column: number,
-	ir: WorkflowIR,
-): StepResult {
-	const switchOperation = emitter.registry.require(CORE_OPERATION_IDS.SWITCH);
-	const resolve = resolver(emitter);
-	const node = emitNode(emitter, {
-		key: step.id,
-		name: step.label ?? 'Switch',
-		type: switchOperation.nodeType,
-		typeVersion: switchOperation.version,
-		parameters: {
-			rules: {
-				values: step.cases.map((c, index) => ({
-					conditions: filterParameter(
-						[
-							conditionRow(
-								`case-${index + 1}`,
-								{ op: 'equals', left: step.on, right: { type: 'literal', value: c.value } },
-								resolve,
-							),
-						],
-						'and',
-					),
-					renameOutput: true,
-					outputKey: c.value,
-				})),
-			},
-			options: step.fallback ? { fallbackOutput: 'extra' } : {},
-		},
-		stepId: step.id,
-		column,
-	});
-	connectAll(emitter, incoming, node.name ?? '');
-	const outlets: Outlet[] = [];
-	let width = 0;
-	step.cases.forEach((c, index) => {
-		if (index > 0) emitter.nextRow += 1;
-		outlets.push(
-			...compileSequence(
-				emitter,
-				c.steps,
-				[{ node: node.name ?? '', outputIndex: index }],
-				column + 1,
-				ir,
-			),
-		);
-		width = Math.max(width, depth(c.steps));
-	});
-	if (step.fallback) {
-		emitter.nextRow += 1;
-		outlets.push(
-			...compileSequence(
-				emitter,
-				step.fallback,
-				[{ node: node.name ?? '', outputIndex: step.cases.length }],
-				column + 1,
-				ir,
-			),
-		);
-		width = Math.max(width, depth(step.fallback));
-	}
-	emitter.nextRow -= step.cases.length - 1 + (step.fallback ? 1 : 0);
-	return { outlets, nextColumn: column + 1 + width };
-}
-
-function compileParallel(
-	emitter: Emitter,
-	step: Extract<StepIR, { kind: 'parallel' }>,
-	incoming: Outlet[],
-	column: number,
-	ir: WorkflowIR,
-): StepResult {
-	const branchOutlets: Outlet[][] = [];
-	let width = 0;
-	step.branches.forEach((branch, index) => {
-		if (index > 0) emitter.nextRow += 1;
-		branchOutlets.push(compileSequence(emitter, branch, incoming, column, ir));
-		width = Math.max(width, depth(branch));
-	});
-	emitter.nextRow -= step.branches.length - 1;
-	if (step.join === 'none') return { outlets: branchOutlets.flat(), nextColumn: column + width };
-	const mergeOperation = emitter.registry.require(CORE_OPERATION_IDS.MERGE);
-	const merge = emitNode(emitter, {
-		key: step.id,
-		name: step.label ?? 'Merge',
-		type: mergeOperation.nodeType,
-		typeVersion: mergeOperation.version,
-		parameters: { mode: 'append', numberInputs: step.branches.length },
-		stepId: step.id,
-		column: column + width,
-	});
-	branchOutlets.forEach((outlets, index) => connectAll(emitter, outlets, merge.name ?? '', index));
-	return { outlets: [{ node: merge.name ?? '', outputIndex: 0 }], nextColumn: column + width + 1 };
-}
-
-function compileMap(
-	emitter: Emitter,
-	step: Extract<StepIR, { kind: 'map' }>,
-	incoming: Outlet[],
-	column: number,
-	ir: WorkflowIR,
-): StepResult {
-	const loopOperation = emitter.registry.require(CORE_OPERATION_IDS.LOOP);
-	const node = emitNode(emitter, {
-		key: step.id,
-		name: step.label ?? 'Loop Over Items',
-		type: loopOperation.nodeType,
-		typeVersion: loopOperation.version,
-		parameters: bindParameters(loopOperation, { batchSize: step.batchSize }, emitter, step.id),
-		stepId: step.id,
-		column,
-	});
-	connectAll(emitter, incoming, node.name ?? '');
-	emitter.nextRow += 1;
-	const bodyOutlets = compileSequence(
+function compileBranch(site: Site, step: StepOf<'branch'>): StepResult {
+	const { emitter, column } = site;
+	const conditions = compileCondition(step.condition, resolver(emitter));
+	const node = emitControl(
 		emitter,
+		step,
+		'If',
+		CORE_OPERATION_IDS.IF,
+		{ conditions, options: {} },
+		column,
+	);
+	connectAll(emitter, site.incoming, node);
+	const groups: Group[] = [
+		[step.then, [outlet(node, 0)]],
+		[step.else, [outlet(node, 1)]],
+	];
+	const { outlets, width } = compileGroups({ ...site, column: column + 1 }, groups);
+	return { outlets: outlets.flat(), nextColumn: column + 1 + width };
+}
+
+function compileSwitch(site: Site, step: StepOf<'switch'>): StepResult {
+	const { emitter, column } = site;
+	const resolve = resolver(emitter);
+	const values = step.cases.map((c, index) => {
+		const right: Expression = { type: 'literal', value: c.value };
+		const row = conditionRow(`case-${index + 1}`, { op: 'equals', left: step.on, right }, resolve);
+		return { conditions: filterParameter([row], 'and'), renameOutput: true, outputKey: c.value };
+	});
+	const options = step.fallback ? { fallbackOutput: 'extra' } : {};
+	const parameters = { rules: { values }, options };
+	const node = emitControl(emitter, step, 'Switch', CORE_OPERATION_IDS.SWITCH, parameters, column);
+	connectAll(emitter, site.incoming, node);
+	const groups = step.cases.map((c, index): Group => [c.steps, [outlet(node, index)]]);
+	if (step.fallback) groups.push([step.fallback, [outlet(node, step.cases.length)]]);
+	const { outlets, width } = compileGroups({ ...site, column: column + 1 }, groups);
+	return { outlets: outlets.flat(), nextColumn: column + 1 + width };
+}
+
+function compileParallel(site: Site, step: StepOf<'parallel'>): StepResult {
+	const { emitter, column } = site;
+	const groups = step.branches.map((branch): Group => [branch, site.incoming]);
+	const { outlets, width } = compileGroups(site, groups);
+	if (step.join === 'none') return { outlets: outlets.flat(), nextColumn: column + width };
+	const parameters = { mode: 'append', numberInputs: step.branches.length };
+	const { MERGE } = CORE_OPERATION_IDS;
+	const merge = emitControl(emitter, step, 'Merge', MERGE, parameters, column + width);
+	outlets.forEach((group, index) => connectAll(emitter, group, merge, index));
+	return { outlets: [outlet(merge)], nextColumn: column + width + 1 };
+}
+
+function compileMap(site: Site, step: StepOf<'map'>): StepResult {
+	const { emitter, column } = site;
+	const loop = emitter.registry.require(CORE_OPERATION_IDS.LOOP);
+	const parameters = bindParameters(loop, { batchSize: step.batchSize }, emitter, step.id);
+	const node = emitControl(emitter, step, 'Loop Over Items', loop.id, parameters, column);
+	connectAll(emitter, site.incoming, node);
+	emitter.nextRow += 1;
+	const body = compileSequence(
+		{ ...site, incoming: [outlet(node, 1)], column: column + 1 },
 		step.steps,
-		[{ node: node.name ?? '', outputIndex: 1 }],
-		column + 1,
-		ir,
 	);
 	emitter.nextRow -= 1;
-	connectAll(emitter, bodyOutlets, node.name ?? '');
-	return {
-		outlets: [{ node: node.name ?? '', outputIndex: 0 }],
-		nextColumn: column + 1 + depth(step.steps),
-	};
+	connectAll(emitter, body, node);
+	return { outlets: [outlet(node)], nextColumn: column + 1 + depth(step.steps) };
 }
 
+/** Number of columns a sequence occupies. */
 function depth(steps: readonly StepIR[]): number {
 	let total = 0;
 	for (const step of steps) {
-		switch (step.kind) {
-			case 'branch':
-				total += 1 + Math.max(depth(step.then), depth(step.else));
-				break;
-			case 'switch':
-				total +=
-					1 +
-					Math.max(
-						...step.cases.map((c) => depth(c.steps)),
-						step.fallback ? depth(step.fallback) : 0,
-					);
-				break;
-			case 'parallel':
-				total += Math.max(...step.branches.map(depth)) + (step.join === 'all' ? 1 : 0);
-				break;
-			case 'map':
-				total += 1 + depth(step.steps);
-				break;
-			default:
-				total += 1;
-		}
+		if (step.kind === 'branch') total += 1 + Math.max(depth(step.then), depth(step.else));
+		else if (step.kind === 'switch') {
+			const fallback = step.fallback ? depth(step.fallback) : 0;
+			total += 1 + Math.max(...step.cases.map((c) => depth(c.steps)), fallback);
+		} else if (step.kind === 'parallel')
+			total += Math.max(...step.branches.map(depth)) + (step.join === 'all' ? 1 : 0);
+		else if (step.kind === 'map') total += 1 + depth(step.steps);
+		else total += 1;
 	}
 	return total;
 }
@@ -831,69 +646,51 @@ interface ConditionRow {
 }
 
 function filterParameter(rows: ConditionRow[], combinator: 'and' | 'or'): IDataObject {
-	return {
-		options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
-		conditions: rows,
-		combinator,
-	};
+	const options = { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 };
+	return { options, conditions: rows, combinator };
 }
+
+/** Filter operator per comparison op: [type, operation, singleValue]. No type: follow the right operand. */
+const OPERATORS: Record<ComparisonOp, readonly [string | undefined, string, boolean?]> = {
+	exists: ['string', 'notEmpty', true],
+	not_exists: ['string', 'empty', true],
+	equals: [undefined, 'equals'],
+	not_equals: [undefined, 'notEquals'],
+	contains: ['string', 'contains'],
+	is_true: ['boolean', 'true', true],
+	is_false: ['boolean', 'false', true],
+	gt: ['number', 'gt'],
+	lt: ['number', 'lt'],
+	gte: ['number', 'gte'],
+	lte: ['number', 'lte'],
+};
 
 function conditionRow(id: string, condition: Condition, resolve: StepNameResolver): ConditionRow {
 	if (isCompoundCondition(condition)) {
 		throw new CompileError('Nested boolean conditions are not supported inside a single rule.');
 	}
-	const left = compileExpression(condition.left, resolve);
+	const leftValue = compileExpression(condition.left, resolve);
 	const right = condition.right ? compileExpression(condition.right, resolve) : undefined;
-	const row = (type: string, operation: string, singleValue = false): ConditionRow => ({
+	const [type = typeOf(condition.right), operation, singleValue] = OPERATORS[condition.op];
+	return {
 		id,
-		leftValue: left,
+		leftValue,
 		rightValue: singleValue ? '' : (right ?? ''),
 		operator: singleValue ? { type, operation, singleValue: true } : { type, operation },
-	});
-	switch (condition.op) {
-		case 'exists':
-			return row('string', 'notEmpty', true);
-		case 'not_exists':
-			return row('string', 'empty', true);
-		case 'equals':
-			return row(typeOf(condition.right), 'equals');
-		case 'not_equals':
-			return row(typeOf(condition.right), 'notEquals');
-		case 'contains':
-			return row('string', 'contains');
-		case 'is_true':
-			return row('boolean', 'true', true);
-		case 'is_false':
-			return row('boolean', 'false', true);
-		case 'gt':
-			return row('number', 'gt');
-		case 'lt':
-			return row('number', 'lt');
-		case 'gte':
-			return row('number', 'gte');
-		case 'lte':
-			return row('number', 'lte');
-	}
+	};
 }
 
 function typeOf(expression: Expression | undefined): string {
-	if (expression?.type === 'literal') {
-		if (typeof expression.value === 'number') return 'number';
-		if (typeof expression.value === 'boolean') return 'boolean';
-	}
-	return 'string';
+	const value = expression?.type === 'literal' ? expression.value : undefined;
+	return typeof value === 'number' || typeof value === 'boolean' ? typeof value : 'string';
 }
 
 function compileCondition(condition: Condition, resolve: StepNameResolver): IDataObject {
-	if (isCompoundCondition(condition)) {
-		return filterParameter(
-			condition.conditions.map((inner, index) =>
-				conditionRow(`condition-${index + 1}`, inner, resolve),
-			),
-			condition.op,
-		);
-	}
-	return filterParameter([conditionRow('condition-1', condition, resolve)], 'and');
+	const [rows, combinator] = isCompoundCondition(condition)
+		? [condition.conditions, condition.op]
+		: [[condition], 'and' as const];
+	const compiled = rows.map((row, index) => conditionRow(`condition-${index + 1}`, row, resolve));
+	return filterParameter(compiled, combinator);
 }
 
 // ── response bodies ──────────────────────────────────────────────────────────
@@ -907,12 +704,4 @@ export function objectExpression(body: Record<string, unknown>, resolve: StepNam
 		return `${JSON.stringify(key)}: ${compiled}`;
 	});
 	return `={{ ({ ${entries.join(', ')} }) }}`;
-}
-
-// ── layout ───────────────────────────────────────────────────────────────────
-
-function layout(emitter: Emitter): void {
-	// Positions were assigned during emission; normalize so the canvas starts at the origin.
-	const minY = Math.min(0, ...emitter.nodes.map((node) => node.position[1]));
-	for (const node of emitter.nodes) node.position = [node.position[0], node.position[1] - minY];
 }

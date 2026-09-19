@@ -23,56 +23,37 @@ export interface IrIssue {
  */
 export function validateWorkflowIr(workflow: WorkflowIR): IrIssue[] {
 	const issues: IrIssue[] = [];
+	const workflowId = workflow.id;
 	if (workflow.triggers.length === 0) {
-		issues.push({
-			code: 'missing_trigger',
-			message: 'A workflow needs at least one trigger.',
-			workflowId: workflow.id,
-		});
+		const message = 'A workflow needs at least one trigger.';
+		issues.push({ code: 'missing_trigger', message, workflowId });
 	}
 	const seen = new Set<string>();
-	for (const step of allSteps(workflow)) {
-		if (seen.has(step.id)) {
-			issues.push({
-				code: 'duplicate_step_id',
-				message: `Step id "${step.id}" is used twice.`,
-				stepId: step.id,
-				workflowId: workflow.id,
-			});
+	for (const { id: stepId } of allSteps(workflow)) {
+		if (seen.has(stepId)) {
+			const message = `Step id "${stepId}" is used twice.`;
+			issues.push({ code: 'duplicate_step_id', message, stepId, workflowId });
 		}
-		seen.add(step.id);
+		seen.add(stepId);
 	}
-
-	const hasWebhook = workflow.triggers.some((trigger) => trigger.triggerKind === 'webhook');
-	const executedBefore = new Set<string>(workflow.triggers.map((trigger) => trigger.id));
 	checkOrder(workflow.steps, {
-		executedBefore,
+		executedBefore: new Set(workflow.triggers.map((trigger) => trigger.id)),
 		allIds: seen,
-		hasWebhook,
-		workflowId: workflow.id,
+		hasWebhook: workflow.triggers.some((trigger) => trigger.triggerKind === 'webhook'),
+		workflowId,
 		issues,
 	});
 	return issues;
 }
 
+/** The parameter tree of a step that can hold expressions. */
 function paramsOf(step: StepIR): unknown {
-	switch (step.kind) {
-		case 'trigger':
-		case 'action':
-			return step.params;
-		case 'branch':
-			return step.condition;
-		case 'switch':
-			return step.on;
-		case 'call_workflow':
-			return step.inputs;
-		case 'respond':
-			return step.body;
-		case 'transform':
-			return step.fields;
-		default:
-			return undefined;
-	}
+	if ('params' in step) return step.params;
+	if ('condition' in step) return step.condition;
+	if ('on' in step) return step.on;
+	if ('inputs' in step) return step.inputs;
+	if ('body' in step) return step.body;
+	return 'fields' in step ? step.fields : undefined;
 }
 
 interface OrderContext {
@@ -86,84 +67,58 @@ interface OrderContext {
 function checkOrder(steps: readonly StepIR[], context: OrderContext): void {
 	const { executedBefore, allIds, hasWebhook, workflowId, issues } = context;
 	for (const step of steps) {
+		const stepId = step.id;
+		const report = (code: IrIssue['code'], message: string) =>
+			issues.push({ code, message, stepId, workflowId });
 		for (const ref of referencedStepsInTree(paramsOf(step))) {
-			if (!executedBefore.has(ref)) {
-				issues.push({
-					code: allIds.has(ref) ? 'unreachable_step_reference' : 'unknown_step_reference',
-					message: allIds.has(ref)
-						? `Step "${step.id}" references "${ref}", which is not guaranteed to execute before it.`
-						: `Step "${step.id}" references unknown step "${ref}".`,
-					stepId: step.id,
-					workflowId,
-				});
-			}
+			if (executedBefore.has(ref)) continue;
+			if (allIds.has(ref)) {
+				const message = `Step "${stepId}" references "${ref}", which is not guaranteed to execute before it.`;
+				report('unreachable_step_reference', message);
+			} else report('unknown_step_reference', `Step "${stepId}" references unknown step "${ref}".`);
 		}
 		if (step.kind === 'respond' && !hasWebhook) {
-			issues.push({
-				code: 'respond_without_webhook',
-				message: `Step "${step.id}" responds to a webhook but the workflow has no webhook trigger.`,
-				stepId: step.id,
-				workflowId,
-			});
+			const message = `Step "${stepId}" responds to a webhook but the workflow has no webhook trigger.`;
+			report('respond_without_webhook', message);
 		}
 		if (step.kind === 'validate' && step.onInvalid === 'respond_400' && !hasWebhook) {
-			issues.push({
-				code: 'validate_respond_without_webhook',
-				message: `Step "${step.id}" wants to respond 400 but the workflow has no webhook trigger.`,
-				stepId: step.id,
-				workflowId,
-			});
+			const message = `Step "${stepId}" wants to respond 400 but the workflow has no webhook trigger.`;
+			report('validate_respond_without_webhook', message);
 		}
+		// Each arm sees what executed before the step, plus the step itself when it emits a node.
+		const arm = (inner: readonly StepIR[], withSelf: boolean) => {
+			const executed = new Set(executedBefore);
+			if (withSelf) executed.add(stepId);
+			checkOrder(inner, { ...context, executedBefore: executed });
+		};
 		switch (step.kind) {
-			case 'branch': {
-				const inThen = new Set(executedBefore);
-				inThen.add(step.id);
-				checkOrder(step.then, { ...context, executedBefore: inThen });
-				const inElse = new Set(executedBefore);
-				inElse.add(step.id);
-				checkOrder(step.else, { ...context, executedBefore: inElse });
+			case 'branch':
+				arm(step.then, true);
+				arm(step.else, true);
 				// Steps after a branch may only reference what both arms guarantee.
-				executedBefore.add(step.id);
+				executedBefore.add(stepId);
 				break;
-			}
-			case 'switch': {
-				for (const c of step.cases) {
-					const inCase = new Set(executedBefore);
-					inCase.add(step.id);
-					checkOrder(c.steps, { ...context, executedBefore: inCase });
-				}
-				if (step.fallback) {
-					const inFallback = new Set(executedBefore);
-					inFallback.add(step.id);
-					checkOrder(step.fallback, { ...context, executedBefore: inFallback });
-				}
-				executedBefore.add(step.id);
+			case 'switch':
+				for (const c of step.cases) arm(c.steps, true);
+				if (step.fallback) arm(step.fallback, true);
+				executedBefore.add(stepId);
 				break;
-			}
-			case 'parallel': {
-				for (const branch of step.branches) {
-					const inBranch = new Set(executedBefore);
-					checkOrder(branch, { ...context, executedBefore: inBranch });
-				}
+			case 'parallel':
+				for (const branch of step.branches) arm(branch, false);
 				// After a joined parallel, every branch step has executed. An unjoined
 				// parallel emits no node of its own, so nothing can reference it.
 				if (step.join === 'all') {
-					for (const branch of step.branches)
-						for (const inner of walkSteps(branch)) executedBefore.add(inner.id);
-					executedBefore.add(step.id);
+					for (const inner of walkSteps(step.branches.flat())) executedBefore.add(inner.id);
+					executedBefore.add(stepId);
 				}
 				break;
-			}
-			case 'map': {
-				const inLoop = new Set(executedBefore);
-				inLoop.add(step.id);
-				checkOrder(step.steps, { ...context, executedBefore: inLoop });
+			case 'map':
+				arm(step.steps, true);
 				for (const inner of walkSteps(step.steps)) executedBefore.add(inner.id);
-				executedBefore.add(step.id);
+				executedBefore.add(stepId);
 				break;
-			}
 			default:
-				executedBefore.add(step.id);
+				executedBefore.add(stepId);
 		}
 	}
 }
@@ -171,10 +126,14 @@ function checkOrder(steps: readonly StepIR[], context: OrderContext): void {
 export function validateBundleIr(bundle: BundleIR): IrIssue[] {
 	const issues: IrIssue[] = [];
 	const ids = new Set(bundle.workflows.map((workflow) => workflow.id));
+	const callEdges = new Map<string, Set<string>>();
 	for (const workflow of bundle.workflows) {
 		issues.push(...validateWorkflowIr(workflow));
+		const targets = new Set<string>();
 		for (const step of walkSteps(workflow.steps)) {
-			if (step.kind === 'call_workflow' && step.workflowRef && !ids.has(step.workflowRef)) {
+			if (step.kind !== 'call_workflow' || !step.workflowRef) continue;
+			targets.add(step.workflowRef);
+			if (!ids.has(step.workflowRef)) {
 				issues.push({
 					code: 'unknown_workflow_reference',
 					message: `Step "${step.id}" calls unknown workflow "${step.workflowRef}".`,
@@ -183,6 +142,7 @@ export function validateBundleIr(bundle: BundleIR): IrIssue[] {
 				});
 			}
 		}
+		callEdges.set(workflow.id, targets);
 	}
 	for (const dependency of bundle.dependencies) {
 		if (!ids.has(dependency.from) || !ids.has(dependency.to)) {
@@ -191,14 +151,6 @@ export function validateBundleIr(bundle: BundleIR): IrIssue[] {
 				message: `Dependency ${dependency.from} → ${dependency.to} names an unknown workflow.`,
 			});
 		}
-	}
-	const callEdges = new Map<string, Set<string>>();
-	for (const workflow of bundle.workflows) {
-		const targets = new Set<string>();
-		for (const step of walkSteps(workflow.steps)) {
-			if (step.kind === 'call_workflow' && step.workflowRef) targets.add(step.workflowRef);
-		}
-		callEdges.set(workflow.id, targets);
 	}
 	const visiting = new Set<string>();
 	const done = new Set<string>();
@@ -211,15 +163,10 @@ export function validateBundleIr(bundle: BundleIR): IrIssue[] {
 		done.add(id);
 		return false;
 	};
-	for (const id of ids) {
-		if (visit(id)) {
-			issues.push({
-				code: 'circular_workflow_dependency',
-				message: `Workflow calls form a cycle through "${id}".`,
-				workflowId: id,
-			});
-			break;
-		}
+	const cycle = [...ids].find(visit);
+	if (cycle !== undefined) {
+		const message = `Workflow calls form a cycle through "${cycle}".`;
+		issues.push({ code: 'circular_workflow_dependency', message, workflowId: cycle });
 	}
 	return issues;
 }

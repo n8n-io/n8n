@@ -7,28 +7,25 @@ import { z } from 'zod';
  */
 
 const probabilitySchema = z.number().min(0).max(1);
+const probabilities = z.record(z.string(), probabilitySchema);
+const instructions = z.string().min(1);
 
 export const noulQuestionSchema = z.object({
 	type: z.literal('noul'),
-	instructions: z.string().min(1),
-	criteria: z
-		.object({
-			true: z.string().optional(),
-			false: z.string().optional(),
-		})
-		.optional(),
+	instructions,
+	criteria: z.object({ true: z.string().optional(), false: z.string().optional() }).optional(),
 });
 
 export const choiceQuestionSchema = z.object({
 	type: z.literal('choice'),
-	instructions: z.string().min(1),
+	instructions,
 	/** Semantic option name → criterion. A `null` criterion keeps the name self-describing. */
 	criteria: z.record(z.string().min(1), z.string().nullable()),
 });
 
 export const scoreQuestionSchema = z.object({
 	type: z.literal('score'),
-	instructions: z.string().min(1),
+	instructions,
 	/** Ordered levels, lowest first. */
 	criteria: z.array(z.string().min(1)).min(2),
 });
@@ -41,15 +38,12 @@ export const decisionQuestionSchema = z.discriminatedUnion('type', [
 
 export const decisionQuestionsSchema = z.record(z.string().min(1), decisionQuestionSchema);
 
-export const noulAnswerSchema = z.object({
-	type: z.literal('noul'),
-	noul: probabilitySchema,
-});
+export const noulAnswerSchema = z.object({ type: z.literal('noul'), noul: probabilitySchema });
 
 export const choiceAnswerSchema = z.object({
 	type: z.literal('choice'),
 	choice: z.string(),
-	probabilities: z.record(z.string(), probabilitySchema),
+	probabilities,
 	confidence: probabilitySchema,
 });
 
@@ -57,7 +51,7 @@ export const scoreAnswerSchema = z.object({
 	type: z.literal('score'),
 	score: z.number(),
 	legend: z.record(z.string(), z.string()),
-	probabilities: z.record(z.string(), probabilitySchema),
+	probabilities,
 	confidence: probabilitySchema,
 });
 
@@ -65,23 +59,15 @@ export const decisionAnswerSchema = z
 	.discriminatedUnion('type', [noulAnswerSchema, choiceAnswerSchema, scoreAnswerSchema])
 	.nullable();
 
+const count = z.number().nonnegative();
+
 export const decisionResponseSchema = z.object({
 	model: z.string(),
 	answers: z.record(z.string(), decisionAnswerSchema),
-	usage: z
-		.object({
-			input_tokens: z.number().nonnegative(),
-			output_tokens: z.number().nonnegative(),
-		})
-		.optional(),
+	usage: z.object({ input_tokens: count, output_tokens: count }).optional(),
 	diagnostics: z
 		.object({
-			timing: z
-				.object({
-					reads: z.number().nonnegative().optional(),
-					total_ms: z.number().nonnegative().optional(),
-				})
-				.optional(),
+			timing: z.object({ reads: count.optional(), total_ms: count.optional() }).optional(),
 		})
 		.optional(),
 });
@@ -111,6 +97,28 @@ export function withNoneOfThese(
 	return { ...criteria, [NONE_OF_THESE]: description };
 }
 
+/** Why an answer does not fit its question, or undefined when it does. */
+function mismatch(
+	question: DecisionQuestion,
+	answer: NonNullable<DecisionAnswer>,
+	name: string,
+): string | undefined {
+	if (answer.type !== question.type)
+		return `answer type "${answer.type}" for "${name}" does not match "${question.type}"`;
+	if (
+		answer.type === 'choice' &&
+		question.type === 'choice' &&
+		!(answer.choice in question.criteria)
+	)
+		return `unknown choice "${answer.choice}" for "${name}"`;
+	if (answer.type === 'score' && question.type === 'score') {
+		const max = question.criteria.length - 1;
+		if (!Number.isFinite(answer.score) || answer.score < 0 || answer.score > max)
+			return `score ${answer.score} for "${name}" is outside 0..${max}`;
+	}
+	return undefined;
+}
+
 /**
  * Cross-checks a validated response against the questions that were asked.
  * Answers for unknown questions are dropped and a choice outside the allowed
@@ -124,32 +132,12 @@ export function reconcileAnswers(
 	const reconciled: Record<string, DecisionAnswer> = {};
 	for (const [name, question] of Object.entries(questions)) {
 		const answer = answers[name];
-		if (answer === undefined || answer === null) {
-			reconciled[name] = null;
-			if (answer === undefined) problems.push(`missing answer for "${name}"`);
-			continue;
-		}
-		if (answer.type !== question.type) {
-			reconciled[name] = null;
-			problems.push(`answer type "${answer.type}" for "${name}" does not match "${question.type}"`);
-			continue;
-		}
-		if (answer.type === 'choice' && question.type === 'choice') {
-			if (!(answer.choice in question.criteria)) {
-				reconciled[name] = null;
-				problems.push(`unknown choice "${answer.choice}" for "${name}"`);
-				continue;
-			}
-		}
-		if (answer.type === 'score' && question.type === 'score') {
-			const max = question.criteria.length - 1;
-			if (!Number.isFinite(answer.score) || answer.score < 0 || answer.score > max) {
-				reconciled[name] = null;
-				problems.push(`score ${answer.score} for "${name}" is outside 0..${max}`);
-				continue;
-			}
-		}
-		reconciled[name] = answer;
+		const problem =
+			answer === undefined
+				? `missing answer for "${name}"`
+				: answer && mismatch(question, answer, name);
+		if (problem) problems.push(problem);
+		reconciled[name] = answer && !problem ? answer : null;
 	}
 	for (const name of Object.keys(answers)) {
 		if (!(name in questions)) problems.push(`unexpected answer "${name}"`);

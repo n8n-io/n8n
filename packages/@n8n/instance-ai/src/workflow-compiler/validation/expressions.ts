@@ -48,55 +48,39 @@ export function validateExpressions(
 	const ancestors = ancestorsOf(workflow);
 	for (const node of workflow.nodes) {
 		if (!node.name || node.disabled) continue;
+		const nodeName = node.name;
 		for (const { path, value } of stringValues(node.parameters)) {
 			if (!value.startsWith('=')) continue;
-			const opens = (value.match(/\{\{/g) ?? []).length;
-			const closes = (value.match(/\}\}/g) ?? []).length;
-			if (opens !== closes) {
+			const report = (severity: ValidationIssue['severity'], code: string, message: string) =>
 				issues.push({
-					severity: 'error',
-					code: 'unbalanced_expression',
-					message: `${node.name}: expression in "${path}" has unbalanced braces.`,
-					nodeName: node.name,
+					severity,
+					code,
+					message: `${nodeName}: ${message}`,
+					nodeName,
 					parameter: path,
 				});
-			}
-			for (const match of value.matchAll(NODE_REFERENCE)) {
-				const referenced = match[2];
+			const opens = (value.match(/\{\{/g) ?? []).length;
+			const closes = (value.match(/\}\}/g) ?? []).length;
+			if (opens !== closes)
+				report('error', 'unbalanced_expression', `expression in "${path}" has unbalanced braces.`);
+			for (const [, , referenced, fieldPath] of value.matchAll(NODE_REFERENCE)) {
 				if (!names.has(referenced)) {
-					issues.push({
-						severity: 'error',
-						code: 'expression_unknown_node',
-						message: `${node.name}: "${path}" references missing node "${referenced}".`,
-						nodeName: node.name,
-						parameter: path,
-					});
+					const message = `"${path}" references missing node "${referenced}".`;
+					report('error', 'expression_unknown_node', message);
 					continue;
 				}
-				if (referenced !== node.name && !ancestors(node.name).has(referenced)) {
-					issues.push({
-						severity: 'error',
-						code: 'expression_node_not_upstream',
-						message: `${node.name}: "${path}" references "${referenced}", which does not execute before it.`,
-						nodeName: node.name,
-						parameter: path,
-					});
+				if (referenced !== nodeName && !ancestors(nodeName).has(referenced)) {
+					const message = `"${path}" references "${referenced}", which does not execute before it.`;
+					report('error', 'expression_node_not_upstream', message);
 					continue;
 				}
-				const fieldPath = match[3];
 				const contract = outputContracts.get(referenced);
-				if (contract && fieldPath && contract.fields.length > 0) {
-					const first = fieldPath.match(/^\.([A-Za-z_$][\w$]*)|^\["([^"]+)"\]/);
-					const fieldName = first?.[1] ?? first?.[2];
-					if (fieldName && !contract.fields.some((field) => field.name === fieldName)) {
-						issues.push({
-							severity: 'warning',
-							code: 'expression_unknown_field',
-							message: `${node.name}: "${path}" reads "${fieldName}" from "${referenced}", which is not in its known output.`,
-							nodeName: node.name,
-							parameter: path,
-						});
-					}
+				if (!contract || !fieldPath || contract.fields.length === 0) continue;
+				const first = fieldPath.match(/^\.([A-Za-z_$][\w$]*)|^\["([^"]+)"\]/);
+				const fieldName = first?.[1] ?? first?.[2];
+				if (fieldName && !contract.fields.some((field) => field.name === fieldName)) {
+					const message = `"${path}" reads "${fieldName}" from "${referenced}", which is not in its known output.`;
+					report('warning', 'expression_unknown_field', message);
 				}
 			}
 		}

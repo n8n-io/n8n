@@ -1,10 +1,10 @@
-import {
-	decisionResponseSchema,
-	reconcileAnswers,
-	type DecisionQuestions,
-	type DecisionState,
-} from './schemas';
-import type { DecisionOutcome, DecisionRequest, DecisionService } from './decision-service';
+import { decisionResponseSchema, reconcileAnswers } from './schemas';
+import type {
+	DecisionFailureReason,
+	DecisionOutcome,
+	DecisionRequest,
+	DecisionService,
+} from './decision-service';
 
 export interface SystemOneClientOptions {
 	baseUrl: string;
@@ -29,93 +29,64 @@ const DEFAULT_MODEL = 'jev-latest';
 export class SystemOneDecisionClient implements DecisionService {
 	readonly kind = 'systemone';
 
-	private readonly baseUrl: string;
-
-	private readonly timeoutMs: number;
-
-	private readonly model: string;
-
-	private readonly fetchImpl: typeof fetch;
-
-	constructor(private readonly options: SystemOneClientOptions) {
-		this.baseUrl = options.baseUrl.replace(/\/+$/, '');
-		this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-		this.model = options.model ?? DEFAULT_MODEL;
-		this.fetchImpl = options.fetchImpl ?? fetch;
-	}
+	constructor(private readonly options: SystemOneClientOptions) {}
 
 	async decide(request: DecisionRequest): Promise<DecisionOutcome> {
+		const { apiKey, think, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = fetch } = this.options;
 		const started = Date.now();
+		const fail = (reason: DecisionFailureReason, message: string): DecisionOutcome => ({
+			ok: false,
+			reason,
+			message,
+			latencyMs: Date.now() - started,
+		});
 		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(new Error('timeout')), this.timeoutMs);
+		const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs);
 		const onAbort = () => controller.abort(new Error('aborted'));
 		request.abortSignal?.addEventListener('abort', onAbort, { once: true });
 		try {
-			const body = this.buildBody(request.state, request.questions);
+			const { state, questions } = request;
+			const model = this.options.model ?? DEFAULT_MODEL;
+			const body = { model, state, questions, ...(think !== undefined ? { think } : {}) };
 			let response: Response;
 			try {
-				response = await this.fetchImpl(`${this.baseUrl}/v1/systemone`, {
+				response = await fetchImpl(`${this.options.baseUrl.replace(/\/+$/, '')}/v1/systemone`, {
 					method: 'POST',
 					signal: controller.signal,
 					headers: {
 						'content-type': 'application/json',
-						...(this.options.apiKey ? { authorization: `Bearer ${this.options.apiKey}` } : {}),
+						...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
 					},
 					body: JSON.stringify(body),
 				});
 			} catch (error) {
-				const latencyMs = Date.now() - started;
-				if (request.abortSignal?.aborted) {
-					return { ok: false, reason: 'aborted', message: 'Request aborted.', latencyMs };
-				}
-				if (controller.signal.aborted) {
-					return {
-						ok: false,
-						reason: 'timeout',
-						message: `Decision service exceeded ${this.timeoutMs}ms.`,
-						latencyMs,
-					};
-				}
-				return {
-					ok: false,
-					reason: 'unavailable',
-					message: error instanceof Error ? error.message : String(error),
-					latencyMs,
-				};
+				if (request.abortSignal?.aborted) return fail('aborted', 'Request aborted.');
+				if (controller.signal.aborted)
+					return fail('timeout', `Decision service exceeded ${timeoutMs}ms.`);
+				return fail('unavailable', error instanceof Error ? error.message : String(error));
 			}
 			if (!response.ok) {
 				const text = await response.text().catch(() => '');
-				return {
-					ok: false,
-					reason: 'http_error',
-					message: `Decision service returned ${response.status}: ${text.slice(0, 500)}`,
-					latencyMs: Date.now() - started,
-				};
+				return fail(
+					'http_error',
+					`Decision service returned ${response.status}: ${text.slice(0, 500)}`,
+				);
 			}
 			let json: unknown;
 			try {
 				json = await response.json();
 			} catch {
-				return {
-					ok: false,
-					reason: 'malformed',
-					message: 'Decision service returned invalid JSON.',
-					latencyMs: Date.now() - started,
-				};
+				return fail('malformed', 'Decision service returned invalid JSON.');
 			}
 			const parsed = decisionResponseSchema.safeParse(json);
 			if (!parsed.success) {
-				return {
-					ok: false,
-					reason: 'malformed',
-					message: `Decision response failed validation: ${parsed.error.issues
-						.slice(0, 3)
-						.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
-						.join('; ')}`,
-					latencyMs: Date.now() - started,
-				};
+				const detail = parsed.error.issues
+					.slice(0, 3)
+					.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+					.join('; ');
+				return fail('malformed', `Decision response failed validation: ${detail}`);
 			}
-			const { answers, problems } = reconcileAnswers(request.questions, parsed.data.answers);
+			const { answers, problems } = reconcileAnswers(questions, parsed.data.answers);
 			return {
 				ok: true,
 				answers,
@@ -128,14 +99,5 @@ export class SystemOneDecisionClient implements DecisionService {
 			clearTimeout(timer);
 			request.abortSignal?.removeEventListener('abort', onAbort);
 		}
-	}
-
-	private buildBody(state: DecisionState, questions: DecisionQuestions) {
-		return {
-			model: this.model,
-			state,
-			questions,
-			...(this.options.think !== undefined ? { think: this.options.think } : {}),
-		};
 	}
 }

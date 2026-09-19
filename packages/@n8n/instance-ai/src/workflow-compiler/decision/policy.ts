@@ -54,21 +54,16 @@ export interface ResolveChoiceInput {
 	thresholds?: Partial<DecisionThresholds>;
 }
 
-function normalize(distribution: Readonly<Record<string, number>>): Record<string, number> {
-	let total = 0;
-	for (const value of Object.values(distribution))
-		if (Number.isFinite(value) && value > 0) total += value;
+type Distribution = Readonly<Record<string, number>>;
+
+function normalize(distribution: Distribution): Record<string, number> {
+	const positive = Object.entries(distribution).filter(([, v]) => Number.isFinite(v) && v > 0);
+	const total = positive.reduce((sum, [, value]) => sum + value, 0);
 	if (total <= 0) return {};
-	const result: Record<string, number> = {};
-	for (const [key, value] of Object.entries(distribution)) {
-		if (Number.isFinite(value) && value > 0) result[key] = value / total;
-	}
-	return result;
+	return Object.fromEntries(positive.map(([key, value]) => [key, value / total]));
 }
 
-function argmax(
-	distribution: Readonly<Record<string, number>>,
-): { key: string; value: number } | null {
+function argmax(distribution: Distribution): { key: string; value: number } | null {
 	let best: { key: string; value: number } | null = null;
 	for (const [key, value] of Object.entries(distribution)) {
 		if (best === null || value > best.value) best = { key, value };
@@ -76,17 +71,23 @@ function argmax(
 	return best;
 }
 
+const unavailable = (): ChoiceResolution => ({
+	status: 'abstain',
+	reason: 'unavailable',
+	confidence: 0,
+});
+
 function resolveFromPrior(
 	allowed: readonly string[],
-	prior: Readonly<Record<string, number>> | undefined,
+	prior: Distribution | undefined,
 	thresholds: DecisionThresholds,
 ): ChoiceResolution {
-	if (!prior) return { status: 'abstain', reason: 'unavailable', confidence: 0 };
-	const filtered: Record<string, number> = {};
-	for (const option of allowed) if (option in prior) filtered[option] = prior[option];
-	const normalized = normalize(filtered);
-	const best = argmax(normalized);
-	if (!best) return { status: 'abstain', reason: 'unavailable', confidence: 0 };
+	if (!prior) return unavailable();
+	const filtered = allowed
+		.filter((option) => option in prior)
+		.map((option): [string, number] => [option, prior[option]]);
+	const best = argmax(normalize(Object.fromEntries(filtered)));
+	if (!best) return unavailable();
 	if (best.value >= thresholds.act) {
 		return { status: 'chosen', value: best.key, confidence: best.value, source: 'prior' };
 	}
@@ -102,43 +103,25 @@ export function resolveChoice(input: ResolveChoiceInput): ChoiceResolution {
 		return { status: 'chosen', value: allowed[0], confidence: 1, source: 'only_option' };
 	}
 	const answer = input.answer;
-	if (answer?.type !== 'choice') {
-		return resolveFromPrior(allowed, input.prior, thresholds);
-	}
-	if (answer.choice === NONE_OF_THESE) {
-		if (answer.confidence >= thresholds.hint) {
-			return { status: 'abstain', reason: 'none_of_these', confidence: answer.confidence };
-		}
-		const bestListed = argmax(
-			Object.fromEntries(
-				Object.entries(answer.probabilities).filter(([key]) => allowed.includes(key)),
-			),
-		);
+	if (answer?.type !== 'choice') return resolveFromPrior(allowed, input.prior, thresholds);
+	const { choice, confidence } = answer;
+	if (choice === NONE_OF_THESE) {
+		if (confidence >= thresholds.hint)
+			return { status: 'abstain', reason: 'none_of_these', confidence };
+		const listed = Object.entries(answer.probabilities).filter(([key]) => allowed.includes(key));
+		const bestListed = argmax(Object.fromEntries(listed));
 		return {
 			status: 'abstain',
 			reason: 'low_confidence',
-			confidence: bestListed?.value ?? answer.confidence,
+			confidence: bestListed?.value ?? confidence,
 			...(bestListed ? { best: bestListed.key } : {}),
 		};
 	}
-	if (!allowed.includes(answer.choice)) {
-		// Unknown category: fail closed rather than coerce.
-		return { status: 'abstain', reason: 'unavailable', confidence: 0 };
-	}
-	if (answer.confidence >= thresholds.act) {
-		return {
-			status: 'chosen',
-			value: answer.choice,
-			confidence: answer.confidence,
-			source: 'decision',
-		};
-	}
-	return {
-		status: 'abstain',
-		reason: 'low_confidence',
-		confidence: answer.confidence,
-		best: answer.choice,
-	};
+	// Unknown category: fail closed rather than coerce.
+	if (!allowed.includes(choice)) return unavailable();
+	if (confidence >= thresholds.act)
+		return { status: 'chosen', value: choice, confidence, source: 'decision' };
+	return { status: 'abstain', reason: 'low_confidence', confidence, best: choice };
 }
 
 export type NoulResolution = 'yes' | 'no' | 'uncertain';
@@ -157,10 +140,8 @@ export function resolveNoul(
 
 /** Shannon entropy of a choice answer in bits — high entropy marks a read worth repeating. */
 export function choiceEntropy(answer: ChoiceAnswer): number {
-	const normalized = normalize(answer.probabilities);
-	let entropy = 0;
-	for (const value of Object.values(normalized)) entropy -= value * Math.log2(value);
-	return entropy;
+	const normalized = Object.values(normalize(answer.probabilities));
+	return normalized.reduce((entropy, value) => entropy - value * Math.log2(value), 0);
 }
 
 export function isChoiceAnswer(answer: DecisionAnswer | undefined): answer is ChoiceAnswer {

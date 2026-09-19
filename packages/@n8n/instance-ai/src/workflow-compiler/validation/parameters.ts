@@ -5,21 +5,14 @@ import type { NodeRegistry } from '../catalog/node-registry';
 import type { NodeOperation } from '../catalog/types';
 import type { ValidationIssue } from './report';
 
-function toDisplayOptions(options: {
-	show?: Record<string, unknown>;
-	hide?: Record<string, unknown>;
-}): {
-	show?: Record<string, unknown[]>;
-	hide?: Record<string, unknown[]>;
-} {
-	const pick = (source: Record<string, unknown> | undefined) => {
-		if (!source) return undefined;
-		const result: Record<string, unknown[]> = {};
-		for (const [key, value] of Object.entries(source))
-			if (Array.isArray(value)) result[key] = value;
-		return result;
-	};
-	return { show: pick(options.show), hide: pick(options.hide) };
+type ArrayOptions = Record<string, unknown[]> | undefined;
+
+/** Keeps only the array-valued entries, the shape `matchesDisplayOptions` accepts. */
+function pickArrays(source: Record<string, unknown> | undefined): ArrayOptions {
+	if (!source) return undefined;
+	const result: Record<string, unknown[]> = {};
+	for (const [key, value] of Object.entries(source)) if (Array.isArray(value)) result[key] = value;
+	return result;
 }
 
 function readPath(parameters: Record<string, unknown> | undefined, path: string): unknown {
@@ -53,75 +46,42 @@ export async function validateParameters(
 		if (!node.name || node.disabled) continue;
 		const operation = nodeOperations.get(node.name);
 		if (!operation) continue;
+		const nodeName = node.name;
+		const error = (code: string, message: string, parameter: string) =>
+			issues.push({
+				severity: 'error',
+				code,
+				message: `${nodeName}: ${message}`,
+				nodeName,
+				parameter,
+			});
 		const parameters = node.parameters ?? {};
-		for (const definition of operation.requiredParameters) {
-			const value = readPath(parameters, definition.path);
-			if (isEmpty(value)) {
-				issues.push({
-					severity: 'error',
-					code: 'missing_required_parameter',
-					message: `${node.name}: "${definition.name}" is required.`,
-					nodeName: node.name,
-					parameter: definition.name,
-				});
-			} else if (
-				definition.type === 'enum' &&
-				definition.options &&
-				typeof value === 'string' &&
-				!definition.options.includes(value)
-			) {
-				issues.push({
-					severity: 'error',
-					code: 'invalid_enum_value',
-					message: `${node.name}: "${definition.name}" must be one of ${definition.options.join(', ')}.`,
-					nodeName: node.name,
-					parameter: definition.name,
-				});
-			}
+		for (const { name, path, type, options } of operation.requiredParameters) {
+			const value = readPath(parameters, path);
+			if (isEmpty(value)) error('missing_required_parameter', `"${name}" is required.`, name);
+			else if (type === 'enum' && options && typeof value === 'string' && !options.includes(value))
+				error('invalid_enum_value', `"${name}" must be one of ${options.join(', ')}.`, name);
 		}
 		for (const [key, expected] of Object.entries(operation.baseParameters)) {
-			if (typeof expected !== 'string') continue;
-			if (parameters[key] !== expected) {
-				issues.push({
-					severity: 'error',
-					code: 'discriminator_mismatch',
-					message: `${node.name}: "${key}" must be "${expected}" for ${operation.id}.`,
-					nodeName: node.name,
-					parameter: key,
-				});
-			}
+			if (typeof expected === 'string' && parameters[key] !== expected)
+				error('discriminator_mismatch', `"${key}" must be "${expected}" for ${operation.id}.`, key);
 		}
 		for (const credential of operation.credentials) {
 			if (credential.required && !node.credentials?.[credential.type]) {
-				issues.push({
-					severity: 'warning',
-					code: 'credential_unresolved',
-					message: `${node.name}: needs a "${credential.type}" credential.`,
-					nodeName: node.name,
-				});
+				const message = `${nodeName}: needs a "${credential.type}" credential.`;
+				issues.push({ severity: 'warning', code: 'credential_unresolved', message, nodeName });
 			}
 		}
 		const description = await registry.describe(node.type, node.typeVersion);
-		if (!description) continue;
-		for (const property of description.properties) {
+		for (const property of description?.properties ?? []) {
 			if (!property.required) continue;
-			if (
-				property.displayOptions &&
-				!matchesDisplayOptions(
-					{ parameters, nodeVersion: node.typeVersion },
-					toDisplayOptions(property.displayOptions),
-				)
-			)
+			const display = property.displayOptions;
+			const shown = { show: pickArrays(display?.show), hide: pickArrays(display?.hide) };
+			if (display && !matchesDisplayOptions({ parameters, nodeVersion: node.typeVersion }, shown))
 				continue;
-			const value = parameters[property.name];
-			if (isEmpty(value) && isEmpty(property.default)) {
-				issues.push({
-					severity: 'error',
-					code: 'missing_node_property',
-					message: `${node.name}: node property "${property.displayName}" is required.`,
-					nodeName: node.name,
-					parameter: property.name,
-				});
+			if (isEmpty(parameters[property.name]) && isEmpty(property.default)) {
+				const message = `node property "${property.displayName}" is required.`;
+				error('missing_node_property', message, property.name);
 			}
 		}
 	}
