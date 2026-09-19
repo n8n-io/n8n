@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+
+defineOptions({ name: 'N8nSendStopButton' });
 
 const { t } = useI18n();
 
@@ -43,23 +46,28 @@ function handleStop() {
 		icon-only
 		:aria-label="t('sendStopButton.stop')"
 		:size="size"
-		icon="filled-square"
 		icon-size="small"
 		:data-test-id="stopButtonTestId"
 		@click="handleStop"
-	/>
+	>
+		<template #icon>
+			<N8nIcon icon="filled-square" size="small" />
+		</template>
+	</N8nButton>
 	<N8nButton
 		v-else
 		variant="solid"
 		:size="size"
 		icon-size="large"
 		:icon-only="!label"
-		:icon="label ? undefined : 'arrow-up'"
 		:aria-label="label ? undefined : t('sendStopButton.send')"
 		:disabled="disabled"
 		:data-test-id="sendButtonTestId"
 		@click="handleSend"
 	>
+		<template v-if="!label" #icon>
+			<N8nIcon icon="arrow-up" size="large" />
+		</template>
 		{{ label }}
 	</N8nButton>
 </template>

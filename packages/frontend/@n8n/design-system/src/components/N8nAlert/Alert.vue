@@ -13,6 +13,8 @@ type AlertProps = {
 	background?: boolean;
 };
 
+defineOptions({ name: 'N8nAlert' });
+
 const props = withDefaults(defineProps<AlertProps>(), {
 	type: 'info',
 	effect: 'light',

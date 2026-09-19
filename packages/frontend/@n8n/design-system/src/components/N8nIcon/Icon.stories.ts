@@ -115,30 +115,18 @@ const renderIcon: Story['render'] = (args) => ({
 });
 
 export const Default: Story = {
-	render: (args) => ({
-		components: { N8nIcon },
-		setup() {
-			return { args };
-		},
-		template: `
-			<div
-				style="
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					width: 14px;
-					height: 14px;
-					outline: var(--border-width) dashed var(--border-color);
-				"
-			>
-				<N8nIcon v-bind="args" />
-			</div>
-		`,
-	}),
+	render: renderIcon,
 	args: {
 		icon: 'check',
 		size: 'medium',
 		spin: false,
+	},
+	parameters: {
+		s2d: {
+			initArgs: {
+				':selector': '.n8n-icon',
+			},
+		},
 	},
 };
 
