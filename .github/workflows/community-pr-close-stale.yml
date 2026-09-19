@@ -33,7 +33,10 @@ jobs:
           days-before-issue-stale: -1
           days-before-issue-close: -1
 
-          any-of-pr-labels: 'triage:needs-info,triage:tests-needed,Needs Feedback'
+          # 'Stale' is in the list because actions/stale applies this filter before
+          # the close check: a PR that went stale and then lost its triage label
+          # would be skipped forever instead of being closed.
+          any-of-pr-labels: 'triage:needs-info,triage:tests-needed,Needs Feedback,Stale'
           days-before-pr-stale: 30
           days-before-pr-close: 14
           stale-pr-label: 'Stale'
