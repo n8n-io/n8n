@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
-import { TeamsIntegration } from '../../../platforms/teams-integration';
+import { TeamsIntegration } from '../../../platforms/teams/teams-integration';
 import {
 	createReplayContextSetup,
 	type ReplayApiCall,
