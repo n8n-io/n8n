@@ -29,7 +29,7 @@ export async function wiseApiRequest(
 	const rootUrl =
 		environment === 'live'
 			? 'https://api.transferwise.com/'
-			: 'https://api.sandbox.transferwise.tech/';
+			: 'https://api.wise-sandbox.com/';
 
 	const options: IHttpRequestOptions = {
 		headers: {
