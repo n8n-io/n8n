@@ -78,6 +78,7 @@ function buildAdjacency(json: WorkflowJSON): {
 	return { parentsOf, childrenOf };
 }
 
+/** A node that is in both the build and the saved workflow: `node` carries its new position, `saved` its old one. */
 interface Survivor {
 	node: NodeJSON;
 	saved: Position;
@@ -141,6 +142,44 @@ function resolveTranslation(
 }
 
 /**
+ * Fingerprint of which nodes sit together: `["a","b"]["c"]` for the groups [a, b] and [c].
+ * A group's own name and id are left out, so renaming a group does not change it.
+ * Sorted twice so the same grouping always gives the same text, whatever order the
+ * build lists its groups and members in.
+ */
+function groupingFingerprint(json: WorkflowJSON): string {
+	return (json.nodeGroups ?? [])
+		.map((group) => JSON.stringify([...group.nodeIds].sort()))
+		.sort()
+		.join('');
+}
+
+/** Corner the whole set starts at: the smallest x and the smallest y. */
+function topLeftCorner(positions: Position[]): Position {
+	return [Math.min(...positions.map(([x]) => x)), Math.min(...positions.map(([, y]) => y))];
+}
+
+/**
+ * The build lays the workflow out from scratch, starting near 0,0, while the existing/saved
+ * one may sit far from there. This function slides the whole build over until it lands on the
+ * existing/saved canvas, so the layout the build produced is kept intact.
+ */
+function alignWithSavedCanvas(nodes: NodeJSON[], survivors: Survivor[]): void {
+	// The survivors are the only nodes both layouts share, so their top-left corners say
+	// where each layout starts. The gap between the corners is how far to move.
+	const [savedLeft, savedTop] = topLeftCorner(survivors.map(({ saved }) => saved));
+	const [freshLeft, freshTop] = topLeftCorner(survivors.map(({ node }) => node.position));
+
+	const shiftX = savedLeft - freshLeft;
+	const shiftY = savedTop - freshTop;
+
+	for (const node of nodes) {
+		const [nodeX, nodeY] = node.position;
+		node.position = [snapToGrid(nodeX + shiftX), snapToGrid(nodeY + shiftY)];
+	}
+}
+
+/**
  * Push added nodes down until they clear everything already on the canvas.
  * Sticky notes are ignored on both sides — they are meant to sit behind nodes.
  */
@@ -177,13 +216,19 @@ function separateAddedNodes(added: NodeJSON[], allNodes: NodeJSON[]): void {
  *
  * Nodes the build added are translated into the saved canvas's frame, keeping the
  * layout engine's relative arrangement, then nudged clear of anything they land on.
+ *
+ * A build that regroups nodes is the exception: the saved positions describe a
+ * different grouping, so the whole build keeps its fresh layout and only moves onto
+ * the saved canvas.
  */
 export async function preserveExistingNodePositions(
-	json: WorkflowJSON,
+	newWorkflowJson: WorkflowJSON,
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,
 ): Promise<void> {
-	if (!workflowId) return;
+	if (!workflowId) {
+		return;
+	}
 
 	let existing: WorkflowJSON;
 	try {
@@ -203,23 +248,37 @@ export async function preserveExistingNodePositions(
 	type SavedNode = { id?: string; name?: string; position: Position };
 	const savedById = new Map<string, SavedNode>();
 	const savedByName = new Map<string, SavedNode>();
+
 	for (const node of existing.nodes ?? []) {
-		if (!Array.isArray(node.position)) continue;
+		if (!Array.isArray(node.position)) {
+			continue;
+		}
+
 		const saved: SavedNode = {
 			id: node.id,
 			name: node.name,
 			position: [node.position[0], node.position[1]],
 		};
-		if (saved.id) savedById.set(saved.id, saved);
-		if (saved.name) savedByName.set(saved.name, saved);
-	}
-	if (savedById.size === 0 && savedByName.size === 0) return;
 
-	const nodes = json.nodes ?? [];
+		if (saved.id) {
+			savedById.set(saved.id, saved);
+		}
+
+		if (saved.name) {
+			savedByName.set(saved.name, saved);
+		}
+	}
+
+	if (savedById.size === 0 && savedByName.size === 0) {
+		return;
+	}
+
 	const survivors: Survivor[] = [];
 	const added: NodeJSON[] = [];
 	const claimed = new Set<SavedNode>();
 	const unclaimed: NodeJSON[] = [];
+
+	const nodes = newWorkflowJson.nodes ?? [];
 	for (const node of nodes) {
 		const saved = node.id ? savedById.get(node.id) : undefined;
 		if (saved) {
@@ -229,6 +288,7 @@ export async function preserveExistingNodePositions(
 			unclaimed.push(node);
 		}
 	}
+
 	for (const node of unclaimed) {
 		const saved = node.name ? savedByName.get(node.name) : undefined;
 		if (saved && !claimed.has(saved)) {
@@ -240,10 +300,20 @@ export async function preserveExistingNodePositions(
 	}
 
 	// Every node is new (or replaced) — there is no prior layout left to honour.
-	if (survivors.length === 0) return;
+	if (survivors.length === 0) {
+		return;
+	}
+
+	// A group chip follows its members, so a new grouping needs the new layout.
+	// Keep it and only shift it onto the saved canvas.
+	const groupingHasChanged = groupingFingerprint(newWorkflowJson) !== groupingFingerprint(existing);
+	if (groupingHasChanged) {
+		alignWithSavedCanvas(nodes, survivors);
+		return;
+	}
 
 	if (added.length > 0) {
-		const [deltaX, deltaY] = resolveTranslation(survivors, added, json);
+		const [deltaX, deltaY] = resolveTranslation(survivors, added, newWorkflowJson);
 		for (const node of added) {
 			node.position = [
 				snapToGrid(node.position[0] + deltaX),
@@ -256,5 +326,7 @@ export async function preserveExistingNodePositions(
 		node.position = saved;
 	}
 
-	if (added.length > 0) separateAddedNodes(added, nodes);
+	if (added.length > 0) {
+		separateAddedNodes(added, nodes);
+	}
 }

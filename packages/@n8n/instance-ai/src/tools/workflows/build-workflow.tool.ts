@@ -1242,7 +1242,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
-				await preserveExistingNodePositions(json, targetWorkflowId, context);
 				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
 				const droppedGroupWarnings = nodeGroupDroppedWarnings(
 					dropInvalidWorkflowJsonGroups(
@@ -1254,6 +1253,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				);
 				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
 				informational.push(...droppedGroupWarnings);
+				// Runs after the drop: a group that never reaches the canvas must not count as a
+				// grouping change, or an invalid one would discard the user's saved layout.
+				await preserveExistingNodePositions(json, targetWorkflowId, context);
 
 				const topLevel = summarizeWorkflowTopLevelItems(json);
 				const grouping: GroupingOutcome = {

@@ -613,6 +613,52 @@ describe('createBuildWorkflowTool', () => {
 		},
 	);
 
+	it('keeps the saved layout when the only grouping change is a group that gets dropped', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		const setNode = (id: string, name: string, position: [number, number]) => ({
+			id,
+			name,
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position,
+			parameters: {},
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Grouped workflow',
+				nodes: [setNode('node-1', 'First', [0, 0]), setNode('node-2', 'Second', [208, 0])],
+				connections: {},
+				nodeGroups: [
+					{ id: 'group-1', name: 'Broken group', nodeIds: ['missing-node', 'another-missing'] },
+				],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		// The saved canvas holds the same two nodes, arranged by hand.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			name: 'Target workflow',
+			nodes: [setNode('node-1', 'First', [320, 480]), setNode('node-2', 'Second', [528, 624])],
+			connections: {},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result.success).toBe(true);
+		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
+			.calls[0]?.[1];
+		expect(savedWorkflow?.nodeGroups).toEqual([]);
+		// The dropped group never reaches the canvas, so it is not a grouping change.
+		expect(savedWorkflow?.nodes.map((n) => n.position)).toEqual([
+			[320, 480],
+			[528, 624],
+		]);
+	});
+
 	it('drops invalid node groups before saving and reports the drop', async () => {
 		const source = 'workflow source from workspace';
 		const { context, filePath, trackTelemetry } = makeContext({ source });
