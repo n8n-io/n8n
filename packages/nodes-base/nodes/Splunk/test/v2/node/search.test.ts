@@ -103,4 +103,29 @@ describe('Splunk, search resource', () => {
 		);
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
+
+	test('getResult operation reads returnAll and limit from the item it is running for', async () => {
+		// `setReturnAllOrLimit` read both off item 0, so the second item was given
+		// the first item's answer. With a per-item `searchJobId` that meant the
+		// wrong count — and an empty body instead of the job's rows (#38528).
+		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNodeParameter.calledWith('searchJobId', 1).mockReturnValue('second-job');
+		executeFunctions.getNodeParameter.calledWith('filters', 1).mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('options', 1).mockReturnValue({});
+		// Item 0 wants a capped fetch, item 1 wants everything.
+		executeFunctions.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(false);
+		executeFunctions.getNodeParameter.calledWith('limit', 0).mockReturnValue(10);
+		executeFunctions.getNodeParameter.calledWith('returnAll', 1).mockReturnValue(true);
+		(transport.splunkApiJsonRequest as Mock).mockReturnValue([{ row: 'second' }]);
+
+		const responseData = await search.getResult.execute.call(executeFunctions, 1);
+
+		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
+			'GET',
+			'/services/search/jobs/second-job/results',
+			{},
+			{ count: 0 },
+		);
+		expect(responseData).toEqual([{ row: 'second' }]);
+	});
 });
