@@ -263,7 +263,7 @@ function buildIndividualAIMessage(
 	}
 
 	return new AIMessage({
-		content: content ?? [],
+		content: content ?? '',
 		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
 		...(content === null && { tool_calls: [toolCall] }),
 		...(Object.keys(additionalKwargs).length > 0 && { additional_kwargs: additionalKwargs }),
