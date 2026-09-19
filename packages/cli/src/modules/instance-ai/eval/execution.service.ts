@@ -1019,7 +1019,7 @@ export class EvalExecutionService {
 			success: false,
 			nodeResults,
 			errors: [`Execution failed: ${message}`],
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -1129,7 +1129,7 @@ export class EvalExecutionService {
 			success: allErrors.length === 0,
 			nodeResults,
 			errors: allErrors,
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -1152,6 +1152,16 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+/** `warnings` is the channel the verification artifact renders as FRAMEWORK ISSUE flags. */
+function withInterceptionGaps(
+	hints: MockHints,
+	credentialsHelper: EvalMockedCredentialsHelper | undefined,
+): MockHints {
+	const gaps = credentialsHelper?.interceptionGaps ?? [];
+	if (gaps.length === 0) return hints;
+	return { ...hints, warnings: [...hints.warnings, ...gaps] };
 }
 
 /** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
