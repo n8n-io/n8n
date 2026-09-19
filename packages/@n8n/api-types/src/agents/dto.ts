@@ -8,6 +8,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
+import { AgentApprovalSchema } from './agent-integration.schema';
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
@@ -279,6 +280,8 @@ export class AgentConnectIntegrationDto extends Z.class({
 	 * request keeps the agent from ever holding two live channels or none.
 	 */
 	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+	/** Channel actions that need approval before they run. */
+	approval: AgentApprovalSchema.optional(),
 }) {}
 
 export class AgentDisconnectIntegrationDto extends Z.class({
