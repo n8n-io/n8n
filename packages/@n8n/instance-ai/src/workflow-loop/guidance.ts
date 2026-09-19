@@ -64,14 +64,6 @@ function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
 	return claim?.level === 'verified' && claim.liveState !== 'live-stale';
 }
 
-function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
-	if (!sourceFilePath) {
-		return 'edit the workspace source file, then call `build-workflow` with that filePath';
-	}
-
-	return `edit workspace source file "${sourceFilePath}", then call \`build-workflow\` with filePath "${sourceFilePath}"`;
-}
-
 export function formatWorkflowLoopGuidance(
 	action: WorkflowLoopAction,
 	options: WorkflowLoopGuidanceOptions = {},
@@ -80,7 +72,7 @@ export function formatWorkflowLoopGuidance(
 		case 'ignored':
 			return `STALE REPORT IGNORED: ${action.reason}`;
 		case 'continue_building':
-			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
+			return `BUILD FAILED: ${action.reason}. Call \`build-workflow\` again with the same action and sessionId once the blocking issue is addressed${action.sourceFilePath ? ` (compiled source: ${action.sourceFilePath})` : ''}.`;
 		case 'done': {
 			const claimLead = formatClaimLead(action.claim);
 			if (action.setupSkippedByUser) {
@@ -139,17 +131,20 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
-				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair. ` +
-				`Apply this structural repair in the source file: ${action.failureDetails}`
+				`Call \`build-workflow\` with action "edit", workflowId "${action.workflowId}", ` +
+				`workItemId "${options.workItemId ?? 'unknown'}", and a request that states this structural repair in plain words: ${action.failureDetails}. ` +
+				'The compiler patches only the affected nodes and revalidates the workflow; answer its clarification questions with action "answer".' +
+				(action.sourceFilePath ? ` Compiled source: ${action.sourceFilePath}.` : '')
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
-				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair.`
+				`Call \`build-workflow\` with action "debug", workflowId "${action.workflowId}", the failing executionId when you have it, ` +
+				`and workItemId "${options.workItemId ?? 'unknown'}" so the compiler repairs the node from execution evidence. ` +
+				'If it needs a value it cannot derive, it asks; answer with action "answer". For a change the diagnosis spells out, use action "edit" with the change in plain words.' +
+				(action.sourceFilePath ? ` Compiled source: ${action.sourceFilePath}.` : '')
 			);
 	}
 }

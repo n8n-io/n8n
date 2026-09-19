@@ -28,6 +28,17 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `GROQ_API_KEY`, `MISTRAL_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, and
 `XAI_API_KEY`. `N8N_INSTANCE_AI_MODEL_API_KEY` supplies an explicit key instead.
 
+### Workflow compiler decisions
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_DECISION_URL` | string | `''` | Base URL of the structured-read decision service (`POST /v1/systemone`) used by the workflow compiler. Empty: the compiler falls back to the run's model, then abstains and asks the user. |
+| `N8N_INSTANCE_AI_DECISION_API_KEY` | string | `''` | Bearer token for the decision service. |
+| `N8N_INSTANCE_AI_DECISION_MODEL` | string | `jev-latest` | Model name the decision service routes on. |
+| `N8N_INSTANCE_AI_DECISION_TIMEOUT_MS` | number | `1500` | Per-request latency budget for the decision service. |
+
+See `docs/workflow-compiler.md` for the decision contract and policy.
+
 ### Tracing
 
 | Variable | Type | Default | Description |
@@ -109,10 +120,9 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | number | `300000` | How early a Daytona token is refreshed before expiry (5 minutes). |
 | `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all three packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
-When sandbox is enabled, Instance AI writes workflow source files in the runtime
-workspace and `build-workflow` runs TypeScript sources through the sandbox
-`tsx` build runner before saving. The model still calls only `build-workflow`;
-there is no no-sandbox TypeScript build fallback.
+`build-workflow` compiles workflows in-process; it does not need the sandbox.
+When a sandbox workspace exists, the compiled `.workflow.json` is also written
+there for inspection.
 
 Sandbox workspaces persist per thread. The same remote sandbox is reused across
 messages, runs, and background tasks in a conversation. Service shutdown stops

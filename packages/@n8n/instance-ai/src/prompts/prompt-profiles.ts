@@ -17,12 +17,14 @@ export const DEFAULT_PROMPT_VERSION = 'default@1';
 export const PROGRESSIVE_PROMPT_VERSION = 'progressive@1';
 const SYSTEM_PROMPT_VERSION = 'instance-agent@1';
 
+/**
+ * Progressive mode keeps single-workflow requests off the planning path. The
+ * building guidance it used to append lives in the workflow compiler now, so
+ * the variant only disables planning.
+ */
 const progressiveBuilding: SkillVariant = {
 	id: 'progressive-building@1',
-	changes: [
-		{ skillId: 'workflow-builder', appendFrom: 'progressive-building', useDescription: true },
-		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
-	],
+	changes: [],
 	disabledSkills: ['planning'],
 	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };

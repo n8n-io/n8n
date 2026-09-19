@@ -29,7 +29,7 @@ Record the scheme EXACTLY as documented: header name, prefix word, casing
 (`Authorization: Key {{api_key}}` vs `Bearer {{api_key}}` vs a custom header
 like `xi-api-key`). If the documented auth is basic, digest, or OAuth, stop:
 that is not expressible as a template — use the matching generic type instead
-(see the workflow-builder skill's credential ladder).
+(the `credentials` tool lists the generic types).
 
 ## 2. Key page (docsUrl)
 

@@ -1,129 +1,171 @@
-import {
-	instanceAiApprovalDetailsSchema,
-	instanceAiApprovalResumeSchema,
-	instanceAiConfirmationSeveritySchema,
-} from '@n8n/api-types';
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
-import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import {
-	dropInvalidWorkflowJsonGroups,
-	SDK_IMPORTABLE_FUNCTIONS,
-	type WorkflowJSON,
-} from '@n8n/workflow-sdk';
-import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
-import { nanoid } from 'nanoid';
+import { instanceAiApprovalResumeSchema } from '@n8n/api-types';
+import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { computeChatModelValidationIssues } from './chat-model-validation';
-import { planVerificationSimulation } from './plan-verification-simulation';
-import { preserveExistingNodePositions } from './preserve-node-positions';
+import { ThreadSessionStore } from './compiler-session-store';
+import { confirmationSuspendSchema, createPersistWorkflowTool } from './persist-workflow.tool';
+import type { ExecutionDebugInfo, InstanceAiContext } from '../../types';
 import {
-	buildCredentialMap,
-	buildCredentialResolutionNote,
-	isN8nCreditsWalletDepleted,
-	resolveCredentials,
-} from './resolve-credentials';
-import { resolvedCredentialSchema } from './resolved-credential.schema';
-import { describeSavedPublishState, savedWorkflowStateSchema } from './saved-workflow-state';
-import { isSetupPanelEnabled } from './setup-items';
-import { recordWorkflowSetupState } from './setup-panel-state';
-import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
-import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
-import {
-	combineWarnings,
-	formatWarning,
-	getBuildFailureTrackingKey,
-	grantSessionWorkflowUpdate,
-	isApprovedBuildContext,
-	canSkipWorkflowUpdateHitl,
-	markSourceBuildFailed,
-	recordSessionOwnedWorkflow,
-	resolveBuildIdentifiers,
-	resolveWorkflowName,
-	sourceResponseBase,
-} from './workflow-build-context';
-import {
-	createCodeFixableRemediation,
-	createSaveFailureRemediation,
-	createSourceCompileRemediation,
-	createWorkflowModifiedExternallyRemediation,
-} from './workflow-build-remediation';
-import {
-	promoteMainWorkflow,
-	reportFailedWorkflowBuildOutcome,
-	reportWorkflowBuildOutcome,
-} from './workflow-build-reporting';
-import { withDeterministicRouting } from './workflow-build-routing';
-import {
-	trackWaitGateVerificationPlan,
-	trackWorkflowSourceBuild,
-	type BuildTelemetryStage,
-} from './workflow-build-telemetry';
-import {
-	bindSourceFileToExistingWorkflow,
-	getWorkflowSourceFileBinding,
-	hashWorkflowSource,
-	normalizeWorkflowSourceFilePath,
-	readWorkflowSourceFile,
-	saveWorkflowSourceFileBinding,
-	type WorkflowSourceFileBinding,
-} from './workflow-file-bindings';
-import {
-	ensureUniqueNodeIds,
-	ensureWebhookIds,
-	getReferencedWorkflowIds,
-	hasLostAllSavedNodeIds,
-	preserveExistingNodeIds,
-	isTriggerNodeType,
-	preserveExistingNodeGroupIds,
-	preserveExistingSetupValues,
-} from './workflow-json-utils';
-import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
-import { compileWorkflowSource } from './workflow-source-compiler';
-import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
-import {
-	GROUP_DROPPED_OVER_CEILING_CODE,
-	groupingDecisionBlocker,
-	NODE_GROUP_DROPPED_CODE,
-	nodeGroupDroppedWarnings,
-	partitionWarnings,
-	summarizeWorkflowTopLevelItems,
-	topLevelItemsWarning,
-	type ValidationWarning,
-} from './workflow-validation-warnings';
-import { FolderResolutionError } from '../../errors/folder-resolution.error';
-import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
-import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
-import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
-import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
-import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
-import { createRemediation } from '../../workflow-loop/remediation';
-import {
-	groupingOutcomeSchema,
-	remediationMetadataSchema,
-	workflowVerificationReadinessSchema,
-	type GroupingOutcome,
-	type WorkflowBuildOutcome,
-} from '../../workflow-loop/workflow-loop-state';
-import { writeWorkspaceFile } from '../../workspace/workspace-files';
-import { approvalSummarySchema, formatApprovalMessage } from '../approval-copy';
-import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
-import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
+	ModelDecisionService,
+	NodeRegistry,
+	NullDecisionService,
+	WorkflowCompilerService,
+	type CompilerResult,
+	type DecisionService,
+	type VerificationReport,
+} from '../../workflow-compiler';
+import { approvalSummarySchema } from '../approval-copy';
 
-/** Over this serialized length only a `truncated` marker is emitted; the seed
- *  consumer falls back to source replay. */
-const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
+/**
+ * `build-workflow`: the decision-assisted workflow compiler. The orchestrator
+ * hands it the user's request (create), the target workflow and change (edit),
+ * or the failing execution (debug). Bounded decisions choose what to build,
+ * deterministic code builds and validates it, and the persistence step saves
+ * it with the same credential, approval and setup flow as before.
+ */
 
-const confirmationSuspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
-	/** Workflow name shown in the approval card title. */
-	resourceName: z.string().optional(),
-	severity: instanceAiConfirmationSeveritySchema,
-	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
-	workflowId: z.string(),
-});
+const baseInputShape = {
+	action: z
+		.enum(['create', 'edit', 'debug', 'answer'])
+		.describe(
+			'"create": build a new workflow from `request`. "edit": change `workflowId` as `request` says. ' +
+				'"debug": repair `workflowId` from its failed execution (`executionId` optional). ' +
+				'"answer": continue `sessionId` with the user’s reply in `request`.',
+		),
+	request: z
+		.string()
+		.optional()
+		.describe(
+			'The user’s words: the behavior to build (create), the change to make (edit), what they reported (debug), or their reply (answer). Required except for debug.',
+		),
+	workflowId: z.string().optional().describe('Target workflow. Required for edit and debug.'),
+	executionId: z
+		.string()
+		.optional()
+		.describe(
+			'Failed execution to use as evidence for debug. Defaults to the latest failed execution.',
+		),
+	sessionId: z
+		.string()
+		.optional()
+		.describe(
+			'Compiler session to continue. Returned by an earlier call; required with action "answer".',
+		),
+	answers: z
+		.record(z.string(), z.unknown())
+		.optional()
+		.describe(
+			'Structured answers to earlier clarification questions, keyed by the returned `fields` paths.',
+		),
+	name: z.string().optional().describe('Workflow name override for new workflows.'),
+	approvalSummary: approvalSummarySchema,
+	workItemId: z
+		.string()
+		.optional()
+		.describe('Workflow-loop work item id when repairing a workflow.'),
+	isSupportingWorkflow: z
+		.boolean()
+		.optional()
+		.describe('Marks a saved sub-workflow as supporting.'),
+	preferNewCredentials: z
+		.array(z.string())
+		.optional()
+		.describe('Credential types the user asked to create fresh instead of reusing existing ones.'),
+	executionIntent: z
+		.enum(['one-off', 'reusable'])
+		.optional()
+		.describe(
+			'"one-off" when the user wants a single run now; "reusable" for an ongoing automation.',
+		),
+};
+
+export const buildWorkflowInputSchema = z.object(baseInputShape).strict();
+export const buildWorkflowInputSchemaWithFolderPlacement = z
+	.object({
+		...baseInputShape,
+		folderPath: z
+			.string()
+			.optional()
+			.describe(
+				'Folder to create a new workflow in, named as the user named it (`Clients/Acme`). New workflows only.',
+			),
+	})
+	.strict();
+export type BuildWorkflowInput = z.infer<typeof buildWorkflowInputSchemaWithFolderPlacement>;
+
+const verificationLevelSchema = z.enum(['pass', 'fail', 'warn', 'not_run']);
+
+export const buildWorkflowOutputSchema = z
+	.object({
+		success: z.boolean(),
+		status: z.enum(['compiled', 'needs_clarification', 'needs_setup', 'failed', 'denied']),
+		sessionId: z.string(),
+		/** Question(s) for the user when status is needs_clarification; relay verbatim, then call action "answer". */
+		message: z.string().optional(),
+		questions: z
+			.array(
+				z.object({
+					fields: z.array(z.string()),
+					question: z.string(),
+					candidates: z.array(z.unknown()).optional(),
+				}),
+			)
+			.optional(),
+		summary: z.string().optional(),
+		verification: z
+			.object({
+				structural: verificationLevelSchema,
+				parameters: verificationLevelSchema,
+				expressions: verificationLevelSchema,
+				contracts: verificationLevelSchema,
+				fixtureTests: verificationLevelSchema,
+				integrationTests: verificationLevelSchema,
+				publication: verificationLevelSchema,
+			})
+			.optional(),
+		issues: z
+			.array(
+				z.object({
+					severity: z.enum(['error', 'warning', 'info']),
+					code: z.string(),
+					message: z.string(),
+					nodeName: z.string().optional(),
+				}),
+			)
+			.optional(),
+		executionPaths: z
+			.array(
+				z.object({
+					id: z.string(),
+					decisions: z.array(z.object({ node: z.string(), label: z.string() })),
+					end: z.string(),
+				}),
+			)
+			.optional(),
+		changedNodeNames: z.array(z.string()).optional(),
+		credentialTypes: z.array(z.string()).optional(),
+		generator: z
+			.object({
+				compilerVersion: z.string(),
+				patternRegistryVersion: z.string(),
+				nodeRegistryVersion: z.string(),
+				patternIds: z.array(z.string()),
+			})
+			.optional(),
+		diagnostics: z
+			.object({
+				planningPath: z.string(),
+				decisionCount: z.number(),
+				decisionWaves: z.number(),
+				decisionLatencyMs: z.number(),
+				timings: z.record(z.string(), z.number()),
+			})
+			.optional(),
+		errors: z.array(z.string()).optional(),
+	})
+	.passthrough();
 
 const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
@@ -135,1608 +177,392 @@ interface BuildCtx {
 	abortSignal?: AbortSignal;
 }
 
-/**
- * Structural (schema-level) filePath check. Absolute paths are accepted here
- * even though only paths under the workspace root are valid: the root is only
- * known at handler time, and a schema rejection surfaces as a hard
- * AI_InvalidToolInputError instead of a recoverable tool result. The handler
- * does the authoritative normalization against the workspace root.
- */
-function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
-	try {
-		normalizeWorkflowSourceFilePath(value);
-		return true;
-	} catch {
-		const trimmed = value.trim();
-		return (
-			trimmed.startsWith('/') &&
-			trimmed.length > 1 &&
-			!trimmed.includes('\\') &&
-			!trimmed.includes('\0') &&
-			!trimmed.split('/').some((segment) => segment === '..')
-		);
+/** Session that an in-flight tool call compiled before it suspended for approval. */
+const pendingSessions = new Map<string, string>();
+
+const registryByNodeService = new WeakMap<InstanceAiContext['nodeService'], NodeRegistry>();
+
+function registryFor(context: InstanceAiContext): NodeRegistry {
+	const key = context.nodeService;
+	let registry = registryByNodeService.get(key);
+	if (!registry) {
+		registry = new NodeRegistry({
+			descriptions: {
+				getDescription: async (type, version) => await key.getDescription(type, version),
+			},
+		});
+		registryByNodeService.set(key, registry);
 	}
+	return registry;
 }
 
-export const buildWorkflowInputSchema = z
-	.object({
-		filePath: z
-			.string()
-			.min(1)
-			.refine(isStructurallyValidWorkflowSourceFilePath, {
-				message:
-					'Workflow source file path must stay within the workspace ' +
-					'(no "..", "~", backslashes, or null bytes). ' +
-					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
-			})
-			.describe(
-				'Workspace-relative path to the TypeScript SDK workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts.',
-			),
-		sourceCode: z
-			.string()
-			.optional()
-			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
-			),
-		workflowId: z
-			.string()
-			.optional()
-			.describe(
-				'Real n8n workflow id from a prior build-workflow or workflows() tool result, used to bind this file on the first update. ' +
-					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
-					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
-			),
-		name: z.string().optional().describe('Workflow name (required for new workflows)'),
-		approvalSummary: approvalSummarySchema,
-		workItemId: z
-			.string()
-			.optional()
-			.describe('Optional workflow-loop work item ID when repairing a workflow.'),
-		isSupportingWorkflow: z
-			.boolean()
-			.optional()
-			.describe(
-				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
-			),
-		preferNewCredentials: z
-			.array(z.string())
-			.optional()
-			.describe(
-				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
-					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
-					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
-					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
-					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
-			),
-		executionIntent: z
-			.enum(['one-off', 'reusable'])
-			.optional()
-			.describe(
-				'How the user intends to use this workflow. Pass `one-off` when the user wants a concrete ' +
-					'effect once (an export, migration, backfill, or cleanup) and the workflow is only the ' +
-					'vehicle — verification becomes an optional pre-flight and completion is a live run whose ' +
-					'output was read back (see the one-off-operations skill). Omit or pass `reusable` for ' +
-					'anything the user may run again.',
-			),
-		groupingDecision: z
-			.enum(['grouped', 'not_warranted'])
-			.optional()
-			.describe(
-				'Only for a canvas that will exceed the top-level ceiling with no node group: pass `not_warranted` ' +
-					'together with `groupingReason` to say why no valid group can hold the remaining nodes. ' +
-					'Never pass it to skip the grouping decision.',
-			),
-		groupingReason: z
-			.string()
-			.optional()
-			.describe(
-				'Required with `groupingDecision: not_warranted`: why these nodes cannot form a valid group.',
-			),
-	})
-	.strict();
-
-const FOLDER_PATH_PLACEMENT_DESCRIPTION =
-	'Folder to create the NEW workflow in, named the way the user named it — "Clients/Acme", "Acme". ' +
-	'Pass it whenever the workflow has a clear home: the user named a folder, or the related workflows you read live there. ' +
-	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: an unresolved folder fails the build before anything is saved and lists the real folders, so retry with one of those or ask the user. ' +
-	'New workflows only — to move an existing workflow use `workspace(action="move-workflow-to-folder")`.';
-
-/** Same contract plus a folder target; advertised only while folder exploration is on for the run. */
-export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSchema
-	.extend({
-		folderPath: z.string().optional().describe(FOLDER_PATH_PLACEMENT_DESCRIPTION),
-	})
-	.strict();
-
-function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
-	return context.folderExplorationEnabled === true
-		? buildWorkflowInputSchemaWithFolderPlacement
-		: buildWorkflowInputSchema;
+/** Decision backend priority: host-wired structured reads, then the run's model, then abstain. */
+export function selectDecisionService(context: InstanceAiContext): DecisionService {
+	if (context.decisionService) return context.decisionService;
+	if (context.modelId) return new ModelDecisionService(context.modelId);
+	return new NullDecisionService();
 }
 
-/**
- * An unresolved folder must read as "nothing was created", before any other
- * note: a workflow quietly left at the root when the user named a folder is
- * the failure `folderPath` exists to remove.
- */
-function formatFolderPlacementFailure(failure: FolderResolutionFailure): string {
-	const candidates =
-		failure.candidates.length > 0
-			? ` Folders in this project: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
-			: '';
-	const retry =
-		' Re-run `build-workflow` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
-	switch (failure.reason) {
-		case 'ambiguous':
-			return `Folder "${failure.requested}" matches more than one folder, so the workflow was NOT created.${candidates}${retry}`;
-		case 'unsupported':
-			return `Folders are not available on this instance, so the workflow was NOT created in "${failure.requested}". Tell the user, and re-run without \`folderPath\` only if they agree to a root-level workflow.`;
-		default:
-			return `No folder matches "${failure.requested}", so the workflow was NOT created.${candidates}${retry}`;
-	}
-}
-
-const triggerNodeOutputSchema = z.object({
-	nodeName: z.string(),
-	nodeType: z.string(),
-});
-
-// Reuse the workflow-loop schema — the tool output mirrors the persisted
-// readiness verdict, and a second hand-maintained copy drifts.
-const verificationReadinessOutputSchema = workflowVerificationReadinessSchema;
-
-const setupRequirementOutputSchema = z.discriminatedUnion('status', [
-	z.object({
-		status: z.literal('not_required'),
-		reason: z.literal('skipped-by-user').optional(),
-		guidance: z.string().optional(),
-	}),
-	z.object({
-		status: z.literal('required'),
-		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
-		guidance: z.string(),
-	}),
-]);
-
-/** User-facing @n8n/workflow-sdk factories; used to auto-recover missing-import compile failures. */
-const SDK_IMPORTABLE_SYMBOLS = new Set<string>(SDK_IMPORTABLE_FUNCTIONS);
-
-const SDK_IMPORT_REGEX = /import\s*\{([^}]*)\}\s*from\s*['"]@n8n\/workflow-sdk['"]/;
-
-/** Adds missing known SDK symbols to the import for "X is not defined" errors; undefined when not applicable. */
-export function autoImportMissingSdkSymbols(
-	source: string,
-	errors: string[],
-): { source: string; symbols: string[] } | undefined {
-	const missing = new Set<string>();
-	for (const error of errors) {
-		for (const match of error.matchAll(/\b([A-Za-z_$][\w$]*) is not defined\b/g)) {
-			if (SDK_IMPORTABLE_SYMBOLS.has(match[1])) missing.add(match[1]);
-		}
-	}
-	if (missing.size === 0) return undefined;
-
-	const symbols = Array.from(missing);
-	const existing = SDK_IMPORT_REGEX.exec(source);
-	if (existing) {
-		const names = new Set(
-			existing[1]
-				.split(',')
-				.map((name) => name.trim())
-				.filter(Boolean),
-		);
-		for (const symbol of symbols) names.add(symbol);
-		return {
-			source: source.replace(
-				SDK_IMPORT_REGEX,
-				`import {\n  ${Array.from(names).join(',\n  ')},\n} from '@n8n/workflow-sdk'`,
-			),
-			symbols,
-		};
-	}
-	return {
-		source: `import { ${symbols.join(', ')} } from '@n8n/workflow-sdk';\n\n${source}`,
-		symbols,
-	};
-}
-
-const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
-const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
-
-const ONE_OFF_OPERATIONS_GUIDANCE =
-	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
-
-const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
-
-/** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
-const INLINE_SKIPPED_SECTIONS = [
-	'## Verification follow-up',
-	'## Setup follow-up',
-	'## Credentials before build',
-];
-
-async function getInlineSkillInstructions(
-	skillId: string,
-	source: RuntimeSkillSource = loadInstanceAiRuntimeSkillSource(),
-	activate?: RuntimeSkillLoader,
-): Promise<string> {
-	const skill = await (activate ?? source.loadSkill)(skillId);
-	if (!skill) throw new UnexpectedError(`Runtime skill "${skillId}" is missing`);
-	if (activate) return `Follow the active ${skillId} skill instructions.`;
-	return skill.instructions
-		.split(/\n(?=#{1,2} )/)
-		.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
-		.join('\n')
-		.trim();
-}
-
-// Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
-const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
-	z.object({
-		required: z.literal(true),
-		skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
-		reason: z.literal('direct-build-succeeded'),
-		guidance: z.string(),
-		/** Full post-build instructions (the selected skill body), inlined. */
-		instructions: z.string(),
-	}),
-	z.object({
-		required: z.literal(true),
-		skillId: z.literal(ONE_OFF_OPERATIONS_SKILL_ID),
-		reason: z.literal('direct-one-off-build-succeeded'),
-		guidance: z.string(),
-		instructions: z.string(),
-	}),
-]);
-
-async function directPostBuildFlowHandoff(
-	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
-	isAuxiliarySupportingWorkflow: boolean,
-	outcome: WorkflowBuildOutcome,
-	skills?: RuntimeSkillSource,
-	activate?: RuntimeSkillLoader,
-): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
-	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
-
-	// One-off instructions only apply when the workflow can actually run — their
-	// completion criterion is a live run. A triggerless or otherwise unrunnable
-	// build falls back to the standard post-build flow, which handles
-	// not_verifiable outcomes.
-	if (outcome.executionIntent === 'one-off' && outcome.verificationReadiness?.status === 'ready') {
-		return {
-			required: true,
-			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
-			reason: 'direct-one-off-build-succeeded',
-			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
-			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
-		};
-	}
-
-	return {
-		required: true,
-		skillId: POST_BUILD_FLOW_SKILL_ID,
-		reason: 'direct-build-succeeded',
-		guidance: POST_BUILD_FLOW_GUIDANCE,
-		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
-	};
-}
-
-interface ValidationFailureArgs {
-	abortSignal?: AbortSignal;
-	context: InstanceAiContext;
-	blocking: ValidationWarning[];
-	informational: ValidationWarning[];
-	reason: string;
-	guidance: string;
-	summary: string;
-	binding: WorkflowSourceFileBinding;
-	sourceHash: string;
-	targetWorkflowId?: string;
-	filePath: string;
-	resolvedWorkItemId: string;
-	resolvedTaskId: string;
-	plannedTaskId?: string;
-	owner: WorkflowBuildOutcome['owner'];
-	isSupportingWorkflow?: boolean;
-	isAuxiliarySupportingWorkflow?: boolean;
-	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
-	stage?: BuildTelemetryStage;
-	grouping?: GroupingOutcome;
-}
-
-/**
- * The grouping decision this build ends with, for the result and telemetry.
- *
- * - `grouped`: the agent made groups, even if the save dropped all of them.
- * - `not_warranted`: the agent made no groups and gave a reason.
- * - `under_ceiling`: the canvas has `TOP_LEVEL_ITEM_CEILING` boxes or fewer, so
- *   groups are not needed.
- * - `missing`: the canvas has more than `TOP_LEVEL_ITEM_CEILING` boxes, and the
- *   agent made no groups and gave no reason. It skipped the decision. The build
- *   is refused.
- */
-function resolveGroupingDecision(input: {
-	groupCount: number;
-	overCeiling: boolean;
-	groupingDecision: 'grouped' | 'not_warranted' | undefined;
-}): GroupingOutcome['decision'] {
-	if (input.groupCount > 0) {
-		return 'grouped';
-	}
-
-	if (input.groupingDecision !== undefined) {
-		return input.groupingDecision;
-	}
-
-	// No groups and no reason given. With more than `TOP_LEVEL_ITEM_CEILING` boxes on
-	// the canvas, the agent had to make groups or give a reason. It did neither.
-	if (input.overCeiling) {
-		return 'missing';
-	}
-
-	return 'under_ceiling';
-}
-
-async function handleValidationFailure(args: ValidationFailureArgs) {
-	const {
-		context,
-		blocking,
-		informational,
-		reason,
-		guidance,
-		summary,
-		binding: initialBinding,
-		sourceHash,
-		targetWorkflowId,
-		filePath,
-		resolvedWorkItemId,
-		resolvedTaskId,
-		plannedTaskId,
-		owner,
-		isSupportingWorkflow = false,
-		isAuxiliarySupportingWorkflow = false,
-		withEscalation,
-		stage = 'validation',
-		grouping,
-	} = args;
-
-	const validationErrors = blocking.map(
-		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
-	);
-	const formattedErrors = withEscalation(
-		reason === 'workflow_source_validation_failed'
-			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
-			: validationErrors,
-		{ trackingErrors: validationErrors },
-	);
-	const remediation = createCodeFixableRemediation({ reason, guidance });
-	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
-	await reportFailedWorkflowBuildOutcome(context, {
-		targetWorkflowId,
-		sourceFilePath: filePath,
-		workItemId: resolvedWorkItemId,
-		taskId: resolvedTaskId,
-		plannedTaskId,
-		owner,
-		remediation,
-		errors: formattedErrors,
-		summary,
-		storeOnRunContext: !isAuxiliarySupportingWorkflow,
-		grouping,
+export function createWorkflowCompilerService(context: InstanceAiContext): WorkflowCompilerService {
+	return new WorkflowCompilerService({
+		registry: registryFor(context),
+		decisions: selectDecisionService(context),
+		sessions: new ThreadSessionStore(context),
 	});
-	trackWorkflowSourceBuild(context, {
-		result: 'failure',
-		stage,
-		binding,
-		targetWorkflowId,
-		isSupportingWorkflow,
-		isAuxiliarySupportingWorkflow,
-		remediation,
-		errorCount: formattedErrors.length,
-		warningCount: informational.length,
-		...(grouping
-			? {
-					topLevelItemCount: grouping.topLevelItemCount,
-					groupCount: grouping.groupCount,
-					droppedGroupCount: grouping.droppedGroupCount,
-					groupingDecision: grouping.decision,
-					groupingReasonProvided: grouping.reason !== undefined,
-				}
-			: {}),
-	});
-	return {
-		success: false as const,
-		...sourceResponseBase(binding),
-		workflowId: targetWorkflowId,
-		workItemId: resolvedWorkItemId,
-		errors: formattedErrors,
-		remediation,
-		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
-		...(grouping ? { grouping } : {}),
-	};
 }
 
-const buildWorkflowOutputSchema = z.object({
-	success: z.boolean(),
-	filePath: z.string(),
-	sourceHash: z.string().optional(),
-	workflowId: z.string().optional(),
-	workflowName: z.string().optional(),
-	workItemId: z.string().optional(),
-	triggerNodes: z.array(triggerNodeOutputSchema).optional(),
-	verificationReadiness: verificationReadinessOutputSchema.optional(),
-	/** Effective intent after merging with the prior outcome for this work
-	 *  item — a repair rebuild that omits the input keeps the stored value. */
-	executionIntent: z.enum(['one-off', 'reusable']).optional(),
-	setupRequirement: setupRequirementOutputSchema.optional(),
-	postBuildFlow: postBuildFlowOutputSchema.optional(),
-	isSupportingWorkflow: z.boolean().optional(),
-	mockedNodeNames: z.array(z.string()).optional(),
-	mockedCredentialTypes: z.array(z.string()).optional(),
-	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
-	credentialResolutionNote: z.string().optional(),
-	referencedWorkflowIds: z.array(z.string()).optional(),
-	hasUnresolvedPlaceholders: z.boolean().optional(),
-	...savedWorkflowStateSchema.shape,
-	grouping: groupingOutcomeSchema.optional(),
-	denied: z.boolean().optional(),
-	reason: z.string().optional(),
-	remediation: remediationMetadataSchema.optional(),
-	errors: z.array(z.string()).optional(),
-	warnings: z.array(z.string()).optional(),
-});
+function slug(value: string): string {
+	return (
+		value
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '') || 'workflow'
+	);
+}
 
-/** The output mirrors the input gate: `folder` is advertised only while folder exploration is on. */
-function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
-	return context.folderExplorationEnabled === true
-		? buildWorkflowOutputSchema.extend({
-				/** Folder the workflow was created in, when a `folderPath` was given. */
-				folder: z.object({ id: z.string(), name: z.string(), path: z.string() }).optional(),
-			})
-		: buildWorkflowOutputSchema;
+function sourceFilePathFor(
+	result: Extract<CompilerResult, { status: 'compiled' }>,
+	workflowId: string | undefined,
+): string {
+	const base = workflowId
+		? slug(workflowId)
+		: `${slug(result.workflow.name)}-${slug(result.sessionId)}`;
+	return `src/workflows/${base}.workflow.json`;
+}
+
+async function latestFailedExecution(
+	context: InstanceAiContext,
+	workflowId: string,
+	executionId?: string,
+): Promise<ExecutionDebugInfo | undefined> {
+	if (executionId) return await context.executionService.getDebugInfo(executionId);
+	const failed = await context.executionService.list({ workflowId, status: 'error', limit: 1 });
+	const latest = failed[0];
+	if (!latest) return undefined;
+	return await context.executionService.getDebugInfo(latest.id);
 }
 
 export function createBuildWorkflowTool(context: InstanceAiContext) {
-	const failureTracker = new BuildFailureTracker();
+	const persist = createPersistWorkflowTool(context);
+	const folderEnabled = context.folderExplorationEnabled === true;
 
 	return new Tool('build-workflow')
 		.description(
-			'Build and save a workflow from workflow source. ' +
-				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
-				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
-				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
-				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
+			'Build, edit, or debug a workflow with the workflow compiler. ' +
+				'action "create": pass the user’s request; the compiler extracts requirements, picks operations with bounded decisions, compiles a validated workflow and saves it. ' +
+				'action "edit": pass workflowId and the change; only the affected nodes change. ' +
+				'action "debug": pass workflowId (and executionId when known); the compiler classifies the failure from execution evidence and applies the smallest fix or asks what it needs. ' +
+				'When the result is needs_clarification, relay `message` to the user verbatim and call action "answer" with the same sessionId and their reply. ' +
+				'Never paraphrase the request into node names or code; give the compiler the user’s words. Do not load workflow-building skills first.',
 		)
-		.input(pickBuildWorkflowInputSchema(context))
-		.output(pickBuildWorkflowOutputSchema(context))
+		.input(folderEnabled ? buildWorkflowInputSchemaWithFolderPlacement : buildWorkflowInputSchema)
+		.output(buildWorkflowOutputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
-			const { groupingDecision, groupingReason } = input;
-			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
-				const guidance =
-					"Pass `groupingReason` with `groupingDecision: 'not_warranted'`: say why no valid node group can hold the remaining nodes.";
-				return {
-					success: false,
-					filePath: input.filePath,
-					errors: ['groupingDecision is not_warranted but groupingReason is missing.'],
-					remediation: createRemediation({
-						category: 'code_fixable',
-						shouldEdit: false,
-						reason: 'grouping_reason_missing',
-						guidance,
-					}),
+			const service = createWorkflowCompilerService(context);
+			const pendingSessionId = ctx.toolCallId ? pendingSessions.get(ctx.toolCallId) : undefined;
+			const pending =
+				ctx.resumeData && pendingSessionId ? await service.getSession(pendingSessionId) : undefined;
+
+			let result: CompilerResult;
+			let targetWorkflowId: string | undefined;
+			if (pending?.compiled && pending.report) {
+				// Resumed after an approval card: reuse what this call already compiled.
+				targetWorkflowId = pending.workflowId;
+				result = {
+					status: 'compiled',
+					sessionId: pending.id,
+					workflow: pending.compiled.workflow,
+					report: pending.report,
+					generator: pending.compiled.generator,
+					executionPaths: [],
+					summary: 'Resumed after approval.',
+					changedNodeNames: [],
+					diagnostics: {
+						sessionId: pending.id,
+						planningPath: pending.planningPath,
+						decisionCount: 0,
+						decisionWaves: 0,
+						decisionLatencyMs: 0,
+						timings: pending.timings,
+						compilerVersion: '',
+						decisions: [],
+					},
 				};
-			}
-
-			let filePath: string;
-			try {
-				// Accepts absolute paths under the workspace root (models often echo
-				// them from prompts/shell output) and converts them to relative.
-				filePath = normalizeWorkflowSourceFilePath(input.filePath, {
-					workspaceRoot: context.workspaceRoot,
-				});
-			} catch (error) {
-				const guidance =
-					'Call build-workflow again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
-				return {
-					success: false,
-					filePath: input.filePath,
-					errors: [error instanceof Error ? error.message : String(error)],
-					remediation: createRemediation({
-						category: 'code_fixable',
-						shouldEdit: false,
-						reason: 'invalid_file_path',
-						guidance,
-					}),
-				};
-			}
-			let binding = (await getWorkflowSourceFileBinding(context, filePath)) ?? { filePath };
-
-			if (input.workflowId && binding.workflowId && input.workflowId !== binding.workflowId) {
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'source_file_workflow_mismatch',
-					guidance:
-						'This source file is already bound to a different workflow. Use the bound workflow or start from a different filePath.',
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'blocked',
-					stage: 'permission',
-					binding,
-					targetWorkflowId: binding.workflowId,
-					remediation,
-					errorCount: 1,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: binding.workflowId,
-					errors: [
-						`Source file ${filePath} is already bound to workflow ${binding.workflowId}; cannot bind it to ${input.workflowId}.`,
-					],
-					remediation,
-				};
-			}
-
-			if (input.workflowId && !binding.workflowId) {
-				try {
-					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					// File is not bound yet, so not-found maps to workflow_id_not_found (not bound_*).
-					const remediation = createSaveFailureRemediation(error, false);
-
-					trackWorkflowSourceBuild(context, {
-						result: 'blocked',
-						stage: 'save',
-						binding,
-						targetWorkflowId: input.workflowId,
-						remediation,
-						errorCount: 1,
-					});
-
+			} else {
+				const invalid = validateActionInput(input);
+				if (invalid)
 					return {
 						success: false,
-						...sourceResponseBase(binding),
-						errors: [`Failed to bind source file to workflow ${input.workflowId}: ${message}`],
-						remediation,
+						status: 'failed' as const,
+						sessionId: input.sessionId ?? '',
+						errors: [invalid],
 					};
-				}
-			}
-
-			const targetWorkflowId = binding.workflowId;
-			// Only the folder-enabled schema carries the field; the narrowing keeps the
-			// handler valid for both shapes without a cast.
-			const folderPath =
-				'folderPath' in input && typeof input.folderPath === 'string'
-					? input.folderPath
-					: undefined;
-			if (folderPath !== undefined && targetWorkflowId) {
-				// Placement is a create-time decision. Moving on update would silently
-				// relocate a workflow the user did not ask to move.
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'folder_placement_on_update',
-					guidance:
-						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `workspace(action="move-workflow-to-folder")` if the user asked for that.',
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'blocked',
-					stage: 'folder',
-					binding,
-					targetWorkflowId,
-					isSupportingWorkflow: input.isSupportingWorkflow,
-					remediation,
-					errorCount: 1,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					errors: [remediation.guidance],
-					remediation,
-				};
-			}
-			const permKey = targetWorkflowId ? 'updateWorkflow' : 'createWorkflow';
-			if (context.permissions?.[permKey] === 'blocked') {
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'permission_blocked',
-					guidance: 'The requested workflow save action is blocked by admin policy.',
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'blocked',
-					stage: 'permission',
-					binding,
-					targetWorkflowId,
-					isSupportingWorkflow: input.isSupportingWorkflow,
-					remediation,
-					errorCount: 1,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					errors: ['Action blocked by admin'],
-					remediation,
-				};
-			}
-
-			const canSkipUpdateHitl =
-				targetWorkflowId !== undefined && canSkipWorkflowUpdateHitl(context, targetWorkflowId);
-
-			if (
-				targetWorkflowId &&
-				!canSkipUpdateHitl &&
-				!isApprovedBuildContext(context) &&
-				context.permissions?.updateWorkflow !== 'always_allow'
-			) {
-				if (ctx.resumeData && !ctx.resumeData.approved) {
-					const remediation = createRemediation({
-						category: 'blocked',
-						shouldEdit: false,
-						reason: 'user_denied',
-						guidance:
-							'The user declined the save approval card — nothing was saved. Do not re-issue ' +
-							'the same save unprompted: acknowledge the denial, tell the user what remains ' +
-							'unsaved, and ask how they want to proceed.',
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'denied',
-						stage: 'hitl',
-						binding,
-						targetWorkflowId,
-						isSupportingWorkflow: input.isSupportingWorkflow,
-						remediation,
-						errorCount: 1,
-					});
+				const run = await runCompiler(context, service, input, ctx.abortSignal);
+				if ('error' in run) {
 					return {
 						success: false,
-						...sourceResponseBase(binding),
-						workflowId: targetWorkflowId,
-						denied: true,
-						reason: 'User denied the action',
-						errors: ['User denied the action'],
-						remediation,
+						status: 'failed' as const,
+						sessionId: input.sessionId ?? '',
+						errors: [run.error],
 					};
 				}
-				if (!ctx.resumeData) {
-					if (!ctx.suspend) {
-						const remediation = createRemediation({
-							category: 'blocked',
-							shouldEdit: false,
-							reason: 'approval_required',
-							guidance: 'Workflow edit approval is required before saving this source file.',
-						});
-						trackWorkflowSourceBuild(context, {
-							result: 'blocked',
-							stage: 'hitl',
-							binding,
-							targetWorkflowId,
-							isSupportingWorkflow: input.isSupportingWorkflow,
-							remediation,
-							errorCount: 1,
-						});
-						return {
-							success: false,
-							...sourceResponseBase(binding),
-							workflowId: targetWorkflowId,
-							errors: ['Workflow edit approval is required.'],
-							remediation,
-						};
-					}
-					const workflowName = await resolveWorkflowName(context, targetWorkflowId);
-					trackWorkflowSourceBuild(context, {
-						result: 'suspended',
-						stage: 'hitl',
-						binding,
-						targetWorkflowId,
-						isSupportingWorkflow: input.isSupportingWorkflow,
-					});
-					return await ctx.suspend({
-						requestId: nanoid(),
-						message: formatApprovalMessage(
-							'Save the changes to this workflow',
-							input.approvalSummary,
-						),
-						resourceName: workflowName,
-						approvalDetails: { action: 'edit-workflow', summary: input.approvalSummary },
-						severity: 'warning',
-						workflowId: targetWorkflowId,
-					});
-				}
-				// "Always allow" — persist so later edits of this workflow skip HITL.
-				if (ctx.resumeData.approved && ctx.resumeData.scope === 'session') {
-					await grantSessionWorkflowUpdate(context, targetWorkflowId);
-				}
+				result = run.result;
+				targetWorkflowId = run.workflowId;
 			}
 
-			// Persist inline source first so the workspace file stays canonical for later repairs.
-			if (input.sourceCode !== undefined && context.workspace) {
-				try {
-					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
-						logger: context.logger,
-						resourceLabel: 'Workflow source file',
-						abortSignal: ctx.abortSignal,
-					});
-				} catch (error) {
-					const remediation = createCodeFixableRemediation({
-						reason: 'workflow_source_write_failed',
-						guidance:
-							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call build-workflow again with the same filePath.',
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'failure',
-						stage: 'source_read',
-						binding,
-						targetWorkflowId,
-						isSupportingWorkflow: input.isSupportingWorkflow,
-						remediation,
-						errorCount: 1,
-					});
-					return {
-						success: false,
-						...sourceResponseBase(binding),
-						workflowId: targetWorkflowId,
-						errors: [error instanceof Error ? error.message : String(error)],
-						remediation,
-					};
-				}
-			}
-
-			let sourceCode: string;
-			let sourceHash: string;
-			try {
-				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
-					context,
-					filePath,
-					ctx.abortSignal,
-				));
-			} catch (error) {
-				const remediation = createCodeFixableRemediation({
-					reason: 'workflow_source_read_failed',
-					guidance:
-						'The workflow source file could not be read. Write it with `workspace_write_file`, then call build-workflow again with the same filePath.',
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'failure',
-					stage: 'source_read',
-					binding,
-					targetWorkflowId,
-					isSupportingWorkflow: input.isSupportingWorkflow,
-					remediation,
-					errorCount: 1,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					errors: [error instanceof Error ? error.message : String(error)],
-					remediation,
-				};
-			}
-
-			if (sourceHash !== binding.sourceHash) {
-				binding = await saveWorkflowSourceFileBinding(context, { ...binding, sourceHash });
-			}
-
-			const { name } = input;
-			const isSupportingWorkflow = input.isSupportingWorkflow === true;
-			const buildContext = context.workflowBuildContext;
-			const {
-				isAuxiliarySupportingWorkflow,
-				plannedTaskId,
-				owner,
-				resolvedWorkItemId,
-				resolvedTaskId,
-			} = resolveBuildIdentifiers({
-				context,
-				filePath,
-				inputWorkItemId: input.workItemId,
-				isSupportingWorkflow,
-			});
-			const workItemKey = getBuildFailureTrackingKey({
-				workItemId: resolvedWorkItemId,
-				workflowId: targetWorkflowId,
-				workflowName: name,
-				filePath,
-				isAuxiliarySupportingWorkflow,
-				buildContext,
-				runId: context.runId,
-			});
-			// One-off intent is sticky per work item: a repair rebuild that omits the
-			// flag must not silently flip the stored outcome back to the verify-first
-			// flow (which would re-arm verification follow-ups mid-repair).
-			let executionIntent = input.executionIntent;
-			if (executionIntent === undefined) {
-				try {
-					executionIntent = (
-						await buildContext?.workflowTaskService?.getBuildOutcome(resolvedWorkItemId)
-					)?.executionIntent;
-				} catch {
-					// Best-effort: no prior outcome just means the default flow.
-				}
-			}
-			const withEscalation = (
-				errors: string[],
-				options: { includeSdkLanguageGuidance?: boolean; trackingErrors?: string[] } = {},
-			): string[] => {
-				// Supplemental diagnostics can time out. Keep the original failure signature stable.
-				const escalation = failureTracker.record(
-					workItemKey,
-					options.trackingErrors ?? errors,
-					options,
-				);
-				return escalation ? [...errors, escalation] : errors;
+			const diagnostics = {
+				planningPath: result.diagnostics.planningPath,
+				decisionCount: result.diagnostics.decisionCount,
+				decisionWaves: result.diagnostics.decisionWaves,
+				decisionLatencyMs: result.diagnostics.decisionLatencyMs,
+				timings: result.diagnostics.timings,
 			};
 
-			let informational: ValidationWarning[] = [];
-
-			let compiled = await compileWorkflowSource(context, filePath, sourceCode, ctx.abortSignal);
-			if (
-				!compiled.success &&
-				compiled.reason === 'workflow_source_build_failed' &&
-				context.workspace
-			) {
-				// Recover missing-import errors server-side; persist so later edits see the fix.
-				const recovery = autoImportMissingSdkSymbols(sourceCode, compiled.errors);
-				if (recovery) {
-					try {
-						await writeWorkspaceFile(context.workspace, filePath, recovery.source, {
-							logger: context.logger,
-							resourceLabel: 'Workflow source file',
-							abortSignal: ctx.abortSignal,
-						});
-						const retried = await compileWorkflowSource(
-							context,
-							filePath,
-							recovery.source,
-							ctx.abortSignal,
-						);
-						// The corrected source is on disk; keep reported errors/hash in sync with it.
-						sourceCode = recovery.source;
-						sourceHash = hashWorkflowSource(recovery.source);
-						compiled = retried.success
-							? {
-									...retried,
-									warnings: [
-										...retried.warnings,
-										{
-											code: 'auto_imported_sdk_symbols',
-											message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
-											severity: 'informational',
-										},
-									],
-								}
-							: retried;
-					} catch (error) {
-						context.logger.debug('Auto-import recovery failed; returning original errors', {
-							error: error instanceof Error ? error.message : String(error),
-						});
-					}
-				}
-			}
-			if (!compiled.success) {
-				const buildErrors =
-					compiled.reason === 'workflow_source_build_failed'
-						? await appendWorkflowSourceDiagnostics(
-								context,
-								filePath,
-								compiled.errors,
-								ctx.abortSignal,
-							)
-						: compiled.errors;
-				const errors = compiled.editable
-					? withEscalation(buildErrors, { trackingErrors: compiled.errors })
-					: buildErrors;
-				const remediation = createSourceCompileRemediation({
-					reason: compiled.reason,
-					editable: compiled.editable,
-				});
-				binding = await markSourceBuildFailed(context, binding, sourceHash);
-				await reportFailedWorkflowBuildOutcome(context, {
-					targetWorkflowId,
-					sourceFilePath: filePath,
-					workItemId: resolvedWorkItemId,
-					taskId: resolvedTaskId,
-					plannedTaskId,
-					owner,
-					remediation,
-					errors,
-					summary: compiled.summary,
-					storeOnRunContext: !isAuxiliarySupportingWorkflow,
-				});
-				trackWorkflowSourceBuild(context, {
-					result: remediation.category === 'blocked' ? 'blocked' : 'failure',
-					stage: 'parse',
-					binding,
-					targetWorkflowId,
-					isSupportingWorkflow,
-					isAuxiliarySupportingWorkflow,
-					remediation,
-					errorCount: errors.length,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					workItemId: resolvedWorkItemId,
-					errors,
-					remediation,
-				};
-			}
-
-			// Snapshot of the previously saved workflow, used to tell nodes this
-			// build actually touched apart from pre-existing ones it round-tripped.
-			let savedWorkflowSnapshot: WorkflowJSON | undefined;
-			if (targetWorkflowId) {
-				try {
-					savedWorkflowSnapshot = await context.workflowService.getAsWorkflowJSON(targetWorkflowId);
-				} catch {
-					// Prior state unreadable — treat every node as changed (unscoped).
-				}
-			}
-
-			const partitionedWarnings = partitionWarnings(
-				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
-			);
-			informational = partitionedWarnings.informational;
-
-			if (partitionedWarnings.blocking.length > 0) {
-				return await handleValidationFailure({
-					abortSignal: ctx.abortSignal,
-					context,
-					blocking: partitionedWarnings.blocking,
-					informational,
-					reason: 'workflow_source_validation_failed',
-					guidance:
-						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
-					summary: 'Workflow source failed validation.',
-					binding,
-					sourceHash,
-					targetWorkflowId,
-					filePath,
-					resolvedWorkItemId,
-					resolvedTaskId,
-					plannedTaskId,
-					owner,
-					isSupportingWorkflow,
-					isAuxiliarySupportingWorkflow,
-					withEscalation,
-				});
-			}
-
-			const json = compiled.workflow;
-			if (name) {
-				json.name = name;
-			} else if (!json.name && !targetWorkflowId) {
-				const remediation = createCodeFixableRemediation({
-					reason: 'workflow_name_missing',
-					guidance:
-						'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same filePath.',
-				});
-				binding = await markSourceBuildFailed(context, binding, sourceHash);
-				await reportFailedWorkflowBuildOutcome(context, {
-					targetWorkflowId,
-					sourceFilePath: filePath,
-					workItemId: resolvedWorkItemId,
-					taskId: resolvedTaskId,
-					plannedTaskId,
-					owner,
-					remediation,
-					errors: [
-						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
-					],
-					summary: 'Workflow source is missing a workflow name.',
-					storeOnRunContext: !isAuxiliarySupportingWorkflow,
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'failure',
-					stage: 'name',
-					binding,
-					targetWorkflowId,
-					isSupportingWorkflow,
-					isAuxiliarySupportingWorkflow,
-					remediation,
-					errorCount: 1,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					workItemId: resolvedWorkItemId,
-					errors: [
-						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
-					],
-					remediation,
-				};
-			}
-
-			const credentialMap = await buildCredentialMap(context.credentialService);
-			const mockResult = await resolveCredentials(
-				json,
-				targetWorkflowId,
-				context,
-				credentialMap,
-				input.preferNewCredentials,
-			);
-
-			// Deterministic backstop for a builder that never checked credentials:
-			// a chat-model node for a provider the user has no credential for gets
-			// flagged with the LLM credentials they do have. Nodes the resolver
-			// covered with n8n credits are exempt — they run as built.
-			const chatModelBlocking: ValidationWarning[] = [];
-			for (const message of buildChatModelProviderMismatchWarnings(
-				(json.nodes ?? []).filter((node) => !node.disabled),
-				[...credentialMap.values()].flat(),
-				mockResult.resolvedCredentialsByNode,
-			)) {
-				informational.push({
-					code: 'chat_model_provider_mismatch',
-					message,
-					severity: 'informational',
-				});
-			}
-
-			for (const node of json.nodes ?? []) {
-				if (!node.name || node.disabled) continue;
-				const chatModelIssues = await computeChatModelValidationIssues(context, node);
-				for (const messages of Object.values(chatModelIssues)) {
-					for (const message of messages) {
-						chatModelBlocking.push({
-							code: 'chat_model_validation',
-							message: `${node.name}: ${message}`,
-							nodeName: node.name,
-							severity: 'error',
-						});
-					}
-				}
-			}
-
-			const partitionedChatModelWarnings = partitionWarnings(
-				downgradeUnchangedNodeBlockers(chatModelBlocking, json, savedWorkflowSnapshot),
-			);
-			informational.push(...partitionedChatModelWarnings.informational);
-
-			if (partitionedChatModelWarnings.blocking.length > 0) {
-				return await handleValidationFailure({
-					abortSignal: ctx.abortSignal,
-					context,
-					blocking: partitionedChatModelWarnings.blocking,
-					informational,
-					reason: 'chat_model_validation_failed',
-					guidance:
-						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
-					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
-					binding,
-					sourceHash,
-					targetWorkflowId,
-					filePath,
-					resolvedWorkItemId,
-					resolvedTaskId,
-					plannedTaskId,
-					owner,
-					isSupportingWorkflow,
-					isAuxiliarySupportingWorkflow,
-					withEscalation,
-				});
-			}
-
-			await stripStaleCredentialsFromWorkflow(context, json);
-
-			try {
-				let droppedGroupCount = 0;
-				// Runs first: the passes below key off node ids, so they must be unique.
-				ensureUniqueNodeIds(json);
-				// Recovers the saved id of a surviving node whose source declared none — layered
-				// under the declared id, so a rename still follows the id.
-				await preserveExistingNodeIds(json, targetWorkflowId, context);
-				await preserveExistingSetupValues(json, targetWorkflowId, context);
-				await ensureWebhookIds(json, targetWorkflowId, context);
-				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
-				await preserveExistingNodePositions(json, targetWorkflowId, context);
-				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
-				const droppedGroupWarnings = nodeGroupDroppedWarnings(
-					dropInvalidWorkflowJsonGroups(
-						json,
-						context.nodeTypesProvider
-							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
-							: null,
-					),
-				);
-				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
-				informational.push(...droppedGroupWarnings);
-
-				const topLevel = summarizeWorkflowTopLevelItems(json);
-				const grouping: GroupingOutcome = {
-					topLevelItemCount: topLevel.total,
-					ceiling: topLevel.ceiling,
-					groupCount: topLevel.groupCount,
-					droppedGroupCount,
-					decision: resolveGroupingDecision({
-						groupCount: groupCountBeforeDrop,
-						overCeiling: topLevel.overCeiling,
-						groupingDecision,
-					}),
-					...(groupingReason ? { reason: groupingReason } : {}),
-				};
-
-				// The check applies to canvases this run is responsible for: a new
-				// workflow, a rebuild of one it created, or an edit that pushed a small
-				// workflow over the ceiling. A small edit to a wide user workflow only warns.
-				const snapshotWasUnderCeiling =
-					savedWorkflowSnapshot !== undefined &&
-					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
-
-				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes;
-				// false when the user's workflow already exceeded it. It gates only the "no groups" refusal.
-				const agentExceededCeiling =
-					!targetWorkflowId ||
-					context.aiCreatedWorkflowIds?.has(targetWorkflowId) === true ||
-					snapshotWasUnderCeiling;
-
-				const refusalReason = groupingDecisionBlocker({
-					summary: topLevel,
-					declaredGroupCount: groupCountBeforeDrop,
-					droppedGroupWarnings,
-					groupingDecision,
-				});
-
-				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
-				// A dropped group is the agent's own declaration, so it is refused on any canvas. "No groups"
-				// is refused only when the agent made the canvas exceed the ceiling; on the user's
-				// pre-existing layout it stays a warning.
-				const blocker =
-					agentExceededCeiling || refusalReason?.code === GROUP_DROPPED_OVER_CEILING_CODE
-						? refusalReason
-						: undefined;
-
-				if (blocker) {
-					const groupWasDropped = blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
-
-					const reason = groupWasDropped
-						? 'workflow_group_dropped_over_ceiling'
-						: 'workflow_grouping_decision_missing';
-
-					const guidance =
-						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
-						(groupWasDropped
-							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
-							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
-
-					// The dropped-group error already carries each drop reason, so the matching
-					// warnings would only repeat it.
-					const informationalWithoutDrops = groupWasDropped
-						? informational.filter((warning) => warning.code !== NODE_GROUP_DROPPED_CODE)
-						: informational;
-
-					return await handleValidationFailure({
-						abortSignal: ctx.abortSignal,
-						context,
-						blocking: [blocker],
-						informational: informationalWithoutDrops,
-						reason,
-						guidance,
-						summary:
-							'Workflow build stopped: the canvas is over the top-level ceiling and the node groups do not cover it.',
-						binding,
-						sourceHash,
-						targetWorkflowId,
-						filePath,
-						resolvedWorkItemId,
-						resolvedTaskId,
-						plannedTaskId,
-						owner,
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						withEscalation,
-						stage: 'grouping',
-						grouping,
-					});
-				}
-
-				const overCeiling = topLevelItemsWarning(json, topLevel);
-				if (overCeiling) {
-					const accepted = groupingDecision === 'not_warranted' && groupingReason;
-					informational.push(
-						accepted
-							? { ...overCeiling, message: `${overCeiling.message} (accepted: ${groupingReason})` }
-							: overCeiling,
-					);
-				}
-
-				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
-					context.logger.debug('Build kept none of the saved node ids', {
-						workflowId: targetWorkflowId,
-					});
-					informational.push({
-						code: 'node_ids_not_preserved',
-						message:
-							"None of this workflow's saved node IDs were kept, so every node is recorded as " +
-							"deleted and re-added. Keep each node's `id` from get-as-code verbatim when " +
-							'editing, and omit `id` only for nodes you add.',
-						severity: 'informational',
-					});
-				}
-
-				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
-				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
-				// Reported by the resolver rather than inferred from the mocked types, so a
-				// slot the source omitted entirely — held by the required-type pass, which
-				// mocks nothing — still carries the request into the setup call.
-				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
-				const referencedWorkflowIds = getReferencedWorkflowIds(json);
-				const triggerNodes = (json.nodes ?? [])
-					.filter((n) => !n.disabled && isTriggerNodeType(n.type))
-					.map((n) => ({ nodeName: n.name, nodeType: n.type }))
-					.filter(
-						(t): t is { nodeName: string; nodeType: string } =>
-							Boolean(t.nodeName) && Boolean(t.nodeType),
-					);
-				// Setup routing is scoped to nodes this build actually changed:
-				// pre-existing nodes the build merely round-tripped must not route
-				// the user into setup for an unrelated edit. Undefined = unscoped
-				// (new workflow, or prior state unreadable).
-				const changedNodeNames = savedWorkflowSnapshot
-					? computeChangedNodeNames(json, savedWorkflowSnapshot)
-					: undefined;
-				const isInSetupScope = (nodeName: string | undefined) =>
-					changedNodeNames === undefined ||
-					(nodeName !== undefined && changedNodeNames.includes(nodeName));
-				const hasPlaceholders = (json.nodes ?? []).some(
-					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
-				);
-				const createSuccessResponse = async (
-					saved: {
-						id: string;
-						versionId: string;
-						/** Published version, null while the workflow is unpublished. */
-						activeVersionId: string | null;
-						checksum?: string;
-						folder?: WorkflowFolderRef;
-					},
-					operation: 'create' | 'update',
-				) => {
-					// The setup panel lists bound slots too (rendered as done), so its
-					// snapshot needs the settled requests the routing below must not see.
-					const setupItemsEmitter = isSetupPanelEnabled(context)
-						? context.setupItemsEmitter
-						: undefined;
-					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
-						...(input.preferNewCredentials
-							? { preferNewCredentialTypes: input.preferNewCredentials }
-							: {}),
-						...(setupItemsEmitter ? { includeSettled: true } : {}),
-					});
-					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
-					if (setupItemsEmitter) {
-						// Every saved iteration re-announces the checklist; the emitter
-						// drops unchanged snapshots. Best-effort: never fails a build.
-						await recordWorkflowSetupState(context, saved.id, analyzedRequests);
-					}
-					// Two independent filters over the same list: `isInSetupScope` drops nodes this
-					// build never touched, the skip partition drops cards the user declined. A node
-					// only re-arms the setup follow-up when it survives both.
-					const { pending: pendingSetupRequests, skippedByUser: skippedSetupRequests } =
-						partitionSkippedSetupRequests(
-							setupRequests,
-							saved.id,
-							getSkippedSetupSubjects(context),
-						);
-					const needsSetupInScope = (request: (typeof setupRequests)[number]) =>
-						request.needsAction === true && isInSetupScope(request.node.name);
-					const workflowNeedsSetup = pendingSetupRequests.some(needsSetupInScope);
-					// Only the user's skip explains the silence — an out-of-scope node is not
-					// something they declined, and has its own reporting on the setup path.
-					const onlySkippedSetupRemains =
-						!workflowNeedsSetup && skippedSetupRequests.some(needsSetupInScope);
-					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
-						await planVerificationSimulation({
-							workflow: json,
-							mockedNodeNames: mockResult.mockedNodeNames,
-							declaredOutputFixtures: compiled.declaredOutputFixtures,
-							workflowId: saved.id,
-							outputSchemaLookup: context.outputSchemaLookup,
-							fallbackModelConfig: context.modelId,
-							logger: context.logger,
-						});
-					trackWaitGateVerificationPlan(context, {
-						haltedGateCount: (nodeSimulationPlan ?? []).filter((verdict) => verdict.haltBranch)
-							.length,
-						scriptedGateCount: waitGateScripts?.length ?? 0,
-						savedWorkflowId: saved.id,
-					});
-					const runId = buildContext?.runId ?? context.runId;
-					const workflowName = json.name || 'workflow';
-					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
-					binding = await saveWorkflowSourceFileBinding(context, {
-						...binding,
-						workflowId: saved.id,
-						workflowVersionId: saved.versionId,
-						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
-						sourceHash,
-					});
-					// Trace-only compiled-JSON event for eval seed reconstruction — never part
-					// of the tool result, so it never enters the agent's context.
-					try {
-						const payload = { workflowId: saved.id, sourceHash, workflow: json };
-						const withinSizeGate =
-							JSON.stringify(payload).length <= MAX_COMPILED_WORKFLOW_TRACE_CHARS;
-						const emittedVia = await emitTraceOnlyChildRun(
-							context.tracing,
-							{
-								name: COMPILED_WORKFLOW_TRACE_RUN_NAME,
-								// 'chain' like other bookkeeping spans (HITL) — a tool-typed run
-								// reads as a real agent tool call in trace UIs.
-								runType: 'chain',
-								canonicalName: `instance-ai.${COMPILED_WORKFLOW_TRACE_RUN_NAME}`,
-								tags: [COMPILED_WORKFLOW_TRACE_RUN_NAME],
-								metadata: { workflow_id: saved.id, source_hash: sourceHash },
-							},
-							withinSizeGate
-								? { outputs: payload, rawOutputs: true }
-								: { outputs: { workflowId: saved.id, sourceHash, truncated: true } },
-						);
-						context.logger.debug(
-							`[build-workflow] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
-						);
-					} catch (error) {
-						// Best-effort: tracing must never break a build.
-						context.logger.debug(
-							`[build-workflow] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
-						);
-					}
-					const outcome = withDeterministicRouting({
-						workItemId: resolvedWorkItemId,
-						...(runId ? { runId } : {}),
-						taskId: resolvedTaskId,
-						owner,
-						plannedTaskId,
-						workflowId: saved.id,
-						sourceFilePath: filePath,
-						submitted: true,
-						triggerType: 'manual_or_testable',
-						triggerNodes,
-						needsUserInput: false,
-						mockedNodeNames: hasMockedCredentialNodes ? mockResult.mockedNodeNames : undefined,
-						mockedCredentialTypes: hasMockedCredentialNodes
-							? mockResult.mockedCredentialTypes
-							: undefined,
-						mockedCredentialsByNode: hasMockedCredentialNodes
-							? mockResult.mockedCredentialsByNode
-							: undefined,
-						resolvedCredentialsByNode: hasResolvedCredentials
-							? mockResult.resolvedCredentialsByNode
-							: undefined,
-						workflowNeedsSetup,
-						onlySkippedSetupRemains,
-						nodeSimulationPlan,
-						simulationFixtures,
-						waitGateScripts,
-						verificationProgress:
-							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,
-						supportingWorkflowIds:
-							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
-						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-						changedNodeNames,
-						executionIntent,
-						grouping,
-						summary,
-					});
-					const postBuildFlow = await directPostBuildFlowHandoff(
-						owner,
-						isAuxiliarySupportingWorkflow,
-						outcome,
-						context.runtimeSkillCatalog,
-						ctx.loadSkill,
-					);
-
-					await promoteMainWorkflow(context, saved.id);
-					await reportWorkflowBuildOutcome(context, outcome, {
-						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
-					});
-
-					failureTracker.clear(workItemKey);
-
-					trackWorkflowSourceBuild(context, {
-						result: 'success',
-						stage: 'save',
-						binding,
-						targetWorkflowId,
-						savedWorkflowId: saved.id,
-						saveOperation: operation,
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						warningCount: informational.length,
-						droppedGroupCount,
-						...(grouping
-							? {
-									topLevelItemCount: grouping.topLevelItemCount,
-									groupCount: grouping.groupCount,
-									groupingDecision: grouping.decision,
-									groupingReasonProvided: grouping.reason !== undefined,
-								}
-							: {}),
-					});
-
-					return {
-						success: true,
-						...sourceResponseBase(binding),
-						...describeSavedPublishState(saved),
-						workflowId: saved.id,
-						workflowName: json.name || undefined,
-						workItemId: resolvedWorkItemId,
-						...(saved.folder ? { folder: saved.folder } : {}),
-						isSupportingWorkflow: isSupportingWorkflow || undefined,
-						triggerNodes,
-						verificationReadiness: outcome.verificationReadiness,
-						executionIntent: outcome.executionIntent,
-						setupRequirement: outcome.setupRequirement,
-						...(postBuildFlow ? { postBuildFlow } : {}),
-						mockedNodeNames: hasMockedCredentialNodes ? mockResult.mockedNodeNames : undefined,
-						mockedCredentialTypes: hasMockedCredentialNodes
-							? mockResult.mockedCredentialTypes
-							: undefined,
-						mockedCredentialsByNode: hasMockedCredentialNodes
-							? mockResult.mockedCredentialsByNode
-							: undefined,
-						resolvedCredentialsByNode: hasResolvedCredentials
-							? mockResult.resolvedCredentialsByNode
-							: undefined,
-						credentialResolutionNote:
-							hasResolvedCredentials || heldForNewCredentialTypes.length > 0
-								? buildCredentialResolutionNote(
-										mockResult.resolvedCredentialsByNode,
-										heldForNewCredentialTypes,
-										{
-											n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
-												context,
-												mockResult.resolvedCredentialsByNode,
-											),
-										},
-									)
-								: undefined,
-						referencedWorkflowIds:
-							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
-						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-						grouping,
-						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
-					};
-				};
-
-				if (targetWorkflowId) {
-					const updateOptions = binding.workflowChecksum
-						? { expectedChecksum: binding.workflowChecksum }
-						: undefined;
-					const updated = await context.workflowService.updateFromWorkflowJSON(
-						targetWorkflowId,
-						json,
-						updateOptions,
-					);
-					return await createSuccessResponse(updated, 'update');
-				}
-
-				const created = await context.workflowService.createFromWorkflowJSON(json, {
-					markAsAiTemporary: true,
-					...(folderPath !== undefined ? { folderPath } : {}),
-				});
-				await recordSessionOwnedWorkflow(context, created.id);
-				return await createSuccessResponse(created, 'create');
-			} catch (error) {
-				const message = error instanceof Error ? error.message : 'Unknown error';
-
-				if (error instanceof FolderResolutionError) {
-					// Nothing was written. The source is fine, so the binding is left as is:
-					// the fix is a corrected `folderPath` or a question to the user, not an edit.
-					const failureText = formatFolderPlacementFailure(error.folderResolution);
-					const remediation = createRemediation({
-						category: 'blocked',
-						shouldEdit: false,
-						reason: `folder_${error.folderResolution.reason.replace(/-/g, '_')}`,
-						guidance: failureText,
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'failure',
-						stage: 'folder',
-						binding,
-						targetWorkflowId,
-						saveOperation: 'create',
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						remediation,
-						errorCount: 1,
-					});
+			switch (result.status) {
+				case 'needs_clarification':
 					return {
 						success: false,
-						...sourceResponseBase(binding),
-						workflowName: json.name || undefined,
-						workItemId: resolvedWorkItemId,
-						errors: [failureText],
-						remediation,
+						status: 'needs_clarification' as const,
+						sessionId: result.sessionId,
+						message: result.message,
+						questions: result.questions,
+						diagnostics,
 					};
-				}
-
-				if (error instanceof WorkflowSaveConflictError) {
-					const remediation = createWorkflowModifiedExternallyRemediation();
-					binding = await markSourceBuildFailed(context, binding, sourceHash);
-					await reportFailedWorkflowBuildOutcome(context, {
-						targetWorkflowId,
-						sourceFilePath: filePath,
-						workItemId: resolvedWorkItemId,
-						taskId: resolvedTaskId,
-						plannedTaskId,
-						owner,
-						remediation,
-						errors: [message],
-						summary: 'Workflow save conflict — the workflow changed outside this conversation.',
-						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'failure',
-						stage: 'conflict',
-						binding,
-						targetWorkflowId,
-						saveOperation: 'update',
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						remediation,
-						errorCount: 1,
-					});
+				case 'needs_setup':
 					return {
 						success: false,
-						...sourceResponseBase(binding),
-						workflowId: targetWorkflowId,
-						workflowName: json.name || undefined,
-						workItemId: resolvedWorkItemId,
-						errors: [message],
-						remediation,
+						status: 'needs_setup' as const,
+						sessionId: result.sessionId,
+						summary: result.summary,
+						credentialTypes: result.credentialTypes,
+						message: `${result.summary} Run workflows(action="setup") for workflow ${targetWorkflowId ?? ''} to fix the credential, then verify again.`,
+						diagnostics,
 					};
-				}
-
-				const remediation = createSaveFailureRemediation(error, Boolean(binding.workflowId));
-				binding = await markSourceBuildFailed(context, binding, sourceHash);
-				await reportFailedWorkflowBuildOutcome(context, {
-					targetWorkflowId,
-					sourceFilePath: filePath,
-					workItemId: resolvedWorkItemId,
-					taskId: resolvedTaskId,
-					plannedTaskId,
-					owner,
-					remediation,
-					errors: [`Workflow save failed: ${message}`],
-					summary: 'Workflow source parsed but did not save.',
-					storeOnRunContext: !isAuxiliarySupportingWorkflow,
-				});
-				trackWorkflowSourceBuild(context, {
-					result: remediation.category === 'blocked' ? 'blocked' : 'failure',
-					stage: 'save',
-					binding,
-					targetWorkflowId,
-					saveOperation: targetWorkflowId ? 'update' : 'create',
-					isSupportingWorkflow,
-					isAuxiliarySupportingWorkflow,
-					remediation,
-					errorCount: 1,
-				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					workflowName: json.name || undefined,
-					workItemId: resolvedWorkItemId,
-					errors: [`Workflow save failed: ${message}`],
-					remediation,
-				};
+				case 'failed':
+					return {
+						success: false,
+						status: 'failed' as const,
+						sessionId: result.sessionId,
+						errors: [result.reason],
+						...(result.report
+							? { verification: levels(result.report), issues: result.report.issues }
+							: {}),
+						diagnostics,
+					};
+				case 'compiled':
+					break;
 			}
+
+			if (ctx.toolCallId) pendingSessions.set(ctx.toolCallId, result.sessionId);
+			const persistHandler = persist.handler;
+			if (!persistHandler) throw new UnexpectedError('persist-workflow tool has no handler');
+			const persisted = await persistHandler(
+				{
+					filePath: sourceFilePathFor(result, targetWorkflowId),
+					sourceCode: JSON.stringify(result.workflow, null, 2),
+					...(targetWorkflowId ? { workflowId: targetWorkflowId } : {}),
+					...(input.name ? { name: input.name } : {}),
+					...(input.approvalSummary ? { approvalSummary: input.approvalSummary } : {}),
+					...(input.workItemId ? { workItemId: input.workItemId } : {}),
+					...(input.isSupportingWorkflow !== undefined
+						? { isSupportingWorkflow: input.isSupportingWorkflow }
+						: {}),
+					...(input.preferNewCredentials
+						? { preferNewCredentials: input.preferNewCredentials }
+						: {}),
+					...(input.executionIntent ? { executionIntent: input.executionIntent } : {}),
+					...('folderPath' in input && input.folderPath ? { folderPath: input.folderPath } : {}),
+					// The compiler emits a flat graph; canvas node groups are not part of the compiled artifact.
+					groupingDecision: 'not_warranted',
+					groupingReason:
+						'Compiled workflow: the compiler emits a flat graph without canvas node groups.',
+				},
+				ctx,
+			);
+			if (ctx.toolCallId) pendingSessions.delete(ctx.toolCallId);
+			const persistedRecord = isRecord(persisted) ? persisted : {};
+			const persistSucceeded = persistedRecord.success === true;
+			return {
+				...persistedRecord,
+				success: persistSucceeded,
+				status: persistSucceeded
+					? ('compiled' as const)
+					: persistedRecord.denied === true
+						? ('denied' as const)
+						: ('failed' as const),
+				sessionId: result.sessionId,
+				summary: result.summary,
+				verification: levels(result.report),
+				issues: result.report.issues,
+				executionPaths: result.executionPaths.map((path) => ({
+					id: path.id,
+					decisions: path.decisions.map((decision) => ({
+						node: decision.node,
+						label: decision.label,
+					})),
+					end: path.end,
+				})),
+				changedNodeNames: result.changedNodeNames,
+				generator: {
+					compilerVersion: result.generator.compilerVersion,
+					patternRegistryVersion: result.generator.patternRegistryVersion,
+					nodeRegistryVersion: result.generator.nodeRegistryVersion,
+					patternIds: result.generator.patternIds,
+				},
+				diagnostics,
+			};
 		})
 		.build();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function levels(report: VerificationReport) {
+	return {
+		structural: report.structural,
+		parameters: report.parameters,
+		expressions: report.expressions,
+		contracts: report.contracts,
+		fixtureTests: report.fixtureTests,
+		integrationTests: report.integrationTests,
+		publication: report.publication,
+	};
+}
+
+function validateActionInput(input: BuildWorkflowInput): string | undefined {
+	switch (input.action) {
+		case 'create':
+			return input.request
+				? undefined
+				: 'action "create" needs `request`: the user’s description of the workflow.';
+		case 'edit':
+			if (!input.workflowId) return 'action "edit" needs `workflowId`.';
+			return input.request ? undefined : 'action "edit" needs `request`: the change to make.';
+		case 'debug':
+			return input.workflowId ? undefined : 'action "debug" needs `workflowId`.';
+		case 'answer':
+			if (!input.sessionId) return 'action "answer" needs `sessionId` from the earlier call.';
+			return input.request ? undefined : 'action "answer" needs `request`: the user’s reply.';
+	}
+}
+
+async function runCompiler(
+	context: InstanceAiContext,
+	service: WorkflowCompilerService,
+	input: BuildWorkflowInput,
+	abortSignal: AbortSignal | undefined,
+): Promise<{ result: CompilerResult; workflowId?: string } | { error: string }> {
+	switch (input.action) {
+		case 'create':
+			return {
+				result: await service.create({
+					request: input.request ?? '',
+					sessionId: input.sessionId,
+					answers: input.answers,
+					name: input.name,
+					abortSignal,
+				}),
+			};
+		case 'edit': {
+			const workflowId = input.workflowId ?? '';
+			const workflow = await loadWorkflow(context, workflowId);
+			if (!workflow) return { error: `Workflow ${workflowId} was not found.` };
+			return {
+				result: await service.edit({
+					request: input.request ?? '',
+					workflow,
+					workflowId,
+					sessionId: input.sessionId,
+					answers: input.answers,
+					abortSignal,
+				}),
+				workflowId,
+			};
+		}
+		case 'debug': {
+			const workflowId = input.workflowId ?? '';
+			const workflow = await loadWorkflow(context, workflowId);
+			if (!workflow) return { error: `Workflow ${workflowId} was not found.` };
+			const execution = await latestFailedExecution(context, workflowId, input.executionId).catch(
+				() => undefined,
+			);
+			if (!execution)
+				return {
+					error: `No failed execution found for workflow ${workflowId}. Run it (or pass executionId) so the compiler has evidence to work from.`,
+				};
+			return {
+				result: await service.debug({
+					request: input.request,
+					workflow,
+					workflowId,
+					execution,
+					sessionId: input.sessionId,
+					abortSignal,
+				}),
+				workflowId,
+			};
+		}
+		case 'answer': {
+			const sessionId = input.sessionId ?? '';
+			const reply = input.request ?? '';
+			const session = await service.getSession(sessionId);
+			if (!session)
+				return {
+					error: `Compiler session ${sessionId} was not found; start again with action "create", "edit" or "debug".`,
+				};
+			if (session.intent === 'create') {
+				return {
+					result: await service.create({
+						request: reply,
+						sessionId,
+						answers: input.answers,
+						name: input.name,
+						abortSignal,
+					}),
+				};
+			}
+			if (!session.workflowId) return { error: `Session ${sessionId} has no target workflow.` };
+			const workflow = await loadWorkflow(context, session.workflowId);
+			if (!workflow) return { error: `Workflow ${session.workflowId} was not found.` };
+			if (session.intent === 'edit') {
+				return {
+					result: await service.edit({
+						request: reply,
+						workflow,
+						workflowId: session.workflowId,
+						sessionId,
+						answers: input.answers,
+						abortSignal,
+					}),
+					workflowId: session.workflowId,
+				};
+			}
+			// A debug answer is a change request against the failing node: route it through edit.
+			return {
+				result: await service.edit({
+					request: reply,
+					workflow,
+					workflowId: session.workflowId,
+					answers: input.answers,
+					abortSignal,
+				}),
+				workflowId: session.workflowId,
+			};
+		}
+	}
+}
+
+async function loadWorkflow(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<WorkflowJSON | undefined> {
+	try {
+		return await context.workflowService.getAsWorkflowJSON(workflowId);
+	} catch {
+		return undefined;
+	}
 }

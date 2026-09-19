@@ -78,7 +78,7 @@ calls `create-tasks` with
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `build-workflow` directly.
+call `build-workflow` directly.
 The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
@@ -110,7 +110,7 @@ The plan is shown to the user for approval before execution starts.
 - On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
-- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
+- `build-workflow` → orchestrator follow-up run that calls `build-workflow`
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
@@ -383,35 +383,45 @@ once; subsequent repairs can reuse only `filePath`.
 
 ### `build-workflow`
 
-Compile, validate, and save a workspace workflow source file. Inline source and
-string patches are not accepted; edit the workspace file first and then call
-this tool with `filePath`.
+Build, edit, or debug a workflow with the workflow compiler
+(`docs/workflow-compiler.md`). The orchestrator passes the user's words; the
+compiler extracts requirements, picks operations with bounded decisions,
+compiles a validated workflow, and saves it through the internal
+`persist-workflow` step (credentials, approval card, setup analysis,
+verification plan).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
-| `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
+| `action` | `create` \| `edit` \| `debug` \| `answer` | yes | What to do |
+| `request` | string | create, edit, answer | The user's words: behavior to build, change to make, or reply to a question |
+| `workflowId` | string | edit, debug | Target workflow |
+| `executionId` | string | no | Failed execution used as debug evidence (defaults to the latest failed one) |
+| `sessionId` | string | answer | Compiler session returned by the earlier call |
+| `answers` | object | no | Structured answers keyed by the returned question `fields` |
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `preferNewCredentials` | string[] | no | Credential types to create fresh |
+| `executionIntent` | `one-off` \| `reusable` | no | Sticky execution intent |
+| `folderPath` | string | no | Folder for a new workflow; advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
-conversation is bound to, and nothing can redirect it. The field used to exist and
-the adapter ignored it, so a build could report a project it had not written to.
+conversation is bound to.
 
-**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, folder?, remediation?, errors?, warnings? }`
-— `folder` is `{ id, name, path }` when the workflow was created inside a folder.
+**Returns**: `{ success, status, sessionId, message?, questions?, summary?,
+verification?, issues?, executionPaths?, changedNodeNames?, credentialTypes?,
+generator?, diagnostics?, ...persist fields }`.
 
-**Behavior**: Reads the source file from the runtime workspace, compiles
-TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
-directly, validates the resulting workflow JSON server-side, resolves
-credentials, saves by the workflow ID bound to the source file, and persists the
-latest source hash and workflow version in thread metadata. If the file has no
-saved workflow ID, the build creates a new workflow unless `workflowId` is
-provided to bind the file to an existing workflow. If the bound workflow no
-longer exists, the tool returns blocked remediation rather than creating a
-replacement.
+- `status: "needs_clarification"` — relay `message` verbatim, then call
+  `action: "answer"` with the same `sessionId` and the user's reply.
+- `status: "needs_setup"` — a debug run found a credential failure; run
+  `workflows(action="setup")`.
+- `status: "compiled"` — the workflow was saved. The persist fields
+  (`workflowId`, `verificationReadiness`, `setupRequirement`, `postBuildFlow`,
+  `mockedNodeNames`, …) keep their previous meaning.
+- `verification` reports each static level as `pass`, `warn`, `fail` or
+  `not_run`; `fixtureTests` and `integrationTests` are `not_run` until
+  `verify-built-workflow` runs.
 
 ### `workflows(action="delete")`
 

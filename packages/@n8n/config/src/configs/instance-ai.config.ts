@@ -58,6 +58,26 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
 
+	/**
+	 * Base URL of the structured-read decision service (`POST /v1/systemone`) the
+	 * workflow compiler uses for bounded decisions. Empty disables it; the
+	 * compiler then falls back to the run's model and, failing that, abstains.
+	 */
+	@Env('N8N_INSTANCE_AI_DECISION_URL')
+	decisionUrl: string = '';
+
+	/** Bearer token for the decision service. Optional. */
+	@Env('N8N_INSTANCE_AI_DECISION_API_KEY')
+	decisionApiKey: string = '';
+
+	/** Model name the decision service routes on. */
+	@Env('N8N_INSTANCE_AI_DECISION_MODEL')
+	decisionModel: string = 'jev-latest';
+
+	/** Per-request latency budget for the decision service, in milliseconds. */
+	@Env('N8N_INSTANCE_AI_DECISION_TIMEOUT_MS')
+	decisionTimeoutMs: number = 1500;
+
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;

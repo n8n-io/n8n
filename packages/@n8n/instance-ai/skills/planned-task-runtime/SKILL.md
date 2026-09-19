@@ -95,10 +95,10 @@ Replan routing (do not re-plan from scratch):
 
 ## Build-workflow follow-up
 
-When `<planned-task-follow-up type="build-workflow">` is present, load the
-`workflow-builder` skill and build exactly the `buildTask` in the payload. If
-`buildTask.workflowId` is present, update that workflow; otherwise create a new
-one. If `buildTask.isSupportingWorkflow === true`, pass `isSupportingWorkflow:
+When `<planned-task-follow-up type="build-workflow">` is present, call
+`build-workflow` with exactly the `buildTask` in the payload as the request. If
+`buildTask.workflowId` is present, use action "edit" on that workflow;
+otherwise use action "create". If `buildTask.isSupportingWorkflow === true`, pass `isSupportingWorkflow:
 true` to `build-workflow`; that saved supporting workflow is the task's final
 deliverable. Save with `build-workflow` and stop after a successful save — do not
 verify, set up credentials, publish, call `complete-checkpoint`, create a new
@@ -115,9 +115,8 @@ exactly one checkpoint task (`checkpoint.id`, `checkpoint.title`,
 tasks, including workflow build outcomes with their `outcome.workItemId` /
 `outcome.workflowId`). **Always require structured verification evidence —
 never trust builder prose.** Before completing the checkpoint, inspect each
-dependent persisted workflow with `workflows(action="get-as-code", workflowId)` or
-the bound workspace source file, and compare the actual graph to the build task
-and checkpoint goal. Build/save
+dependent persisted workflow with `workflows(action="get-as-code", workflowId)`
+and compare the actual graph to the build task and checkpoint goal. Build/save
 success is not proof of workflow quality. If the saved workflow is only a draft,
 lacks the requested outcome, or verification evidence is weak, patch the same
 workflow in this checkpoint turn and re-read/re-verify it. If a dependency outcome
@@ -146,8 +145,8 @@ checkpoint card in the plan checklist is the user-visible surface. End your turn
 as soon as `complete-checkpoint` returns.
 
 **If your verification surfaced a bug you can patch in place** (e.g., a Code-node
-shape issue), load the `workflow-builder` skill and call `build-workflow`
-directly during this checkpoint turn, passing the existing `workflowId` and the
+shape issue), call `build-workflow` with action "edit" (or "debug") directly
+during this checkpoint turn, passing the existing `workflowId` and the
 dependency `workItemId`. Then re-verify in the same checkpoint turn. Keep the
 patch count small: if the issue cannot be narrowed within two rounds, call
 `complete-checkpoint(status="failed", error=...)` with a summary of what remains

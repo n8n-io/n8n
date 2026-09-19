@@ -73,6 +73,7 @@ import type {
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
+import type { DecisionService as WorkflowCompilerDecisionService } from './workflow-compiler/decision/decision-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1630,6 +1631,13 @@ export interface InstanceAiContext {
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
 	threadMemory?: PatchableThreadMemory;
+	/**
+	 * Bounded-decision backend for the workflow compiler (structured reads over
+	 * a known answer space). Wired by the host when `N8N_INSTANCE_AI_DECISION_URL`
+	 * is set; absent, the compiler falls back to the run's model and then to
+	 * abstention.
+	 */
+	decisionService?: WorkflowCompilerDecisionService;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance

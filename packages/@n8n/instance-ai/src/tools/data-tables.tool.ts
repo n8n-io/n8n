@@ -849,9 +849,9 @@ export function createDataTablesTool(context: InstanceAiContext) {
 			'Manage data tables — list, query, create, modify columns, and manage rows. ' +
 				'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
 				'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
-				'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-				'`workflow-builder` before `build-workflow`. Use list, create, and schema before ' +
-				'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
+				'For workflow builds that create or write Data Tables, load `data-table-manager` before ' +
+				'`build-workflow`. Use list, create, and schema before ' +
+				'referencing tables in a build request. Keep queries targeted (column filter and/or limit ≤ 5), ' +
 				'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
 				'query only retry strictly narrower.',
 		)

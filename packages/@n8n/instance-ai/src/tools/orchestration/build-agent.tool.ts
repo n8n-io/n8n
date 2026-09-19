@@ -1043,7 +1043,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'implementation choice — for example, do not turn “a Slack agent” into a Slack node ' +
 				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
 				'(via the intent gate / ' +
-				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
+				'`intent-recognition`), stay on the `build-workflow` path and do not call this tool ' +
 				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +

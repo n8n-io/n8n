@@ -34,7 +34,7 @@ Agent Builder asks those questions through the `build-agent` call.
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
 request — target that Agent and call `build-agent`. Do not reroute to
-`workflow-builder`, and do not spawn a workflow to satisfy a capability change
+`build-workflow`, and do not spawn a workflow to satisfy a capability change
 on the Agent.
 
 ## Supported channels & unsupported requests
@@ -92,8 +92,8 @@ create when they must be attached to or used by the Agent:
 
 - Create a workflow tool only when one Agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow to be
-  reusable, manually callable, or usable outside the Agent. Follow
-  `workflow-builder`, then pass the built workflow in `workflowContext`.
+  reusable, manually callable, or usable outside the Agent. Build it with
+  `build-workflow`, then pass the built workflow in `workflowContext`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
   and create the required tables via `data-tables`. The builder cannot create
   tables.
@@ -127,7 +127,7 @@ called by the Agent. Never ask the user to create prerequisites manually.
 ## Targeting across turns
 
 Address Agents in this conversation with `agentRef`, a short stable key similar
-to a workflow `filePath`.
+to a workflow compiler `sessionId`.
 
 - For the first Agent, pass a fresh `agentRef` and `name`.
 - Reuse that `agentRef` on later calls. Calls with neither `agentRef` nor

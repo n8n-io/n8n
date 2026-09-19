@@ -36,9 +36,7 @@ describe('prompt profiles', () => {
 		expect(result.disabledTools).toEqual(['create-tasks']);
 		await expect(result.source.loadSkill('planning')).resolves.toBeNull();
 		await expect(result.source.loadSkill('progressive-building')).resolves.toBeNull();
-		expect((await result.source.loadSkill('workflow-builder'))?.version).toBe(
-			'progressive-building@1',
-		);
+		await expect(result.source.loadSkill('workflow-builder')).resolves.toBeNull();
 		expect(describePromptProfile(selected, result.source)).toEqual({
 			version: 'progressive@1',
 			systemPromptVersion: 'instance-agent@1',

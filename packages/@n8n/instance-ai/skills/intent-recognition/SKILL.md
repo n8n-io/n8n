@@ -28,7 +28,7 @@ The deciding question is not a single "workflow or agent" label — it is two
 questions: who owns the top-level control flow, and does the other primitive
 show up inside that flow.
 
-If the user asked to build, route on the result: workflow-builder for
+If the user asked to build, route on the result: `build-workflow` for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
 agent-anchored (a tool-use loop), `ask-user` for needs-clarification, or answer
@@ -267,7 +267,7 @@ editor/canvas context shows an existing agent and the user asks to change,
 add, or remove its configuration or capabilities (instructions, model,
 tools, skills, tasks, channels, memory, sub-agents), classify
 **agent-anchored** and route to `build-agent` targeting that agent. Do not
-route to `workflow-builder`, and do not treat the request as a workflow
+route to `build-workflow`, and do not treat the request as a workflow
 change even when a workflow is also in context, unless the user explicitly
 names the workflow as the target. A capability the agent cannot have is
 still an agent-anchored request — handle it per Unsupported capabilities

@@ -10,6 +10,12 @@ import { Tool } from '@n8n/agents';
 import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	describePathCoverage,
+	enumerateExecutionPaths,
+	pathCoverage,
+} from '../../workflow-compiler/paths/enumerate-paths';
+
 import type { InstanceAiWorkflowService, OrchestrationContext } from '../../types';
 import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
@@ -221,6 +227,25 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
 	/**
+	 * System-one view of the run: every distinct branch path the workflow can
+	 * take from the verified trigger, and which of them this run exercised.
+	 */
+	executionPathCoverage: z
+		.object({
+			total: z.number().int().nonnegative(),
+			covered: z.number().int().nonnegative(),
+			uncovered: z
+				.array(
+					z.object({
+						id: z.string(),
+						decisions: z.array(z.object({ node: z.string(), label: z.string() })),
+						firstMissingNode: z.string(),
+					}),
+				)
+				.optional(),
+		})
+		.optional(),
+	/**
 	 * Present only while the published version is older than the verified
 	 * draft. The claim carries the same fact as `liveState`; this is the
 	 * sentence to relay, because a passing run reads as "production works".
@@ -411,6 +436,37 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						};
 					})();
 
+			// Enumerate the branch paths behind this trigger and score which ones the run took.
+			const executionPaths = workflow
+				? enumerateExecutionPaths(workflow, {
+						triggerNodeName: selectedTriggerNodeName ?? resolvedInput.triggerNodeName,
+					})
+				: [];
+			const coverage = pathCoverage(executionPaths, [analysis.reachedNames]);
+			const executionPathCoverage =
+				executionPaths.length > 0
+					? {
+							total: coverage.total,
+							covered: coverage.covered,
+							...(coverage.uncovered.length > 0
+								? {
+										uncovered: coverage.uncovered.map(({ path, firstMissingNode }) => ({
+											id: path.id,
+											decisions: path.decisions.map((decision) => ({
+												node: decision.node,
+												label: decision.label,
+											})),
+											firstMissingNode,
+										})),
+									}
+								: {}),
+						}
+					: undefined;
+			const pathCoverageNote =
+				executionPathCoverage && coverage.uncovered.length > 0
+					? describePathCoverage(coverage)
+					: undefined;
+
 			// The repair target from an earlier verdict counts even when the model
 			// omits it here — that is exactly the turn where it stops mentioning it.
 			const fixTargetNodeNames = [
@@ -502,7 +558,9 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					skippedParameterCheckCount > 0 ? skippedParameterCheckCount : undefined,
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
-				coverageNote: analysis.coverageNote,
+				coverageNote:
+					[analysis.coverageNote, pathCoverageNote].filter(Boolean).join(' ') || undefined,
+				...(executionPathCoverage ? { executionPathCoverage } : {}),
 				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,

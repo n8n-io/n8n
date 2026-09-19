@@ -4,7 +4,7 @@ Instance AI is the agent runtime behind the n8n Assistant experience in n8n. It
 lets users ask for help with workflows, executions, credentials, nodes, and
 workflow building from inside an n8n instance.
 
-The package contains the agent prompts, tool registry, workflow-builder logic,
+The package contains the agent prompts, tool registry, workflow compiler,
 workspace adapters, tracing helpers, and evaluation harnesses. The HTTP API,
 database entities, settings, and n8n service adapters live in
 `packages/cli/src/modules/instance-ai`.

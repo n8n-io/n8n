@@ -9,7 +9,7 @@ description: >-
   to review a plan first. Load create-tasks via load_tool before calling it
   (search "create tasks" if not visible). Do NOT use for new one-off workflows,
   single-workflow edits, verification-only requests, or standalone data-table
-  ops — use workflow-builder or data-table-manager instead.
+  ops — call build-workflow directly or use data-table-manager instead.
 recommended_tools:
   - create-tasks
   - workflows
@@ -32,7 +32,7 @@ it is not visible).
 
 ## When NOT to use this skill
 
-Stop and use `workflow-builder` + `build-workflow` instead when the request is:
+Stop and call `build-workflow` directly instead when the request is:
 
 - A new or one-off single workflow, even if it sounds large or unfamiliar
 - An edit to one existing workflow (nodes, expressions, credentials, schedule, Code)
@@ -55,8 +55,8 @@ plan first.
 
 If shared data tables are involved, load `data-table-manager` before this skill
 and carry the relevant table guidance into workflow task specs. Clear
-single-workflow builds and existing-workflow edits use `workflow-builder` with
-`build-workflow` directly. Standalone data-table work uses `data-table-manager`
+single-workflow builds and existing-workflow edits call `build-workflow`
+directly (action "create" or "edit"). Standalone data-table work uses `data-table-manager`
 with direct `data-tables` and `parse-file` calls.
 
 ## Knowledge Base

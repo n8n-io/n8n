@@ -726,7 +726,7 @@ async function handleSearchTypes(
 	if (results.length === 0) {
 		return {
 			results,
-			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill). This includes bearer tokens: when the provider documents \`Authorization: Bearer <token>\`, do NOT use httpBearerAuth — template it as {"headers":{"Authorization":"Bearer {{api_key}}"}}. Fall back to other generic types for what a template cannot express (basic auth's base64 pair, digest, OAuth flows) — or when the user explicitly asks for a specific plain type: an explicit user choice wins (setup accepts it with allowPlainGenericAuth: true).`,
+			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the credential-recipe-research skill). This includes bearer tokens: when the provider documents \`Authorization: Bearer <token>\`, do NOT use httpBearerAuth — template it as {"headers":{"Authorization":"Bearer {{api_key}}"}}. Fall back to other generic types for what a template cannot express (basic auth's base64 pair, digest, OAuth flows) — or when the user explicitly asks for a specific plain type: an explicit user choice wins (setup accepts it with allowPlainGenericAuth: true).`,
 		};
 	}
 

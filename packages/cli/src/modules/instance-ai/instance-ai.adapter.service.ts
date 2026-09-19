@@ -87,9 +87,11 @@ import type {
 	McpRegistryServerSummary,
 	ModelConfig,
 	FolderResolutionFailure,
+	WorkflowCompilerDecisionService,
 } from '@n8n/instance-ai';
 import {
 	BuilderTemplatesService,
+	SystemOneDecisionClient,
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
@@ -330,6 +332,8 @@ export class InstanceAiAdapterService {
 
 	private readonly allowSendingParameterValues: boolean;
 
+	private decisionService?: WorkflowCompilerDecisionService;
+
 	/**
 	 * Service-level cache for node type descriptions. Reads from the static JSON
 	 * file that FrontendService writes at startup, avoiding the expensive
@@ -483,6 +487,7 @@ export class InstanceAiAdapterService {
 			credentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
+		const decisionService = this.createDecisionService();
 		return {
 			userId: user.id,
 			projectId,
@@ -520,6 +525,7 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			...(decisionService ? { decisionService } : {}),
 			// Optional call for the same reason as addPostProcessor?.() above:
 			// adapter tests construct the service with placeholder deps.
 			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
@@ -3205,6 +3211,19 @@ export class InstanceAiAdapterService {
 		maxEntries: 100,
 		ttlMs: 15 * 60 * 1000,
 	});
+
+	/** Structured-read decision backend for the workflow compiler; undefined until `N8N_INSTANCE_AI_DECISION_URL` is set. */
+	private createDecisionService(): WorkflowCompilerDecisionService | undefined {
+		const config = this.globalConfig.instanceAi;
+		if (!config.decisionUrl) return undefined;
+		this.decisionService ??= new SystemOneDecisionClient({
+			baseUrl: config.decisionUrl,
+			...(config.decisionApiKey ? { apiKey: config.decisionApiKey } : {}),
+			model: config.decisionModel,
+			timeoutMs: config.decisionTimeoutMs,
+		});
+		return this.decisionService;
+	}
 
 	private createWebResearchAdapter(
 		user: User,
