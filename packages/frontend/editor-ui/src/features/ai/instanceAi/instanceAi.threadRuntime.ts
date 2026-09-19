@@ -511,6 +511,17 @@ export function createThreadRuntime(
 		rememberedManualExecutions.delete(workflowId);
 	}
 
+	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
+	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
+	const logsPanelMemory = {
+		// The user collapsed the panel in this thread, so later runs do not open it again.
+		collapsedByUser: false,
+		// Only a panel that opened automatically collapses after a successful run.
+		autoOpened: false,
+		// Latest started run per workflow id. Only the success of that run collapses the panel.
+		latestStartedExecutionIds: new Map<string, string>(),
+	};
+
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
 	// STATES they hold are reactive (created via `createRunState*` in the
@@ -1781,6 +1792,7 @@ export function createThreadRuntime(
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
+		logsPanelMemory,
 		resetState,
 		dispose,
 		connectSSE,
