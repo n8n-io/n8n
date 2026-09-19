@@ -32,11 +32,11 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_DECISION_URL` | string | `''` | Base URL of the structured-read decision service (`POST /v1/systemone`) used by the workflow compiler. Empty: the compiler falls back to the run's model, then abstains and asks the user. |
+| `N8N_INSTANCE_AI_DECISION_URL` | string | `''` | Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: the compilers fall back to the run's model, then abstain and ask. |
 | `N8N_INSTANCE_AI_DECISION_API_KEY` | string | `''` | Bearer token for the decision service. |
 | `N8N_INSTANCE_AI_DECISION_MODEL` | string | `jev-latest` | Model name the decision service routes on. |
 | `N8N_INSTANCE_AI_DECISION_TIMEOUT_MS` | number | `1500` | Per-request latency budget for the decision service. |
-| `N8N_INSTANCE_AI_FAST_PATH_ENABLED` | boolean | `false` | Route each chat turn with a structured read before any language model runs and serve confident build, edit, debug and verify requests with the compilers directly. The orchestrator LLM runs only when the router is not confident or the compiler hands the turn back. See `docs/intent-router.md`. |
+| `N8N_INSTANCE_AI_FAST_PATH_ENABLED` | boolean | `false` | Route each chat turn with a structured read before any language model runs (`docs/intent-router.md`). |
 
 See `docs/workflow-compiler.md` for the decision contract and policy.
 

@@ -3530,7 +3530,6 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
 	/** A planned task graph makes the fast path defer to the orchestrator, which owns plan execution. */
 	private async hasActivePlannedTaskGraph(
 		plannedTaskService: PlannedTaskService | undefined,
@@ -3552,26 +3551,18 @@ export class InstanceAiService {
 		reply: string,
 		createdAt: Date,
 	): Promise<void> {
+		const turn = (role: 'user' | 'assistant', text: string, at: Date) => ({
+			id: nanoid(),
+			createdAt: at,
+			type: 'llm' as const,
+			role,
+			content: [{ type: 'text' as const, text }],
+		});
 		try {
 			await this.agentMemory.saveMessages({
 				threadId,
 				resourceId: userId,
-				messages: [
-					{
-						id: nanoid(),
-						createdAt,
-						type: 'llm',
-						role: 'user',
-						content: [{ type: 'text', text: message }],
-					},
-					{
-						id: nanoid(),
-						createdAt: new Date(),
-						type: 'llm',
-						role: 'assistant',
-						content: [{ type: 'text', text: reply }],
-					},
-				],
+				messages: [turn('user', message, createdAt), turn('assistant', reply, new Date())],
 			});
 		} catch (error) {
 			this.logger.warn('Failed to persist fast-path turn', {
@@ -3581,6 +3572,7 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
 	private async persistInterruptedUserMessage(
 		threadId: string,
 		userId: string,
@@ -3943,7 +3935,9 @@ export class InstanceAiService {
 					message,
 					context,
 					orchestrationContext,
-					state: { hasActivePlan: await this.hasActivePlannedTaskGraph(plannedTaskService, threadId) },
+					state: {
+						hasActivePlan: await this.hasActivePlannedTaskGraph(plannedTaskService, threadId),
+					},
 				});
 				this.telemetry.track('instance_ai_fast_path', {
 					thread_id: threadId,
@@ -3954,10 +3948,13 @@ export class InstanceAiService {
 					decision_source: fastPathOutcome.decision.source,
 					decision_confidence: fastPathOutcome.decision.confidence,
 					latency_ms: fastPathOutcome.latencyMs,
-					...(fastPathOutcome.handled ? {} : { fallback_reason: redactTelemetryText(fastPathOutcome.reason) }),
+					...(fastPathOutcome.handled
+						? {}
+						: { fallback_reason: redactTelemetryText(fastPathOutcome.reason) }),
 				});
 				if (fastPathOutcome.handled) {
-					await this.persistFastPathTurn(threadId, user.id, message, fastPathOutcome.reply, turnStartedAt);
+					const { reply } = fastPathOutcome;
+					await this.persistFastPathTurn(threadId, user.id, message, reply, turnStartedAt);
 					await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'completed', {
 						messageGroupId,
 						correlationId: messageId,
@@ -3970,11 +3967,8 @@ export class InstanceAiService {
 					return;
 				}
 				if (fastPathOutcome.toolCallId) {
-					fastPathBlock = [
-						'<fast-path-result>',
-						`The ${fastPathOutcome.route.startsWith('agent') ? 'build-agent' : 'build-workflow'} compiler already ran for this message (tool call ${fastPathOutcome.toolCallId}); its result is in this run. It handed the turn back because: ${fastPathOutcome.reason}. Continue from that result instead of starting over.`,
-						'</fast-path-result>',
-					].join('\n');
+					const tool = fastPathOutcome.route.startsWith('agent') ? 'build-agent' : 'build-workflow';
+					fastPathBlock = `<fast-path-result>\nThe ${tool} compiler already ran for this message (tool call ${fastPathOutcome.toolCallId}); its result is in this run. It handed the turn back because: ${fastPathOutcome.reason}. Continue from that result instead of starting over.\n</fast-path-result>`;
 				}
 			}
 
@@ -4147,7 +4141,13 @@ export class InstanceAiService {
 				aiPreferencesBlock,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 			]);
-			const fullMessage = [fastPathBlock, handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
+			const fullMessage = [
+				fastPathBlock,
+				handoffContextBlock,
+				setupStateBlock,
+				threadContextBlock,
+				messageBody,
+			]
 				.filter(Boolean)
 				.join('\n\n');
 

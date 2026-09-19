@@ -1415,15 +1415,9 @@ export interface InstanceAiBuilderDelegate {
 	readAgentArtifact?(agentId: string): Promise<{
 		config: AgentJsonConfig;
 		skills: Record<string, AgentSkill>;
-
 		configHash: string | null;
 	} | null>;
-	/**
-	 * Persist a compiled agent artifact. Writes the config fenced on
-	 * `baseConfigHash`, creates skill bodies and attaches their refs, and
-	 * creates tasks (which attach their own refs). Used by the agent compiler
-	 * behind `build-agent`; never by a model directly.
-	 */
+	/** Persist a compiled agent artifact: config fenced on `baseConfigHash`, then skills and tasks. */
 	writeAgentArtifact?(
 		agentId: string,
 		artifact: {
@@ -1677,12 +1671,7 @@ export interface InstanceAiContext {
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
 	threadMemory?: PatchableThreadMemory;
-	/**
-	 * Bounded-decision backend for the workflow compiler (structured reads over
-	 * a known answer space). Wired by the host when `N8N_INSTANCE_AI_DECISION_URL`
-	 * is set; absent, the compiler falls back to the run's model and then to
-	 * abstention.
-	 */
+	/** Bounded-decision backend for the compilers; set from `N8N_INSTANCE_AI_DECISION_URL`. */
 	decisionService?: WorkflowCompilerDecisionService;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI

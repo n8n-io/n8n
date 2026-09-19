@@ -268,13 +268,23 @@ export class InstanceAiBuilderDelegateAdapterService {
 				const skillIds: string[] = [];
 				const skillBodies = Object.values(artifact.skills ?? {});
 				if (skillBodies.length > 0) {
-					const created = await this.agentSkills.createSkills(agentId, projectId, skillBodies, telemetryContext);
+					const created = await this.agentSkills.createSkills(
+						agentId,
+						projectId,
+						skillBodies,
+						telemetryContext,
+					);
 					skillIds.push(...created.map((entry) => entry.id));
 				}
 				const config: AgentJsonConfig = {
 					...validated.config,
 					...(skillIds.length > 0
-						? { skills: [...(validated.config.skills ?? []), ...skillIds.map((id) => ({ type: 'skill' as const, id }))] }
+						? {
+								skills: [
+									...(validated.config.skills ?? []),
+									...skillIds.map((id) => ({ type: 'skill' as const, id })),
+								],
+							}
 						: {}),
 				};
 				try {
@@ -307,7 +317,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 			listAttachableWorkflows: async (searchTerm) => {
 				await assertProjectScope('agent:read');
 				const workflows = await this.attachableWorkflows.list(user, projectId, searchTerm ?? '');
-				return workflows.map((workflow) => ({ id: workflow.id, name: workflow.name, published: workflow.published }));
+				return workflows.map((workflow) => ({
+					id: workflow.id,
+					name: workflow.name,
+					published: workflow.published,
+				}));
 			},
 			resolveDefaultModel: async () => {
 				await assertProjectScope('agent:read');
@@ -322,8 +336,10 @@ export class InstanceAiBuilderDelegateAdapterService {
 					...(previewOptions?.sessionId ? { sessionId: previewOptions.sessionId } : {}),
 					credentialProvider: credentialProviderFor(agentId),
 				});
-				if (prepared.status === 'agent_misconfigured') return { status: 'misconfigured', missing: prepared.missing };
-				if (prepared.status === 'session_not_found') return { status: 'misconfigured', missing: ['session'] };
+				if (prepared.status === 'agent_misconfigured')
+					return { status: 'misconfigured', missing: prepared.missing };
+				if (prepared.status === 'session_not_found')
+					return { status: 'misconfigured', missing: ['session'] };
 				const result = await this.agentTestRun.executePreparedDraftRun({
 					agentId,
 					projectId,

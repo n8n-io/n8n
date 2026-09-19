@@ -226,10 +226,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
-	/**
-	 * System-one view of the run: every distinct branch path the workflow can
-	 * take from the verified trigger, and which of them this run exercised.
-	 */
+	/** Branch paths from the verified trigger, and which of them this run exercised. */
 	executionPathCoverage: z
 		.object({
 			total: z.number().int().nonnegative(),
@@ -437,14 +434,16 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					})();
 
 			// Enumerate the branch paths behind this trigger and score which ones the run took.
-			const executionPaths = workflow
-				? enumerateExecutionPaths(workflow, {
-						triggerNodeName: selectedTriggerNodeName ?? resolvedInput.triggerNodeName,
-					})
-				: [];
-			const coverage = pathCoverage(executionPaths, [analysis.reachedNames]);
+			const coverage = pathCoverage(
+				workflow
+					? enumerateExecutionPaths(workflow, {
+							triggerNodeName: selectedTriggerNodeName ?? resolvedInput.triggerNodeName,
+						})
+					: [],
+				[analysis.reachedNames],
+			);
 			const executionPathCoverage =
-				executionPaths.length > 0
+				coverage.total > 0
 					? {
 							total: coverage.total,
 							covered: coverage.covered,
@@ -452,10 +451,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								? {
 										uncovered: coverage.uncovered.map(({ path, firstMissingNode }) => ({
 											id: path.id,
-											decisions: path.decisions.map((decision) => ({
-												node: decision.node,
-												label: decision.label,
-											})),
+											decisions: path.decisions.map(({ node, label }) => ({ node, label })),
 											firstMissingNode,
 										})),
 									}
@@ -463,9 +459,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						}
 					: undefined;
 			const pathCoverageNote =
-				executionPathCoverage && coverage.uncovered.length > 0
-					? describePathCoverage(coverage)
-					: undefined;
+				coverage.uncovered.length > 0 ? describePathCoverage(coverage) : undefined;
 
 			// The repair target from an earlier verdict counts even when the model
 			// omits it here — that is exactly the turn where it stops mentioning it.

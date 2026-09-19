@@ -58,11 +58,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
 
-	/**
-	 * Base URL of the structured-read decision service (`POST /v1/systemone`) the
-	 * workflow compiler uses for bounded decisions. Empty disables it; the
-	 * compiler then falls back to the run's model and, failing that, abstains.
-	 */
+	/** Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: model fallback, then abstain. */
 	@Env('N8N_INSTANCE_AI_DECISION_URL')
 	decisionUrl: string = '';
 
@@ -74,17 +70,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_DECISION_MODEL')
 	decisionModel: string = 'jev-latest';
 
-	/**
-	 * Route chat turns with a structured read before any language model runs and
-	 * serve confident build, edit, debug and verify requests with the compilers
-	 * directly. The orchestrator LLM only runs when the router is not confident.
-	 */
-	@Env('N8N_INSTANCE_AI_FAST_PATH_ENABLED')
-	fastPathEnabled: boolean = false;
-
 	/** Per-request latency budget for the decision service, in milliseconds. */
 	@Env('N8N_INSTANCE_AI_DECISION_TIMEOUT_MS')
 	decisionTimeoutMs: number = 1500;
+
+	/** Route chat turns with a structured read first; the orchestrator LLM runs only when the router is not confident. */
+	@Env('N8N_INSTANCE_AI_FAST_PATH_ENABLED')
+	fastPathEnabled: boolean = false;
 
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
