@@ -4,6 +4,7 @@
  * scope-parity / discover run.
  */
 import './credentials.public.controller';
+import './data-tables.public.controller';
 import './executions.public.controller';
 import './folders.public.controller';
 import './insights.public.controller';

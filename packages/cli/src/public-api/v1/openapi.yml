@@ -109,10 +109,6 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /users/{id}/role:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
-  /data-tables:
-    $ref: './handlers/data-tables/spec/paths/data-tables.yml'
-  /data-tables/{dataTableId}:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.yml'
   /data-tables/{dataTableId}/rows:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml'
   /data-tables/{dataTableId}/rows/update:
