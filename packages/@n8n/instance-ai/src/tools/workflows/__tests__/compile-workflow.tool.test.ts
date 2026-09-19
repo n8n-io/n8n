@@ -2,12 +2,8 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { scriptedDecisions } from '../../../__tests__/scripted-decisions';
 import type { InstanceAiContext } from '../../../types';
-import type {
-	DecisionOutcome,
-	DecisionService,
-} from '../../../workflow-compiler/decision/decision-service';
-import type { DecisionAnswer } from '../../../workflow-compiler/decision/schemas';
 import { createCompileWorkflowTool } from '../compile-workflow.tool';
 
 const persistHandler = vi.fn();
@@ -17,23 +13,7 @@ vi.mock('../build-workflow.tool', () => ({
 	createBuildWorkflowTool: () => ({ name: 'persist-workflow', handler: persistHandler }),
 }));
 
-const scripted: DecisionService = {
-	kind: 'scripted',
-	async decide(request): Promise<DecisionOutcome> {
-		const answers: Record<string, DecisionAnswer> = {};
-		for (const [name, question] of Object.entries(request.questions)) {
-			if (question.type !== 'choice') continue;
-			const choice = Object.keys(question.criteria)[0];
-			answers[name] = {
-				type: 'choice',
-				choice,
-				probabilities: { [choice]: 0.95 },
-				confidence: 0.95,
-			};
-		}
-		return { ok: true, answers, model: 'scripted', latencyMs: 1, problems: [] };
-	},
-};
+const scripted = scriptedDecisions();
 
 const REQUEST =
 	'Create an API workflow. POST /customers. Upsert the customer in HubSpot. If they are new, send a message to #sales. Respond with the HubSpot contact ID.';

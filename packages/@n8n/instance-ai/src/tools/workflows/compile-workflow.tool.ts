@@ -255,7 +255,9 @@ export function createCompileWorkflowTool(context: InstanceAiContext) {
 				'When the result is needs_clarification, relay `message` to the user verbatim and call action "answer" with the same sessionId and their reply. ' +
 				'Never paraphrase the request into node names or code; give the compiler the user’s words. Do not load workflow-building skills first.',
 		)
-		.input(folderEnabled ? compileWorkflowInputSchemaWithFolderPlacement : compileWorkflowInputSchema)
+		.input(
+			folderEnabled ? compileWorkflowInputSchemaWithFolderPlacement : compileWorkflowInputSchema,
+		)
 		.output(compileWorkflowOutputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)

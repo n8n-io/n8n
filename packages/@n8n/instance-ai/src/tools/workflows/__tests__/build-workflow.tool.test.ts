@@ -2240,18 +2240,18 @@ describe('createBuildWorkflowTool', () => {
 		expect(
 			buildWorkflowInputSchema.safeParse({ filePath: '/src/../../../etc/passwd' }).success,
 		).toBe(false);
-		expect(
-			buildWorkflowInputSchema.safeParse({ filePath: 'src\\main.workflow.ts' }).success,
-		).toBe(false);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: 'src\\main.workflow.ts' }).success).toBe(
+			false,
+		);
 	});
 
 	it('accepts absolute paths at the schema layer so the handler can resolve them', () => {
 		// Root membership is only checkable at handler time; a schema rejection
 		// would surface as a hard AI_InvalidToolInputError instead of a
 		// recoverable tool result.
-		expect(
-			buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success,
-		).toBe(true);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
+			true,
+		);
 	});
 
 	it('builds from an absolute path under the workspace root', async () => {

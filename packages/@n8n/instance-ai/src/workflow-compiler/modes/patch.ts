@@ -44,9 +44,9 @@ export function applyPatches(
 			case 'remove_node': {
 				find(patch.nodeName);
 				const incoming = incomingEdges(result, patch.nodeName);
-				const outgoing = (result.connections[patch.nodeName]?.main ?? []).flatMap(
-					(slot) => slot ?? [],
-				);
+				const outgoing = (result.connections[patch.nodeName]?.main ?? [])
+					.flatMap((slot) => slot ?? [])
+					.filter((edge) => edge.node !== patch.nodeName);
 				result.nodes = result.nodes.filter((node) => node.name !== patch.nodeName);
 				delete result.connections[patch.nodeName];
 				for (const edge of incoming) {

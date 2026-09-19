@@ -2,11 +2,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import type {
-	DecisionOutcome,
-	DecisionService,
-} from '../../../workflow-compiler/decision/decision-service';
-import type { DecisionAnswer } from '../../../workflow-compiler/decision/schemas';
+import { scriptedDecisions } from '../../../__tests__/scripted-decisions';
 import type {
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
@@ -28,23 +24,7 @@ vi.mock('../agent-target-binding', async (importOriginal) => {
 	};
 });
 
-const scripted: DecisionService = {
-	kind: 'scripted',
-	async decide(request): Promise<DecisionOutcome> {
-		const answers: Record<string, DecisionAnswer> = {};
-		for (const [name, question] of Object.entries(request.questions)) {
-			if (question.type !== 'choice') continue;
-			const choice = Object.keys(question.criteria)[0];
-			answers[name] = {
-				type: 'choice',
-				choice,
-				probabilities: { [choice]: 0.95 },
-				confidence: 0.95,
-			};
-		}
-		return { ok: true, answers, model: 'scripted', latencyMs: 1, problems: [] };
-	},
-};
+const scripted = scriptedDecisions();
 
 interface Harness {
 	context: OrchestrationContext;

@@ -87,7 +87,8 @@ function uniqueToolName(base: string, used: Set<string>): string {
 	const sanitized = sanitizeAgentToolName(base) || 'tool';
 	let name = sanitized;
 	let n = 1;
-	while (used.has(name)) {
+	// Names that exist on Object.prototype (such as __proto__) would break plain-object maps.
+	while (used.has(name) || name in {}) {
 		n += 1;
 		name = `${sanitized}_${n}`;
 	}

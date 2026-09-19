@@ -1,38 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-	DecisionOutcome,
-	DecisionService,
-} from '../../workflow-compiler/decision/decision-service';
+import { scriptedDecisions } from '../../__tests__/scripted-decisions';
 import { routeIntent } from '../router';
-import type { IntentRoute } from '../schemas';
-
-function reads(
-	choice: IntentRoute | 'none_of_these',
-	confidence = 0.95,
-): DecisionService & { calls: number } {
-	const service = {
-		kind: 'scripted',
-		calls: 0,
-		async decide(): Promise<DecisionOutcome> {
-			service.calls += 1;
-			return {
-				ok: true,
-				answers: {
-					route: { type: 'choice', choice, probabilities: { [choice]: confidence }, confidence },
-				},
-				model: 'scripted',
-				latencyMs: 2,
-				problems: [],
-			};
-		},
-	};
-	return service;
-}
 
 describe('routeIntent', () => {
 	it('routes a pending compiler session reply without any read', async () => {
-		const decisions = reads('workflow.create');
+		const decisions = scriptedDecisions({ route: 'workflow.create' });
 		const decision = await routeIntent({
 			message: '#sales',
 			state: {
@@ -45,35 +18,35 @@ describe('routeIntent', () => {
 			decisions,
 		});
 		expect(decision).toMatchObject({ route: 'answer', source: 'pending_session', confidence: 1 });
-		expect(decisions.calls).toBe(0);
+		expect(decisions.requests).toHaveLength(0);
 	});
 
 	it('sends small talk and pure questions to the orchestrator without a read', async () => {
-		const decisions = reads('workflow.create');
+		const decisions = scriptedDecisions({ route: 'workflow.create' });
 		expect((await routeIntent({ message: 'thanks!', state: {}, decisions })).route).toBe(
 			'orchestrator',
 		);
 		expect(
 			(await routeIntent({ message: 'What is a webhook node?', state: {}, decisions })).route,
 		).toBe('orchestrator');
-		expect(decisions.calls).toBe(0);
+		expect(decisions.requests).toHaveLength(0);
 	});
 
 	it('takes the compiler route when the read is confident', async () => {
 		const decision = await routeIntent({
 			message: 'Build me a workflow: POST /customers, upsert in HubSpot, notify #sales',
 			state: {},
-			decisions: reads('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(decision).toMatchObject({ route: 'workflow.create', source: 'decision' });
-		expect(decision.read?.probabilities).toEqual({ 'workflow.create': 0.95 });
+		expect(decision.read?.probabilities).toMatchObject({ 'workflow.create': 0.95 });
 	});
 
 	it('falls back to the orchestrator when the read is not confident', async () => {
 		const decision = await routeIntent({
 			message: 'Build me a workflow: POST /customers, upsert in HubSpot',
 			state: {},
-			decisions: reads('workflow.create', 0.6),
+			decisions: scriptedDecisions({ route: 'workflow.create' }, 0.6),
 		});
 		expect(decision).toMatchObject({ route: 'orchestrator', source: 'fallback' });
 		expect(decision.reason).toContain('below the act threshold');
@@ -83,13 +56,13 @@ describe('routeIntent', () => {
 		const decision = await routeIntent({
 			message: 'Change the Slack channel to #ops in the workflow',
 			state: {},
-			decisions: reads('workflow.edit'),
+			decisions: scriptedDecisions({ route: 'workflow.edit' }),
 		});
 		expect(decision.route).toBe('orchestrator');
 		const bound = await routeIntent({
 			message: 'Change the Slack channel to #ops in the workflow',
 			state: { boundWorkflowId: 'wf-1' },
-			decisions: reads('workflow.edit'),
+			decisions: scriptedDecisions({ route: 'workflow.edit' }),
 		});
 		expect(bound.route).toBe('workflow.edit');
 	});
@@ -121,13 +94,13 @@ describe('routeIntent', () => {
 		const attachments = await routeIntent({
 			message: 'Build a workflow from this spreadsheet',
 			state: { hasAttachments: true },
-			decisions: reads('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(attachments.route).toBe('orchestrator');
 		const plan = await routeIntent({
 			message: 'Build the orders workflow',
 			state: { hasActivePlan: true },
-			decisions: reads('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(plan.route).toBe('orchestrator');
 	});

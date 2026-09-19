@@ -145,12 +145,13 @@ function checkOrder(steps: readonly StepIR[], context: OrderContext): void {
 					const inBranch = new Set(executedBefore);
 					checkOrder(branch, { ...context, executedBefore: inBranch });
 				}
-				// After a joined parallel, every branch step has executed.
+				// After a joined parallel, every branch step has executed. An unjoined
+				// parallel emits no node of its own, so nothing can reference it.
 				if (step.join === 'all') {
 					for (const branch of step.branches)
 						for (const inner of walkSteps(branch)) executedBefore.add(inner.id);
+					executedBefore.add(step.id);
 				}
-				executedBefore.add(step.id);
 				break;
 			}
 			case 'map': {

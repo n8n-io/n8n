@@ -2,11 +2,8 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { scriptedDecisions } from '../../__tests__/scripted-decisions';
 import type { InstanceAiContext, OrchestrationContext } from '../../types';
-import type {
-	DecisionOutcome,
-	DecisionService,
-} from '../../workflow-compiler/decision/decision-service';
 import { renderReply, runFastPath } from '../fast-path';
 
 const workflowHandler = vi.fn();
@@ -22,28 +19,6 @@ vi.mock('../../tools/workflows/compile-workflow.tool', () => ({
 vi.mock('../../tools/orchestration/build-agent.tool', () => ({
 	createBuildAgentTool: () => ({ name: 'build-agent', handler: agentHandler }),
 }));
-
-function decisions(route: string, confidence = 0.95): DecisionService {
-	return {
-		kind: 'scripted',
-		async decide(): Promise<DecisionOutcome> {
-			return {
-				ok: true,
-				answers: {
-					route: {
-						type: 'choice',
-						choice: route,
-						probabilities: { [route]: confidence },
-						confidence,
-					},
-				},
-				model: 'scripted',
-				latencyMs: 1,
-				problems: [],
-			};
-		},
-	};
-}
 
 interface Harness {
 	context: InstanceAiContext;
@@ -111,7 +86,7 @@ describe('runFastPath', () => {
 			message: 'Build a workflow: POST /customers then upsert in HubSpot',
 			context,
 			orchestrationContext,
-			decisions: decisions('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(outcome.handled).toBe(true);
 		if (!outcome.handled) return;
@@ -142,7 +117,7 @@ describe('runFastPath', () => {
 			message: 'When a POST /leads arrives, notify sales in Slack',
 			context,
 			orchestrationContext,
-			decisions: decisions('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(first.handled && first.reply).toBe('Which Slack channel?');
 		expect(metadata.instanceAiFastPath).toMatchObject({
@@ -157,7 +132,7 @@ describe('runFastPath', () => {
 			workflowName: 'Leads API',
 			executionPaths: [],
 		});
-		const never = decisions('orchestrator');
+		const never = scriptedDecisions({ route: 'orchestrator' });
 		const second = await runFastPath({
 			message: '#sales',
 			context,
@@ -184,7 +159,7 @@ describe('runFastPath', () => {
 			message: 'Build a workflow that does something odd',
 			context,
 			orchestrationContext,
-			decisions: decisions('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(outcome.handled).toBe(false);
 		if (outcome.handled) return;
@@ -199,7 +174,7 @@ describe('runFastPath', () => {
 			message: 'What does the Merge node do?',
 			context,
 			orchestrationContext,
-			decisions: decisions('workflow.create'),
+			decisions: scriptedDecisions({ route: 'workflow.create' }),
 		});
 		expect(outcome).toMatchObject({ handled: false, route: 'orchestrator' });
 		expect(workflowHandler).not.toHaveBeenCalled();
@@ -221,7 +196,7 @@ describe('runFastPath', () => {
 			message: 'Create a Slack bot called "Sales Helper" that answers pricing questions',
 			context,
 			orchestrationContext,
-			decisions: decisions('agent.create'),
+			decisions: scriptedDecisions({ route: 'agent.create' }),
 		});
 		expect(outcome.handled).toBe(true);
 		expect(agentHandler).toHaveBeenCalledWith(
@@ -237,7 +212,7 @@ describe('runFastPath', () => {
 			message: 'Change the channel to #ops in the workflow',
 			context,
 			orchestrationContext,
-			decisions: decisions('workflow.edit'),
+			decisions: scriptedDecisions({ route: 'workflow.edit' }),
 		});
 		expect(outcome).toMatchObject({ handled: false, route: 'orchestrator' });
 		expect(workflowHandler).not.toHaveBeenCalled();

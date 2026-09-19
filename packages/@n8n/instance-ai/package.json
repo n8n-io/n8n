@@ -98,6 +98,7 @@
     "@types/psl": "1.1.3",
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "fast-check": "catalog:",
     "fast-glob": "catalog:",
     "p-limit": "catalog:p-limit-v7",
     "playwright-core": "catalog:",

@@ -1,39 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-	DecisionOutcome,
-	DecisionRequest,
-	DecisionService,
-} from '../decision/decision-service';
-import type { DecisionAnswer } from '../decision/schemas';
+import { scriptedDecisions } from '../../__tests__/scripted-decisions';
 import { WorkflowCompilerService } from '../service';
-
-/** Scripted decision backend: answers each question with a fixed choice at a fixed confidence. */
-function scripted(
-	choices: Record<string, string>,
-	confidence = 0.95,
-): DecisionService & { requests: DecisionRequest[] } {
-	const requests: DecisionRequest[] = [];
-	return {
-		kind: 'scripted',
-		requests,
-		async decide(request): Promise<DecisionOutcome> {
-			requests.push(request);
-			const answers: Record<string, DecisionAnswer> = {};
-			for (const [name, question] of Object.entries(request.questions)) {
-				if (question.type !== 'choice') continue;
-				const choice = choices[name] ?? Object.keys(question.criteria)[0];
-				const probabilities: Record<string, number> = {};
-				const others = Object.keys(question.criteria).filter((key) => key !== choice);
-				for (const key of others)
-					probabilities[key] = (1 - confidence) / Math.max(1, others.length);
-				probabilities[choice] = confidence;
-				answers[name] = { type: 'choice', choice, probabilities, confidence };
-			}
-			return { ok: true, answers, model: 'scripted', latencyMs: 1, problems: [] };
-		},
-	};
-}
 
 const REQUEST = [
 	'Create an API workflow.',
@@ -47,7 +15,7 @@ const REQUEST = [
 
 describe('WorkflowCompilerService.create', () => {
 	it('compiles the end-to-end example in one decision wave', async () => {
-		const decisions = scripted({});
+		const decisions = scriptedDecisions();
 		const service = new WorkflowCompilerService({ decisions });
 		const result = await service.create({ request: REQUEST });
 		expect(result.status).toBe('compiled');
@@ -87,7 +55,7 @@ describe('WorkflowCompilerService.create', () => {
 	});
 
 	it('asks a grouped clarification and resumes the session with the answer', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const first = await service.create({
 			request: 'When a POST /leads arrives, notify the sales team in Slack',
 		});
@@ -114,28 +82,7 @@ describe('WorkflowCompilerService.create', () => {
 	});
 
 	it('honours none_of_these from the decision service', async () => {
-		const decisions: DecisionService = {
-			kind: 'scripted',
-			async decide(request) {
-				const answers: Record<
-					string,
-					{
-						type: 'choice';
-						choice: string;
-						probabilities: Record<string, number>;
-						confidence: number;
-					}
-				> = {};
-				for (const name of Object.keys(request.questions))
-					answers[name] = {
-						type: 'choice',
-						choice: 'none_of_these',
-						probabilities: { none_of_these: 0.9 },
-						confidence: 0.9,
-					};
-				return { ok: true, answers, model: 'scripted', latencyMs: 1, problems: [] };
-			},
-		};
+		const decisions = scriptedDecisions({ '*': 'none_of_these' }, 0.9);
 		const service = new WorkflowCompilerService({ decisions });
 		const result = await service.create({
 			request: 'POST /orders then update the contact in HubSpot with the order',
@@ -148,7 +95,7 @@ describe('WorkflowCompilerService.create', () => {
 
 describe('WorkflowCompilerService.edit', () => {
 	it('adds a step after a named node and preserves the rest of the workflow', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const created = await service.create({ request: REQUEST });
 		if (created.status !== 'compiled') throw new Error('setup failed');
 		const before = JSON.stringify(created.workflow);
@@ -173,7 +120,7 @@ describe('WorkflowCompilerService.edit', () => {
 	});
 
 	it('updates a parameter on the named node', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const created = await service.create({ request: REQUEST });
 		if (created.status !== 'compiled') throw new Error('setup failed');
 		const edited = await service.edit({
@@ -191,7 +138,7 @@ describe('WorkflowCompilerService.edit', () => {
 	});
 
 	it('removes a node and reconnects its neighbours', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const created = await service.create({ request: REQUEST });
 		if (created.status !== 'compiled') throw new Error('setup failed');
 		const edited = await service.edit({
@@ -213,7 +160,7 @@ describe('WorkflowCompilerService.edit', () => {
 
 describe('WorkflowCompilerService.debug', () => {
 	it('enables retries for a transient failure using execution evidence', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const created = await service.create({ request: REQUEST });
 		if (created.status !== 'compiled') throw new Error('setup failed');
 		const debugged = await service.debug({
@@ -240,7 +187,7 @@ describe('WorkflowCompilerService.debug', () => {
 	});
 
 	it('routes credential failures to setup instead of patching', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const asked = await service.create({
 			request: 'Every night, run SQL query cleanup in Postgres',
 		});
@@ -273,7 +220,7 @@ describe('WorkflowCompilerService.debug', () => {
 	});
 
 	it('repairs a misspelled node reference', async () => {
-		const service = new WorkflowCompilerService({ decisions: scripted({}) });
+		const service = new WorkflowCompilerService({ decisions: scriptedDecisions() });
 		const created = await service.create({ request: REQUEST });
 		if (created.status !== 'compiled') throw new Error('setup failed');
 		const respond = created.workflow.nodes.find((node) => node.name === 'Respond');

@@ -91,9 +91,11 @@ export function detectScheduleCron(text: string): string | undefined {
 		minute = time[2] ? Number(time[2]) : 0;
 		if (time[3] === 'pm' && hour < 12) hour += 12;
 		if (time[3] === 'am' && hour === 12) hour = 0;
+		// A clock time outside the day is not a schedule; fall back to the phrase defaults.
+		if (hour > 23 || minute > 59) [hour, minute] = [undefined, 0];
 	}
 	const minutes = lower.match(/\bevery\s+(\d+)\s+minutes?\b/);
-	if (minutes) return `*/${minutes[1]} * * * *`;
+	if (minutes && Number(minutes[1]) > 0) return `*/${minutes[1]} * * * *`;
 	if (/\bevery hour\b|\bhourly\b/.test(lower)) return '0 * * * *';
 	const weekday = Object.keys(WEEKDAYS).find((day) =>
 		new RegExp(`\\b(every|each|on)\\s+${day}s?\\b`).test(lower),

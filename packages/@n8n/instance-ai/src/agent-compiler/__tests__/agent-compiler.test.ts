@@ -1,37 +1,13 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
+import { scriptedDecisions } from '../../__tests__/scripted-decisions';
 import { NodeRegistry } from '../../workflow-compiler/catalog/node-registry';
-import type { DecisionAnswer } from '../../workflow-compiler/decision/schemas';
-import type {
-	DecisionOutcome,
-	DecisionService,
-} from '../../workflow-compiler/decision/decision-service';
 import type { AgentCapabilityCatalog } from '../catalog/capabilities';
 import { compileAgent } from '../compiler/compile';
 import { extractAgentRequirements } from '../requirements/extract';
 import { enumerateAgentScenarios, scenarioCoverage } from '../scenarios/enumerate';
 import { AgentCompilerService } from '../service';
-
-function scripted(choices: Record<string, string> = {}): DecisionService {
-	return {
-		kind: 'scripted',
-		async decide(request): Promise<DecisionOutcome> {
-			const answers: Record<string, DecisionAnswer> = {};
-			for (const [name, question] of Object.entries(request.questions)) {
-				if (question.type !== 'choice') continue;
-				const choice = choices[name] ?? Object.keys(question.criteria)[0];
-				answers[name] = {
-					type: 'choice',
-					choice,
-					probabilities: { [choice]: 0.95 },
-					confidence: 0.95,
-				};
-			}
-			return { ok: true, answers, model: 'scripted', latencyMs: 1, problems: [] };
-		},
-	};
-}
 
 function catalog(overrides: Partial<AgentCapabilityCatalog> = {}): AgentCapabilityCatalog {
 	return {
@@ -82,7 +58,7 @@ describe('extractAgentRequirements', () => {
 
 describe('AgentCompilerService.create', () => {
 	it('compiles a runnable agent config in one decision wave', async () => {
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.create({
 			ref: 'sales-helper',
 			request: REQUEST,
@@ -134,7 +110,7 @@ describe('AgentCompilerService.create', () => {
 	});
 
 	it('asks about an unsupported channel and continues with the answer', async () => {
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const first = await service.create({
 			ref: 'faq',
 			request: 'Build a WhatsApp bot that answers questions about our return policy',
@@ -157,7 +133,7 @@ describe('AgentCompilerService.create', () => {
 	});
 
 	it('reports a missing workflow tool as a required artifact', async () => {
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.create({
 			ref: 'ops',
 			request:
@@ -174,7 +150,7 @@ describe('AgentCompilerService.create', () => {
 	});
 
 	it('saves a draft when no model is available', async () => {
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.create({
 			ref: 'draft',
 			request: 'Create an agent that answers questions about our holiday policy',
@@ -189,7 +165,7 @@ describe('AgentCompilerService.create', () => {
 
 describe('AgentCompilerService.edit', () => {
 	async function baseline(): Promise<AgentJsonConfig> {
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.create({
 			ref: 'sales-helper',
 			request: REQUEST,
@@ -201,7 +177,7 @@ describe('AgentCompilerService.edit', () => {
 
 	it('adds a node tool and a usage rule without touching the rest', async () => {
 		const config = await baseline();
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.edit({
 			ref: 'sales-helper',
 			agentId: 'ag-1',
@@ -223,7 +199,7 @@ describe('AgentCompilerService.edit', () => {
 
 	it('removes a tool named in the request', async () => {
 		const config = await baseline();
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.edit({
 			ref: 'sales-helper',
 			agentId: 'ag-1',
@@ -238,7 +214,7 @@ describe('AgentCompilerService.edit', () => {
 
 	it('connects a channel, sets memory and the model', async () => {
 		const config = await baseline();
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const telegram = await service.edit({
 			ref: 'r',
 			agentId: 'ag-1',
@@ -292,7 +268,7 @@ describe('AgentCompilerService.edit', () => {
 
 describe('scenarios', () => {
 	it('measures which behavior paths a set of preview runs exercised', async () => {
-		const service = new AgentCompilerService({ decisions: scripted() });
+		const service = new AgentCompilerService({ decisions: scriptedDecisions() });
 		const result = await service.create({
 			ref: 'sales-helper',
 			request: REQUEST,
