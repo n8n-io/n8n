@@ -159,6 +159,8 @@ export interface DropdownMenuSlots<T = string, D = never> {
 	loading?: () => void;
 	/** Custom empty state when no items */
 	empty?: () => void;
+	/** Content rendered before the search input or item list */
+	header?: () => void;
 	/** Content rendered after the item list (e.g. info notices) */
 	footer?: () => void;
 	/** Icon or content before the search input (default: search icon) */

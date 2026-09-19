@@ -56,6 +56,7 @@ const slots = defineSlots<{
 	trigger?: () => unknown;
 	loading?: () => unknown;
 	empty?: () => unknown;
+	header?: () => unknown;
 	footer?: () => unknown;
 	'item-edit'?: (props: { item: ChatHistoryItem; ui: { class: string } }) => unknown;
 	'item-trailing'?: (props: { item: ChatHistoryItem }) => unknown;
@@ -191,6 +192,9 @@ defineExpose({ highlightFirstItem });
 		</template>
 		<template v-if="slots.empty" #empty>
 			<slot name="empty" />
+		</template>
+		<template v-if="slots.header" #header>
+			<slot name="header" />
 		</template>
 
 		<template #item-label="{ item, ui }">
