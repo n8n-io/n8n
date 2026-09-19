@@ -101,6 +101,12 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 			});
 
 			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
+			expect(googleApiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/directory/v1/customer/my_customer/orgunits',
+				{},
+				{ type: 'all' },
+			);
 			expect(result).toEqual([
 				{ name: '/', value: '/' },
 				{ name: 'Engineering', value: '/engineering' },
