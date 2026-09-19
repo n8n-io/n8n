@@ -140,6 +140,52 @@ describe('ExecutionResponseChannel', () => {
 		]);
 	});
 
+	it('reports an oversized response', () => {
+		const channel = new ExecutionResponseChannel(new RecordingTransport(), silentLogger(), 64);
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (r) => seen.push(r));
+
+		channel.publish({ type: 'response', executionId: 'exec-1', payload: 'x'.repeat(200) });
+
+		expect(seen[0]).toEqual({
+			type: 'failure',
+			executionId: 'exec-1',
+			error: {
+				code: 'RESPONSE_TOO_LARGE',
+				message: 'The execution response exceeds the maximum size of 64 bytes.',
+			},
+		});
+	});
+
+	it('reports an unserializable response', () => {
+		const channel = new ExecutionResponseChannel(new RecordingTransport(), silentLogger());
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (r) => seen.push(r));
+
+		const cyclic: Record<string, unknown> = {};
+		cyclic.self = cyclic;
+		channel.publish({ type: 'response', executionId: 'exec-1', payload: cyclic as never });
+
+		expect(seen[0]).toEqual({
+			type: 'failure',
+			executionId: 'exec-1',
+			error: {
+				code: 'RESPONSE_SERIALIZATION_FAILED',
+				message: 'The execution response could not be serialized.',
+			},
+		});
+	});
+
+	it('stamps the execution id, so a step carries no routing state', () => {
+		const channel = newChannel();
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (r) => seen.push(r));
+
+		channel.emitterFor('exec-1').send({ ok: true });
+
+		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload: { ok: true } }]);
+	});
+
 	it('discards a frame that is not a response', () => {
 		const transport = new RecordingTransport();
 		const channel = new ExecutionResponseChannel(transport, silentLogger());

@@ -38,11 +38,14 @@ export {
 	ExecutionResponseChannel,
 	executionResponseSchema,
 	InMemoryResponseTransport,
+	noopResponseEmitter,
 	noopResponseTransport,
 } from './response-channel';
 export type {
 	EndedMessage,
 	ExecutionResponse,
+	ResponseEmitter,
+	ResponseMessage,
 	ResponseTransport,
 	Unsubscribe,
 } from './response-channel';

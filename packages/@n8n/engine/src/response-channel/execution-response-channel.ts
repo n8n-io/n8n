@@ -1,8 +1,13 @@
 import { toResult } from '@n8n/utils/result';
 
+import type { JsonValue } from '../common';
 import type { EngineLogger } from '../logging';
 import { executionResponseSchema } from './execution-response.schema';
-import type { ExecutionResponse, FailureMessage } from './execution-response.types';
+import type {
+	ExecutionResponse,
+	FailureMessage,
+	ResponseEmitter,
+} from './execution-response.types';
 import type { ResponseTransport, Unsubscribe } from './response-transport';
 
 /** A transport must be able to carry every frame the channel accepts. */
@@ -46,6 +51,13 @@ export class ExecutionResponseChannel {
 				});
 			}
 		});
+	}
+
+	/** Gives one step a response sender without exposing execution routing. */
+	emitterFor(executionId: string): ResponseEmitter {
+		return {
+			send: (payload: JsonValue) => this.publish({ type: 'response', executionId, payload }),
+		};
 	}
 
 	async stop(): Promise<void> {

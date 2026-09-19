@@ -40,7 +40,11 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
  * lands, so a mode that is not ready yet fails with a reason rather than
  * answering wrongly.
  */
-const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>(['onReceived', 'lastNode']);
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'lastNode',
+	'responseNode',
+]);
 
 /** What the request says about a run, before the webhook node has produced anything. */
 export type EngineV2WebhookRequest = {
