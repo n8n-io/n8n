@@ -28,10 +28,9 @@ export async function splunkApiRequest(
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
-		form: body,
-		qs,
+		form: 'output_mode' in body ? { ...body, output_mode: 'xml' } : body,
+		qs: { ...qs, output_mode: 'xml' },
 		uri: `${baseUrl}${endpoint}`,
-		json: true,
 		rejectUnauthorized: !allowUnauthorizedCerts,
 		useQuerystring: true, // serialize roles array as `roles=A&roles=B`
 	};
@@ -40,23 +39,14 @@ export async function splunkApiRequest(
 		delete options.body;
 	}
 
-	if (!Object.keys(qs).length) {
-		delete options.qs;
-	}
-
 	let result;
 	try {
 		let attempts = 0;
 
 		do {
 			try {
-				const response = await this.helpers.requestWithAuthentication.call(
-					this,
-					'splunkApi',
-					options,
-				);
-				result = await parseXml(response);
-				return result;
+				result = await this.helpers.requestWithAuthentication.call(this, 'splunkApi', options);
+				break;
 			} catch (error) {
 				if (attempts >= 5) {
 					throw error;
@@ -86,6 +76,9 @@ export async function splunkApiRequest(
 
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+
+	// A parse failure must not repeat a successful request.
+	return await parseXml(result);
 }
 
 export async function splunkApiJsonRequest(
