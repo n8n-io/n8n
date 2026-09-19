@@ -40,12 +40,16 @@ export class EngineV2Module implements ModuleInterface {
 		// One channel, both planes. Handed over before the engine starts: a short
 		// run answers before `startExecution` returns, and nobody replays.
 		const { ExecutionResponseChannel, InMemoryResponseTransport } = await import('@n8n/engine');
+		const { EngineV2WebhookResponder } = await import(
+			'@/services/engine-v2-webhook-responder.service.js'
+		);
 		// In-memory for now: both planes share this process. A transport that
 		// crosses one arrives with CAT-4572.
 		const responseChannel = new ExecutionResponseChannel(
 			new InMemoryResponseTransport(),
 			Container.get(Logger).scoped('engine-v2'),
 		);
+		Container.get(EngineV2WebhookResponder).useChannel(responseChannel);
 		this.responseChannel = responseChannel;
 
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
