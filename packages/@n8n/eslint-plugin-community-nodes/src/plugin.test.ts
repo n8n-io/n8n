@@ -6,7 +6,7 @@ import { configs } from './plugin.js';
 
 const singleCredentialRuleId = '@n8n/community-nodes/single-credential-per-node';
 
-function createNodeCode(credentials: string): string {
+function createNodeCode(credentials: string, properties = '[]'): string {
 	return `
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ export class TestNode implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: ${credentials},
-		properties: [],
+		properties: ${properties},
 	};
 }`;
 }
@@ -48,7 +48,8 @@ async function lintNode(code: string) {
 
 test('allows alternative authentication methods but rejects concurrent credentials (CE-2317)', async () => {
 	const alternativeAuthMessages = await lintNode(
-		createNodeCode(`[
+		createNodeCode(
+			`[
 			{
 				name: 'testApi',
 				required: true,
@@ -59,7 +60,20 @@ test('allows alternative authentication methods but rejects concurrent credentia
 				required: true,
 				displayOptions: { show: { authentication: ['oAuth2'] } },
 			},
-		]`),
+		]`,
+			`[
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'API Key', value: 'apiKey' },
+					{ name: 'OAuth2', value: 'oAuth2' },
+				],
+				default: 'apiKey',
+			},
+		]`,
+		),
 	);
 
 	expect(alternativeAuthMessages.map(({ ruleId }) => ruleId)).not.toContain(singleCredentialRuleId);
