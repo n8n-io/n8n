@@ -8685,6 +8685,8 @@
 	"instanceAi.welcomeModal.gateway.tokenExpired": "Token has expired. Copy the command again.",
 	"tools.connection.title": "Tools",
 	"tools.connection.search.placeholder": "Search all tools...",
+	"tools.connection.search.keyboardInstructions": "Use the Up and Down Arrow keys to choose a tool. Press Enter to open it.",
+	"tools.connection.search.activeItem": "{title}, {position} of {total}",
 	"tools.connection.categories.all": "All",
 	"tools.connection.categories.connected": "Connected",
 	"tools.connection.categories.builtIn": "Built-in",

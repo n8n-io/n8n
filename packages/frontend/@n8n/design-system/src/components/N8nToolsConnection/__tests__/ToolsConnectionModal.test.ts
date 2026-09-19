@@ -1,19 +1,17 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import { createComponentRenderer, renderComponent } from '@/__tests__/render';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 const scrollToKeyMock = vi.hoisted(() => vi.fn());
+const scrollToKeyIfNeededMock = vi.hoisted(() => vi.fn());
 const scrollToMock = vi.hoisted(() => vi.fn());
 // Lets a test hand the modal a non-zero offset to read off the scroller stub.
 const scrollTopValue = vi.hoisted(() => ({ current: 0 }));
 
-// N8nDialog teleports out of the tree (Reka UI's DialogPortal) and
-// N8nRecycleScroller virtualises by offsetHeight which is 0 in jsdom. Replace
-// both with render-all pass-throughs so rows are inspectable inline.
-vi.mock('@n8n/design-system', async () => {
-	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
-	const N8nDialog = {
+/** Replace teleported dialog content with inline content. */
+vi.mock('../../N8nDialog', () => ({
+	N8nDialog: {
 		name: 'N8nDialog',
 		props: ['open', 'size', 'header'],
 		emits: ['update:open'],
@@ -23,12 +21,18 @@ vi.mock('@n8n/design-system', async () => {
 				<slot />
 			</div>
 		`,
-	};
-	const N8nRecycleScroller = {
+	},
+	N8nDialogHeader: {
+		name: 'N8nDialogHeader',
+		template: '<header><slot /></header>',
+	},
+}));
+
+/** Render all virtual rows so tests can inspect them in jsdom. */
+vi.mock('../../N8nRecycleScroller', () => ({
+	default: {
 		name: 'N8nRecycleScroller',
 		props: ['items', 'itemSize', 'itemKey'],
-		// A computed would cache the first read; `scrollTopValue` is not
-		// reactive, so it would never re-evaluate afterwards.
 		created() {
 			Object.defineProperty(this, 'scrollTop', {
 				get: () => scrollTopValue.current,
@@ -36,6 +40,7 @@ vi.mock('@n8n/design-system', async () => {
 		},
 		methods: {
 			scrollToKey: scrollToKeyMock,
+			scrollToKeyIfNeeded: scrollToKeyIfNeededMock,
 			scrollTo: scrollToMock,
 		},
 		template: `
@@ -45,12 +50,12 @@ vi.mock('@n8n/design-system', async () => {
 				</div>
 			</div>
 		`,
-	};
-	// N8nTabs hangs its `tab-<value>` test id on a wrapper around the clickable
-	// element, so a click on it would never reach the handler. Stub it down to
-	// plain buttons: these tests are about which categories, labels and counts
-	// the modal hands over, not about the tabs component's internals.
-	const N8nTabs = {
+	},
+}));
+
+/** Use clickable tab buttons without the design-system wrapper. */
+vi.mock('../../N8nTabs', () => ({
+	default: {
 		name: 'N8nTabs',
 		props: ['modelValue', 'options', 'size', 'variant'],
 		emits: ['update:modelValue'],
@@ -66,9 +71,8 @@ vi.mock('@n8n/design-system', async () => {
 				>{{ option.label }}</button>
 			</div>
 		`,
-	};
-	return { ...actual, N8nDialog, N8nRecycleScroller, N8nTabs };
-});
+	},
+}));
 
 import ToolsConnectionModal from '../ToolsConnectionModal.vue';
 import McpToolSettingsContent from '../McpToolSettingsContent.vue';
@@ -81,6 +85,7 @@ const ALL_CATEGORIES: ToolCategoryKey[] = ['connected', 'mcp', 'ai', 'app-action
 
 beforeEach(() => {
 	scrollToKeyMock.mockClear();
+	scrollToKeyIfNeededMock.mockClear();
 	scrollToMock.mockClear();
 	scrollTopValue.current = 0;
 });
@@ -133,7 +138,7 @@ function renderWithMcpSettingsSlot(detailItem: ToolConnectionItem) {
 			</ToolsConnectionModal>
 		`,
 	};
-	return renderComponent(Host, {
+	return render(Host, {
 		props: { detailItem },
 		pinia: createTestingPinia(),
 	});
@@ -433,6 +438,179 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() => {
 			expect(document.activeElement).toBe(inputEl);
 		});
+	});
+
+	it('moves the active row with arrow keys, scrolls to it, and announces it', async () => {
+		const { getAllByTestId, getByPlaceholderText, getByRole } = renderWith({
+			items: makeLargeMcpList(3),
+			categories: ['mcp'],
+		});
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+		const status = getByRole('status');
+
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+		expect(input).toHaveAccessibleDescription('tools.connection.search.keyboardInstructions');
+		expect(status).toHaveAttribute('aria-live', 'polite');
+		expect(status).toHaveTextContent('tools.connection.search.activeItem');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		expect(rows[0]).toHaveAttribute('data-active', 'false');
+		expect(rows[1]).toHaveAttribute('data-active', 'true');
+		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:mcp-generated-1');
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp' });
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:mcp-generated-0');
+	});
+
+	it('does not intercept arrow keys from an interactive row control', async () => {
+		const { getAllByTestId } = renderWith({
+			items: makeLargeMcpList(3),
+			categories: ['mcp'],
+		});
+		const rows = getAllByTestId('tools-connection-row');
+		const connectButton = getAllByTestId('tools-connection-row-connect')[0];
+
+		connectButton.focus();
+		await fireEvent.keyDown(connectButton, { key: 'ArrowDown' });
+
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+		expect(rows[1]).toHaveAttribute('data-active', 'false');
+		expect(scrollToKeyIfNeededMock).not.toHaveBeenCalled();
+	});
+
+	it('moves to the last and first rows with Meta and arrow keys', async () => {
+		const items = makeLargeMcpList(3);
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown', metaKey: true });
+		expect(rows[2]).toHaveAttribute('data-active', 'true');
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp', metaKey: true });
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+	});
+
+	it('keeps arrow navigation inside the list bounds', async () => {
+		const items = makeLargeMcpList(3);
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp' });
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+
+		for (let index = 0; index < items.length + 1; index++) {
+			await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		}
+		expect(rows[2]).toHaveAttribute('data-active', 'true');
+	});
+
+	it('opens the active row when Enter is pressed in the search input', async () => {
+		const items = makeLargeMcpList(3);
+		const { emitted, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		await fireEvent.keyDown(input, { key: 'Enter' });
+
+		expect(emitted()['open-detail']?.[0]).toEqual([items[1]]);
+		expect(emitted()['update:detailItem']?.[0]).toEqual([items[1]]);
+	});
+
+	it('returns from detail on Backspace and restores focus to search', async () => {
+		const Host = {
+			components: { ToolsConnectionModal },
+			data() {
+				return { detailItem: realisticItems[2] };
+			},
+			template: `
+				<ToolsConnectionModal
+					:open="true"
+					:items="realisticItems"
+					:categories="['mcp']"
+					:detail-item="detailItem"
+					@update:detail-item="detailItem = $event"
+				/>
+			`,
+			setup() {
+				return { realisticItems };
+			},
+		};
+		const { getByPlaceholderText, getByRole } = render(Host, {
+			pinia: createTestingPinia(),
+		});
+
+		await fireEvent.keyDown(getByRole('dialog'), { key: 'Backspace' });
+		const input = getByPlaceholderText('Search all tools...');
+		await waitFor(() => expect(document.activeElement).toBe(input));
+	});
+
+	it('resets and scrolls to the active row when the category changes', async () => {
+		const mcpItems = makeLargeMcpList(2);
+		const aiItem: ToolConnectionItem = {
+			...mcpItems[0],
+			id: 'ai-1',
+			category: 'ai',
+		};
+		const { getAllByTestId, getByPlaceholderText, getByTestId } = renderWith({
+			items: [...mcpItems, aiItem],
+			categories: ['mcp', 'ai'],
+		});
+		const input = getByPlaceholderText('Search all tools...');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		expect(getAllByTestId('tools-connection-row')[1]).toHaveAttribute('data-active', 'true');
+
+		await fireEvent.click(getByTestId('tab-ai'));
+		await waitFor(() =>
+			expect(getAllByTestId('tools-connection-row')[0]).toHaveAttribute('data-active', 'true'),
+		);
+		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:ai-1');
+	});
+
+	it('selects a row only after the pointer position changes', async () => {
+		const { getAllByTestId, getByPlaceholderText, getByRole } = renderWith({
+			categories: ['mcp'],
+		});
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		await fireEvent.pointerMove(getByRole('dialog'), { clientX: 0, clientY: 0 });
+		await fireEvent.pointerMove(rows[2], { clientX: 0, clientY: 0 });
+		expect(rows[1]).toHaveAttribute('data-active', 'true');
+
+		await fireEvent.pointerMove(rows[2], { clientX: 1, clientY: 1 });
+		expect(rows[2]).toHaveAttribute('data-active', 'true');
+	});
+
+	it('resets the active row when the search changes', async () => {
+		const items = makeLargeMcpList(12);
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+
+		for (let index = 0; index < 5; index++) {
+			await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		}
+		await fireEvent.update(input, '#1');
+
+		await waitFor(() => {
+			const remainingRows = getAllByTestId('tools-connection-row');
+			expect(remainingRows).toHaveLength(4);
+			expect(remainingRows[0]).toHaveAttribute('data-active', 'true');
+			expect(remainingRows[3]).toHaveAttribute('data-active', 'false');
+		});
+	});
+
+	it('shows the empty state when search has no results', async () => {
+		const { getByPlaceholderText, getByTestId } = renderWith({ categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+
+		await fireEvent.update(input, 'zzzznomatch');
+		await waitFor(() => expect(getByTestId('tools-connection-empty')).toBeTruthy());
 	});
 
 	it('restores the tab, search text and scroll offset after stepping aside for another dialog', async () => {

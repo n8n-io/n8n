@@ -1,19 +1,21 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import {
-	N8nDialog,
-	N8nIcon,
-	N8nInput,
-	N8nRecycleScroller,
-	N8nTabs,
-	N8nText,
-} from '@n8n/design-system';
-import type { DialogSize, TabOptions } from '@n8n/design-system';
+import { computed, nextTick, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { VisuallyHidden } from 'reka-ui';
+import { N8nDialog, N8nDialogHeader } from '../N8nDialog';
+import N8nIcon from '../N8nIcon';
+import N8nInput from '../N8nInput';
+import N8nRecycleScroller from '../N8nRecycleScroller';
+import N8nTabs from '../N8nTabs';
+import N8nText from '../N8nText';
+import N8nIconButton from '../N8nIconButton';
+
+import type { TabOptions } from '../N8nTabs';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants/durations';
+import { isInteractiveElementInFocus } from '../../utils';
 
+import CreateWorkflowRow from './CreateWorkflowRow.vue';
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
@@ -37,16 +39,15 @@ const props = withDefaults(
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
-		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
-		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
+		/** Delay search updates by this number of milliseconds. Search is immediate by default. */
+		debounceSearchValue?: number;
 	}>(),
 	{
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
-		size: 'xlarge',
 		allowWorkflowCreation: false,
 		workflowCreationLoading: false,
 	},
@@ -73,17 +74,31 @@ const searchPlaceholder = computed(
 	() => props.searchPlaceholder ?? i18n.baseText('tools.connection.search.placeholder'),
 );
 
-const ITEM_HEIGHT = 58;
+const ITEM_HEIGHT = 64;
 
 const searchQuery = ref('');
-const debouncedSearchQuery = ref('');
-const setDebouncedSearch = useDebounceFn((value: string) => {
-	debouncedSearchQuery.value = value;
+const effectiveSearchQuery = ref('');
+
+function applySearch(value: string) {
+	effectiveSearchQuery.value = value;
 	emit('update:searchQuery', value);
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-watch(searchQuery, (value) => {
+}
+
+const setDebouncedSearch = useDebounceFn(
+	applySearch,
+	getDebounceTime(props.debounceSearchValue ?? 0),
+);
+
+function updateSearch(value: string) {
+	if (props.debounceSearchValue === undefined) {
+		applySearch(value);
+		return;
+	}
+
 	void setDebouncedSearch(value);
-});
+}
+
+watch(searchQuery, updateSearch);
 
 const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
 const isMcpCategory = computed(() => activeCategory.value === 'mcp');
@@ -124,11 +139,11 @@ onMounted(() => {
 	}
 });
 
-const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
+const hasActiveSearch = computed(() => effectiveSearchQuery.value.length > 0);
 
 function matchesQuery(item: ToolConnectionItem): boolean {
-	if (!debouncedSearchQuery.value) return true;
-	const query = debouncedSearchQuery.value.toLowerCase();
+	if (!effectiveSearchQuery.value) return true;
+	const query = effectiveSearchQuery.value.toLowerCase();
 	return (
 		item.title.toLowerCase().includes(query) ||
 		(item.description ?? '').toLowerCase().includes(query)
@@ -183,7 +198,9 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-type ListRow = FlattenedRow | { key: 'suggestion' };
+type CreateWorkflowRow = { key: 'create-workflow' };
+type NavigableRow = FlattenedRow | CreateWorkflowRow;
+type ListRow = NavigableRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
 	itemsForCategory(activeCategory.value)
@@ -191,9 +208,29 @@ const toolRows = computed<FlattenedRow[]>(() =>
 		.map((item) => ({ key: `item:${item.id}`, item })),
 );
 
-const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+const showCreateWorkflowRow = computed(
+	() => activeCategory.value === 'workflows' && props.allowWorkflowCreation,
 );
+
+const flattenedRows = computed<ListRow[]>(() => {
+	const rows: ListRow[] = [...toolRows.value];
+
+	if (showCreateWorkflowRow.value) {
+		rows.unshift({ key: 'create-workflow' });
+	}
+
+	if (isMcpCategory.value) {
+		rows.push({ key: 'suggestion' });
+	}
+
+	return rows;
+});
+
+function isNavigableRow(row: ListRow): row is NavigableRow {
+	return row.key !== 'suggestion';
+}
+
+const navigableRows = computed<NavigableRow[]>(() => flattenedRows.value.filter(isNavigableRow));
 
 /** Categories only worth a tab once they hold something. */
 const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
@@ -214,10 +251,12 @@ const tabsVisible = computed(
 
 async function selectCategory(category: ToolCategoryKey) {
 	activeCategory.value = category;
-	// The scroller keeps its offset across a list swap, so reset to the top.
 	await nextTick();
-	const firstKey = flattenedRows.value[0]?.key;
-	if (firstKey) scrollerRef.value?.scrollToKey(firstKey);
+	listIndex.value = 0;
+	const firstRow = navigableRows.value[0];
+	if (firstRow) {
+		scrollerRef.value?.scrollToKeyIfNeeded(firstRow.key);
+	}
 }
 
 const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
@@ -259,11 +298,24 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
+watch(effectiveSearchQuery, function resetActiveSearchResult() {
+	listIndex.value = 0;
+});
+
+const isDefaultView = computed(() => !props.detailItem);
+
+const fixedProps = {
+	/** We want a custom position for close button as it breaks horizontal alignment */
+	showCloseButton: false,
+	/** Use aria-label for screen readers to announce what modal is for. We dont need a visual one. */
+	header: undefined,
+};
+
 const isListEmpty = computed(() => toolRows.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		return i18n.baseText('tools.connection.empty.noResults', {
-			interpolate: { query: debouncedSearchQuery.value },
+			interpolate: { query: effectiveSearchQuery.value },
 		});
 	}
 	return i18n.baseText('tools.connection.empty.title');
@@ -284,16 +336,118 @@ function handleOpenChange(value: boolean) {
 		closeDetail();
 	}
 }
+
+const listIndex = ref(0);
+const keyboardInstructionsId = useId();
+const activeListRow = computed(() => navigableRows.value[listIndex.value]);
+const activeToolAnnouncement = computed(() => {
+	if (!activeListRow.value) return '';
+
+	const title =
+		activeListRow.value.key === 'create-workflow'
+			? i18n.baseText('generic.create.workflow')
+			: activeListRow.value.item.title;
+
+	return i18n.baseText('tools.connection.search.activeItem', {
+		interpolate: {
+			title,
+			position: listIndex.value + 1,
+			total: navigableRows.value.length,
+		},
+	});
+});
+
+watch(navigableRows, (rows) => {
+	listIndex.value = Math.min(listIndex.value, Math.max(rows.length - 1, 0));
+});
+
+function isListRowSelected(row: NavigableRow): boolean {
+	return navigableRows.value[listIndex.value]?.key === row.key;
+}
+
+function handleNavigateListIndex(delta: number) {
+	const maxIndex = navigableRows.value.length - 1;
+	if (maxIndex < 0) return;
+
+	listIndex.value = Math.min(Math.max(listIndex.value + delta, 0), maxIndex);
+	scrollerRef.value?.scrollToKeyIfNeeded(navigableRows.value[listIndex.value].key);
+}
+
+function activateActiveListRow() {
+	if (!activeListRow.value) return;
+
+	if (activeListRow.value.key === 'create-workflow') {
+		emit('create-workflow');
+		return;
+	}
+
+	openDetail(activeListRow.value.item);
+}
+
+function onNavigationKeyPress(event: KeyboardEvent) {
+	const target = event.target;
+	const isSearchInputFocused =
+		target instanceof Element &&
+		target.closest('[data-test-id="tools-connection-search"]') !== null;
+
+	switch (event.key) {
+		case 'Backspace':
+			if (isDefaultView.value || isInteractiveElementInFocus()) break;
+			event.preventDefault();
+			closeDetail();
+			focusSearchInput();
+			break;
+		case 'Enter':
+			if (!isDefaultView.value || !activeListRow.value || !isSearchInputFocused) break;
+			event.preventDefault();
+			activateActiveListRow();
+			break;
+		case 'ArrowDown':
+		case 'ArrowUp':
+			if (!isDefaultView.value || (!isSearchInputFocused && isInteractiveElementInFocus())) break;
+			event.preventDefault();
+			if (event.metaKey) {
+				handleNavigateListIndex(
+					event.key === 'ArrowDown' ? navigableRows.value.length : -navigableRows.value.length,
+				);
+				break;
+			}
+			handleNavigateListIndex(event.key === 'ArrowDown' ? 1 : -1);
+			if (!isSearchInputFocused) {
+				focusSearchInput();
+			}
+			break;
+		default:
+	}
+}
+
+let lastPointerPosition: { x: number; y: number } | undefined;
+
+function trackPointerPosition(event: PointerEvent) {
+	lastPointerPosition = { x: event.clientX, y: event.clientY };
+}
+
+function onPointerMoveListRow(event: PointerEvent, row: NavigableRow) {
+	const pointerMoved =
+		lastPointerPosition?.x !== event.clientX || lastPointerPosition.y !== event.clientY;
+
+	trackPointerPosition(event);
+	if (pointerMoved) {
+		listIndex.value = navigableRows.value.findIndex((listRow) => listRow.key === row.key);
+	}
+}
 </script>
 
 <template>
 	<N8nDialog
+		v-bind="fixedProps"
+		size="xlarge"
 		:open="open"
-		:size="size"
-		:header="detailItem ? '' : modalTitle"
-		:show-close-button="!detailItem"
-		:aria-label="modalTitle"
+		:aria-label="isDefaultView ? modalTitle : detailItem?.name"
 		data-test-id="tools-connection-modal"
+		:class="$style.modal"
+		@keydown="onNavigationKeyPress"
+		@pointermove="trackPointerPosition"
 		@update:open="handleOpenChange"
 	>
 		<div :class="$style.body">
@@ -335,24 +489,47 @@ function handleOpenChange(value: boolean) {
 				</template>
 			</ToolDetailView>
 			<template v-else>
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					:placeholder="searchPlaceholder"
-					clearable
-					data-test-id="tools-connection-search"
-					:class="$style.searchInput"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
-
+				<div :class="$style.top">
+					<N8nDialogHeader :class="$style.header">
+						<N8nText as="h2" step="lg" bold>
+							{{ modalTitle }}
+						</N8nText>
+						<N8nIconButton
+							:aria-label="i18n.baseText('generic.close')"
+							size="large"
+							variant="ghost"
+							icon="x"
+							@click="handleOpenChange(false)"
+						/>
+					</N8nDialogHeader>
+					<N8nInput
+						ref="searchInputRef"
+						v-model="searchQuery"
+						:placeholder="searchPlaceholder"
+						:aria-describedby="keyboardInstructionsId"
+						clearable
+						data-test-id="tools-connection-search"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<VisuallyHidden :id="keyboardInstructionsId" feature="fully-hidden">
+						{{ i18n.baseText('tools.connection.search.keyboardInstructions') }}
+					</VisuallyHidden>
+					<VisuallyHidden
+						feature="fully-hidden"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+					>
+						{{ activeToolAnnouncement }}
+					</VisuallyHidden>
+				</div>
 				<N8nTabs
 					v-if="tabsVisible"
 					:model-value="activeCategory"
 					:options="tabOptions"
-					size="small"
 					variant="modern"
 					justified
 					:class="$style.tabs"
@@ -360,34 +537,15 @@ function handleOpenChange(value: boolean) {
 					@update:model-value="selectCategory"
 				/>
 
-				<button
-					v-if="activeCategory === 'workflows' && allowWorkflowCreation"
-					type="button"
-					:class="$style.createWorkflowRow"
-					:disabled="workflowCreationLoading"
-					:aria-busy="workflowCreationLoading"
-					data-test-id="tools-connection-create-workflow"
-					@click="emit('create-workflow')"
-				>
-					<span :class="$style.createWorkflowIcon" aria-hidden="true">
-						<N8nIcon
-							:icon="workflowCreationLoading ? 'loader-circle' : 'plus'"
-							:size="20"
-							:spin="workflowCreationLoading"
-						/>
-					</span>
-					<span :class="$style.createWorkflowText">
-						<N8nText tag="span" bold>
-							{{ i18n.baseText('generic.create.workflow') }}
-						</N8nText>
-						<N8nText tag="span" size="small" color="text-light">
-							{{ i18n.baseText('projectRoles.workflow:create.tooltip') }}
-						</N8nText>
-					</span>
-				</button>
-
-				<div :class="$style.listWrapper">
+				<div :class="[$style.listWrapper, isListEmpty ? $style.listWrapperEmpty : null]">
 					<template v-if="isListEmpty">
+						<CreateWorkflowRow
+							v-if="showCreateWorkflowRow"
+							:loading="workflowCreationLoading"
+							:class="{ [$style.selectedToolRow]: isListRowSelected({ key: 'create-workflow' }) }"
+							@pointermove="onPointerMoveListRow($event, { key: 'create-workflow' })"
+							@create="emit('create-workflow')"
+						/>
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 						</div>
@@ -404,9 +562,20 @@ function handleOpenChange(value: boolean) {
 						:class="$style.scroller"
 					>
 						<template #default="{ item: row }">
+							<CreateWorkflowRow
+								v-if="row.key === 'create-workflow'"
+								:data-active="isListRowSelected(row)"
+								:loading="workflowCreationLoading"
+								:class="{ [$style.selectedToolRow]: isListRowSelected(row) }"
+								@pointermove="onPointerMoveListRow($event, row)"
+								@create="emit('create-workflow')"
+							/>
 							<ToolRow
-								v-if="'item' in row"
+								v-else-if="'item' in row"
 								:item="row.item"
+								:data-active="isListRowSelected(row)"
+								:class="{ [$style.selectedToolRow]: isListRowSelected(row) }"
+								@pointermove="onPointerMoveListRow($event, row)"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
 								@select-credential="
@@ -414,6 +583,7 @@ function handleOpenChange(value: boolean) {
 										emit('select-credential', item, authType, credentialId)
 								"
 								@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+								@credential-dropdown-close="focusSearchInput"
 								@first-credential-connect="emit('first-credential-connect', $event)"
 								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
@@ -429,18 +599,45 @@ function handleOpenChange(value: boolean) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/mixins';
+
+.modal {
+	--n8n-dialog-content--padding: 0;
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
 	height: 70vh;
 	max-height: 640px;
 	min-height: 0;
+	padding: 0;
+}
+
+.top {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--md);
+	padding-block-start: calc(var(--spacing--md) - var(--spacing--4xs));
+	padding-block-end: var(--spacing--lg);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-direction: row;
+	gap: var(--spacing--4xs);
+
+	button {
+		flex-shrink: 0;
+		margin-inline-end: calc(var(--spacing--2xs) * -1);
+	}
 }
 
 .searchInput {
-	width: 100%;
-	flex-shrink: 0;
-	margin-block: var(--spacing--sm);
+	flex: 1;
 }
 
 // N8nTabs owns the tab styling, and the justified strip gives every tab an equal
@@ -449,52 +646,7 @@ function handleOpenChange(value: boolean) {
 .tabs {
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
-}
-
-.createWorkflowRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	width: 100%;
-	min-height: 58px;
-	padding: var(--spacing--2xs);
-	border: 0;
-	border-radius: var(--radius--2xs);
-	background: none;
-	color: inherit;
-	text-align: left;
-	cursor: pointer;
-	flex-shrink: 0;
-
-	&:hover:not(:disabled) {
-		background: var(--color--background--light-1);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
-	}
-
-	&:disabled {
-		cursor: default;
-	}
-}
-
-.createWorkflowIcon {
-	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color--primary);
-}
-
-.createWorkflowText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
+	overflow: hidden;
 }
 
 .listWrapper {
@@ -503,12 +655,26 @@ function handleOpenChange(value: boolean) {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	margin-bottom: calc(-1 * var(--spacing--lg));
+	padding-block-start: var(--spacing--2xs);
+}
+
+.listWrapperEmpty {
+	padding-inline: var(--spacing--2xs);
 }
 
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+	scrollbar-gutter: stable;
+	@include mixins.scroll-bar;
+
+	:global(.recycle-scroller-items-wrapper) {
+		padding-inline-start: var(--spacing--2xs);
+	}
+}
+
+.selectedToolRow {
+	background: var(--background--hover);
 }
 
 .empty {

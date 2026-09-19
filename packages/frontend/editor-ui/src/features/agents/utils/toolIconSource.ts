@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
-import type { ToolIconSource } from '@/features/shared/toolsConnection/types';
+import type { ToolIconSource } from '@n8n/design-system';
 
 /** Map a node type description to the shared tools-connection icon shape. */
 export function toToolIconSource(nodeType: INodeTypeDescription): ToolIconSource | undefined {

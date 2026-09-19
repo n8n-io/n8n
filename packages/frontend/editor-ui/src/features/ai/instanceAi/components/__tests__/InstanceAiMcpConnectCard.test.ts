@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent } from '@testing-library/vue';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../../constants';
-import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
+import type { ToolConnectionCredentialAdapter } from '@n8n/design-system';
 import InstanceAiMcpConnectCard from '../InstanceAiMcpConnectCard.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -133,6 +134,11 @@ describe('InstanceAiMcpConnectCard', () => {
 		isConnectLockedMock.mockReturnValue(false);
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mcpStoreMock.mockReturnValue(makeMcpStore());
+	});
+
+	afterEach(() => {
+		cleanup();
+		document.body.removeAttribute('style');
 	});
 
 	it('prefers the live registry entry over the payload snapshot', () => {
@@ -362,15 +368,16 @@ describe('InstanceAiMcpConnectCard', () => {
 				{ id: 'cred-2', name: 'Other Brave key', type: 'braveMcpOAuth2Api' },
 			];
 
+			const user = userEvent.setup();
 			const { getByTestId, getByText, findAllByTestId } = renderComponent({
 				props: { servers: [BRAVE_PAYLOAD], readOnly: true },
 			});
 
-			await fireEvent.click(getByTestId('tool-credential-picker-trigger-connected'));
+			await user.click(getByTestId('tool-credential-picker-trigger-connected'));
+			await findAllByTestId('tool-credential-picker-row');
 
 			expect(telemetryMock.trackCredentialDropdownOpened).toHaveBeenCalledWith('brave');
-			await findAllByTestId('tool-credential-picker-row');
-			await fireEvent.click(getByText('Other Brave key'));
+			await user.click(getByText('Other Brave key'));
 
 			expect(telemetryMock.trackExistingCredentialSelected).toHaveBeenCalledWith('brave');
 			expect(connectWithCredentialMock).toHaveBeenCalledWith('brave', 'cred-2');
@@ -382,12 +389,13 @@ describe('InstanceAiMcpConnectCard', () => {
 				{ id: 'cred-1', name: 'Brave key', type: 'braveMcpOAuth2Api' },
 			];
 
+			const user = userEvent.setup();
 			const { getByTestId, findByTestId } = renderComponent({
 				props: { servers: [BRAVE_PAYLOAD], readOnly: true },
 			});
 
-			await fireEvent.click(getByTestId('tool-credential-picker-trigger-connected'));
-			await fireEvent.click(await findByTestId('tool-credential-picker-edit'));
+			await user.click(getByTestId('tool-credential-picker-trigger-connected'));
+			await user.click(await findByTestId('tool-credential-picker-edit'));
 
 			expect(uiStoreMock.openExistingCredential).toHaveBeenCalledWith('cred-1');
 		});
@@ -398,12 +406,13 @@ describe('InstanceAiMcpConnectCard', () => {
 				{ id: 'cred-1', name: 'Brave key', type: 'braveMcpOAuth2Api' },
 			];
 
+			const user = userEvent.setup();
 			const { getByTestId, findByTestId } = renderComponent({
 				props: { servers: [BRAVE_PAYLOAD], readOnly: true },
 			});
 
-			await fireEvent.click(getByTestId('tool-credential-picker-trigger-connected'));
-			await fireEvent.click(await findByTestId('tool-credential-picker-create'));
+			await user.click(getByTestId('tool-credential-picker-trigger-connected'));
+			await user.click(await findByTestId('tool-credential-picker-create'));
 
 			expect(telemetryMock.trackNewCredentialConnectionStart).toHaveBeenCalledWith('brave');
 			expect(connectServerMock).toHaveBeenCalledWith({
@@ -417,13 +426,14 @@ describe('InstanceAiMcpConnectCard', () => {
 				{ id: 'cred-1', name: 'Brave key', type: 'braveMcpOAuth2Api' },
 			];
 
+			const user = userEvent.setup();
 			const { getByTestId, getByText, findAllByTestId } = renderComponent({
 				props: { servers: [BRAVE_PAYLOAD] },
 			});
 
-			await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+			await user.click(getByTestId('tool-credential-picker-trigger-connect'));
 			await findAllByTestId('tool-credential-picker-row');
-			await fireEvent.click(getByText('Brave key'));
+			await user.click(getByText('Brave key'));
 
 			expect(ignorePendingConnectResultMock).toHaveBeenCalledWith('brave');
 			expect(connectWithCredentialMock).toHaveBeenCalledWith('brave', 'cred-1');
