@@ -131,6 +131,10 @@ function renderStepDetail(
 		parsedSystem.observations
 			? `<div class="content-block role-observations"><div class="content-role">Observations</div><p class="segment-text">${escapeHtml(parsedSystem.observations)}</p></div>`
 			: '',
+		...parsedSystem.skills.map(
+			(skill) =>
+				`<details class="content-block role-skill"><summary class="content-role">${escapeHtml(skill.name)} · ${skill.content.length.toLocaleString()} chars</summary><p class="segment-text">${escapeHtml(skill.content)}</p></details>`,
+		),
 	].join('');
 
 	const workflowCodeHtml =
@@ -357,6 +361,10 @@ export function generateRunDebugReport(results: WorkflowTestCaseResult[]): strin
 
 	.content-block { border: 1px solid var(--border-light); border-radius: 6px; padding: 10px; margin-bottom: 8px; background: var(--bg-secondary); }
 	.content-role { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+	.content-block.role-skill summary.content-role { cursor: pointer; list-style: none; }
+	.content-block.role-skill summary.content-role::-webkit-details-marker { display: none; }
+	.content-block.role-skill summary.content-role::after { content: '▸'; margin-left: 6px; }
+	.content-block.role-skill[open] summary.content-role::after { content: '▾'; }
 	.segment-text { white-space: pre-wrap; color: var(--text-secondary); font-size: 12px; }
 	.segment-block { margin-top: 6px; }
 	.segment-kind { color: var(--text-muted); font-size: 11px; margin-bottom: 4px; }

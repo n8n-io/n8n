@@ -793,6 +793,9 @@ export class AgentRuntime {
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
 		await this.activeSkills?.restore(list, options?.persistence);
+		for (const skillId of options?.preloadSkillIds ?? []) {
+			await this.activeSkills?.load(skillId);
+		}
 		this.context.hydrateDeferredToolsFromList(list);
 		// Inject a model-facing note for any MCP servers that failed to connect
 		// during build(). The agent can mention the outage to the user when

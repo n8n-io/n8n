@@ -7354,6 +7354,7 @@
 	"instanceAi.debug.runDebug.output": "Output",
 	"instanceAi.debug.runDebug.system": "System",
 	"instanceAi.debug.runDebug.messages": "Messages",
+	"instanceAi.debug.runDebug.skills": "Skills",
 	"instanceAi.debug.runDebug.activeTools": "Active tools",
 	"instanceAi.debug.runDebug.toolChoice": "Tool choice",
 	"instanceAi.debug.runDebug.text": "Text",
