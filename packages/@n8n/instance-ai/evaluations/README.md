@@ -800,6 +800,18 @@ Declared credentials are created for real (placeholder token; set the matching `
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
+Each declared credential can also have a `description`. The loader applies the
+shared credential description schema. It trims the text, enforces the length
+limit, and converts blank text to `null`. The seeder stores the description as
+credential metadata, outside the secret `data` object. Omit the field to test
+credential choice without descriptions.
+
+The current LangTracer case-write schema accepts only `type`, `name`, and
+`valid` on a credential. The push refuses a case with a description before it
+writes anything. Keep these cases on disk until LangTracer stores descriptions.
+The existing `blank` field also needs server support. The export check catches
+a server that drops it after a write.
+
 ### Seeded cases (conversation pre-seeding)
 
 A seeded case starts **mid-conversation**: prior history is restored into the build thread before the live turn, so the eval drives only the turn under test. Use it to replicate a real misbehaviour — restore the conversation up to the moment it went wrong, re-drive that turn, and assert what should happen instead.
