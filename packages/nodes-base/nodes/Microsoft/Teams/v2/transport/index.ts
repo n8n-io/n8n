@@ -12,6 +12,8 @@ import {
 	validateMicrosoftGraphId,
 } from '@utils/microsoft/transport';
 
+import { TEAMS_FORBIDDEN_HINTS } from './forbiddenHints';
+
 // Thin facade over the shared Microsoft Graph transport kernel: operations,
 // listSearch and the Trigger all import the transport from this path.
 export {
@@ -30,7 +32,10 @@ const {
 	getGraphBaseUrl,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
-} = createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
+} = createMicrosoftGraphTransport({
+	defaultCredentialType: 'microsoftTeamsOAuth2Api',
+	forbiddenHints: TEAMS_FORBIDDEN_HINTS,
+});
 
 export {
 	getTeamsCredentialType,
@@ -38,6 +43,14 @@ export {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 };
+
+export {
+	ACTIVITY_NOTIFICATION_SETUP_URL,
+	ACTIVITY_PERMISSION_FORBIDDEN_APP_ONLY,
+	ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED,
+	ACTIVITY_PERMISSION_MATCH,
+	COMPANION_APP_FORBIDDEN,
+} from './forbiddenHints';
 
 /**
  * App-only Microsoft Graph has no `/me`, so the joined-teams listing is fetched
