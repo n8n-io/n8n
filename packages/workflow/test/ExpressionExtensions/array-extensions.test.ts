@@ -2,6 +2,7 @@
 
 import { evaluate } from './helpers';
 import { arrayExtensions } from '../../src/extensions/array-extensions';
+import { ExpressionExtensionError } from '../../src/errors';
 import { jsonParse } from '../../src/utils';
 
 describe('Data Transformation Functions', () => {
@@ -415,6 +416,13 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
+		});
+
+		test('.chunk() should throw on non-positive size instead of hanging (#37796)', () => {
+			expect(() => evaluate('={{ numberList(1, 20).chunk(-1) }}')).toThrow(
+				ExpressionExtensionError,
+			);
+			expect(() => evaluate('={{ numberList(1, 20).chunk(0) }}')).toThrow(ExpressionExtensionError);
 		});
 
 		test('.toJsonString() should work on an array', () => {
