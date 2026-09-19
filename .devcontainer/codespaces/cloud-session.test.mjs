@@ -27,6 +27,14 @@ if (args[0] === 'codespace' && args[1] === 'list') {
 `,
 	);
 	chmodSync(mockGh, 0o755);
+	for (const [name, script] of Object.entries({
+		infocmp: '[ "$1" = "$SUPPORTED_TERM" ]',
+		tmux: 'printf "%s" "$TERM"',
+	})) {
+		const executable = join(fixtureDir, name);
+		writeFileSync(executable, `#!/bin/sh\n${script}\n`);
+		chmodSync(executable, 0o755);
+	}
 });
 
 after(() => rmSync(fixtureDir, { recursive: true, force: true }));
@@ -56,6 +64,34 @@ function remoteCommand(args) {
 		'-t',
 	]);
 	return invocationArgs[6];
+}
+
+for (const { name, supportedTerm, expectedTerm } of [
+	{
+		name: 'uses xterm-256color when the remote terminal definition is missing',
+		supportedTerm: 'xterm-256color',
+		expectedTerm: 'xterm-256color',
+	},
+	{
+		name: 'keeps the terminal type when the remote definition is available',
+		supportedTerm: 'xterm-ghostty',
+		expectedTerm: 'xterm-ghostty',
+	},
+]) {
+	test(name, () => {
+		const result = spawnSync('/bin/sh', ['-c', remoteCommand(['--opencode'])], {
+			encoding: 'utf8',
+			env: {
+				...process.env,
+				PATH: `${fixtureDir}:${process.env.PATH}`,
+				TERM: 'xterm-ghostty',
+				SUPPORTED_TERM: supportedTerm,
+			},
+		});
+
+		assert.equal(result.status, 0, result.stderr);
+		assert.equal(result.stdout, expectedTerm);
+	});
 }
 
 test('starts a named OpenCode session in a worktree', () => {

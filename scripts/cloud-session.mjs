@@ -23,6 +23,11 @@ const MACHINE = 'premiumLinux';
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
 const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
 
+// Check the remote terminal database before tmux starts. Older images can lack
+// terminal definitions such as xterm-ghostty.
+const TERMINAL_FALLBACK =
+	'if ! infocmp "$TERM" >/dev/null 2>&1; then export TERM=xterm-256color; fi';
+
 function findCodespace(retry = false) {
 	try {
 		const list = JSON.parse(gh('codespace', 'list', '-R', REPO, '--json', 'name,state'));
@@ -212,7 +217,7 @@ switch (cmd) {
 			name,
 			'--',
 			'-t',
-			`tmux new -As ${tmuxSession} '${remoteCommand(cmd, launcher, rest.join(' '))}'`,
+			`${TERMINAL_FALLBACK}; tmux new -As ${tmuxSession} '${remoteCommand(cmd, launcher, rest.join(' '))}'`,
 		);
 		process.exitCode = status ?? 1;
 	}
