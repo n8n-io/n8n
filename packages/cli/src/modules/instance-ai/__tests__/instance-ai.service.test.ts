@@ -268,6 +268,7 @@ import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
@@ -298,6 +299,7 @@ type StartRunServiceInternals = {
 		getComputerUseChannels: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
+		setObserverThresholdTokens: Mock;
 		activeRunCount: MockedFunction<() => number>;
 		activeRunCountForUser: MockedFunction<(userId: string) => number>;
 	};
@@ -325,6 +327,7 @@ function createStartRunService(): StartRunServiceInternals {
 		getComputerUseChannels: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
+		setObserverThresholdTokens: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
 		activeRunCountForUser: vi.fn(() => 0),
 	};
@@ -759,6 +762,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				setObserverThresholdTokens: Mock;
 				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
@@ -831,6 +835,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			setObserverThresholdTokens: vi.fn(),
 			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
@@ -1079,6 +1084,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				setObserverThresholdTokens: Mock;
 				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
@@ -1148,6 +1154,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			setObserverThresholdTokens: vi.fn(),
 			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
@@ -6011,11 +6018,17 @@ describe('createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
-		) => { observationalMemory: { onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void> } };
+		) => {
+			observationalMemory: {
+				observerThresholdTokens: number;
+				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
+			};
+		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		>;
+		runState: { getObserverThresholdTokens: Mock };
 		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 		logger: { warn: Mock };
 	};
@@ -6023,6 +6036,7 @@ describe('createAgentMemoryOptions', () => {
 	function buildService(): MemoryOptionsInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
+		service.runState = { getObserverThresholdTokens: vi.fn().mockReturnValue(undefined) };
 		service.creditService = {
 			claimRunUsage: vi.fn(async () => {}),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -6030,6 +6044,28 @@ describe('createAgentMemoryOptions', () => {
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
+
+	it('uses the instance observer threshold when the thread has no override', () => {
+		const service = buildService();
+		const { observerThresholdTokens } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+		expect(observerThresholdTokens).toBe(8_000);
+		expect(service.runState.getObserverThresholdTokens).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('uses the per-thread override when an eval set one', () => {
+		const service = buildService();
+		service.runState.getObserverThresholdTokens.mockReturnValue(1_000);
+		const { observerThresholdTokens } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+		expect(observerThresholdTokens).toBe(1_000);
+	});
 
 	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
 		const service = buildService();
@@ -6315,5 +6351,75 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 			'Instance AI failed to read the AI preferences for this turn',
 			{ userId: 'user-1', error: 'db down' },
 		);
+	});
+});
+
+describe('getThreadMemory', () => {
+	type MemoryInternals = {
+		getThreadMemory: InstanceAiService['getThreadMemory'];
+		agentMemory: { getThread: Mock };
+		observationRepo: { findActiveForThread: Mock };
+		observationCursorRepo: { findForThread: Mock };
+	};
+
+	function buildService(): MemoryInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryInternals;
+		service.agentMemory = {
+			getThread: vi.fn().mockResolvedValue({ id: 'thread-1', resourceId: 'user-1' }),
+		};
+		service.observationRepo = { findActiveForThread: vi.fn().mockResolvedValue([]) };
+		service.observationCursorRepo = { findForThread: vi.fn().mockResolvedValue(null) };
+		return service;
+	}
+
+	it("refuses another user's thread before it reads anything", async () => {
+		// The controller checks ownership too; this keeps the service safe for any other caller.
+		const service = buildService();
+		await expect(service.getThreadMemory('user-2', 'thread-1')).rejects.toThrow(ForbiddenError);
+		expect(service.observationRepo.findActiveForThread).not.toHaveBeenCalled();
+		expect(service.observationCursorRepo.findForThread).not.toHaveBeenCalled();
+	});
+
+	it('refuses a thread that does not exist', async () => {
+		const service = buildService();
+		service.agentMemory.getThread.mockResolvedValue(null);
+		await expect(service.getThreadMemory('user-1', 'thread-1')).rejects.toThrow(ForbiddenError);
+	});
+
+	it('returns the live rows and the cursor as an ISO timestamp', async () => {
+		const service = buildService();
+		service.observationRepo.findActiveForThread.mockResolvedValue([
+			{
+				id: 'obs-1',
+				marker: 'critical',
+				text: 'Posting via HTTP Request',
+				tokenCount: 7,
+				status: 'active',
+				observationScopeId: 'thread-1',
+			},
+		]);
+		service.observationCursorRepo.findForThread.mockResolvedValue({
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm137',
+			lastObservedAt: new Date('2020-01-01T00:00:00.000Z'),
+		});
+
+		const memory = await service.getThreadMemory('user-1', 'thread-1');
+
+		// Only the three fields the eval grades on; ids and status stay server-side.
+		expect(memory).toEqual({
+			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
+			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
+		});
+		expect(service.observationRepo.findActiveForThread).toHaveBeenCalledWith('thread-1');
+		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('returns a null cursor and no rows when the observer never ran', async () => {
+		const service = buildService();
+		expect(await service.getThreadMemory('user-1', 'thread-1')).toEqual({
+			observations: [],
+			cursor: null,
+		});
 	});
 });

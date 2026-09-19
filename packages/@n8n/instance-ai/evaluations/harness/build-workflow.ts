@@ -109,6 +109,10 @@ const DEFAULT_TIMEOUT_MS = 900_000;
 // Multi-turn driver — wires UserProxyLlm into runMultiTurnConversation
 // ---------------------------------------------------------------------------
 
+/** The request field's floor, so the flag means "compact as soon as there is
+ *  anything to compact" — a case sized for the 30k default is unauthorable. */
+const COMPACTION_OBSERVER_THRESHOLD_TOKENS = 1_000;
+
 interface MultiTurnDriverConfig {
 	client: N8nClient;
 	threadId: string;
@@ -117,6 +121,7 @@ interface MultiTurnDriverConfig {
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
+	observerThresholdTokens?: number;
 	allowUserExecution?: boolean;
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
@@ -211,6 +216,7 @@ async function driveMultiTurnConversation(
 		config.buildMode,
 		config.promptVersion,
 		config.openingHandoffContext,
+		config.observerThresholdTokens,
 	);
 
 	await runMultiTurnConversation({
@@ -226,6 +232,7 @@ async function driveMultiTurnConversation(
 		proxyResponses: config.proxyResponses,
 		buildMode: config.buildMode,
 		promptVersion: config.promptVersion,
+		observerThresholdTokens: config.observerThresholdTokens,
 		allowUserExecution: config.allowUserExecution,
 		beforeUserExecution: config.beforeUserExecution,
 	});
@@ -461,6 +468,7 @@ export interface BuildWorkflowConfig {
 	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
 	buildMode?: WorkflowTestCase['buildMode'];
 	promptVersion?: string;
+	requiresMemoryCompaction?: boolean;
 	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
@@ -528,6 +536,9 @@ export function workflowExpectedForCase(
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
 	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
+	const observerThresholdTokens = config.requiresMemoryCompaction
+		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
+		: undefined;
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -1045,6 +1056,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				timeoutMs,
 				logger,
 				proxyResponses,
+				observerThresholdTokens,
 				followUpMessagesOut: followUpMessages,
 				// Only wired when the credential view is actually pinned — the
 				// allowlist endpoint a mid-run creation depends on isn't available
@@ -1073,6 +1085,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildMode,
 				promptVersion,
 				openingHandoffContext,
+				observerThresholdTokens,
 			);
 			await waitForAllActivity({
 				client,

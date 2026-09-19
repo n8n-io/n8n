@@ -1,3 +1,5 @@
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+
 import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
@@ -8,6 +10,7 @@ import {
 	perTurnToolCallCounts,
 	transcriptAsText,
 	userTurnsAsText,
+	usageTokens,
 } from '../utils/conversation-text';
 
 describe('userTurnsAsText', () => {
@@ -262,6 +265,79 @@ describe('transcriptAsText', () => {
 			'Q (single): Which service? [RocketChat / Zulip]',
 		);
 	});
+
+	it('inlines a turn heading with tokens summed across its runs (main + resume)', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				userMessage: 'build it',
+				steps: [{ kind: 'agent-text', text: 'Done.' }],
+				runIds: ['run-1', 'run-2'],
+			},
+		];
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'run-1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [{ stepNumber: 0, output: { usage: { inputTokens: 100, outputTokens: 20 } } }],
+			},
+			{
+				threadId: 't1',
+				runId: 'run-2',
+				startedAt: 1,
+				workflowCode: [],
+				steps: [{ stepNumber: 0, output: { usage: { inputTokens: 300, outputTokens: 40 } } }],
+			},
+		];
+		const text = transcriptAsText(transcript, runDebug);
+		expect(text).toContain('### Turn 1 (2 steps, 400 tokens in, 60 tokens out)');
+	});
+
+	it('adds a cached clause to the heading only when the provider reported cache reads', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'follow-up', steps: [], runIds: ['run-1'] },
+			{ userMessage: 'another', steps: [], runIds: ['run-2'] },
+		];
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'run-1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [
+					{
+						stepNumber: 0,
+						output: {
+							usage: {
+								inputTokens: 60000,
+								outputTokens: 500,
+								inputTokenDetails: { cacheReadTokens: 58000, cacheWriteTokens: 0 },
+							},
+						},
+					},
+				],
+			},
+			{
+				threadId: 't1',
+				runId: 'run-2',
+				startedAt: 1,
+				workflowCode: [],
+				steps: [{ stepNumber: 0, output: { usage: { inputTokens: 900, outputTokens: 30 } } }],
+			},
+		];
+		const text = transcriptAsText(transcript, runDebug);
+		expect(text).toContain('### Turn 1 (1 step, 60000 tokens in [58000 cached], 500 tokens out)');
+		// No cache reads reported for run-2 — no clause, rather than "[0 cached]".
+		expect(text).toContain('### Turn 2 (1 step, 900 tokens in, 30 tokens out)');
+	});
+
+	it('leaves the heading plain when no run-debug matches the turn', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'build it', steps: [{ kind: 'agent-text', text: 'Done.' }] },
+		];
+		expect(transcriptAsText(transcript)).toContain('### Turn 1\n');
+	});
 });
 
 describe('perTurnToolCallCounts', () => {
@@ -327,5 +403,34 @@ describe('lastAgentText', () => {
 		expect(text).toContain('SO WHICH ONE SHOULD I BUILD?');
 		expect(text).toContain('more chars');
 		expect(text.length).toBeLessThan(answer.length + 6000);
+	});
+});
+
+describe('usageTokens', () => {
+	it('reads cache tokens from the AI SDK details when present', () => {
+		expect(
+			usageTokens({
+				inputTokens: 100,
+				outputTokens: 5,
+				inputTokenDetails: { cacheReadTokens: 80, cacheWriteTokens: 10 },
+			}),
+		).toEqual({ input: 100, output: 5, cacheRead: 80, cacheWrite: 10 });
+	});
+
+	it("falls back to OpenAI's cachedPromptTokens, the way toTokenUsage does", () => {
+		// OpenAI reports cache hits only through provider metadata; without this the
+		// judge reads "0 tokens read" on a run that cached most of its prompt.
+		expect(
+			usageTokens({ inputTokens: 100, outputTokens: 5 }, { openai: { cachedPromptTokens: 80 } }),
+		).toEqual({ input: 100, output: 5, cacheRead: 80, cacheWrite: 0 });
+	});
+
+	it('prefers the SDK details over the provider fallback', () => {
+		expect(
+			usageTokens(
+				{ inputTokens: 100, outputTokens: 5, inputTokenDetails: { cacheReadTokens: 30 } },
+				{ openai: { cachedPromptTokens: 80 } },
+			).cacheRead,
+		).toBe(30);
 	});
 });

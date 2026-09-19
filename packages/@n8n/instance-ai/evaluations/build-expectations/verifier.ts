@@ -1,3 +1,7 @@
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import type { Message } from '@n8n/agents';
 
 import { buildAssertionsBlock, judgeExpectations } from './assertion-judge';
@@ -5,7 +9,7 @@ import { EPHEMERAL_CACHE } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
-import { perTurnToolCallCounts, transcriptAsText } from '../utils/conversation-text';
+import { perTurnToolCallCounts, transcriptAsText, usageTokens } from '../utils/conversation-text';
 
 // Re-exported for import-site stability — cli/index.ts and runner.ts import it from here.
 export { allFailVerdicts } from './assertion-judge';
@@ -19,6 +23,10 @@ export interface BuildExpectationsInput {
 	transcript: TranscriptTurn[];
 	workflowJson?: WorkflowResponse;
 	metrics?: ConversationMetrics;
+	/** Per-step debug from the build; source of every token number below. */
+	runDebug?: InstanceAiRunDebugResponse[];
+	/** Observational memory for the thread: rows plus the compaction cursor. */
+	threadMemory?: InstanceAiEvalThreadMemoryResponse;
 	/** Rendered agent/config-eval sections (each with a "(no … produced)" fallback), appended
 	 *  to the cached build context so outcome expectations can be judged against them. */
 	artifactContext?: string;
@@ -53,13 +61,40 @@ export async function verifyBuildExpectations(
 				},
 				{
 					type: 'text',
-					text: buildConversationContext(expectations, build.transcript, build.metrics),
+					text: buildConversationContext(
+						expectations,
+						build.transcript,
+						build.metrics,
+						build.runDebug,
+						build.threadMemory,
+					),
 				},
 			],
 		},
 	];
 
+	await dumpJudgeContext(messages);
+
 	return await judgeExpectations(messages, expectations);
+}
+
+/** Dump the assembled judge prompt to `DEBUG_JUDGE_CONTEXT`; nothing else shows it. */
+async function dumpJudgeContext(messages: Message[]): Promise<void> {
+	const target = process.env.DEBUG_JUDGE_CONTEXT;
+	if (!target) return;
+	const text = messages
+		.flatMap((message) =>
+			Array.isArray(message.content)
+				? message.content.flatMap((part) => ('text' in part ? [part.text] : []))
+				: [],
+		)
+		.join('\n\n--- block ---\n\n');
+	try {
+		const { appendFile } = await import('fs/promises');
+		await appendFile(target, `\n\n===== JUDGE CALL =====\n\n${text}\n`);
+	} catch {
+		// Diagnostics must never fail a run.
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +105,8 @@ function buildConversationContext(
 	expectations: string[],
 	transcript: TranscriptTurn[],
 	metrics: ConversationMetrics | undefined,
+	runDebug: InstanceAiRunDebugResponse[] | undefined,
+	threadMemory: InstanceAiEvalThreadMemoryResponse | undefined,
 ): string {
 	const metricsBlock = metrics
 		? `\`\`\`json\n${JSON.stringify(metrics, null, 2)}\n\`\`\``
@@ -77,7 +114,7 @@ function buildConversationContext(
 	return [
 		'## Conversation transcript',
 		'',
-		transcriptAsText(transcript),
+		transcriptAsText(transcript, runDebug),
 		'',
 		'## Conversation metrics (ground truth — do not recount)',
 		'',
@@ -87,6 +124,61 @@ function buildConversationContext(
 		'',
 		perTurnToolCallCounts(transcript),
 		'',
+		'## Token usage totals (ground truth — do not recount)',
+		'',
+		tokenUsageTotals(runDebug),
+		'',
+		'## Observational memory after compaction (ground truth — do not recount)',
+		'',
+		observationLogBlock(threadMemory),
+		'',
 		buildAssertionsBlock(expectations),
+	].join('\n');
+}
+
+/** What the agent remembers after compaction, so an expectation can grade the summary
+ *  itself. Markers are the Observer's own priority labels. */
+function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse | undefined): string {
+	if (!memory) return '(not captured)';
+	if (!memory.cursor) return '(observational memory has not compacted this conversation)';
+	if (memory.observations.length === 0) return '(compacted, but no observations were kept)';
+	return memory.observations
+		.map(({ marker, text }) => `- [${marker.toUpperCase()}] ${text}`)
+		.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Token usage totals
+// ---------------------------------------------------------------------------
+
+/** Build-wide sum, the one number the turn headers don't carry. Orchestrator steps
+ *  only, so a delegated `build-agent` leg is absent (workflow builds are not). */
+function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): string {
+	if (!runDebug || runDebug.length === 0) return '(no run debug captured)';
+
+	let input = 0;
+	let output = 0;
+	let cacheRead = 0;
+	let cacheWrite = 0;
+	let stepCount = 0;
+	for (const run of runDebug) {
+		for (const step of run.steps) {
+			const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
+			input += usage.input;
+			output += usage.output;
+			cacheRead += usage.cacheRead;
+			cacheWrite += usage.cacheWrite;
+			stepCount++;
+		}
+	}
+
+	// Instructions + tool schemas + the first message. A seeded case also carries
+	// its restored history here, so this is the first call, not a history-free floor.
+	const opening = usageTokens(runDebug[0]?.steps[0]?.output?.usage).input;
+	const runWord = runDebug.length === 1 ? 'run' : 'runs';
+	return [
+		`Total: ${String(input)} tokens in / ${String(output)} tokens out across ${String(stepCount)} LLM steps, ${String(runDebug.length)} ${runWord}`,
+		`Cache: ${String(cacheRead)} tokens read / ${String(cacheWrite)} tokens written`,
+		`Opening step: ${String(opening)} input tokens on the first LLM call (instructions, tool schemas and the first message; a seeded case also carries its restored history here)`,
 	].join('\n');
 }

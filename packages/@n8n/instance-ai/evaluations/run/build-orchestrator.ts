@@ -8,7 +8,10 @@
 // `LaneState`, so tracing stays a caller concern.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
@@ -123,6 +126,9 @@ export type BuildArgs = Pick<
 	// callback's parameter type, so tsc cannot catch a dropped field here; the
 	// orchestrator test pins it.
 	| 'credentialFixture'
+	// Same hazard: dropped, the case runs with the instance's own observer
+	// threshold, never compacts, and reads as an agent miss.
+	| 'requiresMemoryCompaction'
 > & {
 	timeoutMs: number;
 	/** Which case this build is, and which repeat of it. Not used by the build
@@ -298,6 +304,7 @@ export interface BuildOrchestratorDeps {
 	transcriptByThreadId: Map<string, TranscriptTurn[]>;
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
+	threadMemoryByThreadId: Map<string, Promise<InstanceAiEvalThreadMemoryResponse | undefined>>;
 	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
 	sleep?: (ms: number) => Promise<void>;
@@ -326,6 +333,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		transcriptByThreadId,
 		buildExpectationsByKey,
 		runDebugByThreadId,
+		threadMemoryByThreadId,
 		agentContextByKey,
 	} = deps;
 	const delay = deps.sleep ?? sleep;
@@ -392,6 +400,22 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
 	}
 
+	/** Undefined on failure — the premise check reads that as "no evidence", never
+	 *  as "it compacted". */
+	function stashThreadMemory(client: N8nClient, build: BuildResult): void {
+		if (!build.threadId) return;
+		const threadId = build.threadId;
+		threadMemoryByThreadId.set(
+			threadId,
+			client.getThreadMemory(threadId).catch((error: unknown) => {
+				logger.warn(
+					`  Dropped thread memory for ${threadId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return undefined;
+			}),
+		);
+	}
+
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
 		if (!build.threadId) return;
 		// Re-read from n8n AFTER the build was scrubbed, so it arrives raw and the
@@ -446,7 +470,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					allFailVerdicts(
 						collectExpectations(testCase),
 						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
-					),
+					).map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
 				),
 			);
 			return;
@@ -484,7 +508,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+			verdicts.map((v) => ({
+				// An attribution already set is a decision the caller made with more
+				// context than this closure has; don't overwrite it.
+				...v,
+				attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
+			}));
 		// The lane's deterministic verdicts ride along on EVERY path, including the
 		// unjudged one: they describe what the run actually did to the provider and
 		// to n8n, which stays true whether or not the author expectations got judged.
@@ -507,11 +536,34 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		buildExpectationsByKey.set(
 			key,
 			withInjected(
-				(async () =>
-					await verifyBuildExpectations(expectations, {
+				(async () => {
+					const runDebug = build.threadId
+						? await runDebugByThreadId.get(build.threadId)
+						: undefined;
+					const threadMemory = build.threadId
+						? await threadMemoryByThreadId.get(build.threadId)
+						: undefined;
+					// Premise, not an expectation. `framework_issue`, not `verification_gap`:
+					// the judge was fine, the harness failed to set the scenario up, and
+					// that distinction is what tells triage where to look.
+					// A prebuilt run has no conversation to compact: only its outcome
+					// expectations are judged, and those grade the workflow, not memory.
+					if (
+						testCase.requiresMemoryCompaction &&
+						!isPrebuilt &&
+						!memoryWasCompacted(threadMemory)
+					) {
+						return allFailVerdicts(expectations, NOT_COMPACTED_REASON).map((verdict) => ({
+							...verdict,
+							attribution: 'framework_issue' as const,
+						}));
+					}
+					return await verifyBuildExpectations(expectations, {
 						transcript,
 						workflowJson: build.workflowJsons[0],
 						metrics: build.conversationMetrics,
+						runDebug,
+						threadMemory,
 						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
 						// with "(no <type> produced)" fallbacks, so outcome expectations can
 						// judge artifact existence, absence and content — parity with the
@@ -521,7 +573,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 							client,
 							logger,
 						}),
-					}))()
+					});
+				})()
 					.catch((error: unknown) =>
 						allFailVerdicts(
 							expectations,
@@ -583,8 +636,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
 				// outcome expectations are judged (against the workflow), like prebuilt.
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				// Ordered before stashBuildExpectations so runDebugByThreadId already has
+				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				stashThreadMemory(lane.runner.client, build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
@@ -611,8 +667,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				// Ordered before stashBuildExpectations so runDebugByThreadId already has
+				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				stashThreadMemory(lane.runner.client, build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
 					// carries the user's request — feed it so prompt-aware checks (e.g.
@@ -653,6 +712,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						messageBudget: entry.messageBudget,
 						buildMode: entry.buildMode,
 						promptVersion: entry.promptVersion,
+						requiresMemoryCompaction: entry.requiresMemoryCompaction,
 						allowUserExecution: entry.allowUserExecution,
 						credentials: entry.credentials,
 						seed: entry.seed,
@@ -685,8 +745,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
 			stashAgentContext(key, lane.runner.client, build);
-			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
+			// Ordered before stashBuildExpectations so runDebugByThreadId already has
+			// this build's promise stashed by the time that call reads it.
 			stashRunDebug(lane.runner.client, build);
+			stashThreadMemory(lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
 			);
@@ -714,4 +777,15 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	}
 
 	return { getOrBuild, buildCache, orphanedBuilds, buildDurations };
+}
+
+const NOT_COMPACTED_REASON =
+	'not judged — observational memory never compacted this thread, so the case premise is ' +
+	'absent. Either the seed is too short to cross the observer threshold, or the compaction ' +
+	'the harness asked for never reached the run.';
+
+/** A cursor means the observer ran and everything up to it is masked out; the rows are
+ *  what replaced it. Both, or the case had nothing to test. */
+function memoryWasCompacted(memory: InstanceAiEvalThreadMemoryResponse | undefined): boolean {
+	return Boolean(memory?.cursor) && (memory?.observations.length ?? 0) > 0;
 }
