@@ -124,6 +124,24 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Source Channel Name or ID',
+				name: 'channel',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLeadChannels',
+				},
+				default: '',
+				description:
+					'ID of the marketing channel this lead was created from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Source Channel ID',
+				name: 'channel_id',
+				type: 'string',
+				default: '',
+				description: 'Optional ID to further distinguish the marketing channel',
+			},
+			{
 				displayName: 'Value',
 				name: 'value',
 				type: 'fixedCollection',
