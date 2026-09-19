@@ -8,7 +8,13 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 
-import type { StepError, StepSlots, StepStatus } from '../../execution/execution.types';
+import type {
+	StepError,
+	StepResume,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from '../../execution/execution.types';
 import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
@@ -18,6 +24,7 @@ import { generateId } from '../generate-id';
 	{ unique: true },
 )
 @Index('idx_workflow_step_execution_failed', ['executionId'], { where: "status = 'failed'" })
+@Index('idx_workflow_step_execution_wait_till', ['waitTill'], { where: "status = 'waiting'" })
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -39,6 +46,22 @@ export class WorkflowStepExecution {
 
 	@Column('jsonb', { nullable: true })
 	error!: StepError | null;
+
+	@Column('jsonb', { nullable: true })
+	wait!: WaitDeclaration | null;
+
+	/** Lifted out of `wait` so the sweep can index it; `suspendStep` writes both. */
+	@Column({ name: 'wait_till', type: 'timestamptz', precision: 3, nullable: true })
+	waitTill!: Date | null;
+
+	/**
+	 * What ended the wait: a deadline, or a request and its payload. It holds no
+	 * output. A deadline resume emits `wait.outputsAtDeadline`. A request resume
+	 * hands the payload to the node's resume path, and what that returns lands
+	 * in `outputs`, as it does for every step.
+	 */
+	@Column('jsonb', { nullable: true })
+	resume!: StepResume | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;
