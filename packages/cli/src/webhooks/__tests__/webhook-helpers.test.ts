@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -34,6 +35,7 @@ import type {
 	IRun,
 	IExecuteResponsePromiseData,
 	IDestinationNode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -1135,6 +1137,86 @@ mockInstance(WorkflowStatisticsService);
 
 const WORKFLOW_ID = 'wf-1';
 const EXECUTION_ID = 'exec-1';
+
+describe('executeWebhook MCP queue payload', () => {
+	const executionsConfig = Container.get(ExecutionsConfig);
+	const mcpToolCall: NonNullable<IWorkflowExecutionDataProcess['mcpToolCall']> = {
+		toolName: 'getForecast',
+		arguments: { city: 'Berlin' },
+		sourceNodeName: 'Weather Tool',
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+		executionsConfig.mode = 'queue';
+		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'https://n8n.test/webhook-waiting',
+				formWaitingBaseUrl: 'https://n8n.test/form-waiting',
+			}),
+		);
+		webhookService.runWebhook.mockResolvedValue({
+			workflowData: [[{ json: { mcpToolCall } }]],
+		} as IWebhookResponseData);
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
+	});
+
+	afterEach(() => {
+		executionsConfig.mode = 'regular';
+	});
+
+	it('forwards the tool call in the execution run data', async () => {
+		const workflowStartNode = mock<INode>({
+			name: 'MCP Trigger',
+			type: MCP_TRIGGER_NODE_TYPE,
+			typeVersion: 1,
+			parameters: {},
+		});
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'mcpTrigger' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+				),
+			},
+		});
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default', responseMode: 'onReceived' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			workflowStartNode,
+			'webhook',
+			undefined,
+			undefined,
+			undefined,
+			mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {}, query: {} }),
+			mock<express.Response>({ headersSent: false }),
+			vi.fn(),
+		);
+
+		expect(workflowRunner.run.mock.calls[0][0].mcpToolCall).toEqual(mcpToolCall);
+	});
+});
 
 describe('executeWebhook form content type', () => {
 	const runRequest = async (startNode: INode, rawBody = '{') => {
