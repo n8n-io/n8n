@@ -312,6 +312,14 @@ export function createDeepLazyProxy(
 				return arrayLength;
 			}
 
+			if (Object.prototype.hasOwnProperty.call(targetObj, prop)) {
+				return targetObj[prop];
+			}
+
+			if (!isArray && objectKeys?.includes(prop)) {
+				return fetchAndCacheObjectValue(prop);
+			}
+
 			if (prop in targetObj) {
 				return targetObj[prop];
 			}
