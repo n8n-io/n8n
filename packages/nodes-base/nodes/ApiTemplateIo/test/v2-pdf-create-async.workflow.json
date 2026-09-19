@@ -1,0 +1,56 @@
+{
+	"name": "APITemplate.io V2 PDF create asynchronously with a webhook callback",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "99999999-9999-4999-8999-999999999991",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdfv2",
+				"operation": "create",
+				"pdfTemplateId": "tpl-pdf",
+				"dataSource": "json",
+				"v2PdfData": "{\"invoice_number\": \"INV38379\"}",
+				"expiration": 1440,
+				"isAsync": true,
+				"webhookUrl": "https://yourwebserver.com/webhook",
+				"webhookMethod": "POST"
+			},
+			"id": "99999999-9999-4999-8999-999999999992",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"transaction_ref": "8f3f0a4e-7f5c-4a1a-9a3b-9f8d1c2b3a4e"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
