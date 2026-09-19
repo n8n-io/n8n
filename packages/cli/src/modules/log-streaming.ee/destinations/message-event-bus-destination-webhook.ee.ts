@@ -167,7 +167,12 @@ export class MessageEventBusDestinationWebhook
 		return requestOptions;
 	}
 
-	async matchDecryptedCredentialType(credentialType: string, raw = true) {
+	/**
+	 * Decrypt destination credentials with expression resolution enabled by default
+	 * (`raw = false`) so External Secrets expressions (e.g. `{{ $secrets... }}`)
+	 * are resolved before the request is sent.
+	 */
+	async matchDecryptedCredentialType(credentialType: string, raw = false) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
@@ -373,10 +378,8 @@ export class MessageEventBusDestinationWebhook
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
 				} catch {}
 			} else if (this.genericAuthType === 'httpTemplatedCustomAuth') {
-				httpTemplatedCustomAuth = await this.matchDecryptedCredentialType(
-					'httpTemplatedCustomAuth',
-					false,
-				);
+				httpTemplatedCustomAuth =
+					await this.matchDecryptedCredentialType('httpTemplatedCustomAuth');
 			}
 		}
 
