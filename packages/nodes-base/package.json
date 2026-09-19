@@ -60,6 +60,7 @@
       "dist/credentials/AzureStorageSharedKeyApi.credentials.js",
       "dist/credentials/BambooHrApi.credentials.js",
       "dist/credentials/BannerbearApi.credentials.js",
+      "dist/credentials/BannerbearV5Api.credentials.js",
       "dist/credentials/BaserowApi.credentials.js",
       "dist/credentials/BaserowTokenApi.credentials.js",
       "dist/credentials/BeeminderApi.credentials.js",
