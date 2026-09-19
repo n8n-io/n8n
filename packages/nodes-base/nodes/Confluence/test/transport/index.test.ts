@@ -666,7 +666,10 @@ describe('credential routing (authentication selector)', () => {
 		expect(mockHttpRequestWithAuthentication).toHaveBeenLastCalledWith(
 			'atlassianServiceAccountApi',
 			expect.anything(),
-			{ preAuthenticationRetryStatusCode: [401, 403, 404] },
+			{
+				preAuthenticationRetryStatusCode: [401, 403, 404],
+				skipPreAuthenticationRetryWhileTokenIsFresh: true,
+			},
 		);
 	});
 
