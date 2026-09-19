@@ -51,21 +51,18 @@ const dialogVisible = ref(false);
 let editorView: EditorView | null = null;
 let expandedEditorView: EditorView | null = null;
 
-// Mock $claims: every property returns a real array so .includes() works but .includ() throws
-const mockClaims = new Proxy(
-	{},
-	{ get: (_target, prop) => (typeof prop === 'symbol' ? undefined : ['mock']) },
-);
-
 function validateExpression(value: string): boolean {
 	if (!value.trim()) return true;
 	const match = value.match(/^\{\{(.+)\}\}$/s);
 	const jsContent = match ? match[1].trim() : value.trim();
 	if (!jsContent) return true;
 	try {
+		// Syntax-only validation: the Function constructor throws SyntaxError for
+		// invalid JS without executing the body. Do NOT call the returned function —
+		// calling it would execute user-provided code in the browser context where
+		// window, document, and fetch are all reachable.
 		// eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
-		const fn = new Function('$claims', '$oidc', '$saml', '$provider', `return (${jsContent})`);
-		fn(mockClaims, { idToken: {}, userInfo: {} }, { attributes: {} }, 'oidc');
+		new Function('$claims', '$oidc', '$saml', '$provider', `return (${jsContent})`);
 		return true;
 	} catch {
 		return false;
