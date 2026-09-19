@@ -503,6 +503,7 @@ export class N8nMemoryImpl
 		return {
 			observationScopeId: entity.observationScopeId,
 			lastObservedMessageId: entity.lastObservedMessageId,
+			emptyLogThroughMessageId: entity.emptyLogThroughMessageId,
 			lastObservedAt: entity.lastObservedAt,
 			updatedAt: entity.updatedAt,
 		};
@@ -514,6 +515,7 @@ export class N8nMemoryImpl
 				agentId: this.agentId,
 				observationScopeId: cursor.observationScopeId,
 				lastObservedMessageId: cursor.lastObservedMessageId,
+				emptyLogThroughMessageId: cursor.emptyLogThroughMessageId ?? null,
 				lastObservedAt: cursor.lastObservedAt,
 				updatedAt: cursor.updatedAt,
 			},

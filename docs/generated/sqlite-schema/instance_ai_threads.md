@@ -113,6 +113,7 @@ erDiagram
 }
 "instance_ai_observation_cursors" {
   datetime_3_ createdAt
+  varchar_36_ emptyLogThroughMessageId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar observationScopeId PK

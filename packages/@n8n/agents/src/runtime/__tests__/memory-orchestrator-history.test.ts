@@ -3,6 +3,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
+import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -39,26 +40,62 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 	const m2 = message('m2', 'second', new Date(2026, 4, 12, 14, 31));
 	const m3 = message('m3', 'third', new Date(2026, 4, 12, 14, 32));
 
-	it('falls back to full history when the cursor advanced but no observations exist', async () => {
+	it.each([undefined, null, 'm2'])(
+		'keeps full history without observations or a matching empty-log marker: %s',
+		async (emptyLogThroughMessageId) => {
+			const store = new InMemoryMemory();
+			await seedThread(store, [m1, m2, m3]);
+			// Cursor advanced to the latest message, but the observation log is empty —
+			// the desync that caused mid-thread amnesia.
+			await store.setCursor({
+				observationScopeId: THREAD_ID,
+				lastObservedMessageId: m3.id,
+				lastObservedAt: m3.createdAt,
+				updatedAt: m3.createdAt,
+				emptyLogThroughMessageId,
+			});
+
+			const loaded = await buildOrchestrator(store).loadHistoryMessages({
+				threadId: THREAD_ID,
+				resourceId: RESOURCE_ID,
+			});
+
+			// Without the fallback this returns [] (only messages after the cursor),
+			// which is exactly the amnesia bug. The whole conversation must survive.
+			expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+			const resumed = new AgentMessageList();
+			resumed.addHistory([m1, m2, m3]);
+			await buildOrchestrator(store).applyObservationMask(resumed, {
+				threadId: THREAD_ID,
+				resourceId: RESOURCE_ID,
+			});
+			expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+		},
+	);
+
+	it('loads and resumes an empty log without hiding newer messages', async () => {
 		const store = new InMemoryMemory();
-		await seedThread(store, [m1, m2, m3]);
-		// Cursor advanced to the latest message, but the observation log is empty —
-		// the desync that caused mid-thread amnesia.
+		const reviewed = message('reviewed', 'Thanks.', new Date('2099-01-01T00:00:00Z'));
+		await seedThread(store, [reviewed]);
 		await store.setCursor({
 			observationScopeId: THREAD_ID,
-			lastObservedMessageId: m3.id,
-			lastObservedAt: m3.createdAt,
-			updatedAt: m3.createdAt,
+			lastObservedMessageId: reviewed.id,
+			lastObservedAt: reviewed.createdAt,
+			updatedAt: reviewed.createdAt,
+			emptyLogThroughMessageId: reviewed.id,
 		});
+		const persistence = { threadId: THREAD_ID, resourceId: RESOURCE_ID };
+		const list = new AgentMessageList();
+		await buildOrchestrator(store).loadInto(list, { persistence });
+		expect(list.messages()).toEqual([]);
+		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'A new request.' }] }]);
+		const newMessage = list.messages()[0];
+		expect(newMessage.createdAt.getTime()).toBeGreaterThan(reviewed.createdAt.getTime());
 
-		const loaded = await buildOrchestrator(store).loadHistoryMessages({
-			threadId: THREAD_ID,
-			resourceId: RESOURCE_ID,
-		});
-
-		// Without the fallback this returns [] (only messages after the cursor),
-		// which is exactly the amnesia bug. The whole conversation must survive.
-		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+		const resumed = new AgentMessageList();
+		resumed.addHistory([reviewed, newMessage]);
+		await buildOrchestrator(store).applyObservationMask(resumed, persistence);
+		expect(resumed.llmVisibleMessages().map(({ id }) => id)).toEqual([newMessage.id]);
 	});
 
 	it('honors the cursor (loads only post-cursor messages) when an observation log exists', async () => {
@@ -86,6 +123,13 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 		});
 
 		expect(loaded.map((m) => m.id)).toEqual(['m2', 'm3']);
+		const resumed = new AgentMessageList();
+		resumed.addHistory([m1, m2, m3]);
+		await buildOrchestrator(store).applyObservationMask(resumed, {
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
+		expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m2', 'm3']);
 	});
 
 	it('loads full history when no cursor exists yet', async () => {

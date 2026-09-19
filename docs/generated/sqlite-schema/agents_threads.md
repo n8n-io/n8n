@@ -97,6 +97,7 @@ erDiagram
 "agents_observation_cursors" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
+  varchar_36_ emptyLogThroughMessageId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId PK

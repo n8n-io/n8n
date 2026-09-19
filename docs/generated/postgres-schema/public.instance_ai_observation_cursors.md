@@ -5,6 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| emptyLogThroughMessageId | varchar(36) |  | true |  |  | Certifies that the full history through this message needs no stored observations. NULL requires retained observations. |
 | lastObservedAt | timestamp(3) with time zone |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
 | observationScopeId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) | instance_ai_threads.id source stream checkpointed by this cursor |
@@ -37,6 +38,7 @@ erDiagram
 
 "public.instance_ai_observation_cursors" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ emptyLogThroughMessageId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
   uuid observationScopeId FK
