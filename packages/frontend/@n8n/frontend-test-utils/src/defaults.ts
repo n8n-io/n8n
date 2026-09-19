@@ -133,9 +133,8 @@ export const defaultSettings: FrontendSettings = {
 	dataTables: {
 		maxSize: 0,
 	},
-	workflowCallerPolicyDefaultOption: 'any',
+	workflowCallerPolicyDefaultOption: 'workflowsFromSameOwner',
 	excludeNodes: [],
-	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
 	variables: {
 		limit: -1,
@@ -146,14 +145,11 @@ export const defaultSettings: FrontendSettings = {
 	banners: {
 		dismissed: [],
 	},
-	binaryDataMode: 'default',
+	binaryDataMode: 'filesystem',
 	previewMode: false,
 	mfa: {
 		enabled: false,
 		enforced: false,
-	},
-	askAi: {
-		enabled: false,
 	},
 	aiBuilder: {
 		enabled: false,

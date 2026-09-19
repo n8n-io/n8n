@@ -3,12 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Query, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
-import {
-	BinaryDataService,
-	FileNotFoundError,
-	getHtmlSandboxCSP,
-	isValidNonDefaultMode,
-} from 'n8n-core';
+import { BinaryDataService, FileNotFoundError, getHtmlSandboxCSP, isStoredMode } from 'n8n-core';
 
 import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -68,7 +63,7 @@ export class BinaryDataController {
 
 		const mode = binaryDataId.substring(0, separatorIndex);
 
-		if (!isValidNonDefaultMode(mode)) {
+		if (!isStoredMode(mode)) {
 			throw new BadRequestError('Invalid binary data mode');
 		}
 

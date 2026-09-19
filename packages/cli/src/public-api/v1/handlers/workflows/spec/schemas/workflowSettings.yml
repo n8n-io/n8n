@@ -35,14 +35,12 @@ properties:
       creating or updating a workflow is ignored.
   callerPolicy:
     type: string
-    enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']
+    enum: ['none', 'workflowsFromAList', 'workflowsFromSameOwner']
     description: |
       Controls which workflows are allowed to call this workflow using the Execute Workflow node.
       Defaults to workflowsFromSameOwner.
 
       Available options:
-      - `any`: **Deprecated, removed in version 3.** Any workflow can call this workflow.
-        Switch to `workflowsFromAList` or `workflowsFromSameOwner` before upgrading.
       - `none`: No other workflows can call this workflow (completely blocked)
       - `workflowsFromSameOwner` (default): Only workflows owned by the same project can call this workflow
         * For personal projects: Only workflows created by the same user

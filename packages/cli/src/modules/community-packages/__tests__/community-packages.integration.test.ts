@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesModule } from '@/modules/community-packages/community-packages.module';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
@@ -59,6 +60,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	// Most tests here assert the npm-based update check, which only runs when
+	// unverified packages are enabled - opt in instead of relying on the default.
+	Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 

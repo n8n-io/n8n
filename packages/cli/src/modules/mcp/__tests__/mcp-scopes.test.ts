@@ -160,7 +160,6 @@ describe('McpService scope enforcement', () => {
 					rest: 'rest',
 					mcpBuilderEnabled: builderEnabled,
 				},
-				tags: { disabled: false },
 				activityLog: { enabled: activityLogEnabled },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),

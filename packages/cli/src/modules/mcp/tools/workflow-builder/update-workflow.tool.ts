@@ -467,7 +467,7 @@ async function assertErrorWorkflowIsUsable({
 	} catch (error) {
 		if (error instanceof SubworkflowPolicyDenialError) {
 			throw new Error(
-				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
+				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — add this workflow to its allowlist — or pick a different error workflow.`,
 			);
 		}
 
@@ -779,19 +779,6 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 	op.type === 'addTags' || op.type === 'removeTags';
 
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
-
-/**
- * Rejects operations this instance cannot serve, before anything is loaded or
- * applied.
- */
-function assertOperationsSupported(
-	strictOperations: PartialUpdateOperation[],
-	{ tagsDisabled }: { tagsDisabled: boolean },
-): void {
-	if (tagsDisabled && strictOperations.some(isTagOperation)) {
-		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
-	}
-}
 
 /**
  * Group rules depend on how the workflow looks after the whole batch, so they
@@ -1180,10 +1167,6 @@ export const createUpdateWorkflowTool = (
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
 				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
-
-				assertOperationsSupported(strictOperations, {
-					tagsDisabled: globalConfig.tags.disabled,
-				});
 
 				existingWorkflow = await getMcpWorkflow(
 					workflowId,

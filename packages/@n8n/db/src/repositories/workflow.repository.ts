@@ -1214,15 +1214,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
 		};
 
-		// Branch 1: callerPolicy = 'any'
-		conditions.push(`${callerPolicy} = 'any'`);
-
-		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
+		// Branch 1: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
 			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
 		);
 
-		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
+		// Branch 2: callerPolicy = 'workflowsFromSameOwner' (or the workflow stores no policy
+		// and inherits the instance default when it is 'workflowsFromSameOwner'). A stored
+		// value outside the supported policies, e.g. the removed 'any', denies every caller,
+		// so it never matches here.
 		const sameOwnerPolicyClauses = [`${callerPolicy} = 'workflowsFromSameOwner'`];
 		if (defaultPolicy === 'workflowsFromSameOwner') {
 			sameOwnerPolicyClauses.push(`${callerPolicy} IS NULL`);
@@ -1230,11 +1230,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		conditions.push(
 			`((${sameOwnerPolicyClauses.join(' OR ')}) AND sw_sub.projectId = sw_par.projectId AND sw_par.projectId IS NOT NULL)`,
 		);
-
-		// Handle NULL callerPolicy when default is 'any'
-		if (defaultPolicy === 'any') {
-			conditions.push(`${callerPolicy} IS NULL`);
-		}
 
 		return { conditions, params };
 	}
@@ -1598,7 +1593,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		select?: Record<string, boolean>,
 	): void {
-		const areTagsEnabled = !this.globalConfig.tags.disabled;
 		const isDefaultSelect = select === undefined;
 		const areTagsRequested = isDefaultSelect || select?.tags;
 		const isOwnedByIncluded = isDefaultSelect || select?.ownedBy;
@@ -1614,7 +1608,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			]);
 		}
 
-		if (areTagsEnabled && areTagsRequested) {
+		if (areTagsRequested) {
 			this.applyTagsRelation(qb);
 		}
 

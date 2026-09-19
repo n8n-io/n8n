@@ -8,7 +8,6 @@ import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
@@ -90,7 +89,6 @@ import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders
 import FromAiParametersModal from '@/features/ndv/parameters/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
-import ImportWorkflowUrlModal from '@/features/workflows/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
@@ -182,10 +180,6 @@ const TrialIntroModal = defineAsyncComponent(
 			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="IMPORT_WORKFLOW_URL_MODAL_KEY">
-			<ImportWorkflowUrlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">

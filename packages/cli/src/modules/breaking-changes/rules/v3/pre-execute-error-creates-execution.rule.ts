@@ -1,4 +1,4 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { readEnvValue } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
 import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
@@ -9,10 +9,16 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
+const LEGACY_ENV_VAR = 'N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION';
+
+/** The config option is removed, so the opt-in is only readable from the raw env value. */
+function isLegacyPathEnabled(): boolean {
+	const value = readEnvValue(LEGACY_ENV_VAR)?.toLowerCase();
+	return value === 'true' || value === '1';
+}
+
 @BreakingChangeRule({ version: 'v3' })
 export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly executionsConfig: ExecutionsConfig) {}
-
 	id: string = 'pre-execute-error-creates-execution-v3';
 
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -27,7 +33,7 @@ export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInsta
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		if (!this.executionsConfig.preExecuteErrorCreatesExecution) {
+		if (!isLegacyPathEnabled()) {
 			return NOT_AFFECTED_INSTANCE;
 		}
 

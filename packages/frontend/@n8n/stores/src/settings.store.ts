@@ -124,8 +124,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.aiAssistant?.enabled && settings.value.aiAssistant?.setup,
 	);
 
-	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
-
 	const isAiBuilderEnabled = computed(
 		() => settings.value.aiBuilder?.enabled && settings.value.aiBuilder?.setup,
 	);
@@ -226,10 +224,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
-	);
-
-	const areTagsEnabled = computed(() =>
-		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
 
 	const isAutosaveEnabled = computed(() =>
@@ -497,7 +491,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isFoldersFeatureEnabled,
 		isAiAssistantEnabled,
 		isCustomRolesFeatureEnabled,
-		areTagsEnabled,
 		isAutosaveEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,
@@ -519,7 +512,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
-		isAskAiEnabled,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,

@@ -38,6 +38,7 @@ import {
 	type INode,
 	type IPinData,
 	type IWorkflowBase,
+	type WorkflowSettings,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -1865,14 +1866,26 @@ describe('GET /workflows', () => {
 			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
 				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
 
-				// callerPolicy: 'any' — callable by everyone
-				const anyPolicyWorkflow = await createWorkflow(
+				// Legacy stored callerPolicy: 'any' denies every caller, so the policy
+				// never makes it callable cross-project. Same-project workflows stay
+				// listed regardless of policy, because the list is a union of readable
+				// and callable workflows.
+				const crossProjectLegacyAnyWorkflow = await createWorkflow(
 					{
-						name: 'Any Policy',
+						name: 'Cross Project Legacy Any Policy',
 						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'any' },
+						settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
 					},
 					owner,
+				);
+
+				const sameProjectLegacyAnyWorkflow = await createWorkflow(
+					{
+						name: 'Same Project Legacy Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+					},
+					member,
 				);
 
 				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
@@ -1889,7 +1902,7 @@ describe('GET /workflows', () => {
 				);
 
 				// callerPolicy: 'none' — callable by nobody
-				await createWorkflow(
+				const nonePolicyWorkflow = await createWorkflow(
 					{
 						name: 'None Policy',
 						nodes: [executeWorkflowTriggerNode()],
@@ -1910,30 +1923,24 @@ describe('GET /workflows', () => {
 					.expect(200);
 
 				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				expect(returnedIds).toContain(anyPolicyWorkflow.id);
+				expect(returnedIds).not.toContain(crossProjectLegacyAnyWorkflow.id);
+				expect(returnedIds).toContain(sameProjectLegacyAnyWorkflow.id);
 				expect(returnedIds).toContain(fromListWorkflow.id);
-				expect(returnedIds).not.toContain(
-					(
-						await createWorkflow(
-							{
-								name: 'None Policy Check',
-								nodes: [executeWorkflowTriggerNode()],
-								settings: { callerPolicy: 'none' },
-							},
-							owner,
-						)
-					).id,
-				);
+				expect(returnedIds).not.toContain(nonePolicyWorkflow.id);
 			});
 
 			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
 				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
 
-				const anyPolicyWorkflow = await createWorkflow(
+				// Allowlists the parent, so it would be callable with expansion enabled.
+				const fromListWorkflow = await createWorkflow(
 					{
-						name: 'Any Policy',
+						name: 'From List Policy',
 						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'any' },
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
 					},
 					owner,
 				);
@@ -1950,8 +1957,8 @@ describe('GET /workflows', () => {
 					.expect(200);
 
 				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
-				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
+				// member doesn't own fromListWorkflow, so without expansion it should not be visible
+				expect(returnedIds).not.toContain(fromListWorkflow.id);
 			});
 
 			test('should not expand the list when the requester cannot read the parent workflow', async () => {
@@ -3344,9 +3351,9 @@ describe('PATCH /workflows/:workflowId', () => {
 				},
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3529,9 +3536,9 @@ describe('PATCH /workflows/:workflowId', () => {
 			nodes: [
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3561,9 +3568,9 @@ describe('PATCH /workflows/:workflowId', () => {
 			nodes: [
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3835,8 +3842,7 @@ describe('PATCH /workflows/:workflowId', () => {
 				timezone: 'America/New_York',
 			},
 		});
-
-		expect(response.statusCode).toBe(200);
+		expect(response.statusCode, JSON.stringify(response.body, null, 2)).toBe(200);
 
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update');
@@ -5436,7 +5442,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 				nodes: [
 					{
 						id: 'trigger-1',
-						parameters: {},
+						parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 						name: 'Schedule Trigger',
 						type: 'n8n-nodes-base.scheduleTrigger',
 						typeVersion: 1,

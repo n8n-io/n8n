@@ -57,7 +57,7 @@ export class ModuleRegistry {
 		'breaking-changes',
 		'source-control',
 		'dynamic-credentials',
-		'chat-hub',
+		// chat-hub is deprecated and off by default. Opt in with N8N_ENABLED_MODULES=chat-hub.
 		'sso-oidc',
 		'sso-saml',
 		'log-streaming',

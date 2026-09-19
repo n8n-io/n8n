@@ -1,5 +1,10 @@
 import { mock } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions, IWebhookFunctions, INodeType } from 'n8n-workflow';
+import type {
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IWebhookFunctions,
+	INodeType,
+} from 'n8n-workflow';
 
 import { SlackTrigger } from '../SlackTrigger.node';
 import * as GenericFunctions from '../V2/GenericFunctions';
@@ -706,6 +711,30 @@ describe('SlackTrigger Node', () => {
 			expect(mockWebhookFunctions.getResponseObject().json).toHaveBeenCalledWith({
 				challenge: 'test_challenge_123',
 			});
+		});
+	});
+
+	describe('webhookMethods - checkExists', () => {
+		it('should throw a clear error when the credential has no signature secret', async () => {
+			const hookFunctions = mock<IHookFunctions>();
+			hookFunctions.getCredentials.mockResolvedValue({ accessToken: 'xoxb-token' });
+
+			await expect(
+				slackTrigger.webhookMethods!.default!.checkExists.call(hookFunctions),
+			).rejects.toThrow('The Slack API credential has no signature secret');
+			expect(hookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
+		});
+
+		it('should return true when the credential has a signature secret', async () => {
+			const hookFunctions = mock<IHookFunctions>();
+			hookFunctions.getCredentials.mockResolvedValue({
+				accessToken: 'xoxb-token',
+				signatureSecret: 'secret',
+			});
+
+			await expect(
+				slackTrigger.webhookMethods!.default!.checkExists.call(hookFunctions),
+			).resolves.toBe(true);
 		});
 	});
 

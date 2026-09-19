@@ -148,8 +148,8 @@ describe('TelemetryEventRelay', () => {
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
-		mode: 'default',
-		availableModes: ['default', 'filesystem', 's3'],
+		mode: 'filesystem',
+		availableModes: ['filesystem', 's3'],
 	});
 	const instanceSettings = mockInstance(InstanceSettings, { isDocker: false, n8nFolder: '/test' });
 	const workflowRepository = mock<WorkflowRepository>();
@@ -1278,20 +1278,6 @@ describe('TelemetryEventRelay', () => {
 				vault_type: 'vault',
 				scope: 'project',
 				project_ids: ['project1', 'project2', 'project3'],
-			});
-		});
-
-		it('should track on `external-secrets-system-roles-toggled` event', () => {
-			const event: RelayEventMap['external-secrets-system-roles-toggled'] = {
-				userId: 'user123',
-				enabled: true,
-			};
-
-			eventService.emit('external-secrets-system-roles-toggled', event);
-
-			expect(telemetry.track).toHaveBeenCalledWith('User toggled external secrets system roles', {
-				user_id: 'user123',
-				enabled: true,
 			});
 		});
 	});
@@ -3254,7 +3240,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_workflow_info: false,
 						metrics_enabled: true,
 					},
-					n8n_binary_data_mode: 'default',
+					n8n_binary_data_mode: 'filesystem',
 					n8n_deployment_type: 'default',
 					saml_enabled: false,
 					smtp_set_up: true,
@@ -4187,7 +4173,7 @@ describe('TelemetryEventRelay', () => {
 								id: '1',
 								typeVersion: 1,
 								name: 'OpenAI',
-								type: 'n8n-nodes-base.openAi',
+								type: '@n8n/n8n-nodes-langchain.openAi',
 								parameters: {},
 								position: [100, 200],
 							},
