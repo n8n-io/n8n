@@ -11,7 +11,9 @@ import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
 import { N8nObjectValidationRule } from './n8n-object-validation.js';
+import { NoAiCodexCategoryRule } from './no-ai-codex-category.js';
 import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
+import { NoCodexSubcategoriesRule } from './no-codex-subcategories.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
 import { NoDeadFilesRule } from './no-dead-files.js';
@@ -47,6 +49,8 @@ import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
 export const rules = {
 	'ai-node-package-json': AiNodePackageJsonRule,
+	'no-ai-codex-category': NoAiCodexCategoryRule,
+	'no-codex-subcategories': NoCodexSubcategoriesRule,
 	'no-restricted-globals': NoRestrictedGlobalsRule,
 	'no-restricted-imports': NoRestrictedImportsRule,
 	'credential-password-field': CredentialPasswordFieldRule,
