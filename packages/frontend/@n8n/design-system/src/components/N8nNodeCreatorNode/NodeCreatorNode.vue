@@ -19,6 +19,8 @@ export interface Props {
 	isOfficial?: boolean;
 	hideNodeIcon?: boolean;
 	isNew?: boolean;
+	/** Greys the row and drops the pointer cursor. The consumer decides what a click does. */
+	disabled?: boolean;
 }
 
 defineProps<Props>();
@@ -27,7 +29,7 @@ defineEmits<{
 	tooltipClick: [e: MouseEvent];
 }>();
 
-defineSlots<{ icon: {}; extraDetails: {}; dragContent: {} }>();
+defineSlots<{ icon: {}; extraDetails: {}; dragContent: {}; trailing: {} }>();
 
 const { t } = useI18n();
 </script>
@@ -37,13 +39,14 @@ const { t } = useI18n();
 		:class="{
 			[$style.creatorNode]: true,
 			[$style.hasAction]: !showActionArrow,
+			[$style.disabled]: disabled,
 		}"
 		v-bind="$attrs"
 	>
 		<div v-if="!hideNodeIcon" :class="$style.nodeIcon">
 			<slot name="icon" />
 		</div>
-		<div>
+		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
 				<PreviewTag v-if="tag?.preview" size="small" :class="$style.previewTag" :text="tag.text" />
@@ -85,6 +88,9 @@ const { t } = useI18n();
 		<button v-if="showActionArrow" :class="$style.panelIcon">
 			<N8nIcon icon="arrow-right" size="large" />
 		</button>
+		<div v-else-if="$slots.trailing" :class="$style.trailing">
+			<slot name="trailing" />
+		</div>
 	</div>
 </template>
 
@@ -102,6 +108,24 @@ const { t } = useI18n();
 }
 .creatorNode:hover .panelIcon {
 	color: var(--action--arrow--color--hover, var(--color--text--tint-1));
+}
+.disabled {
+	cursor: not-allowed;
+
+	// Fade the node, not the trailing slot, so a status icon there keeps full strength.
+	.nodeIcon,
+	.body {
+		opacity: 0.45;
+	}
+}
+.trailing {
+	flex-grow: 1;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+	padding-right: var(--spacing--2xs);
+	color: var(--color--text--tint-1);
 }
 .previewTag {
 	margin-left: var(--spacing--2xs);

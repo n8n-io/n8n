@@ -4,10 +4,15 @@ import { N8nLink } from '@n8n/design-system';
 import { REGULAR_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/app/constants';
 import type { NodeFilterType } from '@/Interface';
 
-defineProps<{
-	query: string;
-	rootView?: NodeFilterType;
-}>();
+withDefaults(
+	defineProps<{
+		query: string;
+		rootView?: NodeFilterType;
+		suggestHttpRequest?: boolean;
+		suggestWebhook?: boolean;
+	}>(),
+	{ rootView: undefined, suggestHttpRequest: true, suggestWebhook: true },
+);
 
 const emit = defineEmits<{
 	addHttpNode: [];
@@ -26,11 +31,14 @@ const i18n = useI18n();
 			}}
 		</p>
 		<p
-			v-if="rootView === REGULAR_NODE_CREATOR_VIEW || rootView === TRIGGER_NODE_CREATOR_VIEW"
+			v-if="
+				suggestHttpRequest &&
+				(rootView === REGULAR_NODE_CREATOR_VIEW || rootView === TRIGGER_NODE_CREATOR_VIEW)
+			"
 			:class="$style.action"
 		>
 			{{ i18n.baseText('nodeCreator.noResults.connectUsingSuggestedNode') }}
-			<template v-if="rootView === TRIGGER_NODE_CREATOR_VIEW">
+			<template v-if="suggestWebhook && rootView === TRIGGER_NODE_CREATOR_VIEW">
 				<N8nLink size="small" theme="text" underline @click="emit('addWebhookNode')">
 					{{ i18n.baseText('nodeCreator.noResults.webhook') }}
 				</N8nLink>
