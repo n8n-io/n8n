@@ -2,6 +2,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { attendeesField, resolveAttendees } from './attendees';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
 import { meetingRequest, meetingsPath, requiredText, toGraphUtc } from './shared';
 
@@ -31,6 +32,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		description: 'The date and time when the meeting ends. Must be later than the start time.',
 	},
+	attendeesField,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -70,6 +72,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	applyMeetingSettings(body, options);
 	if (options.passcodeRequired !== undefined) {
 		body.joinMeetingIdSettings = { isPasscodeRequired: options.passcodeRequired };
+	}
+	const attendees = await resolveAttendees.call(this, i, this.getNodeParameter('attendees', i, {}));
+	if (attendees.length) {
+		body.participants = { attendees };
 	}
 
 	return await meetingRequest.call(this, 'POST', await meetingsPath.call(this, i), body);

@@ -7,9 +7,17 @@ import {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { resolveAttendees, updateAttendeesField } from './attendees';
 import { resolveMeetingId } from './meetingLocator';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import { meetingHint, meetingRequest, meetingsPath, optionalText, toGraphUtc } from './shared';
+import {
+	isSet,
+	meetingHint,
+	meetingRequest,
+	meetingsPath,
+	optionalText,
+	toGraphUtc,
+} from './shared';
 import { meetingRLC } from '../../descriptions';
 import { rewriteNotFound } from '../../transport';
 
@@ -45,6 +53,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. Quarterly Sync',
 				description: 'The subject of the meeting',
 			},
+			updateAttendeesField,
 		]),
 	},
 ];
@@ -84,6 +93,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.endDateTime = toGraphUtc.call(this, updateFields.endDateTime, 'End Time');
 	}
 	applyMeetingSettings(body, updateFields);
+	// Key presence, not row count: `{}` and `{ attendee: [] }` both clear the list, which Graph
+	// documents as a valid state. An unset field leaves the attendees unchanged.
+	if (isSet(updateFields.attendees)) {
+		body.participants = { attendees: await resolveAttendees.call(this, i, updateFields.attendees) };
+	}
 
 	if (Object.keys(body).length === 0) {
 		throw new NodeOperationError(this.getNode(), 'No fields are set to update', {

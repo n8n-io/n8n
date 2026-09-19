@@ -7,6 +7,7 @@ import {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { createOrGetAttendeesField, resolveAttendees } from './attendees';
 import { meetingRequest, meetingsPath, optionalText, requiredText, toGraphUtc } from './shared';
 
 const properties: INodeProperties[] = [
@@ -27,6 +28,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add option',
 		options: [
+			createOrGetAttendeesField,
 			{
 				displayName: 'End Time',
 				name: 'endDateTime',
@@ -84,6 +86,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	}
 	if (options.endDateTime) {
 		body.endDateTime = toGraphUtc.call(this, options.endDateTime, 'End Time');
+	}
+	const attendees = await resolveAttendees.call(this, i, options.attendees);
+	if (attendees.length) {
+		body.participants = { attendees };
 	}
 
 	return await meetingRequest.call(

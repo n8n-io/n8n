@@ -200,7 +200,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				id = value;
 			} else {
 				const user = await resolveUserTarget.call(this, value, i, label);
-				id = user.id as string;
+				id = user.id;
 			}
 
 			const key = id.toLowerCase();
