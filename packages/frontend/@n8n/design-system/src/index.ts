@@ -49,6 +49,10 @@ export {
 	TagsInputItemText,
 } from './v2/components/TagsInput/reka-ui';
 export type * from './v2/components/TagsInput/TagsInput.types';
+export { default as N8nListbox } from './v2/components/Listbox/Listbox.vue';
+export { default as N8nListboxItem } from './v2/components/Listbox/ListboxItem.vue';
+export { default as N8nListboxItemDefault } from './v2/components/Listbox/ListboxItemDefault.vue';
+export type * from './v2/components/Listbox/Listbox.types';
 export { default as N8nSwitch2 } from './components/N8nSwitch/Switch.vue';
 export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';
