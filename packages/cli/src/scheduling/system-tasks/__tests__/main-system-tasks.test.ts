@@ -10,10 +10,15 @@ import { WorkflowPublicationOutboxCleanupTask } from '@/workflows/publication/wo
 
 import { mainSystemTasks } from '../main-system-tasks';
 
-const configWith = ({ pruneData = true, useWorkflowPublicationService = true } = {}) =>
+const configWith = ({
+	pruneData = true,
+	useWorkflowPublicationService = true,
+	autoRenewalEnabled = true,
+} = {}) =>
 	mock<GlobalConfig>({
 		executions: { pruneData },
 		workflows: { useWorkflowPublicationService },
+		license: { autoRenewalEnabled },
 	});
 
 it('should return every main task when all features are on', async () => {
@@ -21,9 +26,9 @@ it('should return every main task when all features are on', async () => {
 
 	expect(tasks).toEqual([
 		ActivityPruningTask,
-		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryCompactionTrimTask,
+		LicenseRenewalTask,
 		ExecutionPruningSoftDeleteTask,
 		WorkflowPublicationOutboxCleanupTask,
 	]);
@@ -40,5 +45,12 @@ it('should leave out outbox cleanup when the publication service is off', async 
 	const tasks = await mainSystemTasks(configWith({ useWorkflowPublicationService: false }));
 
 	expect(tasks).not.toContain(WorkflowPublicationOutboxCleanupTask);
+	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
+});
+
+it('should leave out license renewal when auto-renewal is off', async () => {
+	const tasks = await mainSystemTasks(configWith({ autoRenewalEnabled: false }));
+
+	expect(tasks).not.toContain(LicenseRenewalTask);
 	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
 });
