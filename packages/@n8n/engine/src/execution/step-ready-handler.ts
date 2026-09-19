@@ -13,6 +13,7 @@ import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
+	isLiveExecutionStatus,
 	isSettledStatus,
 	hasResumeCondition,
 	type StepError,
@@ -72,10 +73,11 @@ export class StepReadyHandler {
 				? undefined
 				: this.executorFor(step, node);
 
-		if (execution.status !== 'running') {
-			// The execution is no longer running, so we don't run the step.
-			// The step is left `running` for reconciliation (CAT-2938) or
-			// internal consistency checks (CAT-3930) to resolve.
+		if (!isLiveExecutionStatus(execution.status)) {
+			// The execution has ended, so we don't run the step. The step is left
+			// `running` for reconciliation (CAT-2938) or internal consistency
+			// checks (CAT-3930) to resolve. A `waiting` execution passes: this step
+			// resumed, and the status only catches up once it does.
 			return;
 		}
 
@@ -134,8 +136,13 @@ export class StepReadyHandler {
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so nothing is announced and no
-		// planning follows. TODO(CAT-2928): publish `step:waiting` so the UI can show it.
-		if (run.kind === 'wait') return;
+		// planning follows. The execution's own status follows the step's, so it
+		// reports `waiting` once this was the last step that could run.
+		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
+		if (run.kind === 'wait') {
+			await this.executionStore.refreshLiveStatus(execution.id);
+			return;
+		}
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.

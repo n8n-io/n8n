@@ -1,4 +1,4 @@
-import type { Repository } from '@n8n/typeorm';
+import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowExecution } from './entities';
 import {
@@ -14,6 +14,9 @@ import type { ExecutionStatus } from '../execution/execution.types';
  * imported: TypeORM's `QueryDeepPartialEntity` has no root export.
  */
 type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
+
+/** The statuses an execution can still move on from. */
+const LIVE_STATUSES: ExecutionStatus[] = ['running', 'waiting'];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
@@ -49,10 +52,40 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
+		// A waiting execution can end too: a step that fails elsewhere ends the
+		// whole execution, and the steps that wait are cancelled with it.
 		const result = await this.repo.update(
-			{ id, status: 'running' },
+			{ id, status: In(LIVE_STATUSES) },
 			{ status, finishedAt: new Date() },
 		);
 		return result.affected === 1;
+	}
+
+	async refreshLiveStatus(id: string): Promise<void> {
+		// One statement, so no step can change between the decision and the write.
+		// The last predicate skips the write when the status already holds. A
+		// settling step then does not take the execution row's lock for nothing.
+		await this.repo.query(
+			`WITH live AS (
+				SELECT
+					EXISTS (
+						SELECT 1 FROM workflow_step_execution
+						WHERE execution_id = $1 AND status IN ('queued', 'running')
+					) AS runnable,
+					EXISTS (
+						SELECT 1 FROM workflow_step_execution
+						WHERE execution_id = $1 AND status = 'waiting'
+					) AS waiting
+			)
+			UPDATE workflow_execution e
+			SET status = CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END,
+				updated_at = now()
+			FROM live
+			WHERE e.id = $1
+				AND e.status IN ('running', 'waiting')
+				AND (live.runnable OR live.waiting)
+				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
+			[id],
+		);
 	}
 }

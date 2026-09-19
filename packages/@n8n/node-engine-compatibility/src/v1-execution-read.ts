@@ -32,15 +32,19 @@ import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './
  * having no `runData` for it, and an entry would make the canvas claim it ran.
  * `queued` never started and `skipped` was decided against.
  *
- * Two statuses do not obey that rule. A `waiting` step ran and then suspended.
- * A `cancelled` step can be a waiting step that `cancelPendingSteps` cancelled.
- * Neither gets an entry today, so this map hides a run that happened.
- * TODO(CAT-2928): map the waiting statuses the canvas must show.
+ * A suspended step did run, and v1 reports one the same way: the run data of a
+ * waiting v1 execution holds a task for the paused node with the status
+ * `waiting`. The task carries no outputs here, because the step has none until
+ * it resumes, where v1 carries the node's pass-through data.
+ *
+ * TODO(CAT-2928): a `cancelled` step can be a waiting step that
+ * `cancelPendingSteps` cancelled, and it still has no entry.
  */
 const TASK_STATUS_V1 = new Map<StepStatus, ExecutionStatus>([
 	['completed', 'success'],
 	['failed', 'error'],
 	['running', 'running'],
+	['waiting', 'waiting'],
 ]);
 
 interface StepRun {
