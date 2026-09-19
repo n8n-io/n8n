@@ -1,22 +1,28 @@
 import { instanceAiApprovalResumeSchema } from '@n8n/api-types';
-import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
+import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ThreadSessionStore } from './compiler-session-store';
+import {
+	clarificationQuestionsSchema,
+	decisionDiagnosticsShape,
+	issueSchema,
+	optional,
+	optionalString,
+	registryFor,
+	selectDecisionService,
+	slug,
+	verificationLevelSchema,
+} from './compiler-tool-support';
 import { confirmationSuspendSchema, createBuildWorkflowTool } from './build-workflow.tool';
 import type { ExecutionDebugInfo, InstanceAiContext } from '../../types';
-import {
-	ModelDecisionService,
-	NodeRegistry,
-	NullDecisionService,
-	WorkflowCompilerService,
-	type CompilerResult,
-	type DecisionService,
-	type VerificationReport,
-} from '../../workflow-compiler';
+import { WorkflowCompilerService, type CompilerResult } from '../../workflow-compiler';
 import { approvalSummarySchema } from '../approval-copy';
+
+export { selectDecisionService };
 
 /**
  * `build-workflow`: the decision-assisted workflow compiler. The orchestrator
@@ -34,68 +40,68 @@ const baseInputShape = {
 				'"debug": repair `workflowId` from its failed execution (`executionId` optional). ' +
 				'"answer": continue `sessionId` with the user’s reply in `request`.',
 		),
-	request: z
-		.string()
-		.optional()
-		.describe(
-			'The user’s words: the behavior to build (create), the change to make (edit), what they reported (debug), or their reply (answer). Required except for debug.',
-		),
-	workflowId: z.string().optional().describe('Target workflow. Required for edit and debug.'),
-	executionId: z
-		.string()
-		.optional()
-		.describe(
-			'Failed execution to use as evidence for debug. Defaults to the latest failed execution.',
-		),
-	sessionId: z
-		.string()
-		.optional()
-		.describe(
-			'Compiler session to continue. Returned by an earlier call; required with action "answer".',
-		),
-	answers: z
-		.record(z.string(), z.unknown())
-		.optional()
-		.describe(
-			'Structured answers to earlier clarification questions, keyed by the returned `fields` paths.',
-		),
-	name: z.string().optional().describe('Workflow name override for new workflows.'),
+	request: optionalString(
+		'The user’s words: the behavior to build (create), the change to make (edit), what they reported (debug), or their reply (answer). Required except for debug.',
+	),
+	workflowId: optionalString('Target workflow. Required for edit and debug.'),
+	executionId: optionalString(
+		'Failed execution to use as evidence for debug. Defaults to the latest failed execution.',
+	),
+	sessionId: optionalString(
+		'Compiler session to continue. Returned by an earlier call; required with action "answer".',
+	),
+	answers: optional(
+		z.record(z.string(), z.unknown()),
+		'Structured answers to earlier clarification questions, keyed by the returned `fields` paths.',
+	),
+	name: optionalString('Workflow name override for new workflows.'),
 	approvalSummary: approvalSummarySchema,
-	workItemId: z
-		.string()
-		.optional()
-		.describe('Workflow-loop work item id when repairing a workflow.'),
-	isSupportingWorkflow: z
-		.boolean()
-		.optional()
-		.describe('Marks a saved sub-workflow as supporting.'),
-	preferNewCredentials: z
-		.array(z.string())
-		.optional()
-		.describe('Credential types the user asked to create fresh instead of reusing existing ones.'),
-	executionIntent: z
-		.enum(['one-off', 'reusable'])
-		.optional()
-		.describe(
-			'"one-off" when the user wants a single run now; "reusable" for an ongoing automation.',
-		),
+	workItemId: optionalString('Workflow-loop work item id when repairing a workflow.'),
+	isSupportingWorkflow: optional(z.boolean(), 'Marks a saved sub-workflow as supporting.'),
+	preferNewCredentials: optional(
+		z.array(z.string()),
+		'Credential types the user asked to create fresh instead of reusing existing ones.',
+	),
+	executionIntent: optional(
+		z.enum(['one-off', 'reusable']),
+		'"one-off" when the user wants a single run now; "reusable" for an ongoing automation.',
+	),
 };
 
 export const compileWorkflowInputSchema = z.object(baseInputShape).strict();
 export const compileWorkflowInputSchemaWithFolderPlacement = z
 	.object({
 		...baseInputShape,
-		folderPath: z
-			.string()
-			.optional()
-			.describe(
-				'Folder to create a new workflow in, named as the user named it (`Clients/Acme`). New workflows only.',
-			),
+		folderPath: optionalString(
+			'Folder to create a new workflow in, named as the user named it (`Clients/Acme`). New workflows only.',
+		),
 	})
 	.strict();
 export type CompileWorkflowInput = z.infer<typeof compileWorkflowInputSchemaWithFolderPlacement>;
 
-const verificationLevelSchema = z.enum(['pass', 'fail', 'warn', 'not_run']);
+const levelsSchema = z.object({
+	structural: verificationLevelSchema,
+	parameters: verificationLevelSchema,
+	expressions: verificationLevelSchema,
+	contracts: verificationLevelSchema,
+	fixtureTests: verificationLevelSchema,
+	integrationTests: verificationLevelSchema,
+	publication: verificationLevelSchema,
+});
+const executionPathsSchema = z.array(
+	z.object({
+		id: z.string(),
+		decisions: z.array(z.object({ node: z.string(), label: z.string() })),
+		end: z.string(),
+	}),
+);
+const generatorSchema = z.object({
+	compilerVersion: z.string(),
+	patternRegistryVersion: z.string(),
+	nodeRegistryVersion: z.string(),
+	patternIds: z.array(z.string()),
+});
+const diagnosticsSchema = z.object({ planningPath: z.string(), ...decisionDiagnosticsShape });
 
 export const compileWorkflowOutputSchema = z
 	.object({
@@ -104,104 +110,21 @@ export const compileWorkflowOutputSchema = z
 		sessionId: z.string(),
 		/** Question(s) for the user when status is needs_clarification; relay verbatim, then call action "answer". */
 		message: z.string().optional(),
-		questions: z
-			.array(
-				z.object({
-					fields: z.array(z.string()),
-					question: z.string(),
-					candidates: z.array(z.unknown()).optional(),
-				}),
-			)
-			.optional(),
+		questions: clarificationQuestionsSchema,
 		summary: z.string().optional(),
-		verification: z
-			.object({
-				structural: verificationLevelSchema,
-				parameters: verificationLevelSchema,
-				expressions: verificationLevelSchema,
-				contracts: verificationLevelSchema,
-				fixtureTests: verificationLevelSchema,
-				integrationTests: verificationLevelSchema,
-				publication: verificationLevelSchema,
-			})
-			.optional(),
-		issues: z
-			.array(
-				z.object({
-					severity: z.enum(['error', 'warning', 'info']),
-					code: z.string(),
-					message: z.string(),
-					nodeName: z.string().optional(),
-				}),
-			)
-			.optional(),
-		executionPaths: z
-			.array(
-				z.object({
-					id: z.string(),
-					decisions: z.array(z.object({ node: z.string(), label: z.string() })),
-					end: z.string(),
-				}),
-			)
-			.optional(),
+		verification: levelsSchema.optional(),
+		issues: z.array(issueSchema.extend({ nodeName: z.string().optional() })).optional(),
+		executionPaths: executionPathsSchema.optional(),
 		changedNodeNames: z.array(z.string()).optional(),
 		credentialTypes: z.array(z.string()).optional(),
-		generator: z
-			.object({
-				compilerVersion: z.string(),
-				patternRegistryVersion: z.string(),
-				nodeRegistryVersion: z.string(),
-				patternIds: z.array(z.string()),
-			})
-			.optional(),
-		diagnostics: z
-			.object({
-				planningPath: z.string(),
-				decisionCount: z.number(),
-				decisionWaves: z.number(),
-				decisionLatencyMs: z.number(),
-				timings: z.record(z.string(), z.number()),
-			})
-			.optional(),
+		generator: generatorSchema.optional(),
+		diagnostics: diagnosticsSchema.optional(),
 		errors: z.array(z.string()).optional(),
 	})
 	.passthrough();
 
-const confirmationResumeSchema = instanceAiApprovalResumeSchema;
-
-interface BuildCtx {
-	loadSkill?: RuntimeSkillLoader;
-	toolCallId?: string;
-	resumeData?: z.infer<typeof confirmationResumeSchema>;
-	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
-	abortSignal?: AbortSignal;
-}
-
 /** Session that an in-flight tool call compiled before it suspended for approval. */
 const pendingSessions = new Map<string, string>();
-
-const registryByNodeService = new WeakMap<InstanceAiContext['nodeService'], NodeRegistry>();
-
-function registryFor(context: InstanceAiContext): NodeRegistry {
-	const key = context.nodeService;
-	let registry = registryByNodeService.get(key);
-	if (!registry) {
-		registry = new NodeRegistry({
-			descriptions: {
-				getDescription: async (type, version) => await key.getDescription(type, version),
-			},
-		});
-		registryByNodeService.set(key, registry);
-	}
-	return registry;
-}
-
-/** Decision backend priority: host-wired structured reads, then the run's model, then abstain. */
-export function selectDecisionService(context: InstanceAiContext): DecisionService {
-	if (context.decisionService) return context.decisionService;
-	if (context.modelId) return new ModelDecisionService(context.modelId);
-	return new NullDecisionService();
-}
 
 export function createWorkflowCompilerService(context: InstanceAiContext): WorkflowCompilerService {
 	return new WorkflowCompilerService({
@@ -211,36 +134,7 @@ export function createWorkflowCompilerService(context: InstanceAiContext): Workf
 	});
 }
 
-function slug(value: string): string {
-	return (
-		value
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '') || 'workflow'
-	);
-}
-
-function sourceFilePathFor(
-	result: Extract<CompilerResult, { status: 'compiled' }>,
-	workflowId: string | undefined,
-): string {
-	const base = workflowId
-		? slug(workflowId)
-		: `${slug(result.workflow.name)}-${slug(result.sessionId)}`;
-	return `src/workflows/${base}.workflow.json`;
-}
-
-async function latestFailedExecution(
-	context: InstanceAiContext,
-	workflowId: string,
-	executionId?: string,
-): Promise<ExecutionDebugInfo | undefined> {
-	if (executionId) return await context.executionService.getDebugInfo(executionId);
-	const failed = await context.executionService.list({ workflowId, status: 'error', limit: 1 });
-	const latest = failed[0];
-	if (!latest) return undefined;
-	return await context.executionService.getDebugInfo(latest.id);
-}
+const wfSlug = (value: string) => slug(value, 'workflow');
 
 export function createCompileWorkflowTool(context: InstanceAiContext) {
 	const persist = createBuildWorkflowTool(context);
@@ -260,12 +154,18 @@ export function createCompileWorkflowTool(context: InstanceAiContext) {
 		)
 		.output(compileWorkflowOutputSchema)
 		.suspend(confirmationSuspendSchema)
-		.resume(confirmationResumeSchema)
-		.handler(async (input, ctx: BuildCtx) => {
+		.resume(instanceAiApprovalResumeSchema)
+		.handler(async (input, ctx) => {
 			const service = createWorkflowCompilerService(context);
 			const pendingSessionId = ctx.toolCallId ? pendingSessions.get(ctx.toolCallId) : undefined;
 			const pending =
 				ctx.resumeData && pendingSessionId ? await service.getSession(pendingSessionId) : undefined;
+			const failed = (errors: string[]) => ({
+				success: false,
+				status: 'failed' as const,
+				sessionId: input.sessionId ?? '',
+				errors,
+			});
 
 			let result: CompilerResult;
 			let targetWorkflowId: string | undefined;
@@ -294,65 +194,34 @@ export function createCompileWorkflowTool(context: InstanceAiContext) {
 				};
 			} else {
 				const invalid = validateActionInput(input);
-				if (invalid)
-					return {
-						success: false,
-						status: 'failed' as const,
-						sessionId: input.sessionId ?? '',
-						errors: [invalid],
-					};
+				if (invalid) return failed([invalid]);
 				const run = await runCompiler(context, service, input, ctx.abortSignal);
-				if ('error' in run) {
-					return {
-						success: false,
-						status: 'failed' as const,
-						sessionId: input.sessionId ?? '',
-						errors: [run.error],
-					};
-				}
+				if ('error' in run) return failed([run.error]);
 				result = run.result;
 				targetWorkflowId = run.workflowId;
 			}
 
-			const diagnostics = {
-				planningPath: result.diagnostics.planningPath,
-				decisionCount: result.diagnostics.decisionCount,
-				decisionWaves: result.diagnostics.decisionWaves,
-				decisionLatencyMs: result.diagnostics.decisionLatencyMs,
-				timings: result.diagnostics.timings,
-			};
-
+			const diagnostics = diagnosticsSchema.parse(result.diagnostics);
+			const blocked = <E extends object>(
+				status: 'needs_clarification' | 'needs_setup' | 'failed',
+				extra: E,
+			) => ({ success: false, status, sessionId: result.sessionId, ...extra, diagnostics });
 			switch (result.status) {
 				case 'needs_clarification':
-					return {
-						success: false,
-						status: 'needs_clarification' as const,
-						sessionId: result.sessionId,
-						message: result.message,
-						questions: result.questions,
-						diagnostics,
-					};
+					return blocked(result.status, { message: result.message, questions: result.questions });
 				case 'needs_setup':
-					return {
-						success: false,
-						status: 'needs_setup' as const,
-						sessionId: result.sessionId,
+					return blocked(result.status, {
 						summary: result.summary,
 						credentialTypes: result.credentialTypes,
 						message: `${result.summary} Run workflows(action="setup") for workflow ${targetWorkflowId ?? ''} to fix the credential, then verify again.`,
-						diagnostics,
-					};
+					});
 				case 'failed':
-					return {
-						success: false,
-						status: 'failed' as const,
-						sessionId: result.sessionId,
+					return blocked(result.status, {
 						errors: [result.reason],
 						...(result.report
-							? { verification: levels(result.report), issues: result.report.issues }
+							? { verification: levelsSchema.parse(result.report), issues: result.report.issues }
 							: {}),
-						diagnostics,
-					};
+					});
 				case 'compiled':
 					break;
 			}
@@ -360,20 +229,20 @@ export function createCompileWorkflowTool(context: InstanceAiContext) {
 			if (ctx.toolCallId) pendingSessions.set(ctx.toolCallId, result.sessionId);
 			const persistHandler = persist.handler;
 			if (!persistHandler) throw new UnexpectedError('persist-workflow tool has no handler');
+			const { isSupportingWorkflow, preferNewCredentials } = input;
+			const base = targetWorkflowId
+				? wfSlug(targetWorkflowId)
+				: `${wfSlug(result.workflow.name)}-${wfSlug(result.sessionId)}`;
 			const persisted = await persistHandler(
 				{
-					filePath: sourceFilePathFor(result, targetWorkflowId),
+					filePath: `src/workflows/${base}.workflow.json`,
 					sourceCode: JSON.stringify(result.workflow, null, 2),
 					...(targetWorkflowId ? { workflowId: targetWorkflowId } : {}),
 					...(input.name ? { name: input.name } : {}),
 					...(input.approvalSummary ? { approvalSummary: input.approvalSummary } : {}),
 					...(input.workItemId ? { workItemId: input.workItemId } : {}),
-					...(input.isSupportingWorkflow !== undefined
-						? { isSupportingWorkflow: input.isSupportingWorkflow }
-						: {}),
-					...(input.preferNewCredentials
-						? { preferNewCredentials: input.preferNewCredentials }
-						: {}),
+					...(isSupportingWorkflow !== undefined ? { isSupportingWorkflow } : {}),
+					...(preferNewCredentials ? { preferNewCredentials } : {}),
 					...(input.executionIntent ? { executionIntent: input.executionIntent } : {}),
 					...('folderPath' in input && input.folderPath ? { folderPath: input.folderPath } : {}),
 					// The compiler emits a flat graph; canvas node groups are not part of the compiled artifact.
@@ -396,60 +265,31 @@ export function createCompileWorkflowTool(context: InstanceAiContext) {
 						: ('failed' as const),
 				sessionId: result.sessionId,
 				summary: result.summary,
-				verification: levels(result.report),
+				verification: levelsSchema.parse(result.report),
 				issues: result.report.issues,
-				executionPaths: result.executionPaths.map((path) => ({
-					id: path.id,
-					decisions: path.decisions.map((decision) => ({
-						node: decision.node,
-						label: decision.label,
-					})),
-					end: path.end,
-				})),
+				executionPaths: executionPathsSchema.parse(result.executionPaths),
 				changedNodeNames: result.changedNodeNames,
-				generator: {
-					compilerVersion: result.generator.compilerVersion,
-					patternRegistryVersion: result.generator.patternRegistryVersion,
-					nodeRegistryVersion: result.generator.nodeRegistryVersion,
-					patternIds: result.generator.patternIds,
-				},
+				generator: generatorSchema.parse(result.generator),
 				diagnostics,
 			};
 		})
 		.build();
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
-function levels(report: VerificationReport) {
-	return {
-		structural: report.structural,
-		parameters: report.parameters,
-		expressions: report.expressions,
-		contracts: report.contracts,
-		fixtureTests: report.fixtureTests,
-		integrationTests: report.integrationTests,
-		publication: report.publication,
-	};
-}
+const REQUEST_MEANING = {
+	create: 'the user’s description of the workflow',
+	edit: 'the change to make',
+	answer: 'the user’s reply',
+};
 
 function validateActionInput(input: CompileWorkflowInput): string | undefined {
-	switch (input.action) {
-		case 'create':
-			return input.request
-				? undefined
-				: 'action "create" needs `request`: the user’s description of the workflow.';
-		case 'edit':
-			if (!input.workflowId) return 'action "edit" needs `workflowId`.';
-			return input.request ? undefined : 'action "edit" needs `request`: the change to make.';
-		case 'debug':
-			return input.workflowId ? undefined : 'action "debug" needs `workflowId`.';
-		case 'answer':
-			if (!input.sessionId) return 'action "answer" needs `sessionId` from the earlier call.';
-			return input.request ? undefined : 'action "answer" needs `request`: the user’s reply.';
-	}
+	const { action } = input;
+	if ((action === 'edit' || action === 'debug') && !input.workflowId)
+		return `action "${action}" needs \`workflowId\`.`;
+	if (action === 'answer' && !input.sessionId)
+		return 'action "answer" needs `sessionId` from the earlier call.';
+	if (action === 'debug' || input.request) return undefined;
+	return `action "${action}" needs \`request\`: ${REQUEST_MEANING[action]}.`;
 }
 
 async function runCompiler(
@@ -458,33 +298,22 @@ async function runCompiler(
 	input: CompileWorkflowInput,
 	abortSignal: AbortSignal | undefined,
 ): Promise<{ result: CompilerResult; workflowId?: string } | { error: string }> {
+	const { answers, name } = input;
+	const request = input.request ?? '';
+	const create = async (sessionId?: string) => ({
+		result: await service.create({ request, sessionId, answers, name, abortSignal }),
+	});
+	const edit = async (workflowId: string, sessionId?: string) => {
+		const workflow = await loadWorkflow(context, workflowId);
+		if (!workflow) return { error: `Workflow ${workflowId} was not found.` };
+		const args = { request, workflow, workflowId, sessionId, answers, abortSignal };
+		return { result: await service.edit(args), workflowId };
+	};
 	switch (input.action) {
 		case 'create':
-			return {
-				result: await service.create({
-					request: input.request ?? '',
-					sessionId: input.sessionId,
-					answers: input.answers,
-					name: input.name,
-					abortSignal,
-				}),
-			};
-		case 'edit': {
-			const workflowId = input.workflowId ?? '';
-			const workflow = await loadWorkflow(context, workflowId);
-			if (!workflow) return { error: `Workflow ${workflowId} was not found.` };
-			return {
-				result: await service.edit({
-					request: input.request ?? '',
-					workflow,
-					workflowId,
-					sessionId: input.sessionId,
-					answers: input.answers,
-					abortSignal,
-				}),
-				workflowId,
-			};
-		}
+			return await create(input.sessionId);
+		case 'edit':
+			return await edit(input.workflowId ?? '', input.sessionId);
 		case 'debug': {
 			const workflowId = input.workflowId ?? '';
 			const workflow = await loadWorkflow(context, workflowId);
@@ -496,66 +325,32 @@ async function runCompiler(
 				return {
 					error: `No failed execution found for workflow ${workflowId}. Run it (or pass executionId) so the compiler has evidence to work from.`,
 				};
-			return {
-				result: await service.debug({
-					request: input.request,
-					workflow,
-					workflowId,
-					execution,
-					sessionId: input.sessionId,
-					abortSignal,
-				}),
-				workflowId,
-			};
+			const base = { request: input.request, workflow, workflowId, execution, abortSignal };
+			return { result: await service.debug({ ...base, sessionId: input.sessionId }), workflowId };
 		}
 		case 'answer': {
 			const sessionId = input.sessionId ?? '';
-			const reply = input.request ?? '';
 			const session = await service.getSession(sessionId);
 			if (!session)
 				return {
 					error: `Compiler session ${sessionId} was not found; start again with action "create", "edit" or "debug".`,
 				};
-			if (session.intent === 'create') {
-				return {
-					result: await service.create({
-						request: reply,
-						sessionId,
-						answers: input.answers,
-						name: input.name,
-						abortSignal,
-					}),
-				};
-			}
+			if (session.intent === 'create') return await create(sessionId);
 			if (!session.workflowId) return { error: `Session ${sessionId} has no target workflow.` };
-			const workflow = await loadWorkflow(context, session.workflowId);
-			if (!workflow) return { error: `Workflow ${session.workflowId} was not found.` };
-			if (session.intent === 'edit') {
-				return {
-					result: await service.edit({
-						request: reply,
-						workflow,
-						workflowId: session.workflowId,
-						sessionId,
-						answers: input.answers,
-						abortSignal,
-					}),
-					workflowId: session.workflowId,
-				};
-			}
 			// A debug answer is a change request against the failing node: route it through edit.
-			return {
-				result: await service.edit({
-					request: reply,
-					workflow,
-					workflowId: session.workflowId,
-					answers: input.answers,
-					abortSignal,
-				}),
-				workflowId: session.workflowId,
-			};
+			return await edit(session.workflowId, session.intent === 'edit' ? sessionId : undefined);
 		}
 	}
+}
+
+async function latestFailedExecution(
+	context: InstanceAiContext,
+	workflowId: string,
+	executionId?: string,
+): Promise<ExecutionDebugInfo | undefined> {
+	if (executionId) return await context.executionService.getDebugInfo(executionId);
+	const [latest] = await context.executionService.list({ workflowId, status: 'error', limit: 1 });
+	return latest ? await context.executionService.getDebugInfo(latest.id) : undefined;
 }
 
 async function loadWorkflow(

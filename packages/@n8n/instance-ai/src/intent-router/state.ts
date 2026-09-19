@@ -1,8 +1,9 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { z } from 'zod';
 
 import { getThread, patchThread } from '../storage/thread-patch';
 import type { InstanceAiContext } from '../types';
-import type { IntentRoute, RouterState } from './schemas';
+import { intentRouteSchema, type RouterState } from './schemas';
 
 const METADATA_KEY = 'instanceAiFastPath';
 
@@ -21,14 +22,18 @@ export const fastPathThreadStateSchema = z.object({
 });
 export type FastPathThreadState = z.infer<typeof fastPathThreadStateSchema>;
 
+function parseState(raw: unknown): FastPathThreadState {
+	const parsed = fastPathThreadStateSchema.safeParse(raw);
+	return parsed.success ? parsed.data : {};
+}
+
 export async function readFastPathState(
 	context: Pick<InstanceAiContext, 'threadMemory' | 'threadId'>,
 ): Promise<FastPathThreadState> {
 	if (!context.threadMemory || !context.threadId) return {};
 	try {
 		const thread = await getThread(context.threadMemory, context.threadId);
-		const parsed = fastPathThreadStateSchema.safeParse(thread?.metadata?.[METADATA_KEY]);
-		return parsed.success ? parsed.data : {};
+		return parseState(thread?.metadata?.[METADATA_KEY]);
 	} catch {
 		return {};
 	}
@@ -42,16 +47,12 @@ export async function writeFastPathState(
 	try {
 		await patchThread(context.threadMemory, {
 			threadId: context.threadId,
-			update: ({ metadata = {} }) => {
-				const parsed = fastPathThreadStateSchema.safeParse(metadata[METADATA_KEY]);
-				const next = update(parsed.success ? parsed.data : {});
-				return { metadata: { ...metadata, [METADATA_KEY]: next } };
-			},
+			update: ({ metadata = {} }) => ({
+				metadata: { ...metadata, [METADATA_KEY]: update(parseState(metadata[METADATA_KEY])) },
+			}),
 		});
 	} catch (error) {
-		context.logger?.debug('Failed to persist fast-path state', {
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger?.debug('Failed to persist fast-path state', { error: getErrorMessage(error) });
 	}
 }
 
@@ -61,28 +62,14 @@ export function toRouterState(
 	context: InstanceAiContext,
 	extras: Partial<RouterState> = {},
 ): RouterState {
-	const previousRoute = persisted.previousRoute;
+	const boundAgentRef = context.agentBuilderTarget?.ref ?? context.agentBuilderTarget?.agentId;
+	const previousRoute = intentRouteSchema.safeParse(persisted.previousRoute);
 	return {
 		...(persisted.pendingSession ? { pendingSession: persisted.pendingSession } : {}),
 		...(persisted.boundWorkflowId ? { boundWorkflowId: persisted.boundWorkflowId } : {}),
-		...((context.agentBuilderTarget?.ref ?? context.agentBuilderTarget?.agentId)
-			? { boundAgentRef: context.agentBuilderTarget?.ref ?? context.agentBuilderTarget?.agentId }
-			: {}),
-		...(previousRoute && isIntentRoute(previousRoute) ? { previousRoute } : {}),
+		...(boundAgentRef ? { boundAgentRef } : {}),
+		...(previousRoute.success ? { previousRoute: previousRoute.data } : {}),
 		...((context.currentUserAttachments?.length ?? 0) > 0 ? { hasAttachments: true } : {}),
 		...extras,
 	};
-}
-
-function isIntentRoute(value: string): value is IntentRoute {
-	return [
-		'workflow.create',
-		'workflow.edit',
-		'workflow.debug',
-		'agent.create',
-		'agent.edit',
-		'agent.verify',
-		'answer',
-		'orchestrator',
-	].includes(value);
 }

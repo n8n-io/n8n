@@ -3,9 +3,15 @@ import {
 	type DecisionService,
 } from '../workflow-compiler/decision/decision-service';
 import { resolveChoice, type DecisionThresholds } from '../workflow-compiler/decision/policy';
-import { NONE_OF_THESE, type DecisionQuestions } from '../workflow-compiler/decision/schemas';
+import { NONE_OF_THESE } from '../workflow-compiler/decision/schemas';
 import { isQuestionOnly, isSmallTalk, scoreCues, vetoedRoutes } from './features';
-import { ROUTE_CRITERIA, type IntentRoute, type RouteDecision, type RouterState } from './schemas';
+import {
+	INTENT_ROUTES,
+	ROUTE_CRITERIA,
+	type IntentRoute,
+	type RouteDecision,
+	type RouterState,
+} from './schemas';
 
 export const INTENT_ROUTER_SCHEMA_VERSION = 'intent-router-v1';
 
@@ -50,27 +56,21 @@ export async function routeIntent(input: RouteIntentInput): Promise<RouteDecisio
 	if (isQuestionOnly(message)) return orchestrator('question without a build request', 'rule');
 
 	const vetoes = vetoedRoutes(state);
-	const allowed = (Object.keys(ROUTE_CRITERIA) as Array<keyof typeof ROUTE_CRITERIA>).filter(
-		(route) => !(route in vetoes),
+	const allowed = INTENT_ROUTES.filter(
+		(route): route is Exclude<IntentRoute, 'answer'> => route !== 'answer' && !(route in vetoes),
 	);
 	const cues = scoreCues(message);
 	const prior: Record<string, number> = {};
-	for (const route of allowed) prior[route] = cues.scores[route] ?? 0;
+	const criteria: Record<string, string | null> = {};
+	for (const route of allowed) {
+		prior[route] = cues.scores[route] ?? 0;
+		criteria[route] = ROUTE_CRITERIA[route];
+	}
 	// The orchestrator is the safe default, so it always keeps prior mass: one
 	// strong cue (weight 3) clears the act threshold alone, weaker or conflicting
 	// cues do not.
 	prior.orchestrator = Math.max(prior.orchestrator ?? 0, 0.75);
 
-	const criteria: Record<string, string | null> = {};
-	for (const route of allowed) criteria[route] = ROUTE_CRITERIA[route];
-	const questions: DecisionQuestions = {
-		route: {
-			type: 'choice',
-			instructions:
-				'Which path should serve this chat message? Choose the compiler paths only when the message asks to build, change, debug or test the artifact; choose orchestrator for everything else.',
-			criteria,
-		},
-	};
 	const decisions = input.decisions ?? new NullDecisionService();
 	const outcome = await decisions.decide({
 		name: 'intent-router.route',
@@ -81,44 +81,43 @@ export async function routeIntent(input: RouteIntentInput): Promise<RouteDecisio
 			boundAgent: Boolean(state.boundAgentRef),
 			previousRoute: state.previousRoute ?? null,
 		},
-		questions,
+		questions: {
+			route: {
+				type: 'choice',
+				instructions:
+					'Which path should serve this chat message? Choose the compiler paths only when the message asks to build, change, debug or test the artifact; choose orchestrator for everything else.',
+				criteria,
+			},
+		},
 		abortSignal: input.abortSignal,
 	});
+	const answer = outcome.ok ? outcome.answers.route : undefined;
 	const read: RouteDecision['read'] = {
 		latencyMs: outcome.latencyMs,
 		backend: decisions.kind,
-		...(outcome.ok && outcome.answers.route?.type === 'choice'
-			? { probabilities: outcome.answers.route.probabilities }
-			: {}),
+		...(answer?.type === 'choice' ? { probabilities: answer.probabilities } : {}),
 	};
-	const answer = outcome.ok ? outcome.answers.route : undefined;
 	const resolution = resolveChoice({ allowed, answer, prior, thresholds: input.thresholds });
-	if (resolution.status === 'chosen') {
-		if (resolution.value === 'orchestrator' || resolution.value === NONE_OF_THESE) {
-			return orchestrator(
-				'the read chose the orchestrator',
-				resolution.source === 'prior' ? 'prior' : 'decision',
-				resolution.confidence,
-				read,
-			);
-		}
-		return {
-			route: resolution.value as IntentRoute,
-			confidence: resolution.confidence,
-			source: resolution.source === 'prior' ? 'prior' : 'decision',
-			reason:
-				resolution.source === 'prior'
-					? `cues ${cues.matched.join(', ')} were decisive without a read`
-					: 'structured read above the act threshold',
+	if (resolution.status !== 'chosen')
+		return orchestrator(
+			resolution.reason === 'unavailable'
+				? 'no decision backend and cues were not decisive'
+				: `read below the act threshold (${resolution.confidence.toFixed(2)}${resolution.best ? `, best ${resolution.best}` : ''})`,
+			'fallback',
+			resolution.confidence,
 			read,
-		};
-	}
-	return orchestrator(
-		resolution.reason === 'unavailable'
-			? 'no decision backend and cues were not decisive'
-			: `read below the act threshold (${resolution.confidence.toFixed(2)}${resolution.best ? `, best ${resolution.best}` : ''})`,
-		'fallback',
-		resolution.confidence,
+		);
+	const source = resolution.source === 'prior' ? 'prior' : 'decision';
+	if (resolution.value === 'orchestrator' || resolution.value === NONE_OF_THESE)
+		return orchestrator('the read chose the orchestrator', source, resolution.confidence, read);
+	return {
+		route: resolution.value as IntentRoute,
+		confidence: resolution.confidence,
+		source,
+		reason:
+			source === 'prior'
+				? `cues ${cues.matched.join(', ')} were decisive without a read`
+				: 'structured read above the act threshold',
 		read,
-	);
+	};
 }

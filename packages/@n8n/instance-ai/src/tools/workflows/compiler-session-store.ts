@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { z } from 'zod';
 
 import { getThread, patchThread } from '../../storage/thread-patch';
@@ -18,6 +19,11 @@ const persistedMapSchema = z.record(z.string(), persistedSessionSchema);
 /** Process-wide cache so a session survives across tool calls in the same run. */
 const processStore = new InMemorySessionStore(500);
 
+function parseSessions(raw: unknown): z.infer<typeof persistedMapSchema> {
+	const parsed = persistedMapSchema.safeParse(raw);
+	return parsed.success ? parsed.data : {};
+}
+
 /**
  * Session store that keeps full sessions in memory and mirrors a compact
  * form into thread metadata, so a clarification loop survives a new run or
@@ -31,8 +37,7 @@ export class ThreadSessionStore implements SessionStore {
 	async get(id: string): Promise<GenerationSession | undefined> {
 		const cached = await processStore.get(id);
 		if (cached) return cached;
-		const persisted = await this.readPersisted();
-		const entry = persisted?.[id];
+		const entry = (await this.readPersisted())[id];
 		if (!entry) return undefined;
 		const session = fromPersisted(entry);
 		await processStore.save(session);
@@ -47,8 +52,7 @@ export class ThreadSessionStore implements SessionStore {
 			await patchThread(threadMemory, {
 				threadId,
 				update: ({ metadata = {} }) => {
-					const parsed = persistedMapSchema.safeParse(metadata[METADATA_KEY]);
-					const sessions = parsed.success ? parsed.data : {};
+					const sessions = parseSessions(metadata[METADATA_KEY]);
 					sessions[session.id] = toPersisted(session);
 					const trimmed = Object.fromEntries(
 						Object.entries(sessions)
@@ -61,22 +65,19 @@ export class ThreadSessionStore implements SessionStore {
 		} catch (error) {
 			this.context.logger?.debug('Failed to persist workflow compiler session', {
 				sessionId: session.id,
-				error: error instanceof Error ? error.message : String(error),
+				error: getErrorMessage(error),
 			});
 		}
 	}
 
-	private async readPersisted(): Promise<
-		Record<string, z.infer<typeof persistedSessionSchema>> | undefined
-	> {
+	private async readPersisted(): Promise<z.infer<typeof persistedMapSchema>> {
 		const { threadMemory, threadId } = this.context;
-		if (!threadMemory || !threadId) return undefined;
+		if (!threadMemory || !threadId) return {};
 		try {
 			const thread = await getThread(threadMemory, threadId);
-			const parsed = persistedMapSchema.safeParse(thread?.metadata?.[METADATA_KEY]);
-			return parsed.success ? parsed.data : undefined;
+			return parseSessions(thread?.metadata?.[METADATA_KEY]);
 		} catch {
-			return undefined;
+			return {};
 		}
 	}
 }
