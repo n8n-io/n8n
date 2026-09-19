@@ -22,6 +22,9 @@
                 "properties": {
                     "id": {
                         "type": "string"
+                    },
+                    "message_status": {
+                        "type": "string"
                     }
                 }
             }
