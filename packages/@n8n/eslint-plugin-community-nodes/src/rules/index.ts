@@ -38,6 +38,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { SingleCredentialPerNodeRule } from './single-credential-per-node.js';
 import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
@@ -70,6 +71,7 @@ export const rules = {
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'single-credential-per-node': SingleCredentialPerNodeRule,
 	'trigger-node-conventions': TriggerNodeConventionsRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
