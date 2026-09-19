@@ -9,7 +9,10 @@ import type { Project, User } from '@n8n/db';
 import { ActivityEventRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { InstanceContextScope } from '@/modules/instance-ai/instance-context.service';
+import type {
+	InstanceContextCursor,
+	InstanceContextScope,
+} from '@/modules/instance-ai/instance-context.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import { createExecution } from '@test-integration/db/executions';
 import { createMember } from '@test-integration/db/users';
@@ -119,7 +122,11 @@ describe('InstanceContextService', () => {
 				resourceType: 'workflow',
 				resourceId: 'wf-theirs',
 			});
-			const [entry] = await activity.findFeed({ projectIds: [otherProject.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [otherProject.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			// Scoped to the user's own project, so the other project's entry is out of reach.
 			expect(await service.expand({ id: entry.id, user, scope: bound(project.id) })).toBeNull();
@@ -130,17 +137,11 @@ describe('InstanceContextService', () => {
 		});
 	});
 
+	function shownIds(block: string): number[] {
+		return [...block.matchAll(/^\[(\d+)\]/gm)].map((match) => Number(match[1]));
+	}
+
 	describe('deltas', () => {
-		/**
-		 * The correctness property behind the delta cursor. Ids are allocated outside the
-		 * surrounding transaction on Postgres, so a lower id can commit after a higher one has
-		 * already been shown. The reader therefore re-reads a band below its mark and drops what it
-		 * has already shown, rather than asking for "everything above the highest id seen" — which
-		 * would skip the straggler for good, and deletions are written by whichever request happens
-		 * to be committing.
-		 *
-		 * The mark below stands for that state: an entry sitting under it that no block has shown.
-		 */
 		it('shows an entry that sits behind the high-water mark and was never shown', async () => {
 			for (const name of ['Committed late', 'Also late', 'Seen already']) {
 				await record({
@@ -152,13 +153,19 @@ describe('InstanceContextService', () => {
 					resourceName: name,
 				});
 			}
-			const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [newest] = await activity.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const delta = await service.buildBlock({
 				user,
 				scope: bound(project.id),
 				cursor: {
 					activityMark: newest.id,
+					activityFloor: 0,
+					activityCategories: ['workflow', 'credential'],
 					activitySeen: [newest.id],
 					runsThrough: new Date().toISOString(),
 				},
@@ -168,6 +175,68 @@ describe('InstanceContextService', () => {
 			expect(delta?.block).toContain('Also late');
 			// The one the mark accounted for is not repeated.
 			expect(delta?.block).not.toContain('Seen already');
+		});
+
+		it('does not re-offer the entries a full window already cut', async () => {
+			for (let i = 1; i <= 90; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+
+			const opening = await service.buildBlock({ user, scope: bound(project.id), cursor: null });
+			expect(shownIds(opening?.block ?? '')).toHaveLength(40);
+			expect(opening?.block).toContain('and more than these');
+
+			const next = await service.buildBlock({
+				user,
+				scope: bound(project.id),
+				cursor: opening?.cursor ?? null,
+			});
+
+			expect(next).toBeNull();
+		});
+
+		it('still recovers a late commit that lands above the cut', async () => {
+			for (let i = 1; i <= 45; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+			const seeded = await activity.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 50,
+			});
+			const straggler = seeded[5];
+
+			const delta = await service.buildBlock({
+				user,
+				scope: bound(project.id),
+				cursor: {
+					activityMark: seeded[0].id,
+					activityFloor: seeded[10].id,
+					activityCategories: ['workflow', 'credential'],
+					activitySeen: seeded
+						.slice(0, 10)
+						.map((row) => row.id)
+						.filter((id) => id !== straggler.id),
+					runsThrough: new Date().toISOString(),
+				},
+			});
+
+			expect(shownIds(delta?.block ?? '')).toEqual([straggler.id]);
+			expect(delta?.block).toContain(straggler.resourceName);
 		});
 
 		it('leaves the inventory out of a delta and says it is an addition', async () => {
@@ -267,7 +336,11 @@ describe('InstanceContextService', () => {
 				resourceName: 'Lead enrichment',
 			});
 		}
-		const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+		const [newest] = await activity.findFeed({
+			projectIds: [project.id],
+			allowedCategories: ['workflow', 'credential'],
+			limit: 1,
+		});
 
 		const expansion = await service.expand({ id: newest.id, user, scope: bound(project.id) });
 
@@ -468,7 +541,11 @@ describe('InstanceContextService', () => {
 				resourceId: withheld.id,
 				resourceName: withheld.name,
 			});
-			const [entry] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			expect(await service.expand({ id: entry.id, user, scope: mcp() })).toBeNull();
 			expect(await service.expand({ id: entry.id + 5_000, user, scope: mcp() })).toBeNull();
@@ -488,7 +565,11 @@ describe('InstanceContextService', () => {
 				resourceId: workflow.id,
 				resourceName: workflow.name,
 			});
-			const [entry] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const viaMcp = await service.expand({ id: entry.id, user, scope: mcp() });
 			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
@@ -627,7 +708,11 @@ describe('InstanceContextService', () => {
 				resourceId: withheld.id,
 				resourceName: withheld.name,
 			});
-			const [entry] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			expect(await service.expand({ id: entry.id, user, scope: mcp() })).toBeNull();
 			expect(await service.expand({ id: entry.id + 5_000, user, scope: mcp() })).toBeNull();
@@ -647,7 +732,11 @@ describe('InstanceContextService', () => {
 				resourceId: workflow.id,
 				resourceName: workflow.name,
 			});
-			const [entry] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const viaMcp = await service.expand({ id: entry.id, user, scope: mcp() });
 			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
@@ -669,5 +758,25 @@ describe('InstanceContextService', () => {
 			expect(await service.list({ user, scope: mcp(false), limit: 20 })).toEqual([]);
 			expect(await service.list({ user, scope: mcp(), limit: 20 })).toHaveLength(1);
 		});
+	});
+
+	it('does not repeat stored activity after the seen-id limit is reached', async () => {
+		let cursor: InstanceContextCursor | null = null;
+		for (let batch = 0; batch < 7; batch++) {
+			for (let index = 0; index < 30; index++) {
+				await record({
+					category: 'workflow',
+					action: 'saved',
+					projectId: project.id,
+					resourceName: `Batch ${batch}`,
+				});
+			}
+			const built = await service.buildBlock({ user, scope: bound(project.id), cursor });
+			expect(built?.block.match(/^\[\d+\]/gm)).toHaveLength(30);
+			cursor = built!.cursor;
+		}
+		for (let turn = 0; turn < 2; turn++) {
+			expect(await service.buildBlock({ user, scope: bound(project.id), cursor })).toBeNull();
+		}
 	});
 });
