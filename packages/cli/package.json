@@ -143,6 +143,7 @@
     "@chat-adapter/slack": "catalog:",
     "@chat-adapter/state-memory": "catalog:",
     "@chat-adapter/telegram": "catalog:",
+    "@chat-adapter/whatsapp": "catalog:",
     "@google-cloud/secret-manager": "5.6.0",
     "@grpc/grpc-js": "^1.14.3",
     "@joplin/turndown-plugin-gfm": "catalog:",

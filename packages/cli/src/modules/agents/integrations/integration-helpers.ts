@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { createHmac } from 'crypto';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
@@ -84,6 +85,14 @@ export function removeUndefinedValues<T extends Record<string, unknown>>(
 
 export function isDefined<T>(value: T | undefined): value is T {
 	return value !== undefined;
+}
+
+/**
+ * Meta requires pasting this token by hand into the webhook config, so it must
+ * be shown before a credential exists — derived from `agentId` alone, not `credentialId`.
+ */
+export function deriveWhatsAppVerifyToken(encryptionKey: string, agentId: string): string {
+	return createHmac('sha256', encryptionKey).update(`whatsapp:verify:${agentId}`).digest('hex');
 }
 
 export function hasUpdateIssueField(input: {

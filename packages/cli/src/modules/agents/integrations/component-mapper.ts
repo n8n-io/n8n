@@ -418,7 +418,7 @@ export class ComponentMapper {
 	}
 }
 
-function componentTextToString(text: unknown): string | undefined {
+export function componentTextToString(text: unknown): string | undefined {
 	if (typeof text === 'string') return text;
 	if (text && typeof text === 'object' && 'text' in text) {
 		const value = (text as { text?: unknown }).text;

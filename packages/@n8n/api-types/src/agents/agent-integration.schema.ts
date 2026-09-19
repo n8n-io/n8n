@@ -81,11 +81,15 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const AgentWhatsAppSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWhatsAppSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -105,6 +109,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 ] as const;
 
 const draftCredentialIntegrations = [
@@ -119,6 +126,9 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
 	}),
 ] as const;
 

@@ -174,6 +174,15 @@ export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
 }
 
+/**
+ * WhatsApp needs the user to paste this token by hand into the Meta app's
+ * webhook config, unlike other platforms' secrets — so it's exposed here for
+ * the setup screen to display next to the webhook URL.
+ */
+export interface AgentWhatsAppVerifyTokenResponse {
+	verifyToken: string;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;

@@ -18,6 +18,8 @@ import type {
 	AgentChannelRuntime,
 	AgentChannelRuntimeContext,
 } from './types';
+import AgentChannelWhatsAppEditView from './whatsapp/AgentChannelWhatsAppEditView.vue';
+import AgentChannelWhatsAppSetup from './whatsapp/AgentChannelWhatsAppSetup.vue';
 
 function createDefaultRuntime(): AgentChannelRuntime {
 	const loading = ref(false);
@@ -105,6 +107,13 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	whatsapp: {
+		type: 'whatsapp',
+		setupComponent: AgentChannelWhatsAppSetup,
+		editComponent: AgentChannelWhatsAppEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.whatsapp'),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

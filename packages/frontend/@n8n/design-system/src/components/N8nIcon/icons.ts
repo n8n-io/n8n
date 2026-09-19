@@ -40,6 +40,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import WhatsApp from './custom/whatsapp.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
@@ -314,6 +315,7 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -535,6 +537,7 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,

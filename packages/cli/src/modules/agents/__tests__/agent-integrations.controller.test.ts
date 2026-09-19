@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,7 +18,7 @@ import {
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
+const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook', 'handleWebhookVerification']);
 
 function makeController({
 	managementService = mock<AgentIntegrationManagementService>(),
@@ -26,6 +27,7 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
+	instanceSettings = mock<InstanceSettings>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -33,6 +35,7 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
+	instanceSettings?: Mocked<InstanceSettings>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -45,6 +48,7 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
+			instanceSettings,
 		),
 		managementService,
 		chatIntegrationService,
@@ -265,6 +269,43 @@ describe('AgentIntegrationsController integration management', () => {
 				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
 				headers: { host: 'localhost', 'content-type': 'application/json' },
 				method: 'POST',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: { application_id: 'app-b', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-b',
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('delegates GET webhook verification to the same handling as POST', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'select', connectionSelector: 'app-b' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			setHeader: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost', 'content-type': 'application/json' },
+				method: 'GET',
 				protocol: 'https',
 				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
 				body: { application_id: 'app-b', type: 1 },

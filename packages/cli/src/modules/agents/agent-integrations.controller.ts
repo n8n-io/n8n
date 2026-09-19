@@ -4,16 +4,19 @@ import {
 	type AgentDisconnectIntegrationResponse,
 	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
+	type AgentWhatsAppVerifyTokenResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
+import { InstanceSettings } from 'n8n-core';
 
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
 import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { deriveWhatsAppVerifyToken } from './integrations/integration-helpers';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -29,6 +32,7 @@ export class AgentIntegrationsController {
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -92,6 +96,36 @@ export class AgentIntegrationsController {
 		return buildChannelStatusReport(agent.integrations, agent.activeVersionId, statuses, (row) =>
 			this.statusReporter.isLive(row, now),
 		);
+	}
+
+	// Meta has no API for n8n to register this secret with, so the user pastes it
+	// in by hand — the setup screen needs it to display, not just verify.
+	@Get('/:agentId/integrations/whatsapp/verify-token')
+	@ProjectScope('agent:read')
+	async whatsAppVerifyToken(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentWhatsAppVerifyTokenResponse> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return {
+			verifyToken: deriveWhatsAppVerifyToken(this.instanceSettings.encryptionKey, agentId),
+		};
+	}
+
+	// WhatsApp's Meta app verifies a webhook URL with a GET handshake
+	// (hub.mode/hub.challenge/hub.verify_token) before it will deliver any
+	// POST events to it. Every other platform here only ever sends POST, so
+	// this is purely additive — it reuses the same handler, which already
+	// branches on request method when building the forwarded Web Request.
+	@Get('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
+	async handleWebhookVerification(
+		req: Request<{ projectId: string; agentId: string; platform: string }>,
+		res: Response,
+	) {
+		return await this.handleWebhook(req, res);
 	}
 
 	// Third-party webhook callback: do not add @ProjectScope. Auth happens

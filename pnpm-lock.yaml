@@ -239,6 +239,9 @@ catalogs:
     '@chat-adapter/telegram':
       specifier: 4.37.0
       version: 4.37.0
+    '@chat-adapter/whatsapp':
+      specifier: 4.37.0
+      version: 4.37.0
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -4292,6 +4295,9 @@ importers:
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/telegram':
+        specifier: 'catalog:'
+        version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/whatsapp':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@google-cloud/secret-manager':
@@ -9428,6 +9434,10 @@ packages:
 
   '@chat-adapter/telegram@4.37.0':
     resolution: {integrity: sha512-A/lBDH7QUdGzxn+aBUyfg0Dp3uO9AW04Q2iXd4SwAz1t14wVb/gQ+KeI1QB287thgx+uLfr13f0/5Ss58ET11w==}
+    engines: {node: '>=20'}
+
+  '@chat-adapter/whatsapp@4.37.0':
+    resolution: {integrity: sha512-+PjjwUmz5I/FL7U7zEnf48DiElw6tyvdvLUdMC81YoUBHkbirLBI9prcOYgXoO0H6hodJRuXTACXqMemzJRNng==}
     engines: {node: '>=20'}
 
   '@chromatic-com/storybook@4.1.3':
@@ -27698,6 +27708,16 @@ snapshots:
       - zod
 
   '@chat-adapter/telegram@4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
+    dependencies:
+      '@chat-adapter/shared': 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+    transitivePeerDependencies:
+      - ai
+      - supports-color
+      - workflow
+      - zod
+
+  '@chat-adapter/whatsapp@4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
       '@chat-adapter/shared': 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
