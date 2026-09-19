@@ -50,12 +50,8 @@ export async function loadAgentCapabilityCatalog(
 	const [capabilities, agents, workflows, defaultModel] = await Promise.all([
 		source.listAgentCapabilities(),
 		source.listAgents().catch(() => []),
-		source.listAttachableWorkflows
-			? source.listAttachableWorkflows().catch(() => [])
-			: Promise.resolve([]),
-		source.resolveDefaultModel
-			? source.resolveDefaultModel().catch(() => null)
-			: Promise.resolve(null),
+		source.listAttachableWorkflows?.().catch(() => []) ?? [],
+		source.resolveDefaultModel?.().catch(() => null) ?? null,
 	]);
 	return {
 		channels: capabilities.channels,

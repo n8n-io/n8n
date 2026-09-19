@@ -6,20 +6,26 @@ import type {
 	DecisionService,
 } from '../../workflow-compiler/decision/decision-service';
 import { resolveChoice } from '../../workflow-compiler/decision/policy';
-import { withNoneOfThese, type DecisionQuestions } from '../../workflow-compiler/decision/schemas';
 import { planActions } from '../../workflow-compiler/modes/plan-actions';
 import { detectScheduleCron } from '../../workflow-compiler/requirements/extract';
 import type { RequirementIssue } from '../../workflow-compiler/requirements/types';
 import { findByName, type AgentCapabilityCatalog } from '../catalog/capabilities';
-import { compileAgent } from '../compiler/compile';
+import {
+	channelIntegration,
+	compileTool,
+	memoryConfig,
+	uniqueToolName,
+	type AgentTool,
+	type CompiledAgentTask,
+} from '../compiler/compile';
 import type { AgentToolIR } from '../ir/schema';
 import { detectChannels, extractAgentRequirements } from '../requirements/extract';
-import { AGENT_DECISION_SCHEMA_VERSION } from '../versions';
+import { choiceQuestion, decide, type Candidate } from './decide';
 
 /** Minimal edits applied to an existing agent config. Untouched fields carry over. */
 export type AgentPatch =
 	| { op: 'rename'; name: string }
-	| { op: 'add_tool'; tool: NonNullable<AgentJsonConfig['tools']>[number] }
+	| { op: 'add_tool'; tool: AgentTool }
 	| { op: 'remove_tool'; toolName: string }
 	| { op: 'set_channel'; integration: NonNullable<AgentJsonConfig['integrations']>[number] }
 	| { op: 'remove_channel'; type: string }
@@ -31,79 +37,50 @@ export type AgentPatch =
 	| { op: 'add_sub_agent'; agentId: string; useWhen?: string }
 	| { op: 'remove_sub_agent'; agentId: string }
 	| { op: 'set_approval'; toolName: string; requireApproval: boolean }
-	| {
-			op: 'add_task';
-			task: {
-				name: string;
-				objective: string;
-				cronExpression: string;
-				timezone: string;
-				enabled: boolean;
-			};
-	  };
+	| { op: 'add_task'; task: CompiledAgentTask };
 
-export type EditKind =
-	| 'rename'
-	| 'add_tool'
-	| 'remove_tool'
-	| 'set_channel'
-	| 'remove_channel'
-	| 'set_model'
-	| 'set_memory'
-	| 'set_web_search'
-	| 'add_rule'
-	| 'replace_instructions'
-	| 'add_sub_agent'
-	| 'remove_sub_agent'
-	| 'set_approval'
-	| 'add_task';
+/** First matching cue wins, so the order is part of the contract. */
+const KIND_CUES = [
+	['rename', /\brename\b|\bcall (it|the agent)\b/i],
+	[
+		'remove_channel',
+		/\b(remove|disconnect|drop|stop using)\b.*\b(slack|telegram|discord|linear)\b/i,
+	],
+	[
+		'set_channel',
+		/\b(connect|add|enable|put it on|make it available (on|in)|deploy to)\b.*\b(slack|telegram|discord|linear)\b|\b(slack|telegram|discord|linear)\b.*\b(channel|integration)\b/i,
+	],
+	[
+		'set_model',
+		/\b(model|switch to|use)\b.*\b(claude|gpt|gemini|anthropic|openai|google|mistral|grok|xai|groq|deepseek|bedrock|azure|openrouter|[a-z0-9-]+\/[a-z0-9._:-]+)\b/i,
+	],
+	['set_memory', /\b(memory|remember|forget)\b/i],
+	['set_web_search', /\b(web search|search the web|browse)\b/i],
+	['remove_sub_agent', /\b(remove|detach|stop delegating)\b.*\b(sub-?agent|agent)\b/i],
+	['add_sub_agent', /\b(delegate|hand off|sub-?agent)\b/i],
+	[
+		'set_approval',
+		/\b(approval|ask (me )?(before|first)|confirm (before|first)|without asking)\b/i,
+	],
+	['add_task', /\b(every|daily|nightly|hourly|weekly|schedule|each (day|week|morning))\b/i],
+	[
+		'remove_tool',
+		/\b(remove|delete|drop|take away)\b.*\b(tool|ability|capability)\b|\b(remove|delete|drop)\b/i,
+	],
+	[
+		'replace_instructions',
+		/\b(rewrite|replace) (the |its )?(instructions|system prompt|prompt)\b/i,
+	],
+	[
+		'add_rule',
+		/\b(never|always|do not|don't|must|should|only|tell it to|make it|be more|be less)\b/i,
+	],
+	['add_tool', /\b(add|give|let it|allow it to|able to|also)\b/i],
+] as const satisfies ReadonlyArray<readonly [string, RegExp]>;
 
-const KIND_CUES: Array<{ kind: EditKind; pattern: RegExp }> = [
-	{ kind: 'rename', pattern: /\brename\b|\bcall (it|the agent)\b/i },
-	{
-		kind: 'remove_channel',
-		pattern: /\b(remove|disconnect|drop|stop using)\b.*\b(slack|telegram|discord|linear)\b/i,
-	},
-	{
-		kind: 'set_channel',
-		pattern:
-			/\b(connect|add|enable|put it on|make it available (on|in)|deploy to)\b.*\b(slack|telegram|discord|linear)\b|\b(slack|telegram|discord|linear)\b.*\b(channel|integration)\b/i,
-	},
-	{
-		kind: 'set_model',
-		pattern:
-			/\b(model|switch to|use)\b.*\b(claude|gpt|gemini|anthropic|openai|google|mistral|grok|xai|groq|deepseek|bedrock|azure|openrouter|[a-z0-9-]+\/[a-z0-9._:-]+)\b/i,
-	},
-	{ kind: 'set_memory', pattern: /\b(memory|remember|forget)\b/i },
-	{ kind: 'set_web_search', pattern: /\b(web search|search the web|browse)\b/i },
-	{
-		kind: 'remove_sub_agent',
-		pattern: /\b(remove|detach|stop delegating)\b.*\b(sub-?agent|agent)\b/i,
-	},
-	{ kind: 'add_sub_agent', pattern: /\b(delegate|hand off|sub-?agent)\b/i },
-	{
-		kind: 'set_approval',
-		pattern: /\b(approval|ask (me )?(before|first)|confirm (before|first)|without asking)\b/i,
-	},
-	{
-		kind: 'add_task',
-		pattern: /\b(every|daily|nightly|hourly|weekly|schedule|each (day|week|morning))\b/i,
-	},
-	{
-		kind: 'remove_tool',
-		pattern:
-			/\b(remove|delete|drop|take away)\b.*\b(tool|ability|capability)\b|\b(remove|delete|drop)\b/i,
-	},
-	{
-		kind: 'replace_instructions',
-		pattern: /\b(rewrite|replace) (the |its )?(instructions|system prompt|prompt)\b/i,
-	},
-	{
-		kind: 'add_rule',
-		pattern: /\b(never|always|do not|don't|must|should|only|tell it to|make it|be more|be less)\b/i,
-	},
-	{ kind: 'add_tool', pattern: /\b(add|give|let it|allow it to|able to|also)\b/i },
-];
+export type EditKind = (typeof KIND_CUES)[number][0];
+
+const WRITE_OPERATIONS = /\.(post|reply|update|insert|upsert|delete|create|execute)$/;
 
 export interface AgentEditPlanInput {
 	request: string;
@@ -126,10 +103,10 @@ export type AgentEditPlanResult =
 	  };
 
 export function detectEditKind(text: string): EditKind | undefined {
-	return KIND_CUES.find(({ pattern }) => pattern.test(text))?.kind;
+	return KIND_CUES.find(([, pattern]) => pattern.test(text))?.[0];
 }
 
-function toolNameOf(tool: NonNullable<AgentJsonConfig['tools']>[number]): string {
+function toolNameOf(tool: AgentTool): string {
 	return tool.type === 'custom'
 		? tool.id
 		: (tool.name ?? (tool.type === 'workflow' ? tool.workflow : ''));
@@ -139,9 +116,11 @@ function toolNameOf(tool: NonNullable<AgentJsonConfig['tools']>[number]): string
 export function applyAgentPatches(
 	config: AgentJsonConfig,
 	patches: readonly AgentPatch[],
-): { config: AgentJsonConfig; tasks: Array<Extract<AgentPatch, { op: 'add_task' }>['task']> } {
+): { config: AgentJsonConfig; tasks: CompiledAgentTask[] } {
 	const result: AgentJsonConfig = structuredClone(config);
-	const tasks: Array<Extract<AgentPatch, { op: 'add_task' }>['task']> = [];
+	const tasks: CompiledAgentTask[] = [];
+	const missingTool = (toolName: string) =>
+		new Error(`Tool "${toolName}" does not exist on the agent.`);
 	for (const patch of patches) {
 		switch (patch.op) {
 			case 'rename':
@@ -153,36 +132,24 @@ export function applyAgentPatches(
 			case 'remove_tool': {
 				const before = result.tools?.length ?? 0;
 				result.tools = (result.tools ?? []).filter((tool) => toolNameOf(tool) !== patch.toolName);
-				if (result.tools.length === before)
-					throw new Error(`Tool "${patch.toolName}" does not exist on the agent.`);
+				if (result.tools.length === before) throw missingTool(patch.toolName);
 				break;
 			}
 			case 'set_channel':
 				result.integrations = [
-					...(result.integrations ?? []).filter(
-						(integration) => integration.type !== patch.integration.type,
-					),
+					...(result.integrations ?? []).filter((i) => i.type !== patch.integration.type),
 					patch.integration,
 				];
 				break;
 			case 'remove_channel':
-				result.integrations = (result.integrations ?? []).filter(
-					(integration) => integration.type !== patch.type,
-				);
+				result.integrations = (result.integrations ?? []).filter((i) => i.type !== patch.type);
 				break;
 			case 'set_model':
 				result.model = patch.model;
 				if (patch.credential) result.credential = patch.credential;
 				break;
 			case 'set_memory':
-				result.memory = {
-					enabled: patch.observational || patch.episodic,
-					storage: 'n8n',
-					observationalMemory: { enabled: patch.observational },
-					episodicMemory: patch.episodic
-						? { enabled: true, credential: 'managed' }
-						: { enabled: false },
-				};
+				result.memory = memoryConfig(patch.observational, patch.episodic);
 				break;
 			case 'set_web_search':
 				result.config = { ...(result.config ?? {}), webSearch: { enabled: patch.enabled } };
@@ -193,32 +160,20 @@ export function applyAgentPatches(
 			case 'replace_instructions':
 				result.instructions = patch.instructions;
 				break;
-			case 'add_sub_agent': {
-				const agents = (result.subAgents?.agents ?? []).filter(
-					(agent) => agent.agentId !== patch.agentId,
-				);
-				result.subAgents = {
-					...(result.subAgents ?? {}),
-					agents: [
-						...agents,
-						{ agentId: patch.agentId, ...(patch.useWhen ? { useWhen: patch.useWhen } : {}) },
-					],
-				};
+			case 'add_sub_agent':
+			case 'remove_sub_agent': {
+				const agents = (result.subAgents?.agents ?? []).filter((a) => a.agentId !== patch.agentId);
+				if (patch.op === 'add_sub_agent')
+					agents.push({
+						agentId: patch.agentId,
+						...(patch.useWhen ? { useWhen: patch.useWhen } : {}),
+					});
+				result.subAgents = { ...(result.subAgents ?? {}), agents };
 				break;
 			}
-			case 'remove_sub_agent':
-				result.subAgents = {
-					...(result.subAgents ?? {}),
-					agents: (result.subAgents?.agents ?? []).filter(
-						(agent) => agent.agentId !== patch.agentId,
-					),
-				};
-				break;
 			case 'set_approval': {
-				const tool = (result.tools ?? []).find(
-					(candidate) => toolNameOf(candidate) === patch.toolName,
-				);
-				if (!tool) throw new Error(`Tool "${patch.toolName}" does not exist on the agent.`);
+				const tool = (result.tools ?? []).find((t) => toolNameOf(t) === patch.toolName);
+				if (!tool) throw missingTool(patch.toolName);
 				tool.requireApproval = patch.requireApproval;
 				break;
 			}
@@ -232,13 +187,11 @@ export function applyAgentPatches(
 
 function appendRule(instructions: string, rule: string): string {
 	const line = `- ${rule.replace(/^[-*]\s*/, '')}`;
-	if (/^## Rules$/m.test(instructions)) {
-		return instructions.replace(
-			/(^## Rules\n(?:- .*\n?)*)/m,
-			(block) => `${block.trimEnd()}\n${line}\n`,
-		);
-	}
-	return `${instructions.trimEnd()}\n\n## Rules\n${line}\n`;
+	if (!/^## Rules$/m.test(instructions)) return `${instructions.trimEnd()}\n\n## Rules\n${line}\n`;
+	return instructions.replace(
+		/(^## Rules\n(?:- .*\n?)*)/m,
+		(block) => `${block.trimEnd()}\n${line}\n`,
+	);
 }
 
 /**
@@ -247,19 +200,27 @@ function appendRule(instructions: string, rule: string): string {
  */
 export async function planAgentEdit(input: AgentEditPlanInput): Promise<AgentEditPlanResult> {
 	const log: DecisionLogEntry[] = [];
-	const kind = detectEditKind(input.request);
-	const tools = input.config.tools ?? [];
-	const toolNames = tools.map(toolNameOf);
-	const ask = (
-		field: string,
-		reason: string,
-		question: string,
-		candidates?: unknown[],
-	): AgentEditPlanResult => ({
+	const { request, config, catalog } = input;
+	const kind = detectEditKind(request);
+	const toolNames = (config.tools ?? []).map(toolNameOf);
+	const clarify = (issues: RequirementIssue[]): AgentEditPlanResult => ({
 		status: 'needs_clarification',
 		log,
-		issues: [{ field, reason, question, ...(candidates ? { candidates } : {}) }],
+		issues,
 	});
+	const ask = (field: string, reason: string, question: string, candidates?: unknown[]) =>
+		clarify([{ field, reason, question, ...(candidates ? { candidates } : {}) }]);
+	const planned = (patches: AgentPatch[], summary: string, waves = 0): AgentEditPlanResult => ({
+		status: 'planned',
+		patches,
+		summary,
+		log,
+		waves,
+	});
+	const answer = (key: string): string | undefined => {
+		const value = input.answers?.[key];
+		return typeof value === 'string' ? value : undefined;
+	};
 
 	if (!kind)
 		return ask(
@@ -270,111 +231,45 @@ export async function planAgentEdit(input: AgentEditPlanInput): Promise<AgentEdi
 
 	switch (kind) {
 		case 'rename': {
-			const name = input.request.match(/\b(?:to|called|named)\s+["“]?([^"”]+?)["”]?\s*$/i)?.[1];
+			const name = request.match(/\b(?:to|called|named)\s+["“]?([^"”]+?)["”]?\s*$/i)?.[1];
 			if (!name) return ask('edit.name', 'No new name given.', 'What should the agent be called?');
-			return {
-				status: 'planned',
-				patches: [{ op: 'rename', name }],
-				summary: `Renamed the agent to "${name}".`,
-				log,
-				waves: 0,
-			};
+			return planned([{ op: 'rename', name }], `Renamed the agent to "${name}".`);
 		}
 		case 'set_channel':
 		case 'remove_channel': {
-			const mention = detectChannels(input.request)[0];
-			if (!mention)
-				return ask(
-					'edit.channel',
-					'No channel named.',
-					`Which channel: ${input.catalog.channels.map((channel) => channel.label).join(', ')}?`,
-				);
+			const labels = catalog.channels.map((channel) => channel.label).join(', ');
+			const mention = detectChannels(request)[0];
+			if (!mention) return ask('edit.channel', 'No channel named.', `Which channel: ${labels}?`);
 			if (!mention.supported || !mention.type)
 				return ask(
 					`channels.${mention.name}`,
 					`${mention.name} is not supported.`,
-					`Agents cannot connect to ${mention.name} here. Supported channels: ${input.catalog.channels.map((channel) => channel.label).join(', ')}.`,
+					`Agents cannot connect to ${mention.name} here. Supported channels: ${labels}.`,
 				);
+			const { type } = mention;
 			if (kind === 'remove_channel')
-				return {
-					status: 'planned',
-					patches: [{ op: 'remove_channel', type: mention.type }],
-					summary: `Removed the ${mention.type} channel.`,
-					log,
-					waves: 0,
-				};
-			const existing = (input.config.integrations ?? []).find(
-				(integration) => integration.type === mention.type,
+				return planned([{ op: 'remove_channel', type }], `Removed the ${type} channel.`);
+			const existing = (config.integrations ?? []).find((i) => i.type === type);
+			const credentialId = answer('credentialId') ?? existing?.credentialId ?? '';
+			return planned(
+				[{ op: 'set_channel', integration: channelIntegration({ type, credentialId }) }],
+				`Connected the ${type} channel${credentialId ? '' : ' (credential still needed)'}.`,
 			);
-			const credentialId =
-				typeof input.answers?.credentialId === 'string'
-					? input.answers.credentialId
-					: (existing?.credentialId ?? '');
-			const integration = compileAgent(
-				{
-					ref: 'x',
-					name: 'x',
-					purpose: 'x',
-					instructions: { role: 'x', goals: [], rules: [] },
-					channels: [{ type: mention.type, ...(credentialId ? { credentialId } : {}) }],
-					model: { mode: 'default' },
-					tools: [],
-					skills: [],
-					tasks: [],
-					subAgents: [],
-					memory: { observational: false, episodic: false },
-					mcpServers: [],
-					options: {},
-					patternIds: [],
-				},
-				{ registry: input.catalog.nodeRegistry, defaultModel: null },
-			).config.integrations?.[0];
-			if (!integration)
-				return ask(
-					'edit.channel',
-					'Channel could not be compiled.',
-					'Which channel should the agent use?',
-				);
-			return {
-				status: 'planned',
-				patches: [{ op: 'set_channel', integration }],
-				summary: `Connected the ${mention.type} channel${credentialId ? '' : ' (credential still needed)'}.`,
-				log,
-				waves: 0,
-			};
 		}
 		case 'set_model': {
-			const explicit = input.request.match(
-				/\b([a-z0-9-]+\/[a-z0-9._:-]+(?:\/[a-z0-9._:-]+)*)\b/i,
-			)?.[1];
+			const explicit = request.match(/\b([a-z0-9-]+\/[a-z0-9._:-]+(?:\/[a-z0-9._:-]+)*)\b/i)?.[1];
 			if (explicit && AGENT_MODEL_STRING_REGEX.test(explicit)) {
-				return {
-					status: 'planned',
-					patches: [
-						{
-							op: 'set_model',
-							model: explicit.toLowerCase(),
-							...(typeof input.answers?.credentialId === 'string'
-								? { credential: input.answers.credentialId }
-								: {}),
-						},
-					],
-					summary: `Set the model to ${explicit.toLowerCase()}.`,
-					log,
-					waves: 0,
-				};
+				const model = explicit.toLowerCase();
+				const credential = answer('credentialId');
+				return planned(
+					[{ op: 'set_model', model, ...(credential !== undefined ? { credential } : {}) }],
+					`Set the model to ${model}.`,
+				);
 			}
-			const provider = extractAgentRequirements(input.request).modelProvider;
-			const fallback = input.catalog.defaultModel;
-			if (provider && fallback?.model.startsWith(`${provider}/`)) {
-				return {
-					status: 'planned',
-					patches: [{ op: 'set_model', model: fallback.model, credential: fallback.credential }],
-					summary: `Set the model to ${fallback.model}.`,
-					log,
-					waves: 0,
-				};
-			}
+			const provider = extractAgentRequirements(request).modelProvider;
+			const fallback = catalog.defaultModel;
+			if (provider && fallback?.model.startsWith(`${provider}/`))
+				return planned([{ op: 'set_model', ...fallback }], `Set the model to ${fallback.model}.`);
 			return ask(
 				'edit.model',
 				'The exact model is not known.',
@@ -382,56 +277,39 @@ export async function planAgentEdit(input: AgentEditPlanInput): Promise<AgentEdi
 			);
 		}
 		case 'set_memory': {
-			const off = /\b(disable|turn off|forget|no memory|remove memory)\b/i.test(input.request);
-			const episodic = /\b(episodic|facts|preferences)\b/i.test(input.request);
-			return {
-				status: 'planned',
-				patches: [{ op: 'set_memory', observational: !off, episodic: !off && episodic }],
-				summary: off
+			const off = /\b(disable|turn off|forget|no memory|remove memory)\b/i.test(request);
+			const episodic = /\b(episodic|facts|preferences)\b/i.test(request);
+			return planned(
+				[{ op: 'set_memory', observational: !off, episodic: !off && episodic }],
+				off
 					? 'Disabled memory.'
 					: `Enabled ${episodic ? 'observational and episodic' : 'observational'} memory.`,
-				log,
-				waves: 0,
-			};
+			);
 		}
 		case 'set_web_search': {
-			const off = /\b(disable|turn off|remove|no)\b/i.test(input.request);
-			return {
-				status: 'planned',
-				patches: [{ op: 'set_web_search', enabled: !off }],
-				summary: `${off ? 'Disabled' : 'Enabled'} web search.`,
-				log,
-				waves: 0,
-			};
+			const off = /\b(disable|turn off|remove|no)\b/i.test(request);
+			return planned(
+				[{ op: 'set_web_search', enabled: !off }],
+				`${off ? 'Disabled' : 'Enabled'} web search.`,
+			);
 		}
 		case 'add_rule':
-			return {
-				status: 'planned',
-				patches: [{ op: 'append_rule', rule: input.request.trim().replace(/[.]$/, '') }],
-				summary: 'Added a rule to the instructions.',
-				log,
-				waves: 0,
-			};
+			return planned(
+				[{ op: 'append_rule', rule: request.trim().replace(/[.]$/, '') }],
+				'Added a rule to the instructions.',
+			);
 		case 'replace_instructions': {
-			const quoted = input.request.match(/["“]([^"”]{10,})["”]/)?.[1];
-			if (!quoted)
+			const instructions = request.match(/["“]([^"”]{10,})["”]/)?.[1];
+			if (!instructions)
 				return ask(
 					'edit.instructions',
 					'No replacement text given.',
 					'What should the new instructions say? Put the full text in quotes.',
 				);
-			return {
-				status: 'planned',
-				patches: [{ op: 'replace_instructions', instructions: quoted }],
-				summary: 'Replaced the instructions.',
-				log,
-				waves: 0,
-			};
+			return planned([{ op: 'replace_instructions', instructions }], 'Replaced the instructions.');
 		}
 		case 'add_task': {
-			const cron =
-				detectScheduleCron(input.request) ??
-				(typeof input.answers?.cron === 'string' ? input.answers.cron : undefined);
+			const cron = detectScheduleCron(request) ?? answer('cron');
 			if (!cron)
 				return ask(
 					'edit.task.cron',
@@ -439,185 +317,140 @@ export async function planAgentEdit(input: AgentEditPlanInput): Promise<AgentEdi
 					'How often exactly should the task run (for example "every weekday at 9am")?',
 				);
 			const objective =
-				input.request.replace(/\b(every|daily|nightly|hourly|weekly)\b[^,.]*[,.]?/i, '').trim() ||
-				input.request;
-			return {
-				status: 'planned',
-				patches: [
-					{
-						op: 'add_task',
-						task: {
-							name: objective.slice(0, 120),
-							objective,
-							cronExpression: cron,
-							timezone: 'UTC',
-							enabled: true,
-						},
-					},
-				],
-				summary: `Added a scheduled task (${cron}).`,
-				log,
-				waves: 0,
+				request.replace(/\b(every|daily|nightly|hourly|weekly)\b[^,.]*[,.]?/i, '').trim() ||
+				request;
+			const task = {
+				name: objective.slice(0, 120),
+				objective,
+				cronExpression: cron,
+				timezone: 'UTC',
+				enabled: true,
 			};
+			return planned([{ op: 'add_task', task }], `Added a scheduled task (${cron}).`);
 		}
 		case 'add_sub_agent':
 		case 'remove_sub_agent': {
 			const name =
-				input.request.match(
-					/\b(?:to|the)\s+["“]?([^"”,.]+?)["”]?\s+(?:agent|sub-?agent)\b/i,
-				)?.[1] ??
-				input.request.match(/\b(?:delegate|hand off)\b.*?\bto\s+["“]?([^"”,.]+?)["”]?\s*$/i)?.[1];
+				request.match(/\b(?:to|the)\s+["“]?([^"”,.]+?)["”]?\s+(?:agent|sub-?agent)\b/i)?.[1] ??
+				request.match(/\b(?:delegate|hand off)\b.*?\bto\s+["“]?([^"”,.]+?)["”]?\s*$/i)?.[1];
+			const attached = config.subAgents?.agents ?? [];
 			const pool =
 				kind === 'remove_sub_agent'
-					? input.catalog.agents.filter((agent) =>
-							(input.config.subAgents?.agents ?? []).some((sub) => sub.agentId === agent.agentId),
-						)
-					: input.catalog.agents;
-			const matches = name ? findByName(pool, name) : pool;
+					? catalog.agents.filter((agent) => attached.some((sub) => sub.agentId === agent.agentId))
+					: catalog.agents;
 			const resolved = await resolveOne(
 				input,
-				matches.map((agent) => ({ id: agent.agentId, label: agent.name })),
-				`Which agent should the request "${input.request}" refer to?`,
+				(name ? findByName(pool, name) : pool).map((agent) => ({
+					id: agent.agentId,
+					label: agent.name,
+				})),
+				`Which agent should the request "${request}" refer to?`,
 				log,
 			);
-			if (resolved.kind === 'ask')
+			if (!resolved)
 				return ask(
 					'edit.subAgent',
 					'The sub-agent is ambiguous.',
 					`Which agent: ${pool.map((agent) => agent.name).join(', ')}?`,
 					pool.map((agent) => agent.agentId),
 				);
+			const { id: agentId, label, waves } = resolved;
 			return kind === 'remove_sub_agent'
-				? {
-						status: 'planned',
-						patches: [{ op: 'remove_sub_agent', agentId: resolved.id }],
-						summary: `Removed sub-agent ${resolved.label}.`,
-						log,
-						waves: resolved.waves,
-					}
-				: {
-						status: 'planned',
-						patches: [
-							{
-								op: 'add_sub_agent',
-								agentId: resolved.id,
-								useWhen: `the request is about ${resolved.label}`,
-							},
-						],
-						summary: `Added sub-agent ${resolved.label}.`,
-						log,
-						waves: resolved.waves,
-					};
+				? planned([{ op: 'remove_sub_agent', agentId }], `Removed sub-agent ${label}.`, waves)
+				: planned(
+						[{ op: 'add_sub_agent', agentId, useWhen: `the request is about ${label}` }],
+						`Added sub-agent ${label}.`,
+						waves,
+					);
 		}
 		case 'set_approval':
 		case 'remove_tool': {
+			const lower = request.toLowerCase();
 			const mentioned = toolNames.filter(
 				(toolName) =>
-					input.request.toLowerCase().includes(toolName.toLowerCase().replace(/_/g, ' ')) ||
-					input.request.toLowerCase().includes(toolName.toLowerCase()),
+					lower.includes(toolName.toLowerCase().replace(/_/g, ' ')) ||
+					lower.includes(toolName.toLowerCase()),
 			);
 			const resolved = await resolveOne(
 				input,
-				(mentioned.length > 0 ? mentioned : toolNames).map((toolName) => ({
-					id: toolName,
-					label: toolName,
-				})),
-				`Which tool does this change refer to: "${input.request}"?`,
+				(mentioned.length > 0 ? mentioned : toolNames).map((id) => ({ id, label: id })),
+				`Which tool does this change refer to: "${request}"?`,
 				log,
 			);
-			if (resolved.kind === 'ask')
+			if (!resolved)
 				return ask(
 					'edit.tool',
 					'The tool is ambiguous.',
 					`Which tool: ${toolNames.join(', ')}?`,
 					toolNames,
 				);
+			const { id: toolName, waves } = resolved;
 			if (kind === 'remove_tool')
-				return {
-					status: 'planned',
-					patches: [{ op: 'remove_tool', toolName: resolved.id }],
-					summary: `Removed tool "${resolved.id}".`,
-					log,
-					waves: resolved.waves,
-				};
+				return planned([{ op: 'remove_tool', toolName }], `Removed tool "${toolName}".`, waves);
 			const requireApproval = !/\b(without asking|no approval|don't ask|do not ask)\b/i.test(
-				input.request,
+				request,
 			);
-			return {
-				status: 'planned',
-				patches: [{ op: 'set_approval', toolName: resolved.id, requireApproval }],
-				summary: `${requireApproval ? 'Enabled' : 'Disabled'} approval for "${resolved.id}".`,
-				log,
-				waves: resolved.waves,
-			};
+			return planned(
+				[{ op: 'set_approval', toolName, requireApproval }],
+				`${requireApproval ? 'Enabled' : 'Disabled'} approval for "${toolName}".`,
+				waves,
+			);
 		}
 		case 'add_tool': {
-			const workflowName = input.request.match(
+			const workflowName = request.match(
 				/\b(?:use|call|run|attach|add)s?\s+(?:the\s+)?["“]?([^"”,.]+?)["”]?\s+workflow\b/i,
 			)?.[1];
 			if (workflowName) {
 				const found =
 					findByName(input.sessionWorkflows ?? [], workflowName)[0] ??
-					findByName(input.catalog.workflows, workflowName)[0];
+					findByName(catalog.workflows, workflowName)[0];
 				if (!found)
 					return ask(
 						'edit.workflowTool',
 						'The workflow was not found.',
 						`No attachable workflow named "${workflowName}" exists. Build it first with build-workflow, then add it.`,
 					);
-				const tool: NonNullable<AgentJsonConfig['tools']>[number] = {
+				const tool: AgentTool = {
 					type: 'workflow',
 					workflowId: found.id,
 					workflow: found.name,
 					name: found.name.replace(/[^A-Za-z0-9_]+/g, '_'),
 					description: `Runs the "${found.name}" workflow.`,
 				};
-				return {
-					status: 'planned',
-					patches: [{ op: 'add_tool', tool }],
-					summary: `Attached workflow "${found.name}" as a tool.`,
-					log,
-					waves: 0,
-				};
+				return planned([{ op: 'add_tool', tool }], `Attached workflow "${found.name}" as a tool.`);
 			}
-			const requirements = extractAgentRequirements(input.request);
+			const { toolActions } = extractAgentRequirements(request);
 			const actions =
-				requirements.toolActions.length > 0
-					? requirements.toolActions
-					: [{ id: 'new-tool', text: input.request, params: {} }];
+				toolActions.length > 0 ? toolActions : [{ id: 'new-tool', text: request, params: {} }];
 			const planning = await planActions({
-				request: input.request,
+				request,
 				actions: actions.slice(0, 1),
-				registry: input.catalog.nodeRegistry,
+				registry: catalog.nodeRegistry,
 				decisions: input.decisions,
 				abortSignal: input.abortSignal,
 			});
 			log.push(...planning.log);
 			if (planning.issues.length > 0)
-				return {
-					status: 'needs_clarification',
-					log,
-					issues: planning.issues.map((issue) => ({
+				return clarify(
+					planning.issues.map((issue) => ({
 						...issue,
 						field: issue.field.replace(/^actions\./, 'toolActions.'),
 					})),
-				};
+				);
 			const action = planning.actions[0];
-			const operation = input.catalog.nodeRegistry.require(action.operationId ?? '');
+			const operation = catalog.nodeRegistry.require(action.operationId ?? '');
 			const values = { ...action.params, ...(input.answers ?? {}) };
 			const missing = operation.requiredParameters.filter(
 				(definition) => !definition.derivable && values[definition.name] === undefined,
 			);
 			if (missing.length > 0)
-				return {
-					status: 'needs_clarification',
-					log,
-					issues: missing.map((definition) => ({
+				return clarify(
+					missing.map((definition) => ({
 						field: `toolActions.${action.id}.${definition.name}`,
 						reason: `Required by ${operation.title}.`,
 						question: definition.question ?? `Provide ${definition.name}.`,
 					})),
-				};
+				);
 			const params: Record<string, unknown> = {};
 			for (const definition of [...operation.requiredParameters, ...operation.optionalParameters])
 				if (values[definition.name] !== undefined)
@@ -629,91 +462,54 @@ export async function planAgentEdit(input: AgentEditPlanInput): Promise<AgentEdi
 				operationId: operation.id,
 				params,
 				description: operation.description,
-				requireApproval: /\.(post|reply|update|insert|upsert|delete|create|execute)$/.test(
-					operation.id,
-				),
+				requireApproval: WRITE_OPERATIONS.test(operation.id),
 			};
-			const compiled = compileAgent(
-				{
-					ref: 'x',
-					name: 'x',
-					purpose: 'x',
-					instructions: { role: 'x', goals: [], rules: [] },
-					channels: [],
-					model: { mode: 'default' },
-					tools: [irTool],
-					skills: [],
-					tasks: [],
-					subAgents: [],
-					memory: { observational: false, episodic: false },
-					mcpServers: [],
-					options: {},
-					patternIds: [],
-				},
-				{ registry: input.catalog.nodeRegistry, defaultModel: null },
+			const tool = compileTool(
+				irTool,
+				uniqueToolName(irTool.name, new Set()),
+				{ registry: catalog.nodeRegistry },
+				[],
 			);
-			const tool = compiled.config.tools?.[0];
-			if (!tool)
-				return ask('edit.tool', 'The tool could not be compiled.', 'Which tool should be added?');
 			if (tool.type !== 'custom' && toolNames.includes(tool.name ?? ''))
 				tool.name = `${tool.name}_${toolNames.length + 1}`;
-			return {
-				status: 'planned',
-				patches: [
+			const toolName = tool.type === 'custom' ? tool.id : tool.name;
+			return planned(
+				[
 					{ op: 'add_tool', tool },
 					{
 						op: 'append_rule',
-						rule: `Use ${tool.type === 'custom' ? tool.id : tool.name} when ${action.text.replace(/[.]$/, '').toLowerCase()}.`,
+						rule: `Use ${toolName} when ${action.text.replace(/[.]$/, '').toLowerCase()}.`,
 					},
 				],
-				summary: `Added tool "${tool.type === 'custom' ? tool.id : tool.name}".`,
-				log,
-				waves: planning.waves,
-			};
+				`Added tool "${toolName}".`,
+				planning.waves,
+			);
 		}
 	}
 }
 
-type ResolveOneResult = { kind: 'ask' } | { kind: 'one'; id: string; label: string; waves: number };
-
 async function resolveOne(
 	input: AgentEditPlanInput,
-	candidates: Array<{ id: string; label: string }>,
+	candidates: Candidate[],
 	instructions: string,
 	log: DecisionLogEntry[],
-): Promise<ResolveOneResult> {
-	if (candidates.length === 0) return { kind: 'ask' };
-	if (candidates.length === 1) return { kind: 'one', ...candidates[0], waves: 0 };
-	const criteria: Record<string, string | null> = {};
-	for (const candidate of candidates) criteria[candidate.id] = candidate.label;
-	const questions: DecisionQuestions = {
-		target: { type: 'choice', instructions, criteria: withNoneOfThese(criteria) },
-	};
-	const outcome = await input.decisions.decide({
-		name: 'agent-compiler.edit-target',
-		schemaVersion: AGENT_DECISION_SCHEMA_VERSION,
-		state: { request: input.request },
-		questions,
-		abortSignal: input.abortSignal,
-	});
-	log.push({
-		name: 'agent-compiler.edit-target',
-		schemaVersion: AGENT_DECISION_SCHEMA_VERSION,
-		backend: input.decisions.kind,
-		...(outcome.ok ? { model: outcome.model } : { failureReason: outcome.reason }),
-		latencyMs: outcome.latencyMs,
-		ok: outcome.ok,
-		questionNames: ['target'],
-		answers: outcome.ok ? outcome.answers : {},
-		policy: {},
-	});
+): Promise<(Candidate & { waves: number }) | undefined> {
+	if (candidates.length === 0) return undefined;
+	if (candidates.length === 1) return { ...candidates[0], waves: 0 };
+	const outcome = await decide(
+		input,
+		'agent-compiler.edit-target',
+		{ request: input.request },
+		{ target: choiceQuestion(instructions, candidates) },
+		log,
+	);
 	const resolution = resolveChoice({
 		allowed: candidates.map((candidate) => candidate.id),
 		answer: outcome.ok ? outcome.answers.target : undefined,
 	});
 	log[log.length - 1].policy.target =
 		resolution.status === 'chosen' ? resolution.value : `abstain:${resolution.reason}`;
-	if (resolution.status !== 'chosen') return { kind: 'ask' };
+	if (resolution.status !== 'chosen') return undefined;
 	const chosen = candidates.find((candidate) => candidate.id === resolution.value);
-	return chosen ? { kind: 'one', ...chosen, waves: 1 } : { kind: 'ask' };
+	return chosen && { ...chosen, waves: 1 };
 }

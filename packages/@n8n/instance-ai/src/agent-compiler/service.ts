@@ -19,6 +19,7 @@ import {
 	type CompiledAgent,
 	type CompiledAgentTask,
 } from './compiler/compile';
+import { AGENT_CHANNEL_TYPES } from './ir/schema';
 import { applyAgentPatches, planAgentEdit } from './modes/edit';
 import { planAgentCreate, type RequiredWorkflowArtifact } from './modes/create';
 import { extractAgentRequirements } from './requirements/extract';
@@ -55,25 +56,17 @@ export interface AgentCompilerDiagnostics {
 	decisions: DecisionLogEntry[];
 }
 
-export type AgentCompilerResult =
+/** Every outcome carries the session id and diagnostics; `status` picks the rest. */
+export type AgentCompilerResult = { sessionId: string; diagnostics: AgentCompilerDiagnostics } & (
 	| {
 			status: 'needs_clarification';
-			sessionId: string;
 			questions: ClarificationQuestion[];
 			message: string;
 			unresolved: RequirementIssue[];
-			diagnostics: AgentCompilerDiagnostics;
 	  }
-	| {
-			status: 'needs_artifacts';
-			sessionId: string;
-			artifacts: RequiredWorkflowArtifact[];
-			message: string;
-			diagnostics: AgentCompilerDiagnostics;
-	  }
+	| { status: 'needs_artifacts'; artifacts: RequiredWorkflowArtifact[]; message: string }
 	| {
 			status: 'compiled';
-			sessionId: string;
 			config: AgentJsonConfig;
 			skills: CompiledAgent['skills'];
 			tasks: CompiledAgentTask[];
@@ -82,37 +75,27 @@ export type AgentCompilerResult =
 			scenarios: AgentScenario[];
 			summary: string;
 			changed: string[];
-			diagnostics: AgentCompilerDiagnostics;
 	  }
-	| {
-			status: 'failed';
-			sessionId: string;
-			reason: string;
-			report?: AgentVerificationReport;
-			diagnostics: AgentCompilerDiagnostics;
-	  };
+	| { status: 'failed'; reason: string; report?: AgentVerificationReport }
+);
 
-export interface AgentCreateRequest {
+interface AgentRequestBase {
 	ref: string;
 	request: string;
 	catalog: AgentCapabilityCatalog;
 	sessionId?: string;
 	answers?: Record<string, unknown>;
-	name?: string;
 	sessionWorkflows?: Array<{ id: string; name: string; description?: string }>;
 	abortSignal?: AbortSignal;
 }
 
-export interface AgentEditRequest {
-	ref: string;
+export interface AgentCreateRequest extends AgentRequestBase {
+	name?: string;
+}
+
+export interface AgentEditRequest extends AgentRequestBase {
 	agentId: string;
-	request: string;
 	config: AgentJsonConfig;
-	catalog: AgentCapabilityCatalog;
-	sessionId?: string;
-	answers?: Record<string, unknown>;
-	sessionWorkflows?: Array<{ id: string; name: string; description?: string }>;
-	abortSignal?: AbortSignal;
 }
 
 /**
@@ -140,13 +123,10 @@ export class AgentCompilerService {
 
 	async create(input: AgentCreateRequest): Promise<AgentCompilerResult> {
 		const started = Date.now();
-		const session = await this.loadOrStart('create', input.ref, input.request, input.sessionId);
-		if (input.sessionId && session.id === input.sessionId) {
-			session.messages.push(input.request);
-			this.applyAnswers(session, input.answers, input.request);
-		} else {
-			this.applyAnswers(session, input.answers);
-		}
+		const session = await this.loadOrStart('create', input);
+		const resumed = input.sessionId === session.id;
+		if (resumed) session.messages.push(input.request);
+		this.applyAnswers(session, input.answers, resumed ? input.request : undefined);
 		if (input.name) session.requirements.name = resolved(input.name, 'user');
 		session.timings.requirementsMs = Date.now() - started;
 
@@ -184,28 +164,21 @@ export class AgentCompilerService {
 			defaultModel: input.catalog.defaultModel,
 		});
 		session.timings.compileMs = Date.now() - compileStarted;
-		const report = validateCompiledAgent(plan.ir, compiled, input.catalog);
-		const scenarios = enumerateAgentScenarios(plan.ir, compiled.toolNames);
+		const { config, tasks } = compiled;
 		return await this.finish(
 			session,
 			compiled,
-			report,
-			scenarios,
-			`Compiled agent "${compiled.config.name}" with ${compiled.config.tools?.length ?? 0} tool(s), ${compiled.config.integrations?.length ?? 0} channel(s), ${compiled.tasks.length} task(s).`,
+			validateCompiledAgent(plan.ir, compiled, input.catalog),
+			enumerateAgentScenarios(plan.ir, compiled.toolNames),
+			`Compiled agent "${config.name}" with ${config.tools?.length ?? 0} tool(s), ${config.integrations?.length ?? 0} channel(s), ${tasks.length} task(s).`,
 			[],
 		);
 	}
 
 	async edit(input: AgentEditRequest): Promise<AgentCompilerResult> {
 		const started = Date.now();
-		const session = await this.loadOrStart(
-			'edit',
-			input.ref,
-			input.request,
-			input.sessionId,
-			input.agentId,
-		);
-		if (input.sessionId && session.id === input.sessionId) session.messages.push(input.request);
+		const session = await this.loadOrStart('edit', input);
+		if (input.sessionId === session.id) session.messages.push(input.request);
 		const plan = await planAgentEdit({
 			request: session.messages.join('\n'),
 			config: input.config,
@@ -223,27 +196,18 @@ export class AgentCompilerService {
 		try {
 			patched = applyAgentPatches(input.config, plan.patches);
 		} catch (error) {
-			session.status = 'failed';
-			await this.sessions.save(session);
-			return {
-				status: 'failed',
-				sessionId: session.id,
-				reason: error instanceof Error ? error.message : String(error),
-				diagnostics: this.diagnostics(session),
-			};
+			return await this.fail(session, error instanceof Error ? error.message : String(error));
 		}
 		const report = emptyAgentVerificationReport();
 		report.schema = levelForAgentConfig(patched.config, report.issues);
+		const names = (patched.config.tools ?? []).map((tool) =>
+			tool.type === 'custom' ? tool.id : (tool.name ?? ''),
+		);
 		const compiled: CompiledAgent = {
 			config: patched.config,
 			skills: {},
 			tasks: patched.tasks,
-			toolNames: Object.fromEntries(
-				(patched.config.tools ?? []).map((tool) => [
-					tool.type === 'custom' ? tool.id : (tool.name ?? ''),
-					tool.type === 'custom' ? tool.id : (tool.name ?? ''),
-				]),
-			),
+			toolNames: Object.fromEntries(names.map((name) => [name, name])),
 			generator: {
 				compilerVersion: AGENT_COMPILER_VERSION,
 				instructionsTemplateVersion: '1',
@@ -266,24 +230,19 @@ export class AgentCompilerService {
 
 	private async loadOrStart(
 		intent: 'create' | 'edit',
-		ref: string,
-		request: string,
-		sessionId: string | undefined,
-		agentId?: string,
+		input: AgentRequestBase & { agentId?: string },
 	): Promise<AgentGenerationSession> {
-		if (sessionId) {
-			const existing = await this.sessions.get(sessionId);
-			if (existing) return existing;
-		}
+		const existing = input.sessionId ? await this.sessions.get(input.sessionId) : undefined;
+		if (existing) return existing;
 		const timestamp = this.now().toISOString();
 		return {
 			id: `agen_${nanoid(10)}`,
 			intent,
-			ref,
-			...(agentId ? { agentId } : {}),
-			request,
-			messages: [request],
-			requirements: extractAgentRequirements(request),
+			ref: input.ref,
+			...(input.agentId ? { agentId: input.agentId } : {}),
+			request: input.request,
+			messages: [input.request],
+			requirements: extractAgentRequirements(input.request),
 			status: 'understanding_request',
 			unresolved: [],
 			questions: [],
@@ -303,9 +262,8 @@ export class AgentCompilerService {
 		const pending = session.unresolved.map((issue) => issue.field);
 		for (const [field, value] of Object.entries(answers ?? {}))
 			setAgentRequirement(session.requirements, field, value);
-		if (message && pending.length === 1 && answers?.[pending[0]] === undefined) {
+		if (message && pending.length === 1 && answers?.[pending[0]] === undefined)
 			setAgentRequirement(session.requirements, pending[0], inferAgentAnswer(pending[0], message));
-		}
 		session.unresolved = [];
 		session.questions = [];
 	}
@@ -330,6 +288,22 @@ export class AgentCompilerService {
 		};
 	}
 
+	private async fail(
+		session: AgentGenerationSession,
+		reason: string,
+		report?: AgentVerificationReport,
+	): Promise<AgentCompilerResult> {
+		session.status = 'failed';
+		await this.sessions.save(session);
+		return {
+			status: 'failed',
+			sessionId: session.id,
+			reason,
+			...(report ? { report } : {}),
+			diagnostics: this.diagnostics(session),
+		};
+	}
+
 	private async finish(
 		session: AgentGenerationSession,
 		compiled: CompiledAgent,
@@ -342,20 +316,15 @@ export class AgentCompilerService {
 		session.report = report;
 		session.scenarios = scenarios;
 		session.updatedAt = this.now().toISOString();
-		if (hasBlockingAgentIssues(report)) {
-			session.status = 'failed';
-			await this.sessions.save(session);
-			return {
-				status: 'failed',
-				sessionId: session.id,
-				reason: report.issues
+		if (hasBlockingAgentIssues(report))
+			return await this.fail(
+				session,
+				report.issues
 					.filter((issue) => issue.severity === 'error')
 					.map((issue) => issue.message)
 					.join(' '),
 				report,
-				diagnostics: this.diagnostics(session),
-			};
-		}
+			);
 		session.status = report.issues.some((issue) => issue.severity === 'warning')
 			? 'compiled_with_unresolved_resources'
 			: 'compiled';
@@ -376,17 +345,15 @@ export class AgentCompilerService {
 	}
 
 	private diagnostics(session: AgentGenerationSession): AgentCompilerDiagnostics {
+		const { decisions } = session;
 		return {
 			sessionId: session.id,
-			decisionCount: session.decisions.reduce(
-				(total, entry) => total + entry.questionNames.length,
-				0,
-			),
-			decisionWaves: session.decisions.length,
-			decisionLatencyMs: session.decisions.reduce((total, entry) => total + entry.latencyMs, 0),
+			decisionCount: decisions.reduce((total, entry) => total + entry.questionNames.length, 0),
+			decisionWaves: decisions.length,
+			decisionLatencyMs: decisions.reduce((total, entry) => total + entry.latencyMs, 0),
 			timings: { ...session.timings },
 			compilerVersion: AGENT_COMPILER_VERSION,
-			decisions: session.decisions,
+			decisions,
 		};
 	}
 }
@@ -405,23 +372,15 @@ export function setAgentRequirement(
 	if (channel) {
 		const choice = typeof value === 'string' ? value.trim().toLowerCase() : '';
 		requirements.channels = requirements.channels.filter((mention) => mention.name !== channel[1]);
-		if (
-			choice === 'slack' ||
-			choice === 'telegram' ||
-			choice === 'discord' ||
-			choice === 'linear'
-		) {
-			requirements.channels.push({ name: choice, supported: true, type: choice });
-		}
+		const type = AGENT_CHANNEL_TYPES.find((candidate) => candidate === choice);
+		if (type) requirements.channels.push({ name: type, supported: true, type });
 	}
 	const action = field.match(/^toolActions\.([^.]+)\.(.+)$/);
-	if (action) {
-		const target = requirements.toolActions.find((candidate) => candidate.id === action[1]);
-		if (target) {
-			if (action[2] === 'operation')
-				target.operationId = typeof value === 'string' ? value : target.operationId;
-			else target.params[action[2]] = value;
-		}
+	const target = action && requirements.toolActions.find((candidate) => candidate.id === action[1]);
+	if (action && target) {
+		if (action[2] === 'operation')
+			target.operationId = typeof value === 'string' ? value : target.operationId;
+		else target.params[action[2]] = value;
 	}
 	requirements.answers[field] = value;
 }
@@ -430,8 +389,8 @@ function inferAgentAnswer(field: string, message: string): unknown {
 	const trimmed = message.trim();
 	if (field.startsWith('channels.')) {
 		const lower = trimmed.toLowerCase();
-		for (const channel of ['slack', 'telegram', 'discord', 'linear'])
-			if (lower.includes(channel)) return channel;
+		const channel = ['slack', 'telegram', 'discord', 'linear'].find((name) => lower.includes(name));
+		if (channel) return channel;
 		if (/\bpreview\b/i.test(lower)) return 'preview';
 		if (/\bworkflow|endpoint|api\b/i.test(lower)) return 'workflow_endpoint';
 		return trimmed;

@@ -40,6 +40,36 @@ const INTENT_PHRASE =
 	/\b(create|build|make|set ?up|need|want|give me)\b.*\b(agent|bot|assistant)\b/i;
 const CHANNEL_CONTEXT =
 	/\b(via|through|on|in|from|over|using)\s+(slack|telegram|discord|linear|whatsapp|teams)\b|\b(slack|telegram|discord|linear|whatsapp|teams)\s+(agent|bot|assistant|chat|channel)\b|\b(agent|bot|assistant)\s+(for|in|on)\s+(slack|telegram|discord|linear|whatsapp|teams)\b/i;
+const MODEL_REF = /\b([a-z0-9-]+\/[a-z0-9._:-]+(?:\/[a-z0-9._:-]+)*)\b/i;
+const MODEL_CONTEXT = /\b(model|use|using|with|run on|powered by)\b/;
+const PROVIDER_ALIASES: Array<[RegExp, string]> = [
+	[/\b(claude|anthropic)\b/, 'anthropic'],
+	[/\b(gpt|openai|o[13]\b)/, 'openai'],
+	[/\b(gemini|google)\b/, 'google'],
+	[/\bmistral\b/, 'mistral'],
+	[/\b(grok|xai)\b/, 'xai'],
+	[/\bgroq\b/, 'groq'],
+	[/\bdeepseek\b/, 'deepseek'],
+	[/\bbedrock\b/, 'aws-bedrock'],
+	[/\bazure\b/, 'azure-openai'],
+	[/\bopenrouter\b/, 'openrouter'],
+];
+const WORKFLOW_PHRASE =
+	/\b(?:use|call|run|attach|trigger)s?\s+(?:the\s+)?["“]?([^"”,.]+?)["”]?\s+workflow\b/i;
+const SUB_AGENT_PHRASE =
+	/\b(?:delegate|hand off|escalate)\s+(?:.*?\s+)?to\s+(?:the\s+)?["“]?([^"”,.]+?)["”]?(?:\s+(?:agent|sub-agent))?\s*$/i;
+const RULE_CUE = /\b(never|always|do not|don't|must|only|avoid)\b/i;
+const STRICT_RULE_CUE = /\b(never|always|do not|don't|must not|only ever)\b/i;
+const NON_TOOL_PHRASE = /\b(remember|recall|memory|web search|search the web|browse)\b/i;
+const SCHEDULE_PHRASE =
+	/([^.!?\n]*\b(every|daily|nightly|hourly|weekly|each (day|morning|week|hour)|at \d{1,2}(:\d{2})?\s?(am|pm)?)\b[^.!?\n]*)/gi;
+const OBSERVATIONAL_MEMORY =
+	/\b(remember|recall|context across|previous conversations|conversation history|long[- ]term memory)\b/i;
+const EPISODIC_MEMORY = /\b(episodic|remember (facts|preferences)|learn about (the )?user)\b/i;
+const WEB_SEARCH = /\b(search the web|web search|browse the web|look things up online|internet)\b/i;
+const ASK_ALWAYS =
+	/\b(ask (me )?(before|first)|confirm (before|first)|with (my )?approval|require approval)\b/i;
+const NEVER_ASK = /\b(without asking|no approval|autonomously|automatically without)\b/i;
 
 export interface AgentExtractionContext {
 	existingName?: string;
@@ -54,7 +84,7 @@ export function detectChannels(text: string): ChannelMention[] {
 }
 
 function detectModel(text: string): { provider?: string; model?: string } {
-	const explicit = text.match(/\b([a-z0-9-]+\/[a-z0-9._:-]+(?:\/[a-z0-9._:-]+)*)\b/i)?.[1];
+	const explicit = text.match(MODEL_REF)?.[1];
 	if (
 		explicit &&
 		AGENT_MODEL_STRING_REGEX.test(explicit) &&
@@ -63,23 +93,10 @@ function detectModel(text: string): { provider?: string; model?: string } {
 		return { model: explicit.toLowerCase(), provider: explicit.split('/')[0].toLowerCase() };
 	}
 	const lower = text.toLowerCase();
-	const aliases: Array<[RegExp, string]> = [
-		[/\b(claude|anthropic)\b/, 'anthropic'],
-		[/\b(gpt|openai|o[13]\b)/, 'openai'],
-		[/\b(gemini|google)\b/, 'google'],
-		[/\bmistral\b/, 'mistral'],
-		[/\b(grok|xai)\b/, 'xai'],
-		[/\bgroq\b/, 'groq'],
-		[/\bdeepseek\b/, 'deepseek'],
-		[/\bbedrock\b/, 'aws-bedrock'],
-		[/\bazure\b/, 'azure-openai'],
-		[/\bopenrouter\b/, 'openrouter'],
-	];
-	for (const [pattern, provider] of aliases) {
-		if (pattern.test(lower) && /\b(model|use|using|with|run on|powered by)\b/.test(lower))
-			return { provider };
-	}
-	return {};
+	const provider = PROVIDER_ALIASES.find(
+		([pattern]) => pattern.test(lower) && MODEL_CONTEXT.test(lower),
+	)?.[1];
+	return provider ? { provider } : {};
 }
 
 function slugId(text: string, index: number): string {
@@ -90,14 +107,35 @@ function isChannelPhrase(phrase: string): boolean {
 	return CHANNEL_CONTEXT.test(phrase) && !TOOL_VERBS.test(phrase.replace(CHANNEL_CONTEXT, ''));
 }
 
+function isToolPhrase(phrase: string): boolean {
+	if (!TOOL_VERBS.test(phrase) || isChannelPhrase(phrase) || INTENT_PHRASE.test(phrase))
+		return false;
+	return !NON_TOOL_PHRASE.test(phrase);
+}
+
+function toolAction(phrase: string, index: number): RequestedAction {
+	const integration = detectIntegrations(phrase)[0];
+	const params: Record<string, unknown> = {};
+	const channel = phrase.match(/#[a-z0-9_-]+/i)?.[0];
+	if (channel) params.channel = channel;
+	const table = phrase.match(/\b(?:table|into)\s+["'`]?([a-z_][a-z0-9_]*)["'`]?/i)?.[1];
+	if (table && integration === 'postgres') params.table = table;
+	const url = phrase.match(/https?:\/\/\S+/i)?.[0];
+	if (url) params.url = url.replace(/[.,)]$/, '');
+	return {
+		id: slugId(phrase, index),
+		text: phrase,
+		...(integration ? { integration } : {}),
+		params,
+	};
+}
+
 function derivePurpose(text: string): string | undefined {
-	const sentence = text
+	return text
 		.split(/(?<=[.!?])\s+|\n+/)
 		.map((part) => part.trim())
-		.find((part) => part.length > 12);
-	if (!sentence) return undefined;
-	return sentence
-		.replace(/^(please\s+)?(create|build|make|set ?up|i need|i want|give me)\s+(an?\s+)?/i, '')
+		.find((part) => part.length > 12)
+		?.replace(/^(please\s+)?(create|build|make|set ?up|i need|i want|give me)\s+(an?\s+)?/i, '')
 		.replace(/[.]$/, '');
 }
 
@@ -144,54 +182,16 @@ export function extractAgentRequirements(
 	);
 	phrases.forEach((rawPhrase, index) => {
 		const phrase = rawPhrase.replace(/[.!?]+$/, '').trim();
-		const workflow = phrase.match(
-			/\b(?:use|call|run|attach|trigger)s?\s+(?:the\s+)?["“]?([^"”,.]+?)["”]?\s+workflow\b/i,
-		)?.[1];
-		if (workflow) {
-			workflowTools.push(workflow.trim());
-			return;
-		}
-		const subAgent = phrase.match(
-			/\b(?:delegate|hand off|escalate)\s+(?:.*?\s+)?to\s+(?:the\s+)?["“]?([^"”,.]+?)["”]?(?:\s+(?:agent|sub-agent))?\s*$/i,
-		)?.[1];
-		if (subAgent) {
-			subAgentNames.push(subAgent.trim());
-			return;
-		}
-		if (
-			/\b(never|always|do not|don't|must|only|avoid)\b/i.test(phrase) &&
-			!TOOL_VERBS.test(phrase)
-		) {
+		const workflow = phrase.match(WORKFLOW_PHRASE)?.[1];
+		const subAgent = phrase.match(SUB_AGENT_PHRASE)?.[1];
+		if (workflow) workflowTools.push(workflow.trim());
+		else if (subAgent) subAgentNames.push(subAgent.trim());
+		else if ((RULE_CUE.test(phrase) && !TOOL_VERBS.test(phrase)) || STRICT_RULE_CUE.test(phrase))
 			rules.push(phrase.replace(/[.]$/, ''));
-			return;
-		}
-		if (/\b(never|always|do not|don't|must not|only ever)\b/i.test(phrase)) {
-			rules.push(phrase.replace(/[.]$/, ''));
-			return;
-		}
-		if (!TOOL_VERBS.test(phrase) || isChannelPhrase(phrase) || INTENT_PHRASE.test(phrase)) return;
-		if (/\b(remember|recall|memory|web search|search the web|browse)\b/i.test(phrase)) return;
-		const integration = detectIntegrations(phrase)[0];
-		const params: Record<string, unknown> = {};
-		const channel = phrase.match(/#[a-z0-9_-]+/i)?.[0];
-		if (channel) params.channel = channel;
-		const table = phrase.match(/\b(?:table|into)\s+["'`]?([a-z_][a-z0-9_]*)["'`]?/i)?.[1];
-		if (table && integration === 'postgres') params.table = table;
-		const url = phrase.match(/https?:\/\/\S+/i)?.[0];
-		if (url) params.url = url.replace(/[.,)]$/, '');
-		toolActions.push({
-			id: slugId(phrase, index),
-			text: phrase,
-			...(integration ? { integration } : {}),
-			params,
-		});
+		else if (isToolPhrase(phrase)) toolActions.push(toolAction(phrase, index));
 	});
 
-	const schedules = [
-		...request.matchAll(
-			/([^.!?\n]*\b(every|daily|nightly|hourly|weekly|each (day|morning|week|hour)|at \d{1,2}(:\d{2})?\s?(am|pm)?)\b[^.!?\n]*)/gi,
-		),
-	].map((match) => {
+	const schedules = [...request.matchAll(SCHEDULE_PHRASE)].map((match) => {
 		const text = match[1].trim();
 		return { text, cron: detectScheduleCron(text) ?? undefined };
 	});
@@ -212,28 +212,17 @@ export function extractAgentRequirements(
 		subAgentNames,
 		schedules,
 		memory: {
-			observational:
-				/\b(remember|recall|context across|previous conversations|conversation history|long[- ]term memory)\b/i.test(
-					request,
-				),
-			episodic: /\b(episodic|remember (facts|preferences)|learn about (the )?user)\b/i.test(
-				request,
-			),
+			observational: OBSERVATIONAL_MEMORY.test(request),
+			episodic: EPISODIC_MEMORY.test(request),
 		},
-		webSearch:
-			/\b(search the web|web search|browse the web|look things up online|internet)\b/i.test(
-				request,
-			),
+		webSearch: WEB_SEARCH.test(request),
 		...(model.provider ? { modelProvider: model.provider } : {}),
 		...(model.model ? { explicitModel: model.model } : {}),
-		approvalPolicy:
-			/\b(ask (me )?(before|first)|confirm (before|first)|with (my )?approval|require approval)\b/i.test(
-				request,
-			)
-				? 'ask_always'
-				: /\b(without asking|no approval|autonomously|automatically without)\b/i.test(request)
-					? 'never_ask'
-					: 'ask_for_writes',
+		approvalPolicy: ASK_ALWAYS.test(request)
+			? 'ask_always'
+			: NEVER_ASK.test(request)
+				? 'never_ask'
+				: 'ask_for_writes',
 		rules,
 		answers: {},
 	};

@@ -3,7 +3,7 @@ import type {
 	DecisionService,
 } from '../../workflow-compiler/decision/decision-service';
 import { resolveChoice } from '../../workflow-compiler/decision/policy';
-import { withNoneOfThese, type DecisionQuestions } from '../../workflow-compiler/decision/schemas';
+import type { DecisionQuestions } from '../../workflow-compiler/decision/schemas';
 import { planActions } from '../../workflow-compiler/modes/plan-actions';
 import {
 	buildClarificationQuestions,
@@ -14,14 +14,18 @@ import {
 	valueOf,
 	type RequirementIssue,
 } from '../../workflow-compiler/requirements/types';
-import { findByName, type AgentCapabilityCatalog } from '../catalog/capabilities';
+import {
+	findByName,
+	type AgentCapabilityCatalog,
+	type CatalogAgent,
+} from '../catalog/capabilities';
 import type { AgentIR, AgentToolIR } from '../ir/schema';
 import {
 	missingAgentBehaviorRequirements,
 	missingAgentResourceRequirements,
 } from '../requirements/completeness';
 import type { AgentRequirements } from '../requirements/types';
-import { AGENT_DECISION_SCHEMA_VERSION } from '../versions';
+import { choiceQuestion, decide } from './decide';
 
 export interface AgentCreatePlanInput {
 	ref: string;
@@ -66,14 +70,6 @@ export type AgentCreatePlanResult =
 
 const WRITE_OPERATIONS = /\.(post|reply|update|insert|upsert|delete|create|execute)$/;
 
-function toolNameFor(
-	action: { text: string; operationId?: string },
-	catalog: AgentCapabilityCatalog,
-): string {
-	const operation = action.operationId ? catalog.nodeRegistry.get(action.operationId) : undefined;
-	return operation?.label ?? operation?.title ?? action.text;
-}
-
 /**
  * Create mode: requirements → one decision wave (tool operations, ambiguous
  * sub-agents) → AgentIR. Missing information becomes a clarification; a
@@ -84,17 +80,16 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 	const { catalog } = input;
 	let requirements = input.requirements;
 	const log: DecisionLogEntry[] = [];
+	const clarify = (issues: RequirementIssue[]): AgentCreatePlanResult => ({
+		status: 'needs_clarification',
+		issues,
+		questions: buildClarificationQuestions(issues),
+		requirements,
+		log,
+	});
 
 	const behaviorIssues = missingAgentBehaviorRequirements(requirements, catalog);
-	if (behaviorIssues.length > 0) {
-		return {
-			status: 'needs_clarification',
-			issues: behaviorIssues,
-			questions: buildClarificationQuestions(behaviorIssues),
-			requirements,
-			log,
-		};
-	}
+	if (behaviorIssues.length > 0) return clarify(behaviorIssues);
 
 	const planning = await planActions({
 		request: input.request,
@@ -106,116 +101,75 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 	log.push(...planning.log);
 	requirements = { ...requirements, toolActions: planning.actions };
 	let waves = planning.waves;
-	if (planning.issues.length > 0) {
-		const issues = planning.issues.map((issue) => ({
-			...issue,
-			field: issue.field.replace(/^actions\./, 'toolActions.'),
-		}));
-		return {
-			status: 'needs_clarification',
-			issues,
-			questions: buildClarificationQuestions(issues),
-			requirements,
-			log,
-		};
-	}
+	if (planning.issues.length > 0)
+		return clarify(
+			planning.issues.map((issue) => ({
+				...issue,
+				field: issue.field.replace(/^actions\./, 'toolActions.'),
+			})),
+		);
 
 	// Sub-agents: exact or single fuzzy name match binds; several matches need one bounded read.
 	const subAgents: AgentIR['subAgents'] = [];
-	const ambiguous: Array<{ name: string; candidates: AgentCapabilityCatalog['agents'] }> = [];
+	const ambiguous: Array<{ name: string; candidates: CatalogAgent[] }> = [];
+	const bind = (agent: CatalogAgent, name: string) =>
+		subAgents.push({
+			agentId: agent.agentId,
+			name: agent.name,
+			useWhen: `the request is about ${name}`,
+		});
 	for (const name of requirements.subAgentNames) {
 		const answered = requirements.answers[`subAgents.${name}`];
 		const matches =
 			typeof answered === 'string'
 				? catalog.agents.filter((agent) => agent.agentId === answered)
 				: findByName(catalog.agents, name);
-		if (matches.length === 1)
-			subAgents.push({
-				agentId: matches[0].agentId,
-				name: matches[0].name,
-				useWhen: `the request is about ${name}`,
-			});
+		if (matches.length === 1) bind(matches[0], name);
 		else if (matches.length > 1) ambiguous.push({ name, candidates: matches });
 	}
 	if (ambiguous.length > 0) {
 		const questions: DecisionQuestions = {};
-		for (const entry of ambiguous) {
-			const criteria: Record<string, string | null> = {};
-			for (const agent of entry.candidates) criteria[agent.agentId] = agent.name;
-			questions[`subAgents.${entry.name}`] = {
-				type: 'choice',
-				instructions: `Which project agent did the user mean by "${entry.name}"?`,
-				criteria: withNoneOfThese(criteria),
-			};
-		}
+		for (const entry of ambiguous)
+			questions[`subAgents.${entry.name}`] = choiceQuestion(
+				`Which project agent did the user mean by "${entry.name}"?`,
+				entry.candidates.map((agent) => ({ id: agent.agentId, label: agent.name })),
+			);
 		waves += 1;
-		const outcome = await input.decisions.decide({
-			name: 'agent-compiler.sub-agents',
-			schemaVersion: AGENT_DECISION_SCHEMA_VERSION,
-			state: { request: input.request, agents: catalog.agents.map((agent) => agent.name) },
+		const outcome = await decide(
+			input,
+			'agent-compiler.sub-agents',
+			{ request: input.request, agents: catalog.agents.map((agent) => agent.name) },
 			questions,
-			abortSignal: input.abortSignal,
-		});
-		log.push({
-			name: 'agent-compiler.sub-agents',
-			schemaVersion: AGENT_DECISION_SCHEMA_VERSION,
-			backend: input.decisions.kind,
-			...(outcome.ok ? { model: outcome.model } : { failureReason: outcome.reason }),
-			latencyMs: outcome.latencyMs,
-			ok: outcome.ok,
-			questionNames: Object.keys(questions),
-			answers: outcome.ok ? outcome.answers : {},
-			policy: {},
-		});
+			log,
+		);
 		for (const entry of ambiguous) {
 			const resolution = resolveChoice({
 				allowed: entry.candidates.map((agent) => agent.agentId),
 				answer: outcome.ok ? outcome.answers[`subAgents.${entry.name}`] : undefined,
 			});
-			if (resolution.status === 'chosen') {
-				const agent = entry.candidates.find((candidate) => candidate.agentId === resolution.value);
-				if (agent)
-					subAgents.push({
-						agentId: agent.agentId,
-						name: agent.name,
-						useWhen: `the request is about ${entry.name}`,
-					});
-			} else {
-				requirements = { ...requirements, answers: { ...requirements.answers } };
-			}
+			if (resolution.status !== 'chosen') continue;
+			const agent = entry.candidates.find((candidate) => candidate.agentId === resolution.value);
+			if (agent) bind(agent, entry.name);
 		}
 	}
 
+	const bound = new Set(
+		subAgents.map((agent) => `subAgents.${agent.useWhen?.replace('the request is about ', '')}`),
+	);
 	const resourceIssues = missingAgentResourceRequirements(
 		requirements,
 		catalog,
 		catalog.nodeRegistry,
-	).filter(
-		(issue) =>
-			!issue.field.startsWith('subAgents.') ||
-			!subAgents.some(
-				(agent) =>
-					issue.field === `subAgents.${agent.useWhen?.replace('the request is about ', '')}`,
-			),
-	);
-	if (resourceIssues.length > 0) {
-		return {
-			status: 'needs_clarification',
-			issues: resourceIssues,
-			questions: buildClarificationQuestions(resourceIssues),
-			requirements,
-			log,
-		};
-	}
+	).filter((issue) => !issue.field.startsWith('subAgents.') || !bound.has(issue.field));
+	if (resourceIssues.length > 0) return clarify(resourceIssues);
 
 	// Workflow tools: attach by name from the project or the session; otherwise the host must build them first.
 	const tools: AgentToolIR[] = [];
 	const artifacts: RequiredWorkflowArtifact[] = [];
-	const sessionWorkflows = input.sessionWorkflows ?? [];
+	const askAlways = requirements.approvalPolicy === 'ask_always';
 	for (const name of requirements.workflowTools) {
-		const fromSession = findByName(sessionWorkflows, name)[0];
-		const fromProject = findByName(catalog.workflows, name)[0];
-		const found = fromSession ?? fromProject;
+		const found =
+			findByName(input.sessionWorkflows ?? [], name)[0] ?? findByName(catalog.workflows, name)[0];
 		if (!found) {
 			artifacts.push({
 				type: 'workflow',
@@ -236,7 +190,7 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 			workflowId: found.id,
 			workflowName: found.name,
 			useWhen: `the user needs "${found.name}".`,
-			requireApproval: requirements.approvalPolicy === 'ask_always',
+			requireApproval: askAlways,
 		});
 	}
 	if (artifacts.length > 0) return { status: 'needs_artifacts', artifacts, requirements, log };
@@ -251,26 +205,24 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 				requirements.answers[`toolActions.${action.id}.${definition.name}`];
 			if (value !== undefined) params[definition.name] = value;
 		}
-		const isWrite = WRITE_OPERATIONS.test(operation.id);
 		tools.push({
 			id: action.id,
 			kind: 'node',
-			name: toolNameFor(action, catalog),
+			name: operation.label ?? operation.title,
 			operationId: operation.id,
 			params,
 			description: operation.description,
 			useWhen: `the user asks to ${action.text.replace(/[.]$/, '').toLowerCase()}.`,
 			requireApproval:
-				requirements.approvalPolicy === 'ask_always' ||
-				(requirements.approvalPolicy === 'ask_for_writes' && isWrite),
+				askAlways ||
+				(requirements.approvalPolicy === 'ask_for_writes' && WRITE_OPERATIONS.test(operation.id)),
 		});
 	}
 
 	const purpose = valueOf(requirements.purpose, isString) ?? 'help the user';
 	const name = valueOf(requirements.name, isString) ?? 'New Agent';
-	const channelTypes = requirements.channels
-		.filter((mention) => mention.supported && mention.type)
-		.map((mention) => mention.type);
+	const cronOf = (schedule: { text: string; cron?: string }) =>
+		schedule.cron ?? requirements.answers[`schedules.${schedule.text}`];
 	const ir: AgentIR = {
 		ref: input.ref,
 		name,
@@ -284,9 +236,9 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 			],
 			userText: input.request,
 		},
-		channels: channelTypes
-			.filter((type): type is NonNullable<typeof type> => type !== undefined)
-			.map((type) => ({ type })),
+		channels: requirements.channels.flatMap((mention) =>
+			mention.supported && mention.type ? [{ type: mention.type }] : [],
+		),
 		model: requirements.explicitModel
 			? { mode: 'explicit', model: requirements.explicitModel }
 			: requirements.modelProvider
@@ -295,12 +247,12 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 		tools,
 		skills: [],
 		tasks: requirements.schedules
-			.filter((schedule) => schedule.cron ?? requirements.answers[`schedules.${schedule.text}`])
+			.filter((schedule) => cronOf(schedule))
 			.map((schedule, index) => ({
 				id: `task-${index + 1}`,
 				name: schedule.text.slice(0, 120),
 				objective: schedule.text,
-				cron: String(schedule.cron ?? requirements.answers[`schedules.${schedule.text}`]),
+				cron: String(cronOf(schedule)),
 				timezone: 'UTC',
 				enabled: true,
 			})),

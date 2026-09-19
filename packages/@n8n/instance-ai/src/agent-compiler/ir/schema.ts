@@ -95,6 +95,20 @@ export const agentInstructionsIrSchema = z.object({
 });
 export type AgentInstructionsIR = z.infer<typeof agentInstructionsIrSchema>;
 
+const agentSubAgentIrSchema = z.object({
+	agentId: z.string().min(1),
+	name: z.string().optional(),
+	useWhen: z.string().optional(),
+});
+
+const agentMcpServerIrSchema = z.object({
+	name: z.string().min(1).max(64),
+	url: z.string().min(1),
+	transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
+	authentication: z.string().default('none'),
+	credentialId: z.string().optional(),
+});
+
 export const agentIrSchema = z.object({
 	/** Stable addressing key inside the conversation (the `agentRef`). */
 	ref: z.string().min(1),
@@ -106,29 +120,11 @@ export const agentIrSchema = z.object({
 	tools: z.array(agentToolIrSchema).default([]),
 	skills: z.array(agentSkillIrSchema).default([]),
 	tasks: z.array(agentTaskIrSchema).default([]),
-	subAgents: z
-		.array(
-			z.object({
-				agentId: z.string().min(1),
-				name: z.string().optional(),
-				useWhen: z.string().optional(),
-			}),
-		)
-		.default([]),
+	subAgents: z.array(agentSubAgentIrSchema).default([]),
 	memory: z
 		.object({ observational: z.boolean().default(false), episodic: z.boolean().default(false) })
 		.default({}),
-	mcpServers: z
-		.array(
-			z.object({
-				name: z.string().min(1).max(64),
-				url: z.string().min(1),
-				transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
-				authentication: z.string().default('none'),
-				credentialId: z.string().optional(),
-			}),
-		)
-		.default([]),
+	mcpServers: z.array(agentMcpServerIrSchema).default([]),
 	options: z
 		.object({
 			reasoning: z.enum(AGENT_REASONING_LEVELS).optional(),

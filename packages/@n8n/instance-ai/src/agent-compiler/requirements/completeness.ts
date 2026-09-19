@@ -11,20 +11,17 @@ export function missingAgentBehaviorRequirements(
 	catalog: AgentCapabilityCatalog,
 ): RequirementIssue[] {
 	const issues: RequirementIssue[] = [];
-	if (requirements.purpose.status !== 'resolved') {
+	const { purpose } = requirements;
+	if (purpose.status !== 'resolved')
 		issues.push({
 			field: 'purpose',
 			reason: 'The request does not say what the agent should do.',
-			question:
-				requirements.purpose.status === 'missing'
-					? requirements.purpose.question
-					: 'What should this agent do?',
+			question: purpose.status === 'missing' ? purpose.question : 'What should this agent do?',
 		});
-	}
 	const supportedTypes = new Set(catalog.channels.map((channel) => channel.type));
 	for (const mention of requirements.channels) {
-		if (mention.supported && mention.type && supportedTypes.has(mention.type)) continue;
 		if (requirements.answers[`channels.${mention.name}`] !== undefined) continue;
+		if (mention.supported && mention.type && supportedTypes.has(mention.type)) continue;
 		const options = catalog.channels.map((channel) => channel.label).join(', ');
 		issues.push({
 			field: `channels.${mention.name}`,
@@ -63,8 +60,7 @@ export function missingAgentResourceRequirements(
 	).map((issue) => ({ ...issue, field: issue.field.replace(/^actions\./, 'toolActions.') }));
 	for (const name of requirements.subAgentNames) {
 		const matches = findByName(catalog.agents, name);
-		if (matches.length === 1) continue;
-		if (requirements.answers[`subAgents.${name}`] !== undefined) continue;
+		if (matches.length === 1 || requirements.answers[`subAgents.${name}`] !== undefined) continue;
 		issues.push({
 			field: `subAgents.${name}`,
 			reason:
@@ -79,8 +75,7 @@ export function missingAgentResourceRequirements(
 		});
 	}
 	for (const schedule of requirements.schedules) {
-		if (schedule.cron) continue;
-		if (requirements.answers[`schedules.${schedule.text}`] !== undefined) continue;
+		if (schedule.cron || requirements.answers[`schedules.${schedule.text}`] !== undefined) continue;
 		issues.push({
 			field: `schedules.${schedule.text}`,
 			reason: 'The schedule could not be turned into a cron expression.',

@@ -5,12 +5,8 @@ import type { DecisionLogEntry } from '../../workflow-compiler/decision/decision
 import type { ClarificationQuestion } from '../../workflow-compiler/requirements/clarification';
 import type { RequirementIssue } from '../../workflow-compiler/requirements/types';
 import type { AgentGeneratorMetadata, CompiledAgent } from '../compiler/compile';
-import { agentIrSchema, type AgentIR } from '../ir/schema';
-import {
-	agentRequirementsSchema,
-	type AgentIntent,
-	type AgentRequirements,
-} from '../requirements/types';
+import { agentIrSchema } from '../ir/schema';
+import { agentIntentSchema, agentRequirementsSchema } from '../requirements/types';
 import type { AgentScenario } from '../scenarios/enumerate';
 import type { AgentVerificationReport } from '../validation/validate';
 
@@ -29,18 +25,10 @@ export const agentGeneratorStatusSchema = z.enum([
 ]);
 export type AgentGeneratorStatus = z.infer<typeof agentGeneratorStatusSchema>;
 
-export interface AgentGenerationSession {
-	id: string;
-	intent: AgentIntent;
-	ref: string;
-	agentId?: string;
-	request: string;
-	messages: string[];
-	requirements: AgentRequirements;
-	status: AgentGeneratorStatus;
+/** Persisted fields plus the working state a build keeps in memory. */
+export type AgentGenerationSession = PersistedAgentSession & {
 	unresolved: RequirementIssue[];
 	questions: ClarificationQuestion[];
-	ir?: AgentIR;
 	compiled?: {
 		config: AgentJsonConfig;
 		generator: AgentGeneratorMetadata;
@@ -50,13 +38,11 @@ export interface AgentGenerationSession {
 	scenarios: AgentScenario[];
 	decisions: DecisionLogEntry[];
 	timings: Record<string, number>;
-	createdAt: string;
-	updatedAt: string;
-}
+};
 
 export const persistedAgentSessionSchema = z.object({
 	id: z.string(),
-	intent: z.enum(['create', 'edit']),
+	intent: agentIntentSchema,
 	ref: z.string(),
 	agentId: z.string().optional(),
 	request: z.string(),
@@ -108,9 +94,8 @@ export class InMemoryAgentSessionStore implements AgentSessionStore {
 	async save(session: AgentGenerationSession): Promise<void> {
 		this.sessions.delete(session.id);
 		this.sessions.set(session.id, session);
-		while (this.sessions.size > this.maxSessions) {
-			const oldest = this.sessions.keys().next().value;
-			if (oldest === undefined) break;
+		for (const oldest of this.sessions.keys()) {
+			if (this.sessions.size <= this.maxSessions) break;
 			this.sessions.delete(oldest);
 		}
 	}

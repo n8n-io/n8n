@@ -6,14 +6,17 @@ import {
 	AgentTelegramSettingsSchema,
 	sanitizeAgentToolName,
 } from '@n8n/api-types';
+import type { z } from 'zod';
 
 import type { NodeRegistry } from '../../workflow-compiler/catalog/node-registry';
 import { bindParameters } from '../../workflow-compiler/compiler/compile';
 import { compileParameterTree } from '../../workflow-compiler/expressions/expression';
 import type { CatalogDefaultModel } from '../catalog/capabilities';
-import type { AgentChannelIR, AgentIR, AgentToolIR } from '../ir/schema';
+import type { AgentChannelIR, AgentChannelType, AgentIR, AgentToolIR } from '../ir/schema';
 import { AGENT_COMPILER_VERSION, AGENT_INSTRUCTIONS_TEMPLATE_VERSION } from '../versions';
 import { renderInstructions } from './instructions';
+
+export type AgentTool = NonNullable<AgentJsonConfig['tools']>[number];
 
 export interface CompiledAgentTask {
 	name: string;
@@ -48,42 +51,45 @@ export interface CompileAgentOptions {
 	existing?: AgentJsonConfig;
 }
 
-function channelIntegration(channel: AgentChannelIR): AgentIntegrationConfig {
-	const credentialId = channel.credentialId ?? '';
-	const extra = channel.settings ?? {};
-	switch (channel.type) {
-		case 'telegram': {
-			const parsed = AgentTelegramSettingsSchema.safeParse({
-				accessMode: 'public',
-				allowedUsers: [],
-				...extra,
-			});
-			return {
-				type: 'telegram',
-				credentialId,
-				...(parsed.success ? { settings: parsed.data } : {}),
-			};
-		}
-		case 'slack': {
-			const parsed = AgentSlackSettingsSchema.safeParse({ messagingExperience: 'agent', ...extra });
-			return { type: 'slack', credentialId, ...(parsed.success ? { settings: parsed.data } : {}) };
-		}
-		case 'discord': {
-			const parsed = AgentDiscordSettingsSchema.safeParse(extra);
-			return {
-				type: 'discord',
-				credentialId,
-				...(parsed.success ? { settings: parsed.data } : {}),
-			};
-		}
-		case 'linear': {
-			const parsed = AgentLinearSettingsSchema.safeParse(extra);
-			return { type: 'linear', credentialId, ...(parsed.success ? { settings: parsed.data } : {}) };
-		}
-	}
+/** Builds one integration type; the settings schema fills in `defaults` and drops invalid input. */
+function integration<T extends AgentChannelType, S>(
+	type: T,
+	schema: z.ZodType<S, z.ZodTypeDef, unknown>,
+	defaults: NoInfer<Partial<S>>,
+) {
+	return (credentialId: string, extra: Record<string, unknown>) => {
+		const parsed = schema.safeParse({ ...defaults, ...extra });
+		return { type, credentialId, ...(parsed.success ? { settings: parsed.data } : {}) };
+	};
 }
 
-function uniqueToolName(base: string, used: Set<string>): string {
+const CHANNELS = {
+	telegram: integration('telegram', AgentTelegramSettingsSchema, {
+		accessMode: 'public',
+		allowedUsers: [],
+	}),
+	slack: integration('slack', AgentSlackSettingsSchema, { messagingExperience: 'agent' }),
+	discord: integration('discord', AgentDiscordSettingsSchema, {}),
+	linear: integration('linear', AgentLinearSettingsSchema, {}),
+};
+
+export function channelIntegration(channel: AgentChannelIR): AgentIntegrationConfig {
+	return CHANNELS[channel.type](channel.credentialId ?? '', channel.settings ?? {});
+}
+
+export function memoryConfig(
+	observational: boolean,
+	episodic: boolean,
+): NonNullable<AgentJsonConfig['memory']> {
+	return {
+		enabled: observational || episodic,
+		storage: 'n8n',
+		observationalMemory: { enabled: observational },
+		episodicMemory: episodic ? { enabled: true, credential: 'managed' } : { enabled: false },
+	};
+}
+
+export function uniqueToolName(base: string, used: Set<string>): string {
 	const sanitized = sanitizeAgentToolName(base) || 'tool';
 	let name = sanitized;
 	let n = 1;
@@ -96,12 +102,22 @@ function uniqueToolName(base: string, used: Set<string>): string {
 	return name;
 }
 
+/** `{ [key]: value }` when `value` is truthy, else nothing to spread. */
+function optional<K extends string, V>(
+	key: K,
+	value: V | undefined | false | '',
+): Partial<Record<K, V>> {
+	const out: Partial<Record<K, V>> = {};
+	if (value) out[key] = value;
+	return out;
+}
+
 /** Deterministic AgentIR → AgentJsonConfig (+ skill and task bodies). */
 export function compileAgent(ir: AgentIR, options: CompileAgentOptions): CompiledAgent {
 	const warnings: string[] = [];
 	const used = new Set<string>();
 	const toolNames: Record<string, string> = {};
-	const tools: NonNullable<AgentJsonConfig['tools']> = [];
+	const tools: AgentTool[] = [];
 	for (const tool of ir.tools) {
 		const name = uniqueToolName(tool.name, used);
 		toolNames[name] = tool.id;
@@ -109,50 +125,41 @@ export function compileAgent(ir: AgentIR, options: CompileAgentOptions): Compile
 	}
 
 	const model = resolveModel(ir, options, warnings);
+	const { reasoning, webSearch, maxIterations } = ir.options;
 	const config: AgentJsonConfig = {
 		...(options.existing ?? {}),
 		name: ir.name,
 		model: model.model,
-		...(model.credential ? { credential: model.credential } : {}),
+		...optional('credential', model.credential),
 		instructions: renderInstructions(ir),
 		tools,
 		integrations: ir.channels.map(channelIntegration),
-		memory: {
-			enabled: ir.memory.observational || ir.memory.episodic,
-			storage: 'n8n',
-			observationalMemory: { enabled: ir.memory.observational },
-			episodicMemory: ir.memory.episodic
-				? { enabled: true, credential: 'managed' }
-				: { enabled: false },
-		},
-		...(ir.subAgents.length > 0
-			? {
-					subAgents: {
-						agents: ir.subAgents.map(({ agentId, useWhen }) => ({
-							agentId,
-							...(useWhen ? { useWhen } : {}),
-						})),
-					},
-				}
-			: {}),
-		...(ir.mcpServers.length > 0
-			? {
-					mcpServers: ir.mcpServers.map((server) => ({
-						name: server.name,
-						url: server.url,
-						transport: server.transport,
-						authentication: server.authentication,
-						...(server.credentialId ? { credential: server.credentialId } : {}),
-					})),
-				}
-			: {}),
+		memory: memoryConfig(ir.memory.observational, ir.memory.episodic),
+		...optional(
+			'subAgents',
+			ir.subAgents.length > 0 && {
+				agents: ir.subAgents.map(({ agentId, useWhen }) => ({
+					agentId,
+					...optional('useWhen', useWhen),
+				})),
+			},
+		),
+		...optional(
+			'mcpServers',
+			ir.mcpServers.length > 0 &&
+				ir.mcpServers.map(({ name, url, transport, authentication, credentialId }) => ({
+					name,
+					url,
+					transport,
+					authentication,
+					...optional('credential', credentialId),
+				})),
+		),
 		config: {
 			...(options.existing?.config ?? {}),
-			...(ir.options.reasoning ? { reasoning: ir.options.reasoning } : {}),
-			...(ir.options.webSearch !== undefined
-				? { webSearch: { enabled: ir.options.webSearch } }
-				: {}),
-			...(ir.options.maxIterations ? { maxIterations: ir.options.maxIterations } : {}),
+			...optional('reasoning', reasoning),
+			...(webSearch !== undefined ? { webSearch: { enabled: webSearch } } : {}),
+			...optional('maxIterations', maxIterations),
 		},
 	};
 	// Skill and task refs are attached by the persistence step once their bodies have ids.
@@ -160,22 +167,18 @@ export function compileAgent(ir: AgentIR, options: CompileAgentOptions): Compile
 	delete config.tasks;
 
 	const skills: Record<string, AgentSkill> = {};
-	for (const skill of ir.skills)
-		skills[skill.id] = {
-			name: skill.name,
-			description: skill.description,
-			instructions: skill.instructions,
-		};
+	for (const { id, name, description, instructions } of ir.skills)
+		skills[id] = { name, description, instructions };
 
 	return {
 		config,
 		skills,
-		tasks: ir.tasks.map((task) => ({
-			name: task.name,
-			objective: task.objective,
-			cronExpression: task.cron,
-			timezone: task.timezone,
-			enabled: task.enabled,
+		tasks: ir.tasks.map(({ name, objective, cron, timezone, enabled }) => ({
+			name,
+			objective,
+			cronExpression: cron,
+			timezone,
+			enabled,
 		})),
 		toolNames,
 		generator: {
@@ -193,54 +196,50 @@ function resolveModel(
 	options: CompileAgentOptions,
 	warnings: string[],
 ): { model: string; credential?: string } {
-	if (ir.model.mode === 'explicit')
-		return {
-			model: ir.model.model,
-			...(ir.model.credentialId ? { credential: ir.model.credentialId } : {}),
-		};
-	if (ir.model.mode === 'provider') {
-		if (options.defaultModel?.model.startsWith(`${ir.model.provider}/`))
-			return options.defaultModel;
+	const { existing, defaultModel } = options;
+	const { model } = ir;
+	if (model.mode === 'explicit')
+		return { model: model.model, ...optional('credential', model.credentialId) };
+	if (model.mode === 'provider') {
+		if (defaultModel?.model.startsWith(`${model.provider}/`)) return defaultModel;
 		warnings.push(
-			`No configured model for provider "${ir.model.provider}"; the agent is saved as a draft until a model is chosen.`,
+			`No configured model for provider "${model.provider}"; the agent is saved as a draft until a model is chosen.`,
 		);
 		return { model: '' };
 	}
-	if (options.existing?.model)
-		return {
-			model: options.existing.model,
-			...(options.existing.credential ? { credential: options.existing.credential } : {}),
-		};
-	if (options.defaultModel) return options.defaultModel;
+	if (existing?.model)
+		return { model: existing.model, ...optional('credential', existing.credential) };
+	if (defaultModel) return defaultModel;
 	warnings.push(
 		'No default model is available; the agent is saved as a draft until a model is chosen.',
 	);
 	return { model: '' };
 }
 
-function compileTool(
+const isObject = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null;
+
+/** Compiles one IR tool under an already unique `name`. */
+export function compileTool(
 	tool: AgentToolIR,
 	name: string,
-	options: CompileAgentOptions,
+	options: Pick<CompileAgentOptions, 'registry'>,
 	warnings: string[],
-): NonNullable<AgentJsonConfig['tools']>[number] {
+): AgentTool {
+	const approval = optional('requireApproval', tool.requireApproval);
 	switch (tool.kind) {
 		case 'workflow':
 			return {
 				type: 'workflow',
-				...(tool.workflowId ? { workflowId: tool.workflowId } : {}),
+				...optional('workflowId', tool.workflowId),
 				workflow: tool.workflowName,
 				name,
-				...(tool.description ? { description: tool.description } : {}),
-				...(tool.requireApproval ? { requireApproval: true } : {}),
-				...(tool.allOutputs ? { allOutputs: true } : {}),
+				...optional('description', tool.description),
+				...approval,
+				...optional('allOutputs', tool.allOutputs),
 			};
 		case 'custom':
-			return {
-				type: 'custom',
-				id: tool.id,
-				...(tool.requireApproval ? { requireApproval: true } : {}),
-			};
+			return { type: 'custom', id: tool.id, ...approval };
 		case 'node': {
 			const operation = options.registry.require(tool.operationId);
 			const parameters = compileParameterTree(
@@ -257,19 +256,16 @@ function compileTool(
 				node: {
 					nodeType: operation.nodeType,
 					nodeTypeVersion: operation.version,
-					nodeParameters:
-						typeof parameters === 'object' && parameters !== null
-							? (parameters as Record<string, unknown>)
-							: {},
-					...(credentialType && tool.credentialId
-						? {
-								credentials: {
-									[credentialType]: { id: tool.credentialId, name: tool.credentialName ?? '' },
-								},
-							}
-						: {}),
+					nodeParameters: isObject(parameters) ? parameters : {},
+					...optional(
+						'credentials',
+						credentialType &&
+							tool.credentialId && {
+								[credentialType]: { id: tool.credentialId, name: tool.credentialName ?? '' },
+							},
+					),
 				},
-				...(tool.requireApproval ? { requireApproval: true } : {}),
+				...approval,
 			};
 		}
 	}
