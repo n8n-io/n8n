@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
@@ -23,7 +24,10 @@ const SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds; // 10 minutes
  */
 @Service()
 export class OAuthSessionService {
-	constructor(private readonly jwtService: JwtService) {}
+	constructor(
+		private readonly jwtService: JwtService,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	/**
 	 * Create OAuth session token and set it as a cookie
@@ -35,7 +39,7 @@ export class OAuthSessionService {
 
 		res.cookie(OAUTH_SESSION_COOKIE_NAME, sessionToken, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: this.globalConfig.auth.cookie.secure,
 			sameSite: 'lax',
 			maxAge: SESSION_EXPIRY_MS,
 		});
