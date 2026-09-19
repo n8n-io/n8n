@@ -145,8 +145,8 @@ export const stringMethods: NativeDoc = {
 					{
 						name: 'end',
 						optional: true,
-						description: 'The position (index) to stop searching at',
-						default: '0',
+						description:
+							'The position (index) to stop searching at. Omit this to search the full string. A value of 0 is not the same: it searches the start only.',
 						type: 'number',
 					},
 				],
