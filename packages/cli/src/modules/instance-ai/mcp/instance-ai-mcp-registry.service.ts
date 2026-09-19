@@ -482,6 +482,7 @@ export class InstanceAiMcpRegistryService {
 			connection: config.connection,
 			credentialType,
 			credentialData: credentialWithData.data,
+			oauth2: this.oauthService.getOAuth2Options(credentialType),
 		});
 		if (!prepared.ok) {
 			this.logger.warn('Skipping MCP registry connection with invalid credential', {
