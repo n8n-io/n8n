@@ -2,6 +2,8 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 import { Buffer } from 'node:buffer';
 import { z } from 'zod';
 
+import { quoteShellArg } from '@/utils/quote-shell-arg';
+
 import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
@@ -486,10 +488,6 @@ function sanitizeKnowledgeOutputText(
 	maxLength: number,
 ): { text: string; truncated: boolean } {
 	return truncateKnowledgeText(redactText(stripTrailingNewline(text)).text, maxLength);
-}
-
-function quoteShellArg(value: string): string {
-	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function buildJsonMatchLimitedPipeline(
