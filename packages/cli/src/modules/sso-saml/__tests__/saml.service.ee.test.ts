@@ -14,11 +14,11 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import type { SsoProvisioningHooks } from '@/sso.ee/sso-provisioning-hooks';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
@@ -162,7 +162,7 @@ describe('SamlService', () => {
 	let instanceSettings: InstanceSettings;
 	let globalConfig: GlobalConfig;
 	let userRepository: UserRepository;
-	let provisioningService: ProvisioningService;
+	let provisioningHooks: Mocked<SsoProvisioningHooks>;
 	let cipher: Cipher;
 	let cacheService: Mocked<CacheService>;
 	let outboundHttp: Mocked<OutboundHttp>;
@@ -208,12 +208,15 @@ describe('SamlService', () => {
 		instanceSettings = mock<InstanceSettings>({
 			isMultiMain: true,
 		});
-		provisioningService = mock<ProvisioningService>();
+		provisioningHooks = mock<SsoProvisioningHooks>();
+		provisioningHooks.getSamlRoleClaimNames.mockResolvedValue({
+			instanceRole: null,
+			projectRoles: null,
+		});
 		userRepository = mock<UserRepository>();
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
 		});
-		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
 		cipher.encryptV2 = vi.fn(async (data: string) => `encrypted:${data}`) as Cipher['encryptV2'];
 		cipher.decryptV2 = vi.fn(async (data: string) =>
@@ -236,7 +239,7 @@ describe('SamlService', () => {
 			userRepository,
 			settingsRepository,
 			instanceSettings,
-			provisioningService,
+			provisioningHooks,
 			cipher,
 			cacheService,
 			outboundHttp,
@@ -432,26 +435,24 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: { groups: ['contractors'] },
 			});
-			provisioningService.assertSsoLoginAllowed = vi
-				.fn()
-				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			provisioningHooks.assertLoginAllowed.mockRejectedValue(
+				new ForbiddenError('Access denied by SSO role mapping configuration'),
+			);
 			const createUserSpy = vi.spyOn(samlHelpers, 'createUserFromSamlAttributes');
 
 			await expect(samlService.handleSamlLogin(mock<express.Request>(), 'post')).rejects.toThrow(
 				ForbiddenError,
 			);
 
-			expect(provisioningService.assertSsoLoginAllowed).toHaveBeenCalledWith(
-				expect.objectContaining({
-					$provider: 'saml',
-					$claims: { groups: ['contractors'] },
-				}),
-				'global:unknown',
-			);
+			expect(provisioningHooks.assertLoginAllowed).toHaveBeenCalledWith({
+				provider: 'saml',
+				rawAttributes: { groups: ['contractors'] },
+				instanceRole: 'global:unknown',
+			});
 			// Denied before any account lookup, creation, or provisioning
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(createUserSpy).not.toHaveBeenCalled();
-			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningHooks.provisionRoles).not.toHaveBeenCalled();
 		});
 
 		it('throws error for invalid email', async () => {
@@ -632,17 +633,15 @@ describe('SamlService', () => {
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
-			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
-				mockUser,
-				samlAttributes.n8nInstanceRole,
-			);
-			expect(provisioningService.provisionProjectRolesForUser).toHaveBeenCalledWith(
-				mockUser.id,
-				samlAttributes.n8nProjectRoles,
-			);
+			expect(provisioningHooks.provisionRoles).toHaveBeenCalledWith(mockUser, {
+				provider: 'saml',
+				rawAttributes: {},
+				instanceRole: samlAttributes.n8nInstanceRole,
+				projectRoles: samlAttributes.n8nProjectRoles,
+			});
 		});
 
-		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
+		it('forwards the raw attributes to the provisioning hook', async () => {
 			const samlAttributes = {
 				email: 'foo@bar.com',
 				firstName: 'Foo',
@@ -658,10 +657,6 @@ describe('SamlService', () => {
 				],
 			} as any;
 
-			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(true);
-			provisioningService.provisionExpressionMappedRolesForUser = vi
-				.fn()
-				.mockResolvedValue(undefined);
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: rawAttributes,
@@ -670,44 +665,12 @@ describe('SamlService', () => {
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
-			expect(provisioningService.provisionExpressionMappedRolesForUser).toHaveBeenCalledWith(
-				mockUser,
-				expect.objectContaining({ $provider: 'saml', $saml: { attributes: rawAttributes } }),
-			);
-			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
-			expect(provisioningService.provisionProjectRolesForUser).not.toHaveBeenCalled();
-		});
-
-		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
-			const samlAttributes = {
-				email: 'foo@bar.com',
-				firstName: '',
-				lastName: '',
-				userPrincipalName: 'foo@bar.com',
-				n8nInstanceRole: 'global:admin',
-			};
-			const mockUser = {
-				id: '123',
-				email: samlAttributes.email,
-				authIdentities: [
-					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
-				],
-			} as any;
-
-			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(false);
-			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				mapped: samlAttributes,
-				raw: {},
+			expect(provisioningHooks.provisionRoles).toHaveBeenCalledWith(mockUser, {
+				provider: 'saml',
+				rawAttributes,
+				instanceRole: undefined,
+				projectRoles: undefined,
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
-
-			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
-
-			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
-				mockUser,
-				'global:admin',
-			);
-			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 		});
 	});
 

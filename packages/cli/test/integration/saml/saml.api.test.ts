@@ -29,6 +29,7 @@ import { TEMPLATES_DIR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { registerSsoProvisioningHandler } from '@/modules/provisioning.ee/register';
 import {
 	EC_TEST_CERTIFICATE,
 	EC_TEST_PRIVATE_KEY,
@@ -73,6 +74,8 @@ const memberPassword = randomValidPassword();
 const samlUserPassword = randomValidPassword();
 
 beforeAll(async () => {
+	// The provisioning module registers this on init, which tests don't run.
+	registerSsoProvisioningHandler();
 	owner = await createOwner();
 	someUser = await createUser({ password: memberPassword });
 	samlUser = await createUser({ password: samlUserPassword });
