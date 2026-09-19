@@ -228,6 +228,26 @@ function mergeComponents(
 	return merged;
 }
 
+function assertConsistentPathParameterNames(
+	...pathCollections: Array<OpenApiDocument['paths']>
+): void {
+	const pathByShape = new Map<string, string>();
+
+	for (const paths of pathCollections) {
+		for (const pathKey of Object.keys(paths ?? {})) {
+			const pathShape = pathKey.replace(/\{[^}]+\}/g, '{}');
+			const equivalentPath = pathByShape.get(pathShape);
+			if (equivalentPath && equivalentPath !== pathKey) {
+				throw new UnexpectedError(
+					`Equivalent OpenAPI paths use different parameter names: '${equivalentPath}' and ` +
+						`'${pathKey}'. Use the same parameter name in both paths.`,
+				);
+			}
+			pathByShape.set(pathShape, pathKey);
+		}
+	}
+}
+
 /**
  * Merges the decorator-routed document into the hand-written (eov) one at *method* granularity, so a
  * path served partly by eov and partly by a controller (e.g. eov `POST /tags` + decorator `GET
@@ -239,6 +259,8 @@ export function mergeDecoratorDocument(
 	base: OpenApiDocument,
 	decorator: OpenApiDocument,
 ): OpenApiDocument {
+	assertConsistentPathParameterNames(base.paths, decorator.paths);
+
 	const paths: Record<string, Record<string, unknown>> = { ...(base.paths ?? {}) };
 
 	for (const [pathKey, methods] of Object.entries(decorator.paths ?? {})) {
