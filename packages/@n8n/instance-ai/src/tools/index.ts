@@ -82,7 +82,7 @@ const loadApplyWorkflowCredentialsTool = lazyMod(
 );
 const loadBuildWorkflowTool = lazyMod(
 	() =>
-		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+		require('./workflows/compile-workflow.tool') as typeof import('./workflows/compile-workflow.tool'),
 );
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
@@ -108,7 +108,7 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
+			() => loadBuildWorkflowTool().createCompileWorkflowTool(context),
 		],
 	];
 

@@ -3,9 +3,9 @@ import { nanoid } from 'nanoid';
 import { extractAgentRequirements } from '../agent-compiler/requirements/extract';
 import { createBuildAgentTool } from '../tools/orchestration/build-agent.tool';
 import {
-	createBuildWorkflowTool,
+	createCompileWorkflowTool,
 	selectDecisionService,
-} from '../tools/workflows/build-workflow.tool';
+} from '../tools/workflows/compile-workflow.tool';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import type { DecisionService } from '../workflow-compiler/decision/decision-service';
 import { isString, valueOf } from '../workflow-compiler/requirements/types';
@@ -107,7 +107,7 @@ export async function runFastPath(input: FastPathInput): Promise<FastPathOutcome
 	try {
 		const tool =
 			plan.toolName === 'build-workflow'
-				? createBuildWorkflowTool(context)
+				? createCompileWorkflowTool(context)
 				: createBuildAgentTool(orchestrationContext);
 		const parsed =
 			tool.inputSchema && 'safeParse' in tool.inputSchema

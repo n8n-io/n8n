@@ -12,8 +12,8 @@ import { renderReply, runFastPath } from '../fast-path';
 const workflowHandler = vi.fn();
 const agentHandler = vi.fn();
 
-vi.mock('../../tools/workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: () => ({ name: 'build-workflow', handler: workflowHandler }),
+vi.mock('../../tools/workflows/compile-workflow.tool', () => ({
+	createCompileWorkflowTool: () => ({ name: 'build-workflow', handler: workflowHandler }),
 	selectDecisionService: () => ({
 		kind: 'none',
 		decide: async () => ({ ok: false, reason: 'unavailable', message: 'none', latencyMs: 0 }),

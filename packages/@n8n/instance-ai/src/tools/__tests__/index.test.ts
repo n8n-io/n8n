@@ -88,8 +88,8 @@ vi.mock('../workflows/apply-workflow-credentials.tool', () => ({
 	createApplyWorkflowCredentialsTool: vi.fn(() => ({ id: 'apply-workflow-credentials' })),
 }));
 
-vi.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
+vi.mock('../workflows/compile-workflow.tool', () => ({
+	createCompileWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
 }));
 
 vi.mock('../workflows.tool', () => ({
