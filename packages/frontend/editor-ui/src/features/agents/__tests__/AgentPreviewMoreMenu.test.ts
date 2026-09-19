@@ -383,6 +383,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		['telegram', 'Telegram', 'telegram'],
 		['linear', 'Linear', 'linear'],
 		['discord', 'Discord', 'discord'],
+		['teams', 'Teams', 'teams'],
 		['mcp', 'Mcp', 'mcp'],
 		['workflow', 'Workflow', 'workflow'],
 		['webhook', 'Webhook', 'webhook'],

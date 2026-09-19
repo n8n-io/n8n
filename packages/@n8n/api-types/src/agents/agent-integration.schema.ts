@@ -81,6 +81,9 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const AgentTeamsSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentTeamsIntegrationSettings = z.infer<typeof AgentTeamsSettingsSchema>;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
@@ -105,6 +108,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
+		settings: AgentTeamsSettingsSchema.optional(),
+	}),
 ] as const;
 
 const draftCredentialIntegrations = [
@@ -119,6 +125,9 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
+		settings: AgentTeamsSettingsSchema.optional(),
 	}),
 ] as const;
 
