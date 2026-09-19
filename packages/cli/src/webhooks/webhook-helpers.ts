@@ -115,6 +115,12 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'hostedChat',
 ]);
 
+const SEEDED_EXECUTION_STACK_MERGE_TRIGGER_NODE_TYPES = new Set([
+	MCP_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+]);
+
 const deferCleanupUntilStreamEnds = (
 	stream: Readable,
 	res: express.Response,
@@ -524,11 +530,7 @@ function reconcileSeededExecutionStack(
 	const executionData = runExecutionData?.executionData;
 	if (!executionData?.nodeExecutionStack) return;
 
-	if (
-		[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
-			workflowStartNode.type,
-		)
-	) {
+	if (SEEDED_EXECUTION_STACK_MERGE_TRIGGER_NODE_TYPES.has(workflowStartNode.type)) {
 		merge(executionData.nodeExecutionStack, nodeExecutionStack);
 	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
 		executionData.nodeExecutionStack = nodeExecutionStack;
@@ -870,11 +872,7 @@ export async function executeWebhook(
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
-			[
-				MCP_TRIGGER_NODE_TYPE,
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-				CHAT_TRIGGER_NODE_TYPE,
-			].includes(workflowStartNode.type) ||
+			SEEDED_EXECUTION_STACK_MERGE_TRIGGER_NODE_TYPES.has(workflowStartNode.type) ||
 			shouldEstablishTriggerIdentity(workflowStartNode)
 		) {
 			// Initialize the data of the webhook node
