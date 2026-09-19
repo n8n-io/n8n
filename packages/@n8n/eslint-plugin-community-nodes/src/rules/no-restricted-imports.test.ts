@@ -17,7 +17,11 @@ writeFileSync(
 	JSON.stringify({
 		name: 'n8n-nodes-devdep-fixture',
 		version: '1.0.0',
-		devDependencies: { vitest: '^1.0.0', '@vitest/expect': '^1.0.0' },
+		devDependencies: {
+			vitest: '^1.0.0',
+			'@vitest/expect': '^1.0.0',
+			'@modelcontextprotocol/sdk': '^1.0.0',
+		},
 		dependencies: { axios: '^1.0.0' },
 	}),
 );
@@ -219,6 +223,18 @@ const lodash = require("lodash");`,
 			filename: fixtureTestFile,
 			code: 'import axios from "axios";',
 			errors: [{ messageId: 'restrictedImport', data: { modulePath: 'axios' } }],
+		},
+		{
+			// CE-2363: MCP integrations must use n8n's built-in MCP nodes.
+			name: 'MCP SDK import is rejected in node source',
+			filename: fixtureRealFile,
+			code: 'import { Client } from "@modelcontextprotocol/sdk/client/index.js";',
+			errors: [
+				{
+					messageId: 'restrictedImport',
+					data: { modulePath: '@modelcontextprotocol/sdk/client/index.js' },
+				},
+			],
 		},
 		{
 			code: 'const path = require(`path`);',
