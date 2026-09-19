@@ -1,4 +1,5 @@
 import { CORE_OPERATION_IDS } from '../catalog/operations';
+import { kw } from '../catalog/types';
 import { expr, field, input, template } from '../expressions/expression';
 import type { ActionIR, BranchIR, Condition, StepIR, TriggerIR } from '../ir/schema';
 import type { PatternContext, PatternInputDefinition, WorkflowPattern } from './types';
@@ -23,8 +24,6 @@ function asStringList(value: unknown): string[] {
 	return [];
 }
 
-/** Splits a comma-separated keyword list. Keywords may contain spaces. */
-const kw = (list: string): string[] => list.split(',').map((keyword) => keyword.trim());
 const inputDef =
 	(required: boolean) =>
 	(

@@ -19,6 +19,7 @@ import {
 	type AgentCapabilityCatalog,
 	type CatalogAgent,
 } from '../catalog/capabilities';
+import { slug } from '../../workflow-compiler/text';
 import type { AgentIR, AgentToolIR } from '../ir/schema';
 import {
 	missingAgentBehaviorRequirements,
@@ -184,7 +185,7 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 			continue;
 		}
 		tools.push({
-			id: `workflow-${slug(found.name)}`,
+			id: `workflow-${slug(found.name, 'workflow')}`,
 			kind: 'workflow',
 			name: found.name,
 			workflowId: found.id,
@@ -263,13 +264,4 @@ export async function planAgentCreate(input: AgentCreatePlanInput): Promise<Agen
 		patternIds: ['agent_assistant'],
 	};
 	return { status: 'planned', ir, requirements, log, waves };
-}
-
-function slug(value: string): string {
-	return (
-		value
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '') || 'workflow'
-	);
 }

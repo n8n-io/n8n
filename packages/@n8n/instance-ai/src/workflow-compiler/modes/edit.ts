@@ -9,6 +9,7 @@ import { withNoneOfThese, type DecisionQuestions } from '../decision/schemas';
 import { compileParameterTree } from '../expressions/expression';
 import { extractRequirements } from '../requirements/extract';
 import type { RequirementIssue } from '../requirements/types';
+import { uniqueName } from '../text';
 import { incomingEdges, outgoingEdges, type WorkflowPatch } from './patch';
 import { planActions, runDecision } from './plan-actions';
 
@@ -240,7 +241,9 @@ export async function planEdit(input: EditPlanInput): Promise<EditPlanResult> {
 	}
 	const anchor = targetNode ?? lastMainNode(input.workflow, nodes);
 	const before = /\bbefore\b/i.test(input.request);
-	const name = uniqueName(operation.label ?? operation.title, nodes);
+	const name = uniqueName(operation.label ?? operation.title, (candidate) =>
+		nodes.some((node) => node.name === candidate),
+	);
 	const node: NodeJSON = {
 		id: `edit-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
 		name,
@@ -270,13 +273,6 @@ export async function planEdit(input: EditPlanInput): Promise<EditPlanResult> {
 	}
 	const summary = `Added "${name}" ${before ? 'before' : 'after'} "${anchor?.name ?? 'the end'}".`;
 	return planned(patches, summary);
-}
-
-function uniqueName(base: string, nodes: readonly NodeJSON[]): string {
-	const names = new Set(nodes.map((node) => node.name));
-	let name = base;
-	for (let n = 2; names.has(name); n += 1) name = `${base} ${n}`;
-	return name;
 }
 
 function lastMainNode(workflow: WorkflowJSON, nodes: readonly NodeJSON[]): NodeJSON | undefined {

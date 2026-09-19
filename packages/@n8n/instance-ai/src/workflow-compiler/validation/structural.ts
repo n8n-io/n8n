@@ -1,5 +1,5 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { isTriggerNodeType } from '../../tools/workflows/workflow-json-utils';
+import { isTriggerNodeType } from 'n8n-workflow';
 import type { ValidationIssue } from './report';
 
 /**

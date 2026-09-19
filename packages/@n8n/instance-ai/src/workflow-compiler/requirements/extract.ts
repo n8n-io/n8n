@@ -1,4 +1,5 @@
-import { tokenize } from '../catalog/retrieval';
+import { idFromText, tokenize } from '../catalog/retrieval';
+import { capitalize } from '../text';
 import {
 	ambiguous,
 	missing,
@@ -201,7 +202,7 @@ export function extractRequirements(
 			/^(?:only\s+)?(?:if|when|whenever|unless)\s+(.+?)(?:,|$)/i,
 		)?.[1];
 		actions.push({
-			id: `${tokenize(phrase).slice(0, 3).join('-') || 'action'}-${index + 1}`,
+			id: idFromText(phrase, 'action', index),
 			text: phrase,
 			...(integration ? { integration } : {}),
 			params,
@@ -251,8 +252,4 @@ function deriveWorkflowName(
 	if (integrations.length > 0) return `${integrations.map(capitalize).join(' + ')} automation`;
 	const words = tokenize(request).slice(0, 4).map(capitalize);
 	return words.length > 0 ? words.join(' ') : 'New workflow';
-}
-
-function capitalize(value: string): string {
-	return value.charAt(0).toUpperCase() + value.slice(1);
 }

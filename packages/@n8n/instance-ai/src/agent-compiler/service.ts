@@ -1,4 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
 import {
@@ -196,7 +197,7 @@ export class AgentCompilerService {
 		try {
 			patched = applyAgentPatches(input.config, plan.patches);
 		} catch (error) {
-			return await this.fail(session, error instanceof Error ? error.message : String(error));
+			return await this.fail(session, getErrorMessage(error));
 		}
 		const report = emptyAgentVerificationReport();
 		report.schema = levelForAgentConfig(patched.config, report.issues);

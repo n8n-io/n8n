@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { mapConnectionsByDestination, getParentNodes, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -16,7 +17,7 @@ function* stringValues(
 	} else if (Array.isArray(value)) {
 		for (const [index, item] of value.entries())
 			yield* stringValues(item, [...path, String(index)]);
-	} else if (typeof value === 'object' && value !== null) {
+	} else if (isRecord(value)) {
 		for (const [key, item] of Object.entries(value)) yield* stringValues(item, [...path, key]);
 	}
 }

@@ -1,6 +1,7 @@
 import { AGENT_MODEL_PROVIDERS, AGENT_MODEL_STRING_REGEX } from '@n8n/api-types';
 
-import { tokenize } from '../../workflow-compiler/catalog/retrieval';
+import { idFromText, tokenize } from '../../workflow-compiler/catalog/retrieval';
+import { capitalizeWords } from '../../workflow-compiler/text';
 import {
 	detectIntegrations,
 	detectScheduleCron,
@@ -99,10 +100,6 @@ function detectModel(text: string): { provider?: string; model?: string } {
 	return provider ? { provider } : {};
 }
 
-function slugId(text: string, index: number): string {
-	return `${tokenize(text).slice(0, 3).join('-') || 'tool'}-${index + 1}`;
-}
-
 function isChannelPhrase(phrase: string): boolean {
 	return CHANNEL_CONTEXT.test(phrase) && !TOOL_VERBS.test(phrase.replace(CHANNEL_CONTEXT, ''));
 }
@@ -123,7 +120,7 @@ function toolAction(phrase: string, index: number): RequestedAction {
 	const url = phrase.match(/https?:\/\/\S+/i)?.[0];
 	if (url) params.url = url.replace(/[.,)]$/, '');
 	return {
-		id: slugId(phrase, index),
+		id: idFromText(phrase, 'tool', index),
 		text: phrase,
 		...(integration ? { integration } : {}),
 		params,
@@ -148,10 +145,6 @@ function deriveName(purpose: string | undefined, channels: ChannelMention[]): st
 	if (channel) return `${capitalizeWords(channel)} Agent`;
 	const words = purpose ? tokenize(purpose).slice(0, 3).map(capitalizeWords) : [];
 	return words.length > 0 ? `${words.join(' ')} Agent` : 'New Agent';
-}
-
-function capitalizeWords(value: string): string {
-	return value.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
 /**

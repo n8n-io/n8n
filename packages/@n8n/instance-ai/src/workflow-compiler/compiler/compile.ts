@@ -1,6 +1,9 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { deepCopy, type IConnections, type IDataObject } from 'n8n-workflow';
 
+import { isRecord } from '@n8n/utils/is-record';
+
+import { slug, uniqueName } from '../text';
 import type { NodeRegistry } from '../catalog/node-registry';
 import { CORE_OPERATION_IDS } from '../catalog/operations';
 import type { NodeOperation } from '../catalog/types';
@@ -152,22 +155,6 @@ export function compileWorkflow(
 
 // ── node emission ────────────────────────────────────────────────────────────
 
-function uniqueName(emitter: Emitter, base: string): string {
-	let name = base;
-	for (let suffix = 2; emitter.usedNames.has(name); suffix += 1) name = `${base} ${suffix}`;
-	emitter.usedNames.add(name);
-	return name;
-}
-
-function slug(value: string): string {
-	return (
-		value
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '') || 'node'
-	);
-}
-
 type NodeInput = Omit<NodeJSON, 'id' | 'position' | 'name'> & { name: string };
 
 /** Emits one node at `column` and returns its unique name. A `stepId` registers the node to that step. */
@@ -179,7 +166,8 @@ function emitNode(
 	node: NodeInput,
 ): string {
 	const { name: base, type, typeVersion, ...rest } = node;
-	const name = uniqueName(emitter, base);
+	const name = uniqueName(base, (candidate) => emitter.usedNames.has(candidate));
+	emitter.usedNames.add(name);
 	const position: [number, number] = [column * COLUMN_WIDTH, emitter.nextRow * ROW_HEIGHT];
 	// Ids stay stable across recompiles; they only need to be unique inside the artifact.
 	const id = `${slug(emitter.workflowId)}-${slug(key)}`;
@@ -216,8 +204,7 @@ function setPath(target: IDataObject, path: string, value: unknown): void {
 	let cursor: IDataObject = target;
 	for (const segment of segments.slice(0, -1)) {
 		const next = cursor[segment];
-		if (typeof next === 'object' && next !== null && !Array.isArray(next))
-			cursor = next as IDataObject;
+		if (isRecord(next)) cursor = next as IDataObject;
 		else cursor = cursor[segment] = {};
 	}
 	cursor[segments[segments.length - 1]] = value as IDataObject[string];
@@ -474,7 +461,7 @@ function inferAssignmentType(value: unknown): string {
 	if (isExpressionParam(value)) return 'string';
 	if (typeof value === 'number' || typeof value === 'boolean') return typeof value;
 	if (Array.isArray(value)) return 'array';
-	return typeof value === 'object' && value !== null ? 'object' : 'string';
+	return isRecord(value) ? 'object' : 'string';
 }
 
 function single(site: Site, step: { id: string; notes?: string }, spec: OperationSpec): StepResult {

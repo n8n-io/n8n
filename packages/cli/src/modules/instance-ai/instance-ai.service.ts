@@ -3567,7 +3567,7 @@ export class InstanceAiService {
 		} catch (error) {
 			this.logger.warn('Failed to persist fast-path turn', {
 				threadId,
-				error: error instanceof Error ? error.message : String(error),
+				error: getErrorMessage(error),
 			});
 		}
 	}

@@ -1,3 +1,4 @@
+export { slug } from '../../workflow-compiler/text';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
@@ -61,13 +62,4 @@ export function selectDecisionService(context: InstanceAiContext): DecisionServi
 	if (context.decisionService) return context.decisionService;
 	if (context.modelId) return new ModelDecisionService(context.modelId);
 	return new NullDecisionService();
-}
-
-export function slug(value: string, fallback: string): string {
-	return (
-		value
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '') || fallback
-	);
 }

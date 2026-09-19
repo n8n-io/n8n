@@ -1,3 +1,5 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+
 import { decisionResponseSchema, reconcileAnswers } from './schemas';
 import type {
 	DecisionFailureReason,
@@ -63,7 +65,7 @@ export class SystemOneDecisionClient implements DecisionService {
 				if (request.abortSignal?.aborted) return fail('aborted', 'Request aborted.');
 				if (controller.signal.aborted)
 					return fail('timeout', `Decision service exceeded ${timeoutMs}ms.`);
-				return fail('unavailable', error instanceof Error ? error.message : String(error));
+				return fail('unavailable', getErrorMessage(error));
 			}
 			if (!response.ok) {
 				const text = await response.text().catch(() => '');

@@ -1,4 +1,4 @@
-import type { NodeOperation, ParameterDefinition } from './types';
+import { kw, type NodeOperation, type ParameterDefinition } from './types';
 
 /**
  * Phase-1 operation index. Every entry is reviewed: the node version, the
@@ -13,7 +13,6 @@ type ParameterExtra = Partial<
 	Pick<ParameterDefinition, 'options' | 'locatorMode' | 'question' | 'derivable'>
 >;
 /** Splits a comma-separated keyword list. Keywords may contain spaces. */
-const kw = (list: string): string[] => list.split(',').map((keyword) => keyword.trim());
 const param =
 	(required: boolean) =>
 	(

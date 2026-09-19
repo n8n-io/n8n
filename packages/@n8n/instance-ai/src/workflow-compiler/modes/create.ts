@@ -19,6 +19,7 @@ import {
 	type RequirementIssue,
 	type Requirements,
 } from '../requirements/types';
+import { slug } from '../text';
 import { planActions, type ActionPlanningResult } from './plan-actions';
 
 export interface CreatePlanInput {
@@ -188,7 +189,7 @@ export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanRes
 
 	const name = valueOf(requirements.workflowName, isString);
 	const ir: WorkflowIR = {
-		id: inputs.workflowId ?? slugify(name ?? 'workflow'),
+		id: inputs.workflowId ?? slug(name ?? 'workflow', 'workflow'),
 		name: name ?? 'New workflow',
 		triggers,
 		steps,
@@ -264,14 +265,6 @@ function mapResponseField(
 			expression: field(source.step.id, contractId),
 		};
 	}
-	const key = lower.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'result';
+	const key = slug(lower, 'result', '_');
 	return { key, expression: field(source.step.id) };
-}
-
-function slugify(value: string): string {
-	const slug = value
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '');
-	return slug || 'workflow';
 }

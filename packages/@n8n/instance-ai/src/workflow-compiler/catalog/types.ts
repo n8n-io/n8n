@@ -1,5 +1,8 @@
 import type { DataContract } from '../ir/schema';
 
+/** Splits a comma-separated keyword list. Keywords may contain spaces. */
+export const kw = (list: string): string[] => list.split(',').map((keyword) => keyword.trim());
+
 export type OperationKind = 'trigger' | 'action' | 'control' | 'respond';
 
 export interface ParameterDefinition {

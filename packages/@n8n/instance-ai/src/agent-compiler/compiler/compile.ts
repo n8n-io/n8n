@@ -8,6 +8,9 @@ import {
 } from '@n8n/api-types';
 import type { z } from 'zod';
 
+import { isRecord } from '@n8n/utils/is-record';
+
+import { uniqueName } from '../../workflow-compiler/text';
 import type { NodeRegistry } from '../../workflow-compiler/catalog/node-registry';
 import { bindParameters } from '../../workflow-compiler/compiler/compile';
 import { compileParameterTree } from '../../workflow-compiler/expressions/expression';
@@ -90,14 +93,12 @@ export function memoryConfig(
 }
 
 export function uniqueToolName(base: string, used: Set<string>): string {
-	const sanitized = sanitizeAgentToolName(base) || 'tool';
-	let name = sanitized;
-	let n = 1;
 	// Names that exist on Object.prototype (such as __proto__) would break plain-object maps.
-	while (used.has(name) || name in {}) {
-		n += 1;
-		name = `${sanitized}_${n}`;
-	}
+	const name = uniqueName(
+		sanitizeAgentToolName(base) || 'tool',
+		(c) => used.has(c) || c in {},
+		'_',
+	);
 	used.add(name);
 	return name;
 }
@@ -216,9 +217,6 @@ function resolveModel(
 	return { model: '' };
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null;
-
 /** Compiles one IR tool under an already unique `name`. */
 export function compileTool(
 	tool: AgentToolIR,
@@ -256,7 +254,7 @@ export function compileTool(
 				node: {
 					nodeType: operation.nodeType,
 					nodeTypeVersion: operation.version,
-					nodeParameters: isObject(parameters) ? parameters : {},
+					nodeParameters: isRecord(parameters) ? parameters : {},
 					...optional(
 						'credentials',
 						credentialType &&

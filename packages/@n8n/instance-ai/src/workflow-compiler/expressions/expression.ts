@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 /**
@@ -142,7 +143,7 @@ export function referencedSteps(expression: Expression, into = new Set<string>()
 export function compileParameterTree(value: unknown, resolveName: StepNameResolver): unknown {
 	if (isExpressionParam(value)) return compileExpression(value.$expr, resolveName);
 	if (Array.isArray(value)) return value.map((item) => compileParameterTree(item, resolveName));
-	if (typeof value === 'object' && value !== null) {
+	if (isRecord(value)) {
 		const result: Record<string, unknown> = {};
 		for (const [key, item] of Object.entries(value))
 			result[key] = compileParameterTree(item, resolveName);
@@ -155,7 +156,7 @@ export function compileParameterTree(value: unknown, resolveName: StepNameResolv
 export function referencedStepsInTree(value: unknown, into = new Set<string>()): Set<string> {
 	if (isExpressionParam(value)) return referencedSteps(value.$expr, into);
 	if (Array.isArray(value)) for (const item of value) referencedStepsInTree(item, into);
-	else if (typeof value === 'object' && value !== null) {
+	else if (isRecord(value)) {
 		for (const item of Object.values(value)) referencedStepsInTree(item, into);
 	}
 	return into;

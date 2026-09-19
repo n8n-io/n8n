@@ -1,4 +1,5 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
 import type { ExecutionDebugInfo } from '../types';
@@ -113,8 +114,6 @@ export interface DebugRequest {
 	sessionId?: string;
 	abortSignal?: AbortSignal;
 }
-
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Orchestrates requirements → bounded decisions → IR → compile → validation; only the decision service touches a model. */
 export class WorkflowCompilerService {
@@ -311,7 +310,7 @@ export class WorkflowCompilerService {
 		try {
 			compiled = compileWorkflow(ir, this.registry);
 		} catch (error) {
-			return await this.fail(session, messageOf(error));
+			return await this.fail(session, getErrorMessage(error));
 		}
 		session.timings.compileMs = Date.now() - compileStarted;
 		session.status = 'validating';
@@ -336,7 +335,7 @@ export class WorkflowCompilerService {
 		try {
 			patched = applyPatches(workflow, patches);
 		} catch (error) {
-			return await this.fail(session, messageOf(error));
+			return await this.fail(session, getErrorMessage(error));
 		}
 		session.status = 'validating';
 		const report = emptyVerificationReport();

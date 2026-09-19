@@ -29,6 +29,10 @@ export function tokenize(text: string): string[] {
 		.filter((token) => token.length > 1 && !STOP_WORDS.has(token));
 }
 
+/** Stable id from the first three tokens of `text`, e.g. `send-slack-message-2`. */
+export const idFromText = (text: string, fallback: string, index: number): string =>
+	`${tokenize(text).slice(0, 3).join('-') || fallback}-${index + 1}`;
+
 function stem(token: string): string {
 	return token.replace(/(ings?|ed|es|s)$/, '');
 }

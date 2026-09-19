@@ -1,6 +1,7 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { isTriggerNodeType } from '../../tools/workflows/workflow-json-utils';
+import { isTriggerNodeType } from 'n8n-workflow';
 
 /** One branch decision on a path: which output of a routing node was taken. */
 export interface PathDecision {
@@ -39,11 +40,9 @@ function outputLabel(node: NodeJSON, outputIndex: number, outputCount: number): 
 	if (node.type === LOOP_TYPE) return outputIndex === 0 ? 'done' : 'loop';
 	if (node.type === SWITCH_TYPE) {
 		const rules = node.parameters?.rules;
-		const values =
-			typeof rules === 'object' && rules !== null
-				? (rules as { values?: Array<{ outputKey?: unknown }> }).values
-				: undefined;
-		const key = values?.[outputIndex]?.outputKey;
+		const values = isRecord(rules) && Array.isArray(rules.values) ? rules.values : undefined;
+		const entry: unknown = values?.[outputIndex];
+		const key = isRecord(entry) ? entry.outputKey : undefined;
 		if (typeof key === 'string' && key) return key;
 		return outputIndex >= (values?.length ?? 0) ? 'fallback' : `case ${outputIndex}`;
 	}

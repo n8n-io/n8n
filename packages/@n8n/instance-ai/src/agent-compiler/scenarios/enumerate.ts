@@ -1,3 +1,4 @@
+import { lowerFirst } from '../../workflow-compiler/text';
 import type { AgentIR } from '../ir/schema';
 
 /**
@@ -118,8 +119,4 @@ export function describeScenarioCoverage(coverage: AgentScenarioCoverage): strin
 	const head = `${coverage.covered}/${coverage.total} agent scenarios exercised.`;
 	if (coverage.uncovered.length === 0) return head;
 	return `${head} Not exercised: ${coverage.uncovered.map(({ scenario, reason }) => `${scenario.id} (${reason})`).join('; ')}`;
-}
-
-function lowerFirst(value: string): string {
-	return value.charAt(0).toLowerCase() + value.slice(1);
 }
