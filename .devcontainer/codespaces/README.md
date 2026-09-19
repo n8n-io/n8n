@@ -46,7 +46,8 @@ create an 8-core Codespace by default.
   `session/<name>`), so parallel agents never touch each other's tree. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
-  that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+  that, sessions attach instantly; new worktrees cost a `pnpm install` (~10 s: the
+  store lives on `/workspaces`, so `node_modules` is hardlinked, not copied).
 
 ## Configure the local OpenCode harness
 

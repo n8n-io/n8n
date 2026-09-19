@@ -20,7 +20,6 @@ verifyDepsBeforeRun: false
 pmOnFail: warn
 updateNotifier: false
 loglevel: warn
-packageImportMethod: clone-or-copy
 
 minimumReleaseAge: 2880
 # Blacksmith's path to Cloudflare AMS intermittently stalls a single connection
