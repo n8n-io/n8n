@@ -1,0 +1,151 @@
+import { testDb } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { EventService } from '@/events/event.service';
+import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
+import { createMember, createOwner } from '@test-integration/db/users';
+import * as utils from '@test-integration/utils';
+
+const testServer = utils.setupTestServer({
+	endpointGroups: ['type-availability-policies'],
+	modules: ['type-availability-policies'],
+	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+});
+
+let owner: User;
+let member: User;
+
+beforeAll(async () => {
+	owner = await createOwner();
+	member = await createMember();
+});
+
+afterEach(async () => {
+	await testDb.truncate([
+		'TypeAvailabilityPolicyAttachment',
+		'TypeAvailabilityPolicyScope',
+		'TypeAvailabilityPolicy',
+	]);
+});
+
+/**
+ * GOV-88 AC: a member has neither `nodeTypePolicy:manage` nor `credentialTypePolicy:manage`, so
+ * this only proves the route is gated at all. That the two permissions are independent is
+ * `@n8n/permissions`' own test, not this controller's.
+ */
+describe('credential type availability policy instance controller RBAC', () => {
+	test('PUT /credential-type-policies/instance rejects a member with 403', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.put('/credential-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('GET /credential-type-policies/instance rejects a member with 403', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.get('/credential-type-policies/instance');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('an unauthenticated caller is rejected before the scope check even runs', async () => {
+		const response = await testServer.authlessAgent.get('/credential-type-policies/instance');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('an owner is not rejected by the scope check', async () => {
+		const response = await testServer.authAgentFor(owner).get('/credential-type-policies/instance');
+
+		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('credential type availability policy instance controller license gating', () => {
+	afterEach(() => {
+		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+	});
+
+	test('rejects an owner with 403 when the license feature is disabled', async () => {
+		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+
+		const response = await testServer.authAgentFor(owner).get('/credential-type-policies/instance');
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('credential type availability policy instance controller admin happy path', () => {
+	test('PUT /instance persists and fires an audit event carrying the credential-types kind', async () => {
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put('/credential-type-policies/instance')
+			.send({
+				rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'slackApi' } }],
+				defaultAction: 'allow',
+				version: 0,
+			});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.version).toBeGreaterThan(0);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'node-type-policy-scope-updated',
+			expect.objectContaining({ updatedBy: owner.id, kind: 'credential-types' }),
+		);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'node-type-policy-document-created',
+			expect.objectContaining({ updatedBy: owner.id, kind: 'credential-types' }),
+		);
+
+		const persisted = await testServer
+			.authAgentFor(owner)
+			.get('/credential-type-policies/instance');
+		expect(persisted.body.data.rules).toEqual(response.body.data.rules);
+	});
+
+	test('policy document CRUD persists, distinctly from node type policy documents', async () => {
+		const created = await testServer
+			.authAgentFor(owner)
+			.post('/credential-type-policies/policies')
+			.send({
+				rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'slackApi' } }],
+			});
+
+		expect(created.statusCode).toBe(200);
+		const policyId: string = created.body.data.policy.id;
+
+		const fetchedAsCredential = await testServer
+			.authAgentFor(owner)
+			.get(`/credential-type-policies/policies/${policyId}`);
+		expect(fetchedAsCredential.statusCode).toBe(200);
+
+		// The document has kind `credential-types`: the node-types instance controller must not
+		// reach it by id, and vice versa — the same protection GOV-43 added, now proven through
+		// this controller's own route.
+		const fetchedAsNode = await testServer
+			.authAgentFor(owner)
+			.get(`/node-type-policies/policies/${policyId}`);
+		expect(fetchedAsNode.statusCode).toBe(404);
+
+		const deleted = await testServer
+			.authAgentFor(owner)
+			.delete(`/credential-type-policies/policies/${policyId}`);
+		expect(deleted.statusCode).toBe(200);
+
+		expect(
+			await Container.get(TypeAvailabilityPolicyRepository).findByIdAndKind(
+				policyId,
+				'credential-types',
+				{},
+			),
+		).toBeNull();
+	});
+});
