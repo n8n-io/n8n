@@ -75,6 +75,7 @@ import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.servi
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
+import { InstanceAiOnboardingService } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -99,6 +100,7 @@ export class InstanceAiController {
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly onboarding: InstanceAiOnboardingService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
@@ -571,6 +573,18 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
+		// The host-seeded onboarding card has no run to resume: settle it, then start the first
+		// turn with the answers.
+		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
+		if (card) {
+			await this.requireModelConfigured();
+			if (this.instanceAiService.hasActiveRun(card.threadId)) {
+				throw new ConflictError('A run is already active for this thread');
+			}
+			const runId = this.instanceAiService.startRun(req.user, card.threadId, card.message);
+			return { ok: true, runId };
+		}
+
 		const resolved = await this.instanceAiService.resolveConfirmation(
 			req.user.id,
 			requestId,
@@ -856,14 +870,21 @@ export class InstanceAiController {
 			origin: payload.origin ?? ('internal' as const),
 			sourceContext: payload.sourceContext,
 		};
-
 		try {
-			return await this.memoryService.ensureThread(
-				req.user.id,
-				requestedThreadId,
-				payload.projectId,
-				launchMetadata,
-			);
+			// An onboarding thread opens with the greeting and the first question card in place.
+			return payload.source === 'onboarding'
+				? await this.onboarding.ensureThread(
+						req.user,
+						requestedThreadId,
+						payload.projectId,
+						launchMetadata,
+					)
+				: await this.memoryService.ensureThread(
+						req.user.id,
+						requestedThreadId,
+						payload.projectId,
+						launchMetadata,
+					);
 		} catch (error) {
 			this.instanceAiErrorReporter.report(error, {
 				component: 'instance-ai-ensure-thread',

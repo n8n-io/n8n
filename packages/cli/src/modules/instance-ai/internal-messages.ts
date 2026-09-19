@@ -127,6 +127,7 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'project-context',
 	'past-conversations',
 	'ai-preferences',
+	'onboarding-answer',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -239,6 +240,41 @@ export function sanitisePromptText(value: string): string {
  *  this project", "check it before you build") lives in the system prompt, which is
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
  *  every turn of every conversation. Measured: the fact alone is enough. */
+/**
+ * The onboarding skill's SKILL.md body, one section of the thread context on an onboarding
+ * thread's opening turn, so the flow runs without a `load_skill` call.
+ */
+export function buildOnboardingSkillBlock(instructions: string): string {
+	return `<onboarding-skill>\nThis skill is loaded for this thread: follow it and do not call load_skill for it.\n${instructions}\n</onboarding-skill>`;
+}
+
+/**
+ * The answers to an onboarding thread's opening card, in the `ask-user` result shape, plus what
+ * the host resolved from them: the role id, the tools and the ranked use cases (one tab-separated
+ * line each). The card is not in the LLM history (it lives in the event log), so the answers ride
+ * a hidden user turn; the parser drops that turn from the UI.
+ */
+export function buildOnboardingAnswerMessage(
+	answers: unknown,
+	roleId: string,
+	tools: string[],
+	suggestions: string[],
+): string {
+	return [
+		AUTO_FOLLOW_UP_MESSAGE,
+		'',
+		'<onboarding-answer>',
+		'The user answered the opening questions:',
+		JSON.stringify(answers),
+		`Use-case corpus role id: ${roleId}`,
+		`Tools: ${tools.length > 0 ? tools.join(', ') : '(none)'}`,
+		'These are final: use them as they are and do not ask about the role or the tools again.',
+		'Suggestions, best first, tab separated (rank, title, template, tools, swaps, description):',
+		...suggestions,
+		'</onboarding-answer>',
+	].join('\n');
+}
+
 export function getProjectContextSection(project: { name: string; type: string }): string {
 	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}).`;
 }

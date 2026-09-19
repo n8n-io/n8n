@@ -20,6 +20,10 @@ export interface QuestionItem {
 	question: string;
 	type: 'single' | 'multi' | 'text';
 	options?: string[];
+	/** Hides Skip and blocks Next until the question has an answer. */
+	required?: boolean;
+	/** The option selected for `questionId` picks the list; otherwise `options` applies. */
+	optionsByAnswer?: { questionId: string; options: Record<string, string[]> };
 }
 
 export interface QuestionAnswer {
@@ -54,11 +58,19 @@ const currentQuestion = computed(() => props.questions[currentIndex.value]);
 const isFirstQuestion = computed(() => currentIndex.value === 0);
 const isLastQuestion = computed(() => currentIndex.value === props.questions.length - 1);
 
+// Options that follow an earlier answer track the option selected for that question.
+const resolvedOptions = computed(() => {
+	const q = currentQuestion.value;
+	const dependency = q?.optionsByAnswer;
+	const picked = dependency
+		? answers.value.get(dependency.questionId)?.selectedOptions[0]
+		: undefined;
+	return (picked === undefined ? undefined : dependency?.options[picked]) ?? q?.options ?? [];
+});
+
 // Filter LLM-provided "Other" variants — we render our own "Something else" option
 const filteredOptions = computed(() => {
-	return (currentQuestion.value.options ?? []).filter(
-		(opt) => !opt.toLowerCase().trim().startsWith('other'),
-	);
+	return resolvedOptions.value.filter((opt) => !opt.toLowerCase().trim().startsWith('other'));
 });
 
 const currentAnswer = computed(() => {
@@ -82,6 +94,7 @@ const hasValidAnswer = computed(() => {
 });
 
 const showSkipButton = computed(() => {
+	if (currentQuestion.value?.required) return false;
 	if (currentQuestion.value?.type === 'single' && hasCustomText.value) return false;
 	return true;
 });
@@ -96,7 +109,7 @@ const isNextEnabled = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return false;
 	// Blank text is a valid submission — it advances marked as skipped
-	if (q.type === 'text') return true;
+	if (q.type === 'text') return !q.required || hasCustomText.value;
 	if (q.type === 'single') return hasValidAnswer.value;
 	if (q.type === 'multi') {
 		const answer = currentAnswer.value;
@@ -124,6 +137,13 @@ watch(
 				customText: '',
 				skipped: false,
 			});
+		}
+		// A changed earlier answer can remove options this question already had selected.
+		const answer = q?.optionsByAnswer ? answers.value.get(q.id) : undefined;
+		if (answer) {
+			answer.selectedOptions = answer.selectedOptions.filter(
+				(option) => option === OTHER_SENTINEL || resolvedOptions.value.includes(option),
+			);
 		}
 		selectedIndex.value = null;
 		highlightedIndex.value = currentQuestion.value?.type === 'text' ? -1 : 0;
@@ -533,7 +553,7 @@ function onOptionMouseEnter(idx: number) {
 						variant="ghost"
 						size="medium"
 						icon-only
-						:disabled="isLastQuestion"
+						:disabled="isLastQuestion || (!!currentQuestion.required && !hasValidAnswer)"
 						data-test-id="instance-ai-questions-forward"
 						aria-label="Next question"
 						@click="goToNextWithoutAnswer"
