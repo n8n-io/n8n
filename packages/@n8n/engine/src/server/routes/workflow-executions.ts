@@ -57,6 +57,7 @@ const StartExecutionBody = z.object({
 			userId: z.string().min(1).optional(),
 			projectId: z.string().min(1).optional(),
 			hostMode: z.string().min(1).optional(),
+			streamingEnabled: z.boolean().optional(),
 		})
 		.strict(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */

@@ -57,6 +57,7 @@ export class ExecutionResponseChannel {
 	emitterFor(executionId: string): ResponseEmitter {
 		return {
 			send: (payload: JsonValue) => this.publish({ type: 'response', executionId, payload }),
+			chunk: (payload: JsonValue) => this.publish({ type: 'chunk', executionId, payload }),
 		};
 	}
 

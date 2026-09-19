@@ -41,6 +41,7 @@ const getExecution = vi.fn();
 let builder: User;
 let webhookAgent: SuperAgentTest;
 let webhookTestEndpoint: string;
+let responseChannel: ExecutionResponseChannel;
 
 const webhookNode = (webhookId: string): INode => ({
 	id: randomUUID(),
@@ -79,9 +80,11 @@ beforeAll(async () => {
 	// The host hands the responder its channel at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
 	// wires the same channel by hand.
-	Container.get(EngineV2WebhookResponder).useChannel(
-		new ExecutionResponseChannel(new InMemoryResponseTransport(), Container.get(Logger)),
+	responseChannel = new ExecutionResponseChannel(
+		new InMemoryResponseTransport(),
+		Container.get(Logger),
 	);
+	Container.get(EngineV2WebhookResponder).useChannel(responseChannel);
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.
 	class EditorFacingWebhookServer extends WebhookServer {
@@ -140,11 +143,40 @@ describe('webhook runs on engine 2.0', () => {
 		expect(executions.filter((e) => e.workflowId === workflow.id)).toHaveLength(0);
 	});
 
-	test('answers 400 with the reason when the response mode is unsupported', async () => {
+	test('streams the response from the data plane', async () => {
 		const webhookId = randomUUID();
 		const trigger = webhookNode(webhookId);
 		trigger.parameters.responseMode = 'streaming';
 		const workflow = await createV2Workflow(trigger);
+		const chunk = {
+			type: 'item',
+			content: 'hello',
+			metadata: {
+				nodeId: trigger.id,
+				nodeName: trigger.name,
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+			},
+		};
+
+		startExecution.mockImplementationOnce(async (request) => {
+			responseChannel.publish({ type: 'chunk', executionId: request.executionId, payload: chunk });
+			responseChannel.publish({
+				type: 'ended',
+				executionId: request.executionId,
+				workflowId: workflow.id,
+				status: 'completed',
+				lastStep: {
+					nodeId: trigger.id,
+					nodeName: trigger.name,
+					status: 'completed',
+					outputs: [],
+				},
+			});
+
+			return { executionId: request.executionId };
+		});
 
 		await startListening(workflow.id);
 
@@ -152,8 +184,12 @@ describe('webhook runs on engine 2.0', () => {
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
 			.send({ order: 42 });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain("does not support the 'streaming' response mode yet");
-		expect(startExecution).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(200);
+		expect(response.text).toBe(`${JSON.stringify(chunk)}\n`);
+		expect(startExecution).toHaveBeenCalledWith(
+			expect.objectContaining({
+				callerContext: expect.objectContaining({ streamingEnabled: true }),
+			}),
+		);
 	});
 });

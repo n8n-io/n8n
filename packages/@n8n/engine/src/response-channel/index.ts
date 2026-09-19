@@ -2,6 +2,7 @@ export { ExecutionResponseChannel } from './execution-response-channel';
 export { executionResponseSchema } from './execution-response.schema';
 export { noopResponseEmitter } from './execution-response.types';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
 	FailureMessage,
