@@ -100,6 +100,46 @@ describe('ExecutionResponseChannel', () => {
 		});
 	});
 
+	it('reports a response that exceeds the frame size limit', () => {
+		const channel = new ExecutionResponseChannel(new RecordingTransport(), silentLogger(), 256);
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (response) => seen.push(response));
+
+		channel.publish(ended([['x'.repeat(500)]]));
+
+		expect(seen).toEqual([
+			{
+				type: 'failure',
+				executionId: 'exec-1',
+				error: {
+					code: 'RESPONSE_TOO_LARGE',
+					message: 'The execution response exceeds the maximum size of 256 bytes.',
+				},
+			},
+		]);
+	});
+
+	it('reports a response that cannot be serialized', () => {
+		const channel = newChannel();
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (response) => seen.push(response));
+		const response = ended(null) as ExecutionResponse & { circular?: unknown };
+		response.circular = response;
+
+		channel.publish(response);
+
+		expect(seen).toEqual([
+			{
+				type: 'failure',
+				executionId: 'exec-1',
+				error: {
+					code: 'RESPONSE_SERIALIZATION_FAILED',
+					message: 'The execution response could not be serialized.',
+				},
+			},
+		]);
+	});
+
 	it('discards a frame that is not a response', () => {
 		const transport = new RecordingTransport();
 		const channel = new ExecutionResponseChannel(transport, silentLogger());
