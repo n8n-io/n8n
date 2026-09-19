@@ -22,6 +22,7 @@ import {
 	SSO_ERROR_LOGIN_FAILED,
 	SSO_ERROR_QUERY_PARAM,
 } from '@n8n/api-types';
+import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -57,7 +58,41 @@ const showAuthViewMessage = (messageData: Parameters<typeof toast.showMessage>[0
 	notificationsStore.setNotificationsSuppressed(true);
 };
 
-onMounted(() => {
+// The internal-auth fallback: `?internalAuth=true` skips the SSO redirect and
+// shows the email/password form (e.g. for an admin to recover if SSO is down).
+const isInternalAuthRequested = computed(() => route.query.internalAuth === 'true');
+// An SSO error (e.g. "Block access") lands the user back here; without this guard
+// the auto-redirect would bounce them to the IdP again and hide the error / loop.
+const hasSsoError = computed(() => Boolean(route.query[SSO_ERROR_QUERY_PARAM]));
+const redirectingToSso = ref(false);
+
+onMounted(async () => {
+	// Set by the sign-out flow so the user is not immediately re-authenticated by a
+	// still-active IdP session (which would make logout appear to do nothing).
+	const wasLoggedOut = consumeSsoLoginRedirectSuppression();
+
+	// When SSO is the active method, funnel users straight to the provider unless
+	// they explicitly requested the internal-auth fallback, an admin disabled it,
+	// an SSO error must be shown, or the user just logged out.
+	if (
+		ssoStore.showSsoLoginButton &&
+		ssoStore.redirectLoginToSso &&
+		!isInternalAuthRequested.value &&
+		!hasSsoError.value &&
+		!wasLoggedOut
+	) {
+		redirectingToSso.value = true;
+		try {
+			window.location.href = await ssoStore.resolveActiveSsoRedirectUrl(
+				getRedirectQueryParameter(),
+			);
+			return;
+		} catch {
+			// If we cannot build the SSO URL, fall back to showing the login form.
+			redirectingToSso.value = false;
+		}
+	}
+
 	// An SSO login denied by role mapping ("Block access"): the user authenticated
 	// fine at the IdP, they are simply not allowed in, so say exactly that.
 	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_ACCESS_DENIED) {
@@ -260,7 +295,7 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 <template>
 	<div>
 		<AuthView
-			v-if="!showMfaView"
+			v-if="!showMfaView && !redirectingToSso"
 			:form="formConfig"
 			:form-loading="loading"
 			:with-sso="true"

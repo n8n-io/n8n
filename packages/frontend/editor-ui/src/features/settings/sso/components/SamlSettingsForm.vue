@@ -15,6 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
+import SsoRedirectLoginToggle from './SsoRedirectLoginToggle.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 
@@ -46,6 +47,9 @@ const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> 
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
+// Global "redirect login page to SSO" setting. Pending value edited in the form
+// and persisted on Save, so it participates in the form's dirty state.
+const redirectLoginToSso = ref<boolean>(ssoStore.redirectLoginToSso);
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -110,12 +114,13 @@ const getSamlConfig = async () => {
 	metadata.value = config?.metadata;
 	metadataUrl.value = config?.metadataUrl;
 	samlLoginEnabled.value = config.loginEnabled ?? false;
+	redirectLoginToSso.value = ssoStore.redirectLoginToSso;
 };
 
-const isSaveEnabled = computed(() => {
-	if (savingForm.value) {
-		return false;
-	}
+// Dirtiness of the SAML configuration itself, excluding the global redirect
+// setting. The redirect toggle can be saved on its own (see onSave), so it must
+// not require valid SAML metadata to be persisted.
+const isSamlConfigDirty = computed(() => {
 	const isIdentityProviderChanged = () => {
 		if (ipsType.value === IdentityProviderSettingsType.URL) {
 			return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
@@ -132,6 +137,17 @@ const isSaveEnabled = computed(() => {
 		isSamlLoginEnabledChanged ||
 		isRuleMappingDirty
 	);
+});
+
+const isRedirectLoginToSsoChanged = computed(
+	() => redirectLoginToSso.value !== ssoStore.redirectLoginToSso,
+);
+
+const isSaveEnabled = computed(() => {
+	if (savingForm.value) {
+		return false;
+	}
+	return isSamlConfigDirty.value || isRedirectLoginToSsoChanged.value;
 });
 
 const isTestEnabled = computed(() => {
@@ -226,6 +242,26 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 
 	try {
 		savingForm.value = true;
+
+		// The global redirect setting is saved independently of the SAML config (its
+		// own endpoint), so a toggle-only change does not require valid SAML metadata
+		// and a failure must surface its own error, not the generic SAML save error.
+		if (isRedirectLoginToSsoChanged.value) {
+			try {
+				await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+			} catch (error) {
+				toast.showError(error, i18n.baseText('settings.sso.settings.redirectToSso.error'));
+				return false;
+			}
+		}
+		if (!isSamlConfigDirty.value) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sso.settings.save.success'),
+				type: 'success',
+			});
+			return true;
+		}
+
 		validateSamlInput();
 
 		const loginEnabledChanged = samlLoginEnabled.value !== ssoStore.isSamlLoginEnabled;
@@ -490,6 +526,8 @@ onMounted(async () => {
 				</div>
 			</div>
 		</div>
+
+		<SsoRedirectLoginToggle v-model="redirectLoginToSso" />
 
 		<div :class="$style.buttons">
 			<N8nButton

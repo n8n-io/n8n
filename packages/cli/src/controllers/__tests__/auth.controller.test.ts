@@ -219,6 +219,59 @@ describe('AuthController', () => {
 			);
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, '1');
 		});
+
+		it('should emit an SSO-fallback event when an owner logs in with a password while SSO is active', async () => {
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			const owner = mock<User>({
+				id: '123',
+				role: { slug: 'global:owner' },
+				mfaEnabled: false,
+			});
+
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'owner@example.com',
+				password: 'password',
+			});
+
+			const req = mock<AuthenticatedRequest>({ user: owner, body, browserId: '1' });
+			const res = mock<Response>();
+
+			emailAuthHandler.handleLogin.mockResolvedValue(owner);
+
+			await controller.login(req, res, body);
+
+			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in-with-sso-fallback', {
+				user: owner,
+			});
+		});
+
+		it('should not emit an SSO-fallback event when email is the active authentication method', async () => {
+			config.set('userManagement.authenticationMethod', 'email');
+
+			const member = mock<User>({
+				id: '123',
+				role: { slug: 'global:member' },
+				mfaEnabled: false,
+			});
+
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'member@example.com',
+				password: 'password',
+			});
+
+			const req = mock<AuthenticatedRequest>({ user: member, body, browserId: '1' });
+			const res = mock<Response>();
+
+			emailAuthHandler.handleLogin.mockResolvedValue(member);
+
+			await controller.login(req, res, body);
+
+			expect(eventsService.emit).not.toHaveBeenCalledWith(
+				'user-logged-in-with-sso-fallback',
+				expect.anything(),
+			);
+		});
 	});
 
 	describe('resolveSignupToken', () => {
