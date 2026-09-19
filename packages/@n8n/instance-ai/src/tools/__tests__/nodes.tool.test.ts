@@ -223,6 +223,84 @@ describe('nodes tool', () => {
 			expect(first).not.toHaveProperty('results.0.setupPreference');
 		});
 
+		it('should search multiple services in a single call when query is an array', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.whatsApp',
+					displayName: 'WhatsApp Business Cloud',
+					description: 'Send messages with WhatsApp',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+				},
+				{
+					name: '@n8n/n8n-nodes-langchain.googleGemini',
+					displayName: 'Google Gemini',
+					description: 'Message Gemini',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue(null);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: ['WhatsApp', 'Gemini'] } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				totalResults: 2,
+				results: [
+					expect.objectContaining({ name: 'n8n-nodes-base.whatsApp' }),
+					expect.objectContaining({ name: '@n8n/n8n-nodes-langchain.googleGemini' }),
+				],
+			});
+		});
+
+		it('should search multiple services in a single call when queries parameter is provided', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.whatsApp',
+					displayName: 'WhatsApp Business Cloud',
+					description: 'Send messages with WhatsApp',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+				},
+				{
+					name: '@n8n/n8n-nodes-langchain.googleGemini',
+					displayName: 'Google Gemini',
+					description: 'Message Gemini',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue(null);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', queries: ['WhatsApp', 'Gemini'] } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				totalResults: 2,
+				results: [
+					expect.objectContaining({ name: 'n8n-nodes-base.whatsApp' }),
+					expect.objectContaining({ name: '@n8n/n8n-nodes-langchain.googleGemini' }),
+				],
+			});
+		});
+
 		it('should search nodes by connection type and enrich results with discriminators', async () => {
 			const searchableNodes = [
 				{

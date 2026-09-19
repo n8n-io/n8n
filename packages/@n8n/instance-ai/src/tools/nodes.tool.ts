@@ -9,6 +9,7 @@ import {
 	categoryList,
 	suggestedNodesData,
 	type CategorySuggestedNode,
+	type NodeSearchResult,
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import {
@@ -39,13 +40,15 @@ const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 10). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+const NODE_QUERY_DESCRIPTION =
+	'Search query or array of search queries to filter by name or description (e.g. "slack" or ["whatsapp", "gemini"])';
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),
 	query: z
-		.string()
+		.union([z.string(), z.array(z.string())])
 		.optional()
-		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+		.describe(NODE_QUERY_DESCRIPTION),
 	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
@@ -58,12 +61,18 @@ const searchAction = z.object({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
+			'Search node types by name or AI connection type. Pass a single service name ("Slack") or an array of service names (["WhatsApp", "Gemini", "Google Sheets"]) in query/queries to search multiple services in one call.',
 		),
 	query: z
-		.string()
+		.union([z.string(), z.array(z.string())])
 		.optional()
-		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+		.describe(NODE_QUERY_DESCRIPTION),
+	queries: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Array of search queries to search multiple services in one call (e.g. ["whatsapp", "gemini"])',
+		),
 	connectionType: z
 		.enum(AI_CONNECTION_TYPES)
 		.optional()
@@ -80,13 +89,19 @@ const describeAction = z.object({
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 });
 
-const nodeRequestObjectSchema = z.object({
-	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
-	version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
-	resource: z.string().optional().describe('Resource discriminator for split nodes'),
-	operation: z.string().optional().describe('Operation discriminator for split nodes'),
-	mode: z.string().optional().describe('Mode discriminator for split nodes'),
-});
+const nodeRequestObjectSchema = z
+	.object({
+		nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+		version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
+		resource: z.string().optional().describe('Resource discriminator for split nodes'),
+		operation: z.string().optional().describe('Operation discriminator for split nodes'),
+		mode: z.string().optional().describe('Mode discriminator for split nodes'),
+		detail: z
+			.enum(['full', 'compact'])
+			.optional()
+			.describe('Set "full" to bypass pruning and return the complete unfiltered definition'),
+	})
+	.passthrough();
 
 export const nodeRequestSchema = z.union([
 	z.string().describe(NODE_TYPE_ID_DESCRIPTION),
@@ -246,8 +261,9 @@ async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
 ) {
+	const queryString = Array.isArray(input.query) ? input.query.join(' ') : input.query;
 	const nodes = await context.nodeService.listAvailable({
-		query: input.query,
+		query: queryString,
 		gatewayCreditsOnly: input.gatewayCreditsOnly,
 	});
 	return { nodes };
@@ -267,17 +283,36 @@ async function handleSearch(
 		cache.engine = engine;
 	}
 
-	let results;
-	if (input.connectionType) {
-		results = engine.searchByConnectionType(input.connectionType, input.limit, input.query);
-	} else if (input.query) {
-		results = engine.searchByName(input.query, input.limit);
-	} else {
-		return { results: [], totalResults: 0 };
+	let queryList: string[] = [];
+	if (Array.isArray(input.queries) && input.queries.length > 0) {
+		queryList = input.queries.map((q) => String(q).trim()).filter(Boolean);
+	} else if (Array.isArray(input.query)) {
+		queryList = input.query.map((q) => String(q).trim()).filter(Boolean);
+	} else if (typeof input.query === 'string' && input.query.trim().length > 0) {
+		queryList = [input.query.trim()];
 	}
 
-	if (input.query) {
-		results = await filterSearchResultsWithJev(input.query, results);
+	let results: NodeSearchResult[] = [];
+	if (input.connectionType) {
+		results = engine.searchByConnectionType(input.connectionType, input.limit, queryList[0]);
+	} else if (queryList.length > 0) {
+		const perQueryResults = await Promise.all(
+			queryList.map(async (q) => {
+				const raw = engine.searchByName(q, input.limit);
+				return await filterSearchResultsWithJev(q, raw);
+			}),
+		);
+		const seenNames = new Set<string>();
+		for (const list of perQueryResults) {
+			for (const item of list) {
+				if (!seenNames.has(item.name)) {
+					seenNames.add(item.name);
+					results.push(item);
+				}
+			}
+		}
+	} else {
+		return { results: [], totalResults: 0 };
 	}
 
 	// Enrich results with discriminator and credential setup metadata when available.

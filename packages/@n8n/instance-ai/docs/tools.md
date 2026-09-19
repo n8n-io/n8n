@@ -879,9 +879,10 @@ subnode requirements and discriminator values.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | no | Short search query |
+| `query` | string \| string[] | no | Short search query or array of search queries (e.g. `"Slack"` or `["WhatsApp", "Gemini"]`) |
+| `queries` | string[] | no | Array of search queries to search multiple services in one call |
 | `connectionType` | string | no | AI sub-node connection type |
-| `limit` | number | no | Maximum results. Default 10 |
+| `limit` | number | no | Maximum results per query. Default 10 |
 
 **Returns**: `{ results, totalResults }`
 
