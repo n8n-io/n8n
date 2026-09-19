@@ -1,7 +1,11 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
-import { connectMcpClientForCredential, mapToNodeOperationError } from '../shared/utils';
+import {
+	connectMcpClientForCredential,
+	getMcpToolDisplayName,
+	mapToNodeOperationError,
+} from '../shared/utils';
 
 export async function getTools(
 	this: ILoadOptionsFunctions,
@@ -25,13 +29,18 @@ export async function getTools(
 
 	try {
 		const result = await client.result.listTools({ cursor: paginationToken });
-		const tools = filter
-			? result.tools.filter((tool) => tool.name.toLowerCase().includes(filter.toLowerCase()))
-			: result.tools;
+		const matchesFilter = (tool: (typeof result.tools)[number]) => {
+			if (!filter) return true;
+			const needle = filter.toLowerCase();
+			return (
+				tool.name.toLowerCase().includes(needle) ||
+				getMcpToolDisplayName(tool).toLowerCase().includes(needle)
+			);
+		};
 
 		return {
-			results: tools.map((tool) => ({
-				name: tool.name,
+			results: result.tools.filter(matchesFilter).map((tool) => ({
+				name: getMcpToolDisplayName(tool),
 				value: tool.name,
 				description: tool.description,
 				inputSchema: tool.inputSchema,
