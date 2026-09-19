@@ -231,16 +231,67 @@ describe('PostHog', () => {
 			spy.mockRestore();
 		});
 
-		it('does not cache empty results', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+		it.each(['empty', 'failed'])(
+			'retries a %s evaluation after the short cache expires',
+			async (result) => {
+				vi.useFakeTimers();
+				try {
+					if (result === 'failed') {
+						(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(
+							new Error('PostHog failed'),
+						);
+					} else {
+						(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+					}
+					const ph = new PostHogClient(instanceSettings, globalConfig);
+					await ph.init();
 
+					await expect(ph.getFeatureFlags({ id: userId, createdAt })).resolves.toEqual({});
+					await expect(ph.getFeatureFlags({ id: userId, createdAt })).resolves.toEqual({});
+					expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+
+					(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+						mockEvaluatedFlags({ 'test-flag': true }),
+					);
+					vi.advanceTimersByTime(31_000);
+
+					await expect(ph.getFeatureFlags({ id: userId, createdAt })).resolves.toEqual({
+						'test-flag': true,
+					});
+					expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
+
+		it('shares an active evaluation for callers with the same key', async () => {
+			const requests: Array<{
+				resolve: (value: ReturnType<typeof mockEvaluatedFlags>) => void;
+				reject: (reason: Error) => void;
+			}> = [];
+			(PostHog.prototype.evaluateFlags as Mock).mockImplementation(
+				async () =>
+					await new Promise((resolve, reject) => {
+						requests.push({ resolve, reject });
+					}),
+			);
+			const flags = { 'test-flag': true };
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
-			await ph.getFeatureFlags({ id: userId, createdAt });
-			await ph.getFeatureFlags({ id: userId, createdAt });
+			const first = ph.getFeatureFlags({ id: userId, createdAt });
+			const second = ph.getFeatureFlags({ id: userId, createdAt });
+			await vi.waitFor(() => expect(requests.length).toBeGreaterThan(0));
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			requests[0].resolve(mockEvaluatedFlags(flags));
+			// A second request must not replace the successful answer with a failure.
+			requests[1]?.reject(new Error('PostHog failed'));
+
+			expect(await first).toEqual(flags);
+			expect(await second).toEqual(flags);
+			expect(await ph.getFeatureFlags({ id: userId, createdAt })).toEqual(flags);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
 		});
 
 		describe('env-var overrides', () => {
