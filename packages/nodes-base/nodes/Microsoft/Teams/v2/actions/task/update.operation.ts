@@ -3,14 +3,13 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
+import { bucketRLC, byIdUnderSp, groupRLC, memberRLC, planRLC } from '../../descriptions';
 import {
 	buildTeamsPath,
 	microsoftApiRequest,
 	SP_HIDE,
 	validateTaskBodyIdsUnderSp,
 } from '../../transport';
-import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	{
