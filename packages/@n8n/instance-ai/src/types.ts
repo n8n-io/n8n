@@ -1628,6 +1628,8 @@ export interface InstanceAiContext {
 	workspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
+	/** The current user message being processed for context-aware tool operations. */
+	currentUserMessage?: string;
 	/** Thread memory adapter used for thread-local metadata. */
 	threadMemory?: PatchableThreadMemory;
 	/** Synchronous node-types provider used by host-side schema validation

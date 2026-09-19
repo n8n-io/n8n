@@ -3820,6 +3820,7 @@ export class InstanceAiService {
 			// Make the current user message available since memory history only
 			// returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
+			context.currentUserMessage = message;
 			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 

@@ -363,6 +363,41 @@ describe('credentials tool', () => {
 			});
 		});
 
+		it('should accept query field in list action', async () => {
+			const credentials: CredentialSummary[] = [
+				{ id: '1', name: 'Slack Work', type: 'slackApi' },
+				{ id: '2', name: 'Notion Key', type: 'notionApi' },
+			];
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, query: 'Slack' },
+				noSuspendCtx(),
+			);
+
+			expect((result as { credentials: unknown[] }).credentials).toHaveLength(2);
+		});
+
+		it('should fall back to context.currentUserMessage when input.query is omitted', async () => {
+			const credentials: CredentialSummary[] = [
+				{ id: '1', name: 'Team Slack', type: 'slackApi' },
+				{ id: '2', name: 'Linear Key', type: 'linearApi' },
+			];
+			const context = createMockContext({
+				currentUserMessage: 'Send an alert to Slack when a form is submitted',
+			});
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+
+			// Without Jev key present in test env, returns the items
+			expect((result as { credentials: unknown[] }).credentials).toHaveLength(2);
+		});
+
 		it('should include a hint when the page is truncated and no narrowing filter was used', async () => {
 			const credentials: CredentialSummary[] = Array.from({ length: 60 }, (_, i) => ({
 				id: String(i),

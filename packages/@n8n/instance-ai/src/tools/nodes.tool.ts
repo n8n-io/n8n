@@ -23,6 +23,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, NodeDescription } from '../types';
+import { filterSearchResultsWithJev } from './nodes/filter-search-results';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
@@ -273,6 +274,10 @@ async function handleSearch(
 		results = engine.searchByName(input.query, input.limit);
 	} else {
 		return { results: [], totalResults: 0 };
+	}
+
+	if (input.query) {
+		results = await filterSearchResultsWithJev(input.query, results);
 	}
 
 	// Enrich results with discriminator and credential setup metadata when available.

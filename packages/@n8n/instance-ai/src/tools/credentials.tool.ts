@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, SetupItemsEmitter } from '../types';
+import { filterCredentialsWithJev } from './credentials/filter-credentials';
 import {
 	buildChatModelProviderHint,
 	isChatModelProviderCredentialType,
@@ -39,6 +40,13 @@ const DEFAULT_LIMIT = 50;
 // ── Shared fields (single source of truth for fields used across actions) ───
 
 const credentialIdField = z.string().describe('Credential ID');
+
+const queryField = z
+	.string()
+	.optional()
+	.describe(
+		'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `gatewayCreditsOnly` is set.',
+	);
 
 /** Model-facing schema for the Templated Custom Auth creation recipe. */
 export const setupHintField = z
@@ -319,7 +327,7 @@ const listAction = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			`List credentials accessible to the current user. Results are paginated (default ${DEFAULT_LIMIT}, max 200) and include \`total\` + \`hasMore\`; when looking up a user-named credential, pass \`name\` (substring), \`type\`, or \`types\` for targeted lookup instead of scanning the default page.`,
+			`List credentials accessible to the current user. Results are paginated (default ${DEFAULT_LIMIT}, max 200) and include \`total\` + \`hasMore\`; when looking up a user-named credential, pass \`name\` (substring), \`query\`, \`type\`, or \`types\` for targeted lookup instead of scanning the default page.`,
 		),
 	type: z.string().optional().describe('Filter by credential type (e.g. "notionApi")'),
 	types: z
@@ -332,6 +340,7 @@ const listAction = z.object({
 		.describe(
 			'Filter by credential name (case-insensitive substring). Use for targeted lookup when the user named a specific credential — prefer this over paging through results.',
 		),
+	query: queryField,
 	limit: z
 		.number()
 		.int()
@@ -369,12 +378,7 @@ const searchTypesAction = z.object({
 		.describe(
 			"Search available credential types by keyword. Each result carries the type's `documentationUrl` — pass it to `n8n-docs` to ground an auth answer (scopes, permissions, setup steps) instead of recalling it.",
 		),
-	query: z
-		.string()
-		.optional()
-		.describe(
-			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `gatewayCreditsOnly` is set.',
-		),
+	query: queryField,
 	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
@@ -645,9 +649,18 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	}
 	for (const c of storedCredentials) items.push({ id: c.id, name: c.name, type: c.type });
 
-	const filtered = input.name
+	let filtered = input.name
 		? items.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
 		: items;
+
+	const filterQuery =
+		input.query ??
+		(input.name && filtered.length > 3 ? input.name : undefined) ??
+		context.currentUserMessage;
+
+	if (filterQuery) {
+		filtered = await filterCredentialsWithJev(filterQuery, filtered);
+	}
 
 	const total = filtered.length;
 	const offset = input.offset ?? 0;
