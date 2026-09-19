@@ -48,6 +48,26 @@ describe('N8nClient.sendMessage', () => {
 		});
 		expect(body).not.toHaveProperty('handoffContext');
 	});
+
+	it('sends an Agent attachment through the resource attachment channel', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		const client = new N8nClient(BASE_URL);
+		const attachments = [
+			{
+				type: 'agent' as const,
+				id: 'agent-remapped',
+				name: 'Notion research',
+				projectId: 'project-1',
+			},
+		];
+
+		await client.sendMessage('thread-1', 'Inspect this Agent.', attachments);
+
+		const [, init] = fetchMock.mock.calls[0];
+		if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+		const body = jsonParse<Record<string, unknown>>(init.body);
+		expect(InstanceAiSendMessageRequest.parse(body)).toMatchObject({ attachments });
+	});
 });
 
 /** Builds a minimal `Response`-shaped object for the client's private `fetch()` to consume. */
