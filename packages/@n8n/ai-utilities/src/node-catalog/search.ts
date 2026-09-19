@@ -162,6 +162,8 @@ const CONNECTION_TYPE_TO_SDK: Record<string, { fn: string; subnodeField: string 
 	ai_embedding: { fn: 'embeddings()', subnodeField: 'subnodes.embeddings' },
 	ai_document: { fn: 'documentLoader()', subnodeField: 'subnodes.documentLoader' },
 	ai_textSplitter: { fn: 'textSplitter()', subnodeField: 'subnodes.textSplitter' },
+	ai_reranker: { fn: 'reranker()', subnodeField: 'subnodes.reranker' },
+	ai_decisionModel: { fn: 'decisionModel()', subnodeField: 'subnodes.decisionModel' },
 };
 
 /**

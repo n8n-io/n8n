@@ -21,6 +21,7 @@ export const AI_CONNECTION_TYPES = [
 	'ai_document',
 	'ai_textSplitter',
 	'ai_reranker',
+	'ai_decisionModel',
 ] as const;
 
 export type AiConnectionType = (typeof AI_CONNECTION_TYPES)[number];

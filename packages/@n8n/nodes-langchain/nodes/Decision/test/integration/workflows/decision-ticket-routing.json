@@ -1,0 +1,211 @@
+{
+	"name": "Decision ticket routing",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ticket-assignment",
+							"name": "ticket",
+							"value": "The customer says they were charged twice and want their money back.",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0],
+			"id": "set-id",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"state": "={{ $json.ticket }}",
+				"questions": {
+					"question": [
+						{
+							"id": "department",
+							"type": "choice",
+							"instructions": "Which team should handle this request?",
+							"options": {
+								"option": [
+									{
+										"value": "billing",
+										"description": "Payments, invoices, duplicate charges, and refunds"
+									},
+									{
+										"value": "technical",
+										"description": "Errors, bugs, configuration, and integration problems"
+									},
+									{
+										"value": "other",
+										"description": "None of the other categories fit"
+									}
+								]
+							}
+						},
+						{
+							"id": "urgency",
+							"type": "booleanProbability",
+							"instructions": "This request requires urgent attention"
+						},
+						{
+							"id": "severity",
+							"type": "score",
+							"instructions": "How severe is the customer impact?",
+							"levels": {
+								"level": [
+									{
+										"description": "Low impact"
+									},
+									{
+										"description": "Material impact"
+									},
+									{
+										"description": "Critical business impact"
+									}
+								]
+							}
+						}
+					]
+				},
+				"options": {
+					"confidenceThreshold": 0.8
+				},
+				"outputMode": "branch"
+			},
+			"type": "@n8n/n8n-nodes-langchain.decision",
+			"typeVersion": 1,
+			"position": [420, 0],
+			"id": "decision-id",
+			"name": "Decision"
+		},
+		{
+			"parameters": {
+				"model": "jev-latest",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.decisionModelTypeSafe",
+			"typeVersion": 1,
+			"position": [420, 200],
+			"id": "decision-model-id",
+			"name": "TypeSafe Jev Decision Model",
+			"credentials": {
+				"typeSafeApi": {
+					"id": "123",
+					"name": "TypeSafe account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, -270],
+			"id": "billing-team-id",
+			"name": "Billing Team"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, -90],
+			"id": "technical-team-id",
+			"name": "Technical Team"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, 90],
+			"id": "general-inbox-id",
+			"name": "General Inbox"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, 270],
+			"id": "flag-for-review-id",
+			"name": "Flag for Review"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Decision",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TypeSafe Jev Decision Model": {
+			"ai_decisionModel": [
+				[
+					{
+						"node": "Decision",
+						"type": "ai_decisionModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Decision": {
+			"main": [
+				[
+					{
+						"node": "Billing Team",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Technical Team",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "General Inbox",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Flag for Review",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

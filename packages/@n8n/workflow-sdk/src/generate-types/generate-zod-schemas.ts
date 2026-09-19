@@ -197,6 +197,12 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
 		isArray: false,
 		canBeMultiple: false,
 	},
+	ai_decisionModel: {
+		fieldName: 'decisionModel',
+		schemaName: 'decisionModelInstanceSchema',
+		isArray: false,
+		canBeMultiple: false,
+	},
 };
 
 // =============================================================================

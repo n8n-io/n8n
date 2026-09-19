@@ -123,6 +123,23 @@ export type {
 	MessageRole,
 } from './types/message';
 export type { JSONArray, JSONObject, JSONValue } from './types/json';
+export type {
+	BooleanProbabilityAnswer,
+	BooleanProbabilityQuestion,
+	ChoiceAnswer,
+	ChoiceQuestion,
+	DecisionAnswer,
+	DecisionChoiceOption,
+	DecisionModel,
+	DecisionQuestion,
+	DecisionQuestionType,
+	DecisionRequest,
+	DecisionResponse,
+	DecisionState,
+	DecisionUsage,
+	ScoreAnswer,
+	ScoreQuestion,
+} from './types/decision-model';
 
 // Chat model classes
 export { LangchainChatModelAdapter } from './adapters/langchain-chat-model';
@@ -136,5 +153,9 @@ export { BaseChatMemory } from './memory/base-chat-memory';
 export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/windowed-chat-memory';
 
 // Suppliers
+export {
+	supplyDecisionModel,
+	type SupplyDecisionModelOptions,
+} from './suppliers/supplyDecisionModel';
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
 export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';
