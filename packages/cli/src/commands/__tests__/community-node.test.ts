@@ -98,7 +98,7 @@ describe('uninstallCredential', () => {
 		expect(deleteCredential).toHaveBeenCalledTimes(0);
 	});
 
-	it('should delete multiple credentials', async () => {
+	it('should wait for all credentials to be deleted', async () => {
 		const credentialType = 'evolutionApi';
 
 		const credential1 = mock<CredentialsEntity>();
@@ -115,11 +115,26 @@ describe('uninstallCredential', () => {
 		communityNode.findCredentialsByType = vi.fn().mockReturnValue(credentials);
 		communityNode.findUserById = vi.fn().mockReturnValue(user);
 
+		let resolveDelete = () => {};
+		const deletePromise = new Promise<void>((resolve) => {
+			resolveDelete = resolve;
+		});
+		communityNode.deleteCredential = vi.fn().mockReturnValue(deletePromise);
+
 		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
 		const findCredentialsByType = vi.spyOn(communityNode, 'findCredentialsByType');
 		const findUserById = vi.spyOn(communityNode, 'findUserById');
 
-		await communityNode.run();
+		let runCompleted = false;
+		const runPromise = communityNode.run().then(() => {
+			runCompleted = true;
+		});
+
+		await vi.waitFor(() => expect(deleteCredential).toHaveBeenCalledTimes(2));
+		expect(runCompleted).toBe(false);
+
+		resolveDelete();
+		await runPromise;
 
 		expect(findCredentialsByType).toHaveBeenCalledTimes(1);
 		expect(findCredentialsByType).toHaveBeenCalledWith(credentialType);
@@ -127,9 +142,50 @@ describe('uninstallCredential', () => {
 		expect(findUserById).toHaveBeenCalledTimes(1);
 		expect(findUserById).toHaveBeenCalledWith(userId);
 
-		expect(deleteCredential).toHaveBeenCalledTimes(2);
 		expect(deleteCredential).toHaveBeenCalledWith(user, credential1.id);
 		expect(deleteCredential).toHaveBeenCalledWith(user, credential2.id);
+	});
+
+	it('should wait for remaining deletions before reporting a failure', async () => {
+		const credentialType = 'evolutionApi';
+		const credential1 = mock<CredentialsEntity>({ id: '666' });
+		const credential2 = mock<CredentialsEntity>({ id: '777' });
+		const user = mock<User>();
+		const deletionError = new Error('Failed to delete credential');
+
+		// @ts-expect-error Protected property
+		communityNode.flags = { credential: credentialType, uninstall: true, userId };
+		communityNode.findCredentialsByType = vi.fn().mockReturnValue([credential1, credential2]);
+		communityNode.findUserById = vi.fn().mockReturnValue(user);
+
+		let resolveDelete = () => {};
+		const pendingDeletion = new Promise<void>((resolve) => {
+			resolveDelete = resolve;
+		});
+		communityNode.deleteCredential = vi
+			.fn()
+			.mockRejectedValueOnce(deletionError)
+			.mockReturnValueOnce(pendingDeletion);
+		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
+
+		let runResult: 'pending' | 'resolved' | 'rejected' = 'pending';
+		const runPromise = communityNode.run().then(
+			() => {
+				runResult = 'resolved';
+			},
+			(error: unknown) => {
+				runResult = 'rejected';
+				return error;
+			},
+		);
+
+		await vi.waitFor(() => expect(deleteCredential).toHaveBeenCalledTimes(2));
+		await Promise.resolve();
+		expect(runResult).toBe('pending');
+
+		resolveDelete();
+		expect(await runPromise).toBe(deletionError);
+		expect(runResult).toBe('rejected');
 	});
 });
 
