@@ -106,32 +106,37 @@ export class GSuiteAdmin implements INodeType {
 				}));
 			},
 			async getOrgUnits(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const orgUnits = (await googleApiRequest.call(
-					this,
-					'GET',
-					'/directory/v1/customer/my_customer/orgunits',
-					{},
-					{ orgUnitPath: '/', type: 'all' },
-				)) as {
-					// the key is omitted entirely when the customer has no organizational units
-					organizationUnits?: Array<{
-						name: string;
-						orgUnitPath: string;
-					}>;
-				};
+				const returnData: INodePropertyOptions[] = [
+					{
+						name: '/',
+						value: '/',
+					},
+				];
 
-				// push default orgUnit (root), which is not returned from the API call above
-				returnData.push({
-					name: '/',
-					value: '/',
-				});
+				try {
+					const orgUnits = (await googleApiRequest.call(
+						this,
+						'GET',
+						'/directory/v1/customer/my_customer/orgunits',
+						{},
+						{ type: 'all' },
+					)) as {
+						// the key is omitted entirely when the customer has no organizational units
+						organizationUnits?: Array<{
+							name: string;
+							orgUnitPath: string;
+						}>;
+					};
 
-				for (const unit of orgUnits.organizationUnits ?? []) {
-					returnData.push({
-						name: unit.name,
-						value: unit.orgUnitPath,
-					});
+					for (const unit of orgUnits.organizationUnits ?? []) {
+						returnData.push({
+							name: unit.name,
+							value: unit.orgUnitPath,
+						});
+					}
+				} catch {
+					// Return root when credentials lack orgunit scope
+					return returnData;
 				}
 
 				return returnData;
