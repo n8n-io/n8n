@@ -386,3 +386,132 @@ export function generateCustomNodeDescription(
 		},
 	};
 }
+
+// ------------------------------------------------------------------------
+// Custom operations inside an existing node
+// ------------------------------------------------------------------------
+
+/** Value of the extra `resource` option that groups custom operations in a parent node. */
+export const CUSTOM_RESOURCE_VALUE = '__customOperations__';
+export const CUSTOM_RESOURCE_NAME = 'Custom Operation';
+
+function findOptionsProperty(properties: INodeProperties[], name: string) {
+	return properties.find((property) => property.name === name && property.type === 'options');
+}
+
+function toOperationOption(operation: CustomOperationDefinition): INodePropertyOptions {
+	return {
+		name: operation.name,
+		value: operation.id,
+		action: operation.name,
+		description: operation.description,
+	};
+}
+
+/**
+ * Returns a copy of `description` whose Resource/Operation dropdowns list the
+ * given custom operations, plus the operations' input parameters. Nodes with a
+ * `resource` dropdown get a "Custom Operation" resource; nodes with only an
+ * `operation` dropdown get the operations appended; nodes with neither get a
+ * new `operation` dropdown. The input isn't mutated.
+ */
+export function injectOperationsIntoParent(
+	description: INodeTypeDescription,
+	operations: CustomOperationDefinition[],
+): INodeTypeDescription {
+	if (operations.length === 0) return description;
+
+	const properties = [...description.properties];
+	const resourceProperty = findOptionsProperty(properties, 'resource');
+	const operationProperty = findOptionsProperty(properties, OPERATION_PARAMETER_NAME);
+	const operationOptions = operations.map(toOperationOption);
+
+	let inputDisplayOptions: ((operationId: string) => INodeProperties['displayOptions']) | undefined;
+
+	if (resourceProperty) {
+		const index = properties.indexOf(resourceProperty);
+		properties[index] = {
+			...resourceProperty,
+			options: [
+				...((resourceProperty.options ?? []) as INodePropertyOptions[]),
+				{
+					name: CUSTOM_RESOURCE_NAME,
+					value: CUSTOM_RESOURCE_VALUE,
+					description: 'Operations defined on this instance',
+				},
+			],
+		};
+		properties.splice(index + 1, 0, {
+			displayName: 'Operation',
+			name: OPERATION_PARAMETER_NAME,
+			type: 'options',
+			noDataExpression: true,
+			default: operations[0].id,
+			options: operationOptions,
+			displayOptions: { show: { resource: [CUSTOM_RESOURCE_VALUE] } },
+		});
+		inputDisplayOptions = (operationId: string) => ({
+			show: { resource: [CUSTOM_RESOURCE_VALUE], [OPERATION_PARAMETER_NAME]: [operationId] },
+		});
+	} else if (operationProperty) {
+		const index = properties.indexOf(operationProperty);
+		properties[index] = {
+			...operationProperty,
+			options: [
+				...((operationProperty.options ?? []) as INodePropertyOptions[]),
+				...operationOptions,
+			],
+		};
+	} else {
+		properties.unshift({
+			displayName: 'Operation',
+			name: OPERATION_PARAMETER_NAME,
+			type: 'options',
+			noDataExpression: true,
+			default: operations[0].id,
+			options: operationOptions,
+		});
+	}
+
+	for (const operation of operations) {
+		const displayOptions =
+			typeof inputDisplayOptions === 'function'
+				? inputDisplayOptions(operation.id)
+				: { show: { [OPERATION_PARAMETER_NAME]: [operation.id] } };
+		const layout = layoutInputs(getActiveVersion(operation), displayOptions);
+		properties.push(...layout.required);
+		if (layout.additionalFields) properties.push(layout.additionalFields);
+	}
+
+	return { ...description, properties };
+}
+
+/**
+ * Declarative description used at run time when a parent node executes one of
+ * its custom operations. It only knows the operation's own inputs (so
+ * `RoutingNode` ignores the parent's parameters) and borrows the parent's
+ * credentials so the user's existing credential is applied.
+ */
+export function generateRuntimeDescription(
+	operation: CustomOperationDefinition,
+	parent: INodeTypeDescription,
+): INodeTypeDescription {
+	const version = getActiveVersion(operation);
+	const layout = layoutInputs(version);
+	const properties = [...layout.required];
+	if (layout.additionalFields) properties.push(layout.additionalFields);
+
+	return {
+		displayName: `${parent.displayName}: ${operation.name}`,
+		name: parent.name,
+		group: parent.group,
+		version: parent.version,
+		description: operation.description ?? '',
+		defaults: parent.defaults,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: parent.credentials,
+		requestDefaults: buildFixedRequest(version, layout.pathByName),
+		properties,
+	};
+}

@@ -131,3 +131,12 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
       (Bearer header + form-encoded nested body arrived). The UI click-through
       was not exercised in this session (see DESIGN.md → Verification)
 - [ ] Push branch, write final summary
+
+## 8. Follow-ups from the first demo run (2026-09-19)
+
+- [x] Fix: icon route exempt from the browser-id check (image requests logged the user out)
+- [x] Custom operations become real Resource/Operation entries of the parent node
+      (`ParentNodePatcher`: description injection + `execute` wrapping through `RoutingNode`)
+- [x] Nodes panel: "Create custom node" as the last list item and highlighted on empty search
+- [x] Remove the header button and the hidden virtual node types for operations
+- [ ] UI walk-through of the new flow by the author

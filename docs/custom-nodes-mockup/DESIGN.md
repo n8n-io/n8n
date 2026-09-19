@@ -95,32 +95,53 @@ flowchart LR
    every description with `requestDefaults` a `RoutingNode`-backed
    `execute`. The declared credential's `authenticate` block adds the
    header, so a Stripe operation reuses the user's Stripe credential.
-5. **Nodes panel**: generated operation types are `hidden` and carry a
-   `customDefinition` marker naming the parent. `useActionsGeneration`
-   pushes one action per marker into the parent's action list under the
-   label *Custom operations*; the action's `name` is the generated type, so
-   selecting it adds that type. Custom Nodes are not hidden and appear like
-   any other node.
+5. **Nodes panel**: custom operations are options of the parent node, so the
+   existing resource/operation action generation lists them under a *Custom
+   Operation* group. Custom Nodes appear like any other node. The "Create
+   custom node" entry point is the last item of the panel list and is
+   highlighted when a search has no results.
 
-### Virtual node type vs. mutating the parent description
+### Custom operations live inside the parent node
 
-The mockup generates a separate node type per operation and only *presents*
-it as a Stripe action. The alternative is to append an `operation` option
-and its parameters to the real Stripe description at load time.
+The first iteration generated a separate hidden node type per operation and
+only *presented* it as a Stripe action. Feedback from the first demo run was
+clear: an added operation should be a Stripe operation, not a new node. The
+branch now does that:
 
-| | Virtual type (chosen) | Mutate parent |
+- `ParentNodePatcher` (`packages/cli/src/modules/custom-nodes/parent-node.patcher.ts`)
+  adds a **Custom Operation** entry to the parent's `resource` dropdown, an
+  `operation` dropdown for that resource listing the custom operations, and
+  the operations' inputs (with `displayOptions` on resource + operation). It
+  patches both the served description (`types/nodes.json`) and the loaded
+  class description, for every version of the parent. Nodes without a
+  `resource` dropdown get the options appended to `operation`.
+- The parent's `execute` is wrapped once. If the selected `operation` is a
+  custom one, a `RoutingNode` runs with a declarative description generated
+  from the definition (inputs, fixed request, the parent's `credentials`).
+  Otherwise the original `execute` runs unchanged. The Stripe source is not
+  modified; the patch is applied in memory after every registry rebuild.
+- The nodes panel needs no special code: `resourceCategories` turns the new
+  resource into a "Custom Operation Actions" group automatically, and
+  selecting one adds a regular Stripe node with `resource`/`operation` set.
+- Consequence for versioning: a node on the canvas is a Stripe node and has no
+  custom-operation version of its own. All nodes follow the **active**
+  version; "Set active" in Settings is therefore an instance-wide switch
+  (and rollback). Per-node pinning would need the option value to carry the
+  version, which the mockup does not do.
+- The patcher runs as a *prepended* post-processor of
+  `LoadNodesAndCredentials` so the injected description is in `types` before
+  the frontend service writes `types/nodes.json`. `addPostProcessor` gained a
+  `prepend` option for this.
+
+| | Inside the parent (current) | Virtual node type (first iteration) |
 | --- | --- | --- |
-| Touches `nodes-base` | no | no code, but the served description changes |
-| Versioning | native node versioning per operation | must invent per-option versioning |
-| Node on canvas | own type, own `typeVersion` | looks like a Stripe node, `typeVersion` of Stripe |
-| Export / source control | one type name per operation | Stripe workflows silently depend on instance-local options |
-| Risk | panel integration is a small frontend patch | `displayOptions` collisions, translations, AI tool wrapping, HITL, `injectCustomApiCallOptions` all see foreign parameters |
+| Node on canvas | a real Stripe node, `resource: __customOperations__` | own type `n8n-custom.<id>` |
+| Versioning | instance-wide active version | native per-node `typeVersion` |
+| Touches `nodes-base` source | no (in-memory patch) | no |
+| Risk | wraps the parent's `execute`; shares the parent's parameter namespace | panel integration patch; not "really" a Stripe node |
 
-The virtual type keeps the built-in node untouched and gives versioning for
-free. The cost is that a custom operation on the canvas is technically not
-a Stripe node (different `type`), which matters for search, telemetry and
-"used in" counts. A production version could add a `parentNodeType` field
-to the node description so those features can group them.
+Custom Nodes are unchanged: they are standalone declarative node types with
+their operations as options of one `operation` parameter.
 
 ## What is mocked or hacked
 
@@ -131,8 +152,13 @@ to the node description so those features can group them.
 - **Icons** are served from `GET /rest/custom-nodes/:id/icon` and
   referenced by a relative `iconUrl`. The `/icons/*` route only serves
   filesystem loaders.
-- **Custom Node versioning** is not modelled: a custom node always uses the
-  active version of each operation and is served as version 1.
+- **Versioning of operations inside a parent** is instance-wide: every
+  Stripe node runs the active version. **Custom Node versioning** is not
+  modelled either: a custom node always uses the active version of each
+  operation and is served as version 1.
+- **Execution wrapping** of the parent runs only where the module is
+  initialised (`main` instances); workers in queue mode would run the
+  parent's original `execute` and fail on custom operations.
 - **Wizard** is a static preview (generated properties rendered as a list),
   not the real `ParameterInputList`. "Import cURL" reuses the existing
   `toHttpNodeParameters` converter.
@@ -217,17 +243,20 @@ to the node description so those features can group them.
   (gated by the flag) so it sits next to Community Nodes; module-provided
   items are appended at the end of the list.
 - `INodeTypeBaseDescription` in `n8n-workflow` gained an optional
-  `customDefinition` marker. The alternative (encoding the parent in
-  `codex`) was rejected as a worse hack.
+  `customDefinition` marker (now only set on custom node types) and
+  `LoadNodesAndCredentials.addPostProcessor` gained a `prepend` option.
+- The "Create custom node" button moved from the workflow header into the
+  nodes panel (last list item, highlighted on empty search results), as
+  requested after the first demo run.
 - Custom Node "operations" are options of one `operation` parameter, not
   separate node types, so a custom node's actions list works with the
   existing `operationsCategory` logic.
 
 ## Open questions for the team
 
-1. Should a custom operation on the canvas be a Stripe node (`type:
-   n8n-nodes-base.stripe`) or its own type? The virtual type is cleaner
-   technically; product may prefer "it is just a Stripe node".
+1. Custom operations are now real Stripe operations (decided after the first
+   demo run). Is wrapping the parent's `execute` acceptable in production, or
+   should `NodeTypes` grow an explicit hook for "operation handled elsewhere"?
 2. Who may create instance-wide operations? Members, project admins, or
    owners only? Where do project-scoped definitions show in the panel?
 3. Version policy: is "new nodes get the active version, old nodes stay

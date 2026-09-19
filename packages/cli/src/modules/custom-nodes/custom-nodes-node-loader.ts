@@ -16,11 +16,7 @@ import { NodeHelpers, VersionedNodeType } from 'n8n-workflow';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
-import {
-	generateCustomNodeDescription,
-	generateOperationNodeDescriptions,
-	type ParentNodeInfo,
-} from './node-description.generator';
+import { generateCustomNodeDescription, type ParentNodeInfo } from './node-description.generator';
 
 export interface CustomNodeDefinitions {
 	operations: CustomOperationDefinition[];
@@ -60,19 +56,18 @@ export class CustomNodesNodeLoader implements NodeLoader {
 		this.definitions = definitions;
 	}
 
+	getDefinitions() {
+		return this.definitions;
+	}
+
 	async loadAll(): Promise<void> {
 		this.reset();
 		this.typesReleased = false;
 
 		const { operations, nodes } = this.definitions;
 
-		for (const operation of operations) {
-			if (operation.parentNodeType === null) continue; // belongs to a custom node
-			const parent = this.resolveParent(operation.parentNodeType);
-			const descriptions = generateOperationNodeDescriptions(operation, { parent });
-			this.register(operation.id, descriptions);
-		}
-
+		// Operations attached to an existing node are injected into that node by
+		// `ParentNodePatcher`; only custom nodes become node types of their own.
 		for (const node of nodes) {
 			const ownOperations = operations.filter((op) => op.customNodeId === node.id);
 			const description = generateCustomNodeDescription(node, ownOperations, {

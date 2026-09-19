@@ -1,9 +1,13 @@
 import type { CustomNodeDefinition, CustomOperationDefinition } from '@n8n/api-types';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	ADDITIONAL_FIELDS_NAME,
+	CUSTOM_RESOURCE_VALUE,
 	generateCustomNodeDescription,
 	generateOperationNodeDescriptions,
+	generateRuntimeDescription,
+	injectOperationsIntoParent,
 	templateToExpression,
 } from '../node-description.generator';
 
@@ -269,5 +273,83 @@ describe('node-description.generator', () => {
 				templateToExpression('https://x.test/{{ $parameter.id }}', { id: '$parameter["id"]' }),
 			).toBe('=https://x.test/{{ $parameter["id"] }}');
 		});
+	});
+});
+
+describe('injectOperationsIntoParent', () => {
+	it('adds a Custom Operation resource with the operations and their inputs to a resource/operation node', () => {
+		const stripeLike: INodeTypeDescription = {
+			displayName: 'Stripe',
+			name: 'n8n-nodes-base.stripe',
+			group: ['transform'],
+			version: 1,
+			description: '',
+			defaults: { name: 'Stripe' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [{ name: 'stripeApi', required: true }],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					default: 'charge',
+					options: [{ name: 'Charge', value: 'charge' }],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: { show: { resource: ['charge'] } },
+					options: [{ name: 'Create', value: 'create' }],
+				},
+			],
+		};
+
+		const injected = injectOperationsIntoParent(stripeLike, [paymentLink()]);
+
+		// input untouched
+		expect(stripeLike.properties).toHaveLength(2);
+
+		const [resource, customOperation, chargeOperation, ...inputs] = injected.properties;
+		expect(resource.options).toEqual([
+			{ name: 'Charge', value: 'charge' },
+			expect.objectContaining({ name: 'Custom Operation', value: CUSTOM_RESOURCE_VALUE }),
+		]);
+		expect(chargeOperation.displayOptions).toEqual({ show: { resource: ['charge'] } });
+		expect(customOperation).toMatchObject({
+			name: 'operation',
+			default: 'op1',
+			displayOptions: { show: { resource: [CUSTOM_RESOURCE_VALUE] } },
+			options: [{ name: 'Create Payment Link', value: 'op1', action: 'Create Payment Link' }],
+		});
+		expect(inputs.map((p) => p.name)).toEqual(['price', 'quantity', ADDITIONAL_FIELDS_NAME]);
+		expect(inputs[0].displayOptions).toEqual({
+			show: { resource: [CUSTOM_RESOURCE_VALUE], operation: ['op1'] },
+		});
+	});
+
+	it('generates a runtime description that borrows the parent credentials', () => {
+		const parent: INodeTypeDescription = {
+			displayName: 'Stripe',
+			name: 'n8n-nodes-base.stripe',
+			group: ['transform'],
+			version: 1,
+			description: '',
+			defaults: { name: 'Stripe' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [{ name: 'stripeApi', required: true }],
+			properties: [],
+		};
+		const runtime = generateRuntimeDescription(paymentLink(), parent);
+		expect(runtime.credentials).toEqual([{ name: 'stripeApi', required: true }]);
+		expect(runtime.requestDefaults?.url).toBe('https://api.stripe.com/v1/payment_links');
+		expect(runtime.properties.map((p) => p.name)).toEqual([
+			'price',
+			'quantity',
+			ADDITIONAL_FIELDS_NAME,
+		]);
 	});
 });

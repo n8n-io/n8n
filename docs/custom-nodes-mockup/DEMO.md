@@ -63,22 +63,23 @@ Click **Save as custom operation…** at the top of the node parameters.
 
 Toast: "Custom operation saved. Find it under Stripe in the nodes panel."
 
-## 4. Use it like a built-in action (1.5 min)
+## 4. Use it like a built-in operation (1.5 min)
 
 1. Open the nodes panel, search **Stripe**, click it.
-2. Scroll to the **CUSTOM OPERATIONS** group at the bottom of the actions
-   list. Both the seeded *Create Payment Link* and your new operation are
-   there, with the Stripe icon.
-3. Click yours. A node lands on the canvas with the Stripe icon, the Stripe
-   credential selector and exactly two parameters: *Price* and *Additional
-   Fields*.
+2. Scroll to the **CUSTOM OPERATION ACTIONS** group at the bottom of the
+   actions list. Both the seeded *Create Payment Link* and your new operation
+   are there.
+3. Click yours. A regular **Stripe** node lands on the canvas. Open the
+   Resource dropdown: it now contains *Custom Operation*; the Operation
+   dropdown lists your operations. Below them: exactly two parameters,
+   *Price* and *Additional Fields*.
 4. Fill `Price` = `price_demo`, select the Stripe credential, run it. The mock
    response shows the Bearer header and the form-encoded body that arrived.
-   Nobody wrote an `execute()` function: this runs through the declarative
-   `RoutingNode`.
+   Nobody wrote an `execute()` function: the Stripe node detected the custom
+   operation and routed it through the declarative `RoutingNode`.
 
-Optional: open the node's JSON (copy the node) and show
-`"type": "n8n-custom.<id>", "typeVersion": 1`.
+Optional: switch Resource back to *Charge* to show the built-in operations
+still work unchanged.
 
 ## 5. Custom node for a service without a node (1 min)
 
@@ -99,10 +100,10 @@ the node in Settings → Custom nodes and set the base URL to
    *Review*, type a changelog and click **Save as new version**.
 3. **Version history** now shows v2 (active) and v1. Click *Set active* on
    v1 and back again to show it is a switch, not a migration.
-4. Back in the workflow: the node you added earlier still has
-   `typeVersion: 1` and the old label. Add the operation again from the
-   panel: the new node gets v2 with the new label. Two versions of the same
-   custom operation coexist, exactly like built-in node versions.
+4. Back in the workflow: reopen the Stripe node. It shows the v2 parameters
+   (the new label) because nodes follow the active version. Set v1 active in
+   Settings and reopen: the old label is back. Versioning is an
+   instance-wide switch with rollback, not a per-node pin.
 
 ## 7. Wrap-up (30 s)
 
@@ -120,5 +121,8 @@ the node in Settings → Custom nodes and set the base URL to
 - **Operation not in the Stripe actions list**: reload the page once; the
   panel rebuilds from `types/nodes.json`, which the backend regenerates on
   every save and announces through the `nodeDescriptionUpdated` push event.
+- **Where is "Create custom node"?** At the very bottom of the nodes panel
+  list, and highlighted when a search has no results. There is also
+  Settings → Custom nodes → *Create custom node*.
 - **Mock returns 404**: the mock workflow must be *active*; test URLs
   (`/webhook-test/…`) only work while "Listen for test event" runs.

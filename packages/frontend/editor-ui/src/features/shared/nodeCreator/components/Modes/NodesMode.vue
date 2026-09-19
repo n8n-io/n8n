@@ -37,6 +37,8 @@ import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
+import CustomNodeCreatorFooter from '@/features/customNodes/components/CustomNodeCreatorFooter.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
@@ -67,6 +69,7 @@ const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
+const isCustomNodesMockupEnabled = computed(() => useSettingsStore().isCustomNodesMockupEnabled);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -355,6 +358,11 @@ registerKeyHook('MainViewArrowLeft', {
 			@selected="onSelected"
 		>
 			<template v-if="isSearchResultEmpty" #empty>
+				<CustomNodeCreatorFooter
+					v-if="isCustomNodesMockupEnabled"
+					highlighted
+					:search="activeViewStack.search"
+				/>
 				<NoResults
 					:root-view="activeViewStack.rootView"
 					show-icon
@@ -384,6 +392,9 @@ registerKeyHook('MainViewArrowLeft', {
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
+
+		<!-- Custom nodes mockup: always the last item of the list -->
+		<CustomNodeCreatorFooter v-if="isCustomNodesMockupEnabled && !isSearchResultEmpty" />
 	</span>
 </template>
 

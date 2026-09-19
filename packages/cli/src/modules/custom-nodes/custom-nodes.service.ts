@@ -20,6 +20,7 @@ import { Push } from '@/push';
 
 import { CustomNodesNodeLoader } from './custom-nodes-node-loader';
 import { generateOperationNodeDescriptions } from './node-description.generator';
+import { ParentNodePatcher } from './parent-node.patcher';
 import {
 	seedAcmeBillingNode,
 	seedAcmeOperations,
@@ -40,7 +41,20 @@ export class CustomNodesService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly push: Push,
 		private readonly logger: Logger,
-	) {}
+		private readonly parentNodePatcher: ParentNodePatcher,
+	) {
+		// Runs first so the injected operations are in `types` before the
+		// frontend service writes `types/nodes.json`.
+		this.loadNodesAndCredentials.addPostProcessor(async () => await this.applyParentPatches(), {
+			prepend: true,
+		});
+	}
+
+	private async applyParentPatches() {
+		const loader = this.loadNodesAndCredentials.loaders[CUSTOM_DEFINITIONS_PACKAGE_NAME];
+		if (!(loader instanceof CustomNodesNodeLoader)) return;
+		this.parentNodePatcher.apply(loader.getDefinitions().operations);
+	}
 
 	/** Seeds demo data on an empty table and loads the node types. */
 	async init() {
@@ -83,10 +97,15 @@ export class CustomNodesService {
 		const operations = rows.filter((r) => r.type === 'operation');
 
 		return rows.flatMap<CustomNodeListItem>((row) => {
+			const parentNodeType =
+				row.type === 'operation'
+					? (row.definition as CustomOperationDefinition).parentNodeType
+					: null;
 			const base = {
 				id: row.id,
 				name: row.name,
-				nodeType: customNodeTypeName(row.id),
+				// Operations live inside their parent node; custom nodes are types of their own
+				nodeType: parentNodeType ?? customNodeTypeName(row.id),
 				createdAt: row.createdAt.toISOString(),
 				updatedAt: row.updatedAt.toISOString(),
 			};

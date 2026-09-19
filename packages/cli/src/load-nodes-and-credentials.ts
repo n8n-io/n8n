@@ -130,8 +130,14 @@ export class LoadNodesAndCredentials {
 		await this.postProcessLoaders();
 	}
 
-	addPostProcessor(fn: () => Promise<void>) {
-		this.postProcessors.push(fn);
+	/**
+	 * `prepend` runs the processor before the ones registered earlier, for
+	 * processors that mutate `types` and must run before `types/nodes.json` is
+	 * written by the frontend service.
+	 */
+	addPostProcessor(fn: () => Promise<void>, options: { prepend?: boolean } = {}) {
+		if (options.prepend) this.postProcessors.unshift(fn);
+		else this.postProcessors.push(fn);
 	}
 
 	releaseTypes() {
