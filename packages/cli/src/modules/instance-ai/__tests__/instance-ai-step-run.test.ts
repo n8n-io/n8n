@@ -1,19 +1,25 @@
-import type { IConnections, INode, IRunData, ITaskData } from 'n8n-workflow';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import { DirectedGraph, findStartNodes, findSubgraph, rewireGraph } from 'n8n-core';
+import type { IConnections, INode, IRunData, ITaskData, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	buildMockedStepRunData,
+	buildToolAgentRequest,
 	collectAncestorNames,
+	declaredToolArguments,
+	isToolkitNode,
 	pinDataForStepRun,
 	planStepRun,
+	resolveStepRunRoots,
 	toExecutionItems,
 } from '../instance-ai-step-run';
 
-function node(name: string, options: { disabled?: boolean } = {}): INode {
+function node(name: string, options: { disabled?: boolean; type?: string } = {}): INode {
 	return {
 		id: name,
 		name,
-		type: 'n8n-nodes-base.noOp',
+		type: options.type ?? 'n8n-nodes-base.noOp',
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
@@ -39,6 +45,18 @@ function connect(...edges: Array<[string, string]>): IConnections {
 		});
 	}
 
+	return connections;
+}
+
+/** Adds a sub-node connection: `from` feeds `to` on a non-main type. */
+function connectSubNode(
+	connections: IConnections,
+	from: string,
+	to: string,
+	type: NodeConnectionType = NodeConnectionTypes.AiTool,
+): IConnections {
+	connections[from] ??= {};
+	connections[from][type] = [[{ node: to, type, index: 0 }]];
 	return connections;
 }
 
@@ -229,14 +247,37 @@ describe('planStepRun', () => {
 		expect(plan.mockedNodeNames).toEqual([]);
 	});
 
-	it('runs the chain when the prior run never reached an ancestor', () => {
-		// The prior run only covers a node on an unrelated branch.
+	it('refuses the run when the prior run never reached an ancestor', () => {
+		// The prior run only covers a node on an unrelated branch. Falling back to
+		// a chain run would execute Trigger and Fetch for real, which is what the
+		// caller asked to avoid.
 		const priorRunData: IRunData = { Elsewhere: [taskData([{ json: {} }])] };
 
 		const plan = planStepRun({ nodes, connections, targetName: 'Target', priorRunData });
 
 		expect(plan.inputMode).toBe('chain');
 		expect(plan.runData).toBeUndefined();
+		expect(plan.unhonoredInput?.requested).toBe('reused-execution');
+		expect(plan.unhonoredInput?.upstreamNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+	});
+
+	it('refuses the run when the reused execution stored no run data at all', () => {
+		const plan = planStepRun({ nodes, connections, targetName: 'Target', priorRunData: {} });
+
+		expect(plan.inputMode).toBe('chain');
+		expect(plan.unhonoredInput?.requested).toBe('reused-execution');
+	});
+
+	it('runs the chain without complaint when there is nothing above the target', () => {
+		const plan = planStepRun({
+			nodes: [node('Alone')],
+			connections: {},
+			targetName: 'Alone',
+			priorRunData: { Elsewhere: [taskData([{ json: {} }])] },
+		});
+
+		expect(plan.inputMode).toBe('chain');
+		expect(plan.unhonoredInput).toBeUndefined();
 	});
 
 	it('prefers mocked input over prior run data', () => {
@@ -288,5 +329,314 @@ describe('pinDataForStepRun', () => {
 		expect(
 			pinDataForStepRun(undefined, { targetName: 'Target', mockedNodeNames: [] }),
 		).toBeUndefined();
+	});
+});
+
+describe('sub-node targets', () => {
+	// Trigger -> Create Ticket -> Agent, with a tool hanging off the Agent.
+	const nodes = [node('Trigger'), node('Create Ticket'), node('Agent'), node('Calculator')];
+	const connections = connectSubNode(
+		connect(['Trigger', 'Create Ticket'], ['Create Ticket', 'Agent']),
+		'Calculator',
+		'Agent',
+	);
+
+	it('resolves a tool to the node that runs it', () => {
+		expect(resolveStepRunRoots(nodes, connections, 'Calculator')).toEqual(['Agent']);
+	});
+
+	it('resolves a node in the main graph to itself', () => {
+		expect(resolveStepRunRoots(nodes, connections, 'Agent')).toEqual(['Agent']);
+		expect(resolveStepRunRoots(nodes, connections, 'Trigger')).toEqual(['Trigger']);
+	});
+
+	it('follows a chain of sub-nodes up to the root', () => {
+		// Embeddings -> Vector Store -> Agent, all through non-main connections.
+		const chained = [node('Trigger'), node('Agent'), node('Vector Store'), node('Embeddings')];
+		const chainedConnections = connectSubNode(
+			connectSubNode(connect(['Trigger', 'Agent']), 'Vector Store', 'Agent'),
+			'Embeddings',
+			'Vector Store',
+			NodeConnectionTypes.AiEmbedding,
+		);
+
+		expect(resolveStepRunRoots(chained, chainedConnections, 'Embeddings')).toEqual(['Agent']);
+	});
+
+	it('returns every root a shared tool hangs off', () => {
+		const shared = [node('Trigger'), node('Agent A'), node('Agent B'), node('Calculator')];
+		const sharedConnections = connect(['Trigger', 'Agent A'], ['Agent A', 'Agent B']);
+		sharedConnections.Calculator = {
+			[NodeConnectionTypes.AiTool]: [
+				[
+					{ node: 'Agent A', type: NodeConnectionTypes.AiTool, index: 0 },
+					{ node: 'Agent B', type: NodeConnectionTypes.AiTool, index: 0 },
+				],
+			],
+		};
+
+		expect(resolveStepRunRoots(shared, sharedConnections, 'Calculator').sort()).toEqual([
+			'Agent A',
+			'Agent B',
+		]);
+	});
+
+	it('mocks the path above the Agent when the target is its tool', () => {
+		const plan = planStepRun({
+			nodes,
+			connections,
+			targetName: 'Calculator',
+			mockItems: toExecutionItems([{ id: 1 }]),
+		});
+
+		// Without this the plan finds no main parent of the tool, degrades to a
+		// chain run, and "Create Ticket" writes again.
+		expect(plan.inputMode).toBe('mocked');
+		expect(plan.mockedNodeNames.sort()).toEqual(['Create Ticket', 'Trigger']);
+		expect(plan.rootNodeNames).toEqual(['Agent']);
+		expect(itemsOn(plan.runData!, 'Create Ticket')).toEqual([{ json: { id: 1 } }]);
+		// The Agent is replaced by the engine's Tool Executor, so it gets no run
+		// data of its own.
+		expect(plan.runData?.Agent).toBeUndefined();
+		expect(plan.dirtyNodeNames).toEqual(['Calculator']);
+	});
+
+	it('replays the Agent path when the target is its tool', () => {
+		const priorRunData: IRunData = {
+			Trigger: [taskData([{ json: {} }])],
+			'Create Ticket': [taskData([{ json: {} }])],
+			Agent: [taskData([{ json: {} }])],
+		};
+
+		const plan = planStepRun({ nodes, connections, targetName: 'Calculator', priorRunData });
+
+		expect(plan.inputMode).toBe('reused-execution');
+		expect(plan.reusedNodeNames.sort()).toEqual(['Create Ticket', 'Trigger']);
+		expect(plan.rootNodeNames).toEqual(['Agent']);
+		expect(plan.dirtyNodeNames).toEqual(['Calculator']);
+	});
+
+	it('runs the chain for a tool with no node to run it', () => {
+		const orphan = [node('Trigger'), node('Calculator')];
+
+		const plan = planStepRun({
+			nodes: orphan,
+			connections: {},
+			targetName: 'Calculator',
+			mockItems: toExecutionItems([{ id: 1 }]),
+		});
+
+		// Nothing above it to keep from running, so the engine's own "connect it
+		// to an Agent" error is the right outcome.
+		expect(plan.inputMode).toBe('chain');
+		expect(plan.unhonoredInput).toBeUndefined();
+	});
+});
+
+/**
+ * The engine's own graph rules, run on the plan. The planner exists to satisfy
+ * `findStartNodes`, so a unit test of the plan alone cannot prove it works.
+ */
+describe('the plan against the engine rules', () => {
+	const trigger = node('Trigger');
+	const createTicket = node('Create Ticket');
+	const agent = node('Agent');
+	const calculator = node('Calculator');
+	const nodes = [trigger, createTicket, agent, calculator];
+	const connections = connectSubNode(
+		connect(['Trigger', 'Create Ticket'], ['Create Ticket', 'Agent']),
+		'Calculator',
+		'Agent',
+	);
+
+	/** What `runPartialWorkflow2` does to a tool destination, then who starts. */
+	function startNodesFor(runData: IRunData) {
+		const graph = new DirectedGraph()
+			.addNodes(...nodes)
+			.addConnections(
+				{ from: trigger, to: createTicket },
+				{ from: createTicket, to: agent },
+				{ from: calculator, to: agent, type: NodeConnectionTypes.AiTool },
+			);
+		const rewired = rewireGraph(calculator, graph);
+		const destination = rewired.getNodes().get(TOOL_EXECUTOR_NODE_NAME);
+		expect(destination).toBeDefined();
+
+		const subgraph = findSubgraph({ graph: rewired, destination: destination!, trigger });
+		return [
+			...findStartNodes({
+				graph: subgraph,
+				trigger,
+				destination: destination!,
+				runData,
+				pinData: {},
+			}),
+		].map((startNode) => startNode.name);
+	}
+
+	it('starts at the Tool Executor, so no node above the Agent runs again', () => {
+		const plan = planStepRun({
+			nodes,
+			connections,
+			targetName: 'Calculator',
+			mockItems: toExecutionItems([{ id: 1 }]),
+		});
+
+		expect(startNodesFor(plan.runData!)).toEqual([TOOL_EXECUTOR_NODE_NAME]);
+	});
+
+	it('starts at the trigger without run data, which is the chain run to avoid', () => {
+		expect(startNodesFor({})).toEqual(['Trigger']);
+	});
+
+	// The Agent is rarely the last node. `rewireGraph` used to walk every
+	// descendant of the tool and stand in for the *farthest* one, so a node below
+	// the Agent supplied the Tool Executor's main parents and the Agent — plus
+	// everything between it and that node — ran again.
+	it('starts at the Tool Executor when the Agent has nodes below it', () => {
+		const notify = node('Notify');
+		const summarize = node('Summarize');
+		const withDownstream = [...nodes, notify, summarize];
+		const connectionsWithDownstream = connectSubNode(
+			connect(
+				['Trigger', 'Create Ticket'],
+				['Create Ticket', 'Agent'],
+				['Agent', 'Notify'],
+				['Notify', 'Summarize'],
+			),
+			'Calculator',
+			'Agent',
+		);
+
+		const plan = planStepRun({
+			nodes: withDownstream,
+			connections: connectionsWithDownstream,
+			targetName: 'Calculator',
+			mockItems: toExecutionItems([{ id: 1 }]),
+		});
+
+		const graph = new DirectedGraph()
+			.addNodes(...withDownstream)
+			.addConnections(
+				{ from: trigger, to: createTicket },
+				{ from: createTicket, to: agent },
+				{ from: agent, to: notify },
+				{ from: notify, to: summarize },
+				{ from: calculator, to: agent, type: NodeConnectionTypes.AiTool },
+			);
+		const rewired = rewireGraph(calculator, graph);
+		const destination = rewired.getNodes().get(TOOL_EXECUTOR_NODE_NAME);
+		expect(destination).toBeDefined();
+
+		const subgraph = findSubgraph({ graph: rewired, destination: destination!, trigger });
+		const startNodes = [
+			...findStartNodes({
+				graph: subgraph,
+				trigger,
+				destination: destination!,
+				runData: plan.runData!,
+				pinData: {},
+			}),
+		].map((startNode) => startNode.name);
+
+		expect(startNodes).toEqual([TOOL_EXECUTOR_NODE_NAME]);
+		// Neither node below the Agent is even part of the run.
+		expect([...subgraph.getNodes().keys()]).not.toContain('Notify');
+		expect([...subgraph.getNodes().keys()]).not.toContain('Summarize');
+	});
+});
+
+describe('tool arguments', () => {
+	describe('declaredToolArguments', () => {
+		it('collects the $fromAI keys a tool expects the agent to fill', () => {
+			const target: INode = {
+				...node('Create Ticket'),
+				parameters: {
+					url: "={{ $fromAI('url', 'the endpoint') }}",
+					body: {
+						title: "={{ $fromAI('title') }}",
+						assignee: "={{ $fromAI('assignee', '', 'string') }}",
+					},
+				},
+			};
+
+			expect(declaredToolArguments(target).sort()).toEqual(['assignee', 'title', 'url']);
+		});
+
+		it('returns nothing for a tool whose parameters are all static', () => {
+			expect(declaredToolArguments(node('Calculator'))).toEqual([]);
+		});
+	});
+
+	describe('isToolkitNode', () => {
+		it('is true for the MCP tool nodes, which hold several tools', () => {
+			expect(
+				isToolkitNode(node('MCP Client', { type: '@n8n/n8n-nodes-langchain.mcpClientTool' })),
+			).toBe(true);
+			expect(
+				isToolkitNode(node('Registry', { type: '@n8n/n8n-nodes-langchain.mcpRegistryClientTool' })),
+			).toBe(true);
+		});
+
+		it('is false for a node that supplies one tool', () => {
+			expect(
+				isToolkitNode(node('Calculator', { type: '@n8n/n8n-nodes-langchain.toolCalculator' })),
+			).toBe(false);
+		});
+	});
+
+	describe('buildToolAgentRequest', () => {
+		it('names no tool, so the runtime name cannot stop the tool from running', () => {
+			// An empty name makes the Tool Executor run the only tool the rewired
+			// graph connects to it. Naming one risks a miss: older tool versions read
+			// the runtime name from a parameter, and Think 1 hardcodes its own.
+			expect(buildToolAgentRequest({ target: node('Calculator') }).tool).toEqual({ name: '' });
+		});
+
+		it('keys the arguments by every name the tool can have', () => {
+			expect(
+				buildToolAgentRequest({
+					target: node('Create Ticket'),
+					toolArguments: { title: 'Broken login' },
+				}).query,
+			).toEqual({
+				// `nodeNameToToolName` of the node, which current versions use...
+				Create_Ticket: { title: 'Broken login' },
+				// ...and the node name itself, which the lookup falls back to.
+				'Create Ticket': { title: 'Broken login' },
+			});
+		});
+
+		it("adds a legacy version's configured name", () => {
+			// Code Tool <= 1.1, Vector Store Tool <= 1 and Workflow Tool <= 2.1 read
+			// the tool name from `name`.
+			const target = node('Search Tickets');
+			target.parameters = { name: 'search_tickets' };
+
+			expect(buildToolAgentRequest({ target, toolArguments: { q: 'login' } }).query).toEqual({
+				Search_Tickets: { q: 'login' },
+				'Search Tickets': { q: 'login' },
+				search_tickets: { q: 'login' },
+			});
+		});
+
+		it("adds a retrieve-as-tool vector store's configured name", () => {
+			const target = node('Docs');
+			target.parameters = { toolName: 'company_docs' };
+
+			expect(buildToolAgentRequest({ target }).query).toEqual({ Docs: {}, company_docs: {} });
+		});
+
+		it('passes a bare string through for a tool with one free-text input', () => {
+			expect(
+				buildToolAgentRequest({ target: node('Wikipedia'), toolArguments: 'Napoleon' }).query,
+			).toEqual({ Wikipedia: 'Napoleon' });
+		});
+
+		it('sends an empty argument set when the caller supplies none', () => {
+			expect(buildToolAgentRequest({ target: node('Calculator') }).query).toEqual({
+				Calculator: {},
+			});
+		});
 	});
 });

@@ -613,6 +613,7 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `nodeName` | string | yes | — | Node to run |
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
 | `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
@@ -640,6 +641,58 @@ at the first node with no run data. `mockedNodeNames` lists them. A
 placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
+
+**Sub-node targets**: a tool has no main input, and the engine never runs one on
+its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
+Executor that inherits that node's main parents, then runs the tool from there.
+So a step on a tool is planned against the Agent: `mockInput` feeds the Agent's
+input, and `reuseExecutionId` replays the Agent's ancestors. The result names
+the nodes that can run it in `ranThroughNodeNames` — all of them when a tool
+hangs off several agents, since the engine picks one. A chain run on a tool runs
+every node above the Agent, so supply `reuseExecutionId` or `mockInput` when one
+of those nodes writes.
+
+`toolArguments` supplies what the agent would normally decide — the values
+behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
+a tool that takes one free-text input (Wikipedia, Code Tool, a vector store used
+as a tool). It is **required** when the node declares `$fromAI` arguments: the
+action refuses the run rather than execute the tool on empty arguments and
+report a failure that says nothing about the user's problem.
+
+The agent request names no tool. The Tool Executor looks the arguments up by the
+tool's *runtime* name, which is `nodeNameToToolName(node)` on current versions
+but comes from a parameter on older ones (`name` on Code Tool <= 1.1, Vector
+Store Tool <= 1, Workflow Tool <= 2.1; `toolName` on a retrieve-as-tool vector
+store < 1.3) and is hardcoded on Think 1. An empty name makes the Tool Executor
+run the only tool connected to it, so a name this cannot know never stops the
+run; the arguments are keyed under every name the tool can have so the lookup
+finds them. Think 1's hardcoded `thinking_tool` is the one name this cannot key,
+and there it costs the arguments, not the run.
+
+A node that holds several tools (MCP
+Client Tool, MCP Registry Client Tool) is refused: the Tool Executor runs the
+member whose name matches the request, that name is `buildMcpToolName` of the
+node name and the server's tool name, and a miss reports success with no result
+at all. Run the owning Agent instead and read the node's output from that
+execution.
+
+Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
+runs those only as part of the node that owns them, so the action points the
+caller at that node instead of starting a run that cannot work. Their output is
+still readable afterwards: a sub-node records each call under its own connection
+type, and `action="get-node-output"` reads that when a node has no `main`
+output.
+
+**Refusals**: the action fails, and starts nothing, rather than run something
+whose result would mislead:
+
+- a `reuseExecutionId` whose execution holds no data for any node above the
+  target — falling back to a chain run would execute those nodes for real, which
+  is what asking for replayed input rules out;
+- a tool that declares `$fromAI` arguments with no `toolArguments`;
+- a node that holds several tools;
+- a sub-node that is not a tool;
+- `toolArguments` on a node in the main graph.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the
 mocked mode replaced, come off this run's copy — a pinned node never

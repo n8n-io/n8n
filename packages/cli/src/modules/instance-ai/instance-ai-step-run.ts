@@ -1,4 +1,6 @@
 import type {
+	AiAgentRequest,
+	FromAIArgument,
 	IConnections,
 	IDataObject,
 	INode,
@@ -7,7 +9,14 @@ import type {
 	IRunData,
 	ITaskData,
 } from 'n8n-workflow';
-import { mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	mapConnectionsByDestination,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE,
+	NodeConnectionTypes,
+	nodeNameToToolName,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 
 /**
  * Plans the run data an "execute step" run needs.
@@ -37,6 +46,20 @@ export interface StepRunPlan {
 	mockedNodeNames: string[];
 	/** Nodes replaying output from an earlier execution. */
 	reusedNodeNames: string[];
+	/**
+	 * Root nodes the target runs through, when the target is a sub-node. Absent
+	 * for a normal node, which is its own root.
+	 */
+	rootNodeNames?: string[];
+	/**
+	 * Set when the caller asked for mocked or reused input, the graph could not
+	 * supply it, and a chain run would execute real nodes above the target. The
+	 * caller must refuse the run instead of silently downgrading it.
+	 */
+	unhonoredInput?: {
+		requested: Exclude<StepRunInputMode, 'chain'>;
+		upstreamNodeNames: string[];
+	};
 }
 
 /** One inbound edge of a node, after disabled nodes are skipped. */
@@ -102,6 +125,83 @@ function directParents(
 }
 
 /**
+ * Nodes this one feeds through a non-main connection — a sub-node's link to the
+ * node that runs it (`ai_tool` to an Agent, `ai_embedding` to a Vector Store).
+ * Sorted, so a tool on two agents resolves the same way on every call.
+ */
+function nonMainChildren(
+	connections: IConnections,
+	nodesByName: Map<string, INode>,
+	nodeName: string,
+): string[] {
+	const children = new Set<string>();
+
+	for (const [type, outputs] of Object.entries(connections[nodeName] ?? {})) {
+		if (type === NodeConnectionTypes.Main) continue;
+		for (const output of outputs ?? []) {
+			for (const connection of output ?? []) {
+				if (nodesByName.has(connection.node)) children.add(connection.node);
+			}
+		}
+	}
+
+	return [...children].sort();
+}
+
+/**
+ * The nodes whose main ancestry a step run has to cover.
+ *
+ * A sub-node has no main input of its own. The engine never runs one on its
+ * own either: `rewireGraph` replaces the root node (the Agent) with a virtual
+ * Tool Executor that inherits *the root node's* main parents, and runs the
+ * sub-node from there. So the nodes that need run data are the root node's
+ * ancestors, not the sub-node's — it has none, and planning from the sub-node
+ * finds nothing to mock and falls back to a chain run that executes the real
+ * nodes above the Agent.
+ *
+ * Normal nodes are their own root, so this returns `[targetName]` for them.
+ * A sub-node on several roots returns all of them: `rewireGraph` picks one, and
+ * covering every candidate keeps the plan correct whichever it picks.
+ */
+export function resolveStepRunRoots(
+	nodes: INode[],
+	connections: IConnections,
+	targetName: string,
+): string[] {
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+	const connectionsByDestination = mapConnectionsByDestination(connections);
+
+	const roots = new Set<string>();
+	const seen = new Set<string>([targetName]);
+	const queue = [targetName];
+
+	while (queue.length > 0) {
+		const current = queue.shift() as string;
+
+		// A main input means the node sits in the main graph and is its own root.
+		if (directParents(connectionsByDestination, nodesByName, current).length > 0) {
+			roots.add(current);
+			continue;
+		}
+
+		const parents = nonMainChildren(connections, nodesByName, current);
+		if (parents.length === 0) {
+			// A trigger, an orphan, or a sub-node with nothing to run it.
+			roots.add(current);
+			continue;
+		}
+
+		for (const parent of parents) {
+			if (seen.has(parent)) continue;
+			seen.add(parent);
+			queue.push(parent);
+		}
+	}
+
+	return [...roots];
+}
+
+/**
  * Builds run data that makes `targetName` the only node the engine re-runs.
  *
  * The direct parents emit `mockItems`. Every node further upstream emits one
@@ -117,8 +217,11 @@ export function buildMockedStepRunData(args: {
 	connections: IConnections;
 	targetName: string;
 	mockItems: INodeExecutionData[];
+	/** Where to start walking up. Defaults to the target; see `resolveStepRunRoots`. */
+	rootNames?: string[];
 }): { runData: IRunData; mockedNodeNames: string[] } {
 	const { nodes, connections, targetName, mockItems } = args;
+	const rootNames = args.rootNames ?? [targetName];
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const connectionsByDestination = mapConnectionsByDestination(connections);
 
@@ -130,7 +233,9 @@ export function buildMockedStepRunData(args: {
 	// feeding several paths is written once — the first (shallowest) edge wins,
 	// which is the edge closest to the target.
 	const visited = new Set<string>([targetName]);
-	let frontier: ParentEdge[] = directParents(connectionsByDestination, nodesByName, targetName);
+	let frontier: ParentEdge[] = rootNames.flatMap((rootName) =>
+		directParents(connectionsByDestination, nodesByName, rootName),
+	);
 	let depth = 0;
 
 	while (frontier.length > 0) {
@@ -164,12 +269,14 @@ export function collectAncestorNames(
 	nodes: INode[],
 	connections: IConnections,
 	targetName: string,
+	/** Where to start walking up. Defaults to the target; see `resolveStepRunRoots`. */
+	rootNames: string[] = [targetName],
 ): string[] {
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const connectionsByDestination = mapConnectionsByDestination(connections);
 
 	const seen = new Set<string>();
-	const queue = [targetName];
+	const queue = [...rootNames];
 
 	while (queue.length > 0) {
 		const current = queue.shift() as string;
@@ -187,11 +294,17 @@ export function collectAncestorNames(
  * Chooses the run data for a step run.
  *
  * - `mockItems` given → mock the path (mode `mocked`).
- * - `priorRunData` given → replay it and mark the target dirty so it runs again
+ * - `priorRunData` given (even empty) → replay it and mark the target dirty so
+ *   it runs again
  *   (mode `reused-execution`). The engine's `cleanRunData` drops the target and
  *   everything downstream of it, so stale output cannot survive the run.
  * - neither → leave the run data unset and let the engine run the chain
  *   (mode `chain`), which is what the canvas "Execute step" does.
+ *
+ * A sub-node target is planned through its root node — see
+ * `resolveStepRunRoots`. When a requested mode cannot be honoured and the
+ * target has real nodes above it, the plan says so in `unhonoredInput` rather
+ * than falling back to a chain run that would execute them.
  */
 export function planStepRun(args: {
 	nodes: INode[];
@@ -202,12 +315,21 @@ export function planStepRun(args: {
 }): StepRunPlan & { inputMode: StepRunInputMode } {
 	const { nodes, connections, targetName, mockItems, priorRunData } = args;
 
+	// A sub-node runs through its root node, so the run data has to cover the
+	// root's ancestry. Planning from the sub-node itself finds no main parent.
+	const rootNames = resolveStepRunRoots(nodes, connections, targetName);
+	const throughRoots =
+		rootNames.length === 1 && rootNames[0] === targetName
+			? undefined
+			: { rootNodeNames: rootNames };
+
 	if (mockItems !== undefined) {
 		const { runData, mockedNodeNames } = buildMockedStepRunData({
 			nodes,
 			connections,
 			targetName,
 			mockItems,
+			rootNames,
 		});
 		// A node with no enabled parent has nothing to mock. Running the chain
 		// gives the engine a start point it accepts, instead of a partial run it
@@ -219,17 +341,17 @@ export function planStepRun(args: {
 				dirtyNodeNames: [targetName],
 				mockedNodeNames,
 				reusedNodeNames: [],
+				...throughRoots,
 			};
 		}
 	}
 
-	if (priorRunData !== undefined && Object.keys(priorRunData).length > 0) {
-		const ancestors = new Set(collectAncestorNames(nodes, connections, targetName));
-		const reusedNodeNames = Object.keys(priorRunData).filter((name) => ancestors.has(name));
+	const ancestors = collectAncestorNames(nodes, connections, targetName, rootNames);
 
-		// Reuse is only worth it when the prior run actually reached an ancestor.
-		// Otherwise fall through to a chain run rather than start an execution
-		// that the engine would reject for having no usable start point.
+	if (priorRunData !== undefined) {
+		const ancestorNames = new Set(ancestors);
+		const reusedNodeNames = Object.keys(priorRunData).filter((name) => ancestorNames.has(name));
+
 		if (reusedNodeNames.length > 0) {
 			return {
 				inputMode: 'reused-execution',
@@ -237,14 +359,30 @@ export function planStepRun(args: {
 				dirtyNodeNames: [targetName],
 				mockedNodeNames: [],
 				reusedNodeNames,
+				...throughRoots,
 			};
 		}
 	}
+
+	// The chain is the intended mode only when the caller asked for it. Reaching
+	// it after a request for mocked or reused input means the plan could not keep
+	// the nodes above the target from running, and those nodes write to real
+	// systems — report it instead of running them.
+	const requested: Exclude<StepRunInputMode, 'chain'> | undefined =
+		mockItems !== undefined
+			? 'mocked'
+			: priorRunData !== undefined
+				? 'reused-execution'
+				: undefined;
 
 	return {
 		inputMode: 'chain',
 		mockedNodeNames: [],
 		reusedNodeNames: [],
+		...throughRoots,
+		...(requested !== undefined && ancestors.length > 0
+			? { unhonoredInput: { requested, upstreamNodeNames: ancestors } }
+			: {}),
 	};
 }
 
@@ -270,6 +408,81 @@ export function pinDataForStepRun(
 
 	if (kept.length === Object.keys(workflowPinData).length) return workflowPinData;
 	return Object.fromEntries(kept);
+}
+
+/**
+ * Node types that supply a toolkit — several tools behind one node — rather than
+ * one tool.
+ *
+ * A step run cannot target one of these. The Tool Executor runs the member whose
+ * name matches the agent request and skips every other, and that name is not the
+ * server's tool name: `buildMcpToolName` prefixes it with the node's name and
+ * caps the result at 64 characters. Resolving it needs the server's tool list
+ * and a rule that lives in the nodes package, and a name that misses matches
+ * nothing — the run then reports success with no result and no error.
+ */
+const TOOLKIT_NODE_TYPES = new Set<string>([
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE,
+]);
+
+/** Whether this node holds several tools instead of one. */
+export function isToolkitNode(node: INode): boolean {
+	return TOOLKIT_NODE_TYPES.has(node.type);
+}
+
+/** Arguments a tool node expects an agent to fill, from its `$fromAI` calls. */
+export function declaredToolArguments(node: INode): string[] {
+	const collected: FromAIArgument[] = [];
+	traverseNodeParameters(node.parameters, collected);
+	return [...new Set(collected.map((argument) => argument.key))];
+}
+
+/**
+ * Parameters that hold a tool's name on the versions that take it from the
+ * node's configuration instead of its name: `name` on Code Tool <= 1.1, Vector
+ * Store Tool <= 1 and Workflow Tool <= 2.1, `toolName` on a vector store in
+ * retrieve-as-tool mode < 1.3.
+ */
+const TOOL_NAME_PARAMETERS = ['name', 'toolName'];
+
+/**
+ * The agent request that gives a tool its arguments.
+ *
+ * `rewireGraph` copies this onto the virtual Tool Executor, which looks the
+ * arguments up by the tool's *runtime* name. That name is
+ * `nodeNameToToolName(node)` on current tool versions, but older ones read it
+ * from a parameter and Think 1 hardcodes `thinking_tool`. Guessing it would
+ * need every node's version rule, and those rules live in the nodes package.
+ *
+ * So the request names no tool. The Tool Executor runs the only tool the
+ * rewired graph connects to it when the request leaves the name empty, which
+ * takes the runtime name out of the decision to run at all. The arguments are
+ * keyed under every name the tool can have, so the lookup finds them whichever
+ * one it uses. A name this cannot know (Think 1) costs the arguments, not the
+ * run.
+ *
+ * A bare string is a valid argument set: a tool with one free-text input
+ * (Wikipedia, Code Tool, a vector store used as a tool) takes the query
+ * directly, not wrapped in an object.
+ */
+export function buildToolAgentRequest(args: {
+	target: INode;
+	toolArguments?: Record<string, unknown> | string;
+}): AiAgentRequest {
+	const { target } = args;
+	const toolArguments = args.toolArguments ?? {};
+
+	const names = new Set<string>([nodeNameToToolName(target.name), target.name]);
+	for (const parameter of TOOL_NAME_PARAMETERS) {
+		const configured = target.parameters?.[parameter];
+		if (typeof configured === 'string' && configured !== '') names.add(configured);
+	}
+
+	return {
+		query: Object.fromEntries([...names].map((name) => [name, toolArguments])),
+		tool: { name: '' },
+	};
 }
 
 /**

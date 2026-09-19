@@ -113,12 +113,14 @@ import {
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
+	type AiAgentRequest,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	type IRunData,
 	type ITaskData,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -204,7 +206,14 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
+import {
+	buildToolAgentRequest,
+	declaredToolArguments,
+	isToolkitNode,
+	pinDataForStepRun,
+	planStepRun,
+	toExecutionItems,
+} from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -246,6 +255,21 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * Whether the engine can run this node on its own through a Tool Executor. This
+ * is the same test `runPartialWorkflow2` and `runManually` make, so it decides
+ * the same way they will. A node type that does not load is not a tool here:
+ * the run fails on the missing type either way.
+ */
+function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+	try {
+		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return NodeHelpers.isTool(description, node.parameters);
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -2163,7 +2187,10 @@ export class InstanceAiAdapterService {
 						includeData: true,
 						unflattenData: true,
 					});
-					priorRunData = stored?.data?.resultData?.runData;
+					// An execution with no stored run data still counts as a request to
+					// replay: `planStepRun` has to see the empty set to refuse the run
+					// rather than fall back to running the chain.
+					priorRunData = stored?.data?.resultData?.runData ?? {};
 					reusedFromExecutionId = options.reuseExecutionId;
 				}
 
@@ -2174,6 +2201,68 @@ export class InstanceAiAdapterService {
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
 				});
+
+				// The caller asked to keep the nodes above the target out of the run and
+				// the graph cannot deliver that. Running the chain anyway would execute
+				// them for real, which is the one thing the caller ruled out.
+				if (plan.unhonoredInput) {
+					const names = plan.unhonoredInput.upstreamNodeNames;
+					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
+					const cause =
+						plan.unhonoredInput.requested === 'reused-execution'
+							? `Execution ${options?.reuseExecutionId} holds no data for any node above "${nodeName}"`
+							: `There is no way to supply input to "${nodeName}" without running the nodes above it`;
+					throw new UserError(
+						`${cause}, so the run would execute them for real (${upstream}). ` +
+							'Pick an execution that reached those nodes, or omit both options to run the chain on purpose.',
+					);
+				}
+
+				// A tool runs through a virtual Tool Executor that passes it the agent
+				// request. Every other sub-node type has no such path: n8n runs it as
+				// part of the node that owns it and nowhere else.
+				let agentRequest: AiAgentRequest | undefined;
+				if (plan.rootNodeNames) {
+					const roots = plan.rootNodeNames.map((name) => `"${name}"`).join(' or ');
+					if (!isToolNode(nodeTypes, target)) {
+						throw new UserError(
+							`Node "${nodeName}" cannot run on its own — n8n runs it as part of ${roots}. ` +
+								`Run ${roots} instead: its execution records what this node returned on every ` +
+								'call it made.',
+						);
+					}
+
+					// A toolkit node holds several tools and the Tool Executor runs only the
+					// one whose name matches the request. That name is built from the node
+					// name and the server's tool name, so nothing here can name a member
+					// reliably, and a miss reports success with no result at all.
+					if (isToolkitNode(target)) {
+						throw new UserError(
+							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
+								`Run ${roots} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// A tool whose parameters hold `$fromAI` calls gets those values from
+					// the agent. With no arguments it runs on empty ones and fails for a
+					// reason that has nothing to do with the user's problem.
+					const expected = declaredToolArguments(target);
+					if (expected.length > 0 && options?.toolArguments === undefined) {
+						throw new UserError(
+							`Node "${nodeName}" takes its arguments from the agent, so a step run has to supply them. ` +
+								`Pass toolArguments with: ${expected.join(', ')}.`,
+						);
+					}
+
+					agentRequest = buildToolAgentRequest({ target, toolArguments: options?.toolArguments });
+				} else if (options?.toolArguments !== undefined) {
+					throw new UserError(
+						`toolArguments applies only to a tool node. "${nodeName}" runs in the main graph, ` +
+							'so its input comes from mockInput, reuseExecutionId, or the nodes above it.',
+					);
+				}
 
 				// A pinned node never executes, so the target's own pin — and any pin on
 				// a node whose output we just mocked — has to come off this run's
@@ -2208,6 +2297,7 @@ export class InstanceAiAdapterService {
 					pinData: stepPinData,
 					runData: plan.runData,
 					dirtyNodeNames: plan.dirtyNodeNames,
+					agentRequest,
 					source: 'instance_ai',
 				};
 
@@ -2234,6 +2324,9 @@ export class InstanceAiAdapterService {
 							userId: user.id,
 							dirtyNodeNames: plan.dirtyNodeNames,
 							triggerToStartFrom: runData.triggerToStartFrom,
+							// Without this a worker-run step on a tool loses the arguments and
+							// runs the tool on empty ones.
+							agentRequest,
 							source: 'instance_ai',
 						},
 						executionData: null,
@@ -2289,6 +2382,9 @@ export class InstanceAiAdapterService {
 						nodeName,
 						inputMode: plan.inputMode,
 						mockedNodeNames: plan.mockedNodeNames,
+						// A sub-node only runs through the node that owns it, so the input
+						// the caller supplied fed that node, not the sub-node.
+						...(plan.rootNodeNames ? { ranThroughNodeNames: plan.rootNodeNames } : {}),
 						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
 						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
 						// Report the pins that actually fed this run, not every pin the
@@ -4644,12 +4740,20 @@ export async function extractNodeOutput(
 		await workflow?.expression.releaseIsolate();
 	}
 
+	// A sub-node (a model, a memory, a tool) records its run under the connection
+	// type that carried it, never `main`. Read that instead, so the output of a
+	// node the agent can only run through its owner is still readable.
+	const nodeOutputs =
+		lastRun?.data?.main ??
+		Object.entries(lastRun?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1] ??
+		[];
+
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.
 	// Only the requested slice is materialized — avoids OOM on huge result sets.
 	let index = 0;
 	let returnedCount = 0;
-	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
+	const outputs = nodeOutputs.map((output, outputIndex) => {
 		const items = output ?? [];
 		const firstInPage = Math.max(startIndex - index, 0);
 		const collected: unknown[] = [];

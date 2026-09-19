@@ -1331,6 +1331,62 @@ describe('extractNodeOutput', () => {
 		expect(result.returned).toEqual({ from: 0, to: 10 });
 	});
 
+	it("reads a sub-node's run, which is recorded under its connection type", async () => {
+		// A model, memory or tool never writes a `main` output. Without this the
+		// node was found but reported no items at all, which reads as "the model
+		// returned nothing".
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					'OpenAI Chat Model': [
+						{
+							startTime: 1000,
+							executionTime: 500,
+							executionIndex: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { ai_languageModel: [[{ json: { response: 'four' } }]] },
+						} as ITaskData,
+					],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'OpenAI Chat Model');
+
+		expect(result.totalItems).toBe(1);
+		expect(result.outputs[0].items[0]).toContain('"response": "four"');
+	});
+
+	it('prefers the main output when a node has both', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					'Set Node': [
+						{
+							startTime: 1000,
+							executionTime: 500,
+							executionIndex: 0,
+							executionStatus: 'success',
+							source: [],
+							data: {
+								main: [[{ json: { real: true } }]],
+								ai_tool: [[{ json: { ignored: true } }]],
+							},
+						} as ITaskData,
+					],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Set Node');
+
+		expect(result.outputs[0].items[0]).toContain('"real": true');
+		expect(result.outputs).toHaveLength(1);
+	});
+
 	it('supports startIndex pagination', async () => {
 		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
 		createMockExecutionRepository(
@@ -4544,6 +4600,25 @@ describe('resolveDataTableByIdOrName', () => {
 // createExecutionAdapter – run() forces save settings
 // ---------------------------------------------------------------------------
 
+/**
+ * Node types for the run tests. A type whose name says "tool" describes an
+ * `ai_tool` output, which is what `NodeHelpers.isTool` reads, so a step run on
+ * one takes the same branch it takes in a real instance.
+ */
+function runNodeTypesStub(): NodeTypes {
+	const nodeTypes = mock<NodeTypes>();
+	nodeTypes.getByNameAndVersion.mockImplementation(
+		(type: string) =>
+			({
+				description: {
+					name: type,
+					outputs: [/tool/i.test(type) ? NodeConnectionTypes.AiTool : NodeConnectionTypes.Main],
+				},
+			}) as never,
+	);
+	return nodeTypes;
+}
+
 function createRunAdapterForTests(
 	workflow: Record<string, unknown>,
 	options?: {
@@ -4553,6 +4628,7 @@ function createRunAdapterForTests(
 		threadId?: string;
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
+		nodeTypes?: NodeTypes;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -4603,7 +4679,9 @@ function createRunAdapterForTests(
 		mockActiveExecutions as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
 		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
+		(options?.nodeTypes ?? runNodeTypesStub()) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[13],
 		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
@@ -5395,6 +5473,7 @@ describe('createExecutionAdapter runStep()', () => {
 	type StepOptions = {
 		reuseExecutionId?: string;
 		mockInput?: Array<Record<string, unknown>>;
+		toolArguments?: Record<string, unknown> | string;
 		versionId?: string;
 		timeout?: number;
 	};
@@ -5737,6 +5816,259 @@ describe('createExecutionAdapter runStep()', () => {
 				input_mode: 'mocked',
 			}),
 		);
+	});
+
+	it('refuses to run the chain when the reused execution covers nothing above the target', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			// The execution never reached the nodes above `Send`.
+			execution: makeExecution({
+				status: 'success',
+				runData: { 'Sibling Branch': [makeTaskData([{}])] },
+			}),
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		// Falling back to a chain run would call `Fetch` for real, which is the
+		// opposite of what asking for replayed input means.
+		await expect(runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' })).rejects.toThrow(
+			'holds no data for any node above "Send"',
+		);
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	describe('a tool attached to an Agent', () => {
+		// Trigger -> Create Ticket -> Agent, with a Calculator tool on the Agent.
+		const agentWorkflow = {
+			id: 'wf-1',
+			versionId: 'v-current',
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0] },
+				{
+					name: 'Create Ticket',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [1, 0],
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [2, 0],
+				},
+				{
+					name: 'Calculator',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					typeVersion: 1,
+					position: [2, 1],
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Create Ticket', type: 'main', index: 0 }]] },
+				'Create Ticket': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				Calculator: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			},
+		};
+
+		/** The same graph with a node that holds several tools in place of the tool. */
+		const toolkitWorkflow = {
+			...agentWorkflow,
+			nodes: agentWorkflow.nodes.map((node) =>
+				node.name === 'Calculator'
+					? {
+							...node,
+							name: 'MCP Client',
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							parameters: {},
+						}
+					: node,
+			),
+			connections: {
+				Trigger: agentWorkflow.connections.Trigger,
+				'Create Ticket': agentWorkflow.connections['Create Ticket'],
+				'MCP Client': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			},
+		};
+
+		it('mocks the path above the Agent instead of running it', async () => {
+			const { runData, result } = await runStepOn(agentWorkflow, 'Calculator', {
+				mockInput: [{ text: 'hello' }],
+			});
+
+			// The tool has no main input of its own, so the nodes to keep from
+			// running are the Agent's. Without this the plan degraded to a chain run
+			// and "Create Ticket" wrote again.
+			expect(runData.runData['Create Ticket'][0].data.main[0]).toEqual([
+				{ json: { text: 'hello' } },
+			]);
+			expect(runData.runData.Trigger[0].data.main[0]).toEqual([{ json: {} }]);
+			expect(runData.runData.Agent).toBeUndefined();
+			expect(runData.dirtyNodeNames).toEqual(['Calculator']);
+			expect(result.inputMode).toBe('mocked');
+			expect(result.ranThroughNodeNames).toEqual(['Agent']);
+		});
+
+		it('replays the path above the Agent instead of running it', async () => {
+			const priorRunData = {
+				Trigger: [makeTaskData([{}])],
+				'Create Ticket': [makeTaskData([{ id: 9 }])],
+				Agent: [makeTaskData([{ answer: 'old' }])],
+			};
+			const { runData, result } = await runStepOn(
+				agentWorkflow,
+				'Calculator',
+				{ reuseExecutionId: 'exec-past' },
+				{ execution: makeExecution({ status: 'success', runData: priorRunData }) },
+			);
+
+			expect(runData.runData).toEqual(priorRunData);
+			expect(runData.dirtyNodeNames).toEqual(['Calculator']);
+			expect(result.inputMode).toBe('reused-execution');
+			expect(result.ranThroughNodeNames).toEqual(['Agent']);
+		});
+
+		it('omits the root node list for a node that is its own root', async () => {
+			const { result } = await runStepOn(agentWorkflow, 'Agent', { mockInput: [{ a: 1 }] });
+
+			expect(result).not.toHaveProperty('ranThroughNodeNames');
+		});
+
+		it('passes the tool its arguments through the agent request', async () => {
+			const { runData } = await runStepOn(agentWorkflow, 'Calculator', {
+				mockInput: [{}],
+				toolArguments: { input: '2 + 2' },
+			});
+
+			// `rewireGraph` copies this onto the virtual Tool Executor, which runs the
+			// only connected tool when the request names none, and looks the arguments
+			// up by the tool's runtime name.
+			expect(runData.agentRequest).toEqual({
+				query: { Calculator: { input: '2 + 2' } },
+				tool: { name: '' },
+			});
+		});
+
+		it('sends an empty argument set for a tool that declares none', async () => {
+			const { runData } = await runStepOn(agentWorkflow, 'Calculator', { mockInput: [{}] });
+
+			expect(runData.agentRequest).toEqual({
+				query: { Calculator: {} },
+				tool: { name: '' },
+			});
+		});
+
+		it('refuses a tool that takes its arguments from the agent when none are given', async () => {
+			const withFromAi = {
+				...agentWorkflow,
+				nodes: agentWorkflow.nodes.map((node) =>
+					node.name === 'Calculator'
+						? {
+								...node,
+								name: 'Create Ticket Tool',
+								type: 'n8n-nodes-base.httpRequestTool',
+								parameters: { url: "={{ $fromAI('url') }}", body: "={{ $fromAI('title') }}" },
+							}
+						: node,
+				),
+				connections: {
+					Trigger: agentWorkflow.connections.Trigger,
+					'Create Ticket': agentWorkflow.connections['Create Ticket'],
+					'Create Ticket Tool': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+			const harness = createRunAdapterForTests(withFromAi, {
+				execution: makeExecution({ status: 'success' }),
+			});
+			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+			// Running it with empty arguments fails for a reason that has nothing to
+			// do with the user's problem, and the model would report that failure.
+			await expect(runStep('wf-1', 'Create Ticket Tool', { mockInput: [{}] })).rejects.toThrow(
+				'Pass toolArguments with: url, title',
+			);
+			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses a node that holds several tools', async () => {
+			// The Tool Executor matches a member by a name built from the node name
+			// and the server's tool name (`buildMcpToolName`), so nothing here can
+			// name one. A miss reports success with no result and no error.
+			const harness = createRunAdapterForTests(toolkitWorkflow, {
+				execution: makeExecution({ status: 'success' }),
+			});
+			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+			await expect(runStep('wf-1', 'MCP Client', { mockInput: [{}] })).rejects.toThrow(
+				'holds several tools, and a step run cannot pick one of them',
+			);
+			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses a sub-node that is not a tool', async () => {
+			const withModel = {
+				...agentWorkflow,
+				nodes: [
+					...agentWorkflow.nodes,
+					{
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [3, 1],
+					},
+				],
+				connections: {
+					...agentWorkflow.connections,
+					'OpenAI Chat Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+				},
+			};
+			const harness = createRunAdapterForTests(withModel, {
+				execution: makeExecution({ status: 'success' }),
+			});
+			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+			// The engine has no Tool Executor path for a model, so the run would fail
+			// with "connect a trigger" and teach the model nothing.
+			await expect(runStep('wf-1', 'OpenAI Chat Model', undefined)).rejects.toThrow(
+				'cannot run on its own — n8n runs it as part of "Agent"',
+			);
+
+			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('carries the agent request to a worker in queue mode', async () => {
+			const previous = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+			try {
+				const { runData } = await runStepOn(
+					agentWorkflow,
+					'Calculator',
+					{ mockInput: [{}], toolArguments: { input: '2 + 2' } },
+					{ queueMode: true },
+				);
+
+				// The transient top-level fields do not survive the hand-off, so the
+				// worker rebuilds the run from `execution.data`.
+				expect(runData.executionData.manualData.agentRequest).toEqual({
+					query: { Calculator: { input: '2 + 2' } },
+					tool: { name: '' },
+				});
+			} finally {
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
+			}
+		});
+	});
+
+	it('refuses tool arguments for a node in the main graph', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', { toolArguments: { a: 1 } })).rejects.toThrow(
+			'applies only to a tool node',
+		);
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 	});
 });
 

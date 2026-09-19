@@ -142,6 +142,49 @@ Mocked input does **not** make a write node safe. The node still runs for real
 against the user's systems; only its input is invented, which makes the effect
 less predictable, not more.
 
+### Running a tool
+
+A tool never runs on its own. n8n runs it through the node that owns it —
+usually the Agent. A step run on a tool therefore behaves like a step run on
+that Agent:
+
+- `mockInput` feeds the **Agent's** input, not the tool's arguments.
+- `reuseExecutionId` replays the nodes above the **Agent**.
+- A chain run (neither option) runs every node above the Agent for real. Give
+  one of the two options when a node up there writes.
+- The result names the nodes that can run it in `ranThroughNodeNames`. With
+  several agents on one tool, n8n picks one of them.
+
+The tool's own arguments come from `toolArguments` — the values the agent would
+normally decide:
+
+```
+executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
+           reuseExecutionId=<the failed execution>,
+           toolArguments={"query": "login fails", "status": "open"})
+```
+
+The example targets a **read** tool on purpose. The write rule above holds here
+too, and a tool hides the write behind a friendly name: a step run on a "Create
+Ticket" tool creates the ticket again, and `toolArguments` does not change that.
+Only run one when the user has accepted a second write.
+
+Use the argument names from the node's `$fromAI` calls, which
+`workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
+tool).
+
+A tool that declares `$fromAI` arguments is refused without them: it would
+otherwise fail for a reason that has nothing to do with the user's problem, and
+you would report that as the defect. A node that holds several tools (MCP Client
+Tool) is refused outright, because nothing here can name one of its tools the
+way the agent does. Run the Agent for that one.
+
+A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
+way at all. Run the Agent, and read the sub-node with
+`executions(action="get-node-output")` on **that** execution: n8n records every
+call a sub-node made while the Agent ran.
+
 ## Successful execution with wrong or empty value
 
 When `debug` doesn't apply because nothing errored, call
