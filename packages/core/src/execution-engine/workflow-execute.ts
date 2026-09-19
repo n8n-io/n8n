@@ -450,6 +450,7 @@ export class WorkflowExecute {
 		runIndex: number,
 		newRunIndex?: number,
 		metadata?: ITaskMetadata,
+		omitSource?: boolean,
 	): void {
 		let stillDataMissing = false;
 		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
@@ -839,15 +840,19 @@ export class WorkflowExecute {
 				data: {
 					main: connectionDataArray,
 				},
-				source: {
-					main: [
-						{
-							previousNode: parentNodeName,
-							previousNodeOutput: outputIndex ?? undefined,
-							previousNodeRun: runIndex ?? undefined,
+				// Keep the source null rather than recording the node as its own
+				// `previousNode`: paired item tracing follows that link back into itself.
+				source: omitSource
+					? null
+					: {
+							main: [
+								{
+									previousNode: parentNodeName,
+									previousNodeOutput: outputIndex ?? undefined,
+									previousNodeRun: runIndex ?? undefined,
+								},
+							],
 						},
-					],
-				},
 				runIndex: newRunIndex,
 				metadata,
 			});
@@ -1611,6 +1616,7 @@ export class WorkflowExecute {
 				nodeData.runIndex,
 				nodeData.nodeRunIndex,
 				nodeData.metadata,
+				nodeData.omitSource,
 			);
 		}
 	}
