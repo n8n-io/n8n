@@ -212,7 +212,6 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		}
 	}
 }
-
 function isSessionBinding(value: unknown): value is SessionBinding {
 	return (
 		isRecord(value) && typeof value.threadId === 'string' && typeof value.resourceId === 'string'

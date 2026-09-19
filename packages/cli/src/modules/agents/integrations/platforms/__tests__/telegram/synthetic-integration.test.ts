@@ -6,6 +6,7 @@ import {
 	telegramCallbackQueryUpdate,
 	telegramGroupChat,
 	telegramMessageUpdate,
+	telegramPrivateChat,
 	telegramReplayFixtures,
 	telegramUser,
 } from '../../../__tests__/helpers/telegram/synthetic-fixtures';
@@ -22,6 +23,91 @@ vi.mock('../../../esm-loader', () => ({
 }));
 
 describe('Telegram Bot API integration scenarios', () => {
+	it('passes Telegram photo identifiers into the Agent message context', async () => {
+		const user = telegramUser();
+		const chat = telegramPrivateChat();
+		const mention = {
+			update_id: 10031,
+			message: {
+				message_id: 31,
+				from: user,
+				chat,
+				date: 1_719_000_000,
+				caption: 'identify this artwork',
+				photo: [
+					{
+						file_id: 'photo-small',
+						file_unique_id: 'photo-small-stable',
+						width: 90,
+						height: 90,
+						file_size: 100,
+					},
+					{
+						file_id: 'photo-large',
+						file_unique_id: 'photo-large-stable',
+						width: 1280,
+						height: 1280,
+						file_size: 5000,
+					},
+				],
+			},
+		};
+		const followUp = {
+			update_id: mention.update_id + 1,
+			message: {
+				message_id: 32,
+				from: user,
+				chat,
+				date: 1_719_000_001,
+				text: 'thank you',
+			},
+		};
+		const fixtures = telegramReplayFixtures({ user, chat, mention, followUp });
+		const ctx = await createTelegramReplayContext(fixtures);
+		try {
+			await ctx.sendTelegramWebhook(mention);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'identify this artwork',
+					modelMessage: expect.stringContaining('"chat_id":"123456"'),
+				}),
+			);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelMessage: expect.stringContaining('"file_id":"photo-large"'),
+				}),
+			);
+			expect(ctx.latestContext()).toMatchObject({
+				platformMessage: {
+					type: 'telegram',
+					chat_id: '123456',
+					message_id: '31',
+					attachments: [
+						{
+							type: 'image',
+							file_id: 'photo-large',
+							file_unique_id: 'photo-large-stable',
+						},
+					],
+				},
+			});
+
+			await ctx.sendTelegramWebhook(followUp);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					modelMessage: expect.not.stringContaining('photo-large'),
+				}),
+			);
+			expect(ctx.latestContext()).toMatchObject({
+				platformMessage: { attachments: [] },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
 	it('routes a Telegram group mention to a new agent conversation', async () => {
 		const group = telegramGroupChat();
 		const user = telegramUser({ id: 234567, username: 'group_user' });
