@@ -31,6 +31,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_32cdd799675715fb1d2a8683e9 | CREATE INDEX "IDX_32cdd799675715fb1d2a8683e9" ON public.instance_ai_events USING btree ("threadId", "runId") |
+| IDX_instance_ai_events_threadId_createdAt | CREATE INDEX "IDX_instance_ai_events_threadId_createdAt" ON public.instance_ai_events USING btree ("threadId", "createdAt") |
 | PK_12489cd6197feeac2089acc7ef6 | CREATE UNIQUE INDEX "PK_12489cd6197feeac2089acc7ef6" ON public.instance_ai_events USING btree ("threadId", seq) |
 
 ## Relations
