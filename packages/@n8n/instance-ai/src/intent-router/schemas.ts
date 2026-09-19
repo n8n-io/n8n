@@ -19,13 +19,20 @@ export const intentRouteSchema = z.enum(INTENT_ROUTES);
 export type IntentRoute = z.infer<typeof intentRouteSchema>;
 
 export const ROUTE_CRITERIA: Record<Exclude<IntentRoute, 'answer'>, string> = {
-	'workflow.create': 'Build a new automation or workflow: a trigger (endpoint, schedule, event) followed by actions in integrations.',
-	'workflow.edit': 'Change an existing workflow the conversation already targets: add, remove or adjust steps, settings or values.',
-	'workflow.debug': 'Diagnose or repair a workflow that fails, errors, or behaves wrongly, usually with an execution to look at.',
-	'agent.create': 'Build a new conversational agent, bot or assistant that chats with people (optionally on Slack, Telegram, Discord or Linear) and uses tools.',
-	'agent.edit': 'Change an agent the conversation already targets: tools, channel, model, memory, rules, schedule or name.',
-	'agent.verify': 'Test or verify an agent the conversation already targets by running its behavior scenarios.',
-	orchestrator: 'Anything else: questions, explanations, one-off operations, data tables, credentials, publishing, multi-artifact planning, or unclear requests.',
+	'workflow.create':
+		'Build a new automation or workflow: a trigger (endpoint, schedule, event) followed by actions in integrations.',
+	'workflow.edit':
+		'Change an existing workflow the conversation already targets: add, remove or adjust steps, settings or values.',
+	'workflow.debug':
+		'Diagnose or repair a workflow that fails, errors, or behaves wrongly, usually with an execution to look at.',
+	'agent.create':
+		'Build a new conversational agent, bot or assistant that chats with people (optionally on Slack, Telegram, Discord or Linear) and uses tools.',
+	'agent.edit':
+		'Change an agent the conversation already targets: tools, channel, model, memory, rules, schedule or name.',
+	'agent.verify':
+		'Test or verify an agent the conversation already targets by running its behavior scenarios.',
+	orchestrator:
+		'Anything else: questions, explanations, one-off operations, data tables, credentials, publishing, multi-artifact planning, or unclear requests.',
 };
 
 /** Conversation state the router reads. All deterministic, all cheap. */

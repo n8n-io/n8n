@@ -94,6 +94,7 @@ import {
 	observeWorkflowSetupStates,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
+	runInstanceAiFastPath,
 	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -3530,6 +3531,56 @@ export class InstanceAiService {
 	}
 
 	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
+	/** A planned task graph makes the fast path defer to the orchestrator, which owns plan execution. */
+	private async hasActivePlannedTaskGraph(
+		plannedTaskService: PlannedTaskService | undefined,
+		threadId: string,
+	): Promise<boolean> {
+		if (!plannedTaskService) return false;
+		try {
+			return (await plannedTaskService.getGraph(threadId)) !== null;
+		} catch {
+			return false;
+		}
+	}
+
+	/** Persist the user turn and the deterministic reply the fast path produced, as the agent would. */
+	private async persistFastPathTurn(
+		threadId: string,
+		userId: string,
+		message: string,
+		reply: string,
+		createdAt: Date,
+	): Promise<void> {
+		try {
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt,
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: message }],
+					},
+					{
+						id: nanoid(),
+						createdAt: new Date(),
+						type: 'llm',
+						role: 'assistant',
+						content: [{ type: 'text', text: reply }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist fast-path turn', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	private async persistInterruptedUserMessage(
 		threadId: string,
 		userId: string,
@@ -3875,6 +3926,58 @@ export class InstanceAiService {
 				context.currentUserAttachments = fileAttachments;
 			}
 
+			// System-one fast path: classify the turn with a structured read and serve
+			// confident build / edit / debug / verify requests with the compilers. The
+			// orchestrator LLM runs only when the router is not confident or a compiler
+			// hands the turn back.
+			let fastPathBlock = '';
+			if (
+				this.instanceAiConfig.fastPathEnabled &&
+				!isPostPlanFollowUp &&
+				!plannedBuild?.isPlannedBuildFollowUp &&
+				!handoffContext &&
+				!resumeReason &&
+				contextAttachments.length === 0
+			) {
+				const fastPathOutcome = await runInstanceAiFastPath({
+					message,
+					context,
+					orchestrationContext,
+					state: { hasActivePlan: await this.hasActivePlannedTaskGraph(plannedTaskService, threadId) },
+				});
+				this.telemetry.track('instance_ai_fast_path', {
+					thread_id: threadId,
+					run_id: runId,
+					user_id: user.id,
+					route: fastPathOutcome.route,
+					handled: fastPathOutcome.handled,
+					decision_source: fastPathOutcome.decision.source,
+					decision_confidence: fastPathOutcome.decision.confidence,
+					latency_ms: fastPathOutcome.latencyMs,
+					...(fastPathOutcome.handled ? {} : { fallback_reason: redactTelemetryText(fastPathOutcome.reason) }),
+				});
+				if (fastPathOutcome.handled) {
+					await this.persistFastPathTurn(threadId, user.id, message, fastPathOutcome.reply, turnStartedAt);
+					await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'completed', {
+						messageGroupId,
+						correlationId: messageId,
+					});
+					await this.finalizeRun(threadId, runId, 'completed', {
+						userId: user.id,
+						promptVersion,
+						modelId,
+					});
+					return;
+				}
+				if (fastPathOutcome.toolCallId) {
+					fastPathBlock = [
+						'<fast-path-result>',
+						`The ${fastPathOutcome.route.startsWith('agent') ? 'build-agent' : 'build-workflow'} compiler already ran for this message (tool call ${fastPathOutcome.toolCallId}); its result is in this run. It handed the turn back because: ${fastPathOutcome.reason}. Continue from that result instead of starting over.`,
+						'</fast-path-result>',
+					].join('\n');
+				}
+			}
+
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
 			if (!tracing && process.env.E2E_TESTS === 'true') {
@@ -4044,7 +4147,7 @@ export class InstanceAiService {
 				aiPreferencesBlock,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 			]);
-			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
+			const fullMessage = [fastPathBlock, handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
 				.filter(Boolean)
 				.join('\n\n');
 

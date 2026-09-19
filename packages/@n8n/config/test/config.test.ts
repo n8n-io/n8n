@@ -353,6 +353,7 @@ describe('GlobalConfig', () => {
 			decisionUrl: '',
 			decisionApiKey: '',
 			decisionModel: 'jev-latest',
+			fastPathEnabled: false,
 			decisionTimeoutMs: 1500,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',

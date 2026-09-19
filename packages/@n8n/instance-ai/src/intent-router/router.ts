@@ -1,4 +1,7 @@
-import { NullDecisionService, type DecisionService } from '../workflow-compiler/decision/decision-service';
+import {
+	NullDecisionService,
+	type DecisionService,
+} from '../workflow-compiler/decision/decision-service';
 import { resolveChoice, type DecisionThresholds } from '../workflow-compiler/decision/policy';
 import { NONE_OF_THESE, type DecisionQuestions } from '../workflow-compiler/decision/schemas';
 import { isQuestionOnly, isSmallTalk, scoreCues, vetoedRoutes } from './features';
@@ -14,7 +17,12 @@ export interface RouteIntentInput {
 	abortSignal?: AbortSignal;
 }
 
-function orchestrator(reason: string, source: RouteDecision['source'], confidence = 1, read?: RouteDecision['read']): RouteDecision {
+function orchestrator(
+	reason: string,
+	source: RouteDecision['source'],
+	confidence = 1,
+	read?: RouteDecision['read'],
+): RouteDecision {
 	return { route: 'orchestrator', confidence, source, reason, ...(read ? { read } : {}) };
 }
 
@@ -31,13 +39,20 @@ function orchestrator(reason: string, source: RouteDecision['source'], confidenc
 export async function routeIntent(input: RouteIntentInput): Promise<RouteDecision> {
 	const { message, state } = input;
 	if (state.pendingSession) {
-		return { route: 'answer', confidence: 1, source: 'pending_session', reason: `a ${state.pendingSession.kind} compiler session is waiting for ${state.pendingSession.fields.join(', ')}` };
+		return {
+			route: 'answer',
+			confidence: 1,
+			source: 'pending_session',
+			reason: `a ${state.pendingSession.kind} compiler session is waiting for ${state.pendingSession.fields.join(', ')}`,
+		};
 	}
 	if (isSmallTalk(message)) return orchestrator('small talk', 'rule');
 	if (isQuestionOnly(message)) return orchestrator('question without a build request', 'rule');
 
 	const vetoes = vetoedRoutes(state);
-	const allowed = (Object.keys(ROUTE_CRITERIA) as Array<keyof typeof ROUTE_CRITERIA>).filter((route) => !(route in vetoes));
+	const allowed = (Object.keys(ROUTE_CRITERIA) as Array<keyof typeof ROUTE_CRITERIA>).filter(
+		(route) => !(route in vetoes),
+	);
 	const cues = scoreCues(message);
 	const prior: Record<string, number> = {};
 	for (const route of allowed) prior[route] = cues.scores[route] ?? 0;
@@ -51,7 +66,8 @@ export async function routeIntent(input: RouteIntentInput): Promise<RouteDecisio
 	const questions: DecisionQuestions = {
 		route: {
 			type: 'choice',
-			instructions: 'Which path should serve this chat message? Choose the compiler paths only when the message asks to build, change, debug or test the artifact; choose orchestrator for everything else.',
+			instructions:
+				'Which path should serve this chat message? Choose the compiler paths only when the message asks to build, change, debug or test the artifact; choose orchestrator for everything else.',
 			criteria,
 		},
 	};
@@ -71,24 +87,36 @@ export async function routeIntent(input: RouteIntentInput): Promise<RouteDecisio
 	const read: RouteDecision['read'] = {
 		latencyMs: outcome.latencyMs,
 		backend: decisions.kind,
-		...(outcome.ok && outcome.answers.route?.type === 'choice' ? { probabilities: outcome.answers.route.probabilities } : {}),
+		...(outcome.ok && outcome.answers.route?.type === 'choice'
+			? { probabilities: outcome.answers.route.probabilities }
+			: {}),
 	};
 	const answer = outcome.ok ? outcome.answers.route : undefined;
 	const resolution = resolveChoice({ allowed, answer, prior, thresholds: input.thresholds });
 	if (resolution.status === 'chosen') {
 		if (resolution.value === 'orchestrator' || resolution.value === NONE_OF_THESE) {
-			return orchestrator('the read chose the orchestrator', resolution.source === 'prior' ? 'prior' : 'decision', resolution.confidence, read);
+			return orchestrator(
+				'the read chose the orchestrator',
+				resolution.source === 'prior' ? 'prior' : 'decision',
+				resolution.confidence,
+				read,
+			);
 		}
 		return {
 			route: resolution.value as IntentRoute,
 			confidence: resolution.confidence,
 			source: resolution.source === 'prior' ? 'prior' : 'decision',
-			reason: resolution.source === 'prior' ? `cues ${cues.matched.join(', ')} were decisive without a read` : 'structured read above the act threshold',
+			reason:
+				resolution.source === 'prior'
+					? `cues ${cues.matched.join(', ')} were decisive without a read`
+					: 'structured read above the act threshold',
 			read,
 		};
 	}
 	return orchestrator(
-		resolution.reason === 'unavailable' ? 'no decision backend and cues were not decisive' : `read below the act threshold (${resolution.confidence.toFixed(2)}${resolution.best ? `, best ${resolution.best}` : ''})`,
+		resolution.reason === 'unavailable'
+			? 'no decision backend and cues were not decisive'
+			: `read below the act threshold (${resolution.confidence.toFixed(2)}${resolution.best ? `, best ${resolution.best}` : ''})`,
 		'fallback',
 		resolution.confidence,
 		read,

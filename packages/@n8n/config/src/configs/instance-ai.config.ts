@@ -74,6 +74,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_DECISION_MODEL')
 	decisionModel: string = 'jev-latest';
 
+	/**
+	 * Route chat turns with a structured read before any language model runs and
+	 * serve confident build, edit, debug and verify requests with the compilers
+	 * directly. The orchestrator LLM only runs when the router is not confident.
+	 */
+	@Env('N8N_INSTANCE_AI_FAST_PATH_ENABLED')
+	fastPathEnabled: boolean = false;
+
 	/** Per-request latency budget for the decision service, in milliseconds. */
 	@Env('N8N_INSTANCE_AI_DECISION_TIMEOUT_MS')
 	decisionTimeoutMs: number = 1500;
