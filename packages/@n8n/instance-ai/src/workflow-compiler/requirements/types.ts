@@ -82,8 +82,9 @@ export function valueOf<T>(
 	requirement: RequirementValue | undefined,
 	guard: (value: unknown) => value is T,
 ): T | undefined {
-	if (requirement?.status !== 'resolved') return undefined;
-	return guard(requirement.value) ? requirement.value : undefined;
+	return requirement?.status === 'resolved' && guard(requirement.value)
+		? requirement.value
+		: undefined;
 }
 
 export const isString = (value: unknown): value is string => typeof value === 'string';

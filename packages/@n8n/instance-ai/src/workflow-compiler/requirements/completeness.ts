@@ -12,24 +12,19 @@ function issueFor(
 	return { field, reason, question: requirement.question, candidates: requirement.candidates };
 }
 
-/**
- * Stage 1 completeness: do we understand the requested behavior? Computed from
- * the structured requirement state, never from a model verdict.
- */
+/** Stage 1 completeness: is the requested behavior understood? Computed from the requirement state, never a model verdict. */
 export function missingBehaviorRequirements(requirements: Requirements): RequirementIssue[] {
-	const issues: RequirementIssue[] = [];
-	const intent = issueFor(
-		'intent',
-		requirements.intent,
-		'The request does not say whether to create, edit or debug.',
-	);
-	if (intent) issues.push(intent);
-	const trigger = issueFor('trigger', requirements.trigger, 'The workflow needs a trigger.');
-	if (trigger) issues.push(trigger);
-	for (const [name, value] of Object.entries(requirements.triggerParams)) {
-		const issue = issueFor(`triggerParams.${name}`, value, 'The trigger needs this value.');
-		if (issue) issues.push(issue);
-	}
+	const issues = [
+		issueFor(
+			'intent',
+			requirements.intent,
+			'The request does not say whether to create, edit or debug.',
+		),
+		issueFor('trigger', requirements.trigger, 'The workflow needs a trigger.'),
+		...Object.entries(requirements.triggerParams).map(([name, value]) =>
+			issueFor(`triggerParams.${name}`, value, 'The trigger needs this value.'),
+		),
+	].filter((issue) => issue !== undefined);
 	if (requirements.actions.length === 0 && requirements.trigger.status === 'resolved') {
 		issues.push({
 			field: 'actions',
@@ -41,9 +36,8 @@ export function missingBehaviorRequirements(requirements: Requirements): Require
 }
 
 /**
- * Stage 2 completeness: once operations are selected, each one may require
- * more values (channel, table, email…). Values already present in the
- * action's params or the answers map satisfy the requirement.
+ * Stage 2 completeness: a selected operation may require more values (channel, table, email…).
+ * Values already in the action's params or the answers map satisfy the requirement.
  */
 export function missingOperationRequirements(
 	requirements: Requirements,

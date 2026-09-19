@@ -72,29 +72,30 @@ export const persistedSessionSchema = z.object({
 export type PersistedSession = z.infer<typeof persistedSessionSchema>;
 
 export function toPersisted(session: GenerationSession): PersistedSession {
+	const { id, intent, request, messages, requirements, status, createdAt, updatedAt } = session;
 	return {
-		id: session.id,
-		intent: session.intent,
-		request: session.request,
-		messages: session.messages,
-		requirements: session.requirements,
-		status: session.status,
+		id,
+		intent,
+		request,
+		messages,
+		requirements,
+		status,
 		...(session.workflowId ? { workflowId: session.workflowId } : {}),
 		...(session.ir ? { ir: session.ir } : {}),
-		createdAt: session.createdAt,
-		updatedAt: session.updatedAt,
+		createdAt,
+		updatedAt,
 	};
 }
 
 export function fromPersisted(persisted: PersistedSession): GenerationSession {
+	const { intent } = persisted;
 	return {
 		...persisted,
 		unresolved: [],
 		questions: [],
 		decisions: [],
 		timings: {},
-		planningPath:
-			persisted.intent === 'edit' ? 'patch' : persisted.intent === 'debug' ? 'debug' : 'fast',
+		planningPath: intent === 'edit' ? 'patch' : intent === 'debug' ? 'debug' : 'fast',
 	};
 }
 
@@ -116,9 +117,9 @@ export class InMemorySessionStore implements SessionStore {
 	async save(session: GenerationSession): Promise<void> {
 		this.sessions.delete(session.id);
 		this.sessions.set(session.id, session);
-		while (this.sessions.size > this.maxSessions) {
-			const oldest = this.sessions.keys().next().value;
-			if (oldest === undefined) break;
+		// Evict the oldest entries; a Map iterates in insertion order.
+		for (const oldest of this.sessions.keys()) {
+			if (this.sessions.size <= this.maxSessions) break;
 			this.sessions.delete(oldest);
 		}
 	}

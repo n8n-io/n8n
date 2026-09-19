@@ -9,11 +9,11 @@ import { withNoneOfThese, type DecisionQuestions } from '../decision/schemas';
 import { compileParameterTree } from '../expressions/expression';
 import { extractRequirements } from '../requirements/extract';
 import type { RequirementIssue } from '../requirements/types';
-import { DECISION_SCHEMA_VERSION } from '../versions';
 import { incomingEdges, outgoingEdges, type WorkflowPatch } from './patch';
-import { planActions } from './plan-actions';
+import { planActions, runDecision } from './plan-actions';
 
 type NodeJSON = WorkflowJSON['nodes'][number];
+type Values = Record<string, unknown>;
 
 export type EditKind = 'add_step' | 'remove_step' | 'update_parameter' | 'rename_workflow';
 
@@ -40,20 +40,25 @@ export type EditPlanResult =
 const ANCHOR_CLAUSE =
 	/\b(?:right\s+)?(after|before)\s+(?:the\s+)?([^,]+?)(?:\s+(?:step|node))?(?:,|\s+(?=(?:add|insert|put|place)\b)|$)/i;
 
-const KIND_CUES: Array<{ kind: EditKind; pattern: RegExp }> = [
-	{ kind: 'rename_workflow', pattern: /\brename (the )?workflow\b|\bcall (the )?workflow\b/i },
-	{ kind: 'remove_step', pattern: /\b(remove|delete|drop|get rid of)\b/i },
-	{
-		kind: 'update_parameter',
-		pattern:
-			/\b(change|update|set|switch|use|point|replace)\b.*\b(channel|table|url|path|method|cron|schedule|text|message|email|to|from)\b/i,
-	},
-	{ kind: 'add_step', pattern: /\b(add|insert|also|after|before|then|and)\b/i },
+const KIND_CUES: Array<[EditKind, RegExp]> = [
+	['rename_workflow', /\brename (the )?workflow\b|\bcall (the )?workflow\b/i],
+	['remove_step', /\b(remove|delete|drop|get rid of)\b/i],
+	[
+		'update_parameter',
+		/\b(change|update|set|switch|use|point|replace)\b.*\b(channel|table|url|path|method|cron|schedule|text|message|email|to|from)\b/i,
+	],
+	['add_step', /\b(add|insert|also|after|before|then|and)\b/i],
 ];
 
-function detectKind(text: string): EditKind | undefined {
-	return KIND_CUES.find(({ pattern }) => pattern.test(text))?.kind;
-}
+/** Value cues in the request text, keyed by parameter name; an optional cleaner trims the match. */
+const VALUE_CUES: Array<[string, RegExp, ((value: string) => string)?]> = [
+	['channel', /#[a-z0-9_-]+/i],
+	['url', /https?:\/\/\S+/i, (value) => value.replace(/[.,)]$/, '')],
+	['table', /\btable\s+["'`]?([a-z_][a-z0-9_]*)/i],
+	['path', /\bpath\s+["'`]?(\/?[a-z0-9_\-/]+)/i, (value) => value.replace(/^\//, '')],
+	['method', /\b(GET|POST|PUT|PATCH|DELETE)\b/],
+	['text', /["“]([^"”]+)["”]/],
+];
 
 function operationForNode(registry: NodeRegistry, node: NodeJSON): NodeOperation | undefined {
 	const params = node.parameters ?? {};
@@ -76,165 +81,121 @@ function mentionedNodes(text: string, nodes: readonly NodeJSON[]): NodeJSON[] {
 	});
 }
 
-function extractedValues(text: string): Record<string, unknown> {
-	const values: Record<string, unknown> = {};
-	const channel = text.match(/#[a-z0-9_-]+/i)?.[0];
-	if (channel) values.channel = channel;
-	const url = text.match(/https?:\/\/\S+/i)?.[0];
-	if (url) values.url = url.replace(/[.,)]$/, '');
-	const table = text.match(/\btable\s+["'`]?([a-z_][a-z0-9_]*)/i)?.[1];
-	if (table) values.table = table;
-	const path = text.match(/\bpath\s+["'`]?(\/?[a-z0-9_\-/]+)/i)?.[1];
-	if (path) values.path = path.replace(/^\//, '');
-	const method = text.match(/\b(GET|POST|PUT|PATCH|DELETE)\b/)?.[1];
-	if (method) values.method = method;
-	const quoted = text.match(/["“]([^"”]+)["”]/)?.[1];
-	if (quoted) values.text = quoted;
+function extractedValues(text: string): Values {
+	const values: Values = {};
+	for (const [key, pattern, clean] of VALUE_CUES) {
+		const match = text.match(pattern);
+		const value = match?.[1] ?? match?.[0];
+		if (value) values[key] = clean ? clean(value) : value;
+	}
 	return values;
 }
 
+/** Picks the values of the operation's parameters that the request or the answers supply. */
+function pickParams(operation: NodeOperation, values: Values): Values {
+	const params: Values = {};
+	for (const definition of [...operation.requiredParameters, ...operation.optionalParameters]) {
+		if (values[definition.name] !== undefined) params[definition.name] = values[definition.name];
+	}
+	return params;
+}
+
+/** Compiles the expressions in a bound parameter tree into node parameters. */
+function compiledParameters(tree: Values): NodeJSON['parameters'] {
+	return compileParameterTree(tree, () => undefined) as NodeJSON['parameters'];
+}
+
 /**
- * Edit mode: classify the change, locate the affected node with a bounded
- * decision when the text is ambiguous, and produce a minimal patch set. The
- * rest of the workflow is never regenerated.
+ * Edit mode: classify the change, locate the affected node (with a bounded decision when the text
+ * is ambiguous) and produce a minimal patch set. The rest of the workflow is never regenerated.
  */
 export async function planEdit(input: EditPlanInput): Promise<EditPlanResult> {
 	const log: DecisionLogEntry[] = [];
+	let waves = 0;
+	const ask = (field: string, reason: string, question: string): EditPlanResult => ({
+		status: 'needs_clarification',
+		log,
+		issues: [{ field, reason, question }],
+	});
+	const planned = (patches: WorkflowPatch[], summary: string): EditPlanResult => ({
+		status: 'planned',
+		patches,
+		summary,
+		log,
+		waves,
+	});
 	const nodes = input.workflow.nodes.filter(
 		(node) => node.name && node.type !== 'n8n-nodes-base.stickyNote',
 	);
-	const kind = detectKind(input.request);
+	const nodeList = nodes.map((node) => node.name).join(', ');
+	const kind = KIND_CUES.find(([, pattern]) => pattern.test(input.request))?.[0];
 	if (!kind) {
-		return {
-			status: 'needs_clarification',
-			log,
-			issues: [
-				{
-					field: 'edit.kind',
-					reason: 'The requested change is not recognized.',
-					question:
-						'Should I add a step, remove a step, change a node setting, or rename the workflow?',
-				},
-			],
-		};
+		return ask(
+			'edit.kind',
+			'The requested change is not recognized.',
+			'Should I add a step, remove a step, change a node setting, or rename the workflow?',
+		);
 	}
 
 	if (kind === 'rename_workflow') {
 		const name = input.request.match(/\b(?:to|called|named)\s+["“]?([^"”]+?)["”]?\s*$/i)?.[1];
-		if (!name)
-			return {
-				status: 'needs_clarification',
-				log,
-				issues: [
-					{
-						field: 'edit.name',
-						reason: 'No new name given.',
-						question: 'What should the workflow be called?',
-					},
-				],
-			};
-		return {
-			status: 'planned',
-			patches: [{ op: 'rename_workflow', name }],
-			summary: `Renamed workflow to "${name}".`,
-			log,
-			waves: 0,
-		};
+		if (!name) return ask('edit.name', 'No new name given.', 'What should the workflow be called?');
+		return planned([{ op: 'rename_workflow', name }], `Renamed workflow to "${name}".`);
 	}
 
-	let waves = 0;
 	const target = await resolveTargetNode(input, nodes, kind, log);
 	if (target.kind === 'ask') return { status: 'needs_clarification', log, issues: [target.issue] };
 	if (target.kind === 'decided') waves += 1;
 	const targetNode = target.node;
 
 	if (kind === 'remove_step') {
-		if (!targetNode)
-			return {
-				status: 'needs_clarification',
-				log,
-				issues: [
-					{
-						field: 'edit.target',
-						reason: 'No node named.',
-						question: `Which step should be removed? Nodes: ${nodes.map((node) => node.name).join(', ')}.`,
-					},
-				],
-			};
-		return {
-			status: 'planned',
-			patches: [{ op: 'remove_node', nodeName: targetNode.name ?? '' }],
-			summary: `Removed "${targetNode.name}" and reconnected its neighbours.`,
-			log,
-			waves,
-		};
+		if (!targetNode) {
+			return ask(
+				'edit.target',
+				'No node named.',
+				`Which step should be removed? Nodes: ${nodeList}.`,
+			);
+		}
+		const nodeName = targetNode.name ?? '';
+		const summary = `Removed "${targetNode.name}" and reconnected its neighbours.`;
+		return planned([{ op: 'remove_node', nodeName }], summary);
 	}
 
 	if (kind === 'update_parameter') {
-		if (!targetNode)
-			return {
-				status: 'needs_clarification',
-				log,
-				issues: [
-					{
-						field: 'edit.target',
-						reason: 'No node named.',
-						question: `Which step should change? Nodes: ${nodes.map((node) => node.name).join(', ')}.`,
-					},
-				],
-			};
+		if (!targetNode) {
+			return ask('edit.target', 'No node named.', `Which step should change? Nodes: ${nodeList}.`);
+		}
 		const operation = operationForNode(input.registry, targetNode);
 		const values = { ...extractedValues(input.request), ...(input.answers ?? {}) };
 		if (!operation) {
-			return {
-				status: 'needs_clarification',
-				log,
-				issues: [
-					{
-						field: 'edit.parameter',
-						reason: 'The node is outside the supported catalog.',
-						question: `"${targetNode.name}" is not in the compiler catalog. Which parameter should change, and to what value?`,
-					},
-				],
-			};
+			return ask(
+				'edit.parameter',
+				'The node is outside the supported catalog.',
+				`"${targetNode.name}" is not in the compiler catalog. Which parameter should change, and to what value?`,
+			);
 		}
 		const definitions = [...operation.requiredParameters, ...operation.optionalParameters];
-		const updates: Record<string, unknown> = {};
-		for (const definition of definitions)
-			if (values[definition.name] !== undefined) updates[definition.name] = values[definition.name];
+		const updates = pickParams(operation, values);
 		if (Object.keys(updates).length === 0) {
-			return {
-				status: 'needs_clarification',
-				log,
-				issues: [
-					{
-						field: 'edit.parameter',
-						reason: 'No new value found in the request.',
-						question: `What should change on "${targetNode.name}"? Settable values: ${definitions.map((d) => d.name).join(', ')}.`,
-					},
-				],
-			};
+			return ask(
+				'edit.parameter',
+				'No new value found in the request.',
+				`What should change on "${targetNode.name}"? Settable values: ${definitions.map((d) => d.name).join(', ')}.`,
+			);
 		}
 		const bound = bindParameters(operation, updates, { warnings: [] }, targetNode.name ?? '');
-		const parameters: Record<string, unknown> = {};
+		const parameters: Values = {};
 		for (const definition of definitions) {
 			if (updates[definition.name] === undefined) continue;
 			const top = definition.path.split('.')[0];
 			parameters[top] = bound[top];
 		}
-		return {
-			status: 'planned',
-			patches: [
-				{
-					op: 'update_node',
-					nodeName: targetNode.name ?? '',
-					parameters: compileParameterTree(parameters, () => undefined) as NodeJSON['parameters'],
-				},
-			],
-			summary: `Updated ${Object.keys(updates).join(', ')} on "${targetNode.name}".`,
-			log,
-			waves,
+		const patch: WorkflowPatch = {
+			op: 'update_node',
+			nodeName: targetNode.name ?? '',
+			parameters: compiledParameters(parameters),
 		};
+		return planned([patch], `Updated ${Object.keys(updates).join(', ')} on "${targetNode.name}".`);
 	}
 
 	// add_step: plan the new action with the same retrieval + decision path as create mode.
@@ -253,8 +214,9 @@ export async function planEdit(input: EditPlanInput): Promise<EditPlanResult> {
 	});
 	log.push(...planning.log);
 	waves += planning.waves;
-	if (planning.issues.length > 0)
+	if (planning.issues.length > 0) {
 		return { status: 'needs_clarification', log, issues: planning.issues };
+	}
 	const action = planning.actions[0];
 	const operation = input.registry.require(action.operationId ?? '');
 	const values = { ...action.params, ...extractedValues(input.request), ...(input.answers ?? {}) };
@@ -272,11 +234,10 @@ export async function planEdit(input: EditPlanInput): Promise<EditPlanResult> {
 			})),
 		};
 	}
-	const params: Record<string, unknown> = {};
-	for (const definition of [...operation.requiredParameters, ...operation.optionalParameters])
-		if (values[definition.name] !== undefined) params[definition.name] = values[definition.name];
-	if (operation.integration === 'slack' && params.text === undefined)
+	const params = pickParams(operation, values);
+	if (operation.integration === 'slack' && params.text === undefined) {
 		params.text = values.text ?? `Update from ${input.workflow.name}`;
+	}
 	const anchor = targetNode ?? lastMainNode(input.workflow, nodes);
 	const before = /\bbefore\b/i.test(input.request);
 	const name = uniqueName(operation.label ?? operation.title, nodes);
@@ -286,71 +247,35 @@ export async function planEdit(input: EditPlanInput): Promise<EditPlanResult> {
 		type: operation.nodeType,
 		typeVersion: operation.version,
 		position: [(anchor?.position[0] ?? 0) + (before ? -260 : 260), anchor?.position[1] ?? 0],
-		parameters: compileParameterTree(
-			bindParameters(operation, params, { warnings: [] }, name),
-			() => undefined,
-		) as NodeJSON['parameters'],
+		parameters: compiledParameters(bindParameters(operation, params, { warnings: [] }, name)),
 	};
 	const patches: WorkflowPatch[] = [{ op: 'add_node', node }];
-	if (anchor?.name) {
-		if (before) {
-			for (const edge of incomingEdges(input.workflow, anchor.name)) {
-				patches.push({
-					op: 'remove_edge',
-					from: edge.from,
-					fromOutput: edge.fromOutput,
-					to: anchor.name,
-					toInput: edge.toInput,
-				});
-				patches.push({
-					op: 'add_edge',
-					from: edge.from,
-					fromOutput: edge.fromOutput,
-					to: name,
-					toInput: 0,
-				});
-			}
-			patches.push({ op: 'add_edge', from: name, fromOutput: 0, to: anchor.name, toInput: 0 });
-		} else {
-			const successors = outgoingEdges(input.workflow, anchor.name).filter(
-				(edge) => edge.fromOutput === 0,
-			);
-			for (const edge of successors) {
-				patches.push({
-					op: 'remove_edge',
-					from: anchor.name,
-					fromOutput: 0,
-					to: edge.to,
-					toInput: edge.toInput,
-				});
-				patches.push({
-					op: 'add_edge',
-					from: name,
-					fromOutput: 0,
-					to: edge.to,
-					toInput: edge.toInput,
-				});
-			}
-			patches.push({ op: 'add_edge', from: anchor.name, fromOutput: 0, to: name, toInput: 0 });
+	const anchorName = anchor?.name;
+	if (anchorName) {
+		// Splice the new node into every edge on the anchor's side; the anchor keeps its other wiring.
+		const edges = before
+			? incomingEdges(input.workflow, anchorName).map((edge) => ({ ...edge, to: anchorName }))
+			: outgoingEdges(input.workflow, anchorName)
+					.filter((edge) => edge.fromOutput === 0)
+					.map((edge) => ({ ...edge, from: anchorName }));
+		for (const edge of edges) {
+			const spliced = before ? { ...edge, to: name, toInput: 0 } : { ...edge, from: name };
+			patches.push({ op: 'remove_edge', ...edge }, { op: 'add_edge', ...spliced });
 		}
+		patches.push(
+			before
+				? { op: 'add_edge', from: name, fromOutput: 0, to: anchorName, toInput: 0 }
+				: { op: 'add_edge', from: anchorName, fromOutput: 0, to: name, toInput: 0 },
+		);
 	}
-	return {
-		status: 'planned',
-		patches,
-		summary: `Added "${name}" ${before ? 'before' : 'after'} "${anchor?.name ?? 'the end'}".`,
-		log,
-		waves,
-	};
+	const summary = `Added "${name}" ${before ? 'before' : 'after'} "${anchor?.name ?? 'the end'}".`;
+	return planned(patches, summary);
 }
 
 function uniqueName(base: string, nodes: readonly NodeJSON[]): string {
 	const names = new Set(nodes.map((node) => node.name));
 	let name = base;
-	let n = 1;
-	while (names.has(name)) {
-		n += 1;
-		name = `${base} ${n}`;
-	}
+	for (let n = 2; names.has(name); n += 1) name = `${base} ${n}`;
 	return name;
 }
 
@@ -394,33 +319,11 @@ async function resolveTargetNode(
 	if (candidates.length === 1) return { kind: 'named', node: candidates[0] };
 	const criteria: Record<string, string | null> = {};
 	for (const node of candidates) criteria[node.name ?? ''] = `${node.type}${describeNode(node)}`;
+	const instructions = `Which node does this change refer to: "${input.request}"?`;
 	const questions: DecisionQuestions = {
-		target: {
-			type: 'choice',
-			instructions: `Which node does this change refer to: "${input.request}"?`,
-			criteria: withNoneOfThese(criteria),
-		},
+		target: { type: 'choice', instructions, criteria: withNoneOfThese(criteria) },
 	};
-	const outcome = await input.decisions.decide({
-		name: 'workflow-compiler.edit-target',
-		schemaVersion: DECISION_SCHEMA_VERSION,
-		state: { request: input.request },
-		questions,
-		abortSignal: input.abortSignal,
-	});
-	log.push({
-		name: 'workflow-compiler.edit-target',
-		schemaVersion: DECISION_SCHEMA_VERSION,
-		backend: input.decisions.kind,
-		...(outcome.ok
-			? { model: outcome.model, reads: outcome.reads }
-			: { failureReason: outcome.reason }),
-		latencyMs: outcome.latencyMs,
-		ok: outcome.ok,
-		questionNames: ['target'],
-		answers: outcome.ok ? outcome.answers : {},
-		policy: {},
-	});
+	const outcome = await runDecision(input, 'workflow-compiler.edit-target', questions, log);
 	const resolution = resolveChoice({
 		allowed: candidates.map((node) => node.name ?? ''),
 		answer: outcome.ok ? outcome.answers.target : undefined,
@@ -444,10 +347,9 @@ async function resolveTargetNode(
 
 function describeNode(node: NodeJSON): string {
 	const params = node.parameters ?? {};
-	const parts: string[] = [];
-	for (const key of ['resource', 'operation', 'path', 'httpMethod', 'url']) {
+	const parts = ['resource', 'operation', 'path', 'httpMethod', 'url'].flatMap((key) => {
 		const value = params[key];
-		if (typeof value === 'string') parts.push(`${key}=${value}`);
-	}
+		return typeof value === 'string' ? [`${key}=${value}`] : [];
+	});
 	return parts.length > 0 ? ` (${parts.join(', ')})` : '';
 }

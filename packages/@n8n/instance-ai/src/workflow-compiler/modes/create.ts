@@ -1,7 +1,7 @@
 import type { NodeRegistry } from '../catalog/node-registry';
 import type { DecisionService } from '../decision/decision-service';
 import { expr, field, input, template, type Expression } from '../expressions/expression';
-import type { ActionIR, BranchIR, RespondIR, StepIR, TriggerIR, WorkflowIR } from '../ir/schema';
+import type { ActionIR, BranchIR, StepIR, TriggerIR, WorkflowIR } from '../ir/schema';
 import type { PatternRegistry } from '../patterns/registry';
 import type { PatternContext } from '../patterns/types';
 import {
@@ -47,17 +47,23 @@ export type CreatePlanResult =
 			patternIds: string[];
 	  };
 
+type Emitted = { action: RequestedAction; step: ActionIR };
+
+const TRIGGER_PATTERNS = new Map([
+	['webhook', 'webhook_request_response'],
+	['schedule', 'scheduled_job'],
+]);
+
+const isScalar = (value: unknown): value is string | number =>
+	typeof value === 'string' || typeof value === 'number';
+
 function makePatternContext(triggerStepId: string): PatternContext {
 	const used = new Set<string>([triggerStepId]);
 	return {
 		triggerStepId,
 		stepId(prefix) {
 			let id = prefix;
-			let n = 1;
-			while (used.has(id)) {
-				n += 1;
-				id = `${prefix}-${n}`;
-			}
+			for (let n = 2; used.has(id); n += 1) id = `${prefix}-${n}`;
 			used.add(id);
 			return id;
 		},
@@ -69,31 +75,17 @@ function clarification(
 	requirements: Requirements,
 	planning?: ActionPlanningResult,
 ): CreatePlanResult {
-	return {
-		status: 'needs_clarification',
-		issues,
-		questions: buildClarificationQuestions(issues),
-		requirements,
-		...(planning ? { planning } : {}),
-	};
+	const status = 'needs_clarification';
+	const questions = buildClarificationQuestions(issues);
+	return { status, issues, questions, requirements, ...(planning ? { planning } : {}) };
 }
 
-function paramValue(requirements: Requirements, action: RequestedAction, name: string): unknown {
-	return action.params[name] ?? requirements.answers[`actions.${action.id}.${name}`];
-}
-
-/**
- * Create mode: requirements → trigger pattern → one operation decision wave →
- * IR. Deterministic apart from the batched decision; any gap becomes a
- * clarification instead of a guess.
- */
+/** Create mode: requirements → trigger pattern → one operation decision wave → IR. Any gap becomes a clarification. */
 export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanResult> {
 	const { registry, patterns } = inputs;
 	let requirements = inputs.requirements;
-
 	const behaviorIssues = missingBehaviorRequirements(requirements);
 	if (behaviorIssues.length > 0) return clarification(behaviorIssues, requirements);
-
 	const planning = await planActions({
 		request: inputs.request,
 		actions: requirements.actions,
@@ -103,28 +95,16 @@ export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanRes
 	});
 	requirements = { ...requirements, actions: planning.actions };
 	if (planning.issues.length > 0) return clarification(planning.issues, requirements, planning);
-
 	const operationIssues = missingOperationRequirements(requirements, registry);
 	if (operationIssues.length > 0) return clarification(operationIssues, requirements, planning);
 
 	// Trigger expansion through a pattern.
 	const triggerKind = valueOf(requirements.trigger, isString) ?? 'manual';
-	const patternIds: string[] = [];
 	const context = makePatternContext('trigger');
-	const triggers: TriggerIR[] = [];
-	const steps: StepIR[] = [];
-	const triggerParam = (name: string) =>
-		valueOf(
-			requirements.triggerParams[name],
-			(value): value is string | number => typeof value === 'string' || typeof value === 'number',
-		);
-	const triggerPattern =
-		triggerKind === 'webhook'
-			? patterns.require('webhook_request_response')
-			: triggerKind === 'schedule'
-				? patterns.require('scheduled_job')
-				: patterns.require('manual_run');
-	patternIds.push(triggerPattern.id);
+	const webhookStepId = triggerKind === 'webhook' ? context.triggerStepId : undefined;
+	const triggerParam = (name: string) => valueOf(requirements.triggerParams[name], isScalar);
+	const triggerPattern = patterns.require(TRIGGER_PATTERNS.get(triggerKind) ?? 'manual_run');
+	const patternIds = [triggerPattern.id];
 	const expanded = triggerPattern.instantiate(
 		{
 			method: triggerParam('method'),
@@ -135,53 +115,43 @@ export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanRes
 		},
 		context,
 	);
-	triggers.push(...(expanded.triggers ?? []));
-	steps.push(...expanded.steps);
+	const triggers: TriggerIR[] = [...(expanded.triggers ?? [])];
+	const steps: StepIR[] = [...expanded.steps];
 
 	// Actions in request order. Conditional actions wrap in a branch.
-	const emitted: Array<{ action: RequestedAction; step: ActionIR }> = [];
+	const onError = errorPolicyFor(requirements);
+	const emitted: Emitted[] = [];
 	const issues: RequirementIssue[] = [];
 	for (const action of requirements.actions) {
 		if (!action.operationId) continue;
 		const operation = registry.require(action.operationId);
+		const params: Record<string, unknown> = {};
+		for (const { name } of [...operation.requiredParameters, ...operation.optionalParameters]) {
+			const value = action.params[name] ?? requirements.answers[`actions.${action.id}.${name}`];
+			if (value !== undefined) params[name] = value;
+		}
+		// Derivable parameters: values the trigger payload or an earlier step provides.
+		if (operation.integration === 'hubspot' && params.email === undefined && webhookStepId) {
+			params.email = expr(field(webhookStepId, 'body', 'email'));
+		}
+		if (operation.integration === 'slack' && params.text === undefined) {
+			params.text = expr(defaultSlackText(action, emitted, context.triggerStepId));
+		}
+		if (operation.id === 'http.request') {
+			if (params.method === undefined) params.method = 'POST';
+			if (params.body === undefined && webhookStepId)
+				params.body = expr(field(webhookStepId, 'body'));
+		}
 		const step: ActionIR = {
 			id: context.stepId(action.id),
 			kind: 'action',
 			label: operation.label ?? operation.title,
 			operation: { operationId: operation.id },
-			params: {},
-			...(errorPolicyFor(requirements) ? { onError: errorPolicyFor(requirements) } : {}),
+			params,
+			...(onError ? { onError } : {}),
 		};
-		for (const definition of [...operation.requiredParameters, ...operation.optionalParameters]) {
-			const value = paramValue(requirements, action, definition.name);
-			if (value !== undefined) step.params[definition.name] = value;
-		}
-		// Derivable parameters: values the trigger payload or an earlier step provides.
-		if (
-			operation.integration === 'hubspot' &&
-			step.params.email === undefined &&
-			triggerKind === 'webhook'
-		) {
-			step.params.email = expr(field(context.triggerStepId, 'body', 'email'));
-		}
-		if (operation.integration === 'slack' && step.params.text === undefined) {
-			step.params.text = expr(defaultSlackText(action, emitted, context.triggerStepId));
-		}
-		if (operation.id === 'http.request' && step.params.method === undefined)
-			step.params.method = 'POST';
-		if (
-			operation.id === 'http.request' &&
-			step.params.body === undefined &&
-			triggerKind === 'webhook'
-		) {
-			step.params.body = expr(field(context.triggerStepId, 'body'));
-		}
 		if (action.conditional) {
-			const condition = deriveCondition(
-				action.conditional,
-				emitted,
-				triggerKind === 'webhook' ? context.triggerStepId : undefined,
-			);
+			const condition = deriveCondition(action.conditional, emitted, webhookStepId);
 			if (!condition) {
 				issues.push({
 					field: `actions.${action.id}.condition`,
@@ -199,9 +169,7 @@ export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanRes
 				else: [],
 			};
 			steps.push(branch);
-		} else {
-			steps.push(step);
-		}
+		} else steps.push(step);
 		emitted.push({ action, step });
 	}
 	if (issues.length > 0) return clarification(issues, requirements, planning);
@@ -213,23 +181,18 @@ export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanRes
 			if (mapped) body[mapped.key] = expr(mapped.expression);
 		}
 		if (Object.keys(body).length === 0) body.ok = true;
-		const respond: RespondIR = {
-			id: context.stepId('respond'),
-			kind: 'respond',
-			label: 'Respond',
-			status: 200,
-			body,
-		};
-		steps.push(respond);
+		const id = context.stepId('respond');
+		steps.push({ id, kind: 'respond', label: 'Respond', status: 200, body });
 		patternIds.push('respond_with_result');
 	}
 
+	const name = valueOf(requirements.workflowName, isString);
 	const ir: WorkflowIR = {
-		id: inputs.workflowId ?? slugify(valueOf(requirements.workflowName, isString) ?? 'workflow'),
-		name: valueOf(requirements.workflowName, isString) ?? 'New workflow',
+		id: inputs.workflowId ?? slugify(name ?? 'workflow'),
+		name: name ?? 'New workflow',
 		triggers,
 		steps,
-		errorPolicy: errorPolicyFor(requirements) ?? 'fail_workflow',
+		errorPolicy: onError ?? 'fail_workflow',
 		settings: { executionOrder: 'v1' },
 		patternIds,
 	};
@@ -238,19 +201,15 @@ export async function planCreate(inputs: CreatePlanInput): Promise<CreatePlanRes
 
 function errorPolicyFor(requirements: Requirements): ActionIR['onError'] | undefined {
 	const policy = valueOf(requirements.errorPolicy, isString);
-	if (policy === 'retry') return 'retry';
-	if (policy === 'dead_letter') return 'dead_letter';
-	return undefined;
+	return policy === 'retry' || policy === 'dead_letter' ? policy : undefined;
 }
 
 function defaultSlackText(
 	action: RequestedAction,
-	emitted: Array<{ action: RequestedAction; step: ActionIR }>,
+	emitted: Emitted[],
 	triggerStepId: string,
 ): Expression {
-	const crm = [...emitted]
-		.reverse()
-		.find((entry) => entry.step.operation.operationId.startsWith('hubspot.'));
+	const crm = emitted.findLast((entry) => entry.step.operation.operationId.startsWith('hubspot.'));
 	if (crm) return template('New contact created: ', field(triggerStepId, 'body', 'email'));
 	const quoted = action.text.match(/["“]([^"”]+)["”]/)?.[1];
 	if (quoted) return { type: 'literal', value: quoted };
@@ -259,34 +218,27 @@ function defaultSlackText(
 
 function deriveCondition(
 	text: string,
-	emitted: Array<{ action: RequestedAction; step: ActionIR }>,
+	emitted: Emitted[],
 	triggerStepId: string | undefined,
 ): BranchIR['condition'] | undefined {
+	const leftOf = (name: string): Expression =>
+		triggerStepId ? field(triggerStepId, 'body', name) : input(name);
 	if (/\b(new|created)\b/i.test(text)) {
-		const crm = [...emitted]
-			.reverse()
-			.find(
-				(entry) =>
-					entry.step.operation.operationId.endsWith('.upsert') ||
-					entry.step.operation.operationId.endsWith('.create'),
-			);
+		const crm = emitted.findLast(({ step }) =>
+			/\.(upsert|create)$/.test(step.operation.operationId),
+		);
 		if (crm) return { op: 'is_true', left: field(crm.step.id, 'isNew') };
 	}
 	const fieldMatch = text.match(/\b([a-z_][a-z0-9_]*)\s+(?:is|equals|=)\s+["']?([^"'\s]+)["']?/i);
 	if (fieldMatch) {
-		const left: Expression = triggerStepId
-			? field(triggerStepId, 'body', fieldMatch[1])
-			: input(fieldMatch[1]);
-		return { op: 'equals', left, right: { type: 'literal', value: fieldMatch[2] } };
+		return {
+			op: 'equals',
+			left: leftOf(fieldMatch[1]),
+			right: { type: 'literal', value: fieldMatch[2] },
+		};
 	}
 	const presence = text.match(/\b([a-z_][a-z0-9_]*)\s+(?:is (?:present|set|provided)|exists)\b/i);
-	if (presence) {
-		const left: Expression = triggerStepId
-			? field(triggerStepId, 'body', presence[1])
-			: input(presence[1]);
-		return { op: 'exists', left };
-	}
-	return undefined;
+	return presence ? { op: 'exists', left: leftOf(presence[1]) } : undefined;
 }
 
 function conditionLabel(text: string): string {
@@ -296,18 +248,19 @@ function conditionLabel(text: string): string {
 
 function mapResponseField(
 	described: string,
-	emitted: Array<{ action: RequestedAction; step: ActionIR }>,
+	emitted: Emitted[],
 ): { key: string; expression: Expression } | undefined {
 	const lower = described.toLowerCase();
-	const producer = [...emitted]
-		.reverse()
-		.find((entry) => lower.includes(entry.step.operation.operationId.split('.')[0]));
+	const producer = emitted.findLast((entry) =>
+		lower.includes(entry.step.operation.operationId.split('.')[0]),
+	);
 	const source = producer ?? emitted[emitted.length - 1];
 	if (!source) return undefined;
+	const { operationId } = source.step.operation;
 	if (/\bid\b/i.test(lower)) {
-		const contractId = source.step.operation.operationId.startsWith('hubspot.') ? 'vid' : 'id';
+		const contractId = operationId.startsWith('hubspot.') ? 'vid' : 'id';
 		return {
-			key: `${source.step.operation.operationId.split('.')[1] ?? 'result'}Id`,
+			key: `${operationId.split('.')[1] ?? 'result'}Id`,
 			expression: field(source.step.id, contractId),
 		};
 	}
@@ -316,10 +269,9 @@ function mapResponseField(
 }
 
 function slugify(value: string): string {
-	return (
-		value
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '') || 'workflow'
-	);
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug || 'workflow';
 }

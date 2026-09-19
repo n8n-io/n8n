@@ -1,8 +1,12 @@
 import type { NodeRegistry } from '../catalog/node-registry';
 import { candidatePrior, retrieveCandidates, type Candidate } from '../catalog/retrieval';
-import type { DecisionLogEntry, DecisionService } from '../decision/decision-service';
-import { resolveChoice, type ChoiceResolution } from '../decision/policy';
-import { NONE_OF_THESE, withNoneOfThese, type DecisionQuestions } from '../decision/schemas';
+import type {
+	DecisionLogEntry,
+	DecisionOutcome,
+	DecisionService,
+} from '../decision/decision-service';
+import { resolveChoice } from '../decision/policy';
+import { withNoneOfThese, type DecisionQuestions } from '../decision/schemas';
 import type { RequestedAction, RequirementIssue } from '../requirements/types';
 import { DECISION_SCHEMA_VERSION } from '../versions';
 
@@ -22,22 +26,46 @@ export interface ActionPlanningResult {
 	waves: number;
 }
 
+/** Runs one named decision request and appends its log entry (with an empty policy) to `log`. */
+export async function runDecision(
+	input: Pick<ActionPlanningInput, 'request' | 'decisions' | 'abortSignal'>,
+	name: string,
+	questions: DecisionQuestions,
+	log: DecisionLogEntry[],
+): Promise<DecisionOutcome> {
+	const { decisions, abortSignal } = input;
+	const schemaVersion = DECISION_SCHEMA_VERSION;
+	const state = { request: input.request };
+	const outcome = await decisions.decide({ name, schemaVersion, state, questions, abortSignal });
+	log.push({
+		name,
+		schemaVersion,
+		backend: decisions.kind,
+		...(outcome.ok
+			? { model: outcome.model, reads: outcome.reads }
+			: { failureReason: outcome.reason }),
+		latencyMs: outcome.latencyMs,
+		ok: outcome.ok,
+		questionNames: Object.keys(questions),
+		answers: outcome.ok ? outcome.answers : {},
+		policy: {},
+	});
+	return outcome;
+}
+
 function candidatesFor(registry: NodeRegistry, action: RequestedAction): Candidate[] {
-	const scoped = action.integration
-		? retrieveCandidates(registry, action.text, {
-				kind: 'action',
-				integration: action.integration,
-				limit: 4,
-			})
+	const { integration, text } = action;
+	const scoped = integration
+		? retrieveCandidates(registry, text, { kind: 'action', integration, limit: 4 })
 		: [];
-	if (scoped.length > 0) return scoped;
-	return retrieveCandidates(registry, action.text, { kind: ['action', 'control'], limit: 4 });
+	return scoped.length > 0
+		? scoped
+		: retrieveCandidates(registry, text, { kind: ['action', 'control'], limit: 4 });
 }
 
 /**
- * Selects one registry operation per requested action. Retrieval narrows the
- * catalog, every ambiguous action goes into one batched decision request, and
- * the deterministic policy turns scores into a choice, a hint or a question.
+ * Selects one registry operation per requested action: retrieval narrows the catalog, one batched
+ * decision request covers every ambiguous action, and the policy turns scores into a choice or a question.
  */
 export async function planActions(input: ActionPlanningInput): Promise<ActionPlanningResult> {
 	const issues: RequirementIssue[] = [];
@@ -68,64 +96,42 @@ export async function planActions(input: ActionPlanningInput): Promise<ActionPla
 		};
 	}
 
-	let answers: Awaited<ReturnType<DecisionService['decide']>> | undefined;
-	let waves = 0;
-	if (Object.keys(questions).length > 0) {
-		waves = 1;
-		answers = await input.decisions.decide({
-			name: 'workflow-compiler.operations',
-			schemaVersion: DECISION_SCHEMA_VERSION,
-			state: { request: input.request },
-			questions,
-			abortSignal: input.abortSignal,
-		});
-		log.push({
-			name: 'workflow-compiler.operations',
-			schemaVersion: DECISION_SCHEMA_VERSION,
-			backend: input.decisions.kind,
-			...(answers.ok
-				? { model: answers.model, reads: answers.reads }
-				: { failureReason: answers.reason }),
-			latencyMs: answers.latencyMs,
-			ok: answers.ok,
-			questionNames: Object.keys(questions),
-			answers: answers.ok ? answers.answers : {},
-			policy: {},
-		});
-	}
+	const waves = Object.keys(questions).length > 0 ? 1 : 0;
+	const answers = waves
+		? await runDecision(input, 'workflow-compiler.operations', questions, log)
+		: undefined;
 
 	const planned = input.actions.map((action) => {
 		if (action.operationId) return action;
 		const candidates = perAction.get(action.id) ?? [];
 		if (candidates.length === 0) return action;
-		const resolution: ChoiceResolution = resolveChoice({
+		const resolution = resolveChoice({
 			allowed: candidates.map((candidate) => candidate.operation.id),
 			answer: answers?.ok ? answers.answers[action.id] : undefined,
 			prior: candidatePrior(candidates),
 		});
 		const entry = log[0];
-		if (entry)
+		if (entry) {
 			entry.policy[action.id] =
 				resolution.status === 'chosen'
 					? `${resolution.value} (${resolution.source})`
 					: `abstain:${resolution.reason}`;
+		}
 		if (resolution.status === 'chosen') return { ...action, operationId: resolution.value };
 		const titles = candidates.map((candidate) => candidate.operation.title);
+		const noneFit = resolution.reason === 'none_of_these';
 		issues.push({
 			field: `actions.${action.id}.operation`,
-			reason:
-				resolution.reason === 'none_of_these'
-					? 'None of the supported operations fit.'
-					: 'Several operations could implement this step.',
-			question:
-				resolution.reason === 'none_of_these'
-					? `None of the supported operations fit "${action.text}". Which integration and action should it use?`
-					: `For "${action.text}", should the workflow use ${titles.join(' or ')}?`,
+			reason: noneFit
+				? 'None of the supported operations fit.'
+				: 'Several operations could implement this step.',
+			question: noneFit
+				? `None of the supported operations fit "${action.text}". Which integration and action should it use?`
+				: `For "${action.text}", should the workflow use ${titles.join(' or ')}?`,
 			candidates: candidates.map((candidate) => candidate.operation.id),
 		});
 		return action;
 	});
 
-	void NONE_OF_THESE;
 	return { actions: planned, issues, log, waves };
 }

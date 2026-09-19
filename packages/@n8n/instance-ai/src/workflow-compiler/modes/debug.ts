@@ -6,6 +6,7 @@ import type { NodeRegistry } from '../catalog/node-registry';
 import type { WorkflowPatch } from './patch';
 
 type NodeJSON = WorkflowJSON['nodes'][number];
+type Values = Record<string, unknown>;
 
 export type FailureClass =
 	| 'credential'
@@ -44,35 +45,30 @@ export interface DebugPlanResult {
 	fix: DebugFix;
 }
 
-const CLASSIFIERS: Array<{ failureClass: FailureClass; pattern: RegExp }> = [
-	{
-		failureClass: 'credential',
-		pattern:
-			/\b(credential|unauthori[sz]ed|forbidden|401|403|invalid[_ ]?token|api key|authentication)\b/i,
-	},
-	{ failureClass: 'rate_limited', pattern: /\b(rate limit|too many requests|429)\b/i },
-	{ failureClass: 'timeout', pattern: /\b(timeout|timed out|ETIMEDOUT)\b/i },
-	{
-		failureClass: 'transient',
-		pattern:
-			/\b(ECONNRESET|ECONNREFUSED|EAI_AGAIN|502|503|504|service unavailable|bad gateway|socket hang up)\b/i,
-	},
-	{ failureClass: 'not_found', pattern: /\b(not found|404|does not exist|no such)\b/i },
-	{
-		failureClass: 'expression_reference',
-		pattern:
-			/\b(referenced node|no node named|is not defined|cannot read propert|undefined \(reading|\$\(|paired item)\b/i,
-	},
-	{
-		failureClass: 'missing_parameter',
-		pattern:
-			/\b(parameter .* is required|required parameter|missing (required )?(field|parameter|value)|please fill|cannot be empty|is empty)\b/i,
-	},
-	{
-		failureClass: 'rejected_input',
-		pattern:
-			/\b(400|422|bad request|invalid (input|payload|request|value)|validation (failed|error))\b/i,
-	},
+const CLASSIFIERS: Array<[FailureClass, RegExp]> = [
+	[
+		'credential',
+		/\b(credential|unauthori[sz]ed|forbidden|401|403|invalid[_ ]?token|api key|authentication)\b/i,
+	],
+	['rate_limited', /\b(rate limit|too many requests|429)\b/i],
+	['timeout', /\b(timeout|timed out|ETIMEDOUT)\b/i],
+	[
+		'transient',
+		/\b(ECONNRESET|ECONNREFUSED|EAI_AGAIN|502|503|504|service unavailable|bad gateway|socket hang up)\b/i,
+	],
+	['not_found', /\b(not found|404|does not exist|no such)\b/i],
+	[
+		'expression_reference',
+		/\b(referenced node|no node named|is not defined|cannot read propert|undefined \(reading|\$\(|paired item)\b/i,
+	],
+	[
+		'missing_parameter',
+		/\b(parameter .* is required|required parameter|missing (required )?(field|parameter|value)|please fill|cannot be empty|is empty)\b/i,
+	],
+	[
+		'rejected_input',
+		/\b(400|422|bad request|invalid (input|payload|request|value)|validation (failed|error))\b/i,
+	],
 ];
 
 /** Classifies the execution failure from the recorded error text. Deterministic keyword rules, no model. */
@@ -82,21 +78,17 @@ export function classifyFailure(execution: ExecutionDebugInfo): FailureDiagnosis
 		return { failureClass: 'no_failed_node', evidence: [`execution status: ${execution.status}`] };
 	}
 	const evidence = [`failed node: ${failed.name} (${failed.type})`, `error: ${failed.error}`];
-	for (const { failureClass, pattern } of CLASSIFIERS) {
-		if (pattern.test(failed.error))
-			return { failureClass, failedNode: failed.name, error: failed.error, evidence };
-	}
-	return { failureClass: 'unknown', failedNode: failed.name, error: failed.error, evidence };
+	const failureClass =
+		CLASSIFIERS.find(([, pattern]) => pattern.test(failed.error))?.[0] ?? 'unknown';
+	return { failureClass, failedNode: failed.name, error: failed.error, evidence };
 }
 
 function levenshtein(a: string, b: string): number {
 	const rows = a.length + 1;
 	const cols = b.length + 1;
-	const matrix: number[][] = Array.from({ length: rows }, (_, i) => [
-		i,
-		...Array.from({ length: cols - 1 }, () => 0),
-	]);
-	for (let j = 0; j < cols; j += 1) matrix[0][j] = j;
+	const matrix = Array.from({ length: rows }, (_, i) =>
+		Array.from({ length: cols }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+	);
 	for (let i = 1; i < rows; i += 1) {
 		for (let j = 1; j < cols; j += 1) {
 			matrix[i][j] = Math.min(
@@ -109,42 +101,22 @@ function levenshtein(a: string, b: string): number {
 	return matrix[rows - 1][cols - 1];
 }
 
-function* stringParameters(
-	value: unknown,
-	path: string[] = [],
-): Generator<{ path: string[]; value: string }> {
-	if (typeof value === 'string') yield { path, value };
-	else if (Array.isArray(value))
-		for (const [index, item] of value.entries())
-			yield* stringParameters(item, [...path, String(index)]);
-	else if (typeof value === 'object' && value !== null)
-		for (const [key, item] of Object.entries(value)) yield* stringParameters(item, [...path, key]);
-}
+const isContainer = (value: unknown): value is Values =>
+	typeof value === 'object' && value !== null;
 
-function setDeep(target: Record<string, unknown>, path: string[], value: unknown): void {
-	let cursor: Record<string, unknown> = target;
-	for (const segment of path.slice(0, -1)) {
-		const next = cursor[segment];
-		if (typeof next === 'object' && next !== null) cursor = next as Record<string, unknown>;
-		else {
-			const created: Record<string, unknown> = {};
-			cursor[segment] = created;
-			cursor = created;
-		}
+/** Rewrites every string leaf in place, descending through nested objects and arrays. */
+function rewriteStrings(container: Values, rewrite: (value: string) => string): void {
+	for (const [key, item] of Object.entries(container)) {
+		if (typeof item === 'string') container[key] = rewrite(item);
+		else if (isContainer(item)) rewriteStrings(item, rewrite);
 	}
-	cursor[path[path.length - 1]] = value;
 }
 
-/**
- * Debug mode: use execution evidence to classify the failure, then choose the
- * smallest fix. Never "fixes" a failure by continuing on error or removing
- * the failing branch.
- */
+/** Debug mode: classify the failure from execution evidence, then choose the smallest fix. Never continues on error or removes the failing branch. */
 export function planDebug(input: DebugPlanInput): DebugPlanResult {
 	const diagnosis = classifyFailure(input.execution);
 	const node = input.workflow.nodes.find((candidate) => candidate.name === diagnosis.failedNode);
-	const fix = chooseFix(diagnosis, node, input);
-	return { diagnosis, fix };
+	return { diagnosis, fix: chooseFix(diagnosis, node, input) };
 }
 
 function chooseFix(
@@ -152,44 +124,40 @@ function chooseFix(
 	node: NodeJSON | undefined,
 	input: DebugPlanInput,
 ): DebugFix {
+	const { failedNode, error } = diagnosis;
+	const askUser = (summary: string, tail: string): DebugFix => ({
+		kind: 'needs_user_input',
+		summary,
+		question: `"${failedNode}" fails with: ${error}. ${tail}`,
+	});
 	switch (diagnosis.failureClass) {
 		case 'no_failed_node':
 			return {
 				kind: 'no_fix',
 				summary: `The execution ended with status "${input.execution.status}" and no failed node; nothing to patch.`,
 			};
-		case 'credential': {
-			const types = node?.credentials ? Object.keys(node.credentials) : [];
+		case 'credential':
 			return {
 				kind: 'setup',
-				summary: `"${diagnosis.failedNode}" failed to authenticate; its credential needs setup or replacement.`,
-				credentialTypes: types,
+				summary: `"${failedNode}" failed to authenticate; its credential needs setup or replacement.`,
+				credentialTypes: node?.credentials ? Object.keys(node.credentials) : [],
 			};
-		}
 		case 'rate_limited':
 		case 'transient':
 		case 'timeout': {
 			if (!node?.name) return { kind: 'no_fix', summary: 'Transient failure on an unknown node.' };
-			if (node.retryOnFail)
+			if (node.retryOnFail) {
 				return {
 					kind: 'needs_user_input',
 					summary: `"${node.name}" already retries and still fails.`,
 					question: `"${node.name}" keeps failing with a transient error after retries. Is the target service reachable from this instance?`,
 				};
-			const patches: WorkflowPatch[] = [
-				{
-					op: 'update_node',
-					nodeName: node.name,
-					settings: {
-						retryOnFail: true,
-						maxTries: 3,
-						waitBetweenTries: diagnosis.failureClass === 'rate_limited' ? 5000 : 2000,
-					},
-				},
-			];
+			}
+			const waitBetweenTries = diagnosis.failureClass === 'rate_limited' ? 5000 : 2000;
+			const settings = { retryOnFail: true, maxTries: 3, waitBetweenTries };
 			return {
 				kind: 'patch',
-				patches,
+				patches: [{ op: 'update_node', nodeName: node.name, settings }],
 				summary: `Enabled retries on "${node.name}" for its ${diagnosis.failureClass.replace('_', ' ')} failure.`,
 			};
 		}
@@ -198,9 +166,9 @@ function chooseFix(
 			const names = input.workflow.nodes.map((candidate) => candidate.name ?? '').filter(Boolean);
 			const parameters: NonNullable<NodeJSON['parameters']> = deepCopy(node.parameters ?? {});
 			let repaired = 0;
-			for (const { path, value } of stringParameters(parameters)) {
-				if (!value.startsWith('=')) continue;
-				const fixed = value.replace(
+			rewriteStrings(parameters, (value) => {
+				if (!value.startsWith('=')) return value;
+				return value.replace(
 					/\$\((['"])([^'"]+)\1\)/g,
 					(whole, quote: string, referenced: string) => {
 						if (names.includes(referenced)) return whole;
@@ -216,14 +184,12 @@ function chooseFix(
 						return `$(${quote}${best.name}${quote})`;
 					},
 				);
-				if (fixed !== value) setDeep(parameters, path, fixed);
-			}
+			});
 			if (repaired === 0) {
-				return {
-					kind: 'needs_user_input',
-					summary: `"${node.name}" references data that does not exist at runtime.`,
-					question: `"${node.name}" fails with: ${diagnosis.error}. Which upstream node and field should it read?`,
-				};
+				return askUser(
+					`"${node.name}" references data that does not exist at runtime.`,
+					'Which upstream node and field should it read?',
+				);
 			}
 			return {
 				kind: 'patch',
@@ -232,28 +198,21 @@ function chooseFix(
 			};
 		}
 		case 'missing_parameter':
-			return {
-				kind: 'needs_user_input',
-				summary: `"${diagnosis.failedNode}" is missing a required value.`,
-				question: `"${diagnosis.failedNode}" fails with: ${diagnosis.error}. What value should it use?`,
-			};
+			return askUser(`"${failedNode}" is missing a required value.`, 'What value should it use?');
 		case 'not_found':
-			return {
-				kind: 'needs_user_input',
-				summary: `"${diagnosis.failedNode}" targets a resource that does not exist.`,
-				question: `"${diagnosis.failedNode}" fails with: ${diagnosis.error}. Which existing resource should it target?`,
-			};
+			return askUser(
+				`"${failedNode}" targets a resource that does not exist.`,
+				'Which existing resource should it target?',
+			);
 		case 'rejected_input':
-			return {
-				kind: 'needs_user_input',
-				summary: `The service rejected the data "${diagnosis.failedNode}" sent.`,
-				question: `"${diagnosis.failedNode}" fails with: ${diagnosis.error}. Which field is wrong, and what should it contain?`,
-			};
+			return askUser(
+				`The service rejected the data "${failedNode}" sent.`,
+				'Which field is wrong, and what should it contain?',
+			);
 		case 'unknown':
-			return {
-				kind: 'needs_user_input',
-				summary: `"${diagnosis.failedNode}" failed for a reason the compiler cannot classify.`,
-				question: `"${diagnosis.failedNode}" fails with: ${diagnosis.error}. How should it behave instead?`,
-			};
+			return askUser(
+				`"${failedNode}" failed for a reason the compiler cannot classify.`,
+				'How should it behave instead?',
+			);
 	}
 }

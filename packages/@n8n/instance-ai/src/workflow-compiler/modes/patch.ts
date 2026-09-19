@@ -19,16 +19,12 @@ export type WorkflowPatch =
 	| { op: 'remove_edge'; from: string; fromOutput: number; to: string; toInput: number }
 	| { op: 'rename_workflow'; name: string };
 
-function clone<T extends object>(value: T): T {
-	return deepCopy(value);
-}
-
 /** Applies patches in order and returns a new workflow. Throws on a patch that names a missing node. */
 export function applyPatches(
 	workflow: WorkflowJSON,
 	patches: readonly WorkflowPatch[],
 ): WorkflowJSON {
-	const result = clone(workflow);
+	const result = deepCopy(workflow);
 	const find = (name: string) => {
 		const node = result.nodes.find((candidate) => candidate.name === name);
 		if (!node) throw new Error(`Patch targets unknown node "${name}".`);
@@ -39,14 +35,15 @@ export function applyPatches(
 			case 'add_node':
 				if (result.nodes.some((node) => node.name === patch.node.name))
 					throw new Error(`Node "${patch.node.name}" already exists.`);
-				result.nodes.push(clone(patch.node));
+				result.nodes.push(deepCopy(patch.node));
 				break;
 			case 'remove_node': {
 				find(patch.nodeName);
 				const incoming = incomingEdges(result, patch.nodeName);
-				const outgoing = (result.connections[patch.nodeName]?.main ?? [])
-					.flatMap((slot) => slot ?? [])
-					.filter((edge) => edge.node !== patch.nodeName);
+				// Successors, without a self-loop, so predecessors reconnect straight to them.
+				const outgoing = outgoingEdges(result, patch.nodeName).filter(
+					(edge) => edge.to !== patch.nodeName,
+				);
 				result.nodes = result.nodes.filter((node) => node.name !== patch.nodeName);
 				delete result.connections[patch.nodeName];
 				for (const edge of incoming) {
@@ -54,10 +51,9 @@ export function applyPatches(
 					if (!slot) continue;
 					const index = slot.findIndex((c) => c.node === patch.nodeName);
 					if (index >= 0) slot.splice(index, 1);
-					// Reconnect predecessors straight to the removed node's successors.
 					for (const next of outgoing)
-						if (!slot.some((c) => c.node === next.node))
-							slot.push({ node: next.node, type: 'main', index: next.index });
+						if (!slot.some((c) => c.node === next.to))
+							slot.push({ node: next.to, type: 'main', index: next.toInput });
 				}
 				break;
 			}
@@ -70,8 +66,7 @@ export function applyPatches(
 			case 'add_edge': {
 				find(patch.from);
 				find(patch.to);
-				const source = (result.connections[patch.from] ??= {});
-				const main = (source.main ??= []);
+				const main = ((result.connections[patch.from] ??= {}).main ??= []);
 				while (main.length <= patch.fromOutput) main.push([]);
 				const slot = (main[patch.fromOutput] ??= []);
 				if (!slot.some((c) => c.node === patch.to && c.index === patch.toInput))
@@ -80,9 +75,9 @@ export function applyPatches(
 			}
 			case 'remove_edge': {
 				const slot = result.connections[patch.from]?.main?.[patch.fromOutput];
-				if (!slot) break;
-				const index = slot.findIndex((c) => c.node === patch.to && c.index === patch.toInput);
-				if (index >= 0) slot.splice(index, 1);
+				const index =
+					slot?.findIndex((c) => c.node === patch.to && c.index === patch.toInput) ?? -1;
+				if (index >= 0) slot?.splice(index, 1);
 				break;
 			}
 			case 'rename_workflow':
@@ -97,48 +92,38 @@ export function incomingEdges(
 	workflow: WorkflowJSON,
 	nodeName: string,
 ): Array<{ from: string; fromOutput: number; toInput: number }> {
-	const edges: Array<{ from: string; fromOutput: number; toInput: number }> = [];
-	for (const [from, outputs] of Object.entries(workflow.connections)) {
-		(outputs.main ?? []).forEach((slot, fromOutput) => {
-			for (const connection of slot ?? [])
-				if (connection.node === nodeName)
-					edges.push({ from, fromOutput, toInput: connection.index });
-		});
-	}
-	return edges;
+	return Object.entries(workflow.connections).flatMap(([from, outputs]) =>
+		(outputs.main ?? []).flatMap((slot, fromOutput) =>
+			(slot ?? [])
+				.filter((connection) => connection.node === nodeName)
+				.map((connection) => ({ from, fromOutput, toInput: connection.index })),
+		),
+	);
 }
 
 export function outgoingEdges(
 	workflow: WorkflowJSON,
 	nodeName: string,
 ): Array<{ to: string; fromOutput: number; toInput: number }> {
-	const edges: Array<{ to: string; fromOutput: number; toInput: number }> = [];
-	(workflow.connections[nodeName]?.main ?? []).forEach((slot, fromOutput) => {
-		for (const connection of slot ?? [])
-			edges.push({ to: connection.node, fromOutput, toInput: connection.index });
-	});
-	return edges;
+	return (workflow.connections[nodeName]?.main ?? []).flatMap((slot, fromOutput) =>
+		(slot ?? []).map((connection) => ({
+			to: connection.node,
+			fromOutput,
+			toInput: connection.index,
+		})),
+	);
 }
 
 /** Names of nodes whose parameters or wiring a patch set touches. */
 export function affectedNodeNames(patches: readonly WorkflowPatch[]): Set<string> {
 	const names = new Set<string>();
 	for (const patch of patches) {
-		switch (patch.op) {
-			case 'add_node':
-				if (patch.node.name) names.add(patch.node.name);
-				break;
-			case 'remove_node':
-			case 'update_node':
-				names.add(patch.nodeName);
-				break;
-			case 'add_edge':
-			case 'remove_edge':
-				names.add(patch.from);
-				names.add(patch.to);
-				break;
-			default:
-				break;
+		if (patch.op === 'add_node') {
+			if (patch.node.name) names.add(patch.node.name);
+		} else if (patch.op === 'remove_node' || patch.op === 'update_node') names.add(patch.nodeName);
+		else if (patch.op === 'add_edge' || patch.op === 'remove_edge') {
+			names.add(patch.from);
+			names.add(patch.to);
 		}
 	}
 	return names;
