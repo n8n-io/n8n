@@ -17,14 +17,23 @@ on:
         required: false
         default: false
         type: boolean
-      affectedPackages:
+      runBackendTests:
         description: |
-          Space-separated list of workspace packages affected by the PR, as
-          computed by `janitor affected-packages` in install-and-build. Empty
-          string means "no scoping data, run everything".
+          Run the backend unit and integration jobs. The PR workflow turns
+          this off when no backend package is in the affected set.
         required: false
-        default: ''
-        type: string
+        default: true
+        type: boolean
+      runNodesTests:
+        description: Run the nodes-base job. Off when nodes-base is not affected.
+        required: false
+        default: true
+        type: boolean
+      runFrontendTests:
+        description: Run the frontend shard jobs. Off when no frontend or module package is affected.
+        required: false
+        default: true
+        type: boolean
       changedFiles:
         description: |
           Newline-separated list of CHANGED_FILES from ci-filter. Passed to
@@ -39,10 +48,10 @@ env:
 jobs:
   unit-test-backend:
     name: Backend Unit Tests
+    if: inputs.runBackendTests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
-      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -151,10 +160,10 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
+    if: inputs.runBackendTests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
-      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -255,10 +264,10 @@ jobs:
 
   unit-test-nodes:
     name: Nodes Unit Tests
+    if: inputs.runNodesTests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
-      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -300,6 +309,7 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
+    if: inputs.runFrontendTests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
@@ -307,7 +317,6 @@ jobs:
         shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
-      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0

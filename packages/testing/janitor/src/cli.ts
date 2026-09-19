@@ -681,6 +681,7 @@ function runAffectedPackages(options: CliOptions): void {
 	const result = affectedPackages({
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles: readChangedFiles(options),
+		paths: options.paths,
 	});
 	console.log(result.join('\n'));
 }
