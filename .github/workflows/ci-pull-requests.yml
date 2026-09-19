@@ -210,6 +210,14 @@ jobs:
               packages/testing/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
+            credential-scopes:
+              packages/nodes-base/credentials/**
+              packages/@n8n/nodes-langchain/credentials/**
+              packages/nodes-base/scripts/check-released-scopes.mjs
+              packages/nodes-base/scripts/credential-scopes.mjs
+              # Self-covers the gate: a change to it runs the check whenever
+              # anything else in the PR produced a build for it to read.
+              .github/workflows/ci-pull-requests.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -220,6 +228,18 @@ jobs:
       - name: Report build critical path
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      # Runs here rather than in its own job because the check reads the
+      # credential metadata this build just emitted, so a separate job would
+      # have to check out and build a second time to produce the same files.
+      # Needs `ci` as well: without it there is no build to read.
+      - name: Check for removed OAuth scopes
+        if: >-
+          fromJSON(steps.ci-filter.outputs.results).ci &&
+          fromJSON(steps.ci-filter.outputs.results)['credential-scopes']
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm --filter n8n-nodes-base check-released-scopes
 
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
