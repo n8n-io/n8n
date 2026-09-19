@@ -32,11 +32,11 @@ jobs:
         # when updating.
         include:
           - node_version: '22'
-            dhi_ref: dhi.io/node:22.23.2-alpine3.24-dev@sha256:155a95d59244a71e9479e191ff718f03a7197d6829612e0707608be92988cb87
-          - node_version: '24.19.0'
-            dhi_ref: dhi.io/node:24.19.0-alpine3.24-dev@sha256:dc2989ad23938772abaf549ed7bde5d61d70377005229bb55bef94bff40f8bbd
-          - node_version: '26.7.0'
-            dhi_ref: dhi.io/node:26.7.0-alpine3.24-dev@sha256:4b494d89fb26c950ce97865acf45b480dc7a6868fdc2b81c2d66599702eeac3f
+            dhi_ref: dhi.io/node:22.23.2-alpine3.24-dev@sha256:884fa94e9c3228138eeaa7376f40972647ac6eaf8c960e407b1ea374f9479b0d
+          - node_version: '24.21.0'
+            dhi_ref: dhi.io/node:24.21.0-alpine3.24-dev@sha256:75522baf6e79d60d84e80e63504b2af381854b9992243dbf052b44c8cec80bfc
+          - node_version: '26.9.0'
+            dhi_ref: dhi.io/node:26.9.0-alpine3.24-dev@sha256:cea4c075ea20a9db7794cee6cea8e7f33f876e94cfe892503faa2b3f910b06f1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
