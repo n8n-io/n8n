@@ -302,10 +302,31 @@ export abstract class AbstractServer {
 		// Block bots from scanning the application.
 		// Routes with { allowBots: true } are registered in botAllowedPaths
 		// by the ControllerRegistry and exempted from this filter.
+		// Webhook/form/mcp paths are explicitly exempted so that legitimate
+		// service-to-service callers (e.g. Google Chat, Slack) are never silently
+		// blocked even if their User-Agent matches the bot heuristic.
 		const checkIfBot = isbot.spawn(['bot']);
+		// Trailing slash is intentional: all webhook routes use `/*path`, so a valid
+		// webhook URL always has a segment after the base (e.g. /webhook/<id>). A bare
+		// /webhook with no trailing path never maps to a webhook handler.
+		const webhookPrefixes = [
+			`/${this.endpointWebhook}/`,
+			`/${this.endpointWebhookTest}/`,
+			`/${this.endpointWebhookWaiting}/`,
+			`/${this.endpointForm}/`,
+			`/${this.endpointFormTest}/`,
+			`/${this.endpointFormWaiting}/`,
+			`/${this.endpointMcp}/`,
+			`/${this.endpointMcpTest}/`,
+		];
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
 			if (userAgent && checkIfBot(userAgent)) {
+				// Exempt webhook/form/mcp paths — these accept arbitrary external callers.
+				if (webhookPrefixes.some((prefix) => req.path.startsWith(prefix))) {
+					next();
+					return;
+				}
 				// Check if this path matches a route with { allowBots: true }
 				const allowed = AbstractServer.botAllowedPaths.some((pattern) =>
 					new RegExp(`^${pattern}$`).test(req.path),
