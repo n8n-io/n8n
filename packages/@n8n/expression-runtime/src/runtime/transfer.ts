@@ -25,6 +25,12 @@ export const TRANSFER_OPAQUE_KEY = '__n8nOpaque';
 /** Holds the payload of an escaped wrapper. */
 export const TRANSFER_VALUE_KEY = '__value';
 
+/** Marks a member the engine refuses, so reading it raises instead of returning a copy. */
+export const TRANSFER_UNUSABLE_KEY = '__n8nUnusableValue';
+
+/** Marks a result whose refused members were replaced by unusable markers. */
+export const TRANSFER_SANITISED_KEY = '__n8nSanitisedItem';
+
 /**
  * Keys that make an object look like our framing.
  *

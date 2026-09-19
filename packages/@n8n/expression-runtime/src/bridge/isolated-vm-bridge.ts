@@ -13,6 +13,12 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import type { TransferProbe } from './transfer-diagnostics';
+import {
+	MAX_DIAGNOSTIC_MS,
+	sanitiseForTransfer,
+	untransferableItemError,
+} from './transfer-diagnostics';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -31,6 +37,46 @@ function getIvm(): IsolatedVm {
 }
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+
+const vmTransferProbe: TransferProbe = (value) => {
+	let copy: ivm.ExternalCopy<unknown>;
+	try {
+		copy = new (getIvm().ExternalCopy)(value);
+	} catch {
+		return false;
+	}
+	copy.release();
+	return true;
+};
+
+/** For `callHost`, whose guest side unwraps a copy. Drops the extra fields when they do not copy. */
+function copySentinel(sentinel: ErrorSentinel): ivm.ExternalCopy<unknown> {
+	try {
+		return new (getIvm().ExternalCopy)(sentinel);
+	} catch {
+		return new (getIvm().ExternalCopy)({
+			__isError: true,
+			name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
+			message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
+			extra: {},
+		} satisfies ErrorSentinel);
+	}
+}
+
+/** For the lazy callbacks, whose guest side reads the value as it stands. */
+function transferableSentinel(sentinel: ErrorSentinel): ErrorSentinel {
+	try {
+		new (getIvm().ExternalCopy)(sentinel).release();
+		return sentinel;
+	} catch {
+		return {
+			__isError: true,
+			name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
+			message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
+			extra: {},
+		};
+	}
+}
 
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
@@ -311,7 +357,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				return getValueAtPath(data, pathArr);
 			} catch (err) {
-				return serializeError(err);
+				return transferableSentinel(serializeError(err));
 			}
 		});
 	}
@@ -331,7 +377,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				return getArrayElement(data, pathArr, index);
 			} catch (err) {
-				return serializeError(err);
+				return transferableSentinel(serializeError(err));
 			}
 		});
 	}
@@ -344,22 +390,42 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * zod parse failures — are caught and returned as sentinels instead of
 	 * crossing the isolate boundary.
 	 *
-	 * Return-value note: the dispatcher returns plain, structured-clone-able
-	 * data. Results cross into the isolate through an ivm.Callback, which
-	 * copies them via the structured-clone algorithm — JSON-shaped values,
-	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
-	 * non-cloneable values.
+	 * Return-value note: the result is copied here, inside the callback body,
+	 * so a value the isolate refuses fails where it can be caught. The guest
+	 * unwraps the copy; a copy that fails becomes an error sentinel naming the
+	 * node and the key path of the refused value.
 	 *
 	 * @param data - Current workflow data
 	 * @private
 	 */
 	private createCallHostRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
+			let result: unknown;
 			try {
-				return dispatchHostCall(rawMsg, data);
+				result = dispatchHostCall(rawMsg, data);
 			} catch (err) {
-				return serializeError(err);
+				return copySentinel(serializeError(err));
 			}
+			try {
+				return new (getIvm().ExternalCopy)(result);
+			} catch {}
+			const sanitised = sanitiseForTransfer(
+				result,
+				vmTransferProbe,
+				rawMsg,
+				data,
+				MAX_DIAGNOSTIC_MS,
+			);
+			if (sanitised !== undefined) {
+				try {
+					return new (getIvm().ExternalCopy)(sanitised);
+				} catch {}
+			}
+			return copySentinel(
+				serializeError(
+					untransferableItemError(result, vmTransferProbe, rawMsg, data, MAX_DIAGNOSTIC_MS),
+				),
+			);
 		});
 	}
 
