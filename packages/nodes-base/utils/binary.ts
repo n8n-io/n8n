@@ -84,14 +84,15 @@ export async function convertJsonToSpreadsheetBinary(
 	return binaryData;
 }
 
+/** Converts the selected input value to binary data with the configured encoding. */
 export async function createBinaryFromJson(
 	this: IExecuteFunctions,
 	data: IDataObject | IDataObject[],
 	options: JsonToBinaryOptions,
 ): Promise<IBinaryData> {
-	let value;
+	let value: unknown;
 	if (options.sourceKey) {
-		value = get(data, options.sourceKey) as IDataObject;
+		value = get(data, options.sourceKey);
 	} else {
 		value = data;
 	}
@@ -103,11 +104,12 @@ export async function createBinaryFromJson(
 	}
 
 	let buffer: Buffer;
+	let mimeType = options.mimeType;
 	if (!options.dataIsBase64) {
 		let valueAsString = value as unknown as string;
 
 		if (typeof value === 'object') {
-			options.mimeType = 'application/json';
+			mimeType = 'application/json';
 			if (options.format) {
 				valueAsString = JSON.stringify(value, null, 2);
 			} else {
@@ -118,15 +120,48 @@ export async function createBinaryFromJson(
 		buffer = iconv.encode(valueAsString, options.encoding || 'utf8', {
 			addBOM: options.addBOM,
 		});
+	} else if (Buffer.isBuffer(value)) {
+		buffer = value;
 	} else {
-		buffer = Buffer.from(value as unknown as string, BINARY_ENCODING);
+		const invalidBase64 = () =>
+			new NodeOperationError(
+				this.getNode(),
+				`The value in "${options.sourceKey}" is not valid Base64 data`,
+				{
+					description: 'Use Convert to Text File to write plain text to a file.',
+					itemIndex: options.itemIndex ?? 0,
+				},
+			);
+
+		if (typeof value !== 'string') {
+			throw invalidBase64();
+		}
+
+		let encoded = value.trim();
+		if (/^data:/i.test(encoded)) {
+			const dataUri = /^data:([^;,]*)(?:;[^;,]*)*;base64,([\s\S]*)$/i.exec(encoded);
+			if (!dataUri) {
+				throw invalidBase64();
+			}
+			mimeType ||= dataUri[1] || undefined;
+			encoded = dataUri[2];
+		}
+
+		encoded = encoded.replace(/\s/g, '');
+		const match = /^([A-Za-z0-9+/_-]*)(={0,2})$/.exec(encoded);
+		// Preserve unpadded and URL-safe input, but reject incomplete groups and misplaced padding.
+		if (
+			!match ||
+			match[1].length % 4 === 1 ||
+			(match[2].length > 0 && (encoded.length % 4 !== 0 || match[1].length % 4 === 0))
+		) {
+			throw invalidBase64();
+		}
+
+		buffer = Buffer.from(encoded, BINARY_ENCODING);
 	}
 
-	const binaryData = await this.helpers.prepareBinaryData(
-		buffer,
-		options.fileName,
-		options.mimeType,
-	);
+	const binaryData = await this.helpers.prepareBinaryData(buffer, options.fileName, mimeType);
 
 	if (!binaryData.fileName) {
 		const fileExtension = binaryData.fileExtension ? `.${binaryData.fileExtension}` : '';
