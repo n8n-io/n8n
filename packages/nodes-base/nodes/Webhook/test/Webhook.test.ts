@@ -424,5 +424,184 @@ describe('Test Webhook Node', () => {
 			expect(res.writeHead).toHaveBeenCalledWith(403);
 			expect(context.evaluateExpression).not.toHaveBeenCalled();
 		});
+
+		it('is ignored on typeVersion >= 2.2 (deprecated in favor of conditions)', async () => {
+			setup({ onlyRunIf: '={{ false }}' });
+			context.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.2,
+				name: 'Webhook',
+				parameters: { options: { onlyRunIf: '={{ false }}' } },
+			} as any);
+
+			const result = await node.webhook(context);
+
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+			expect(result.workflowData).toBeDefined();
+		});
+	});
+
+	describe('trigger conditions (v2.2)', () => {
+		const node = new Webhook();
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		let req: ReturnType<typeof mock<Request>>;
+		let res: ReturnType<typeof mock<Response>>;
+
+		type ConditionRow = Record<string, unknown>;
+
+		const setup = (
+			conditions: ConditionRow[] | undefined,
+			{ typeVersion = 2.2 }: { typeVersion?: number } = {},
+		) => {
+			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+			req = mock<Request>();
+			res = mock<Response>();
+
+			context.getRequestObject.mockReturnValue(req);
+			context.getResponseObject.mockReturnValue(res);
+			context.getChildNodes.mockReturnValue([]);
+			context.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion,
+				name: 'Webhook',
+				parameters: {
+					options: conditions ? { triggerConditions: { conditions } } : {},
+				},
+			} as any);
+			context.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return {};
+				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'httpMethod') return 'POST';
+				return undefined;
+			});
+
+			req.headers = { 'content-type': 'application/json', 'x-source': 'CRM' };
+			req.params = {};
+			req.query = { limit: '25' };
+			req.body = { campaign: { id: 'user-research-invite' }, count: 5 };
+			Object.defineProperty(req, 'ips', { value: [], configurable: true });
+			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+		};
+
+		afterEach(() => vi.clearAllMocks());
+
+		it('runs the workflow when a body condition matches a nested dot path', async () => {
+			setup([
+				{
+					source: 'body',
+					property: 'campaign.id',
+					operator: 'equals',
+					value: 'user-research-invite',
+				},
+			]);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('skips execution without evaluating any expression when a condition does not match', async () => {
+			setup([{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'other' }]);
+
+			const result = await node.webhook(context);
+
+			expect(result).toEqual({});
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('matches headers case-insensitively on the property path', async () => {
+			setup([{ source: 'headers', property: 'X-Source', operator: 'equals', value: 'CRM' }]);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('coerces query-string values for numeric operators', async () => {
+			setup([{ source: 'query', property: 'limit', operator: 'gt', value: '10' }]);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('supports exists and notExists on missing properties', async () => {
+			setup([{ source: 'body', property: 'campaign.id', operator: 'exists' }]);
+			expect((await node.webhook(context)).workflowData).toBeDefined();
+
+			setup([{ source: 'body', property: 'campaign.missing', operator: 'exists' }]);
+			expect(await node.webhook(context)).toEqual({});
+
+			setup([{ source: 'body', property: 'campaign.missing', operator: 'notExists' }]);
+			expect((await node.webhook(context)).workflowData).toBeDefined();
+		});
+
+		it('requires every condition to match', async () => {
+			setup([
+				{ source: 'body', property: 'count', operator: 'gt', value: '1' },
+				{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'other' },
+			]);
+
+			expect(await node.webhook(context)).toEqual({});
+		});
+
+		it('always runs when the collection is missing or empty', async () => {
+			setup(undefined);
+			expect((await node.webhook(context)).workflowData).toBeDefined();
+
+			setup([]);
+			expect((await node.webhook(context)).workflowData).toBeDefined();
+		});
+
+		it('fails open with a warning when a condition contains an expression', async () => {
+			setup([{ source: 'body', property: '={{ $json.foo }}', operator: 'equals', value: 'x' }]);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Trigger Conditions'),
+				expect.objectContaining({ nodeName: 'Webhook' }),
+			);
+		});
+
+		it('fails open with a warning on a malformed condition row', async () => {
+			setup([{ source: 'body', operator: 'equals', value: 'x' }]);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.logger.warn).toHaveBeenCalled();
+		});
+
+		it('fails open with a warning when a value cannot be converted', async () => {
+			setup([{ source: 'body', property: 'campaign.id', operator: 'gt', value: '10' }]);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Trigger Conditions'),
+				expect.objectContaining({ nodeName: 'Webhook' }),
+			);
+		});
+
+		it('treats prototype-polluting path segments as missing properties', async () => {
+			setup([{ source: 'body', property: '__proto__.polluted', operator: 'exists' }]);
+
+			expect(await node.webhook(context)).toEqual({});
+		});
+
+		it('ignores the conditions collection on typeVersion <= 2.1', async () => {
+			setup([{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'other' }], {
+				typeVersion: 2.1,
+			});
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+		});
 	});
 });
