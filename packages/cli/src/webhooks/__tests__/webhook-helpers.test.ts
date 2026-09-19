@@ -125,6 +125,23 @@ describe('autoDetectResponseMode', () => {
 		expect(result).toBe('responseNode');
 	});
 
+	test('should return responseNode when a matching child follows a non-matching child', () => {
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			name: 'startNode',
+			parameters: {},
+		});
+		workflow.getChildNodes.mockReturnValue(['disabledChild', 'enabledChild']);
+		workflow.nodes.disabledChild = mock<INode>({ type: WAIT_NODE_TYPE, disabled: true });
+		workflow.nodes.enabledChild = mock<INode>({
+			type: WAIT_NODE_TYPE,
+			parameters: { resume: 'form' },
+			disabled: false,
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('responseNode');
+	});
+
 	test('should return formPage when start node is FORM_NODE_TYPE and method is POST and there is a following FORM_NODE_TYPE node', () => {
 		const workflowStartNode = mock<INode>({
 			type: FORM_NODE_TYPE,
