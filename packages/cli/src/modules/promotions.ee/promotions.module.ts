@@ -11,7 +11,9 @@ import { Container } from '@n8n/di';
 })
 export class PromotionsModule implements ModuleInterface {
 	async init() {
+		await import('./promotions.controller.js');
 		await import('./promotion-changes.controller.js');
+
 		const { PromotionsService } = await import('./promotions.service.js');
 		Container.get(PromotionsService);
 	}

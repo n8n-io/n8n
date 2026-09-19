@@ -4,11 +4,12 @@ import type {
 	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteRequest,
 	PromotionCheckoutPublicDto,
 	PromotionDirection,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRepository, type User } from '@n8n/db';
+import { ProjectRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +18,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
@@ -36,11 +38,16 @@ import {
 	type ImportRequest,
 	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
-import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
+import {
+	GIT_DEFAULT_COMMIT_EMAIL,
+	GIT_DEFAULT_COMMIT_NAME,
+	PACKAGE_SUBFOLDER,
+	PROMOTE_SELECTION_COMMIT_MESSAGE,
+} from './constants';
+import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -94,6 +101,8 @@ export class PromotionsService {
 		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly connectionRepository: PromotionConnectionRepository,
 		private readonly projectService: ProjectService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
@@ -361,6 +370,77 @@ export class PromotionsService {
 				this.logger.warn('Failed to remove the selection staging folder', { stagingFolder, error });
 			});
 		}
+	}
+
+	/**
+	 * Promotes a client-chosen set of a project's workflows. The client sends ids
+	 * only; the server reads each one now, so the push carries the current state.
+	 * Live workflows export, archived or missing ones leave the branch, and an id
+	 * from another project rejects the whole request before any write.
+	 */
+	async promoteProjectSelection(
+		projectId: string,
+		actor: User,
+		request: PromoteRequest & { canExportVariableValues: boolean },
+	): Promise<PromotePackageResultDto> {
+		if (new Set(request.workflowIds).size !== request.workflowIds.length) {
+			throw new BadRequestError('workflowIds contains duplicates');
+		}
+
+		await this.assertTeamProject(projectId);
+
+		const instance = await this.connectionRepository.findInstanceConnection();
+		if (!instance) {
+			throw new NotFoundError('No promotion connection is configured for this instance');
+		}
+
+		const selection = await this.classifySelection(projectId, request.workflowIds);
+
+		return await this.promoteSelection(
+			instance.id,
+			actor,
+			{
+				commitMessage: PROMOTE_SELECTION_COMMIT_MESSAGE,
+				canExportVariableValues: request.canExportVariableValues,
+			},
+			selection,
+		);
+	}
+
+	/**
+	 * Splits selected ids into live pushes and deletions, using the current instance
+	 * state. An id from another project rejects the whole request.
+	 */
+	private async classifySelection(
+		projectId: string,
+		workflowIds: string[],
+	): Promise<SelectivePushOptions> {
+		const rows = await this.workflowRepository.findOwnerProjectAndArchivedState(workflowIds);
+		const byId = new Map(rows.map((row) => [row.id, row]));
+
+		const live: string[] = [];
+		const deleted: string[] = [];
+		for (const id of workflowIds) {
+			const row = byId.get(id);
+			// Gone since the list was fetched: promote it as a deletion. Last write wins.
+			if (!row) {
+				deleted.push(id);
+				continue;
+			}
+			if (row.projectId !== projectId) {
+				throw new BadRequestError(
+					`Workflow ${id} does not belong to project ${projectId} and cannot be promoted from it`,
+				);
+			}
+			// An archived selection leaves the branch, the same way a deletion does.
+			if (row.isArchived) {
+				deleted.push(id);
+			} else {
+				live.push(id);
+			}
+		}
+
+		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */

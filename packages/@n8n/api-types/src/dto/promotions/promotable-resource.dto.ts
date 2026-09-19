@@ -48,7 +48,9 @@ export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {
 
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),
-	createBranch: z.boolean(),
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;
+
+/** Request body for the internal, project-scoped selective promote endpoint. */
+export class PromoteSelectionRequestDto extends Z.class(promoteRequestSchema.shape) {}

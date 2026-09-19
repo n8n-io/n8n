@@ -27,6 +27,7 @@ type EndpointGroup =
 	| 'oidc'
 	| 'otel'
 	| 'sourceControl'
+	| 'promotions'
 	| 'eventBus'
 	| 'license'
 	| 'variables'
