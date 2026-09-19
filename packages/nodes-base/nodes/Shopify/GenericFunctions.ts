@@ -82,6 +82,13 @@ export async function shopifyApiRequest(
 	});
 }
 
+// The `Link` header can hold both a previous and a next link, so match on
+// `rel="next"` instead of taking the first entry.
+// https://shopify.dev/docs/api/usage/pagination-rest
+function getNextPageUri(linkHeader?: string): string | undefined {
+	return /<([^>]+)>;\s*rel="next"/.exec(linkHeader ?? '')?.[1];
+}
+
 export async function shopifyApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
@@ -113,11 +120,9 @@ export async function shopifyApiRequestAllItems(
 		responseData = await shopifyApiRequest.call(this, method, resource, body, query, uri, {
 			resolveWithFullResponse: true,
 		});
-		if (responseData.headers.link) {
-			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
-		}
 		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
-	} while (responseData.headers.link?.includes('rel="next"'));
+		uri = getNextPageUri(responseData.headers.link);
+	} while (uri);
 	return returnData;
 }
 
