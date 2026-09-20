@@ -12,7 +12,7 @@ const reviewCriteria = {
 	recovery:
 		'Does the graph recover from partial failure between an external effect and its database update? Inspect error connections, durable state, and retry keys. A successful calendar create followed by a failed database write needs recovery. Answer yes if separate effects do not need coordination.',
 	availability:
-		'Does each calendar booking check actual free/busy for the selected time before creating the event? Inspect operation parameters and connections. Answer yes if there is no booking operation.',
+		'Does each calendar booking or reschedule check conflicts for the full selected interval before writing? Inspect operation parameters and connections. A reschedule must exclude its own stored event, preserve the intended duration, and reject incomplete availability results. Answer yes if there is no calendar scheduling operation.',
 	duplicates:
 		'Do repeated requests avoid repeating completed external effects? Inspect fixed queries, durable event IDs, conditional state updates, and idempotency keys. Answer yes if there are no external writes.',
 	parameters:

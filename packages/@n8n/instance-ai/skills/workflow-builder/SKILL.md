@@ -148,7 +148,8 @@ repairs and repeat the failed scenario after saving.
   schedule triggers for long processes. Persist record ID, stage, correlation
   IDs, due times, and external event IDs.
 - Record completion after the effect succeeds. A pending claim must have an
-  expiry and a recovery path. Use durable idempotency keys for retries. Do not
+  expiry and a recovery path. Reconcile an uncertain external result before
+  releasing the claim or repeating the effect. Use durable idempotency keys for retries. Do not
   claim exactly-once delivery when the external service cannot provide it.
 - For human feedback, associate each response with the record, stage, and
   expected reviewer. Ignore duplicates and stale responses. Require all
@@ -157,9 +158,15 @@ repairs and repeat the failed scenario after saving.
   that starts only after a response cannot detect zero responses.
 - Keep human decisions explicit. Wire approve, reject, reschedule, cancel,
   timeout, and unknown-input routes when the request requires them.
-- Check availability before booking. Keep timezones explicit. Store the event
-  ID for changes and cancellation. Recheck conflicts before committing a slot.
-  Update durable state only after the calendar operation succeeds.
+- Check availability before booking or rescheduling. Keep timezones explicit.
+  Store the event ID for changes and cancellation. Preserve the interview
+  duration when moving it. Exclude that event from its own conflict check.
+  Reject incomplete availability results, including unprocessed pages.
+  Recheck conflicts before committing a slot. Use the provider's version
+  condition when updating an existing event. This does not lock the slot.
+  Update durable state only after the calendar operation succeeds. Define
+  which system owns each field. Do not add a second write for a field that
+  already has one authoritative source. Verify retries after uncertain writes.
 - Scope participant access. A public candidate or record ID does not prove
   identity. Use an authenticated or verified participant context. Keep internal
   feedback and other participants' records out of external responses.
