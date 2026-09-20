@@ -45,14 +45,10 @@ const node = mock<INode>({
 });
 const workflow = mock<IWorkflowMetadata>({ id: 'wf-1', name: 'Reviewed answers' });
 
-const header = (name: string, value: string) => ({ name, value });
-
 /** Node parameters shared by the execute and webhook contexts. */
 const parameters: Record<string, unknown> = {
 	reviewMode: 'sync',
 	promptType: 'auto',
-	url: 'http://localhost:3100/hitl',
-	sendHeaders: false,
 	includeContext: false,
 	includeAgentTrace: true,
 	limitWaitTime: false,
@@ -70,6 +66,7 @@ function executeContext(overrides: Record<string, unknown> = {}) {
 		(name, _index, fallback?: unknown) => (params[name] ?? fallback) as NodeParameterValueType,
 	);
 	ctx.evaluateExpression.mockReturnValue('What is 17 times 23?');
+	ctx.getCredentials.mockResolvedValue({ baseUrl: 'http://localhost:3100/', apiToken: 'secret' });
 	ctx.getNode.mockReturnValue(node);
 	ctx.getWorkflow.mockReturnValue(workflow);
 	ctx.getExecutionId.mockReturnValue('31');
@@ -91,6 +88,7 @@ function webhookContext(body: IDataObject, overrides: Record<string, unknown> = 
 	ctx.getWebhookName.mockReturnValue('default');
 	ctx.getRequestObject.mockReturnValue({ method: 'POST' } as express.Request);
 	ctx.getBodyData.mockReturnValue(body);
+	ctx.getCredentials.mockResolvedValue({ baseUrl: 'http://localhost:3100/', apiToken: 'secret' });
 	// The webhook signature has no item index: (name, fallback)
 	ctx.getNodeParameter.mockImplementation(
 		(name, fallback?: unknown) => (params[name] ?? fallback) as NodeParameterValueType,
@@ -247,19 +245,37 @@ describe('AgentHumanReview', () => {
 			expect(ctx.putExecutionToWait).toHaveBeenCalled();
 		});
 
-		it('should send configured headers', async () => {
-			const ctx = executeContext({
-				sendHeaders: true,
-				headerParameters: {
-					parameters: [header('x-hitl-token', 'secret'), header('__proto__', 'no')],
-				},
-			});
+		it('should derive endpoints from the credential and send its token on every call', async () => {
+			const ctx = executeContext();
 
 			await agentNode.execute.call(ctx);
 
-			expect(ctx.helpers.httpRequest.mock.calls[0][0].headers).toEqual({
-				'x-hitl-token': 'secret',
+			expect(ctx.getCredentials).toHaveBeenCalledWith('hitlReviewApi');
+			const [registration, otlp] = ctx.helpers.httpRequest.mock.calls.map((c) => c[0]);
+			expect(registration.url).toBe('http://localhost:3100/hitl');
+			expect(registration.headers).toEqual({ 'x-hitl-token': 'secret' });
+			expect(otlp.url).toBe('http://localhost:3100/v1/traces');
+			expect(otlp.headers).toMatchObject({ 'x-hitl-token': 'secret' });
+		});
+
+		it('should send no token header when the credential has none', async () => {
+			const ctx = executeContext();
+			ctx.getCredentials.mockResolvedValue({ baseUrl: 'https://review.example.com' });
+
+			await agentNode.execute.call(ctx);
+
+			expect(ctx.helpers.httpRequest.mock.calls[0][0]).toMatchObject({
+				url: 'https://review.example.com/hitl',
+				headers: {},
 			});
+		});
+
+		it('should fail before running when the credential is missing in a review mode', async () => {
+			const ctx = executeContext();
+			ctx.getCredentials.mockRejectedValue(new Error('Node does not have any credentials set'));
+
+			await expect(agentNode.execute.call(ctx)).rejects.toThrow('credentials');
+			expect(ctx.putExecutionToWait).not.toHaveBeenCalled();
 		});
 
 		it('should bound the wait when limitWaitTime is on', async () => {
@@ -284,8 +300,9 @@ describe('AgentHumanReview', () => {
 		});
 
 		it('should make no service calls and emit the draft immediately in "none" mode', async () => {
-			// the URL parameter is hidden in this mode, so it resolves to its fallback
-			const ctx = executeContext({ reviewMode: 'none', url: '' });
+			// no credential is selected in this mode; the preview uses the default base URL
+			const ctx = executeContext({ reviewMode: 'none' });
+			ctx.getCredentials.mockRejectedValue(new Error('Node does not have any credentials set'));
 
 			const result = await agentNode.execute.call(ctx);
 

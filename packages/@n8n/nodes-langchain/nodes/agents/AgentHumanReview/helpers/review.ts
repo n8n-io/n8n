@@ -15,8 +15,6 @@ import type {
 import type { ExportTraceServiceRequest, OtlpIds } from './otlp';
 import { getParam, type AgentContext, type AgentTrace } from './runAgentOnce';
 
-type HeaderParameter = { name: string; value: string };
-
 export type Decision = 'approved' | 'revise' | 'rejected';
 
 /** Message C from the review service, posted to the signed resume URL. */
@@ -49,38 +47,42 @@ export interface ServiceConfig {
 }
 
 /** Reads the service connection parameters, identical for both node contexts. */
-export function getServiceConfig(ctx: AgentContext): ServiceConfig {
+export const HITL_CREDENTIAL = 'hitlReviewApi';
+
+interface HitlCredentials {
+	baseUrl: string;
+	apiToken?: string;
+	allowUnauthorizedCerts?: boolean;
+}
+
+/**
+ * Where and how to talk to the review service. Everything comes from the
+ * `hitlReviewApi` credential; the node only adds timeouts and an optional
+ * external OTLP receiver. `preview` builds the config without a credential
+ * (no-review mode, where none is selected).
+ */
+export async function getServiceConfig(
+	ctx: AgentContext,
+	mode: 'live' | 'preview' = 'live',
+): Promise<ServiceConfig> {
 	const options = getParam<{
 		registrationTimeout?: number;
-		allowUnauthorizedCerts?: boolean;
 		otlpEndpoint?: string;
 		otlpHeaders?: string;
 	}>(ctx, 'options', {});
 
-	// Header names come from the workflow author, so they are untrusted keys
-	const headers: IDataObject = {};
-	if (getParam(ctx, 'sendHeaders', false)) {
-		const { parameters = [] } = getParam<{ parameters?: HeaderParameter[] }>(
-			ctx,
-			'headerParameters',
-			{},
-		);
-		for (const { name, value } of parameters) {
-			if (name && isSafeObjectProperty(name)) {
-				setSafeObjectProperty(headers, name, value);
-			}
-		}
+	let credentials: HitlCredentials | undefined;
+	try {
+		credentials = await ctx.getCredentials<HitlCredentials>(HITL_CREDENTIAL);
+	} catch (error) {
+		if (mode === 'live') throw error;
 	}
+	const baseUrl = (credentials?.baseUrl ?? 'http://localhost:3100').replace(/\/+$/, '');
 
-	const url = getParam(ctx, 'url', '');
-	// Default OTLP receiver: the review service's own `/v1/traces`, next to `/hitl`
-	const defaultOtlp = (() => {
-		try {
-			return new URL('/v1/traces', url).toString();
-		} catch {
-			return '';
-		}
-	})();
+	// The service authenticates every route with this header when a secret is set
+	const headers: IDataObject = {};
+	if (credentials?.apiToken) headers['x-hitl-token'] = credentials.apiToken;
+
 	const otlpHeaders: IDataObject = { ...headers };
 	for (const line of (options.otlpHeaders ?? '').split(/[\n,]/)) {
 		const [name, ...rest] = line.split('=');
@@ -90,11 +92,12 @@ export function getServiceConfig(ctx: AgentContext): ServiceConfig {
 	}
 
 	return {
-		url,
+		url: `${baseUrl}/hitl`,
 		headers,
 		timeout: options.registrationTimeout ?? 10000,
-		skipSslCertificateValidation: options.allowUnauthorizedCerts ?? false,
-		otlpEndpoint: options.otlpEndpoint?.trim() || defaultOtlp,
+		skipSslCertificateValidation: credentials?.allowUnauthorizedCerts ?? false,
+		// Default OTLP receiver: the review service's own `/v1/traces`, next to `/hitl`
+		otlpEndpoint: options.otlpEndpoint?.trim() || `${baseUrl}/v1/traces`,
 		otlpHeaders,
 	};
 }

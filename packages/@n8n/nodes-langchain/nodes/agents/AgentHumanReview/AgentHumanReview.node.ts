@@ -30,6 +30,7 @@ import {
 	fetchRoundsSent,
 	fetchSuggestionsHistory,
 	getServiceConfig,
+	HITL_CREDENTIAL,
 	maskResumeUrl,
 	registerDraft,
 	type DecisionCallbackBody,
@@ -51,8 +52,6 @@ const APPROVED = 0;
 const REJECTED = 1;
 
 type ReviewMode = 'sync' | 'async' | 'none';
-
-const DEFAULT_SERVICE_URL = 'http://localhost:3100/hitl';
 
 /**
  * An AI agent whose answer is held back until a human approves it. The draft is
@@ -86,6 +85,13 @@ export class AgentHumanReview implements INodeType {
 		}}`,
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['Approved', 'Rejected'],
+		credentials: [
+			{
+				name: HITL_CREDENTIAL,
+				required: true,
+				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
+			},
+		],
 		// `restartWebhook` marks these as execution-resumers rather than triggers.
 		webhooks: [
 			{
@@ -152,7 +158,7 @@ export class AgentHumanReview implements INodeType {
 			},
 			{
 				displayName:
-					'<b>Data sent to the review service</b> (POST to the Review Service URL, once per round):<br>' +
+					'<b>Data sent to the review service</b> (POST to <code>&lt;Base URL&gt;/hitl</code> from the selected credential, authenticated with its token, once per round):<br>' +
 					'• <b>Identity</b>: execution ID, workflow ID and name, node ID and name, timestamp<br>' +
 					'• <b>Resume URL</b>: a signed n8n callback address (HMAC, only valid for this execution)<br>' +
 					"• <b>The draft</b>: the agent's answer (<code>data</code>)<br>" +
@@ -230,43 +236,6 @@ export class AgentHumanReview implements INodeType {
 				type: 'notice',
 				default: '',
 				displayOptions: { show: { needsFallback: [true] } },
-			},
-			{
-				displayName: 'Review Service URL',
-				name: 'url',
-				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
-				type: 'string',
-				default: DEFAULT_SERVICE_URL,
-				required: true,
-				placeholder: DEFAULT_SERVICE_URL,
-				description:
-					'Registration endpoint of the review service. Must acknowledge quickly, then call the resume URL back with the decision.',
-			},
-			{
-				displayName: 'Send Headers',
-				name: 'sendHeaders',
-				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Headers',
-				name: 'headerParameters',
-				type: 'fixedCollection',
-				typeOptions: { multipleValues: true },
-				default: {},
-				placeholder: 'Add Header',
-				displayOptions: { show: { sendHeaders: [true], reviewMode: ['sync', 'async'] } },
-				options: [
-					{
-						name: 'parameters',
-						displayName: 'Parameters',
-						values: [
-							{ displayName: 'Name', name: 'name', type: 'string', default: '' },
-							{ displayName: 'Value', name: 'value', type: 'string', default: '' },
-						],
-					},
-				],
 			},
 			{
 				displayName: 'Include Upstream Context',
@@ -401,14 +370,6 @@ export class AgentHumanReview implements INodeType {
 						description:
 							'Time in ms to wait for the registration acknowledgement. Unrelated to how long the reviewer may then take.',
 					},
-					{
-						displayName: 'Ignore SSL Issues',
-						name: 'allowUnauthorizedCerts',
-						displayOptions: { show: { '/reviewMode': ['sync', 'async'] } },
-						type: 'boolean',
-						default: false,
-						description: 'Whether to connect even if SSL certificate validation is not possible',
-					},
 				],
 			},
 		],
@@ -446,12 +407,12 @@ export class AgentHumanReview implements INodeType {
 				output,
 				await traceAttachment(this, 'review-preview.json', {
 					reviewMode: 'none',
-					...previewRecord(this, output, trace),
+					...(await previewRecord(this, output, trace)),
 				}),
 			);
 		}
 
-		const service = getServiceConfig(this);
+		const service = await getServiceConfig(this);
 		const includeTrace = this.getNodeParameter('includeAgentTrace', 0, true) as boolean;
 		const trail = (this.getNodeParameter('includeContext', 0, true) as boolean)
 			? buildTrail(this, this.getNodeParameter('contextDepth', 0, 2) as number)
@@ -522,7 +483,7 @@ export class AgentHumanReview implements INodeType {
 		}
 
 		const body = this.getBodyData() as DecisionCallbackBody;
-		const service = getServiceConfig(this);
+		const service = await getServiceConfig(this);
 		const suggestionsHistory = await fetchSuggestionsHistory(
 			this,
 			service,
@@ -693,21 +654,13 @@ function sentRecord(
  * builders with placeholder ids, since no registration, resume URL or trace
  * export exists without review.
  */
-function previewRecord(
+async function previewRecord(
 	ctx: IExecuteFunctions,
 	output: IDataObject,
 	trace: AgentTrace,
-): IDataObject {
-	const configured = getServiceConfig(ctx);
-	// The URL parameter is hidden in this mode, so it may be unset; show the default target.
-	const service: ServiceConfig = configured.url
-		? configured
-		: {
-				...configured,
-				url: DEFAULT_SERVICE_URL,
-				otlpEndpoint:
-					configured.otlpEndpoint || new URL('/v1/traces', DEFAULT_SERVICE_URL).toString(),
-			};
+): Promise<IDataObject> {
+	// No credential is required in this mode; fall back to the default base URL
+	const service = await getServiceConfig(ctx, 'preview');
 	const options = getParam<{ otlpRecordContent?: boolean }>(ctx, 'options', {});
 	const trail = getParam(ctx, 'includeContext', true)
 		? buildTrail(ctx, getParam(ctx, 'contextDepth', 2))
