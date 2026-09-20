@@ -31,6 +31,54 @@ import {
 	type McpTool,
 } from './types';
 
+import type {
+	TextContent,
+	ImageContent,
+	AudioContent,
+	EmbeddedResource,
+	ResourceLink,
+} from '@modelcontextprotocol/sdk/types.js';
+
+export type McpContentBlock =
+	| TextContent
+	| ImageContent
+	| AudioContent
+	| EmbeddedResource
+	| ResourceLink;
+
+const VALID_CONTENT_TYPES = new Set(['text', 'image', 'audio', 'resource', 'resource_link']);
+
+function isValidContentBlock(item: unknown): item is McpContentBlock {
+	if (typeof item !== 'object' || item === null) return false;
+	const block = item as Record<string, unknown>;
+	if (typeof block.type !== 'string') return false;
+	if (!VALID_CONTENT_TYPES.has(block.type)) return false;
+
+	switch (block.type) {
+		case 'text':
+			return typeof block.text === 'string';
+		case 'image':
+		case 'audio':
+			return typeof block.data === 'string' && typeof block.mimeType === 'string';
+		case 'resource':
+			return typeof block.resource === 'object' && block.resource !== null;
+		case 'resource_link':
+			return typeof block.uri === 'string';
+		default:
+			return false;
+	}
+}
+
+/**
+ * Strict MCP content array detection. Returns false for empty arrays so callers
+ * fall back to default formatting.
+ */
+export function isMcpContentArray(data: unknown): data is McpContentBlock[] {
+	if (!Array.isArray(data)) return false;
+	if (data.length === 0) return false;
+	return data.every(isValidContentBlock);
+}
+
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
 
