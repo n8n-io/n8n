@@ -139,6 +139,43 @@ describe('LLM plan and bounded decisions', () => {
 		]);
 	});
 
+	describe.each(['coverage', 'progress', 'scope'])('parameter edit %s check', (check) => {
+		it.each([
+			{ label: 'negative', value: 0.05, outcome: 'no' },
+			{ label: 'uncertain', value: 0.5, outcome: 'uncertain' },
+			{ label: 'missing', value: undefined, outcome: 'uncertain' },
+		])('keeps a $label answer in LLM review', async ({ value, outcome }) => {
+			const { nodes, decisions } = services();
+			decisions.decide.mockResolvedValue({
+				ok: true,
+				model: 'fixture',
+				answers: Object.fromEntries(
+					['coverage', 'progress', 'scope'].flatMap((key) =>
+						key === check && value === undefined
+							? []
+							: [[key, { type: 'noul' as const, noul: key === check ? (value ?? 0.5) : 0.99 }]],
+					),
+				),
+				problems: [],
+				latencyMs: 10,
+			});
+			const result = await decideBuildPlan(
+				{
+					originalRequest: 'Change the local duration constant to 60.',
+					plan: 'Change the duration constant to 60. Preserve all other behavior.',
+					steps: [],
+				},
+				nodes,
+				decisions,
+			);
+			expect(result).toMatchObject({
+				status: 'needs_reasoning',
+				checks: { [check]: outcome },
+			});
+			expect(nodes.listSearchable).not.toHaveBeenCalled();
+		});
+	});
+
 	it('grounds the full plan in installed operations and returns their parameter definitions', async () => {
 		const { nodes, decisions } = services();
 		const description = await nodes.getDescription('n8n-nodes-base.wait');

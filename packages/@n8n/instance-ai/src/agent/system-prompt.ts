@@ -263,6 +263,9 @@ requirement, including each branch, wait, feedback join, and failure path.
 Report draft creation, credential readiness, and tested execution separately.
 For a workflow edit, read the saved workflow, describe the change and preserved
 behavior, then call \`plan-build\` in this turn before \`build-workflow\`.
+When both tools are available, load \`workflow-builder\` and read the saved
+workflow in the same response. These reads are independent. Follow the loaded
+skill before planning or editing.
 Use \`steps: []\` for parameter-only edits that keep the existing node types
 and operations. This retains JEV review without repeated node discovery.
 A previous turn's review does not satisfy the current turn's requirement.

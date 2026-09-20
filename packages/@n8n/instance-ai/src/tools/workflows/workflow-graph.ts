@@ -3,7 +3,13 @@ import {
 	generateDeterministicNodeId,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { INodeSchema, NodeConnectionTypeSchema, UserError, type INodeTypes } from 'n8n-workflow';
+import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	INodeSchema,
+	NodeConnectionTypeSchema,
+	UserError,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import { parseWorkflowJsonSource } from './workflow-source-compiler';
@@ -87,7 +93,7 @@ export const workflowGraphSchema = z
 					.object({
 						name: z.string().min(1),
 						nodes: z.array(z.string().min(1)).min(1).describe('Member node names.'),
-						description: z.string().optional(),
+						description: z.string().max(GROUP_DESCRIPTION_MAX_LENGTH).optional(),
 					})
 					.strict(),
 			)

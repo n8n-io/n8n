@@ -165,7 +165,12 @@ export async function decideBuildPlan(
 		scope: {
 			type: 'noul',
 			instructions:
-				'Does the plan scope reads, writes, and human responses to the correct record and authorized person? Do not expose internal feedback to external participants. Do not trust a public identifier as proof of identity. Answer yes when these concerns do not apply.',
+				'Does the plan scope reads, writes, and human responses to the correct record and authorized person? Do not expose internal feedback to external participants. Do not trust a public identifier as proof of identity. Answer yes when these concerns do not apply. Assess the proposed workflow runtime behavior, not the Assistant action that edits the workflow.',
+			criteria: {
+				true: 'The proposed workflow behavior has no participant-specific record access or human-response processing, or it verifies identity and limits each such operation to the authorized record. Changing a local constant without changing access or identity also qualifies.',
+				false:
+					'The proposed workflow trusts caller-supplied identifiers as proof of identity, exposes internal feedback to external participants, or accepts human responses without checking the authorized person and record.',
+			},
 		},
 	};
 	for (const [index, step] of input.steps.entries()) {
@@ -197,7 +202,7 @@ export async function decideBuildPlan(
 			async (batch) =>
 				await decisions.decide({
 					name: 'build-plan.operations',
-					schemaVersion: 'build-plan-v2',
+					schemaVersion: 'build-plan-v3',
 					state:
 						'coverage' in batch
 							? input
@@ -327,7 +332,9 @@ export async function decideBuildPlan(
 		decisionStatus: failures.length ? 'incomplete' : 'completed',
 		decisionFailures: failures,
 		guidance: ready
-			? 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Pass nodes, parameters, and named edges in build-workflow graph. Code assembles IDs, positions, groups, and n8n connections. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
+			? input.steps.length === 0
+				? 'Apply the planned parameter edit with build-workflow jsonEdits. Reuse the saved version and node IDs from the workflow read. Use parameterUpdates for a nested value so code preserves the rest of its collection. Keep all unrelated behavior. Use the existing approval and credential setup flow, then verify the changed and alternate paths.'
+				: 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Pass nodes, parameters, and named edges in build-workflow graph. Code assembles IDs, positions, groups, and n8n connections. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
 			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Check capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }

@@ -1,4 +1,10 @@
-import type { INodeProperties, INodeType, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
+import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	type INodeProperties,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -325,6 +331,30 @@ describe('deterministic workflow graph assembly', () => {
 				}),
 			).toThrow(/group/i);
 		}
+	});
+
+	it('preserves a group description at the saved workflow limit', () => {
+		const description = 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH);
+		const result = compileWorkflowGraph('Group description', {
+			...graph,
+			groups: [{ name: 'Process candidate', nodes: ['Check', 'Send', 'Merge'], description }],
+		});
+		expect(result.nodeGroups?.[0].description).toBe(description);
+	});
+
+	it('rejects an oversized group description before assembly', () => {
+		expect(() =>
+			compileWorkflowGraph('Group description', {
+				...graph,
+				groups: [
+					{
+						name: 'Process candidate',
+						nodes: ['Check', 'Send', 'Merge'],
+						description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 1),
+					},
+				],
+			}),
+		).toThrow(/description/);
 	});
 
 	it.each(['id', 'position', 'unknownOption'])(

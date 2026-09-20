@@ -30,6 +30,134 @@ const workflow: WorkflowJSON = {
 };
 
 describe('targeted workflow edits', () => {
+	describe('nested parameter updates', () => {
+		const nested: WorkflowJSON = {
+			...workflow,
+			nodes: [
+				{
+					...workflow.nodes[0],
+					parameters: {
+						assignments: {
+							assignments: [
+								{ id: 'status-row', name: 'status', type: 'string', value: 'ready' },
+								{ id: 'duration-row', name: 'duration', type: 'number', value: 45 },
+							],
+						},
+						options: { includeOther: true },
+					},
+				},
+				workflow.nodes[1],
+			],
+		};
+		const path = ['assignments', 'assignments', 1, 'value'];
+		const update = (parameterUpdates: unknown) =>
+			applyWorkflowJsonEdits(nested, JSON.stringify([{ id: 'wait', parameterUpdates }]));
+
+		it('changes a nested array value and keeps all other content', () => {
+			const before = structuredClone(nested);
+			const result = update([{ path, value: 60 }]);
+			const expected = structuredClone(nested);
+			expected.nodes[0].parameters = {
+				assignments: {
+					assignments: [
+						{ id: 'status-row', name: 'status', type: 'string', value: 'ready' },
+						{ id: 'duration-row', name: 'duration', type: 'number', value: 60 },
+					],
+				},
+				options: { includeOther: true },
+			};
+			expect(result).toEqual(expected);
+			expect(update([{ path, value: 60 }])).toEqual(result);
+			expect(nested).toEqual(before);
+		});
+
+		it('can repair a cached draft by its exact node name', () => {
+			expect(
+				applyWorkflowJsonEdits(
+					nested,
+					JSON.stringify([{ name: 'Reminder', parameterUpdates: [{ path, value: 60 }] }]),
+					{ allowNameLookup: true },
+				),
+			).toEqual(update([{ path, value: 60 }]));
+		});
+
+		it('applies independent values without discarding false or null', () => {
+			const result = update([
+				{ path: ['options', 'includeOther'], value: false },
+				{ path, value: null },
+			]);
+			expect(result.nodes[0].parameters?.options).toEqual({ includeOther: false });
+			expect(result.nodes[0].parameters?.assignments).toMatchObject({
+				assignments: [{ value: 'ready' }, { value: null }],
+			});
+		});
+
+		it.each([
+			[],
+			['missing'],
+			['assignments', 'missing', 1, 'value'],
+			['assignments', 'assignments', 2, 'value'],
+			['assignments', 'assignments', -1, 'value'],
+			['assignments', 'assignments', 0.5, 'value'],
+			['assignments', 'assignments', '1', 'value'],
+			['assignments', 'assignments', 'length'],
+			['options', 'includeOther', 'nested'],
+			['options', '__proto__'],
+			['options', 'constructor'],
+		])('rejects an invalid existing-value path %j', (...invalidPath) => {
+			const before = structuredClone(nested);
+			expect(() => update([{ path: invalidPath, value: 60 }])).toThrow();
+			expect(nested).toEqual(before);
+		});
+
+		it.each([
+			[path, path],
+			[['assignments'], path],
+			[path, ['assignments']],
+		])('rejects repeated or overlapping paths %j', (first, second) => {
+			expect(() =>
+				update([
+					{ path: first, value: {} },
+					{ path: second, value: 60 },
+				]),
+			).toThrow('paths must not repeat or overlap');
+		});
+
+		it.each([
+			{ parameters: {} },
+			{ replaceParameters: false },
+			{ replaceParameters: true, parameters: {} },
+		])('rejects ambiguous parameter modes %j', (conflict) => {
+			expect(() =>
+				applyWorkflowJsonEdits(
+					nested,
+					JSON.stringify([{ id: 'wait', parameterUpdates: [{ path, value: 60 }], ...conflict }]),
+				),
+			).toThrow('Use parameterUpdates alone');
+		});
+
+		it('requires an explicit replacement value', () => {
+			expect(() => update([{ path }])).toThrow('needs a value');
+		});
+
+		it('requires an existing node', () => {
+			expect(() =>
+				applyWorkflowJsonEdits(
+					nested,
+					JSON.stringify([
+						{
+							id: 'new',
+							name: 'New',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							parameterUpdates: [{ path, value: 60 }],
+						},
+					]),
+				),
+			).toThrow('existing node');
+		});
+	});
+
 	it('repairs a draft by exact name and preserves its generated id and unrelated content', () => {
 		const original = structuredClone(workflow);
 		const result = applyWorkflowJsonEdits(

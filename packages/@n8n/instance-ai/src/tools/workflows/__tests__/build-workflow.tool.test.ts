@@ -417,75 +417,111 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects targeted edits against a stale workflow before compilation or persistence', async () => {
-		const { context } = makeContext({ filePath: 'src/workflows/main.workflow.json' });
-		context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
-			json: generatedWorkflow,
-			versionId: 'newer-version',
-			checksum: 'current-checksum',
-			updatedAt: 1,
-		});
-		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			filePath: 'src/workflows/main.workflow.json',
-			workflowId: 'wf-1',
-			jsonEdits: {
-				versionId: 'old-version',
-				changes: JSON.stringify({ nodes: [{ id: 'webhook-1', parameters: { path: 'changed' } }] }),
-			},
-		});
-		expect(result.success).toBe(false);
-		expect(result.remediation?.reason).toBe('workflow_modified_externally');
-		expect(result.remediation?.guidance).toContain('full=true');
-		expect(compileWorkflowSource).not.toHaveBeenCalled();
-		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-	});
-
-	it('keeps targeted edits behind the existing approval card and resumes them after approval', async () => {
-		const { context, files, filePath } = makeContext({
-			filePath: 'src/workflows/main.workflow.json',
-			overrides: {
-				permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
-			},
-		});
-		context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
-			json: generatedWorkflow,
-			versionId: 'v-current',
-			checksum: 'checksum-current',
-			updatedAt: 1,
-		});
-		await recordBuildPlanReview(context);
-		const tool = createBuildWorkflowTool(context, { requirePlan: true });
-		const input = {
-			filePath,
-			workflowId: 'wf-1',
-			jsonEdits: {
-				versionId: 'v-current',
-				changes: JSON.stringify({ nodes: [{ id: 'webhook-1', parameters: { path: 'changed' } }] }),
-			},
-		};
-		const suspend = vi.fn();
-		await executeTool(tool, input, { suspend });
-		expect(suspend).toHaveBeenCalledWith(
-			expect.objectContaining({
+	it.each(['parameters', 'parameterUpdates'] as const)(
+		'rejects stale %s before compilation or persistence',
+		async (mode) => {
+			const { context } = makeContext({ filePath: 'src/workflows/main.workflow.json' });
+			context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+				json: {
+					...generatedWorkflow,
+					nodes: generatedWorkflow.nodes.map((node) => ({
+						...node,
+						parameters: { path: 'original' },
+					})),
+				},
+				versionId: 'newer-version',
+				checksum: 'current-checksum',
+				updatedAt: 1,
+			});
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath: 'src/workflows/main.workflow.json',
 				workflowId: 'wf-1',
-				approvalDetails: { action: 'edit-workflow', summary: undefined },
-			}),
-		);
-		expect(context.workflowService.getWorkflowSnapshot).not.toHaveBeenCalled();
-		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-		const result = await executeTool<BuildToolOutput>(tool, input, {
-			resumeData: { approved: true },
-		});
-		expect(result.success).toBe(true);
-		expect(JSON.parse(files.get(filePath)!)).toMatchObject({
-			nodes: [{ parameters: { path: 'changed' } }],
-		});
-		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-			'wf-1',
-			expect.anything(),
-			{ expectedChecksum: 'checksum-current' },
-		);
-	});
+				jsonEdits: {
+					versionId: 'old-version',
+					changes: JSON.stringify({
+						nodes: [
+							{
+								id: 'webhook-1',
+								...(mode === 'parameters'
+									? { parameters: { path: 'changed' } }
+									: { parameterUpdates: [{ path: ['path'], value: 'changed' }] }),
+							},
+						],
+					}),
+				},
+			});
+			expect(result.success).toBe(false);
+			expect(result.remediation?.reason).toBe('workflow_modified_externally');
+			expect(result.remediation?.guidance).toContain('full=true');
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['parameters', 'parameterUpdates'] as const)(
+		'keeps %s behind the existing approval card and resumes after approval',
+		async (mode) => {
+			const { context, files, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+				json: {
+					...generatedWorkflow,
+					nodes: generatedWorkflow.nodes.map((node) => ({
+						...node,
+						parameters: { path: 'original' },
+					})),
+				},
+				versionId: 'v-current',
+				checksum: 'checksum-current',
+				updatedAt: 1,
+			});
+			await recordBuildPlanReview(context);
+			const tool = createBuildWorkflowTool(context, { requirePlan: true });
+			const input = {
+				filePath,
+				workflowId: 'wf-1',
+				jsonEdits: {
+					versionId: 'v-current',
+					changes: JSON.stringify({
+						nodes: [
+							{
+								id: 'webhook-1',
+								...(mode === 'parameters'
+									? { parameters: { path: 'changed' } }
+									: { parameterUpdates: [{ path: ['path'], value: 'changed' }] }),
+							},
+						],
+					}),
+				},
+			};
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					approvalDetails: { action: 'edit-workflow', summary: undefined },
+				}),
+			);
+			expect(context.workflowService.getWorkflowSnapshot).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(JSON.parse(files.get(filePath)!)).toMatchObject({
+				nodes: [{ parameters: { path: 'changed' } }],
+			});
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-1',
+				expect.anything(),
+				{ expectedChecksum: 'checksum-current' },
+			);
+		},
+	);
 
 	it.each([{ id: 'webhook-1' }, { name: 'Webhook' }])(
 		'repairs an unsaved JSON draft with %j across contexts and releases its cached source after saving',

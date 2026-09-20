@@ -26,8 +26,50 @@ One hundred compilations per reference produced identical JSON. Assembly
 took 3.4 ms at p95 for booking, 1.8 ms for feedback, and 2.8 ms for the feedback
 process. The references were repaired manually. These measurements do not
 prove automatic generation within 30 seconds. The latest full Assistant edit
-measurement remains 35.7 seconds. Other main HR branches and the Agent's
+measurements are listed below. Other main HR branches and the Agent's
 model setup remain incomplete.
+
+## Precise parameter edits
+
+`jsonEdits` and cached `draftEdits` now accept `parameterUpdates`. Each update
+contains a path of object keys and array indices, plus the new value. The path
+starts inside the node's parameters and must already exist. Code changes that
+value and preserves the other rows, row IDs, nodes, credentials, connections,
+and groups. Repeated or overlapping paths are rejected. Parameter updates
+cannot be combined with full parameter replacement on the same node.
+
+The saved version and checksum checks still apply. The existing approval card
+still gates the write. Normal build validation and credential setup still run.
+Graph input also rejects a group description above the shared 145-character
+limit before assembly, instead of failing later at the save endpoint.
+
+Thirty-five new regression cases cover these behaviors and the plan checks.
+Negative, uncertain, and missing JEV answers still require LLM reasoning for
+parameter-only edits. All 227 affected tests passed. The package build, lint,
+and type checks passed.
+
+The plan's scope check now distinguishes workflow runtime access from the
+Assistant's authoring action. In three live comparisons, a local constant
+edit passed while plans with unverified identity, missing reminders, or an
+incorrect effect order still required reasoning. These examples do not
+establish general review accuracy. Decision thresholds were not reduced.
+
+A local edit to the 65-node HR graph produced identical JSON in 1,000 runs.
+The input stayed unchanged. Applying the edit took 0.28 ms at p95, excluding
+the model, review, build validation, and persistence.
+
+The first live edit with scope guidance and combined read calls took 33.5
+seconds. A subsequent nested edit reduced the generated edit payload from
+428 to 129 characters and took 30.2 seconds. Three further fresh turns took
+33.3, 34.6, and 32.2 seconds. Each changed one duration, saved on its first
+attempt, verified both branches, and completed its final reply. Readback
+confirmed that only the requested parameter changed. The draft stayed
+unpublished. Four separate runtime checks passed for the final version.
+They covered both boolean branches and rejected string and numeric inputs.
+
+The 30-second target is not met consistently. Model generation between tools
+and separate verification calls still dominate these full-turn measurements.
+The measurements do not cover automatic generation of the full HR process.
 
 ## Existing compiler regressions
 

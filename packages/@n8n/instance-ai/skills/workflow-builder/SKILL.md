@@ -154,7 +154,14 @@ Pass a `.workflow.json`
 filePath, the workflow ID, and `jsonEdits: { versionId, changes }`. `changes`
 is JSON text with only changed `nodes`, source `connections`, or `nodeGroups`.
 Node fields merge by ID. Parameter keys merge at the top level. Nested values
-replace. When changing an operation or mode, set `replaceParameters: true`
+replace. For a nested value, use `parameterUpdates` on that node instead of
+resending its collection. For example:
+`{"nodes":[{"id":"saved-node-id","parameterUpdates":[{"path":["assignments","assignments",2,"value"],"value":60}]}]}`.
+The path starts inside `parameters`. Use the existing keys and numeric array
+indices from the workflow read. Each path must already exist. Code keeps the
+other values and row IDs. Do not combine `parameterUpdates` with `parameters`
+or `replaceParameters` on the same node.
+When changing an operation or mode, set `replaceParameters: true`
 on that node edit and supply its complete new parameters. This removes fields
 that belong only to the old mode. Connections replace only their named source
 entries. A supplied group
@@ -271,6 +278,9 @@ stops before the required write has not completed the requested operation.
 Use `workflows(action="setup")` for unresolved requirements. Keep approvals,
 questions, and credentials in the existing UI. Finish with the saved workflow
 name and the remaining setup or validation needs.
+For a small parameter edit, use one to three sentences. State the changed
+value, the verification result and its limits, and whether the draft is
+published. Do not repeat the unchanged graph.
 
 ## Additional references
 
