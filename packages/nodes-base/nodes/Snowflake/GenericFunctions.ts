@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
@@ -213,12 +214,7 @@ export async function prepareQueryResults(
 	return returnData;
 }
 
-/**
- * Build the item that "Continue (using error output)" and "Continue" send on,
- * so a failed statement reports its cause instead of stopping the workflow.
- */
+/** Build an error item with the source input item. */
 export function toErrorItem(error: unknown, itemIndex: number): INodeExecutionData {
-	const message = error instanceof Error ? error.message : String(error);
-
-	return { json: { error: message }, pairedItem: { item: itemIndex } };
+	return { json: { error: getErrorMessage(error) }, pairedItem: { item: itemIndex } };
 }
