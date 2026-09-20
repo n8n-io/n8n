@@ -7,6 +7,40 @@ This replaces the earlier one-second target. Measure planning, JEV decisions,
 parameter generation, save, required verification, and the final reply.
 Do not treat graph assembly time as total task time.
 
+## Batched branch verification
+
+The verifier accepts up to ten named scenarios in one call. Each scenario
+uses the existing fixture checks, credential checks, attempt budget, and
+verification records. Runs are sequential. A failed, blocked, waiting, or
+running result stops the batch. Cancellation and a changed workflow version
+also stop the remaining cases. Completed results remain available.
+
+Each result retains its simulation, coverage, repair target, and publication
+limits. The batch does not create a combined verification claim. A passing
+batch does not prove paths that the supplied inputs did not exercise.
+
+Three fresh Assistant edits with the same prompt structure took 27.9, 25.7,
+and 25.7 seconds. The earlier three separate-call edits took 33.3, 34.6, and
+32.2 seconds. The new turns included planning, JEV review, saving, both branch
+executions, and the final reply. Each used one verification call with two
+scenarios. These are three observations, not a latency guarantee.
+
+Readback confirmed that each edit changed only the requested duration. Node
+IDs, connections, groups, and the other branch remained unchanged. The draft
+stayed unpublished. The editor displayed the final value of 210 minutes.
+Four separate runtime checks passed. They covered both boolean branches and
+rejected string and numeric confirmation inputs.
+
+The test account permitted writes in advance. Human approval time was not
+measured. The workflow had four nodes and no external effects. These results
+do not prove full HR generation or candidate Agent conversations within
+30 seconds. The existing approval and credential flows are unchanged.
+
+Twenty-five new regression cases cover batch input validation, sequential
+execution, fixtures, failed and interrupted runs, version changes, evidence
+limits, and the persisted attempt budget. All 229 affected tests passed.
+The package build, lint, and type checks passed.
+
 ## HR feedback integration
 
 The [feedback reference](examples/FEEDBACK.md) now connects booking, verified
@@ -67,8 +101,9 @@ confirmed that only the requested parameter changed. The draft stayed
 unpublished. Four separate runtime checks passed for the final version.
 They covered both boolean branches and rejected string and numeric inputs.
 
-The 30-second target is not met consistently. Model generation between tools
-and separate verification calls still dominate these full-turn measurements.
+These earlier edits did not meet the 30-second target consistently. Model
+generation between tools and separate verification calls dominated those turns.
+The batched verification results above replace these latency measurements.
 The measurements do not cover automatic generation of the full HR process.
 
 ## Existing compiler regressions

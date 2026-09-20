@@ -269,6 +269,14 @@ success path and material alternate paths with `verify-built-workflow` or
 for unavailable integrations. Label fixture evidence and live evidence
 separately. Never send real outreach merely to test a draft.
 
+Use one `verify-built-workflow` call with named `scenarios` when the test inputs
+are known. For example, test both IF outputs with
+`scenarios: [{name: "confirmed", inputData: {confirmed: true}}, {name: "unconfirmed", inputData: {confirmed: false}}]`.
+Set each scenario's `triggerNodeName` when the workflow has multiple triggers.
+Keep `fixTargetNodeNames` at the top level. Put fixture overrides inside each
+scenario. The verifier runs cases in order and stops on a failure or blocker.
+Read every result. Each result retains its simulation and coverage limits.
+
 Test multiple records, empty results, duplicate events, delayed feedback,
 declined decisions, failed effects, and retries when those apply. A structural
 validation result does not prove runtime behavior.
