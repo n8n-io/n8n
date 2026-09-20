@@ -3,6 +3,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	validateWorkflow,
+	validateWorkflowCodeSyntax,
 	validateWorkflowExpressionSyntax,
 	workflow as workflowBuilder,
 	type WorkflowJSON,
@@ -97,6 +98,7 @@ async function validateCompiledWorkflow(
 	const warnings = [...compilerWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
+	collectValidationIssues(await validateWorkflowCodeSyntax(json), warnings);
 	if (context.nodeTypesProvider) {
 		const expressionErrors = await validateWorkflowExpressionSyntax(
 			json,

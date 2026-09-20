@@ -81,6 +81,40 @@ describe('compileWorkflowSource', () => {
 		expect(runInSandbox).not.toHaveBeenCalled();
 	});
 
+	it('reports invalid generated JavaScript before saving a JSON workflow', async () => {
+		const source = JSON.stringify({
+			name: 'Draft response',
+			nodes: [
+				{
+					id: 'draft',
+					name: 'Draft',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { jsCode: 'return [{ json: { subject: "Demo" } }];}' },
+				},
+			],
+			connections: {},
+		});
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/draft.workflow.json',
+			source,
+		);
+		expect(result).toMatchObject({
+			success: true,
+			warnings: [
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					nodeName: 'Draft',
+					severity: 'error',
+					message: expect.stringContaining('invalid JavaScript syntax'),
+				}),
+			],
+		});
+		expect(runInSandbox).not.toHaveBeenCalled();
+	});
+
 	it('parses WorkflowJSON sources in process without sandbox execution', async () => {
 		const workflow = {
 			name: 'JSON workflow',

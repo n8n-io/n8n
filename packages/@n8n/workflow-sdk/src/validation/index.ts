@@ -45,3 +45,4 @@ export {
 
 export { resolveMainInputCount } from './node-port-resolvers/resolve-main-input-count';
 export { resolveMainOutputCount } from './node-port-resolvers/resolve-main-output-count';
+export { validateWorkflowCodeSyntax } from './validate-code-syntax';

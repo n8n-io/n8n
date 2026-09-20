@@ -132,3 +132,12 @@ errors and remove HR-specific wording from the shared workflow guidance.
 The repair regression preserves unrelated nodes and connections when an
 incorrect plan step selected the wrong node type. This is a regression result,
 not a passing repeat of the unseen sales holdout.
+
+The JSON compiler now parses active JavaScript Code nodes before save. It does
+not execute their code. The check detected both saved outreach syntax errors
+in 8.7 ms on first use and 0.3–0.7 ms on four warm runs. This result covers
+syntax, not business behavior or external integration correctness.
+
+The full Turbo build also found an expression-parser import that worked in
+Node.js but failed under the editor's source alias. The parser now uses the
+public `@n8n/tournament` export. After this fix, all 72 build tasks passed.

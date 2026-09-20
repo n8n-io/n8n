@@ -159,6 +159,7 @@ export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
 // Validation
 export { validateWorkflowExpressionSyntax } from './validation/validate-expression-syntax';
+export { validateWorkflowCodeSyntax } from './validation/validate-code-syntax';
 export {
 	validateWorkflow,
 	ValidationError,
