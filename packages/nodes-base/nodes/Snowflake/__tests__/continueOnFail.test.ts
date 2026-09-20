@@ -16,8 +16,6 @@ const { mockExecute, mockDestroy } = setupSnowflakeMocks();
 
 const queryError = new Error('SQL compilation error: Object THIS does not exist');
 
-type CompleteCallback = (error: Error | null, stmt: undefined, rows: unknown[] | undefined) => void;
-
 /** An IExecuteFunctions whose data helpers behave like the real ones. */
 function mockExecuteFunctions(items: INodeExecutionData[]) {
 	const executeFns = mockDeep<IExecuteFunctions>();
@@ -42,11 +40,10 @@ function mockExecuteFunctions(items: INodeExecutionData[]) {
 
 describe('Snowflake, on error "Continue"', () => {
 	it('sends a failed query on as an error item instead of stopping the workflow', async () => {
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string } & { complete: CompleteCallback }) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined),
 		);
 
 		const executeFns = mockExecuteFunctions([{ json: {} }]);
@@ -65,11 +62,10 @@ describe('Snowflake, on error "Continue"', () => {
 	});
 
 	it('still throws when the node does not continue on fail', async () => {
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string } & { complete: CompleteCallback }) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined),
 		);
 
 		const executeFns = mockExecuteFunctions([{ json: {} }]);
@@ -85,11 +81,10 @@ describe('Snowflake, on error "Continue"', () => {
 	});
 
 	it('marks every input item when one insert statement fails', async () => {
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string; complete: CompleteCallback }) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined),
 		);
 
 		const executeFns = mockExecuteFunctions([
@@ -118,11 +113,10 @@ describe('Snowflake, on error "Continue"', () => {
 	});
 
 	it('throws when one insert statement fails and the node must stop', async () => {
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string; complete: CompleteCallback }) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined),
 		);
 
 		const executeFns = mockExecuteFunctions([{ json: { id: 1, name: 'first' } }]);
@@ -141,15 +135,13 @@ describe('Snowflake, on error "Continue"', () => {
 
 	it('keeps the rows that were updated and marks only the row that failed', async () => {
 		let updateStatements = 0;
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string } & { complete: CompleteCallback }) => {
-				if (sqlText.startsWith('ALTER SESSION')) return complete(null, undefined, []);
-				updateStatements += 1;
-				return updateStatements === 1
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined);
-			},
-		);
+		mockExecute.mockImplementation(({ sqlText, complete }) => {
+			if (sqlText.startsWith('ALTER SESSION')) return complete(null, undefined, []);
+			updateStatements += 1;
+			return updateStatements === 1
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined);
+		});
 
 		const executeFns = mockExecuteFunctions([
 			{ json: { id: 1, name: 'first' } },
@@ -176,11 +168,10 @@ describe('Snowflake, on error "Continue"', () => {
 	});
 
 	it('stops after a failed update when the node must stop', async () => {
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string; complete: CompleteCallback }) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined),
 		);
 
 		const executeFns = mockExecuteFunctions([{ json: { id: 1, name: 'first' } }]);
@@ -201,11 +192,10 @@ describe('Snowflake, on error "Continue"', () => {
 
 describe('Snowflake workflow error outputs', () => {
 	beforeEach(() => {
-		mockExecute.mockImplementation(
-			({ sqlText, complete }: { sqlText: string; complete: CompleteCallback }) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(queryError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(queryError, undefined, undefined),
 		);
 	});
 

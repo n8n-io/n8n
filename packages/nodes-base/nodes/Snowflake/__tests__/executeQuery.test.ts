@@ -58,7 +58,7 @@ describe('Test Snowflake, executeQuery - query parameters are bound', () => {
 				}),
 			);
 			// The bound value must not appear in any executed statement.
-			for (const [{ sqlText }] of mockExecute.mock.calls as Array<[{ sqlText: string }]>) {
+			for (const [{ sqlText }] of mockExecute.mock.calls) {
 				expect(sqlText).not.toContain("O'Brien");
 			}
 		},
@@ -141,17 +141,10 @@ describe('Test Snowflake, executeQuery - connection cleanup', () => {
 		);
 
 		// The ALTER SESSION statement succeeds; the user query then fails.
-		mockExecute.mockImplementation(
-			({
-				sqlText,
-				complete,
-			}: {
-				sqlText: string;
-				complete: (error: Error | null, stmt: undefined, rows: unknown[] | undefined) => void;
-			}) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(lockError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(lockError, undefined, undefined),
 		);
 
 		const executeFns = mock<IExecuteFunctions>({
