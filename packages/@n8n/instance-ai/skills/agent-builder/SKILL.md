@@ -54,6 +54,9 @@ Check the proposed capabilities before handoff:
 - Treat candidate confirmation and business approval as different decisions.
   Keep hiring decisions with the recruiter. Never infer an outcome from a
   scheduling change.
+  Match the workflow's behavior for an unconfirmed request. Do not describe
+  it as a dry run or an availability preview unless the workflow provides that
+  result. A confirmation error does not establish availability.
 - When the Agent extends an existing workflow, inspect its stored data contract.
   Reuse its record IDs, tables, fields, status values, and external event IDs.
   Do not invent a separate schema that the existing workflow never writes.

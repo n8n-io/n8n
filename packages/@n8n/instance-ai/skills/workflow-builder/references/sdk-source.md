@@ -128,7 +128,8 @@ import {
 
 ## Node Groups
 
-{{GROUPING_GUIDANCE_PLACEHOLDER}}
+Group connected stages so the canvas is readable. Follow the top-level item
+limit in the main workflow-builder skill. Keep triggers outside groups.
 
 Declare a group with `.group(name, members, { description })` on the workflow builder; members
 are the node handles. Before you emit a `.group(...)`, read

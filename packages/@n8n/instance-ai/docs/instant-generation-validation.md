@@ -342,6 +342,24 @@ The candidate-details, cancellation, cancellation-recovery, and rescheduling
 suites then passed together: 48 cases in 8.6 seconds. These are local fixture
 results, not complete Agent conversations or generation timings.
 
+One Agent Builder handoff then attached the rescheduling workflow, updated
+three skills, and reread all five skills. The full turn took 521.1 seconds.
+Readback found an invented dry run in the tool description and skill.
+The workflow returns `CONFIRMATION_REQUIRED` before service calls when
+confirmation is false. It does not check availability in that case.
+A separate manual correction removed that claim with guarded config and skill
+writes. It also corrected the stored-event timing error description and limited
+an uncertain-write retry to one identical retry. Readback confirmed the result.
+The two existing tools and the cancellation instructions stayed unchanged.
+The Agent now has three workflow tools. Booking remains unavailable, and the
+model remains unset. Candidate conversations have not been executed.
+
+Build guidance now requires exact unconfirmed-request semantics. A broader
+existing skill test also found an unresolved grouping placeholder in the SDK
+reference. The reference now points to the main skill's resolved limit and
+keeps its SDK grouping instructions. All 36 review and skill tests passed
+after these corrections. Build, lint, and type checks passed.
+
 ## Historical compiler benchmark
 
 The measurements below describe the earlier bounded compiler, before the
