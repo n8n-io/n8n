@@ -1,4 +1,5 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
@@ -74,7 +75,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_DECISION_TIMEOUT_MS')
 	decisionTimeoutMs: number = 1500;
 
-	/** Route chat turns with a structured read first; the orchestrator LLM runs only when the router is not confident. */
+	/** Enable inline workflow builds without a sandbox and warm the decision service connection. */
 	@Env('N8N_INSTANCE_AI_FAST_PATH_ENABLED')
 	fastPathEnabled: boolean = false;
 
@@ -209,6 +210,10 @@ export class InstanceAiConfig {
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;
+
+	/** Optional Anthropic or OpenAI reasoning effort. Empty preserves the model default. */
+	@Env('N8N_INSTANCE_AI_THINKING_EFFORT', z.enum(['', 'low', 'medium', 'high']))
+	thinkingEffort: '' | 'low' | 'medium' | 'high' = '';
 
 	/**
 	 * Let the assistant discover and connect MCP registry servers.

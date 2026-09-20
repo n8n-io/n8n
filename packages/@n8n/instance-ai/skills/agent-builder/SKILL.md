@@ -1,8 +1,8 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent. Then call build-agent with the user's
-  request after any required orchestrator-owned prerequisites are ready. Agent
+  Load immediately after an Agent intent. Describe a complete plan, call
+  then hand the user request and plan to build-agent for JEV review. Agent
   Builder owns Agent setup and implementation questions. Governs prerequisite
   creation, faithful handoff, targeting, testing, and publishing. Use directly
   for routine Agent follow-ups; rerun intent-recognition only when the requested
@@ -15,11 +15,36 @@ recommended_tools:
 
 # Agent Builder
 
-First describe the complete Agent behavior in text. Call `plan-build` for
-bounded node and operation choices. Include its results in the handoff as
-proposed implementation, separate from the original user requirements. The
-embedded builder fills parameters and validates these choices. Use its
-existing question, credential, and approval cards.
+First describe the complete Agent behavior in text. Pass it in the `plan`
+field of `build-agent`. The tool runs JEV before the embedded builder fills
+parameters. Keep proposed implementation separate from the original user
+requirements. Use the existing question, credential, and approval cards.
+Use `plan-build` separately only when building prerequisite workflows.
+
+## Plan quality
+
+Check the proposed capabilities before handoff:
+
+- Keep query structure fixed. Let the model supply typed values, not SQL or
+  unrestricted query syntax. Select only the fields needed for the task.
+- Separate identity verification from conversation. Asking for an email
+  address does not verify it. Participant tools need a verified session or an
+  opaque, validated access token. Mark a missing identity integration as a
+  setup requirement. Keep participant data tools unavailable until it is ready.
+- Bind record and event lookups to that verified participant. The model must
+  not choose another participant's scope or an arbitrary external event ID.
+- Prefer availability or free/busy operations when the task needs free slots.
+  Do not return unrelated calendar event details to a participant.
+- Use a workflow tool when booking or editing needs an ordered procedure:
+  validate access, check availability, apply the calendar change, persist the
+  returned event ID and state, then send confirmation. Include retry and
+  recovery behavior. Direct independent tools are insufficient for that contract.
+- Treat candidate confirmation and business approval as different decisions.
+  Keep hiring decisions with the recruiter. Never infer an outcome from a
+  scheduling change.
+
+Pass any missing behavior and setup requirements to the embedded builder.
+Inspect the saved configuration before describing the Agent as usable.
 
 ## Routing
 
@@ -28,9 +53,9 @@ when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
-For a new Agent request, make the first `build-agent` call with a faithful copy
-of the request as soon as any required orchestrator-owned prerequisites are
-ready. Before that call, use `ask-user` only to choose a supported channel or to
+For a new Agent request, describe the plan first. Then
+make the first `build-agent` call with the request and plan once any
+required prerequisites are ready. Before that call, use `ask-user` only to choose a supported channel or to
 define a workflow or data-table prerequisite that the orchestrator must create.
 Only ask about the channel after `list-agent-capabilities` shows that the
 requested channel is unsupported. Do not collect model, service, tool, topic,
@@ -62,9 +87,9 @@ once it is a supported type or the user has chosen an alternative.
 
 ## Faithful handoff
 
-Treat `message` as a faithful handoff of the user's request, not an Agent build
-specification authored by you. Forward the user's wording as close to verbatim
-as possible. Include only:
+Keep user requirements separate from proposed implementation in `message`.
+Forward the user's wording as close to verbatim as possible. The requirements
+section includes only:
 
 - Requirements, constraints, and implementation choices the user explicitly
   stated.
@@ -72,20 +97,22 @@ as possible. Include only:
   current request.
 - Prerequisite workflows or data tables you created for this Agent.
 
+Put the detailed LLM plan in the `plan` field. Identify assumptions and
+uncertain choices. The tool adds the JEV results to the handoff. The
+embedded builder must validate these proposals against its capabilities and
+the user's requirements. Proposals do not grant approval or supply credentials.
+
 The host appends an <aia-handoff> block with the current user text and pending
 ask-user answers that have not yet reached Agent Builder. Treat those as the
 user's decisions for this build call, not as implementation you invented.
 Still copy user-stated model, channel, and credential choices into message; do not omit
 them because the host also injected them.
 
-Never infer, invent, expand, recommend, or prescribe implementation details the
-user did not request, and never present your assumptions as user requirements.
-In particular, do not choose or tell the builder which model, instructions,
-tools, tool types, integrations, channels, MCP servers, workflows, skills,
-tasks, memory, credentials, triggers, schedules, approvals, or test strategy to
-use.
+Never present assumptions or JEV choices as user requirements. Do not prescribe
+a model, channel, credential, or approval policy that the user did not choose.
+The embedded builder owns those choices and their existing interactive cards.
 
-Do not translate an outcome or named service into a specific implementation.
+Do not silently translate an outcome into an implementation requirement.
 For example, forward "a Slack agent that says hello to me" without turning it
 into a request for a Slack node tool. Preserve unspecified and ambiguous
 implementation details so the builder can resolve them with its own guidance

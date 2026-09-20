@@ -15,6 +15,7 @@ import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
+	InstanceAiNodeService,
 	InstanceAiTraceContext,
 	InstanceAiTraceRun,
 	OrchestrationContext,
@@ -28,6 +29,7 @@ import {
 	type AgentBuilderTarget,
 } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
+import type { DecisionService } from '../../../workflow-compiler/decision/decision-service';
 import type { BuilderRequiredArtifact } from '../builder-required-artifact';
 
 vi.mock('../agent-target-binding', async () => {
@@ -295,6 +297,58 @@ describe('build-agent tool', () => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
 		vi.mocked(getSessionAgentByRef).mockReset().mockResolvedValue(undefined);
 		vi.mocked(rereadAgentBuilderTarget).mockReset().mockResolvedValue(undefined);
+	});
+
+	it('requires a detailed plan before creating an Agent in the orchestrator path', async () => {
+		const { context, delegate } = makeContext();
+		const result = await executeTool<BuildAgentOutput>(
+			createBuildAgentTool(context, { requirePlan: true }),
+			{ message: 'Build a support agent', name: 'Support Agent' },
+		);
+		expect(result.ok).toBe(false);
+		expect(result.error).toContain('plan field');
+		expect(delegate.createAgent).not.toHaveBeenCalled();
+		expect(delegate.streamBuild).not.toHaveBeenCalled();
+	});
+
+	it('hands an uncertain plan to the LLM builder after the decision read', async () => {
+		const { context, delegate } = makeContext();
+		const domain = context.domainContext;
+		if (!domain) throw new Error('Expected the domain context');
+		const nodes = mock<InstanceAiNodeService>();
+		nodes.listSearchable.mockResolvedValue([]);
+		domain.nodeService = nodes;
+		const decisions = mock<DecisionService>({ kind: 'systemone' });
+		decisions.decide.mockResolvedValue({
+			ok: false,
+			reason: 'timeout',
+			message: 'Timed out',
+			latencyMs: 1500,
+		});
+		domain.decisionService = decisions;
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockImplementation(async () => {
+			expect(decisions.decide).toHaveBeenCalledOnce();
+			return fakeStream([], 'Created it.');
+		});
+		const result = await executeTool<BuildAgentOutput>(
+			createBuildAgentTool(context, { requirePlan: true }),
+			{
+				message: 'Build a support agent',
+				name: 'Support Agent',
+				plan: {
+					originalRequest: 'Build a support agent',
+					plan: 'Answer general product questions. Escalate unknown answers to a human.',
+					steps: [],
+				},
+			},
+		);
+		expect(result.ok).toBe(true);
+		expect(delegate.streamBuild).toHaveBeenCalledWith(
+			'agent-1',
+			expect.stringContaining('"decisionStatus":"incomplete"'),
+			expect.anything(),
+		);
 	});
 
 	it('creates and binds a new agent when name is given, keying the session to the instance thread', async () => {

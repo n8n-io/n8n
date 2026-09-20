@@ -381,6 +381,7 @@ describe('GlobalConfig', () => {
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
 			thinkingEnabled: true,
+			thinkingEffort: '',
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
 			instanceAiSetupPanelEnabled: false,

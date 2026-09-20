@@ -2255,6 +2255,8 @@ export interface CreateInstanceAgentOptions {
 	disableDeferredTools?: boolean;
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
+	/** Override Anthropic or OpenAI reasoning effort when configured by the host. */
+	thinkingEffort?: 'low' | 'medium' | 'high';
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
 

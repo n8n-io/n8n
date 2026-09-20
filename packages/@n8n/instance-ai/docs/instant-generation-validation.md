@@ -3,24 +3,70 @@
 ## Current build path
 
 The assistant now starts with an LLM plan in plain text. `plan-build` sends
-the plan to JEV in one request. It checks coverage, progress, participant scope,
-and node operations. Options come from the installed node registry. Flat
-operation and mode fields are supported. The tool returns only the selected
-parameter definitions. Repeated services share discovery within the call.
+the plan to JEV. It checks coverage, progress, participant scope, and node
+operations. Large plans use parallel batches of eight operation questions.
+Quality checks use a separate batch. A failed batch does not discard answers
+from successful batches. Options come from the installed node registry. Exact
+service names take precedence over fuzzy matches. Flat operation and mode
+fields are supported. The tool returns only the selected parameter definitions.
+Repeated services share discovery within the call.
 
 The LLM resolves uncertain choices and fills parameters and graph connections.
 It uses `ask-user` for human choices. The existing workflow persistence and
 Agent Builder paths retain their approval, question, and credential cards.
+`build-agent` requires a text plan before a new build or edit. It runs the JEV
+review inside the tool before it calls Agent Builder. Resuming an existing
+question or credential request does not require another plan.
 New inline JSON workflows do not need a sandbox. The existing
 `N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` opt-in enables this input path in the
 UI and warms the JEV connection. It no longer bypasses LLM planning.
 
-The restored build path passed 252 focused regression tests. A first complex
-HR probe reached JEV in 54 seconds. Its 13 choices took 1015 ms. The full turn
-then took 235 seconds and stopped at a research approval without saving a
-workflow. This failed the build and latency targets. The revised skill removes
-conflicting sandbox requirements and checks durable progress and participant
-scope. Complex HR validation is still in progress.
+The restored build path passed 252 focused regression tests. The next change
+passed 144 focused planning, tool, skill, and Agent Builder tests. The thinking
+configuration and agent tests also passed, as did all 222 configuration tests.
+Builds, type checks, and lint passed for the affected backend packages.
+
+The optional `N8N_INSTANCE_AI_THINKING_EFFORT` setting accepts `low`, `medium`,
+or `high` for Anthropic and OpenAI. An empty value preserves the model default.
+It controls the orchestrator. It does not change the embedded Agent Builder's
+reasoning settings. The local `run` file exposes this setting and retains
+`medium` as its default. Keep credentials in `.env.local` or the environment.
+
+## Current HR validation
+
+The first complex HR probe reached JEV in 54 seconds. Its 13 choices took
+1015 ms. The full turn took 235 seconds and stopped at a research approval
+without saving a workflow. A later 52-step plan completed its JEV review in
+975 ms with parallel batches. JEV selected 39 operations. It flagged participant
+scope and left coverage and progress uncertain. These findings still need LLM
+reasoning; the system does not lower confidence thresholds to accept them.
+
+Full generation remains much slower than one second. Sonnet 4.6 with medium
+and low adaptive thinking did not finish the HR build within five minutes.
+With extended thinking disabled, it called `build-workflow` after 203 seconds.
+Validation rejected node groups that referenced missing node IDs. The LLM then
+repaired the IDs and saved an unpublished draft with 54 nodes and five groups.
+The draft appeared in the UI. This is a failed latency result, not a completed
+HR system.
+
+Manual inspection found behavior gaps in the generated draft. The cancellation
+branch also recreated an event. Calendar writes did not first check free/busy.
+The outreach loop used the wrong output. The missing-feedback reminder started
+only after a scorecard arrived. The draft does not meet the requested quality
+standard. It was not published or used to contact candidates.
+
+The candidate Agent draft reached setup after 201 seconds. Manual inspection
+found that its data tools relied on instructions for participant scope and did
+not persist calendar changes to the ATS. The draft needs correction before a
+candidate can use it. The revised build instructions require verified context,
+fixed queries, availability checks, and ordered calendar and state updates.
+
+The existing UI was checked in the isolated instance. The research approval
+card retained its allow-once, session, and deny controls. The Agent model
+question accepted an answer. Postgres, Google Calendar, and Gmail credential
+cards each supported deferral, and the builder resumed after them. No real
+integration credentials were entered. This confirms the interaction path;
+it does not establish successful external execution.
 
 ## Historical compiler benchmark
 

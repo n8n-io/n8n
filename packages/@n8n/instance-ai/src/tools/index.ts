@@ -216,7 +216,7 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 	if (context.domainContext?.builderDelegate) {
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
-			loadBuildAgentTool().createBuildAgentTool(context),
+			loadBuildAgentTool().createBuildAgentTool(context, { requirePlan: true }),
 		]);
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,

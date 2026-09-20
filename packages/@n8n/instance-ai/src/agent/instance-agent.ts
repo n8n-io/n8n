@@ -247,7 +247,7 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.thinkingEnabled !== false) {
-		applyAgentThinking(agent, modelId);
+		applyAgentThinking(agent, modelId, options.thinkingEffort);
 	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });

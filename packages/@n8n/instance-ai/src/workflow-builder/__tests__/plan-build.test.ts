@@ -163,6 +163,50 @@ describe('LLM plan and bounded decisions', () => {
 		expect((await decideBuildPlan(plan, nodes, decisions)).status).toBe('needs_reasoning');
 	});
 
+	it('retains quality checks and successful choices when a large plan batch times out', async () => {
+		const { nodes, decisions } = services();
+		decisions.decide.mockImplementation(async ({ questions }) => {
+			if ('step_8' in questions)
+				return { ok: false, reason: 'timeout', message: 'Timed out', latencyMs: 1500 };
+			return {
+				ok: true,
+				model: 'fixture',
+				latencyMs: 200,
+				problems: [],
+				answers: Object.fromEntries(
+					Object.entries(questions).map(([key, question]) => [
+						key,
+						question.type === 'noul'
+							? { type: 'noul', noul: 0.99 }
+							: {
+									type: 'choice',
+									choice: 'option_0',
+									confidence: 0.99,
+									probabilities: { option_0: 0.99, none_of_these: 0.01 },
+								},
+					]),
+				),
+			};
+		});
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: Array.from({ length: 16 }, (_, i) => ({ ...plan.steps[0], id: `email_${i}` })),
+			},
+			nodes,
+			decisions,
+		);
+		expect(decisions.decide).toHaveBeenCalledTimes(3);
+		expect(result).toMatchObject({
+			status: 'needs_reasoning',
+			checks: { coverage: 'yes', progress: 'yes', scope: 'yes' },
+			decisionStatus: 'incomplete',
+			decisionFailures: ['timeout'],
+		});
+		expect(result.selections.slice(0, 8).every(({ selected }) => selected)).toBe(true);
+		expect(result.selections.slice(8).every(({ selected }) => !selected)).toBe(true);
+	});
+
 	it('returns progress and scope concerns to the LLM even when coverage passes', async () => {
 		const { nodes, decisions } = services();
 		const outcome = await decisions.decide({

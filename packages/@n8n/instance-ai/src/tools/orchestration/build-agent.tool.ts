@@ -74,6 +74,8 @@ import {
 } from './parent-handoff-state';
 import { resolveTargetForCall } from './agent-target-resolution';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
+import { selectDecisionService } from '../workflows/compiler-tool-support';
+import { buildPlanSchema, decideBuildPlan } from '../../workflow-builder/plan-build';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
 const BUILDER_SUB_AGENT_KIND = 'agent-builder';
@@ -179,6 +181,11 @@ function builderAgentIdFor(agentId: string): string {
 }
 
 const buildAgentInputSchema = z.object({
+	plan: buildPlanSchema
+		.optional()
+		.describe(
+			'The complete behavior plan, required before a new build or edit. JEV reviews it before Agent Builder fills parameters. Use an empty steps list only when no node operations are needed.',
+		),
 	message: z
 		.string()
 		.min(1)
@@ -786,14 +793,18 @@ async function handleResume(
 	});
 }
 
-export function createBuildAgentTool(context: OrchestrationContext) {
+export function createBuildAgentTool(
+	context: OrchestrationContext,
+	options: { requirePlan?: boolean } = {},
+) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
 			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
 				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
 				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
 				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
-				'testing, and publishing. Forward the complete behavior plan and plan-build selections. ' +
+				'testing, and publishing. Supply the detailed behavior in plan. This tool runs JEV ' +
+				'before the embedded builder configures tools and parameters. ' +
 				'Distinguish proposed implementation from user requirements. The builder must verify each selected ' +
 				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
 				'(via the intent gate / ' +
@@ -828,6 +839,22 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				return answers ? { ...output, answers } : output;
 			}
 
+			if (options.requirePlan && !input.plan) {
+				return {
+					ok: false,
+					error:
+						'Describe the complete behavior in the plan field, including the original request and each node operation. Then call build-agent again. No Agent was changed.',
+				};
+			}
+			const reviewedPlan = input.plan
+				? await decideBuildPlan(
+						input.plan,
+						domainContext.nodeService,
+						selectDecisionService(domainContext),
+						context.abortSignal,
+					)
+				: undefined;
+
 			const existingTarget = await resolveAgentBuilderTarget(domainContext);
 			const resolution = await resolveTargetForCall(domainContext, delegate, input, existingTarget);
 			if (!resolution.ok) {
@@ -854,7 +881,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
 				...decision,
 			}));
-			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
+			const message = reviewedPlan
+				? `${input.message}\n\n<proposed-build-plan>\n${input.plan?.plan}\n${JSON.stringify(reviewedPlan)}\nValidate these proposals. Resolve every uncertain quality check before saving. Keep user requirements and approvals separate from these proposals.\n</proposed-build-plan>`
+				: input.message;
+			const outboundMessage = buildOutboundMessage(message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);

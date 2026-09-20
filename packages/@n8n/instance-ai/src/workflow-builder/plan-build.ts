@@ -35,7 +35,6 @@ export const buildPlanSchema = z.object({
 					),
 			}),
 		)
-		.min(1)
 		.max(60)
 		.refine(
 			(steps) => new Set(steps.map(({ id }) => id)).size === steps.length,
@@ -65,8 +64,15 @@ export async function decideBuildPlan(
 	const candidatesFor = async (search: string) => {
 		let pending = searches.get(search);
 		if (!pending) {
+			const matches = engine.searchByName(search, 4);
+			const normalizedSearch = search.trim().toLowerCase();
+			const exact = matches.filter(
+				(node) =>
+					node.name.toLowerCase() === normalizedSearch ||
+					node.displayName.toLowerCase() === normalizedSearch,
+			);
 			pending = Promise.all(
-				engine.searchByName(search, 4).map(async (node): Promise<Candidate[]> => {
+				(exact.length ? exact : matches).map(async (node): Promise<Candidate[]> => {
 					const base = {
 						nodeType: node.name,
 						version: node.version,
@@ -139,17 +145,45 @@ export async function decideBuildPlan(
 			},
 		};
 	}
-	const outcome = await decisions.decide({
-		name: 'build-plan.operations',
-		schemaVersion: 'build-plan-v2',
-		state: input,
-		questions,
-		abortSignal,
-	});
+	const entries = Object.entries(questions);
+	const batches: DecisionQuestions[] = [];
+	if (entries.length <= 12) {
+		batches.push(questions);
+	} else {
+		// Keep quality checks independent so a large operation batch cannot hide them.
+		batches.push(Object.fromEntries(entries.slice(0, 3)));
+		for (let offset = 3; offset < entries.length; offset += 8) {
+			batches.push(Object.fromEntries(entries.slice(offset, offset + 8)));
+		}
+	}
+	const started = performance.now();
+	const outcomes = await Promise.all(
+		batches.map(
+			async (batch) =>
+				await decisions.decide({
+					name: 'build-plan.operations',
+					schemaVersion: 'build-plan-v2',
+					state:
+						'coverage' in batch
+							? input
+							: {
+									...input,
+									steps: input.steps.filter((_, index) => `step_${index}` in batch),
+								},
+					questions: batch,
+					abortSignal,
+				}),
+		),
+	);
+	const decisionLatencyMs = Math.round(performance.now() - started);
+	const answers = Object.fromEntries(
+		outcomes.flatMap((outcome) => (outcome.ok ? Object.entries(outcome.answers) : [])),
+	);
+	const failures = outcomes.flatMap((outcome) => (outcome.ok ? [] : [outcome.reason]));
 	abortSignal?.throwIfAborted();
 	const selections = input.steps.map((step, index) => {
 		const options = candidates[index];
-		const answer = outcome.ok ? outcome.answers[`step_${index}`] : undefined;
+		const answer = answers[`step_${index}`];
 		// An unavailable reader is not evidence, even when retrieval found one option.
 		const choice = answer
 			? resolveChoice({ allowed: options.map((_, i) => `option_${i}`), answer })
@@ -196,12 +230,9 @@ export async function decideBuildPlan(
 		})),
 	);
 	abortSignal?.throwIfAborted();
-	const coverage = resolveNoul(outcome.ok ? outcome.answers.coverage : undefined);
+	const coverage = resolveNoul(answers.coverage);
 	const checks = Object.fromEntries(
-		['coverage', 'progress', 'scope'].map((key) => [
-			key,
-			resolveNoul(outcome.ok ? outcome.answers[key] : undefined),
-		]),
+		['coverage', 'progress', 'scope'].map((key) => [key, resolveNoul(answers[key])]),
 	);
 	const ready =
 		Object.values(checks).every((check) => check === 'yes') &&
@@ -213,7 +244,9 @@ export async function decideBuildPlan(
 		checks,
 		selections,
 		definitions,
-		decisionLatencyMs: outcome.latencyMs,
+		decisionLatencyMs,
+		decisionStatus: failures.length ? 'incomplete' : 'completed',
+		decisionFailures: failures,
 		guidance: ready
 			? 'Fill parameters from these definitions. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
 			: 'Use the LLM to resolve missing behavior or uncertain selections. Search installed nodes when needed. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',

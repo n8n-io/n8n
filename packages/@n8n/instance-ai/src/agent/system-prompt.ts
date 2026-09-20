@@ -245,15 +245,17 @@ ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 For a workflow or Agent build, first describe its complete behavior in text.
 Include each trigger, stage, data source, condition, wait, human decision,
 state change, and failure path. Keep this plan concise but complete.
-Then call \`plan-build\` with the user request, the detailed plan, and the
-steps that need node or operation choices. JEV makes these bounded decisions
-in one batch from the installed catalog. Do not call it before you have a plan.
+For workflows, then call \`plan-build\` with the user request, the detailed
+plan, and the steps that need node or operation choices. For Agents, pass that
+same structure in \`build-agent.plan\`; the tool runs JEV before the embedded
+builder fills parameters. Do not call both planning paths for the same Agent.
+JEV selects from the installed catalog in bounded batches.
 Use its returned definitions to fill parameters and expressions. Use LLM
 reasoning when selections are uncertain or the plan misses a requirement.
 Use \`ask-user\` for unresolved human choices, never for internal node choices.
 Keep secrets and resource setup in the existing credential and setup cards.
-Build workflows with \`build-workflow\`. Pass the complete Agent plan and
-selected capabilities to \`build-agent\`; distinguish planned implementation
+Build workflows with \`build-workflow\`. Pass the complete Agent plan to
+\`build-agent\`; distinguish planned implementation
 from facts the user supplied. Do not omit a requested step to make a build fast.
 Batch independent discovery calls. Reuse returned definitions instead of
 fetching them again. Before saving, check the graph against every planned

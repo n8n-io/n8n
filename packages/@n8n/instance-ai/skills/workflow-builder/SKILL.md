@@ -54,7 +54,9 @@ is needed for this format. The persistence tool validates the graph.
 
 WorkflowJSON contains `name`, `nodes`, `connections`, and optional `settings`.
 Each node has a unique `name`, installed `type`, numeric `typeVersion`, and
-`parameters`. Omit positions and new node IDs; the builder assigns them.
+`parameters`. Omit positions. For groups in new JSON workflows, assign unique
+local node IDs and reference those IDs in `nodeGroups`. Otherwise IDs can be
+omitted. Never change IDs when editing a saved workflow.
 Connections are indexed by source node name:
 
 ```json
@@ -174,8 +176,23 @@ name and the remaining setup or validation needs.
 - Load `data-table-manager` before creating or changing Data Tables. Use real
   table IDs and their inspected schema.
 
-{{GROUPING_GUIDANCE_PLACEHOLDER}}
+## Groups in inline JSON
+
+Use `nodeGroups` at the workflow root. Each group contains `id`, `name`,
+`nodeIds`, and an optional description of at most 145 characters:
+
+```json
+{"nodeGroups":[{"id":"outreach","name":"Candidate outreach","nodeIds":["fetch","send","record"]}]}
+```
+
+Those `nodeIds` must match the IDs on the member nodes. A group cannot contain
+a trigger or a node already in another group. Members must form one connected
+section with a single entry and exit. Keep AI subnodes and their parent in the
+same group. Group each suitable downstream stage. Do not load SDK references
+to author JSON groups.
 
 For a canvas over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} top-level items,
 declare valid groups or provide `groupingDecision: "not_warranted"` with a
-specific `groupingReason`. Fix any dropped-group warning before completion.
+specific `groupingReason` when no valid group is possible. Fix any dropped-group
+warning before completion. If valid groups still exceed the ceiling, explain
+which triggers or separate stages must remain visible.
