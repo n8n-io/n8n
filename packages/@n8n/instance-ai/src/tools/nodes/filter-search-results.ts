@@ -7,7 +7,7 @@ export { createJevClient, type JevDecisionClient };
 
 function createNodeRelevanceQuestion(node: NodeSearchResult, query: string): NoulQuestion {
 	const isTrigger = Array.isArray(node.inputs) && node.inputs.length === 0;
-	const service = node.displayName.replace(/\s+Trigger$/i, '');
+	const service = node.displayName.replace(/\s+Trigger$/i, '').replace(/\s+Tool$/i, '');
 	if (isTrigger) {
 		return {
 			type: 'noul',
@@ -22,7 +22,7 @@ function createNodeRelevanceQuestion(node: NodeSearchResult, query: string): Nou
 		type: 'noul',
 		instructions: `Does the search query "${query}" intend to use, read from, write to, or interact with ${service} (n8n node "${node.displayName}": ${node.description})?`,
 		criteria: {
-			true: `The node directly performs or relates to the service/action in "${query}"`,
+			true: `The node is relevant to "${query}", including action nodes, AI tools, or MCP registry integrations for ${service}`,
 			false: `${service} is not what "${query}" is looking for, or only shares a common brand prefix like Google/AWS/Microsoft`,
 		},
 	};
@@ -47,8 +47,8 @@ export async function filterSearchResultsWithJev(
 		return candidates;
 	}
 
-	const limit = options.limit ?? 3;
-	const minProbability = options.minProbability ?? 0.3;
+	const limit = options.limit ?? 10;
+	const minProbability = options.minProbability ?? 0.15;
 
 	try {
 		console.log(

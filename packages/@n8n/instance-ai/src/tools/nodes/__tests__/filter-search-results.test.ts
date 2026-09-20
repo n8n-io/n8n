@@ -115,7 +115,7 @@ describe('filterSearchResultsWithJev', () => {
 					node_1: { type: 'noul', noul: 0.1 }, // googleChat
 					node_2: { type: 'noul', noul: 0.1 }, // googleDocs
 					node_3: { type: 'noul', noul: 0.02 }, // googleBooks
-					node_4: { type: 'noul', noul: 0.2 }, // googleDrive
+					node_4: { type: 'noul', noul: 0.08 }, // googleDrive
 					node_5: { type: 'noul', noul: 0.98 }, // googleSheets
 					node_6: { type: 'noul', noul: 0.95 }, // googleSheetsTrigger
 					node_7: { type: 'noul', noul: 0.85 }, // googleSheetsTool

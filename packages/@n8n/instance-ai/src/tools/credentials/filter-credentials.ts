@@ -39,7 +39,7 @@ export async function filterCredentialsWithJev<T extends CredentialCandidate>(
 		return candidates;
 	}
 
-	const minProbability = options.minProbability ?? 0.35;
+	const minProbability = options.minProbability ?? 0.2;
 	const limit = options.limit;
 
 	try {

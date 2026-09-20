@@ -597,7 +597,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	if (requestedTypes && requestedTypes.length > 0) {
 		const perType = await Promise.all(
-			requestedTypes.map((t) => context.credentialService.list({ type: t })),
+			requestedTypes.map(async (t) => await context.credentialService.list({ type: t })),
 		);
 		storedCredentials = perType.flat();
 	} else {
@@ -653,13 +653,19 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		? items.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
 		: items;
 
-	const filterQuery =
-		input.query ??
-		(input.name && filtered.length > 3 ? input.name : undefined) ??
-		context.currentUserMessage;
-
-	if (filterQuery) {
-		filtered = await filterCredentialsWithJev(filterQuery, filtered);
+	if (input.query) {
+		filtered = await filterCredentialsWithJev(input.query, filtered, { limit: input.limit });
+		if (filtered.length === items.length) {
+			const q = input.query.toLowerCase();
+			const substringFiltered = filtered.filter(
+				(c) => c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q),
+			);
+			if (substringFiltered.length > 0) {
+				filtered = substringFiltered;
+			}
+		}
+	} else if (input.name && filtered.length > 3) {
+		filtered = await filterCredentialsWithJev(input.name, filtered, { limit: input.limit });
 	}
 
 	const total = filtered.length;

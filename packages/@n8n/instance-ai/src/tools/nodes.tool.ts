@@ -299,7 +299,7 @@ async function handleSearch(
 		const perQueryResults = await Promise.all(
 			queryList.map(async (q) => {
 				const raw = engine.searchByName(q, input.limit);
-				return await filterSearchResultsWithJev(q, raw);
+				return await filterSearchResultsWithJev(q, raw, { limit: input.limit });
 			}),
 		);
 		const seenNames = new Set<string>();

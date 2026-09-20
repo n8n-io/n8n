@@ -378,10 +378,13 @@ describe('credentials tool', () => {
 				noSuspendCtx(),
 			);
 
-			expect((result as { credentials: unknown[] }).credentials).toHaveLength(2);
+			expect((result as { credentials: unknown[] }).credentials).toHaveLength(1);
+			expect((result as { credentials: unknown[] }).credentials).toEqual([
+				{ id: '1', name: 'Slack Work', type: 'slackApi' },
+			]);
 		});
 
-		it('should fall back to context.currentUserMessage when input.query is omitted', async () => {
+		it('should return credentials without query filtering when input.query is omitted', async () => {
 			const credentials: CredentialSummary[] = [
 				{ id: '1', name: 'Team Slack', type: 'slackApi' },
 				{ id: '2', name: 'Linear Key', type: 'linearApi' },
@@ -394,7 +397,6 @@ describe('credentials tool', () => {
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
 
-			// Without Jev key present in test env, returns the items
 			expect((result as { credentials: unknown[] }).credentials).toHaveLength(2);
 		});
 
