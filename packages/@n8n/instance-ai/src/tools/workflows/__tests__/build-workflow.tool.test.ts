@@ -255,6 +255,96 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
+	describe('deterministic graph input', () => {
+		const graph = {
+			nodes: [
+				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, parameters: {} },
+			],
+			edges: [],
+		};
+
+		it('saves assembled JSON through the existing validator without a workspace', async () => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/graph.workflow.json',
+				overrides: { workspace: undefined },
+			});
+			await recordBuildPlanReview(context);
+			vi.mocked(compileWorkflowSource).mockImplementationOnce(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			const result = await executeTool<BuildToolOutput>(
+				createBuildWorkflowTool(context, { requirePlan: true }),
+				{ filePath, name: 'Graph', graph },
+			);
+			expect(result.success).toBe(true);
+			const saved = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0][0];
+			expect(saved).toMatchObject({
+				name: 'Graph',
+				nodes: [
+					{
+						name: 'Start',
+						id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+						type: 'n8n-nodes-base.manualTrigger',
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+			expect(compileWorkflowSource).toHaveBeenCalledOnce();
+			expect(resolveCredentials).toHaveBeenCalled();
+			expect(analyzeWorkflow).toHaveBeenCalled();
+		});
+
+		it('returns invalid references without writing a source file or saving a workflow', async () => {
+			const { context, files, filePath } = makeContext({
+				filePath: 'src/workflows/graph.workflow.json',
+			});
+			const before = files.get(filePath);
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Invalid',
+				graph: { ...graph, edges: [{ from: 'Start', to: 'Missing' }] },
+			});
+			expect(result).toMatchObject({
+				success: false,
+				errors: ['Unknown connection node: Start -> Missing.'],
+			});
+			expect(files.get(filePath)).toBe(before);
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('keeps graph edits behind the existing approval card and resumes after approval', async () => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/graph.workflow.json',
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			await recordBuildPlanReview(context);
+			const tool = createBuildWorkflowTool(context, { requirePlan: true });
+			const input = { filePath, workflowId: 'wf-existing', name: 'Graph', graph };
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-existing',
+					approvalDetails: { action: 'edit-workflow', summary: undefined },
+				}),
+			);
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			vi.mocked(compileWorkflowSource).mockImplementationOnce(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledOnce();
+		});
+	});
+
 	it('requires the LLM plan review in the current run before a public build', async () => {
 		const { context, filePath } = makeContext({});
 		const tool = createBuildWorkflowTool(context, { requirePlan: true });
@@ -1527,50 +1617,67 @@ describe('createBuildWorkflowTool', () => {
 			credentialNeedsAction: false,
 		} as SetupRequest;
 
-		it('announces the checklist on save, including bound slots, while routing only on open ones', async () => {
-			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
-			const emitter = {
-				emit: vi.fn(() => true),
-				announce: vi.fn().mockResolvedValue(undefined),
-				merge: vi.fn(() => true),
-				lastWorkflowId: vi.fn(),
-				workflowIds: vi.fn(() => []),
-			};
-			const { context, filePath } = makeContext({
-				source: 'workflow source from workspace',
-				overrides: { setupItemsEmitter: emitter },
-			});
+		it.each(['source', 'graph'])(
+			'announces the checklist for %s, including bound slots, while routing only on open ones',
+			async (format) => {
+				vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
+				const emitter = {
+					emit: vi.fn(() => true),
+					announce: vi.fn().mockResolvedValue(undefined),
+					merge: vi.fn(() => true),
+					lastWorkflowId: vi.fn(),
+					workflowIds: vi.fn(() => []),
+				};
+				const { context, filePath } = makeContext({
+					source: 'workflow source from workspace',
+					...(format === 'graph' ? { filePath: 'src/workflows/setup.workflow.json' } : {}),
+					overrides: { setupItemsEmitter: emitter },
+				});
 
-			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-				filePath,
-				name: 'Daily Weather to Slack',
-			});
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					name: 'Daily Weather to Slack',
+					...(format === 'graph'
+						? {
+								graph: {
+									nodes: [openSlackRequest, boundGmailRequest].map(({ node }) => ({
+										name: node.name,
+										type: node.type,
+										typeVersion: node.typeVersion,
+										parameters: node.parameters,
+									})),
+									edges: [],
+								},
+							}
+						: {}),
+				});
 
-			expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
-				context,
-				'wf-1',
-				undefined,
-				expect.objectContaining({ includeSettled: true }),
-			);
-			expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
-				{
-					id: 'wf-1:credential:slackApi',
-					kind: 'credential',
-					credentialType: 'slackApi',
-					nodeBindings: [{ nodeName: 'Post alert' }],
-				},
-				{
-					id: 'wf-1:credential:gmailOAuth2',
-					kind: 'credential',
-					credentialType: 'gmailOAuth2',
-					nodeBindings: [{ nodeName: 'Send digest' }],
-				},
-			]);
-			expect(result).toMatchObject({
-				success: true,
-				setupRequirement: { status: 'required', reason: 'workflow-needs-setup' },
-			});
-		});
+				expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
+					context,
+					'wf-1',
+					undefined,
+					expect.objectContaining({ includeSettled: true }),
+				);
+				expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Post alert' }],
+					},
+					{
+						id: 'wf-1:credential:gmailOAuth2',
+						kind: 'credential',
+						credentialType: 'gmailOAuth2',
+						nodeBindings: [{ nodeName: 'Send digest' }],
+					},
+				]);
+				expect(result).toMatchObject({
+					success: true,
+					setupRequirement: { status: 'required', reason: 'workflow-needs-setup' },
+				});
+			},
+		);
 
 		it('reports no setup requirement from a snapshot made only of bound slots', async () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);

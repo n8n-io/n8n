@@ -3,7 +3,7 @@ name: workflow-builder
 description: >-
   Load before building or editing a workflow. Describe the complete behavior
   in text, use plan-build for installed node and operation choices, then fill
-  parameters and save with build-workflow. New workflows can use inline JSON.
+  parameters and save with build-workflow. Use graph for deterministic JSON assembly.
   Use targeted JSON edits for small saved-workflow changes. Load planning only for
   coordinated tasks with dependencies. Use one-off-operations for a single
   immediate node execution.
@@ -61,12 +61,28 @@ recommended_tools:
 
 ## New workflows
 
-Use inline WorkflowJSON when the required definitions are available. Pass
-`filePath: "src/workflows/name.workflow.json"`, `name`, and JSON text in
-`sourceCode` to `build-workflow`. No sandbox or separate SDK validation command
-is needed for this format. The persistence tool validates the graph.
-Emit compact JSON without indentation in `sourceCode`. Keep all behavior and
-parameters. This reduces generated text without changing the saved graph.
+Use `graph` when the required definitions are available. Pass
+`filePath: "src/workflows/name.workflow.json"`, `name`, and a graph object to
+`build-workflow`. Supply nodes with `name`, `type`, `typeVersion`, and
+`parameters`. Put execution settings such as `alwaysOutputData`, `onError`,
+or existing credential references in each node's optional `options` object.
+Supply edges with `from` and `to` node names. Set `output`, `input`, and `type`
+when they differ from output 0, input 0, and `main`.
+Supply groups with `name` and `nodes`, which contains member node names.
+
+Code generates IDs, positions, group membership, and n8n connection JSON.
+Do not generate these fields yourself. Include every branch, loopback, and
+error route in `edges`. The compiler does not infer connections or behavior.
+Parameters and expressions still require the LLM's reasoning.
+No sandbox or separate SDK validation command is needed.
+The persistence tool validates the compiled graph and retains setup cards.
+
+```json
+{"nodes":[{"name":"Start","type":"n8n-nodes-base.manualTrigger","typeVersion":1,"parameters":{}},{"name":"Prepare","type":"n8n-nodes-base.set","typeVersion":3.4,"parameters":{"mode":"manual","assignments":{"assignments":[]},"options":{}}}],"edges":[{"from":"Start","to":"Prepare"}]}
+```
+
+For an existing full JSON artifact, `sourceCode` still accepts compact
+WorkflowJSON. Do not supply both `graph` and `sourceCode`.
 
 WorkflowJSON contains `name`, `nodes`, `connections`, and optional `settings`.
 Each node has a unique `id` and `name`, installed `type`, numeric `typeVersion`,

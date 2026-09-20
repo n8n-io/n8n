@@ -1,5 +1,44 @@
 # Instant generation with JEV
 
+## Deterministic JSON assembly
+
+`build-workflow` now accepts `graph`. The LLM supplies installed node types,
+parameters, explicit edges, and optional groups. Edges and groups refer to node
+names. Code generates node IDs, group IDs, positions, and n8n connection JSON.
+The compiler reuses the SDK's deterministic IDs and existing layout. Node and
+group IDs remain stable when the input order changes. Parameters, expressions,
+branch outputs, target inputs, loopbacks, and AI connection types are preserved.
+The compiler rejects duplicate names, duplicate edges, and unknown references.
+It does not infer missing behavior or connections.
+
+The result enters the existing source validation, approval, save, and credential
+setup path. Failed builds can use the existing `draftEdits` repair path. Small
+saved-workflow edits still use `jsonEdits`. JSON assembly makes no model calls.
+The LLM still plans behavior and fills parameters after the JEV review.
+
+A local benchmark rebuilt four saved HR drafts 100 times each. Each run produced
+identical JSON. Every parameter and executable edge matched the source draft.
+Unconnected trailing output slots are omitted. Group membership and workflow
+settings were preserved. The times below include assembly, layout, and JSON
+serialization. They exclude model generation, JEV, validation, and persistence.
+
+| Draft | Nodes | First assembly | Assembly p95 |
+| --- | ---: | ---: | ---: |
+| Candidate Journey | 64 | 28.2 ms | 29.5 ms |
+| Candidate interview details | 9 | 3.9 ms | 2.0 ms |
+| Interview cancellation | 22 | 4.4 ms | 5.7 ms |
+| Interview rescheduling | 23 | 4.7 ms | 5.4 ms |
+
+The graph tool input was 11–17% smaller than the prior compact `sourceCode`
+input. Parameters account for most of these HR inputs. This change removes
+model-generated JSON structure. It does not remove parameter generation time.
+All 48 candidate fixture cases passed with graphs rebuilt through this compiler.
+These cases use the isolated database and identity service. Calendar responses
+use fixtures. This result does not establish complete HR lifecycle quality or
+one-second conversation latency.
+The 159 focused Instance AI tests and 53 SDK ID utility tests passed. Builds,
+lint, and type checks passed for both packages.
+
 ## Current build path
 
 The assistant now starts with an LLM plan in plain text. `plan-build` sends

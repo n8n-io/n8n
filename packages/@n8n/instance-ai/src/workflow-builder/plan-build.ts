@@ -323,7 +323,7 @@ export async function decideBuildPlan(
 		decisionStatus: failures.length ? 'incomplete' : 'completed',
 		decisionFailures: failures,
 		guidance: ready
-			? 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
+			? 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Pass nodes, parameters, and named edges in build-workflow graph. Code assembles IDs, positions, groups, and n8n connections. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
 			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Check capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }

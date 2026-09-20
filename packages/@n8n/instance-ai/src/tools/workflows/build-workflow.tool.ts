@@ -85,6 +85,7 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { applyWorkflowJsonEdits, workflowJsonEditsInputSchema } from './workflow-json-edits';
+import { compileWorkflowGraph, workflowGraphSchema } from './workflow-graph';
 import { compileWorkflowSource, parseWorkflowJsonSource } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
@@ -186,7 +187,12 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building. For WorkflowJSON, emit compact JSON without indentation to reduce output latency. Use this for creation or a full rewrite. Use draftEdits to repair the last failed JSON build and jsonEdits to edit the saved workflow. Omit to build existing workspace file content after a file edit or workflow-sdk validate.',
+				'Full source to write to filePath before building. Prefer graph for new workflows so code assembles the JSON. Use sourceCode for an existing full artifact or SDK source. For WorkflowJSON, emit compact JSON without indentation. Use draftEdits to repair the last failed JSON build and jsonEdits to edit the saved workflow. Omit to build existing workspace file content after a file edit or workflow-sdk validate.',
+			),
+		graph: workflowGraphSchema
+			.optional()
+			.describe(
+				'Preferred for new workflows. Supply installed node types, parameters, and explicit edges by node name. Code generates IDs, positions, groups, and n8n connections. Include every branch and loopback. Use a .workflow.json filePath and name. Omit sourceCode, jsonEdits, and draftEdits. The existing approval, validation, and credential setup flow still applies.',
 			),
 		jsonEdits: workflowJsonEditsInputSchema
 			.optional()
@@ -641,7 +647,7 @@ export function createBuildWorkflowTool(
 			'Persistence for build-workflow: validate and save a complete source file or inline sourceCode. ' +
 				'First describe the complete behavior in text, then call plan-build for bounded node and operation decisions. ' +
 				'Load workflow-builder for graph, parameter, and setup rules. Fill parameters from the returned node definitions. ' +
-				'Use .workflow.json for inline WorkflowJSON or .workflow.ts for SDK source. ' +
+				'Prefer graph for deterministic JSON assembly from nodes, parameters, and named edges. Use .workflow.json for graph or inline WorkflowJSON, or .workflow.ts for SDK source. ' +
 				'Preserve every requirement, branch, wait, data mapping, and failure path. ' +
 				'This tool keeps the existing approval and credential setup flow.',
 		)
@@ -660,13 +666,14 @@ export function createBuildWorkflowTool(
 				};
 			}
 			if (
-				[input.sourceCode, input.jsonEdits, input.draftEdits].filter((value) => value !== undefined)
-					.length > 1
+				[input.sourceCode, input.graph, input.jsonEdits, input.draftEdits].filter(
+					(value) => value !== undefined,
+				).length > 1
 			) {
 				return {
 					success: false,
 					filePath: input.filePath,
-					errors: ['Use only one of sourceCode, jsonEdits, or draftEdits.'],
+					errors: ['Use only one of graph, sourceCode, jsonEdits, or draftEdits.'],
 				};
 			}
 			if (input.draftEdits && input.workflowId !== undefined) {
@@ -920,6 +927,25 @@ export function createBuildWorkflowTool(
 			}
 
 			let inlineSource = input.sourceCode;
+			if (input.graph) {
+				try {
+					if (!filePath.endsWith('.json') || !input.name?.trim()) {
+						throw new Error('graph requires a .workflow.json filePath and a workflow name.');
+					}
+					inlineSource = JSON.stringify(compileWorkflowGraph(input.name, input.graph));
+				} catch (error) {
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation: createCodeFixableRemediation({
+							reason: 'workflow_graph_invalid',
+							guidance:
+								'Correct graph and retry. Use unique node names and reference those names in every edge and group. No workflow was saved.',
+						}),
+					};
+				}
+			}
 			if (input.draftEdits) {
 				try {
 					if (!filePath.endsWith('.json')) {

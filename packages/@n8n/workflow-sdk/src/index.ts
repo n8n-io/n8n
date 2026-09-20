@@ -1,3 +1,8 @@
+export {
+	generateDeterministicNodeId,
+	generateDeterministicGroupId,
+} from './workflow-builder/string-utils';
+
 // Core types
 export type {
 	// Workflow and node types
