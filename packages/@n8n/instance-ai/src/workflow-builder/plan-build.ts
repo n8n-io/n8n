@@ -111,23 +111,30 @@ export async function decideBuildPlan(
 						})),
 					);
 					if (operations?.length) return operations;
-					const discriminator = description.properties.find(
-						(property) =>
-							(property.name === 'operation' || property.name === 'mode') &&
-							property.type === 'options' &&
-							!property.displayOptions?.show?.resource,
-					);
-					const flatOptions = discriminator?.options?.flatMap(({ name, value }) =>
-						typeof value === 'string'
-							? [
-									{
-										...base,
-										description: `${base.description}. ${name}`,
-										[discriminator.name]: value,
-									},
-								]
-							: [],
-					);
+					const flatOptions = description.properties.flatMap((discriminator) => {
+						if (
+							(discriminator.name !== 'operation' && discriminator.name !== 'mode') ||
+							discriminator.type !== 'options'
+						)
+							return [];
+						const resources = discriminator.displayOptions?.show?.resource?.filter(
+							(value): value is string => typeof value === 'string',
+						) ?? [undefined];
+						return resources.flatMap((resource) =>
+							(discriminator.options ?? []).flatMap(({ name, value }) =>
+								typeof value === 'string'
+									? [
+											{
+												...base,
+												description: `${base.description}. ${name}`,
+												...(resource ? { resource } : {}),
+												[discriminator.name]: value,
+											},
+										]
+									: [],
+							),
+						);
+					});
 					return flatOptions?.length ? flatOptions : [base];
 				}),
 			).then((groups) => groups.flat());
@@ -260,28 +267,21 @@ export async function decideBuildPlan(
 	}
 	const selectedTypes = new Map(
 		selections.flatMap(({ selected }) =>
-			selected
-				? [
-						[
-							JSON.stringify([
-								selected.nodeType,
-								selected.version,
-								selected.resource,
-								selected.operation,
-								selected.mode,
-							]),
-							selected,
-						] as const,
-					]
-				: [],
+			selected ? [[JSON.stringify(selected), selected] as const] : [],
 		),
 	);
-	// Supply required fields without treating a single search match as a decision.
+	// Supply required fields without accepting an uncertain choice.
 	const unresolvedTypes = new Map(
-		selections.flatMap(({ selected, candidates: options }) => {
-			if (selected || options?.length !== 1) return [];
-			const candidate = options[0];
-			return [[JSON.stringify(candidate), candidate] as const];
+		selections.flatMap(({ selected, candidates: options }, index) => {
+			if (selected) return [];
+			const answer = answers[`step_${index}`];
+			const candidate =
+				options?.length === 1
+					? options[0]
+					: options?.find((_, i) => answer?.type === 'choice' && answer.choice === `option_${i}`);
+			if (!candidate) return [];
+			const key = JSON.stringify(candidate);
+			return selectedTypes.has(key) ? [] : [[key, candidate] as const];
 		}),
 	);
 	const [definitions, candidateDefinitions] = await Promise.all(
@@ -323,6 +323,6 @@ export async function decideBuildPlan(
 		decisionFailures: failures,
 		guidance: ready
 			? 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
-			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for single unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Check capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
+			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Check capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }

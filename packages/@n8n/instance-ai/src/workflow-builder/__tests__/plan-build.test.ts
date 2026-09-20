@@ -194,10 +194,107 @@ describe('LLM plan and bounded decisions', () => {
 		);
 	});
 
+	it('supplies an uncertain proposed operation schema for LLM reasoning without accepting the choice', async () => {
+		const { nodes, decisions } = services();
+		decisions.decide.mockResolvedValue({
+			ok: true,
+			model: 'fixture',
+			latencyMs: 100,
+			problems: [],
+			answers: {
+				coverage: { type: 'noul', noul: 0.99 },
+				progress: { type: 'noul', noul: 0.99 },
+				scope: { type: 'noul', noul: 0.99 },
+				step_0: {
+					type: 'choice',
+					choice: 'option_1',
+					confidence: 0.52,
+					probabilities: { option_0: 0.45, option_1: 0.52, none_of_these: 0.03 },
+				},
+			},
+		});
+		const result = await decideBuildPlan({ ...plan, steps: [plan.steps[0]] }, nodes, decisions);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.selections[0].selected).toBeUndefined();
+		expect(result.definitions).toEqual([]);
+		expect(result.candidateDefinitions).toEqual([
+			expect.objectContaining({
+				nodeType: 'n8n-nodes-base.gmail',
+				resource: 'message',
+				operation: 'get',
+				definition: { content: 'Live parameter definition' },
+			}),
+		]);
+	});
+
 	it('requires reasoning when parameter definitions are unavailable', async () => {
 		const { nodes, decisions } = services();
 		nodes.getNodeTypeDefinition.mockResolvedValue(null);
 		expect((await decideBuildPlan(plan, nodes, decisions)).status).toBe('needs_reasoning');
+	});
+
+	it('discovers operations scoped to a hidden resource when split definitions are unavailable', async () => {
+		const { nodes, decisions } = services();
+		nodes.listSearchable.mockResolvedValue([
+			{
+				name: 'n8n-nodes-base.postgres',
+				displayName: 'Postgres',
+				description: 'Read and write records',
+				version: 2.7,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		]);
+		nodes.listDiscriminators.mockResolvedValue(null);
+		nodes.getDescription.mockResolvedValue({
+			name: 'n8n-nodes-base.postgres',
+			displayName: 'Postgres',
+			description: 'Read and write records',
+			version: 2.7,
+			group: ['transform'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'hidden',
+					default: 'database',
+					options: [{ name: 'Database', value: 'database' }],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['database'] } },
+					options: [
+						{ name: 'Execute Query', value: 'executeQuery' },
+						{ name: 'Insert', value: 'insert' },
+					],
+				},
+			],
+		});
+		const result = await decideBuildPlan(
+			{
+				originalRequest: 'Read owned interviews from Postgres.',
+				plan: 'Run a fixed parameterized query for the verified candidate.',
+				steps: [{ id: 'read', intent: 'Execute a fixed SQL query', search: 'Postgres' }],
+			},
+			nodes,
+			decisions,
+		);
+		expect(result.selections[0].selected).toMatchObject({
+			resource: 'database',
+			operation: 'executeQuery',
+		});
+		expect(result.capabilities[0].operations).toEqual([
+			{ resource: 'database', operation: 'executeQuery' },
+			{ resource: 'database', operation: 'insert' },
+		]);
+		expect(nodes.getNodeTypeDefinition).toHaveBeenCalledWith(
+			'n8n-nodes-base.postgres',
+			expect.objectContaining({ resource: 'database', operation: 'executeQuery' }),
+		);
 	});
 
 	it('retains quality checks and successful choices when a large plan batch times out', async () => {

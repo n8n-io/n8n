@@ -26,10 +26,14 @@ recommended_tools:
    output, condition, human decision, delay, state transition, and failure path.
    State assumptions that affect behavior. Do not replace requested stages with
    a generic linear chain.
+   Reuse a detailed plan that the user already supplied. Do not derive node
+   parameters, SQL, expressions, or canvas groups before the JEV review.
 2. Call `plan-build` with that plan and the complete user request. List one
    operation per step. Separate create, update, delete, and lookup operations.
    The tool batches bounded decisions through JEV and returns installed node
    definitions. Reuse these definitions instead of fetching them again.
+   `candidateDefinitions` contains schemas for unresolved choices. These are
+   evidence for LLM reasoning, not accepted operations.
    `capabilities` lists the other installed operations. The selected parameter
    definitions are not the full capability list. Check this inventory before
    claiming an operation is unavailable. Retrieve a missing operation's

@@ -14,11 +14,15 @@ The LLM can use this inventory to find operations outside its first selections.
 Repeated services share discovery within the call.
 The review also returns indexed output names and builder hints from the node
 registry. This includes candidates that still need LLM selection.
-When a step has one unresolved candidate, the result also supplies its parameter
-schema in `candidateDefinitions`. The choice remains unresolved. This lets the
-LLM inspect required fields without another lookup. Repeated candidates share
-one definition. This change addresses a live build that omitted the callable
-trigger's required `workflowInputs` after an uncertain JEV result.
+For an unresolved step, the result supplies the sole candidate's schema or the
+schema for JEV's proposed operation in `candidateDefinitions`. The choice remains
+unresolved. This lets the LLM inspect required fields without another lookup.
+Repeated candidates share one definition. This change addresses a live build
+that omitted the callable trigger's required `workflowInputs` after an uncertain
+JEV result. Operation discovery also handles hidden resources such as Postgres's
+`database` resource. A live catalog probe exposed all six Postgres operations
+in 753 ms, including 748 ms for JEV. JEV's operation choice remained uncertain.
+The LLM must resolve it. All 11 plan regression tests passed.
 
 The LLM resolves uncertain choices and fills parameters and graph connections.
 It uses `ask-user` for human choices. The existing workflow persistence and
