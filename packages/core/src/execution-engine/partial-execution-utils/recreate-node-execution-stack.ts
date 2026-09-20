@@ -173,13 +173,16 @@ export function recreateNodeExecutionStack(
 
 					for (const incomingConnection of sourceData.connections) {
 						const sourceNode = incomingConnection.from;
-						const maybeNodeIncomingData = getIncomingDataFromAnyRun(
-							runData,
-							sourceNode.name,
-							incomingConnection.type,
-							incomingConnection.outputIndex,
-						);
-						const nodeIncomingData = maybeNodeIncomingData?.data ?? null;
+						const pinnedNodeData = pinData[sourceNode.name];
+						const maybeNodeIncomingData = pinnedNodeData
+							? undefined
+							: getIncomingDataFromAnyRun(
+									runData,
+									sourceNode.name,
+									incomingConnection.type,
+									incomingConnection.outputIndex,
+								);
+						const nodeIncomingData = pinnedNodeData ?? maybeNodeIncomingData?.data ?? null;
 
 						if (nodeIncomingData) {
 							addWaitingExecution(
@@ -197,13 +200,11 @@ export function recreateNodeExecutionStack(
 								nextRunIndex,
 								incomingConnection.type,
 								incomingConnection.inputIndex,
-								nodeIncomingData
-									? {
-											previousNode: incomingConnection.from.name,
-											previousNodeRun: nextRunIndex,
-											previousNodeOutput: incomingConnection.outputIndex,
-										}
-									: null,
+								{
+									previousNode: incomingConnection.from.name,
+									previousNodeRun: maybeNodeIncomingData?.runIndex ?? 0,
+									previousNodeOutput: incomingConnection.outputIndex,
+								},
 							);
 						}
 					}
