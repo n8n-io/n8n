@@ -1,5 +1,27 @@
 # Instant generation with JEV
 
+## Current target and regression coverage
+
+The current target is 30 seconds from the user prompt to task completion.
+This replaces the earlier one-second target. Measure planning, JEV decisions,
+parameter generation, save, required verification, and the final reply.
+Do not treat graph assembly time as total task time.
+
+Thirty new regression cases cover expression syntax, draft repairs by name,
+and filter type validation. The syntax cases cover nested objects, literal
+fields, hidden parameters, disabled nodes, placeholders, and parser errors.
+The repair cases retain node IDs, connections, credentials, groups, source
+hashes, saved versions, and approval handling.
+
+Filter validation previously discarded errors returned by its value parser.
+It now reports those errors at the condition's index. Strict type errors and
+failed conversions are reported before execution. Valid unresolved expressions
+and single-value operators remain accepted. The regression failed before the
+fix and passed after it.
+
+The affected suites passed 2,208 tests, including the workflow package's three
+expression engines. Dependency builds, package lint, and type checks passed.
+
 ## Expression validation and draft repair
 
 The JSON build path now checks expression syntax before save. It uses the
@@ -37,10 +59,9 @@ guarantee. The repaired workflow returned `{"candidate":{"status":"ready"}}`
 in verification and in a separate manual execution from the editor. The
 workflow remains unpublished.
 
-All 407 existing tests in the affected expression, SDK validation, graph,
-source compiler, edit, build-tool, and runtime-skill suites passed. Dependency
-builds, lint, and type checks passed for the affected packages. Dedicated new
-syntax regression cases are pending the requested user confirmation.
+The earlier check passed all 407 existing tests in the affected expression,
+SDK validation, graph, source compiler, edit, build-tool, and runtime-skill
+suites. The new regression cases and current checks are listed above.
 
 ## Latest HR booking reference
 
@@ -76,8 +97,8 @@ testing also found an expression parse error that structural validation had
 missed. The saved graph corrects it.
 
 The main HR draft still needs compatible stage transitions, feedback deadlines,
-initial scheduling, and participant checks. The one-second end-to-end goal
-remains unmet. The sections below retain earlier measurements and repairs.
+initial scheduling, and participant checks. The 30-second end-to-end target
+remains unproven. The sections below retain earlier measurements and repairs.
 
 ## Deterministic JSON assembly
 

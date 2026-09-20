@@ -30,6 +30,69 @@ const workflow: WorkflowJSON = {
 };
 
 describe('targeted workflow edits', () => {
+	it('repairs a draft by exact name and preserves its generated id and unrelated content', () => {
+		const original = structuredClone(workflow);
+		const result = applyWorkflowJsonEdits(
+			workflow,
+			JSON.stringify({ nodes: [{ name: 'Reminder', parameters: { amount: 12 } }] }),
+			{ allowNameLookup: true },
+		);
+		expect(result.nodes[0]).toEqual({
+			...original.nodes[0],
+			parameters: { ...original.nodes[0].parameters, amount: 12 },
+		});
+		expect(result.nodes[1]).toEqual(original.nodes[1]);
+		expect(result.connections).toEqual(original.connections);
+		expect(result.nodeGroups).toEqual(original.nodeGroups);
+		expect(workflow).toEqual(original);
+	});
+
+	it.each(['Missing', 'reminder'])('rejects an unknown or inexact draft name: %s', (name) => {
+		expect(() =>
+			applyWorkflowJsonEdits(
+				workflow,
+				JSON.stringify({ nodes: [{ name, parameters: { amount: 12 } }] }),
+				{ allowNameLookup: true },
+			),
+		).toThrow('exactly one existing node');
+	});
+
+	it('rejects ambiguous draft names', () => {
+		const duplicate = structuredClone(workflow);
+		duplicate.nodes.push({ ...duplicate.nodes[0], id: 'other-wait' });
+		expect(() =>
+			applyWorkflowJsonEdits(
+				duplicate,
+				JSON.stringify({ nodes: [{ name: 'Reminder', parameters: { amount: 12 } }] }),
+				{ allowNameLookup: true },
+			),
+		).toThrow('exactly one existing node');
+	});
+
+	it('rejects duplicate edits that address the same node by id and name', () => {
+		expect(() =>
+			applyWorkflowJsonEdits(
+				workflow,
+				JSON.stringify({
+					nodes: [
+						{ id: 'wait', parameters: { amount: 12 } },
+						{ name: 'Reminder', parameters: { unit: 'minutes' } },
+					],
+				}),
+				{ allowNameLookup: true },
+			),
+		).toThrow('unique, nonempty id');
+	});
+
+	it('requires saved node ids when draft name lookup is not enabled', () => {
+		expect(() =>
+			applyWorkflowJsonEdits(
+				workflow,
+				JSON.stringify({ nodes: [{ name: 'Reminder', parameters: { amount: 12 } }] }),
+			),
+		).toThrow('unique, nonempty id');
+	});
+
 	it('accepts a node-edit array without changing unrelated content', () => {
 		const result = applyWorkflowJsonEdits(
 			workflow,

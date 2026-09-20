@@ -482,132 +482,141 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
-	it('repairs an unsaved JSON draft across contexts and releases its cached source after saving', async () => {
-		let thread: ThreadRecord = {
-			id: 'thread-1',
-			resourceId: 'user-1',
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			metadata: {},
-		};
-		const threadMemory = {
-			getThread: vi.fn(async () => structuredClone(thread)),
-			saveThread: vi.fn(async (updated: ThreadRecord) => {
-				thread = structuredClone(updated);
-				return thread;
-			}),
-		};
-		const { context, filePath } = makeContext({
-			filePath: 'src/workflows/main.workflow.json',
-			overrides: { workspace: undefined, threadId: thread.id, threadMemory },
-		});
-		vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
-			parseWorkflowJsonSource(source),
-		);
-		vi.mocked(partitionWarnings).mockReturnValueOnce({
-			blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
-			informational: [],
-		});
-		const sourceCode = JSON.stringify(generatedWorkflow);
-		await saveWorkflowSourceFileBinding(context, {
-			filePath,
-			sourceHash: hashWorkflowSource(sourceCode),
-		});
-		const failed = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			filePath,
-			sourceCode,
-		});
-		expect(failed).toMatchObject({
-			success: false,
-			draftEditsAvailable: true,
-			sourceHash: hashWorkflowSource(sourceCode),
-		});
-		expect(failed.remediation?.guidance).toContain('draftEdits');
-		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
-		const resumedContext = { ...context, runId: 'run-2' };
-		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(resumedContext), {
-			filePath,
-			draftEdits: {
-				sourceHash: failed.sourceHash,
-				changes: JSON.stringify({ nodes: [{ id: 'webhook-1', parameters: { path: 'inbound' } }] }),
-			},
-		});
-		expect(result.success).toBe(true);
-		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
-			expect.objectContaining({
-				nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'inbound' } })],
-				connections: {},
-			}),
-			expect.anything(),
-		);
-		expect(
-			(await getWorkflowSourceFileBinding(resumedContext, filePath))?.inlineDraftSource,
-		).toBeUndefined();
-		expect(result.draftEditsAvailable).toBeUndefined();
-	});
+	it.each([{ id: 'webhook-1' }, { name: 'Webhook' }])(
+		'repairs an unsaved JSON draft with %j across contexts and releases its cached source after saving',
+		async (selector) => {
+			let thread: ThreadRecord = {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				metadata: {},
+			};
+			const threadMemory = {
+				getThread: vi.fn(async () => structuredClone(thread)),
+				saveThread: vi.fn(async (updated: ThreadRecord) => {
+					thread = structuredClone(updated);
+					return thread;
+				}),
+			};
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: { workspace: undefined, threadId: thread.id, threadMemory },
+			});
+			vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			vi.mocked(partitionWarnings).mockReturnValueOnce({
+				blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
+				informational: [],
+			});
+			const sourceCode = JSON.stringify(generatedWorkflow);
+			await saveWorkflowSourceFileBinding(context, {
+				filePath,
+				sourceHash: hashWorkflowSource(sourceCode),
+			});
+			const failed = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				sourceCode,
+			});
+			expect(failed).toMatchObject({
+				success: false,
+				draftEditsAvailable: true,
+				sourceHash: hashWorkflowSource(sourceCode),
+			});
+			expect(failed.remediation?.guidance).toContain('draftEdits');
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			const resumedContext = { ...context, runId: 'run-2' };
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(resumedContext), {
+				filePath,
+				draftEdits: {
+					sourceHash: failed.sourceHash,
+					changes: JSON.stringify({ nodes: [{ ...selector, parameters: { path: 'inbound' } }] }),
+				},
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'inbound' } })],
+					connections: {},
+				}),
+				expect.anything(),
+			);
+			expect(
+				(await getWorkflowSourceFileBinding(resumedContext, filePath))?.inlineDraftSource,
+			).toBeUndefined();
+			expect(result.draftEditsAvailable).toBeUndefined();
+		},
+	);
 
-	it('repairs a failed update after approval and keeps its saved base checksum', async () => {
-		const { context, filePath } = makeContext({
-			filePath: 'src/workflows/main.workflow.json',
-			overrides: { workspace: undefined },
-		});
-		context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
-			json: generatedWorkflow,
-			versionId: 'v-current',
-			checksum: 'checksum-current',
-			updatedAt: 1,
-		});
-		vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
-			parseWorkflowJsonSource(source),
-		);
-		vi.mocked(partitionWarnings).mockReturnValueOnce({
-			blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
-			informational: [],
-		});
-		const tool = createBuildWorkflowTool(context);
-		const failed = await executeTool<BuildToolOutput>(tool, {
-			filePath,
-			workflowId: 'wf-1',
-			sourceCode: JSON.stringify(generatedWorkflow),
-		});
-		expect(failed).toMatchObject({ success: false, draftEditsAvailable: true });
-		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-		vi.mocked(compileWorkflowSource).mockClear();
-		context.permissions = {
-			updateWorkflow: 'require_approval',
-		} as InstanceAiContext['permissions'];
-		const input = {
-			filePath,
-			draftEdits: {
-				sourceHash: failed.sourceHash,
-				changes: JSON.stringify({ nodes: [{ id: 'webhook-1', parameters: { path: 'repaired' } }] }),
-			},
-		};
-		const suspend = vi.fn();
-		await executeTool(tool, input, { suspend });
-		expect(suspend).toHaveBeenCalledWith(
-			expect.objectContaining({ workflowId: 'wf-1', approvalDetails: { action: 'edit-workflow' } }),
-		);
-		expect(context.workflowService.getWorkflowSnapshot).not.toHaveBeenCalled();
-		expect(compileWorkflowSource).not.toHaveBeenCalled();
-		const result = await executeTool<BuildToolOutput>(tool, input, {
-			resumeData: { approved: true },
-		});
-		expect(result.success).toBe(true);
-		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-			'wf-1',
-			expect.objectContaining({
-				nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'repaired' } })],
-				connections: {},
-			}),
-			{ expectedChecksum: 'checksum-current' },
-		);
-		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
-		expect(
-			(await getWorkflowSourceFileBinding(context, filePath))?.inlineDraftSource,
-		).toBeUndefined();
-		expect(result.draftEditsAvailable).toBeUndefined();
-	});
+	it.each([{ id: 'webhook-1' }, { name: 'Webhook' }])(
+		'repairs a failed update with %j after approval and keeps its saved base checksum',
+		async (selector) => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: { workspace: undefined },
+			});
+			context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+				json: generatedWorkflow,
+				versionId: 'v-current',
+				checksum: 'checksum-current',
+				updatedAt: 1,
+			});
+			vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			vi.mocked(partitionWarnings).mockReturnValueOnce({
+				blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
+				informational: [],
+			});
+			const tool = createBuildWorkflowTool(context);
+			const failed = await executeTool<BuildToolOutput>(tool, {
+				filePath,
+				workflowId: 'wf-1',
+				sourceCode: JSON.stringify(generatedWorkflow),
+			});
+			expect(failed).toMatchObject({ success: false, draftEditsAvailable: true });
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			vi.mocked(compileWorkflowSource).mockClear();
+			context.permissions = {
+				updateWorkflow: 'require_approval',
+			} as InstanceAiContext['permissions'];
+			const input = {
+				filePath,
+				draftEdits: {
+					sourceHash: failed.sourceHash,
+					changes: JSON.stringify({ nodes: [{ ...selector, parameters: { path: 'repaired' } }] }),
+				},
+			};
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					approvalDetails: { action: 'edit-workflow' },
+				}),
+			);
+			expect(context.workflowService.getWorkflowSnapshot).not.toHaveBeenCalled();
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({
+					nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'repaired' } })],
+					connections: {},
+				}),
+				{ expectedChecksum: 'checksum-current' },
+			);
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(
+				(await getWorkflowSourceFileBinding(context, filePath))?.inlineDraftSource,
+			).toBeUndefined();
+			expect(result.draftEditsAvailable).toBeUndefined();
+		},
+	);
 
 	it('rejects a draft repair when the saved workflow changed after the failed update', async () => {
 		const { context, filePath } = makeContext({
