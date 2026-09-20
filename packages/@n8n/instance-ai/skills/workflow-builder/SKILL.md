@@ -122,6 +122,8 @@ repairs and repeat the failed scenario after saving.
 - For human feedback, associate each response with the record, stage, and
   expected reviewer. Ignore duplicates and stale responses. Require all
   expected feedback or an explicit timeout/escalation before advancing.
+  Start missing-feedback reminders from the interview deadline. A reminder
+  that starts only after a response cannot detect zero responses.
 - Keep human decisions explicit. Wire approve, reject, reschedule, cancel,
   timeout, and unknown-input routes when the request requires them.
 - Check availability before booking. Keep timezones explicit. Store the event
@@ -133,10 +135,15 @@ repairs and repeat the failed scenario after saving.
 - Use parameterized database queries. Read the existing schema when available.
   If a new schema is part of the design, include its creation or migration as
   an explicit setup requirement. Do not present assumed columns as inspected.
+  For Postgres `queryReplacement`, use one expression that returns an array,
+  such as `={{ [$json.id, $json.notes] }}`. A comma-separated string can split
+  a value that contains commas. Preserve quotes and newlines in free text.
 - Trace every IF and Switch output. Use an explicit fallback where needed.
   Every requested action must be reachable from a trigger.
 - Zero items stop a branch. Use `alwaysOutputData` only when an outcome must
   happen even with no records, and handle the resulting empty object.
+  A duplicate lookup must reach its new-record branch when no row exists.
+  Use an explicit existence result or handle the empty lookup output.
 - Preserve cardinality. Per-record expressions use paired items, not
   `.first()`. Shared configuration or a single summary can use `executeOnce`.
 - Prefer native nodes and expressions. Use Code only for logic that needs it.
@@ -181,6 +188,8 @@ separately. Never send real outreach merely to test a draft.
 Test multiple records, empty results, duplicate events, delayed feedback,
 declined decisions, failed effects, and retries when those apply. A structural
 validation result does not prove runtime behavior.
+Check the stored outcome as well as execution status. A successful run that
+stops before the required write has not completed the requested operation.
 
 Use `workflows(action="setup")` for unresolved requirements. Keep approvals,
 questions, and credentials in the existing UI. Finish with the saved workflow

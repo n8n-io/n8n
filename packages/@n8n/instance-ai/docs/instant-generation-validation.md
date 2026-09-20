@@ -80,11 +80,35 @@ ran the required JEV review in 329 ms and saved in 395 ms. The full chat took
 now derives its due time from the associated calendar event start minus 24
 hours. The other nodes, connections, groups, and unpublished state were kept.
 
+An isolated Postgres fixture then executed the saved outreach and scorecard
+branches. Gmail output was pinned. The test did not send email. The outreach
+branch updated two new candidates, skipped a candidate without email, and
+left an already contacted candidate unchanged.
+
+The first scorecard run reported success but stored no response. Its duplicate
+lookup returned zero items and stopped the branch. The Assistant repaired that
+node with `alwaysOutputData` and changed three query parameter expressions to
+arrays. JEV took 858 ms. The save took 178 ms. The full repair turn took
+80.4 seconds. JEV returned uncertain quality checks, so its response alone did
+not establish correctness.
+
+The fixture rerun stored the first scorecard and reached stage evaluation.
+It preserved commas, quotes, and a newline in the notes. A duplicate response
+did not repeat the insert. The outreach, first-response, and duplicate-response
+runs took 133, 126, and 131 ms respectively, including API polling. These are
+execution measurements for copied branches with a synthetic database. They
+are not generation measurements or live integration results. The remaining
+calendar, decision, participant, and missing-feedback paths still need repair.
+
 The candidate Agent draft reached setup after 201 seconds. Manual inspection
 found that its data tools relied on instructions for participant scope and did
 not persist calendar changes to the ATS. The draft needs correction before a
 candidate can use it. The revised build instructions require verified context,
 fixed queries, availability checks, and ordered calendar and state updates.
+An edit added a fixed read query and reported three required mutation workflows.
+Readback still found incomplete participant binding and a missing identity
+service. The model remained unconfigured. The existing question and credential
+cards allowed setup to be deferred. Candidate chat execution remains unverified.
 
 The existing UI was checked in the isolated instance. The research approval
 card retained its allow-once, session, and deny controls. The Agent model

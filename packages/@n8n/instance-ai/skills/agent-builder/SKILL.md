@@ -1,7 +1,7 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent. Describe a complete plan, call
+  Load immediately after an Agent intent. Describe a complete plan,
   then hand the user request and plan to build-agent for JEV review. Agent
   Builder owns Agent setup and implementation questions. Governs prerequisite
   creation, faithful handoff, targeting, testing, and publishing. Use directly
@@ -33,12 +33,18 @@ Check the proposed capabilities before handoff:
   setup requirement. Keep participant data tools unavailable until it is ready.
 - Bind record and event lookups to that verified participant. The model must
   not choose another participant's scope or an arbitrary external event ID.
+  A `$fromAI` value remains model input even when its description says it is
+  verified. Pass a token to a tool that validates it and derives the participant
+  ID before the query, or use trusted runtime context. An instruction to call
+  an identity tool first does not enforce that sequence.
 - Prefer availability or free/busy operations when the task needs free slots.
   Do not return unrelated calendar event details to a participant.
 - Use a workflow tool when booking or editing needs an ordered procedure:
   validate access, check availability, apply the calendar change, persist the
   returned event ID and state, then send confirmation. Include retry and
   recovery behavior. Direct independent tools are insufficient for that contract.
+  A calendar change and a database write are separate effects. Do not call
+  them atomic. Define recovery for a failure between them.
 - Treat candidate confirmation and business approval as different decisions.
   Keep hiring decisions with the recruiter. Never infer an outcome from a
   scheduling change.
