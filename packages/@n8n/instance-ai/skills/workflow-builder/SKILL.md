@@ -82,6 +82,9 @@ Code generates IDs, positions, group membership, and n8n connection JSON.
 Do not generate these fields yourself. Include every branch, loopback, and
 error route in `edges`. The compiler does not infer connections or behavior.
 Parameters and expressions still require the LLM's reasoning.
+Omit row IDs in assignment collections and filter conditions. Code adds stable
+IDs from the installed node schema. Supply each row's values, types, and
+operators. Existing row IDs remain unchanged.
 No sandbox or separate SDK validation command is needed.
 The persistence tool validates the compiled graph and retains setup cards.
 

@@ -1,4 +1,6 @@
+import type { INodeProperties, INodeType, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { compileWorkflowGraph, workflowGraphSchema } from '../workflow-graph';
 
@@ -36,7 +38,117 @@ const graph = workflowGraphSchema.parse({
 	settings: { executionOrder: 'v1', timezone: 'Europe/Madrid' },
 });
 
+const assignmentProperty = {
+	name: 'assignments',
+	displayName: 'Assignments',
+	type: 'assignmentCollection',
+	default: {},
+} satisfies INodeProperties;
+const filterProperty = {
+	name: 'conditions',
+	displayName: 'Conditions',
+	type: 'filter',
+	default: {},
+} satisfies INodeProperties;
+const nodeType: INodeType = {
+	description: mock<INodeTypeDescription>({
+		properties: [
+			assignmentProperty,
+			filterProperty,
+			{
+				name: 'rules',
+				displayName: 'Rules',
+				type: 'fixedCollection',
+				default: {},
+				options: [{ name: 'values', displayName: 'Values', values: [filterProperty] }],
+			},
+			{
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options: [assignmentProperty],
+			},
+			{
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options: [filterProperty],
+			},
+			{ name: 'json', displayName: 'JSON', type: 'json', default: '{}' },
+		],
+	}),
+};
+const nodeTypes = mock<INodeTypes>({ getByNameAndVersion: () => nodeType });
+
 describe('deterministic workflow graph assembly', () => {
+	it('fills stable row IDs from the schema without changing values or the input', () => {
+		const row = { name: 'confirmed', value: false, type: 'boolean' };
+		const condition = {
+			leftValue: '={{ $json.confirmed }}',
+			operator: { type: 'boolean', operation: 'true', singleValue: true },
+		};
+		const parameters = {
+			assignments: { assignments: [row, { ...row, id: 'keep-id' }] },
+			conditions: { conditions: [condition] },
+			rules: {
+				values: [
+					{ conditions: { conditions: [condition] } },
+					{ conditions: { conditions: [condition] } },
+				],
+			},
+			options: { assignments: { assignments: [row] }, conditions: { conditions: [condition] } },
+			json: { assignments: { assignments: [row] }, conditions: { conditions: [condition] } },
+		};
+		const input = { nodes: [{ ...graph.nodes[0], parameters }], edges: [] };
+		const before = structuredClone(input);
+		const first = compileWorkflowGraph('Rows', input, [], nodeTypes);
+		const second = compileWorkflowGraph('Rows', input, [], nodeTypes);
+		expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+		expect(input).toEqual(before);
+		const generated = first.nodes[0].parameters;
+		expect(generated).toEqual({
+			...parameters,
+			assignments: {
+				assignments: [
+					{ ...row, id: expect.any(String) },
+					{ ...row, id: 'keep-id' },
+				],
+			},
+			conditions: { conditions: [{ ...condition, id: expect.any(String) }] },
+			rules: {
+				values: [
+					{ conditions: { conditions: [{ ...condition, id: expect.any(String) }] } },
+					{ conditions: { conditions: [{ ...condition, id: expect.any(String) }] } },
+				],
+			},
+			options: {
+				assignments: { assignments: [{ ...row, id: expect.any(String) }] },
+				conditions: { conditions: [{ ...condition, id: expect.any(String) }] },
+			},
+		});
+		const ids =
+			JSON.stringify(generated).match(/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}/g) ?? [];
+		expect(ids).toHaveLength(6);
+		expect(new Set(ids).size).toBe(6);
+	});
+
+	it('keeps invalid supplied row IDs for normal parameter validation', () => {
+		const parameters = {
+			assignments: {
+				assignments: [
+					{ id: '', name: 'empty', type: 'string', value: '' },
+					{ id: 7, name: 'number', type: 'string', value: '' },
+				],
+			},
+		};
+		const input = { nodes: [{ ...graph.nodes[0], parameters }], edges: [] };
+		expect(compileWorkflowGraph('Invalid rows', input, [], nodeTypes).nodes[0].parameters).toEqual(
+			parameters,
+		);
+	});
+
 	it('assembles selected operations without repeating their node fields', () => {
 		const selections = [
 			{

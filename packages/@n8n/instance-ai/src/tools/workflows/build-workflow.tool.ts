@@ -942,7 +942,9 @@ export function createBuildWorkflowTool(
 								ctx.resumeData?.approved === true,
 							)
 						: [];
-					inlineSource = JSON.stringify(compileWorkflowGraph(input.name, input.graph, selections));
+					inlineSource = JSON.stringify(
+						compileWorkflowGraph(input.name, input.graph, selections, context.nodeTypesProvider),
+					);
 				} catch (error) {
 					return {
 						success: false,

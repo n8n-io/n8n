@@ -16,6 +16,28 @@ setup path. Failed builds can use the existing `draftEdits` repair path. Small
 saved-workflow edits still use `jsonEdits`. JSON assembly makes no model calls.
 The LLM still plans behavior and fills parameters after the JEV review.
 
+The graph compiler also fills missing row IDs in assignment collections and
+filter conditions. It reads the installed node schema, including nested
+collections such as Switch rules. Supplied IDs and business values remain
+unchanged. Ordinary JSON data does not receive row IDs. An invalid supplied ID
+still reaches the normal parameter validator. Repeated object references do
+not cause rows at different paths to share generated IDs.
+
+A live branching HR handoff used this path without any model-generated row IDs.
+The compiler added six assignment IDs and one filter ID. The build saved on its
+first attempt in 477 ms, including a 321 ms JEV review. The full Assistant turn
+took 49.2 seconds. Two verification runs exercised the true and false branches
+with synthetic trigger input. Four additional execution cases passed: both
+typed outputs, rejection of a string boolean, and rejection of a numeric
+boolean. Manual UI inspection confirmed both routes and the Edit Fields values.
+The workflow remains unpublished.
+
+With installed schema lookup and row ID generation, the 64-node HR graph
+assembled in 11.0 ms at p95 across 100 identical outputs. The other three HR
+graphs took 0.9–4.6 ms at p95. These runs preserved behavior after excluding row
+IDs from the comparison. They measure deterministic assembly, not LLM latency.
+The 155 focused Instance AI tests, package build, lint, and type checks passed.
+
 `plan-build` now stores its accepted node and operation choices. It returns a
 `planId`. A graph node can reference a selected `step` instead of repeating its
 type and version. Code also fills the selected resource, operation, and mode.

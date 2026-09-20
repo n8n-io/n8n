@@ -3,15 +3,20 @@ import {
 	generateDeterministicNodeId,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { INodeSchema, NodeConnectionTypeSchema, UserError } from 'n8n-workflow';
+import { INodeSchema, NodeConnectionTypeSchema, UserError, type INodeTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { parseWorkflowJsonSource } from './workflow-source-compiler';
+import { addWorkflowGraphParameterIds } from './workflow-graph-parameter-ids';
 import type { BuildPlanSelection } from '../../workflow-builder/build-plan-review';
 
 const graphNodeFields = {
 	name: z.string().min(1),
-	parameters: z.record(z.unknown()),
+	parameters: z
+		.record(z.unknown())
+		.describe(
+			'Node parameters. Omit row IDs in assignment and filter collections. Code fills them from the installed node schema.',
+		),
 	options: z
 		.record(z.unknown())
 		.optional()
@@ -96,6 +101,7 @@ export function compileWorkflowGraph(
 	name: string,
 	input: z.infer<typeof workflowGraphSchema>,
 	selections: BuildPlanSelection[] = [],
+	nodeTypes?: INodeTypes,
 ): WorkflowJSON {
 	const graph = workflowGraphSchema.parse(input);
 	const selectedSteps = new Map(selections.map((selection) => [selection.id, selection]));
@@ -129,6 +135,10 @@ export function compileWorkflowGraph(
 		if (ids.has(node.name)) throw new UserError(`Duplicate node name: ${node.name}.`);
 		const id = generateDeterministicNodeId(name, node.type, node.name);
 		ids.set(node.name, id);
+		if (nodeTypes) {
+			const { properties } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+			node.parameters = addWorkflowGraphParameterIds(id, node.parameters, properties);
+		}
 		const parsed = INodeSchema.parse({ ...options, ...node, id, position: [0, 0] });
 		for (const key of Object.keys(options ?? {})) {
 			if (
