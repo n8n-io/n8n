@@ -49,6 +49,8 @@ Check the proposed capabilities before handoff:
   recovery behavior. Direct independent tools are insufficient for that contract.
   A calendar change and a database write are separate effects. Do not call
   them atomic. Define recovery for a failure between them.
+  Preserve the callable workflow's retry contract. Do not add a preliminary
+  read that blocks recovery when the external record is already gone.
 - Treat candidate confirmation and business approval as different decisions.
   Keep hiring decisions with the recruiter. Never infer an outcome from a
   scheduling change.

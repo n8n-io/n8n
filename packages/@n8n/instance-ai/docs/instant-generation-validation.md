@@ -289,6 +289,16 @@ skill had changed. Other skills still referenced old inputs and removed tools.
 The handoff guidance now requires an audit of every attached skill after a
 tool contract changes. It also forbids claims about messages or escalations
 without a configured action. All 17 existing skill tests passed.
+A follow-up corrected and reread all five skills in 259.6 seconds. The edit
+kept the two workflow tools and the main Agent instructions unchanged. The
+orchestrator first requested a separate read-only audit, which added a builder
+round trip. Guidance now keeps inspection, editing, and readback in one scoped
+handoff. A new latency measurement is needed for that guidance change.
+Manual readback found one more defect: the cancellation skill required an
+event lookup before cancellation. That lookup can fail after a successful
+deletion and block the tested database-recovery path. A manual skill edit
+removed the prerequisite with a hash-guarded update. Readback matched the
+requested text. This correction is separate from the generated result.
 
 ## Historical compiler benchmark
 
