@@ -276,16 +276,29 @@ export async function decideBuildPlan(
 				: [],
 		),
 	);
-	const definitions = await Promise.all(
-		[...selectedTypes.values()].map(async (selected) => ({
-			...selected,
-			definition: await nodes.getNodeTypeDefinition?.(selected.nodeType, {
-				version: String(selected.version),
-				resource: selected.resource,
-				operation: selected.operation,
-				mode: selected.mode,
-			}),
-		})),
+	// Supply required fields without treating a single search match as a decision.
+	const unresolvedTypes = new Map(
+		selections.flatMap(({ selected, candidates: options }) => {
+			if (selected || options?.length !== 1) return [];
+			const candidate = options[0];
+			return [[JSON.stringify(candidate), candidate] as const];
+		}),
+	);
+	const [definitions, candidateDefinitions] = await Promise.all(
+		[selectedTypes, unresolvedTypes].map(
+			async (types) =>
+				await Promise.all(
+					[...types.values()].map(async (candidate) => ({
+						...candidate,
+						definition: await nodes.getNodeTypeDefinition?.(candidate.nodeType, {
+							version: String(candidate.version),
+							resource: candidate.resource,
+							operation: candidate.operation,
+							mode: candidate.mode,
+						}),
+					})),
+				),
+		),
 	);
 	abortSignal?.throwIfAborted();
 	const coverage = resolveNoul(answers.coverage);
@@ -304,11 +317,12 @@ export async function decideBuildPlan(
 		capabilities: [...capabilities.values()],
 		wiring: [...wiring.values()],
 		definitions,
+		candidateDefinitions,
 		decisionLatencyMs,
 		decisionStatus: failures.length ? 'incomplete' : 'completed',
 		decisionFailures: failures,
 		guidance: ready
 			? 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
-			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. Check capabilities before claiming an operation is unavailable. Retrieve missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
+			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for single unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Check capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }

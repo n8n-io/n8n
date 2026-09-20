@@ -137,7 +137,7 @@ describe('LLM plan and bounded decisions', () => {
 		expect(result.guidance).toContain('ask-user');
 	});
 
-	it('does not select a single candidate when the decision service is unavailable', async () => {
+	it('supplies the schema for a single unresolved candidate without accepting it', async () => {
 		const { nodes, decisions } = services();
 		decisions.decide.mockResolvedValue({
 			ok: false,
@@ -145,11 +145,22 @@ describe('LLM plan and bounded decisions', () => {
 			message: 'Unavailable',
 			latencyMs: 1,
 		});
-		const result = await decideBuildPlan(plan, nodes, decisions);
+		const result = await decideBuildPlan(
+			{ ...plan, steps: [...plan.steps, { ...plan.steps[1], id: 'second_confirmation' }] },
+			nodes,
+			decisions,
+		);
 		expect(result.status).toBe('needs_reasoning');
 		expect(result.selections.every(({ selected }) => selected === undefined)).toBe(true);
 		expect(result.wiring).toHaveLength(2);
-		expect(nodes.getNodeTypeDefinition).not.toHaveBeenCalled();
+		expect(result.definitions).toEqual([]);
+		expect(result.candidateDefinitions).toEqual([
+			expect.objectContaining({
+				nodeType: 'n8n-nodes-base.wait',
+				definition: { content: 'Live parameter definition' },
+			}),
+		]);
+		expect(result.guidance).toContain('not accepted choices');
 	});
 
 	it('narrows flat operation definitions and shares discovery for repeated services', async () => {
