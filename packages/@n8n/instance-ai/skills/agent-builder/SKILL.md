@@ -55,6 +55,11 @@ Check the proposed capabilities before handoff:
 
 Pass any missing behavior and setup requirements to the embedded builder.
 Inspect the saved configuration before describing the Agent as usable.
+When a tool contract changes, include an audit of every attached skill in the
+handoff. Check its instructions, description, and `allowedTools`. Update stale
+input names and removed tool references. Editing only the main instructions
+does not update the skills. A skill must not claim that a message was sent or
+an escalation was recorded unless a configured action did that work.
 
 ## Routing
 

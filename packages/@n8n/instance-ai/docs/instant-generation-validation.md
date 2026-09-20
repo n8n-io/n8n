@@ -104,6 +104,12 @@ The first build returned its diagnostic in 48 ms. The targeted retry saved in
 node and both IDs stayed unchanged. The full conversation took 39.5 seconds.
 These results do not meet the one-second end-to-end generation target.
 
+A second live regression applied the same failure to an existing workflow.
+Validation returned `draftEditsAvailable` in 35 ms. The cached-source repair
+completed in 444 ms. The full turn took 45.7 seconds. Readback confirmed the
+same workflow ID, nodes, parameters, connections, and unpublished state.
+The restored content matched the prior version, so the save kept that version.
+
 A live outreach repair fixed the loop output, the skipped-item return, and
 the delivery-error path. The successful build tool call took 402 ms. The full
 chat took 62 seconds, including a rejected malformed edit and its correction.
@@ -251,6 +257,38 @@ needs a model, and real Calendar execution still needs its credential.
 
 The draft-repair change passed 149 focused tests, including six new regression
 cases. The Instance AI build, type checks, and lint passed.
+
+The cancellation workflow now uses the shared candidate table and stage event
+fields. Its runtime repair took 162.3 seconds. Fifteen fixture cases passed.
+They cover confirmed cancellation, repeated cancellation, invalid identity,
+missing records, invalid types, inactive stages, Calendar errors, and database
+errors. A retry after a simulated successful deletion and a real failed SQL
+write completed the database update. Stale-read cases left a replacement event
+and a newer stage unchanged. These cases used real local identity and Postgres
+calls. Calendar responses were pinned. The four saved groups were checked in
+the Assistant canvas.
+
+A shared-calendar correction updated the candidate-details and cancellation
+tools in 118.2 seconds. Both now map recruiter, technical, and final interviews
+to the same stage calendar placeholders as the main workflow. The details
+workflow also handles an empty role and rejects a non-boolean verification
+value. A later one-field repair rejects a non-string candidate ID before SQL.
+That turn took 22.5 seconds. Its save took 403 ms, including a 309 ms JEV review.
+All eight candidate-details cases and all fifteen cancellation cases then
+passed together. The tests do not establish real Google connectivity.
+
+Candidate chat remains unverified. Automatic model resolution returned
+`missing_credential`. It did not configure a model. Booking and rescheduling
+still need a shared data contract and runtime validation. The main HR workflow
+also needs initial-booking, feedback-deadline, and participant checks. The
+complete HR system and the one-second generation goal are not complete.
+
+An Agent edit attached the tested cancellation workflow and detached five
+unfinished tools. It took 229.8 seconds. Readback found that only the identity
+skill had changed. Other skills still referenced old inputs and removed tools.
+The handoff guidance now requires an audit of every attached skill after a
+tool contract changes. It also forbids claims about messages or escalations
+without a configured action. All 17 existing skill tests passed.
 
 ## Historical compiler benchmark
 
