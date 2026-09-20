@@ -205,7 +205,11 @@ export const buildWorkflowInputSchema = z
 		draftEdits: z
 			.object({
 				sourceHash: z.string().min(1).describe('sourceHash from the failed inline JSON build.'),
-				changes: workflowJsonEditsInputSchema.shape.changes,
+				changes: workflowJsonEditsInputSchema.shape.changes.describe(
+					workflowJsonEditsInputSchema.shape.changes.description +
+						' For draftEdits only, an existing node can use its exact unique name instead of id. ' +
+						'Prefer name when graph assembly generated the id. Never guess the generated id.',
+				),
 			})
 			.optional()
 			.describe(
@@ -978,7 +982,9 @@ export function createBuildWorkflowTool(
 					const parsed = parseWorkflowJsonSource(binding.inlineDraftSource);
 					if (!parsed.success) throw new Error(parsed.errors.join('\n'));
 					inlineSource = JSON.stringify(
-						applyWorkflowJsonEdits(parsed.workflow, input.draftEdits.changes),
+						applyWorkflowJsonEdits(parsed.workflow, input.draftEdits.changes, {
+							allowNameLookup: true,
+						}),
 					);
 				} catch (error) {
 					return {

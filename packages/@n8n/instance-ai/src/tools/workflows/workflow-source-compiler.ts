@@ -3,6 +3,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	validateWorkflow,
+	validateWorkflowExpressionSyntax,
 	workflow as workflowBuilder,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
@@ -81,11 +82,11 @@ function normalizeWorkflowNodes(json: WorkflowJSON): void {
 	json.nodes = json.nodes.map((node) => normalizeNodeShape(node));
 }
 
-function validateCompiledWorkflow(
+async function validateCompiledWorkflow(
 	json: WorkflowJSON,
 	context: InstanceAiContext,
 	compilerWarnings: ValidationWarning[] = [],
-): ValidationWarning[] {
+): Promise<ValidationWarning[]> {
 	normalizeWorkflowNodes(json);
 
 	const schemaValidation = validateWorkflow(json, {
@@ -96,6 +97,13 @@ function validateCompiledWorkflow(
 	const warnings = [...compilerWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
+	if (context.nodeTypesProvider) {
+		const expressionErrors = await validateWorkflowExpressionSyntax(
+			json,
+			context.nodeTypesProvider,
+		);
+		collectValidationIssues(expressionErrors, warnings);
+	}
 	warnings.push(...detectArrayInputCollapse(json));
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
 	warnings.push(...detectUnparseableOpenAiSchema(json));
@@ -451,7 +459,7 @@ export async function compileWorkflowSource(
 
 			if (!result.success) return result;
 
-			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
+			const warnings = await validateCompiledWorkflow(result.workflow, context, result.warnings);
 			const credentialWarnings = await collectCredentialResolutionWarnings(
 				result.workflow,
 				context,

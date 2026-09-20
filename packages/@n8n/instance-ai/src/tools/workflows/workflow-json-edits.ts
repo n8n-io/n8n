@@ -28,7 +28,7 @@ const changesSchema = z
 			.array(
 				z
 					.object({
-						id: z.string().min(1),
+						id: z.string().min(1).optional(),
 						replaceParameters: z.boolean().optional(),
 					})
 					.passthrough(),
@@ -63,12 +63,23 @@ const changesSchema = z
 	.strict();
 
 /** Keep full source generation out of small repairs. The normal build path validates the result. */
-export function applyWorkflowJsonEdits(workflow: WorkflowJSON, changes: string): WorkflowJSON {
+export function applyWorkflowJsonEdits(
+	workflow: WorkflowJSON,
+	changes: string,
+	options: { allowNameLookup?: boolean } = {},
+): WorkflowJSON {
 	const parsed: unknown = JSON.parse(changes);
 	const edits = changesSchema.parse(Array.isArray(parsed) ? { nodes: parsed } : parsed);
 	const result = structuredClone(workflow);
 	const seen = new Set<string>();
 	for (const { replaceParameters, ...patch } of edits.nodes ?? []) {
+		if (patch.id === undefined && options.allowNameLookup && typeof patch.name === 'string') {
+			const matches = workflow.nodes.filter((node) => node.name === patch.name);
+			if (matches.length !== 1 || !matches[0].id) {
+				throw new Error('A draft node name must match exactly one existing node with an id.');
+			}
+			patch.id = matches[0].id;
+		}
 		if (typeof patch.id !== 'string' || !patch.id || seen.has(patch.id)) {
 			throw new Error('Each node edit must have a unique, nonempty id.');
 		}

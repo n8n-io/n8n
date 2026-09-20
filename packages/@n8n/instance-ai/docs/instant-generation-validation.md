@@ -1,5 +1,47 @@
 # Instant generation with JEV
 
+## Expression validation and draft repair
+
+The JSON build path now checks expression syntax before save. It uses the
+runtime parser without evaluating expressions. Installed node schemas select
+the visible parameters and apply `noDataExpression` rules. Literal fields,
+disabled nodes, and placeholder values do not produce syntax errors. SQL
+inline templates without the expression prefix are outside this check.
+The parser loads only when an expression needs it. The check leaves the
+supplied workflow unchanged and reports the node and parameter path.
+
+The malformed Calendar expression from the booking repair now produces
+`INVALID_EXPRESSION`. All five current HR drafts pass this syntax check.
+Across 100 runs per draft, validation took 1.0–4.3 ms at p95 for the four
+supporting workflows. The 64-node Candidate Journey took 13.1 ms at p95.
+These measurements exclude graph assembly and all other build checks.
+Syntax acceptance does not prove the workflow's behavior.
+
+A live failed build also exposed a repair mismatch. Graph assembly generates
+node IDs, while the draft edit format previously required the LLM to supply
+those IDs. The LLM tried a name, guessed an ID, and then rewrote the full
+source. That probe took 184.6 seconds.
+
+`draftEdits` now accepts an existing node's exact unique name when its ID is
+omitted. Code resolves the name inside the cached draft. Unknown or ambiguous
+names are rejected. Duplicate edits to the same ID are rejected even when
+one edit uses a name. New nodes still require IDs and full node fields. Saved
+`jsonEdits` still require IDs. Source hashes, saved versions, approval, and
+credential setup checks remain in place.
+
+A fresh live probe rejected malformed syntax in 42 ms. Its first repair by
+name saved in 461 ms, including a 313 ms JEV graph review. Readback confirmed
+unchanged node IDs and connections. Only the requested expression changed.
+The full Assistant turn took 40.8 seconds. This is one probe, not a latency
+guarantee. The repaired workflow returned `{"candidate":{"status":"ready"}}`
+in verification and in a separate manual execution from the editor. The
+workflow remains unpublished.
+
+All 407 existing tests in the affected expression, SDK validation, graph,
+source compiler, edit, build-tool, and runtime-skill suites passed. Dependency
+builds, lint, and type checks passed for the affected packages. Dedicated new
+syntax regression cases are pending the requested user confirmation.
+
 ## Latest HR booking reference
 
 The [portable booking graph](examples/README.md) now records a tested complex

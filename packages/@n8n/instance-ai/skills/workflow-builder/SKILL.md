@@ -137,6 +137,9 @@ as `jsonEdits` below. Do not regenerate the full draft for a missing parameter
 or a group boundary error. If the source cannot be parsed, correct its JSON
 syntax in `sourceCode` instead. This also repairs the cached source of a failed
 update. The saved base must still match. After a successful save, use `jsonEdits`.
+For `draftEdits`, an existing node can use its exact unique `name` instead of
+`id`. Prefer the name after graph assembly. Do not guess generated IDs.
+For example: `{"nodes":[{"name":"Edit Fields","parameters":{"jsonOutput":"={{ $json }}"}}]}`.
 
 For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
 Read the saved node IDs, parameters, execution settings, groups, and current version with
