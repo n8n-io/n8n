@@ -16,7 +16,6 @@ import {
 	builderRequiredArtifactsSchema,
 	type BuilderRequiredArtifact,
 } from './builder-required-artifact';
-import { formatParentHandoffEnvelope } from './parent-handoff-state';
 import {
 	AgentCompilerService,
 	describeScenarioCoverage,
@@ -272,8 +271,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				nodeRegistry: registryFor(domainContext),
 				excludeAgentId: target.agentId,
 			});
-			const handoff = formatParentHandoffEnvelope(context);
-			const request = [input.request ?? '', handoff ?? ''].filter(Boolean).join('\n\n');
+			const request = input.request ?? '';
 
 			if (input.action === 'verify')
 				return finished(await verify(delegate, service, target, input));

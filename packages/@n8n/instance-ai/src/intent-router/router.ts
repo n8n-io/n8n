@@ -13,7 +13,7 @@ import {
 	type RouterState,
 } from './schemas';
 
-export const INTENT_ROUTER_SCHEMA_VERSION = 'intent-router-v1';
+export const INTENT_ROUTER_SCHEMA_VERSION = 'intent-router-v2';
 
 export interface RouteIntentInput {
 	message: string;
@@ -79,7 +79,6 @@ export async function routeIntent(input: RouteIntentInput): Promise<RouteDecisio
 			message,
 			boundWorkflow: Boolean(state.boundWorkflowId),
 			boundAgent: Boolean(state.boundAgentRef),
-			previousRoute: state.previousRoute ?? null,
 		},
 		questions: {
 			route: {

@@ -240,8 +240,15 @@ export function compileTool(
 			return { type: 'custom', id: tool.id, ...approval };
 		case 'node': {
 			const operation = options.registry.require(tool.operationId);
+			const params = { ...tool.params };
+			for (const definition of operation.requiredParameters) {
+				if (!definition.derivable || params[definition.name] !== undefined) continue;
+				if (definition.type === 'enum' || definition.type === 'resource_locator') continue;
+				params[definition.name] =
+					`={{ $fromAI(${JSON.stringify(definition.name)}, ${JSON.stringify(definition.description)}, ${JSON.stringify(definition.type)}) }}`;
+			}
 			const parameters = compileParameterTree(
-				bindParameters(operation, tool.params, { warnings: [] }, tool.id),
+				bindParameters(operation, params, { warnings: [] }, tool.id),
 				() => undefined,
 			);
 			const credentialType = operation.credentials.find((credential) => credential.required)?.type;

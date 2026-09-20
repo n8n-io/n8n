@@ -30,6 +30,12 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
+		const { InstanceAiAdapterService } = await import('./instance-ai.adapter.service.js');
+		void Container.get(InstanceAiAdapterService)
+			.warmDecisionService()
+			.catch(() => {
+				Container.get(Logger).debug('Decision service connection warmup was unavailable');
+			});
 
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.

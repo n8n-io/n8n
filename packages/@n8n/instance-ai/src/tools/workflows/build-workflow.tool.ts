@@ -602,7 +602,10 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 		: buildWorkflowOutputSchema;
 }
 
-export function createBuildWorkflowTool(context: InstanceAiContext) {
+export function createBuildWorkflowTool(
+	context: InstanceAiContext,
+	options: { useModelForSimulation?: boolean } = {},
+) {
 	const failureTracker = new BuildFailureTracker();
 
 	return new Tool(PERSIST_WORKFLOW_TOOL_ID)
@@ -1451,6 +1454,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
 							fallbackModelConfig: context.modelId,
+							useModel: options.useModelForSimulation,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {

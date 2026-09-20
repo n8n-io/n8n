@@ -32,6 +32,10 @@ is code: write operations require approval unless the user said otherwise.
 `build-agent` persists through the delegate's `writeAgentArtifact` (config
 update fenced on the hash read before planning, then skills and tasks).
 Agents without a resolvable model are saved as drafts (`runnable: warn`).
+Required runtime tool inputs, such as contact email and message text, use
+`$fromAI` expressions. Resource selectors retain their configured values.
+The compiler reads the supplied request once. It does not append the parent
+handoff envelope as a second copy of the requirements.
 Action `verify` runs every scenario in Preview through `runAgentPreview` and
 reports `scenarioCoverage`; a scenario counts only when the run invoked the
 expected tool, or no tool for a direct question. Configuration is shared

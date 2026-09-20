@@ -33,6 +33,16 @@ export class SystemOneDecisionClient implements DecisionService {
 
 	constructor(private readonly options: SystemOneClientOptions) {}
 
+	/** Open the connection without a paid inference request. Startup can run this in parallel. */
+	async warmup(): Promise<void> {
+		const { apiKey, fetchImpl = fetch, timeoutMs = DEFAULT_TIMEOUT_MS } = this.options;
+		const response = await fetchImpl(`${this.options.baseUrl.replace(/\/+$/, '')}/v1/models`, {
+			signal: AbortSignal.timeout(timeoutMs),
+			headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {},
+		});
+		await response.arrayBuffer();
+	}
+
 	async decide(request: DecisionRequest): Promise<DecisionOutcome> {
 		const { apiKey, think, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = fetch } = this.options;
 		const started = Date.now();
@@ -43,6 +53,7 @@ export class SystemOneDecisionClient implements DecisionService {
 			latencyMs: Date.now() - started,
 		});
 		const controller = new AbortController();
+		if (request.abortSignal?.aborted) return fail('aborted', 'Request aborted.');
 		const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs);
 		const onAbort = () => controller.abort(new Error('aborted'));
 		request.abortSignal?.addEventListener('abort', onAbort, { once: true });
@@ -78,6 +89,9 @@ export class SystemOneDecisionClient implements DecisionService {
 			try {
 				json = await response.json();
 			} catch {
+				if (request.abortSignal?.aborted) return fail('aborted', 'Request aborted.');
+				if (controller.signal.aborted)
+					return fail('timeout', `Decision service exceeded ${timeoutMs}ms.`);
 				return fail('malformed', 'Decision service returned invalid JSON.');
 			}
 			const parsed = decisionResponseSchema.safeParse(json);

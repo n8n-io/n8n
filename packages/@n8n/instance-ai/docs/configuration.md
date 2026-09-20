@@ -32,13 +32,25 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_DECISION_URL` | string | `''` | Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: the compilers fall back to the run's model, then abstain and ask. |
-| `N8N_INSTANCE_AI_DECISION_API_KEY` | string | `''` | Bearer token for the decision service. |
+| `JEV_API_KEY` | string | unset | TypeSafe API key. Sets the default decision URL to `https://api.typesafe.ai` and supplies the default decision key. |
+| `N8N_INSTANCE_AI_DECISION_URL` | string | TypeSafe when `JEV_API_KEY` is set; otherwise `''` | Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: the compilers fall back to the run's model, then abstain and ask. |
+| `N8N_INSTANCE_AI_DECISION_API_KEY` | string | `JEV_API_KEY` or `''` | Bearer token for the decision service. Overrides `JEV_API_KEY`. |
 | `N8N_INSTANCE_AI_DECISION_MODEL` | string | `jev-latest` | Model name the decision service routes on. |
 | `N8N_INSTANCE_AI_DECISION_TIMEOUT_MS` | number | `1500` | Per-request latency budget for the decision service. |
 | `N8N_INSTANCE_AI_FAST_PATH_ENABLED` | boolean | `false` | Route each chat turn with a structured read before any language model runs (`docs/intent-router.md`). |
 
 See `docs/workflow-compiler.md` for the decision contract and policy.
+
+Load `JEV_API_KEY` into the backend environment. Enable
+`N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` to use the compiler route in chat.
+Restart the backend after changing these values. JEV uses the
+[TypeSafe structured-read API](https://docs.typesafe.ai/api), not a chat API.
+Keep the normal assistant model configured for requests outside the compiler catalog.
+
+When the fast path is enabled, startup opens the decision connection with
+`GET /v1/models`. This does not run inference. The connection pool keeps idle
+connections for up to 60 seconds, subject to server limits. A cold connection,
+service delay, clarification, approval, or fallback can exceed one second.
 
 ### Tracing
 

@@ -60,11 +60,11 @@ export class InstanceAiConfig {
 
 	/** Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: model fallback, then abstain. */
 	@Env('N8N_INSTANCE_AI_DECISION_URL')
-	decisionUrl: string = '';
+	decisionUrl: string = process.env.JEV_API_KEY ? 'https://api.typesafe.ai' : '';
 
 	/** Bearer token for the decision service. Optional. */
 	@Env('N8N_INSTANCE_AI_DECISION_API_KEY')
-	decisionApiKey: string = '';
+	decisionApiKey: string = process.env.JEV_API_KEY ?? '';
 
 	/** Model name the decision service routes on. */
 	@Env('N8N_INSTANCE_AI_DECISION_MODEL')

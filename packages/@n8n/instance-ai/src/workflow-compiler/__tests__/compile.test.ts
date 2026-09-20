@@ -181,7 +181,7 @@ describe('compileWorkflow', () => {
 			maxTries: 3,
 			waitBetweenTries: 500,
 		});
-		expect(compiled.generator.compilerVersion).toBe('1.0.0');
+		expect(compiled.generator.compilerVersion).toBe('1.0.1');
 		expect(compiled.warnings).toEqual([]);
 	});
 

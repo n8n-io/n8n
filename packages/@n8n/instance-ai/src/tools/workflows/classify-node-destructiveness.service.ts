@@ -37,6 +37,8 @@ export interface ClassifyNodesForSimulationInput {
 	nodeNames?: ReadonlySet<string>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** If false, classify unknown operations as simulated without a model call. */
+	useModel?: boolean;
 }
 
 const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
@@ -429,7 +431,11 @@ export async function classifyNodesForSimulation(
 		// retired, the plan is the only source of verification pin data, so a
 		// throw here would leave every node executing for real. Fail destructive.
 		try {
-			for (const verdict of await classifyAmbiguousNodes(ambiguous, input.fallbackModelConfig)) {
+			const verdicts =
+				input.useModel === false
+					? ambiguous.map((node) => fallbackVerdict(node.name))
+					: await classifyAmbiguousNodes(ambiguous, input.fallbackModelConfig);
+			for (const verdict of verdicts) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}
 		} catch {

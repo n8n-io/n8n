@@ -5,6 +5,17 @@ before any language model runs. When the router is confident, a compiler
 serves the turn and the orchestrator LLM never runs. The LLM runs only when
 the router is not confident or a compiler hands the turn back.
 
+For JEV, the router and likely operation choices share one HTTP request.
+The compiler reuses these answers within the same turn. It does not reuse
+answers across turns or users. Node descriptions load during the request.
+The router reads the current message and target bindings. It does not send
+the previous route, which can bias an edit toward the earlier create action.
+The host restores the saved agent binding before it routes an agent edit.
+
+Compiler saves prepare conservative simulation fixtures without a generative
+model call. An unknown operation stays simulated. Saving does not claim that
+the workflow or agent has run. See [live measurements](instant-generation-validation.md).
+
 ```text
 run-start → intent router
   ├─ pending compiler question? → answer        (no read)

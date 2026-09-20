@@ -105,7 +105,12 @@ describe('build-workflow tool', () => {
 		);
 		const compiled = JSON.parse(persistHandler.mock.calls[0][0].sourceCode) as WorkflowJSON;
 		expect(created.status).toBe('compiled');
-		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(compiled);
+		vi.mocked(context.workflowService.getWorkflowSnapshot).mockResolvedValue({
+			json: compiled,
+			versionId: 'version-1',
+			updatedAt: 0,
+			checksum: 'checksum-1',
+		});
 		persistHandler.mockClear();
 
 		const output = await handlerOf(createCompileWorkflowTool(context))(
@@ -138,7 +143,12 @@ describe('build-workflow tool', () => {
 		const context = makeContext();
 		await handlerOf(createCompileWorkflowTool(context))({ action: 'create', request: REQUEST }, {});
 		const compiled = JSON.parse(persistHandler.mock.calls[0][0].sourceCode) as WorkflowJSON;
-		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(compiled);
+		vi.mocked(context.workflowService.getWorkflowSnapshot).mockResolvedValue({
+			json: compiled,
+			versionId: 'version-1',
+			updatedAt: 0,
+			checksum: 'checksum-1',
+		});
 		vi.mocked(context.executionService.list).mockResolvedValue([
 			{
 				id: 'exec-7',
@@ -195,7 +205,9 @@ describe('build-workflow tool', () => {
 			errors: ['User denied the action'],
 		});
 
-		vi.mocked(context.workflowService.getAsWorkflowJSON).mockRejectedValue(new Error('not found'));
+		vi.mocked(context.workflowService.getWorkflowSnapshot).mockRejectedValue(
+			new Error('not found'),
+		);
 		const missing = await handlerOf(createCompileWorkflowTool(context))(
 			{ action: 'edit', workflowId: 'nope', request: 'Remove the Respond step' },
 			{},

@@ -139,7 +139,7 @@ export function extractRequirements(
 			methodValues,
 			'Which HTTP method should the main endpoint accept?',
 		);
-		const pathValues = methods.map((m) => m[2]);
+		const pathValues = methods.map((m) => m[2].replace(/[.,;!?]+$/, ''));
 		triggerParams.path = param(pathValues, 'Which endpoint should this workflow expose?');
 	} else if (/\b(webhook|endpoint|api)\b/i.test(request)) {
 		trigger = resolved('webhook', 'user');
@@ -215,7 +215,10 @@ export function extractRequirements(
 		? resolved(nameMatch[1], 'user')
 		: context.existingWorkflowName
 			? resolved(context.existingWorkflowName, 'workflow')
-			: resolved(deriveWorkflowName(request, methods[0]?.[2], integrations), 'default');
+			: resolved(
+					deriveWorkflowName(request, methods[0]?.[2].replace(/[.,;!?]+$/, ''), integrations),
+					'default',
+				);
 
 	const errorPolicy = /\bretry\b/i.test(request)
 		? resolved('retry', 'user')

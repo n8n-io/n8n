@@ -513,7 +513,7 @@ export interface InstanceAiWorkflowService {
 	 *  versionId you'll pin to it land in one round-trip. */
 	getWorkflowSnapshot(
 		workflowId: string,
-	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number; checksum?: string }>;
 	/**
 	 * Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.).
 	 *

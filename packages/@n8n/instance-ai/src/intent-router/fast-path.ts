@@ -5,15 +5,18 @@ import { nanoid } from 'nanoid';
 
 import { extractAgentRequirements } from '../agent-compiler/requirements/extract';
 import { createBuildAgentTool } from '../tools/orchestration/build-agent.tool';
+import { resolveAgentBuilderTarget } from '../tools/orchestration/agent-target-binding';
 import {
 	createCompileWorkflowTool,
 	selectDecisionService,
 } from '../tools/workflows/compile-workflow.tool';
-import { slug } from '../tools/workflows/compiler-tool-support';
+import { registryFor, slug } from '../tools/workflows/compiler-tool-support';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import type { DecisionService } from '../workflow-compiler/decision/decision-service';
+import { BatchedDecisionService } from '../workflow-compiler/decision/batched-decision-service';
 import { isString, valueOf } from '../workflow-compiler/requirements/types';
 import { routeIntent } from './router';
+import { prefetchOperations } from './prefetch';
 import type { IntentRoute, RouteDecision, RouterState } from './schemas';
 import {
 	readFastPathState,
@@ -74,15 +77,38 @@ type TurnEvent<E = InstanceAiEvent> = E extends InstanceAiEvent
 export async function runFastPath(input: FastPathInput): Promise<FastPathOutcome> {
 	const started = Date.now();
 	const { context, orchestrationContext, message } = input;
-	const persisted = await readFastPathState(context);
+	orchestrationContext.abortSignal?.throwIfAborted();
+	const [persisted] = await Promise.all([
+		readFastPathState(context),
+		resolveAgentBuilderTarget(context),
+	]);
 	const state = toRouterState(persisted, context, input.state);
-	const decisions = input.decisions ?? selectDecisionService(context);
-	const decision = await routeIntent({
+	const backend = input.decisions ?? selectDecisionService(context);
+	const decisions =
+		backend.kind === 'systemone'
+			? new BatchedDecisionService(backend, orchestrationContext.abortSignal)
+			: backend;
+	context.decisionService = decisions;
+	const route = routeIntent({
 		message,
 		state,
 		decisions,
 		abortSignal: orchestrationContext.abortSignal,
 	});
+	const [decision] = await Promise.all([
+		route,
+		backend.kind === 'systemone' ? registryFor(context).warm() : undefined,
+		backend.kind === 'systemone'
+			? prefetchOperations({
+					message,
+					state,
+					registry: registryFor(context),
+					decisions,
+					abortSignal: orchestrationContext.abortSignal,
+				})
+			: undefined,
+	]);
+	orchestrationContext.abortSignal?.throwIfAborted();
 	const notHandled = (reason: string, toolCallId?: string): FastPathOutcome => ({
 		handled: false,
 		route: decision.route,

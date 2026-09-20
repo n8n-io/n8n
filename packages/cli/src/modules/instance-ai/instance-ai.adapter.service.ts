@@ -1436,6 +1436,7 @@ export class InstanceAiAdapterService {
 					json: toWorkflowJSON(wf, { redactParameters }),
 					versionId: wf.versionId,
 					updatedAt: wf.updatedAt.getTime(),
+					checksum: await calculateWorkflowChecksum(wf),
 				};
 			},
 
@@ -3212,7 +3213,14 @@ export class InstanceAiAdapterService {
 		ttlMs: 15 * 60 * 1000,
 	});
 
-	/** Structured-read decision backend for the workflow compiler; undefined until `N8N_INSTANCE_AI_DECISION_URL` is set. */
+	/** Prepare the configured connection before the first interactive turn. */
+	async warmDecisionService(): Promise<void> {
+		if (!this.globalConfig.instanceAi.fastPathEnabled) return;
+		const service = this.createDecisionService();
+		if (service instanceof SystemOneDecisionClient) await service.warmup();
+	}
+
+	/** Structured-read backend. An explicit URL or JEV_API_KEY enables it. */
 	private createDecisionService(): WorkflowCompilerDecisionService | undefined {
 		const config = this.globalConfig.instanceAi;
 		if (!config.decisionUrl) return undefined;
@@ -3221,6 +3229,13 @@ export class InstanceAiAdapterService {
 			...(config.decisionApiKey ? { apiKey: config.decisionApiKey } : {}),
 			model: config.decisionModel,
 			timeoutMs: config.decisionTimeoutMs,
+			fetchImpl: this.outboundHttp
+				.transport({
+					// The decision URL is admin-configured infrastructure and can be internal.
+					useDefaultSsrfPolicy: 'unsafe',
+					timeouts: { keepAliveTimeout: 60_000 },
+				})
+				.asCustomFetch(),
 		});
 		return this.decisionService;
 	}

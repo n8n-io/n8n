@@ -18,6 +18,7 @@ import {
 	verificationLevelSchema,
 } from './compiler-tool-support';
 import { confirmationSuspendSchema, createBuildWorkflowTool } from './build-workflow.tool';
+import { saveWorkflowSourceFileBinding } from './workflow-file-bindings';
 import type { ExecutionDebugInfo, InstanceAiContext } from '../../types';
 import { WorkflowCompilerService, type CompilerResult } from '../../workflow-compiler';
 import { approvalSummarySchema } from '../approval-copy';
@@ -137,7 +138,7 @@ export function createWorkflowCompilerService(context: InstanceAiContext): Workf
 const wfSlug = (value: string) => slug(value, 'workflow');
 
 export function createCompileWorkflowTool(context: InstanceAiContext) {
-	const persist = createBuildWorkflowTool(context);
+	const persist = createBuildWorkflowTool(context, { useModelForSimulation: false });
 	const folderEnabled = context.folderExplorationEnabled === true;
 
 	return new Tool('build-workflow')
@@ -358,7 +359,15 @@ async function loadWorkflow(
 	workflowId: string,
 ): Promise<WorkflowJSON | undefined> {
 	try {
-		return await context.workflowService.getAsWorkflowJSON(workflowId);
+		const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
+		// Fence the save against the same snapshot used to plan this change.
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: `src/workflows/${wfSlug(workflowId)}.workflow.json`,
+			workflowId,
+			workflowVersionId: snapshot.versionId,
+			workflowChecksum: snapshot.checksum,
+		});
+		return snapshot.json;
 	} catch {
 		return undefined;
 	}
