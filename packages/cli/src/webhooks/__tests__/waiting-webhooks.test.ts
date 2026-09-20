@@ -3,7 +3,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import type { INodeParameters, IWorkflowBase, Workflow } from 'n8n-workflow';
+import type { IExecuteData, INodeParameters, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,7 +11,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { markResumedFromWait, WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
@@ -133,6 +133,23 @@ describe('WaitingWebhooks', () => {
 		it('should return * as allowed origins', async () => {
 			const options = await waitingWebhooks.findAccessControlOptions();
 			expect(options).toEqual({ allowedOrigins: '*' });
+		});
+	});
+
+	describe('markResumedFromWait', () => {
+		it('should disable the node and flag the stack entry for multi-output resume', () => {
+			const entry = {
+				node: { name: 'Wait', disabled: undefined },
+				data: { main: [[], [{ json: { decision: 'rejected' } }]] },
+				source: null,
+				metadata: { subRun: [] },
+			} as unknown as IExecuteData;
+
+			markResumedFromWait(entry);
+
+			expect(entry.node.disabled).toBe(true);
+			// Existing metadata is kept alongside the flag
+			expect(entry.metadata).toEqual({ subRun: [], resumedFromWait: true });
 		});
 	});
 

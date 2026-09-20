@@ -8,7 +8,7 @@ import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-wo
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { applyCors } from '@/utils/cors.util';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { markResumedFromWait, WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -24,7 +24,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 	protected disableNode(execution: IExecutionResponse, method?: string) {
 		if (method === 'POST') {
-			execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+			markResumedFromWait(execution.data.executionData!.nodeExecutionStack[0]);
 		}
 	}
 

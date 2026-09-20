@@ -7,6 +7,7 @@ import type express from 'express';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
+	type IExecuteData,
 	type INode,
 	type INodes,
 	type IWorkflowBase,
@@ -41,6 +42,17 @@ import { preserveInputOverride } from '@/workflow-helpers';
  * [Resume On Webhook Call](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/#on-webhook-call)
  * feature.
  */
+/**
+ * Disables the node that parked the execution so its `execute()` does not run
+ * again, and flags the stack entry so the engine forwards every output of the
+ * webhook result (see `WorkflowExecute.handleResumedNode`) instead of only the
+ * first, which is all a disabled node would pass through.
+ */
+export function markResumedFromWait(entry: IExecuteData) {
+	entry.node.disabled = true;
+	entry.metadata = { ...entry.metadata, resumedFromWait: true };
+}
+
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
 	protected includeForms = false;
@@ -70,7 +82,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	protected disableNode(execution: IExecutionResponse, _method?: string) {
-		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+		markResumedFromWait(execution.data.executionData!.nodeExecutionStack[0]);
 	}
 
 	private isSendAndWaitRequest(nodes: INodes, suffix: string | undefined) {

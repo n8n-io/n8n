@@ -2131,6 +2131,102 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	describe('resuming a waiting node with several outputs', () => {
+		// The webhook result of the node that parked the execution is stored as that
+		// node's input on the stack. On resume it must reach whichever output the
+		// webhook chose, not only the first one.
+		const WAIT_NODE = 'Wait For Review';
+
+		const nodeType = (name: string) =>
+			({
+				description: {
+					name,
+					displayName: name,
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }, { type: NodeConnectionTypes.Main }],
+				},
+				execute: async () => [[{ json: { ran: true } }]],
+			}) as unknown as INodeType;
+
+		async function resumeWith(webhookOutputs: INodeExecutionData[][]) {
+			const waitNode = createNodeData({ name: WAIT_NODE, type: 'wait' });
+			const approved = createNodeData({ name: 'Approved', type: 'after' });
+			const rejected = createNodeData({ name: 'Rejected', type: 'after' });
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => nodeType(type));
+
+			const workflow = new DirectedGraph()
+				.addNodes(waitNode, approved, rejected)
+				.addConnections(
+					{ from: waitNode, to: approved, outputIndex: 0 },
+					{ from: waitNode, to: rejected, outputIndex: 1 },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				'manual',
+			);
+
+			const runExecutionData = createRunExecutionData({
+				resultData: { runData: { [WAIT_NODE]: [mock<ITaskData>()] }, lastNodeExecuted: WAIT_NODE },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{ node: waitNode, data: { main: webhookOutputs }, source: null } as IExecuteData,
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+			runExecutionData.waitTill = new Date('3000-01-01T00:00:00.000Z');
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			return await workflowExecute.processRunExecutionData(workflow);
+		}
+
+		it('should forward webhook data on the first output', async () => {
+			const result = await resumeWith([[{ json: { decision: 'approved' } }], []]);
+
+			expect(result.status).toBe('success');
+			const runData = result.data.resultData.runData;
+			const outputs = runData[WAIT_NODE].at(-1)?.data?.main ?? [];
+			expect(outputs.map((items) => items?.map((item) => item.json))).toEqual([
+				[{ decision: 'approved' }],
+				[],
+			]);
+			expect(runData.Approved).toHaveLength(1);
+			expect(runData.Rejected).toBeUndefined();
+		});
+
+		it('should forward webhook data on a later output', async () => {
+			const result = await resumeWith([[], [{ json: { decision: 'rejected' } }]]);
+
+			expect(result.status).toBe('success');
+			const runData = result.data.resultData.runData;
+			const outputs = runData[WAIT_NODE].at(-1)?.data?.main ?? [];
+			expect(outputs.map((items) => items?.map((item) => item.json))).toEqual([
+				[],
+				[{ decision: 'rejected' }],
+			]);
+			expect(runData.Approved).toBeUndefined();
+			expect(runData.Rejected).toHaveLength(1);
+		});
+
+		it('should not run the node again on resume', async () => {
+			const result = await resumeWith([[{ json: { decision: 'approved' } }], []]);
+
+			// `execute` would have produced `{ ran: true }`
+			const first = result.data.resultData.runData[WAIT_NODE].at(-1)?.data?.main?.[0] ?? [];
+			expect(first.map((item) => item.json)).toEqual([{ decision: 'approved' }]);
+		});
+	});
+
 	describe('prepareWaitingToExecution', () => {
 		let runExecutionData: IRunExecutionData;
 		let workflowExecute: WorkflowExecute;

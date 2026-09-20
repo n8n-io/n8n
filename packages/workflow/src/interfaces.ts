@@ -3324,6 +3324,14 @@ export interface ITaskMetadata {
 	resumeError?: ExecutionError;
 
 	/**
+	 * Set by `WorkflowExecute.handleWaitingState` on the stack entry of the node
+	 * that parked the execution. Its `webhook()` output is stored as that entry's
+	 * input, and on resume `runNode` forwards every output array of it instead of
+	 * only the first, so a node with several outputs can resume on any of them.
+	 */
+	resumedFromWait?: boolean;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */

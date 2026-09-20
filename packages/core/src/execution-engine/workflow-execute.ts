@@ -943,6 +943,21 @@ export class WorkflowExecute {
 		return { data: undefined };
 	}
 
+	/**
+	 * A node that parked the execution re-runs with its `webhook()` result as input
+	 * (see `prepareExecutionData` in the webhook helpers). Unlike a disabled node,
+	 * every output array is forwarded so the node can resume on any output.
+	 */
+	private handleResumedNode(inputData: ITaskDataConnections): IRunNodeResponse {
+		if (Object.hasOwn(inputData, 'main') && inputData.main.length > 0) {
+			if (inputData.main[0] === null) {
+				return { data: undefined };
+			}
+			return { data: inputData.main.map((output) => output ?? []) };
+		}
+		return { data: undefined };
+	}
+
 	private prepareConnectionInputData(
 		workflow: Workflow,
 		nodeType: INodeType,
@@ -1338,6 +1353,10 @@ export class WorkflowExecute {
 			this.rethrowNodeError(resumeError);
 		}
 
+		if (executionData.metadata?.resumedFromWait) {
+			return this.handleResumedNode(inputData);
+		}
+
 		if (node.disabled === true) {
 			return this.handleDisabledNode(inputData);
 		}
@@ -1468,6 +1487,7 @@ export class WorkflowExecute {
 			// normally instead of passing their input through in disabled mode.
 			if (!executionStackEntry.metadata?.resumeError) {
 				executionStackEntry.node.disabled = true;
+				executionStackEntry.metadata = { ...executionStackEntry.metadata, resumedFromWait: true };
 			}
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
