@@ -39,6 +39,15 @@ one-second conversation latency.
 The 159 focused Instance AI tests and 53 SDK ID utility tests passed. Builds,
 lint, and type checks passed for both packages.
 
+A live Assistant request then built an unpublished candidate intake validator.
+It used `plan-build`, supplied `graph` to `build-workflow`, and saved on its
+first attempt. The build tool took 536 ms. This includes a 366 ms JEV graph
+review, validation, and persistence. The full turn took 54.9 seconds. Eight
+execution cases passed for normalized input, strict confirmation, a missing
+name, and invalid email parts. Manual UI inspection confirmed the saved graph
+and Code parameters. These results establish the graph input path. They do not
+establish one-second LLM planning or parameter generation.
+
 ## Current build path
 
 The assistant now starts with an LLM plan in plain text. `plan-build` sends
