@@ -1,5 +1,42 @@
 # Instant generation with JEV
 
+## Latest HR booking reference
+
+The [portable booking graph](examples/README.md) now records a tested complex
+input for deterministic assembly. It has 28 nodes, 35 edges, and nine groups.
+One hundred compilations produced identical JSON at 4.1 ms p95. Parameters,
+executable edges, and groups matched the saved draft after replacing local
+setup values. This reference was repaired manually. It does not establish
+automatic generation quality.
+
+All 34 booking fixture cases passed with 46 executions in 7.7 seconds.
+Individual executions took 129–165 ms, including polling and database
+readback. Real n8n nodes used isolated Postgres and local identity and Calendar
+services. Tests covered every assigned interviewer calendar, conditional
+record claims, duplicate requests, concurrent requests, and recovery after
+provider or database failure. One case booked, rescheduled, cancelled, and
+rebooked through the shared candidate record. No real invitations were sent.
+The 145 focused graph, build-tool, and runtime-skill tests passed. The package
+build, lint, and type checks also passed.
+
+Manual inspection confirmed the saved groups, request parameters, and existing
+Calendar credential control. The candidate Agent now has four workflow tools,
+including booking. Its three affected skills were updated and read back with
+the new contract. The Agent UI shows all four tools. Its model remains unset.
+Candidate conversations and production integrations remain unverified.
+
+A separate planning-only Assistant probe took 189.4 seconds, including a
+930 ms JEV review. JEV left the quality checks uncertain. It also proposed a
+native Calendar create operation that did not expose all required controls.
+The manual graph uses HTTP Request for the fixed event ID and response status.
+An operation selection does not establish parameter support. Initial runtime
+testing also found an expression parse error that structural validation had
+missed. The saved graph corrects it.
+
+The main HR draft still needs compatible stage transitions, feedback deadlines,
+initial scheduling, and participant checks. The one-second end-to-end goal
+remains unmet. The sections below retain earlier measurements and repairs.
+
 ## Deterministic JSON assembly
 
 `build-workflow` now accepts `graph`. The LLM supplies parameters, explicit
