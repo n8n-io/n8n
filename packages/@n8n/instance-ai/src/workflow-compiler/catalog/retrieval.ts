@@ -47,15 +47,29 @@ export function retrieveCandidates(
 	query: string,
 	options: RetrievalOptions = {},
 ): Candidate[] {
-	const tokens = new Set(tokenize(query).map(stem));
-	const phrases = query.toLowerCase();
 	const kinds =
 		options.kind === undefined
 			? undefined
 			: new Set(Array.isArray(options.kind) ? options.kind : [options.kind]);
-	const results: Candidate[] = [];
-	for (const operation of registry.list({ integration: options.integration })) {
-		if (kinds && !kinds.has(operation.kind)) continue;
+	return rankOperations(
+		registry
+			.list({ integration: options.integration })
+			.filter((operation) => !kinds || kinds.has(operation.kind)),
+		query,
+		options,
+	);
+}
+
+/** Use the same ranking for the static registry and installed operation catalogs. */
+export function rankOperations<T extends Pick<NodeOperation, 'id' | 'integration' | 'keywords'>>(
+	operations: readonly T[],
+	query: string,
+	options: Pick<RetrievalOptions, 'limit' | 'minScore'> = {},
+): Array<{ operation: T; score: number; matched: string[] }> {
+	const tokens = new Set(tokenize(query).map(stem));
+	const phrases = query.toLowerCase();
+	const results: Array<{ operation: T; score: number; matched: string[] }> = [];
+	for (const operation of operations) {
 		let score = 0;
 		const matched: string[] = [];
 		for (const keyword of operation.keywords) {

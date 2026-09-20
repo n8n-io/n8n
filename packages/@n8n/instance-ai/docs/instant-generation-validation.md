@@ -7,6 +7,47 @@ This replaces the earlier one-second target. Measure planning, JEV decisions,
 parameter generation, save, required verification, and the final reply.
 Do not treat graph assembly time as total task time.
 
+## Enterprise sales holdout
+
+The [sales protocol](sales-holdout.md) freezes the business request and checks
+before the first build. The stack is Salesforce, Slack, Gmail, Google Calendar,
+and DocuSign. It covers the enterprise sales lifecycle and an internal Agent.
+The first run uses a fresh thread and the earlier build at `114881ea746`.
+The user selected local verification. No LangTracer case was published.
+
+The first plan took 257.4 seconds to reach the existing approval card. This
+already fails the 30-second completion target. The first intake draft needed
+five build attempts. It remains unpublished. Three of four native Salesforce
+intake checks passed against a local provider fixture. The failed check found
+that a duplicate note targets the new lead instead of the existing lead.
+These tests cover the seven-node intake prefix. They do not prove the full
+sales process or the bot. The rest of the initial build is still under review.
+
+The holdout also exposed two general operation-selection defects. A service
+search with operation qualifiers included unrelated nodes and over 130 choices
+per step. The SDK file catalog supplied names such as `add_note`, while native
+workflow JSON requires `addNote`.
+
+Planning now prefers the longest installed service name, ranks large operation
+sets, and supplies at most 12 choices per step plus `none_of_these`. It retains
+the full capability list for LLM fallback. Large choice batches run separately
+from the quality checks. Live parameter values take precedence over SDK file
+aliases. No sales-specific generation rule or workflow template was added.
+
+Three paired live probes used the same nine-step plan and the installed node
+catalog. The old review took 1.55, 1.51, and 1.26 seconds. One timed out; the
+other two returned the SDK aliases. The revised review took 1.03, 0.40, and
+0.37 seconds. All three selected the correct native values. Each retained the
+negative progress result and uncertain coverage and scope results. The total
+request payload fell from 188.6 KB to 29.0 KB across three parallel requests.
+These measurements cover plan review only. They are not total build latency.
+
+Eight added regression cases cover large catalogs across three domains,
+step-specific ranking, aliases, fallback, qualified node names, and independent
+quality checks. All 71 affected tests passed. Package build, lint, and type
+checks passed. The runtime intake failure remains separate from these unit
+regressions and must not be reported as a passing holdout.
+
 ## Batched branch verification
 
 The verifier accepts up to ten named scenarios in one call. Each scenario

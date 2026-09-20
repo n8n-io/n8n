@@ -228,6 +228,206 @@ describe('LLM plan and bounded decisions', () => {
 		);
 	});
 
+	it.each([
+		{ name: 'CRM', resource: 'contact', operation: 'update' },
+		{ name: 'Inventory', resource: 'shipment', operation: 'create' },
+		{ name: 'Service Desk', resource: 'ticket', operation: 'close' },
+	])(
+		'bounds a large $name catalog without hiding its capabilities',
+		async ({ name, resource, operation }) => {
+			const { nodes, decisions } = services();
+			const type = `test.${name.toLowerCase().replaceAll(' ', '')}`;
+			nodes.listSearchable.mockResolvedValue([
+				{
+					name: type,
+					displayName: name,
+					description: 'Manage records',
+					version: 1,
+					inputs: ['main'],
+					outputs: ['main'],
+				},
+			]);
+			nodes.listDiscriminators.mockResolvedValue({
+				resources: [
+					...Array.from({ length: 100 }, (_, i) => ({
+						name: `unrelated${i}`,
+						operations: ['get'],
+					})),
+					{ name: resource, operations: [operation] },
+				],
+			});
+			const result = await decideBuildPlan(
+				{
+					originalRequest: `Use ${name} to ${operation} the ${resource}.`,
+					plan: `Use the installed ${name} operation.`,
+					steps: [
+						{
+							id: 'action',
+							search: `${name} ${resource} ${operation}`,
+							intent: `${operation} the ${resource}`,
+						},
+					],
+				},
+				nodes,
+				decisions,
+			);
+			expect(result.selections[0].selected).toMatchObject({ nodeType: type, resource, operation });
+			expect(result.capabilities[0].operations).toHaveLength(101);
+			const choices = decisions.decide.mock.calls[0][0].questions.step_0.criteria;
+			expect(Object.keys(choices ?? {})).toHaveLength(13);
+			expect(choices).toHaveProperty('none_of_these');
+		},
+	);
+
+	it('uses live resource and operation values instead of SDK file names', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [{ name: 'custom_object', operations: ['add_note'] }],
+		});
+		const description = await nodes.getDescription('n8n-nodes-base.gmail');
+		nodes.getDescription.mockResolvedValue({
+			...description,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'addNote',
+					displayOptions: { show: { resource: ['customObject'] } },
+					options: [{ name: 'Add Note', value: 'addNote' }],
+				},
+			],
+		});
+		const result = await decideBuildPlan({ ...plan, steps: [plan.steps[0]] }, nodes, decisions);
+		expect(result.selections[0].selected).toMatchObject({
+			resource: 'customObject',
+			operation: 'addNote',
+		});
+		expect(result.capabilities[0].operations).toEqual([
+			{ resource: 'customObject', operation: 'addNote' },
+		]);
+		expect(nodes.getNodeTypeDefinition).toHaveBeenCalledWith(
+			'n8n-nodes-base.gmail',
+			expect.objectContaining({ resource: 'customObject', operation: 'addNote' }),
+		);
+	});
+
+	it('uses each step intent to narrow a shared service catalog', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [
+				...Array.from({ length: 40 }, (_, i) => ({
+					name: `unrelated${i}`,
+					operations: ['archive'],
+				})),
+				{ name: 'message', operations: ['send', 'get'] },
+			],
+		});
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: [
+					{ id: 'send', search: 'Gmail', intent: 'send message' },
+					{ id: 'read', search: 'Gmail', intent: 'get message' },
+				],
+			},
+			nodes,
+			decisions,
+		);
+		expect(result.selections.map(({ selected }) => selected?.operation)).toEqual(['send', 'get']);
+		expect(nodes.listDiscriminators).toHaveBeenCalledOnce();
+	});
+
+	it('keeps truncated uncertain choices in LLM review with the full capabilities', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [
+				{ name: 'message', operations: Array.from({ length: 50 }, (_, i) => `action${i}`) },
+			],
+		});
+		decisions.decide.mockResolvedValue({
+			ok: false,
+			reason: 'timeout',
+			message: 'Timed out',
+			latencyMs: 1500,
+		});
+		const result = await decideBuildPlan({ ...plan, steps: [plan.steps[0]] }, nodes, decisions);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.selections[0]).toMatchObject({
+			selected: undefined,
+			candidateCount: 50,
+			candidatesTruncated: true,
+		});
+		expect(result.selections[0].candidates).toHaveLength(12);
+		expect(result.capabilities[0].operations).toHaveLength(50);
+		expect(result.definitions).toEqual([]);
+	});
+
+	it('prefers the longest installed name before resource and operation qualifiers', async () => {
+		const { nodes, decisions } = services();
+		nodes.listSearchable.mockResolvedValue(
+			['CRM', 'CRM Tool', 'CRM Trigger'].map((name) => ({
+				name: `test.${name.replaceAll(' ', '')}`,
+				displayName: name,
+				description: 'CRM records',
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+			})),
+		);
+		nodes.listDiscriminators.mockResolvedValue(null);
+		await decideBuildPlan(
+			{
+				...plan,
+				steps: [
+					{ id: 'tool', intent: 'Find a contact with a tool', search: 'CRM Tool contact get' },
+				],
+			},
+			nodes,
+			decisions,
+		);
+		expect(nodes.getDescription).toHaveBeenCalledOnce();
+		expect(nodes.getDescription).toHaveBeenCalledWith('test.CRMTool', 1, expect.anything());
+	});
+
+	it('keeps quality results when a short plan has a large operation batch', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [
+				{ name: 'message', operations: Array.from({ length: 50 }, (_, i) => `action${i}`) },
+			],
+		});
+		decisions.decide.mockImplementation(async ({ questions }) =>
+			'coverage' in questions
+				? {
+						ok: true,
+						model: 'fixture',
+						latencyMs: 10,
+						problems: [],
+						answers: {
+							coverage: { type: 'noul', noul: 0.99 },
+							progress: { type: 'noul', noul: 0.99 },
+							scope: { type: 'noul', noul: 0.99 },
+						},
+					}
+				: { ok: false, reason: 'timeout', message: 'Timed out', latencyMs: 1500 },
+		);
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: Array.from({ length: 5 }, (_, i) => ({ ...plan.steps[0], id: `step${i}` })),
+			},
+			nodes,
+			decisions,
+		);
+		expect(decisions.decide).toHaveBeenCalledTimes(2);
+		expect(result).toMatchObject({
+			status: 'needs_reasoning',
+			checks: { coverage: 'yes', progress: 'yes', scope: 'yes' },
+			decisionFailures: ['timeout'],
+		});
+	});
+
 	it('returns an incomplete plan to LLM reasoning instead of treating node matches as a complete build', async () => {
 		const { nodes, decisions } = services(0.05);
 		const result = await decideBuildPlan(plan, nodes, decisions);

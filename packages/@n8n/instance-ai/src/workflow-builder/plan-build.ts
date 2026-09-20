@@ -2,6 +2,7 @@ import { NodeSearchEngine } from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
 import type { InstanceAiNodeService } from '../types';
+import { rankOperations, tokenize } from '../workflow-compiler/catalog/retrieval';
 import type { DecisionService } from '../workflow-compiler/decision/decision-service';
 import { resolveChoice, resolveNoul } from '../workflow-compiler/decision/policy';
 import { NONE_OF_THESE, type DecisionQuestions } from '../workflow-compiler/decision/schemas';
@@ -54,6 +55,31 @@ type Candidate = {
 	mode?: string;
 };
 
+const MAX_OPERATION_CANDIDATES = 12;
+
+function shortlistCandidates(candidates: Candidate[], query: string): Candidate[] {
+	if (candidates.length <= MAX_OPERATION_CANDIDATES) return candidates;
+	return rankOperations(
+		candidates.map((candidate, index) => ({
+			id: String(index).padStart(5, '0'),
+			integration: candidate.nodeType.split('.').at(-1) ?? candidate.nodeType,
+			keywords: [
+				...new Set(
+					tokenize(
+						[candidate.resource, candidate.operation, candidate.mode, candidate.description]
+							.filter(Boolean)
+							.join(' ')
+							.replace(/[_-]/g, ' '),
+					),
+				),
+			],
+			candidate,
+		})),
+		query.replace(/[_-]/g, ' '),
+		{ limit: MAX_OPERATION_CANDIDATES, minScore: 0 },
+	).map(({ operation }) => operation.candidate);
+}
+
 /** Ground the LLM's plan in installed nodes before it fills parameters and builds the graph. */
 export async function decideBuildPlan(
 	input: z.infer<typeof buildPlanSchema>,
@@ -79,13 +105,28 @@ export async function decideBuildPlan(
 		if (!pending) {
 			const matches = engine.searchByName(search, 4);
 			const normalizedSearch = search.trim().toLowerCase();
-			const exact = matches.filter(
-				(node) =>
-					node.name.toLowerCase() === normalizedSearch ||
-					node.name.split('.').at(-1)?.toLowerCase() === normalizedSearch ||
-					node.displayName.toLowerCase() === normalizedSearch ||
-					node.displayName.split(' (')[0].toLowerCase() === normalizedSearch,
-			);
+			const namedMatches = matches.map((node) => ({
+				node,
+				nameLength: Math.max(
+					0,
+					...[
+						node.name,
+						node.name.split('.').at(-1) ?? node.name,
+						node.displayName,
+						node.displayName.split(' (')[0],
+					].map((name) => {
+						const normalizedName = name.toLowerCase();
+						return normalizedSearch === normalizedName ||
+							normalizedSearch.startsWith(`${normalizedName} `)
+							? normalizedName.length
+							: 0;
+					}),
+				),
+			}));
+			const longestName = Math.max(0, ...namedMatches.map(({ nameLength }) => nameLength));
+			const exact = namedMatches
+				.filter(({ nameLength }) => longestName > 0 && nameLength === longestName)
+				.map(({ node }) => node);
 			pending = Promise.all(
 				(exact.length ? exact : matches).map(async (node): Promise<Candidate[]> => {
 					const description = await nodes.getDescription(node.name, node.version, {
@@ -115,7 +156,6 @@ export async function decideBuildPlan(
 							operation,
 						})),
 					);
-					if (operations?.length) return operations;
 					const flatOptions = description.properties.flatMap((discriminator) => {
 						if (
 							(discriminator.name !== 'operation' && discriminator.name !== 'mode') ||
@@ -140,15 +180,19 @@ export async function decideBuildPlan(
 							),
 						);
 					});
-					return flatOptions?.length ? flatOptions : [base];
+					// SDK file names can use aliases. JSON needs the live parameter values.
+					return flatOptions.length ? flatOptions : operations?.length ? operations : [base];
 				}),
 			).then((groups) => groups.flat());
 			searches.set(search, pending);
 		}
 		return await pending;
 	};
-	const candidates = await Promise.all(
+	const allCandidates = await Promise.all(
 		input.steps.map(async ({ search }) => await candidatesFor(search)),
+	);
+	const candidates = allCandidates.map((options, index) =>
+		shortlistCandidates(options, `${input.steps[index].search} ${input.steps[index].intent}`),
 	);
 	abortSignal?.throwIfAborted();
 	const questions: DecisionQuestions = {
@@ -187,7 +231,7 @@ export async function decideBuildPlan(
 	}
 	const entries = Object.entries(questions);
 	const batches: DecisionQuestions[] = [];
-	if (entries.length <= 12) {
+	if (entries.length <= 12 && candidates.reduce((sum, group) => sum + group.length, 0) <= 48) {
 		batches.push(questions);
 	} else {
 		// Keep quality checks independent so a large operation batch cannot hide them.
@@ -202,7 +246,7 @@ export async function decideBuildPlan(
 			async (batch) =>
 				await decisions.decide({
 					name: 'build-plan.operations',
-					schemaVersion: 'build-plan-v3',
+					schemaVersion: 'build-plan-v4',
 					state:
 						'coverage' in batch
 							? input
@@ -236,7 +280,13 @@ export async function decideBuildPlan(
 			id: step.id,
 			intent: step.intent,
 			selected,
-			...(selected ? {} : { candidates: options }),
+			...(selected
+				? {}
+				: {
+						candidates: options,
+						candidateCount: allCandidates[index].length,
+						candidatesTruncated: allCandidates[index].length > options.length,
+					}),
 			confidence: choice?.confidence ?? 0,
 		};
 	});
@@ -248,7 +298,7 @@ export async function decideBuildPlan(
 			operations: Array<{ resource?: string; operation?: string; mode?: string }>;
 		}
 	>();
-	for (const group of candidates) {
+	for (const group of allCandidates) {
 		for (const candidate of group) {
 			const key = `${candidate.nodeType}:${candidate.version}`;
 			const entry = capabilities.get(key) ?? {
@@ -335,6 +385,6 @@ export async function decideBuildPlan(
 			? input.steps.length === 0
 				? 'Apply the planned parameter edit with build-workflow jsonEdits. Reuse the saved version and node IDs from the workflow read. Use parameterUpdates for a nested value so code preserves the rest of its collection. Keep all unrelated behavior. Use the existing approval and credential setup flow, then verify the changed and alternate paths.'
 				: 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Pass nodes, parameters, and named edges in build-workflow graph. Code assembles IDs, positions, groups, and n8n connections. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
-			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Check capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
+			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. candidateDefinitions supplies schemas for unresolved candidates, not accepted choices. Use these required fields if you select that candidate. Choices are limited to ranked installed operations. Check the full capabilities before claiming an operation is unavailable. Retrieve other missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }
