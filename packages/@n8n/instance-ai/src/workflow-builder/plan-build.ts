@@ -223,6 +223,41 @@ export async function decideBuildPlan(
 			confidence: choice?.confidence ?? 0,
 		};
 	});
+	const capabilities = new Map<
+		string,
+		{
+			nodeType: string;
+			version: number;
+			operations: Array<{ resource?: string; operation?: string; mode?: string }>;
+		}
+	>();
+	for (const group of candidates) {
+		for (const candidate of group) {
+			const key = `${candidate.nodeType}:${candidate.version}`;
+			const entry = capabilities.get(key) ?? {
+				nodeType: candidate.nodeType,
+				version: candidate.version,
+				operations: [],
+			};
+			const operation = {
+				resource: candidate.resource,
+				operation: candidate.operation,
+				mode: candidate.mode,
+			};
+			if (
+				(candidate.operation || candidate.mode) &&
+				!entry.operations.some(
+					(item) =>
+						item.resource === operation.resource &&
+						item.operation === operation.operation &&
+						item.mode === operation.mode,
+				)
+			) {
+				entry.operations.push(operation);
+			}
+			capabilities.set(key, entry);
+		}
+	}
 	const selectedTypes = new Map(
 		selections.flatMap(({ selected }) =>
 			selected
@@ -266,13 +301,14 @@ export async function decideBuildPlan(
 		coverage,
 		checks,
 		selections,
+		capabilities: [...capabilities.values()],
 		wiring: [...wiring.values()],
 		definitions,
 		decisionLatencyMs,
 		decisionStatus: failures.length ? 'incomplete' : 'completed',
 		decisionFailures: failures,
 		guidance: ready
-			? 'Fill parameters from these definitions. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
-			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. Retrieve missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
+			? 'Fill parameters from these definitions. Capabilities lists the other installed operations; definitions covers only the selections. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
+			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. Check capabilities before claiming an operation is unavailable. Retrieve missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }

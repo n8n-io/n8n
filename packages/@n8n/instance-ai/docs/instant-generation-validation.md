@@ -9,6 +9,8 @@ Quality checks use a separate batch. A failed batch does not discard answers
 from successful batches. Options come from the installed node registry. Exact
 service names take precedence over fuzzy matches. Flat operation and mode
 fields are supported. The tool returns only the selected parameter definitions.
+It also returns the installed operation inventory for every discovered node.
+The LLM can use this inventory to find operations outside its first selections.
 Repeated services share discovery within the call.
 The review also returns indexed output names and builder hints from the node
 registry. This includes candidates that still need LLM selection.
@@ -131,6 +133,28 @@ A later edit exported 47 KB of SDK source before reading the saved node data.
 The tool descriptions now direct small repairs to `get(full=true)` and
 `jsonEdits`. This avoids the unnecessary source export. A fresh latency run
 is still needed to measure its effect.
+
+That edit finished after about 620 seconds. It separated cancellation from
+rescheduling, rejected unknown actions and missing records, and updated the
+stored calendar event instead of deleting and recreating it. Eight runtime
+fixture cases passed in 125–136 ms each. The cases covered outreach, first and
+duplicate feedback, cancellation, repeated cancellation, unknown actions,
+missing candidates, and rescheduling. Calendar and Gmail outputs were pinned.
+These results verify branch routing and database effects, not provider calls.
+The edit still omitted availability checks and preserved an incorrect end-time
+expression. Its graph review took 1072 ms and reported unresolved concerns.
+
+The LLM then claimed that the native Calendar node had no availability
+operation. This was false: the installed node supports `calendar/availability`.
+The plan result now includes other installed operations as well as the selected
+definitions. A live catalog probe returned this operation and selected it with
+0.96 confidence. The probe took 806 ms, including 795 ms for JEV. All 26 existing
+plan and skill tests passed. The package build, type checks, and lint passed.
+
+The main HR draft and the Agent's supporting workflows also use different
+database schemas. The former stores stage event IDs in `candidates`; the latter
+expects `interviews` and `interview_slots`. They were built in separate chats.
+They still need a shared data contract before they can form one HR system.
 
 The existing UI was checked in the isolated instance. The research approval
 card retained its allow-once, session, and deny controls. The Agent model

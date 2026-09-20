@@ -30,6 +30,10 @@ recommended_tools:
    operation per step. Separate create, update, delete, and lookup operations.
    The tool batches bounded decisions through JEV and returns installed node
    definitions. Reuse these definitions instead of fetching them again.
+   `capabilities` lists the other installed operations. The selected parameter
+   definitions are not the full capability list. Check this inventory before
+   claiming an operation is unavailable. Retrieve a missing operation's
+   definition when a repair requires it.
 3. Review `checks` and uncertain selections. A `no` or `uncertain` quality check
    requires an explicit correction to the plan before building. Node matches
    do not override these checks. Use LLM reasoning to fix missing
