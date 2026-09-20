@@ -97,13 +97,14 @@ This extra process applies only to SDK source.
 
 ## Existing workflows and repairs
 
-For an unsaved inline JSON build that returns `draftEditsAvailable`, repair
+For a failed inline JSON build that returns `draftEditsAvailable`, repair
 the cached draft with `draftEdits: { sourceHash, changes }`. Reuse the failed
 build's `filePath` and `sourceHash`. Omit `sourceCode` and `workflowId`. Send
 only the changed nodes, connections, or groups. This uses the same edit format
 as `jsonEdits` below. Do not regenerate the full draft for a missing parameter
 or a group boundary error. If the source cannot be parsed, correct its JSON
-syntax in `sourceCode` instead. After a successful save, use `jsonEdits`.
+syntax in `sourceCode` instead. This also repairs the cached source of a failed
+update. The saved base must still match. After a successful save, use `jsonEdits`.
 
 For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
 Read the saved node IDs, parameters, execution settings, groups, and current version with

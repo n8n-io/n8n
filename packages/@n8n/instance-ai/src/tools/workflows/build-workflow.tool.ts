@@ -186,7 +186,7 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building. For WorkflowJSON, emit compact JSON without indentation to reduce output latency. Use this for creation or a full rewrite. Use draftEdits for a failed unsaved JSON build and jsonEdits for a saved workflow. Omit to build existing workspace file content after a file edit or workflow-sdk validate.',
+				'Full source to write to filePath before building. For WorkflowJSON, emit compact JSON without indentation to reduce output latency. Use this for creation or a full rewrite. Use draftEdits to repair the last failed JSON build and jsonEdits to edit the saved workflow. Omit to build existing workspace file content after a file edit or workflow-sdk validate.',
 			),
 		jsonEdits: workflowJsonEditsInputSchema
 			.optional()
@@ -200,7 +200,7 @@ export const buildWorkflowInputSchema = z
 			})
 			.optional()
 			.describe(
-				'Repair an unsaved inline JSON draft after validation fails. Reuse its filePath and sourceHash. Omit sourceCode, jsonEdits, and workflowId. Send only changed nodes, connections, or groups. The normal approval and validation flow still applies.',
+				'Repair the cached source from a failed inline JSON build, including a failed update. Reuse its filePath and sourceHash. Omit sourceCode, jsonEdits, and workflowId. Send only changed nodes, connections, or groups. The bound workflow version, approval, and validation checks still apply.',
 			),
 		workflowId: z
 			.string()
@@ -537,10 +537,9 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 	);
 	const remediation = createCodeFixableRemediation({
 		reason,
-		guidance:
-			initialBinding.inlineDraftSource && !targetWorkflowId
-				? 'Repair the validation errors with draftEdits using this filePath and sourceHash. Send only changed nodes, connections, or groups. Keep the other behavior unchanged. Do not resend the full source.'
-				: guidance,
+		guidance: initialBinding.inlineDraftSource
+			? 'Repair the validation errors with draftEdits using this filePath and sourceHash. Send only changed nodes, connections, or groups. Keep the other behavior unchanged. Do not resend the full source.'
+			: guidance,
 	});
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
 	await reportFailedWorkflowBuildOutcome(context, {
@@ -674,7 +673,7 @@ export function createBuildWorkflowTool(
 				return {
 					success: false,
 					filePath: input.filePath,
-					errors: ['Omit workflowId for draftEdits. Use jsonEdits for a saved workflow.'],
+					errors: ['Omit workflowId for draftEdits. Reuse the filePath from the failed build.'],
 				};
 			}
 			const { groupingDecision, groupingReason } = input;
@@ -923,11 +922,20 @@ export function createBuildWorkflowTool(
 			let inlineSource = input.sourceCode;
 			if (input.draftEdits) {
 				try {
-					if (targetWorkflowId || !filePath.endsWith('.json')) {
-						throw new Error('draftEdits requires an unsaved inline .workflow.json draft.');
+					if (!filePath.endsWith('.json')) {
+						throw new Error('draftEdits requires cached inline .workflow.json source.');
 					}
 					if (!binding.inlineDraftSource || binding.sourceHash !== input.draftEdits.sourceHash) {
 						throw new Error('The draft source is unavailable or its sourceHash changed.');
+					}
+					if (targetWorkflowId) {
+						if (!binding.workflowChecksum) {
+							throw new Error('The saved workflow base is unavailable. Read it before retrying.');
+						}
+						const snapshot = await context.workflowService.getWorkflowSnapshot(targetWorkflowId);
+						if (snapshot.checksum !== binding.workflowChecksum) {
+							throw new WorkflowSaveConflictError(targetWorkflowId);
+						}
 					}
 					const parsed = parseWorkflowJsonSource(binding.inlineDraftSource);
 					if (!parsed.success) throw new Error(parsed.errors.join('\n'));
@@ -939,11 +947,14 @@ export function createBuildWorkflowTool(
 						success: false,
 						...sourceResponseBase(binding),
 						errors: [error instanceof Error ? error.message : String(error)],
-						remediation: createCodeFixableRemediation({
-							reason: 'workflow_draft_edits_invalid',
-							guidance:
-								'Use the latest failed build sourceHash and filePath for draftEdits. Use jsonEdits with the saved version for an existing workflow. Resend sourceCode only when the draft is unavailable or cannot be parsed.',
-						}),
+						remediation:
+							error instanceof WorkflowSaveConflictError
+								? createSaveFailureRemediation(error, true)
+								: createCodeFixableRemediation({
+										reason: 'workflow_draft_edits_invalid',
+										guidance:
+											'Use the latest failed build sourceHash and filePath for draftEdits. Use jsonEdits with the current saved version when no cached build source is available. Resend sourceCode only when the source is unavailable or cannot be parsed.',
+									}),
 					};
 				}
 			}
@@ -1054,9 +1065,7 @@ export function createBuildWorkflowTool(
 			}
 
 			const inlineDraftSource =
-				!targetWorkflowId && inlineSource !== undefined && filePath.endsWith('.json')
-					? sourceCode
-					: undefined;
+				inlineSource !== undefined && filePath.endsWith('.json') ? sourceCode : undefined;
 			if (sourceHash !== binding.sourceHash || inlineDraftSource !== binding.inlineDraftSource) {
 				binding = await saveWorkflowSourceFileBinding(context, {
 					...binding,

@@ -48,6 +48,7 @@ describe('workflow source file bindings', () => {
 			workflowId: 'wf-1',
 			workflowVersionId: 'v-old',
 			workflowChecksum: 'checksum-old',
+			inlineDraftSource: '{"name":"Pending change"}',
 		});
 
 		await refreshWorkflowSourceFileBindingFromSave(context, 'wf-1', {
@@ -62,6 +63,10 @@ describe('workflow source file bindings', () => {
 			workflowVersionId: 'v-new',
 			workflowChecksum: 'checksum-new',
 		});
+		expect(
+			(await getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'))
+				?.inlineDraftSource,
+		).toBeUndefined();
 	});
 
 	it('clears workflowChecksum when refresh receives no checksum', async () => {

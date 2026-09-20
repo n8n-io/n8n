@@ -198,6 +198,7 @@ export async function refreshWorkflowSourceFileBindingFromSave(
 		const nextBinding: WorkflowSourceFileBinding = {
 			...binding,
 			workflowVersionId: saved.versionId,
+			inlineDraftSource: undefined,
 		};
 		if (saved.checksum !== undefined) {
 			nextBinding.workflowChecksum = saved.checksum;

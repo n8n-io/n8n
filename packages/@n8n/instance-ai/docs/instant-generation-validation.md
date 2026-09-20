@@ -83,13 +83,16 @@ source connection entries. They require the current saved version. The normal
 checksum check also detects changes made during validation. The existing
 approval, validation, grouping, and setup paths still apply.
 
-Unsaved inline JSON builds now retain their source in the current thread.
+Failed inline JSON builds now retain their source in the current thread.
 A failed build returns `draftEditsAvailable` and its `sourceHash`. The LLM can
 repair only the failed fields with `draftEdits` instead of resending the graph.
-The tool rejects a stale source hash. It clears the cached source after a save.
-Saved workflows still use `jsonEdits` and the current saved version. Regression
-tests cover context changes, stale or missing source, existing workflows, and
-the create policy. The builder also requests compact JSON to reduce output text.
+The tool rejects a stale source hash. Failed updates also retain their source.
+Their repairs require the same saved checksum and the existing edit approval.
+A save or a refresh of the saved base clears the cached source. Use `jsonEdits`
+to edit the saved version and `draftEdits` to repair a failed build. All 151
+focused build, binding, compiler, edit, and skill tests passed. They cover
+context changes, stale or missing source, concurrent saves, and write policies.
+The builder also requests compact JSON to reduce output text.
 
 A live two-node regression deliberately omitted a required trigger field.
 The first build returned its diagnostic in 48 ms. The targeted retry saved in
