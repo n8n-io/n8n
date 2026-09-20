@@ -113,6 +113,7 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() =>
 				loadBuildWorkflowTool().createBuildWorkflowTool(context, {
+					requirePlan: true,
 					exposeToModel: true,
 					useModelForSimulation: false,
 				}),

@@ -8,6 +8,7 @@ import { loadInstanceAiRuntimeSkillSourceForBuildMode } from '../../../skills/ru
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import { recordBuildPlanReview } from '../../../workflow-builder/build-plan-review';
 import {
 	autoImportMissingSdkSymbols,
 	buildWorkflowInputSchema,
@@ -245,6 +246,29 @@ describe('createBuildWorkflowTool', () => {
 			informational: warnings,
 		}));
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+	});
+
+	it('requires the LLM plan review in the current run before a public build', async () => {
+		const { context, filePath } = makeContext({});
+		const tool = createBuildWorkflowTool(context, { requirePlan: true });
+		const missing = await executeTool<BuildToolOutput>(tool, { filePath });
+		expect(missing.success).toBe(false);
+		expect(missing.errors?.join(' ')).toContain('plan-build');
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		await recordBuildPlanReview(context);
+		expect((await executeTool<BuildToolOutput>(tool, { filePath })).success).toBe(true);
+		context.runId = 'next-run';
+		expect((await executeTool<BuildToolOutput>(tool, { filePath })).success).toBe(false);
+	});
+
+	it('resumes the existing approval without requesting another plan review', async () => {
+		const { context, filePath } = makeContext({});
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context, { requirePlan: true }),
+			{ filePath },
+			{ resumeData: { approved: true } },
+		);
+		expect(result.success).toBe(true);
 	});
 
 	// The field that caused the misreport: `projectId` was advertised here as "Project

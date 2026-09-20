@@ -3,6 +3,7 @@ import { Tool } from '@n8n/agents';
 import { selectDecisionService } from './compiler-tool-support';
 import type { InstanceAiContext } from '../../types';
 import { buildPlanSchema, decideBuildPlan } from '../../workflow-builder/plan-build';
+import { recordBuildPlanReview } from '../../workflow-builder/build-plan-review';
 import { DOMAIN_TOOL_IDS } from '../tool-ids';
 
 export function createPlanBuildTool(context: InstanceAiContext) {
@@ -13,14 +14,15 @@ export function createPlanBuildTool(context: InstanceAiContext) {
 				'You then fill parameters, expressions, and graph connections. Resolve uncertain choices with reasoning or ask-user. Never omit a requested stage.',
 		)
 		.input(buildPlanSchema)
-		.handler(
-			async (input, ctx) =>
-				await decideBuildPlan(
-					input,
-					context.nodeService,
-					selectDecisionService(context),
-					ctx.abortSignal,
-				),
-		)
+		.handler(async (input, ctx) => {
+			const review = await decideBuildPlan(
+				input,
+				context.nodeService,
+				selectDecisionService(context),
+				ctx.abortSignal,
+			);
+			await recordBuildPlanReview(context);
+			return review;
+		})
 		.build();
 }

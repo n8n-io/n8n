@@ -80,6 +80,13 @@ function services(coverage = 0.99) {
 describe('LLM plan and bounded decisions', () => {
 	it('grounds the full plan in installed operations and returns their parameter definitions', async () => {
 		const { nodes, decisions } = services();
+		const description = await nodes.getDescription('n8n-nodes-base.wait');
+		nodes.getDescription.mockResolvedValue({
+			...description,
+			outputs: ['main', 'main'],
+			outputNames: ['done', 'loop'],
+			builderHint: 'Return each batch to the loop node.',
+		});
 		const result = await decideBuildPlan(plan, nodes, decisions);
 		expect(result.status).toBe('ready');
 		expect(result.selections[0].selected).toMatchObject({
@@ -92,6 +99,16 @@ describe('LLM plan and bounded decisions', () => {
 				expect.objectContaining({ definition: { content: 'Live parameter definition' } }),
 			]),
 		);
+		expect(result.wiring).toContainEqual({
+			nodeType: 'n8n-nodes-base.wait',
+			version: 1.1,
+			inputs: ['main'],
+			outputs: [
+				{ index: 0, type: 'main', name: 'done' },
+				{ index: 1, type: 'main', name: 'loop' },
+			],
+			hint: 'Return each batch to the loop node.',
+		});
 		expect(decisions.decide).toHaveBeenCalledOnce();
 		expect(decisions.decide).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -123,6 +140,7 @@ describe('LLM plan and bounded decisions', () => {
 		const result = await decideBuildPlan(plan, nodes, decisions);
 		expect(result.status).toBe('needs_reasoning');
 		expect(result.selections.every(({ selected }) => selected === undefined)).toBe(true);
+		expect(result.wiring).toHaveLength(2);
 		expect(nodes.getNodeTypeDefinition).not.toHaveBeenCalled();
 	});
 

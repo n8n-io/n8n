@@ -61,6 +61,16 @@ export async function decideBuildPlan(
 	abortSignal?.throwIfAborted();
 	const engine = new NodeSearchEngine(await nodes.listSearchable());
 	const searches = new Map<string, Promise<Candidate[]>>();
+	const wiring = new Map<
+		string,
+		{
+			nodeType: string;
+			version: number;
+			inputs: string[];
+			outputs: Array<{ index: number; type: string; name?: string }>;
+			hint?: string;
+		}
+	>();
 	const candidatesFor = async (search: string) => {
 		let pending = searches.get(search);
 		if (!pending) {
@@ -73,6 +83,20 @@ export async function decideBuildPlan(
 			);
 			pending = Promise.all(
 				(exact.length ? exact : matches).map(async (node): Promise<Candidate[]> => {
+					const description = await nodes.getDescription(node.name, node.version, {
+						includeGatewayMetadata: false,
+					});
+					wiring.set(`${node.name}:${node.version}`, {
+						nodeType: node.name,
+						version: node.version,
+						inputs: description.inputs,
+						outputs: description.outputs.map((type, index) => ({
+							index,
+							type,
+							name: description.outputNames?.[index],
+						})),
+						hint: description.builderHint,
+					});
 					const base = {
 						nodeType: node.name,
 						version: node.version,
@@ -87,7 +111,6 @@ export async function decideBuildPlan(
 						})),
 					);
 					if (operations?.length) return operations;
-					const description = await nodes.getDescription(node.name, node.version);
 					const discriminator = description.properties.find(
 						(property) =>
 							(property.name === 'operation' || property.name === 'mode') &&
@@ -243,12 +266,13 @@ export async function decideBuildPlan(
 		coverage,
 		checks,
 		selections,
+		wiring: [...wiring.values()],
 		definitions,
 		decisionLatencyMs,
 		decisionStatus: failures.length ? 'incomplete' : 'completed',
 		decisionFailures: failures,
 		guidance: ready
 			? 'Fill parameters from these definitions. Build the complete graph. Preserve every planned branch and wait. Use the existing approval and credential setup tools.'
-			: 'Use the LLM to resolve missing behavior or uncertain selections. Search installed nodes when needed. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
+			: 'Resolve every no or uncertain quality check before building. Node matches alone do not pass these checks. Use LLM reasoning for behavior and uncertain selections. Retrieve missing parameter definitions and follow the indexed wiring outputs. Use ask-user only for unresolved human choices. Never ask the user to choose internal node operations. Keep credentials in the existing setup cards.',
 	};
 }

@@ -3601,8 +3601,14 @@ export class InstanceAiAdapterService {
 							? { displayOptions: c.displayOptions as Record<string, unknown> }
 							: {}),
 					})),
-					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
-					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
+					inputs: Array.isArray(desc.inputs)
+						? desc.inputs.map((input) => (typeof input === 'string' ? input : input.type))
+						: [],
+					outputs: Array.isArray(desc.outputs)
+						? desc.outputs.map((output) => (typeof output === 'string' ? output : output.type))
+						: [],
+					...(desc.outputNames ? { outputNames: desc.outputNames } : {}),
+					...(desc.builderHint?.searchHint ? { builderHint: desc.builderHint.searchHint } : {}),
 					...(desc.webhooks ? { webhooks: desc.webhooks } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
@@ -5096,6 +5102,7 @@ function toWorkflowDetail(
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(
 			(n): WorkflowNode => ({
+				id: n.id,
 				name: n.name,
 				type: n.type,
 				typeVersion: n.typeVersion,

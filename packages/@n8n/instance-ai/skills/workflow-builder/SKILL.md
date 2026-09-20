@@ -30,7 +30,9 @@ recommended_tools:
    operation per step. Separate create, update, delete, and lookup operations.
    The tool batches bounded decisions through JEV and returns installed node
    definitions. Reuse these definitions instead of fetching them again.
-3. Review `checks` and uncertain selections. Use LLM reasoning to fix missing
+3. Review `checks` and uncertain selections. A `no` or `uncertain` quality check
+   requires an explicit correction to the plan before building. Node matches
+   do not override these checks. Use LLM reasoning to fix missing
    behavior, data mappings, and parameters. Retrieve only definitions that are
    missing. Ask a user question only when a human choice changes the intended
    behavior. Never ask the user to choose internal node operations.
@@ -64,7 +66,9 @@ Connections are indexed by source node name:
 ```
 
 Each outer array selects a source output. Each inner array contains its targets.
-The target `index` selects its input. All indices are zero-based. Use the
+The target `index` selects its input. All indices are zero-based. The returned
+`wiring` lists each output's index and name, including unresolved candidates.
+For Loop Over Items v3, output 0 is done and output 1 is loop. Use the
 correct connection type for AI models, tools, and memory.
 
 Use n8n expression strings such as `={{ $json.email }}`. Use
@@ -79,8 +83,22 @@ This extra process applies only to SDK source.
 
 ## Existing workflows and repairs
 
+For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
+Read the saved node IDs and current version first. Pass a `.workflow.json`
+filePath, the workflow ID, and `jsonEdits: { versionId, changes }`. `changes`
+is JSON text with only changed `nodes`, source `connections`, or `nodeGroups`.
+Node fields merge by ID. Parameter keys merge at the top level. Nested values
+replace. When changing an operation or mode, set `replaceParameters: true`
+on that node edit and supply its complete new parameters. This removes fields
+that belong only to the old mode. Connections replace only their named source
+entries. A supplied group
+list replaces all groups. Omitted content stays unchanged. Do not resend the
+full source for a small repair. The tool checks the version and uses the same
+approval and validation flow. Use full source for node removal or renaming.
+
 Locate the workflow before editing. Use its existing bound source file. If no
-source is available, call `workflows(action="get-as-code", workflowId)` and
+source is available and a full rewrite is needed, call
+`workflows(action="get-as-code", workflowId)` and
 load `references/sdk-source.md`. Edit only the required parts of the returned
 file. Preserve existing node IDs and unrelated behavior. Build the same file
 again. Never use an SDK slug as a persisted workflow ID.
@@ -125,6 +143,8 @@ repairs and repeat the failed scenario after saving.
   Code must not perform network requests or import unavailable modules.
 - Keep error recovery observable. Route failed effects to a durable error or
   review state. Do not advance the success path after an error.
+  Inline JSON supports `onError: "continueErrorOutput"`. Wire its error output
+  to the handler. A disconnected handler never receives errors.
 
 ## Credentials and setup
 

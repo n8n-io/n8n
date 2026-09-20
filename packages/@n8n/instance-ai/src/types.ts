@@ -135,6 +135,7 @@ export interface WorkflowDetail extends WorkflowSummary {
 }
 
 export interface WorkflowNode {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
@@ -381,6 +382,8 @@ export interface NodeDescription extends NodeSummary {
 	}>;
 	inputs: string[];
 	outputs: string[];
+	outputNames?: string[];
+	builderHint?: string;
 	webhooks?: unknown[];
 	polling?: boolean;
 	triggerPanel?: unknown;

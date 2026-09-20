@@ -10,6 +10,8 @@ from successful batches. Options come from the installed node registry. Exact
 service names take precedence over fuzzy matches. Flat operation and mode
 fields are supported. The tool returns only the selected parameter definitions.
 Repeated services share discovery within the call.
+The review also returns indexed output names and builder hints from the node
+registry. This includes candidates that still need LLM selection.
 
 The LLM resolves uncertain choices and fills parameters and graph connections.
 It uses `ask-user` for human choices. The existing workflow persistence and
@@ -17,6 +19,8 @@ Agent Builder paths retain their approval, question, and credential cards.
 `build-agent` requires a text plan before a new build or edit. It runs the JEV
 review inside the tool before it calls Agent Builder. Resuming an existing
 question or credential request does not require another plan.
+The public workflow builder also requires a `plan-build` review in the current
+run. Resuming its approval card retains the prior review.
 New inline JSON workflows do not need a sandbox. The existing
 `N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` opt-in enables this input path in the
 UI and warms the JEV connection. It no longer bypasses LLM planning.
@@ -55,6 +59,27 @@ The outreach loop used the wrong output. The missing-feedback reminder started
 only after a scorecard arrived. The draft does not meet the requested quality
 standard. It was not published or used to contact candidates.
 
+Targeted JSON edits now merge changed nodes by saved ID and replace only named
+source connection entries. They require the current saved version. The normal
+checksum check also detects changes made during validation. The existing
+approval, validation, grouping, and setup paths still apply.
+
+A live outreach repair fixed the loop output, the skipped-item return, and
+the delivery-error path. The successful build tool call took 402 ms. The full
+chat took 62 seconds, including a rejected malformed edit and its correction.
+Readback confirmed that only one node property and four connection entries
+changed. All node IDs, all groups, and the other branches remained unchanged.
+This confirms targeted persistence, not live Gmail or Postgres execution.
+The LLM skipped JEV during this edit despite the instruction, which prompted
+the new review guard. A later small reminder plan took 327 ms in JEV.
+
+The reminder repair exposed fields that belonged to the old Wait mode. Node
+edits now support `replaceParameters: true` to remove them. The successful retry
+ran the required JEV review in 329 ms and saved in 395 ms. The full chat took
+34.4 seconds. Readback confirmed that only the three Wait nodes changed. Each
+now derives its due time from the associated calendar event start minus 24
+hours. The other nodes, connections, groups, and unpublished state were kept.
+
 The candidate Agent draft reached setup after 201 seconds. Manual inspection
 found that its data tools relied on instructions for participant scope and did
 not persist calendar changes to the ATS. The draft needs correction before a
@@ -67,6 +92,12 @@ question accepted an answer. Postgres, Google Calendar, and Gmail credential
 cards each supported deferral, and the builder resumed after them. No real
 integration credentials were entered. This confirms the interaction path;
 it does not establish successful external execution.
+
+The latest focused build, plan, registry, and Agent tests passed 222 cases.
+All 318 backend adapter tests passed. Builds, type checks, and lint passed
+for Instance AI and the CLI. Targeted-edit regression cases are pending the
+repository's required user confirmation; existing tests and live readback
+provide the current evidence for that path.
 
 ## Historical compiler benchmark
 
