@@ -91,6 +91,8 @@ export interface BenchOptions {
 	 * collecting flamegraph data, not for clean ceiling numbers.
 	 */
 	tracing?: boolean;
+	/** Runs engine v2 on the shared Postgres server or a separate server. */
+	engine?: 'shared' | 'split';
 	/** Additional env vars to merge over the base. */
 	env?: Record<string, string>;
 }
@@ -114,6 +116,7 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 	const services = [...(BENCHMARK_CONFIG.services ?? [])];
 	if (opts.kafka) services.push('kafka');
 	if (opts.tracing) services.push('tracing');
+	if (opts.engine === 'split') services.push('enginePostgres');
 
 	const env: Record<string, string> = {
 		...BENCHMARK_CONFIG.env,
@@ -134,6 +137,7 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 		...(opts.mains !== undefined && { mains: opts.mains }),
 		...(opts.workers !== undefined && { workers: opts.workers }),
 		...(opts.webhooks !== undefined && { webhooks: opts.webhooks }),
+		...(opts.engine !== undefined && { engine: 'in-process' as const }),
 		env,
 	};
 }
