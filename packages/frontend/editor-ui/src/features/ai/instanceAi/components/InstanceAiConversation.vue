@@ -59,6 +59,7 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from '../instanceAi.handoffContext';
+import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -73,6 +74,14 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 	beforeSend?: () => Promise<void>;
+	/**
+	 * The live embed subject (an agent in the builder today). When it refers to
+	 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
+	 * context chip follows this subject's `name` instead of the snapshot taken
+	 * at thread mint — so a rename in the host updates the chip live. Optional:
+	 * the full thread view passes no subject and keeps the stashed-name behavior.
+	 */
+	subject?: InstanceAiEmbedSubject;
 	/** Extra scroll space for a panel that overlays messages above the input. */
 	aboveInputOverlapHeight?: number;
 }>();
@@ -165,6 +174,13 @@ const hasFloatingConfirmation = computed(() =>
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
 	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+		// Prefer the host's live subject name when it refers to the same agent as
+		// the stashed attachment, so a rename in the builder updates the chip
+		// without re-stashing. Falls back to the stashed snapshot otherwise.
+		const liveSubjectName =
+			props.subject?.type === 'agent' && props.subject.id === agentAttachment.id
+				? props.subject.name
+				: undefined;
 		return {
 			type: 'agent-artifact' as const,
 			agentId: agentAttachment.id,
@@ -173,7 +189,7 @@ const composerContextChip = computed(() => {
 				pendingAgentAttachment.value?.id === agentAttachment.id &&
 				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
-			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
+			label: liveSubjectName ?? agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
 			isPending: true,
 		};
@@ -383,6 +399,7 @@ function reconnectThreadAfterHydration(): void {
 					attachments: pending.attachments,
 					pushRef: rootStore.pushRef,
 					handoffContext: pending.context,
+					responseStartedAtEpochMs: pending.responseStartedAtEpochMs,
 				})
 				.then((sent) => {
 					if (sent) return;
@@ -439,6 +456,10 @@ async function syncThread() {
 	if (!isCurrentThreadRuntime()) return;
 	if (thread.sseState === 'disconnected') {
 		reconnectThreadAfterHydration();
+	} else if (thread.hydrationStatus === 'idle') {
+		// A newly created thread starts streaming before this view mounts. Settle
+		// hydration without replacing its live SSE connection.
+		void thread.loadHistoricalMessages();
 	}
 }
 
@@ -477,6 +498,7 @@ async function handleSubmit(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -560,6 +582,7 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
+			responseStartedAtEpochMs,
 		})
 		.then((sent) => {
 			if (!sent) {
@@ -822,7 +845,12 @@ defineExpose({
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
-										:is-submitting="thread.isSendingMessage || isPlanChangeInFlight"
+										:is-submitting="
+											thread.isSendingMessage ||
+											isPlanChangeInFlight ||
+											thread.hydrationStatus === 'idle' ||
+											thread.isHydratingThread
+										"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
