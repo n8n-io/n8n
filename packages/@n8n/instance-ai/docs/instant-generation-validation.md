@@ -278,8 +278,8 @@ All eight candidate-details cases and all fifteen cancellation cases then
 passed together. The tests do not establish real Google connectivity.
 
 Candidate chat remains unverified. Automatic model resolution returned
-`missing_credential`. It did not configure a model. Booking and rescheduling
-still need a shared data contract and runtime validation. The main HR workflow
+`missing_credential`. It did not configure a model. Booking still needs a shared data contract and runtime validation. The
+rescheduling correction is described below. The main HR workflow
 also needs initial-booking, feedback-deadline, and participant checks. The
 complete HR system and the one-second generation goal are not complete.
 
@@ -299,6 +299,48 @@ event lookup before cancellation. That lookup can fail after a successful
 deletion and block the tested database-recovery path. A manual skill edit
 removed the prerequisite with a hash-guarded update. Readback matched the
 requested text. This correction is separate from the generated result.
+
+The rescheduling build probe then ran for 965.1 seconds without calling the
+save tool. It read the old graph, wrote a detailed plan, and completed JEV's
+review in 838 ms. Quality checks remained uncertain. The probe was cancelled
+while the LLM still worked on implementation details. This is a failed
+end-to-end generation measurement.
+
+A separate manual correction saved 23 nodes and seven groups. It uses the
+existing candidate records, verified session identity, stage event IDs, and
+fixed stage calendars. It rejects invalid or ambiguous timestamps and keeps
+the original event duration. Calendar remains the source of interview times.
+The workflow does not add a duplicate timestamp write or increment a counter
+that has no retry ledger. The existing event ID and candidate stage stay intact.
+
+The correction checks conflicts over the complete interval. It excludes the
+current event and rejects incomplete pages or invalid event data. A conditional
+record read precedes the Calendar PATCH. The request includes the fetched ETag
+in `If-Match`. A repeated requested time returns success without another PATCH.
+This follows [Google's conditional modification contract](https://developers.google.com/calendar/api/guides/version-resources).
+It does not atomically reserve the slot or lock both services. Availability
+covers the configured stage calendar, not all interviewer calendars.
+
+All 25 rescheduling fixture cases passed. They use real local HTTP requests
+and Postgres queries. A local Calendar service checks the URL, query interval,
+ETag header, and PATCH body. Cases include conflicts, interval boundaries,
+invalid dates, missing records, incomplete pages, provider failures, and
+concurrent record or ETag changes. One case applies the Calendar change but
+returns an error. An identical retry recognizes the completed move and sends
+no second PATCH. No Google requests or real invitations were sent.
+
+Schema validation passed without errors or warnings. Manual UI inspection
+confirmed the seven groups and the existing Calendar credential control.
+The editor layout was tidied. The runtime uses its built-in Luxon date parser.
+The fixture suite passed again after the editor normalized default parameters.
+A JEV graph review took 523 ms. It flagged recovery and duplicate handling,
+although the corresponding fixture cases passed. These findings need LLM and
+execution review; they must not force unsupported repairs. The graph-review
+criteria now include rescheduling and incomplete availability results. Nine
+existing review and skill tests passed. Build, lint, and type checks passed.
+The candidate-details, cancellation, cancellation-recovery, and rescheduling
+suites then passed together: 48 cases in 8.6 seconds. These are local fixture
+results, not complete Agent conversations or generation timings.
 
 ## Historical compiler benchmark
 
