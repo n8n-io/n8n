@@ -104,7 +104,10 @@ import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
-import { hasBuildPlanReview } from '../../workflow-builder/build-plan-review';
+import {
+	getBuildPlanSelections,
+	hasBuildPlanReview,
+} from '../../workflow-builder/build-plan-review';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
 	groupingOutcomeSchema,
@@ -932,7 +935,14 @@ export function createBuildWorkflowTool(
 					if (!filePath.endsWith('.json') || !input.name?.trim()) {
 						throw new Error('graph requires a .workflow.json filePath and a workflow name.');
 					}
-					inlineSource = JSON.stringify(compileWorkflowGraph(input.name, input.graph));
+					const selections = input.graph.planId
+						? await getBuildPlanSelections(
+								context,
+								input.graph.planId,
+								ctx.resumeData?.approved === true,
+							)
+						: [];
+					inlineSource = JSON.stringify(compileWorkflowGraph(input.name, input.graph, selections));
 				} catch (error) {
 					return {
 						success: false,

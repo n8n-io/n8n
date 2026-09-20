@@ -2,8 +2,8 @@
 
 ## Deterministic JSON assembly
 
-`build-workflow` now accepts `graph`. The LLM supplies installed node types,
-parameters, explicit edges, and optional groups. Edges and groups refer to node
+`build-workflow` now accepts `graph`. The LLM supplies parameters, explicit
+edges, and optional groups. Edges and groups refer to node
 names. Code generates node IDs, group IDs, positions, and n8n connection JSON.
 The compiler reuses the SDK's deterministic IDs and existing layout. Node and
 group IDs remain stable when the input order changes. Parameters, expressions,
@@ -15,6 +15,29 @@ The result enters the existing source validation, approval, save, and credential
 setup path. Failed builds can use the existing `draftEdits` repair path. Small
 saved-workflow edits still use `jsonEdits`. JSON assembly makes no model calls.
 The LLM still plans behavior and fills parameters after the JEV review.
+
+`plan-build` now stores its accepted node and operation choices. It returns a
+`planId`. A graph node can reference a selected `step` instead of repeating its
+type and version. Code also fills the selected resource, operation, and mode.
+Conflicting operation fields are rejected. Uncertain choices are not stored as
+accepted selections. The LLM resolves them and supplies explicit node fields.
+Explicit nodes and selected steps can appear in the same graph.
+References are scoped to the current conversation and run. A newer review
+replaces the prior reference. Approval resume retains the approved reference.
+
+A benchmark supplied fixture selections for all four HR graphs. The compiled
+JSON matched the explicit graph output in 100 runs per graph. References removed
+another 6–10% of graph input. The 64-node graph used 14 operation templates and
+assembled in 15.0 ms at p95. This benchmark measures compilation from known
+selections. It does not measure JEV's ability to select every HR operation.
+
+A live manual workflow then used real JEV selections for Manual Trigger and
+Edit Fields. JEV took 327 ms. The LLM supplied both nodes by step reference.
+The build resolved their installed types and versions and saved on its first
+attempt in 458 ms. Execution returned `status: "ready"`, the number `45`, and
+the boolean `false` as requested. The full conversation took 31.2 seconds.
+This verifies the selection-to-compiler handoff. It is not a comparison with
+the earlier intake request, which required different parameters and behavior.
 
 A local benchmark rebuilt four saved HR drafts 100 times each. Each run produced
 identical JSON. Every parameter and executable edge matched the source draft.
@@ -36,7 +59,7 @@ All 48 candidate fixture cases passed with graphs rebuilt through this compiler.
 These cases use the isolated database and identity service. Calendar responses
 use fixtures. This result does not establish complete HR lifecycle quality or
 one-second conversation latency.
-The 159 focused Instance AI tests and 53 SDK ID utility tests passed. Builds,
+The 168 focused Instance AI tests and 53 SDK ID utility tests passed. Builds,
 lint, and type checks passed for both packages.
 
 A live Assistant request then built an unpublished candidate intake validator.

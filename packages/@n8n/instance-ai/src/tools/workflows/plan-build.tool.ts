@@ -21,8 +21,16 @@ export function createPlanBuildTool(context: InstanceAiContext) {
 				selectDecisionService(context),
 				ctx.abortSignal,
 			);
-			await recordBuildPlanReview(context);
-			return review;
+			const planId = await recordBuildPlanReview(
+				context,
+				review.selections.flatMap(({ id, selected }) => (selected ? [{ id, ...selected }] : [])),
+			);
+			return {
+				...review,
+				planId,
+				graphGuidance:
+					'For a selected step, use graph.planId and a node with step, name, and parameters. Omit type and typeVersion. Code supplies them and the selected resource, operation, and mode. Do not change these operation fields. For unresolved steps, use explicit type and typeVersion after LLM reasoning. Include every edge and requested behavior.',
+			};
 		})
 		.build();
 }

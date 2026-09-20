@@ -63,8 +63,16 @@ recommended_tools:
 
 Use `graph` when the required definitions are available. Pass
 `filePath: "src/workflows/name.workflow.json"`, `name`, and a graph object to
-`build-workflow`. Supply nodes with `name`, `type`, `typeVersion`, and
-`parameters`. Put execution settings such as `alwaysOutputData`, `onError`,
+`build-workflow`. For a step with a selected JEV operation, set `graph.planId`
+to the latest `plan-build` result. Supply the node's `step`, `name`, and
+`parameters`. Code supplies its type, version, resource, operation, and mode.
+Do not generate these fields again. Do not change the selected operation in
+parameters. An uncertain selection cannot be referenced by step.
+For an unresolved choice, reason from the supplied definitions and use an
+explicit node with `name`, `type`, `typeVersion`, and `parameters`.
+Both node forms can appear in one graph. Plan references belong to the current
+run. If a reference is unavailable, use the latest plan or explicit node fields.
+Put execution settings such as `alwaysOutputData`, `onError`,
 or existing credential references in each node's optional `options` object.
 Supply edges with `from` and `to` node names. Set `output`, `input`, and `type`
 when they differ from output 0, input 0, and `main`.

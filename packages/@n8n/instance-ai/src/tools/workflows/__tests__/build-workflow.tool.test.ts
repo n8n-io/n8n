@@ -343,6 +343,50 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.success).toBe(true);
 			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledOnce();
 		});
+
+		it('resumes an approved graph with the stored operation selection', async () => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/selected.workflow.json',
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			const planId = await recordBuildPlanReview(context, [
+				{ id: 'start', nodeType: 'n8n-nodes-base.manualTrigger', version: 1 },
+			]);
+			const tool = createBuildWorkflowTool(context, { requirePlan: true });
+			const input = {
+				filePath,
+				workflowId: 'wf-existing',
+				name: 'Graph',
+				graph: { planId, nodes: [{ name: 'Start', step: 'start', parameters: {} }], edges: [] },
+			};
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledOnce();
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			context.runId = 'resumed-run';
+			vi.mocked(compileWorkflowSource).mockImplementationOnce(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-existing',
+				expect.objectContaining({
+					nodes: [
+						expect.objectContaining({
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+						}),
+					],
+				}),
+				expect.anything(),
+			);
+		});
 	});
 
 	it('requires the LLM plan review in the current run before a public build', async () => {

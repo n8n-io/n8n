@@ -37,6 +37,85 @@ const graph = workflowGraphSchema.parse({
 });
 
 describe('deterministic workflow graph assembly', () => {
+	it('assembles selected operations without repeating their node fields', () => {
+		const selections = [
+			{
+				id: 'email',
+				nodeType: 'n8n-nodes-base.gmail',
+				version: 2.1,
+				resource: 'message',
+				operation: 'send',
+			},
+		];
+		const referenced = {
+			planId: 'plan-1',
+			nodes: [{ name: 'Email', step: 'email', parameters: { sendTo: '={{ $json.email }}' } }],
+			edges: [],
+		};
+		const explicit = {
+			nodes: [
+				{
+					name: 'Email',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2.1,
+					parameters: { resource: 'message', operation: 'send', sendTo: '={{ $json.email }}' },
+				},
+			],
+			edges: [],
+		};
+		expect(compileWorkflowGraph('Outreach', referenced, selections)).toEqual(
+			compileWorkflowGraph('Outreach', explicit),
+		);
+		expect(referenced.nodes[0].parameters).toEqual({ sendTo: '={{ $json.email }}' });
+	});
+
+	it('keeps explicit unresolved choices beside selected nodes', () => {
+		const compiled = compileWorkflowGraph(
+			'Mixed',
+			{
+				planId: 'plan-1',
+				nodes: [
+					{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, parameters: {} },
+					{ name: 'Map', step: 'map', parameters: { jsonOutput: '{"ready":true}' } },
+				],
+				edges: [{ from: 'Start', to: 'Map' }],
+			},
+			[{ id: 'map', nodeType: 'n8n-nodes-base.set', version: 3.4, mode: 'raw' }],
+		);
+		expect(compiled.nodes[1]).toMatchObject({
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3.4,
+			parameters: { mode: 'raw', jsonOutput: '{"ready":true}' },
+		});
+		expect(compiled.connections.Start.main[0]).toEqual([{ node: 'Map', type: 'main', index: 0 }]);
+	});
+
+	it('rejects an unknown or unresolved step and a missing plan reference', () => {
+		const node = { name: 'Email', step: 'email', parameters: {} };
+		expect(() =>
+			compileWorkflowGraph('Invalid', { planId: 'plan-1', nodes: [node], edges: [] }),
+		).toThrow('No accepted plan selection');
+		expect(() =>
+			compileWorkflowGraph('Invalid', { nodes: [node], edges: [] }, [
+				{ id: 'email', nodeType: 'n8n-nodes-base.gmail', version: 2.1 },
+			]),
+		).toThrow('No accepted plan selection');
+	});
+
+	it('rejects a parameter that changes the selected operation', () => {
+		expect(() =>
+			compileWorkflowGraph(
+				'Invalid',
+				{
+					planId: 'plan-1',
+					nodes: [{ name: 'Email', step: 'email', parameters: { operation: 'delete' } }],
+					edges: [],
+				},
+				[{ id: 'email', nodeType: 'n8n-nodes-base.gmail', version: 2.1, operation: 'send' }],
+			),
+		).toThrow('changes the selected operation');
+	});
+
 	it('produces identical JSON without changing the graph or its parameters', () => {
 		const before = structuredClone(graph);
 		const first = compileWorkflowGraph('HR outreach', graph);

@@ -7,25 +7,50 @@ import { INodeSchema, NodeConnectionTypeSchema, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { parseWorkflowJsonSource } from './workflow-source-compiler';
+import type { BuildPlanSelection } from '../../workflow-builder/build-plan-review';
+
+const graphNodeFields = {
+	name: z.string().min(1),
+	parameters: z.record(z.unknown()),
+	options: z
+		.record(z.unknown())
+		.optional()
+		.describe(
+			'Optional node settings, such as alwaysOutputData, onError, retryOnFail, maxTries, notes, or existing credential references. Do not include id, name, type, typeVersion, parameters, or position.',
+		),
+};
 
 export const workflowGraphSchema = z
 	.object({
+		planId: z
+			.string()
+			.min(1)
+			.optional()
+			.describe(
+				'Latest planId from plan-build. Required for nodes that reference a selected step.',
+			),
 		nodes: z
 			.array(
-				z
-					.object({
-						name: z.string().min(1),
-						type: z.string().min(1),
-						typeVersion: z.number().positive(),
-						parameters: z.record(z.unknown()),
-						options: z
-							.record(z.unknown())
-							.optional()
-							.describe(
-								'Optional node settings, such as alwaysOutputData, onError, retryOnFail, maxTries, notes, or existing credential references. Do not include id, name, type, typeVersion, parameters, or position.',
-							),
-					})
-					.strict(),
+				z.union([
+					z
+						.object({
+							...graphNodeFields,
+							type: z.string().min(1),
+							typeVersion: z.number().positive(),
+						})
+						.strict(),
+					z
+						.object({
+							...graphNodeFields,
+							step: z
+								.string()
+								.min(1)
+								.describe(
+									'Step id with a selected operation from plan-build. Code supplies its type, version, and operation fields.',
+								),
+						})
+						.strict(),
+				]),
 			)
 			.min(1),
 		edges: z.array(
@@ -70,10 +95,37 @@ export const workflowGraphSchema = z
 export function compileWorkflowGraph(
 	name: string,
 	input: z.infer<typeof workflowGraphSchema>,
+	selections: BuildPlanSelection[] = [],
 ): WorkflowJSON {
 	const graph = workflowGraphSchema.parse(input);
+	const selectedSteps = new Map(selections.map((selection) => [selection.id, selection]));
 	const ids = new Map<string, string>();
-	const nodes = graph.nodes.map(({ options, ...node }) => {
+	const nodes = graph.nodes.map(({ options, ...supplied }) => {
+		let node;
+		if ('step' in supplied) {
+			const selected = graph.planId ? selectedSteps.get(supplied.step) : undefined;
+			if (!selected)
+				throw new UserError(
+					`No accepted plan selection for step: ${supplied.step}. Use explicit type and typeVersion after resolving the choice.`,
+				);
+			const { resource, operation, mode } = selected;
+			const parameters = Object.fromEntries(
+				Object.entries({ resource, operation, mode }).filter(([, value]) => value !== undefined),
+			);
+			for (const [key, value] of Object.entries(parameters)) {
+				if (Object.hasOwn(supplied.parameters, key) && supplied.parameters[key] !== value) {
+					throw new UserError(
+						`Node ${supplied.name} changes the selected ${key}. Use an explicit node type and version for a different operation.`,
+					);
+				}
+			}
+			node = {
+				name: supplied.name,
+				type: selected.nodeType,
+				typeVersion: selected.version,
+				parameters: { ...parameters, ...supplied.parameters },
+			};
+		} else node = supplied;
 		if (ids.has(node.name)) throw new UserError(`Duplicate node name: ${node.name}.`);
 		const id = generateDeterministicNodeId(name, node.type, node.name);
 		ids.set(node.name, id);
