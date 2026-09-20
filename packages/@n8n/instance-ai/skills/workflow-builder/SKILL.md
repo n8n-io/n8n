@@ -92,7 +92,7 @@ This extra process applies only to SDK source.
 ## Existing workflows and repairs
 
 For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
-Read the saved node IDs, parameters, and current version with
+Read the saved node IDs, parameters, execution settings, groups, and current version with
 `workflows(action="get", full=true)`. Do not export SDK source for this path.
 Pass a `.workflow.json`
 filePath, the workflow ID, and `jsonEdits: { versionId, changes }`. `changes`
@@ -102,7 +102,8 @@ replace. When changing an operation or mode, set `replaceParameters: true`
 on that node edit and supply its complete new parameters. This removes fields
 that belong only to the old mode. Connections replace only their named source
 entries. A supplied group
-list replaces all groups. Omitted content stays unchanged. Do not resend the
+list replaces all groups. When adding nodes inside a group, update its member
+IDs and retain the other groups. Omitted content stays unchanged. Do not resend the
 full source for a small repair. The tool checks the version and uses the same
 approval and validation flow. Use full source for node removal or renaming.
 

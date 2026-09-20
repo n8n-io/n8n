@@ -130,11 +130,22 @@ export interface WorkflowDetail extends WorkflowSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
 	settings?: Record<string, unknown>;
+	nodeGroups?: WorkflowJSON['nodeGroups'];
 	/** SHA-256 checksum of workflow content fields — used for optimistic-concurrency saves. */
 	checksum?: string;
 }
 
-export interface WorkflowNode {
+export interface WorkflowNode
+	extends Pick<
+		WorkflowJSON['nodes'][number],
+		| 'disabled'
+		| 'executeOnce'
+		| 'retryOnFail'
+		| 'maxTries'
+		| 'waitBetweenTries'
+		| 'alwaysOutputData'
+		| 'onError'
+	> {
 	id?: string;
 	name: string;
 	type: string;
@@ -406,6 +417,7 @@ export interface WorkflowVersionSummary {
 export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowJSON['nodeGroups'];
 }
 
 export type WorkflowListStatus = 'active' | 'archived' | 'all';

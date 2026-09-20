@@ -12,7 +12,7 @@ export const workflowJsonEditsInputSchema = z.object({
 		.string()
 		.min(1)
 		.describe(
-			'JSON object with optional nodes, connections, and nodeGroups. ' +
+			'JSON object with optional nodes, connections, and nodeGroups, or a JSON array of node edits. ' +
 				'Nodes must be an array, for example [{"id":"saved-node-id","parameters":{"url":"https://example.com"}}]. ' +
 				'Nodes merge by saved id. Include only changed fields. Parameter keys merge at the top level; nested values replace. ' +
 				'Set replaceParameters: true on a node edit to replace all its parameters, for example when changing operation or mode. ' +
@@ -64,7 +64,8 @@ const changesSchema = z
 
 /** Keep full source generation out of small repairs. The normal build path validates the result. */
 export function applyWorkflowJsonEdits(workflow: WorkflowJSON, changes: string): WorkflowJSON {
-	const edits = changesSchema.parse(JSON.parse(changes));
+	const parsed: unknown = JSON.parse(changes);
+	const edits = changesSchema.parse(Array.isArray(parsed) ? { nodes: parsed } : parsed);
 	const result = structuredClone(workflow);
 	const seen = new Set<string>();
 	for (const { replaceParameters, ...patch } of edits.nodes ?? []) {

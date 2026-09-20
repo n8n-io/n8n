@@ -94,6 +94,14 @@ describe('LLM plan and bounded decisions', () => {
 			resource: 'message',
 			operation: 'send',
 		});
+		expect(result.capabilities).toContainEqual({
+			nodeType: 'n8n-nodes-base.gmail',
+			version: 2.1,
+			operations: [
+				{ resource: 'message', operation: 'send' },
+				{ resource: 'message', operation: 'get' },
+			],
+		});
 		expect(result.definitions).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ definition: { content: 'Live parameter definition' } }),

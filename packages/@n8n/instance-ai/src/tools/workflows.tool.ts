@@ -201,7 +201,7 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Inspect a workflow. Use full=true to read saved node IDs, parameters, connections, and version before targeted build-workflow jsonEdits. Large workflows omit node parameters by default. Pass versionId to inspect a past version instead of the current draft.',
+			'Inspect a workflow. Use full=true to read saved node IDs, parameters, execution settings, connections, node groups, and version before targeted build-workflow jsonEdits. Large workflows omit node parameters by default. Pass versionId to inspect a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),

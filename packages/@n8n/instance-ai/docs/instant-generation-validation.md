@@ -159,6 +159,30 @@ The build guidance now requires this contract in the Agent handoff. It also
 distinguishes a related lifecycle workflow from a callable Agent tool.
 All 17 existing skill tests passed after this guidance change.
 
+A scheduling repair then took 834.9 seconds and saved 64 nodes. It added an
+existing-event lookup, duration calculation, conflict lookup, and conflict
+filter. Five of six runtime cases passed. An empty calendar still stopped the
+branch. The LLM incorrectly claimed that Code nodes run with zero input items.
+The next two-node repair added `alwaysOutputData` and ignored the resulting
+empty object. It took 52.6 seconds, including 351 ms for the plan decision and
+604 ms for graph review. All six scheduling cases then passed in 131–153 ms.
+The cases verified own-event exclusion, empty calendars, busy slots, cancelled
+and transparent events, invalid dates, and failed database writes. Actual
+Code nodes and Postgres ran. Calendar and Gmail responses remained pinned.
+The eight earlier branch cases also passed on the repaired version. Manual
+UI inspection confirmed five saved groups and the new reschedule path.
+
+The longer repair exposed missing fields in workflow reads. The adapter now
+returns node groups, IDs, error handling, retry settings, and empty-result
+settings for current and historical versions. A live read confirmed that the
+LLM received all five groups and the saved error policy. Targeted conflict
+guidance now uses a fresh JSON read before retrying. Node-edit arrays are also
+accepted, which avoids regenerating an unambiguous edit just to add a wrapper.
+
+The LLM also inverted a graph-review probability. The field is now named
+`probabilityOfYes`, with explicit guidance that a low value indicates a concern.
+Negative findings still require reasoning and execution evidence.
+
 The existing UI was checked in the isolated instance. The research approval
 card retained its allow-once, session, and deny controls. The Agent model
 question accepted an answer. Postgres, Google Calendar, and Gmail credential
@@ -168,13 +192,13 @@ it does not establish successful external execution.
 
 The latest focused build, plan, registry, and Agent tests passed 222 cases.
 All 318 backend adapter tests passed. Builds, type checks, and lint passed
-for Instance AI and the CLI. Targeted-edit regression cases are pending the
-repository's required user confirmation; existing tests and live readback
-provide the current evidence for that path.
+for Instance AI and the CLI.
 After adding graph review, 290 existing build, plan, skill, and workflow-tool
-tests passed. The package build, type checks, and lint passed. New graph-review
-unit cases await the repository's required user confirmation. Live JEV probes
-provide the current evidence for the new review's findings and latency.
+tests passed. The package build, type checks, and lint passed.
+The user then approved the new regression cases. They cover graph-review
+fallback, unchanged content during targeted edits, stale-version rejection,
+approval-card resume, and complete current and historical reads. All 322
+adapter tests passed. The affected Instance AI suites passed 307 tests.
 
 ## Historical compiler benchmark
 

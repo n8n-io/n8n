@@ -28,7 +28,10 @@ export const buildQualityReviewSchema = z.object({
 		z.object({
 			check: z.string(),
 			outcome: z.enum(['yes', 'no', 'uncertain']),
-			probability: z.number().optional(),
+			probabilityOfYes: z
+				.number()
+				.optional()
+				.describe('Probability that the criterion is satisfied. A low value indicates a concern.'),
 			criterion: z.string(),
 		}),
 	),
@@ -91,7 +94,7 @@ export async function reviewBuiltWorkflow(
 			check,
 			criterion,
 			outcome: resolveNoul(answer),
-			probability: answer?.type === 'noul' ? answer.noul : undefined,
+			probabilityOfYes: answer?.type === 'noul' ? answer.noul : undefined,
 		};
 	});
 	return {
@@ -99,6 +102,6 @@ export async function reviewBuiltWorkflow(
 		latencyMs: outcome.latencyMs,
 		checks,
 		guidance:
-			'Review each no or uncertain finding against the executable nodes. Use LLM reasoning to correct defects or explain why the finding does not apply. Limit edits to the requested scope and report remaining issues. Use targeted edits for repairs. Keep the existing setup and approval flow. This review does not prove execution or authorize publication.',
+			'Review each no or uncertain finding against the executable nodes. A no outcome means the criterion is not satisfied. probabilityOfYes is the probability that it is satisfied. Use LLM reasoning and execution evidence to correct defects or explain why the finding does not apply. Limit edits to the requested scope and report remaining issues. Use targeted edits for repairs. Keep the existing setup and approval flow. This review does not prove execution or authorize publication.',
 	};
 }

@@ -1758,16 +1758,9 @@ export class InstanceAiAdapterService {
 					autosaved: version.autosaved ?? false,
 					isActive: version.versionId === activeVersionId,
 					isCurrentDraft: version.versionId === currentDraftVersionId,
-					nodes: (version.nodes ?? []).map(
-						(n): WorkflowNode => ({
-							name: n.name,
-							type: n.type,
-							typeVersion: n.typeVersion,
-							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
-							position: n.position,
-						}),
-					),
+					nodes: (version.nodes ?? []).map((node) => toWorkflowNode(node, redactParameters)),
 					connections: version.connections as Record<string, unknown>,
+					...(version.nodeGroups ? { nodeGroups: version.nodeGroups } : {}),
 				} satisfies WorkflowVersionDetail;
 			},
 
@@ -5087,6 +5080,25 @@ function toWorkflowJSON(
 	};
 }
 
+function toWorkflowNode(node: WorkflowEntity['nodes'][number], redact: boolean): WorkflowNode {
+	return {
+		id: node.id,
+		name: node.name,
+		type: node.type,
+		typeVersion: node.typeVersion,
+		parameters: redact ? undefined : node.parameters,
+		position: node.position,
+		webhookId: node.webhookId,
+		disabled: node.disabled,
+		executeOnce: node.executeOnce,
+		retryOnFail: node.retryOnFail,
+		maxTries: node.maxTries,
+		waitBetweenTries: node.waitBetweenTries,
+		alwaysOutputData: node.alwaysOutputData,
+		onError: node.onError ?? (node.continueOnFail ? 'continueRegularOutput' : undefined),
+	};
+}
+
 function toWorkflowDetail(
 	workflow: WorkflowEntity,
 	options?: { redactParameters?: boolean },
@@ -5100,19 +5112,10 @@ function toWorkflowDetail(
 		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
-		nodes: (workflow.nodes ?? []).map(
-			(n): WorkflowNode => ({
-				id: n.id,
-				name: n.name,
-				type: n.type,
-				typeVersion: n.typeVersion,
-				parameters: redact ? undefined : n.parameters,
-				position: n.position,
-				webhookId: n.webhookId,
-			}),
-		),
+		nodes: (workflow.nodes ?? []).map((node) => toWorkflowNode(node, redact)),
 		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 

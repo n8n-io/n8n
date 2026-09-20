@@ -2501,6 +2501,58 @@ describe('createWorkflowAdapter', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
+	it.each([
+		{ historical: false, allowSendingParameterValues: true },
+		{ historical: true, allowSendingParameterValues: true },
+		{ historical: false, allowSendingParameterValues: false },
+		{ historical: true, allowSendingParameterValues: false },
+	])(
+		'keeps groups and execution settings in workflow reads: %j',
+		async ({ historical, allowSendingParameterValues }) => {
+			const { adapter, savedWorkflow, mockWorkflowFinderService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests({ allowSendingParameterValues });
+			const node = {
+				id: 'lookup',
+				name: 'Find interview',
+				type: 'n8n-nodes-base.postgres',
+				typeVersion: 2.7,
+				position: [0, 0],
+				parameters: { operation: 'executeQuery', query: 'SELECT 1' },
+				disabled: false,
+				executeOnce: true,
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 1000,
+				alwaysOutputData: true,
+				continueOnFail: true,
+			};
+			const nodeGroups = [{ id: 'booking', name: 'Booking', nodeIds: ['lookup'] }];
+			const stored = { ...savedWorkflow, nodes: [node], nodeGroups };
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(stored);
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				...stored,
+				authors: 'Test builder',
+			});
+			const detail = historical
+				? await adapter.getVersion?.(stored.id, stored.versionId)
+				: await adapter.get(stored.id);
+			expect(detail?.nodeGroups).toEqual(nodeGroups);
+			expect(detail?.nodes[0]).toMatchObject({
+				id: 'lookup',
+				disabled: false,
+				executeOnce: true,
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 1000,
+				alwaysOutputData: true,
+				onError: 'continueRegularOutput',
+			});
+			expect(detail?.nodes[0].parameters).toEqual(
+				allowSendingParameterValues ? node.parameters : undefined,
+			);
+		},
+	);
+
 	it('summarizes pinned data as node names and item counts, without payloads', async () => {
 		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
 		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
