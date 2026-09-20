@@ -39,6 +39,14 @@ import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
+import {
+	encodeIntegrationMessageContext,
+	inheritIntegrationMessageContext,
+} from './integrations/integration-message-context';
+import type {
+	IntegrationMessageContext,
+	SessionBinding,
+} from './integrations/integration-tool-types';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { modelStreamStallOptions } from './model-stream-stall-options';
@@ -84,6 +92,9 @@ export interface ExecuteForChatConfig {
 }
 
 export interface ExecuteForChatPublishedConfig {
+	messageContext?: IntegrationMessageContext | null;
+	/** Platform conversation metadata scope. Execution memory can belong to a task. */
+	contextConversation?: SessionBinding;
 	agentId: string;
 	projectId: string;
 	/** What the user wrote; recorded in the execution transcript. */
@@ -106,6 +117,9 @@ export interface ExecuteForChatPublishedConfig {
 }
 
 export interface ResumeForChatConfig {
+	messageContext?: IntegrationMessageContext | null;
+	/** Platform conversation metadata scope. Execution memory can belong to a task. */
+	contextConversation?: SessionBinding;
 	agentId: string;
 	projectId: string;
 	runId: string;
@@ -188,6 +202,7 @@ export interface ExecuteForWakeConfig {
 }
 
 export interface StreamChatResponseConfig {
+	messageContext?: IntegrationMessageContext | null;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	/** See `AgentRuntime.mcpServerAttributions`. */
@@ -451,6 +466,18 @@ export class AgentExecutionOrchestratorService {
 							source: executionSource ?? 'unknown',
 							modelId: modelIdFromSnapshot(runtime.agent.snapshot.model),
 						});
+						let messageContext = config.messageContext;
+						if (messageContext === undefined) {
+							messageContext =
+								await this.integrationMessageContextService.getForResume(memoryScope);
+						} else if (messageContext && config.contextConversation) {
+							messageContext = inheritIntegrationMessageContext(
+								messageContext,
+								await this.integrationMessageContextService.getForResume(memoryScope),
+							);
+						}
+						const selectedContext = messageContext;
+						const conversation = config.contextConversation;
 
 						return {
 							type: 'resume',
@@ -458,6 +485,17 @@ export class AgentExecutionOrchestratorService {
 							options: {
 								runId,
 								toolCallId,
+								hostMetadata: encodeIntegrationMessageContext(selectedContext),
+								...(selectedContext && conversation
+									? {
+											onResumeClaimed: async () =>
+												await this.integrationMessageContextService.installIncoming(
+													selectedContext,
+													memoryScope,
+													conversation,
+												),
+										}
+									: {}),
 								executionCounter: createAgentExecutionCounter(this.telemetry, {
 									agentId,
 									userId: user?.id,
@@ -520,15 +558,21 @@ export class AgentExecutionOrchestratorService {
 					previewChat,
 				}),
 			async (runtime) => {
-				await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+				const messageContext: IntegrationMessageContext = {
 					integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 					platform: N8N_CHAT_INTEGRATION_TYPE,
 					target: { type: 'dm', userId: user.id, threadId: memory.threadId },
 					interactingUserId: user.id,
 					updatedAt: new Date().toISOString(),
-				});
+				};
+				await this.integrationMessageContextService.setLatest(
+					memory.threadId,
+					memory.resourceId,
+					messageContext,
+				);
 
 				return this.streamChatResponse({
+					messageContext,
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
@@ -593,8 +637,21 @@ export class AgentExecutionOrchestratorService {
 						source: integrationType,
 					},
 				),
-			(runtime) =>
-				this.streamChatResponse({
+			async (runtime) => {
+				let messageContext = config.messageContext;
+				if (messageContext && config.contextConversation) {
+					messageContext = inheritIntegrationMessageContext(
+						messageContext,
+						await this.integrationMessageContextService.getLatestForIncoming(memory.threadId),
+					);
+					await this.integrationMessageContextService.installIncoming(
+						messageContext,
+						memory,
+						config.contextConversation,
+					);
+				}
+				return this.streamChatResponse({
+					messageContext,
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
@@ -611,7 +668,8 @@ export class AgentExecutionOrchestratorService {
 						configuration: runtime.telemetryConfiguration,
 					},
 					sandboxPrincipalHash,
-				}),
+				});
+			},
 		);
 	}
 
@@ -719,9 +777,10 @@ export class AgentExecutionOrchestratorService {
 		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
+		const messageContext = await this.integrationMessageContextService.getLatest(memory.threadId);
 		const delivery = isDraft
 			? undefined
-			: await this.getWakeDelivery(agentId, integrationType, memory.threadId);
+			: await this.getWakeDelivery(agentId, integrationType, messageContext);
 		const stream = this.withRuntimeLease(
 			async () =>
 				await this.runtimeCacheService.getRuntime({
@@ -735,6 +794,7 @@ export class AgentExecutionOrchestratorService {
 			(runtime) =>
 				this.streamWakeResponse(
 					this.streamChatResponse({
+						messageContext,
 						agentInstance: runtime.agent,
 						toolRegistry: runtime.toolRegistry,
 						mcpServerAttributions: runtime.mcpServerAttributions,
@@ -785,8 +845,11 @@ export class AgentExecutionOrchestratorService {
 		if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
 	}
 
-	private async getWakeDelivery(agentId: string, integrationType: string, threadId: string) {
-		const context = await this.integrationMessageContextService.getLatest(threadId);
+	private async getWakeDelivery(
+		agentId: string,
+		integrationType: string,
+		context: IntegrationMessageContext | null,
+	) {
 		const target = context?.replyTarget ?? context?.target;
 		const [platform, credentialId] = context?.integrationConnectionId.split(':') ?? [];
 		if (
@@ -864,10 +927,17 @@ export class AgentExecutionOrchestratorService {
 				const input = attachments?.length
 					? buildInboundUserMessage(modelMessage, attachments)
 					: modelMessage;
-				const hostMetadata = encodeAgentSandboxHostMetadata({
-					projectId,
-					principalHash: sandboxPrincipalHash,
-				});
+				const messageContext =
+					config.messageContext === undefined
+						? await this.integrationMessageContextService.getLatest(threadId)
+						: config.messageContext;
+				const hostMetadata = {
+					...encodeAgentSandboxHostMetadata({
+						projectId,
+						principalHash: sandboxPrincipalHash,
+					}),
+					...encodeIntegrationMessageContext(messageContext),
+				};
 
 				return {
 					type: 'start',

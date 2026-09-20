@@ -84,98 +84,135 @@ export class AgentTurnExecutionService {
 	) {}
 
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, backgroundJobSignal, onExecutionRecorded } = config;
 		let executionId: string | undefined;
 		let turn: AgentTurnRequest | undefined;
 		let receivedFinish = false;
 		const recorder = this.createRecorder(
-			toolRegistry,
+			config.toolRegistry,
 			() => executionId,
 			config.context,
-			backgroundJobSignal,
+			config.backgroundJobSignal,
 		);
 
 		try {
 			turn = await config.prepare();
-			const result =
-				turn.type === 'start'
-					? await agentInstance.stream(turn.input, turn.options)
-					: await agentInstance.resume('stream', turn.resumeData, turn.options);
-			if (turn.type === 'resume') {
-				recorder.recordHitlResponse(turn.options.toolCallId, turn.resumeData);
-			}
-
-			// Keep SDK startup independent of execution-history storage.
-			executionId = await this.tryStartExecution(
-				{
-					...turn.recording,
-					...(backgroundJobSignal
-						? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
-						: {}),
-				},
-				recorder.startedAt,
-				turn.type === 'resume'
-					? 'Failed to start resumed agent execution recording'
-					: 'Failed to start agent execution recording',
-			);
-			const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
-			for await (const value of streamAgentChunks(result.stream)) {
-				const chunk = config.includeHitlToolDetails
-					? withApprovalToolDetails(value, toolRegistry)
-					: value;
-				recorder.record(chunk);
-				if (chunk.type === 'finish') receivedFinish = true;
-				if (turn.type === 'start') {
-					if (chunk.type === 'tool-call-suspended') {
-						this.logger.info('Chat: tool-call-suspended chunk received', {
-							agentId: config.context.agentId,
-							toolCallId: chunk.toolCallId,
-							toolName: chunk.toolName,
-						});
-					}
-					if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
-						for (const chunk of getMaxIterationsChunks()) {
-							recorder.record(chunk);
-							yield chunk;
-						}
-					}
-				}
-				for (const attributionChunk of attributionTracker.observe(chunk)) {
-					recorder.record(attributionChunk);
-					yield attributionChunk;
-				}
-				yield chunk;
-			}
+			const startedTurn = await this.startTurn(turn, config, recorder);
+			executionId = startedTurn.executionId;
+			receivedFinish = yield* this.streamTurn(startedTurn.stream, turn, config, recorder);
 		} catch (error) {
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
 			if (turn) {
-				const record = recorder.getMessageRecord();
-				const cancelled =
-					turn.options.abortSignal?.aborted ||
-					(!receivedFinish && !recorder.suspended && record.error === null);
-				await this.persistRecordedExecution({
-					executionId,
-					onExecutionRecorded,
-					failureMessage:
-						turn.type === 'resume'
-							? 'Failed to record resumed agent execution'
-							: 'Failed to record agent execution',
-					params: {
-						...turn.recording,
-						record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
-						hitlStatus: recorder.suspended
-							? 'suspended'
-							: turn.type === 'resume'
-								? 'resumed'
-								: undefined,
-					},
-				});
+				await this.finalizeTurn(turn, config, recorder, executionId, receivedFinish);
 			}
 			await config.onSettled?.(recorder.suspended);
 		}
+	}
+
+	private async startTurn(
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+	): Promise<{ stream: ReadableStream<StreamChunk>; executionId: string | undefined }> {
+		const result =
+			turn.type === 'start'
+				? await config.agentInstance.stream(turn.input, turn.options)
+				: await config.agentInstance.resume('stream', turn.resumeData, turn.options);
+		if (turn.type === 'resume') {
+			recorder.recordHitlResponse(turn.options.toolCallId, turn.resumeData);
+		}
+
+		// Keep SDK startup independent of execution-history storage.
+		const executionId = await this.tryStartExecution(
+			{
+				...turn.recording,
+				...(config.backgroundJobSignal
+					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
+					: {}),
+			},
+			recorder.startedAt,
+			turn.type === 'resume'
+				? 'Failed to start resumed agent execution recording'
+				: 'Failed to start agent execution recording',
+		);
+
+		return { stream: result.stream, executionId };
+	}
+
+	private async *streamTurn(
+		stream: ReadableStream<StreamChunk>,
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+	): AsyncGenerator<StreamChunk, boolean> {
+		let receivedFinish = false;
+		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
+
+		for await (const value of streamAgentChunks(stream)) {
+			const chunk = config.includeHitlToolDetails
+				? withApprovalToolDetails(value, config.toolRegistry)
+				: value;
+			recorder.record(chunk);
+			if (chunk.type === 'finish') receivedFinish = true;
+
+			if (turn.type === 'start') {
+				if (chunk.type === 'tool-call-suspended') {
+					this.logger.info('Chat: tool-call-suspended chunk received', {
+						agentId: config.context.agentId,
+						toolCallId: chunk.toolCallId,
+						toolName: chunk.toolName,
+					});
+				}
+				if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
+					for (const maxIterationsChunk of getMaxIterationsChunks()) {
+						recorder.record(maxIterationsChunk);
+						yield maxIterationsChunk;
+					}
+				}
+			}
+
+			for (const attributionChunk of attributionTracker.observe(chunk)) {
+				recorder.record(attributionChunk);
+				yield attributionChunk;
+			}
+			yield chunk;
+		}
+
+		return receivedFinish;
+	}
+
+	private async finalizeTurn(
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		executionId: string | undefined,
+		receivedFinish: boolean,
+	): Promise<void> {
+		const record = recorder.getMessageRecord();
+		const cancelled =
+			turn.options.abortSignal?.aborted ||
+			(!receivedFinish && !recorder.suspended && record.error === null);
+		const hitlStatus = recorder.suspended
+			? 'suspended'
+			: turn.type === 'resume'
+				? 'resumed'
+				: undefined;
+
+		await this.persistRecordedExecution({
+			executionId,
+			onExecutionRecorded: config.onExecutionRecorded,
+			failureMessage:
+				turn.type === 'resume'
+					? 'Failed to record resumed agent execution'
+					: 'Failed to record agent execution',
+			params: {
+				...turn.recording,
+				record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
+				hitlStatus,
+			},
+		});
 	}
 
 	createRecorder(

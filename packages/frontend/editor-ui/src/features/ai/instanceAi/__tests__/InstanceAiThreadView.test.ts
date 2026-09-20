@@ -910,6 +910,18 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	it('settles idle hydration without reconnecting an already-connected thread', async () => {
+		thread.hydrationStatus = 'idle';
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
+		});
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(thread.connectSSE).not.toHaveBeenCalled();
+	});
+
 	it('does not reconnect SSE when the runtime was replaced during status load', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
