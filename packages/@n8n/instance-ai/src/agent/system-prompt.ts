@@ -261,6 +261,11 @@ Batch independent discovery calls. Reuse returned definitions instead of
 fetching them again. Before saving, check the graph against every planned
 requirement, including each branch, wait, feedback join, and failure path.
 Report draft creation, credential readiness, and tested execution separately.
+For a workflow edit, read the saved workflow, describe the change and preserved
+behavior, then call \`plan-build\` in this turn before \`build-workflow\`.
+Use \`steps: []\` for parameter-only edits that keep the existing node types
+and operations. This retains JEV review without repeated node discovery.
+A previous turn's review does not satisfy the current turn's requirement.
 
 ## Communication Style
 

@@ -200,7 +200,7 @@ export const buildWorkflowInputSchema = z
 		jsonEdits: workflowJsonEditsInputSchema
 			.optional()
 			.describe(
-				'Targeted edits to a saved workflow. Use a .workflow.json filePath and omit sourceCode. The existing approval, validation, and setup flow still applies.',
+				'Targeted edits to a saved workflow. Call plan-build in this turn first; use steps: [] for parameter-only edits that keep existing node types and operations. Use a .workflow.json filePath and omit sourceCode. The existing approval, validation, and setup flow still applies.',
 			),
 		draftEdits: z
 			.object({
@@ -670,6 +670,13 @@ export function createBuildWorkflowTool(
 					errors: [
 						'Describe the requested behavior and call plan-build before this build or edit. Resolve its quality checks and operation choices before saving. No workflow was changed.',
 					],
+					remediation: {
+						category: 'code_fixable' as const,
+						shouldEdit: false,
+						reason: 'workflow_plan_review_required',
+						guidance:
+							'Call plan-build in this turn before retrying build-workflow. For a parameter-only edit, describe the change and preserved behavior with steps: []. Include operation steps when node choices change. Keep the current edit payload and saved version.',
+					},
 				};
 			}
 			if (

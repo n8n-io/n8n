@@ -395,6 +395,11 @@ describe('createBuildWorkflowTool', () => {
 		const missing = await executeTool<BuildToolOutput>(tool, { filePath });
 		expect(missing.success).toBe(false);
 		expect(missing.errors?.join(' ')).toContain('plan-build');
+		expect(missing.remediation).toMatchObject({
+			shouldEdit: false,
+			reason: 'workflow_plan_review_required',
+			guidance: expect.stringContaining('steps: []'),
+		});
 		expect(compileWorkflowSource).not.toHaveBeenCalled();
 		await recordBuildPlanReview(context);
 		expect((await executeTool<BuildToolOutput>(tool, { filePath })).success).toBe(true);

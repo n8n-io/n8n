@@ -78,6 +78,67 @@ function services(coverage = 0.99) {
 }
 
 describe('LLM plan and bounded decisions', () => {
+	it('reviews a parameter-only plan without catalog or definition lookups', async () => {
+		const { nodes, decisions } = services();
+		const input = {
+			originalRequest: 'Change the confirmed interview duration from 45 to 60 minutes.',
+			plan: 'Change only duration_minutes in the Ready output to 60. Preserve the other output, input types, condition, and connections.',
+			steps: [],
+		};
+		const result = await decideBuildPlan(input, nodes, decisions);
+		expect(result.status).toBe('ready');
+		expect(result.selections).toEqual([]);
+		expect(result.definitions).toEqual([]);
+		expect(nodes.listSearchable).not.toHaveBeenCalled();
+		expect(nodes.getDescription).not.toHaveBeenCalled();
+		expect(nodes.getNodeTypeDefinition).not.toHaveBeenCalled();
+		expect(decisions.decide).toHaveBeenCalledWith(
+			expect.objectContaining({
+				state: input,
+				questions: {
+					coverage: expect.anything(),
+					progress: expect.anything(),
+					scope: expect.anything(),
+				},
+			}),
+		);
+	});
+
+	it('prefers an exact display name without its parenthetical alias', async () => {
+		const { nodes, decisions } = services();
+		nodes.listSearchable.mockResolvedValue([
+			{
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields (Set)',
+				description: 'Edit fields',
+				version: 3.5,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+			{
+				name: 'n8n-nodes-base.editImage',
+				displayName: 'Edit Image',
+				description: 'Edit image fields',
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		]);
+		nodes.listDiscriminators.mockResolvedValue(null);
+		const result = await decideBuildPlan(
+			{ ...plan, steps: [{ id: 'fields', intent: 'Set output fields', search: 'Edit Fields' }] },
+			nodes,
+			decisions,
+		);
+		expect(result.selections[0].selected?.nodeType).toBe('n8n-nodes-base.set');
+		expect(nodes.getDescription).toHaveBeenCalledOnce();
+		expect(nodes.getDescription).toHaveBeenCalledWith('n8n-nodes-base.set', 3.5, expect.anything());
+		expect(Object.keys(decisions.decide.mock.calls[0][0].questions.step_0.criteria ?? {})).toEqual([
+			'option_0',
+			'none_of_these',
+		]);
+	});
+
 	it('grounds the full plan in installed operations and returns their parameter definitions', async () => {
 		const { nodes, decisions } = services();
 		const description = await nodes.getDescription('n8n-nodes-base.wait');

@@ -11,6 +11,7 @@ export function createPlanBuildTool(context: InstanceAiContext) {
 		.description(
 			'After you describe the complete workflow or Agent behavior in text, use JEV to choose installed nodes and operations in bounded parallel batches. ' +
 				'This returns grounded node definitions. It does not save or execute anything. ' +
+				'Call once in each new edit turn before build-workflow. For parameter-only edits, describe the change and preserved behavior with steps: [] to review without repeating node discovery. ' +
 				'You then fill parameters, expressions, and graph connections. Resolve uncertain choices with reasoning or ask-user. Never omit a requested stage.',
 		)
 		.input(buildPlanSchema)

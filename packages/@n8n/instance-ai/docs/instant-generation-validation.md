@@ -22,6 +22,49 @@ fix and passed after it.
 The affected suites passed 2,208 tests, including the workflow package's three
 expression engines. Dependency builds, package lint, and type checks passed.
 
+## Edit planning and JEV review
+
+A fresh four-node interview handoff took 53.1 seconds to build, verify both
+branches, and finish the reply. The successful build took 485 ms, including
+a 326 ms JEV graph review. A follow-up parameter edit took 44.3 seconds.
+It attempted two saves before the required plan review, then fetched node
+definitions for a change to one number.
+
+The edit guidance now requires a plan review in the current turn. Parameter-only
+plans can use `steps: []` when node types and operations stay unchanged. This
+path still reviews the plan with JEV. It skips catalog and definition lookups.
+A missing review returns explicit recovery guidance before any save. Exact
+display names also match their parenthetical aliases, such as `Edit Fields`
+for `Edit Fields (Set)`. This prevents unrelated fuzzy candidates from adding
+definitions to a known node choice.
+
+The first fresh edit after the tool and skill changes took 40.0 seconds.
+It used the empty step list but still attempted one save before the review.
+The system prompt now states the sequence for edits as well as new builds.
+
+JEV also reported recovery concerns for a workflow with no external effects.
+The graph review now supplies explicit true and false criteria for identity,
+partial failure, and empty lookup results. In three paired comparisons, the
+local transformation graph changed from `needs_reasoning` to `no_concerns`.
+An incomplete booking graph still required reasoning in all comparisons.
+Its identity, recovery, and empty-result checks each returned `no` with the
+new criteria. These examples do not establish general review accuracy.
+Missing and uncertain answers still go to LLM reasoning. The normal approval,
+setup, validation, and verification paths remain in place.
+
+The affected planning, review, build, skill, and system-prompt suites passed
+175 tests. The package build, lint, and type checks passed.
+
+A fresh edit with both changes followed the required sequence and saved on
+its first attempt. JEV returned `no_concerns`. The save took 517 ms, including
+the 311 ms graph review. Both output branches passed verification. The full
+turn took 35.7 seconds, including the final reply. This still exceeds the
+30-second target. These are individual live probes, not a latency guarantee.
+Four separate execution cases passed in 0.9 seconds. They checked both typed
+outputs and rejected string and numeric confirmation values at the IF node.
+Readback confirmed that only the requested duration value changed. Node IDs,
+connections, and groups stayed unchanged. The workflow remains unpublished.
+
 ## Expression validation and draft repair
 
 The JSON build path now checks expression syntax before save. It uses the

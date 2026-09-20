@@ -50,11 +50,33 @@ describe('built workflow review', () => {
 			]),
 		);
 		const request = decisions.decide.mock.calls[0][0];
+		expect(request.schemaVersion).toBe('build-quality-v2');
+		expect(request.questions.recovery).toMatchObject({
+			type: 'noul',
+			criteria: {
+				true: expect.stringContaining('no external effect followed by a separate database update'),
+				false: expect.stringContaining('no recovery path'),
+			},
+		});
 		expect(JSON.stringify(request.state)).toContain('continueErrorOutput');
 		expect(JSON.stringify(request.state)).toContain('alwaysOutputData');
 		expect(JSON.stringify(request.state)).not.toContain('private-credential');
 		expect(result.guidance).toContain('existing setup and approval flow');
 		expect(workflow.nodes[0].credentials).toBeDefined();
+	});
+
+	it('keeps uncertain and missing answers for LLM review', async () => {
+		const decisions = mock<DecisionService>({ kind: 'systemone' });
+		decisions.decide.mockResolvedValue({
+			ok: true,
+			model: 'fixture',
+			latencyMs: 12,
+			problems: [],
+			answers: { recovery: { type: 'noul', noul: 0.5 } },
+		});
+		const result = await reviewBuiltWorkflow(workflow, decisions);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.checks.every((check) => check.outcome === 'uncertain')).toBe(true);
 	});
 
 	it('returns unavailable JEV evidence to outer LLM reasoning', async () => {

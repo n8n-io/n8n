@@ -21,6 +21,24 @@ const reviewCriteria = {
 		'Do required missing-record branches execute when a lookup returns zero rows? Zero items stop downstream IF nodes. Check explicit existence results or alwaysOutputData with empty-object handling. Answer yes if no action is required after an empty lookup.',
 };
 
+const answerCriteria: Record<string, { true: string; false: string }> = {
+	identity: {
+		true: 'The workflow has no participant-scoped record access, or every such access derives the participant from a validated token or trusted runtime context.',
+		false:
+			'The workflow reads or changes participant-owned records using an unverified caller or model-supplied identity.',
+	},
+	recovery: {
+		true: 'The workflow has no external effect followed by a separate database update, or durable state and retry handling recover when either write fails.',
+		false:
+			'An external effect can succeed before a separate database update fails, and the graph has no recovery path for that partial completion.',
+	},
+	emptyResults: {
+		true: 'The workflow has no record lookup, or every required missing-record path receives an explicit existence result or an empty item.',
+		false:
+			'A record lookup can return zero items and stop a required downstream missing-record action.',
+	},
+};
+
 export const buildQualityReviewSchema = z.object({
 	status: z.enum(['no_concerns', 'needs_reasoning', 'unavailable']),
 	latencyMs: z.number(),
@@ -58,12 +76,12 @@ export async function reviewBuiltWorkflow(
 	const questions: DecisionQuestions = Object.fromEntries(
 		Object.entries(reviewCriteria).map(([name, instructions]) => [
 			name,
-			{ type: 'noul', instructions },
+			{ type: 'noul', instructions, criteria: answerCriteria[name] },
 		]),
 	);
 	const outcome = await decisions.decide({
 		name: 'build-workflow.quality',
-		schemaVersion: 'build-quality-v1',
+		schemaVersion: 'build-quality-v2',
 		state: {
 			workflow: scrubSecretsInText(
 				JSON.stringify({

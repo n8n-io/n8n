@@ -36,6 +36,9 @@ export const buildPlanSchema = z.object({
 			}),
 		)
 		.max(60)
+		.describe(
+			'Use an empty array for a parameter-only edit that keeps the existing node types and operations. Describe the change and preserved behavior in plan. Include steps when node or operation choices are needed.',
+		)
 		.refine(
 			(steps) => new Set(steps.map(({ id }) => id)).size === steps.length,
 			'Use unique step ids.',
@@ -59,7 +62,7 @@ export async function decideBuildPlan(
 	abortSignal?: AbortSignal,
 ) {
 	abortSignal?.throwIfAborted();
-	const engine = new NodeSearchEngine(await nodes.listSearchable());
+	const engine = new NodeSearchEngine(input.steps.length ? await nodes.listSearchable() : []);
 	const searches = new Map<string, Promise<Candidate[]>>();
 	const wiring = new Map<
 		string,
@@ -80,7 +83,8 @@ export async function decideBuildPlan(
 				(node) =>
 					node.name.toLowerCase() === normalizedSearch ||
 					node.name.split('.').at(-1)?.toLowerCase() === normalizedSearch ||
-					node.displayName.toLowerCase() === normalizedSearch,
+					node.displayName.toLowerCase() === normalizedSearch ||
+					node.displayName.split(' (')[0].toLowerCase() === normalizedSearch,
 			);
 			pending = Promise.all(
 				(exact.length ? exact : matches).map(async (node): Promise<Candidate[]> => {
@@ -151,7 +155,7 @@ export async function decideBuildPlan(
 		coverage: {
 			type: 'noul',
 			instructions:
-				'Does the detailed plan and its step list cover every behavior in the original request? Check triggers, waits, conditions, data isolation, human decisions, failure handling, and requested integrations. Missing behavior means no. Unspecified credential values do not mean missing behavior.',
+				'Does the detailed plan and its step list cover every behavior in the original request? Check triggers, waits, conditions, data isolation, human decisions, failure handling, and requested integrations. Missing behavior means no. Unspecified credential values do not mean missing behavior. A parameter-only edit may use an empty step list when the plan states the change and preserves the existing behavior.',
 		},
 		progress: {
 			type: 'noul',

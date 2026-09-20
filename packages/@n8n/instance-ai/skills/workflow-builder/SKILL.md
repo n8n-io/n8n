@@ -144,6 +144,12 @@ For example: `{"nodes":[{"name":"Edit Fields","parameters":{"jsonOutput":"={{ $j
 For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
 Read the saved node IDs, parameters, execution settings, groups, and current version with
 `workflows(action="get", full=true)`. Do not export SDK source for this path.
+Before the first edit in each new turn, call `plan-build`. Describe the change
+and the behavior that stays unchanged. Use `steps: []` for a parameter-only edit
+that keeps the installed node types and operations. This retains the JEV plan
+review without fetching the same definitions again. Include operation steps
+when adding nodes or changing an operation. A prior turn's review does not
+satisfy this requirement. Do not retry a rejected save before this review.
 Pass a `.workflow.json`
 filePath, the workflow ID, and `jsonEdits: { versionId, changes }`. `changes`
 is JSON text with only changed `nodes`, source `connections`, or `nodeGroups`.
