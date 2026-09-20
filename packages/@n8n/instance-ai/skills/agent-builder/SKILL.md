@@ -20,6 +20,10 @@ field of `build-agent`. The tool runs JEV before the embedded builder fills
 parameters. Keep proposed implementation separate from the original user
 requirements. Use the existing question, credential, and approval cards.
 Use `plan-build` separately only when building prerequisite workflows.
+For a scoped edit, hand off inspection, changes, and readback in one
+`build-agent` call. The embedded builder can read the current configuration
+and skills before it edits them. Use a read-only handoff when the user asks
+for a review without changes.
 
 ## Plan quality
 
