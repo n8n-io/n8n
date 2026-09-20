@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import { EventEmitter } from 'events';
 import type { Response } from 'express';
 import type {
 	IConnections,
@@ -348,6 +349,88 @@ describe('LiveWebhooks', () => {
 			await expect(liveWebhooks.executeWebhook(request, mock<Response>())).rejects.toBe(
 				preCallbackError,
 			);
+		});
+
+		it('releases the expression isolate when the response ends without the execution promise settling', async () => {
+			/**
+			 * The sibling of the test above. That one covers `executeWebhook`
+			 * throwing before the callback; this covers it NOT throwing and never
+			 * invoking the callback at all, which is what form webhooks do — they
+			 * send the response themselves. The awaited promise then never settles,
+			 * so the `finally` never runs and the isolate is never released.
+			 *
+			 * isolated-vm isolates are native resources, so an unreleased one is
+			 * leaked for the lifetime of the process (~9 MB each).
+			 */
+			const webhookNode: INode = {
+				id: 'webhook-node',
+				name: NODE_NAME,
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+			};
+
+			const activeVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
+				nodes: [webhookNode],
+				connections: {},
+			});
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: activeVersion.versionId,
+				nodes: [webhookNode],
+				connections: {},
+				staticData: {},
+				activeVersion,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const request = setupExecuteWebhookMocks(workflowEntity);
+
+			// The defect: the response is sent, but the completion callback is
+			// never invoked, so this promise never settles. The workflow is
+			// captured here so the real isolate release can be observed.
+			let releaseIsolate: Mock | undefined;
+			(WebhookHelpers.executeWebhook as Mock).mockImplementation(async (...args: unknown[]) => {
+				const workflow = args[0] as Workflow;
+				releaseIsolate = vi
+					.spyOn(workflow.expression, 'releaseIsolate')
+					.mockResolvedValue(undefined) as unknown as Mock;
+				return await new Promise<never>(() => {});
+			});
+
+			// A mocked response with REAL event semantics. The auto-mock supplies
+			// everything the handler touches (notably `locals`), but its `on` is a
+			// stub that would silently swallow the subscription this fix depends on.
+			const emitter = new EventEmitter();
+			const response = mock<Response>();
+			response.on = emitter.on.bind(emitter) as unknown as Response['on'];
+			response.once = emitter.once.bind(emitter) as unknown as Response['once'];
+			response.emit = emitter.emit.bind(emitter) as unknown as Response['emit'];
+
+			// Deliberately not awaited: on master this never resolves. Failures are
+			// surfaced rather than swallowed, so a broken arrangement cannot be
+			// mistaken for the leak under test.
+			let handlerError: unknown;
+			void liveWebhooks.executeWebhook(request, response).catch((error) => {
+				handlerError = error;
+			});
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// Guard: the handler must have reached the execution call, otherwise
+			// this test would pass trivially against any implementation.
+			expect(handlerError).toBeUndefined();
+			expect(releaseIsolate).toBeDefined();
+
+			response.emit('close');
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 	});
 

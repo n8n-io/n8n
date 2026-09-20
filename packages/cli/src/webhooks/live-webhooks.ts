@@ -16,6 +16,7 @@ import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
+import { releaseIsolateOnResponse } from '@/webhooks/release-isolate-on-response';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -144,6 +145,9 @@ export class LiveWebhooks implements IWebhookManager {
 			await workflow.expression.acquireIsolate();
 		}
 
+		// Form webhooks respond without invoking the completion callback, so the
+		// promise below never settles and the `finally` alone never runs.
+		const releaseIsolate = releaseIsolateOnResponse(workflow, response);
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, startNode as INode, additionalData)
@@ -195,8 +199,9 @@ export class LiveWebhooks implements IWebhookManager {
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
-			// A no-op when the acquire was skipped.
-			await workflow.expression.releaseIsolate();
+			// A no-op when the acquire was skipped, or when the response already
+			// triggered the release.
+			await releaseIsolate();
 		}
 	}
 

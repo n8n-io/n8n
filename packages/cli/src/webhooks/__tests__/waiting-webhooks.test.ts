@@ -1,5 +1,6 @@
 import type { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
+import { EventEmitter } from 'events';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
@@ -844,6 +845,151 @@ describe('WaitingWebhooks', () => {
 			await expect(waitingWebhooks.executeWebhook(mockReq, mock<express.Response>())).rejects.toBe(
 				preCallbackError,
 			);
+		});
+
+		it('releases the expression isolate when the response ends without the execution promise settling', async () => {
+			/**
+			 * The sibling of the test above. That one covers `executeWebhook`
+			 * throwing before the callback; this covers it NOT throwing and never
+			 * invoking the callback at all, which is what form webhooks do — they
+			 * send the response themselves. The awaited promise then never settles,
+			 * so the `finally` never runs and the isolate is never released.
+			 *
+			 * isolated-vm isolates are native resources, so an unreleased one is
+			 * leaked for the lifetime of the process (~9 MB each).
+			 */
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'Form';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.form',
+									typeVersion: 1,
+									parameters: {},
+									id: 'node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{ startTime: 123, executionTime: 456, executionIndex: 0, source: [] },
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-id',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+				},
+			});
+			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const releaseIsolate = vi.fn().mockResolvedValue(undefined);
+			const acquireIsolate = vi.fn().mockResolvedValue(true);
+			// The prototype method, NOT the instance: spying on the instance and
+			// then calling through `exposeCreateWorkflow` would re-enter the spy.
+			const createWorkflow = WaitingWebhooks.prototype[
+				'createWorkflow' as keyof WaitingWebhooks
+			] as unknown as (this: WaitingWebhooks, wf: IWorkflowBase) => Workflow;
+			vi.spyOn(
+				waitingWebhooks as unknown as { createWorkflow: (wf: IWorkflowBase) => Workflow },
+				'createWorkflow',
+			).mockImplementation((workflowData: IWorkflowBase) => {
+				const workflow = createWorkflow.call(waitingWebhooks, workflowData);
+				Object.assign(workflow.expression, { acquireIsolate, releaseIsolate });
+				return workflow;
+			});
+
+			// The defect: the response is sent, but the completion callback is
+			// never invoked, so this promise never settles.
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+				async () => await new Promise<never>(() => {}),
+			);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						// `WaitingWebhooks.includeForms` is false, and the handler
+						// matches on `(nodeType === 'form') === this.includeForms`.
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: undefined },
+				method: 'POST',
+				// A real string: the handler rewrites it, and vitest-mock-extended
+				// would otherwise supply a mock function for `.replace`.
+				originalUrl: `/form-waiting/${executionId}`,
+			});
+
+			// A mocked response with REAL event semantics. The auto-mock supplies
+			// every method the handler touches, but its `on` is a stub that would
+			// silently swallow the subscription this fix depends on.
+			const emitter = new EventEmitter();
+			const res = mock<express.Response>();
+			res.on = emitter.on.bind(emitter) as unknown as express.Response['on'];
+			res.once = emitter.once.bind(emitter) as unknown as express.Response['once'];
+			res.emit = emitter.emit.bind(emitter) as unknown as express.Response['emit'];
+
+			// Deliberately not awaited: on master this never resolves. Failures are
+			// surfaced rather than swallowed, so a broken arrangement cannot be
+			// mistaken for the leak under test.
+			let handlerError: unknown;
+			void waitingWebhooks.executeWebhook(mockReq, res).catch((error) => {
+				handlerError = error;
+			});
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// Guard: the isolate must actually have been taken, otherwise this test
+			// would pass trivially against any implementation.
+			expect(handlerError).toBeUndefined();
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+
+			res.emit('close');
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
 		it('should preserve inputOverride for nodes that have it', async () => {

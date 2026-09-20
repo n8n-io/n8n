@@ -16,6 +16,7 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { releaseIsolateOnResponse } from './release-isolate-on-response';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -379,6 +380,9 @@ export class WaitingWebhooks implements IWebhookManager {
 			workflowId: workflow.id,
 		});
 		await workflow.expression.acquireIsolate();
+		// Form webhooks respond without invoking the completion callback, so the
+		// promise below never settles and the `finally` alone never runs.
+		const releaseIsolate = releaseIsolateOnResponse(workflow, res);
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, workflowStartNode, additionalData)
@@ -434,7 +438,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
-			await workflow.expression.releaseIsolate();
+			await releaseIsolate();
 		}
 	}
 }
