@@ -103,6 +103,8 @@ took 1.8 ms at p95 for the helper and 2.8 ms for the process. These figures
 exclude model calls, review, validation, persistence, and execution.
 
 The unpublished Candidate Journey draft now uses these feedback branches.
-Its initial scheduling, old rescheduling form, and manager decision branch
-still need repairs. The candidate Agent still lacks a model credential.
+Its [manager decision branch](HIRING.md) now checks the assigned manager and
+complete final feedback before recording a human decision and queued notice.
+Initial scheduling and the old rescheduling form still need repairs.
+The candidate Agent still lacks a model credential.
 Production integrations and candidate conversations remain untested.

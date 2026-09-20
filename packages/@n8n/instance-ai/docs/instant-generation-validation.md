@@ -41,6 +41,26 @@ execution, fixtures, failed and interrupted runs, version changes, evidence
 limits, and the persisted attempt budget. All 229 affected tests passed.
 The package build, lint, and type checks passed.
 
+## Human manager decisions
+
+The main HR draft now uses the [verified hiring process](examples/HIRING.md).
+It checks the assigned staff identity and complete final feedback. A database
+transaction records the human decision, updates the stage, and queues the
+notification. Stable request IDs handle retries. Competing terminal decisions
+cannot both succeed. Failed delivery and expired claims remain recoverable.
+
+Thirty-three real webhook and database fixture cases passed. Fifty combined
+hiring and feedback cases passed, including one candidate who completed all
+three interview stages and received a recorded human manager decision.
+Separate cases verified notification delivery and retries. External services
+were local fixtures. No real candidate messages were sent.
+
+One hundred compilations produced identical JSON at 2.2 ms p95. The saved
+71-node HR draft passed node, expression, and group validation. Other branches
+were unchanged. Manual editor inspection confirmed the new path and standard
+Postgres credential control. The draft remains unpublished. These repairs do
+not prove automatic generation or full task completion within 30 seconds.
+
 ## HR feedback integration
 
 The [feedback reference](examples/FEEDBACK.md) now connects booking, verified

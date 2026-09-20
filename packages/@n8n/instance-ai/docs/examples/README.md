@@ -3,6 +3,7 @@
 The booking graph and the [feedback process](FEEDBACK.md) share a database
 contract. Apply `hr-interview-feedback.sql` before you use either reference.
 It creates the interview roster, feedback records, and notification queue.
+The [human hiring decision process](HIRING.md) uses the completed final stage.
 
 `hr-candidate-booking.graph.json` is input for the `graph` field of
 `build-workflow`. It is not an importable n8n workflow export. Use the name
@@ -114,7 +115,8 @@ so candidate conversations have not been executed.
 The feedback reference now produces `recruiter_completed`,
 `technical_completed`, and `final_completed`. It also provides feedback
 deadlines and queued notifications. The broader HR draft still needs repairs
-to initial scheduling, manager approval, and its old rescheduling form.
+to initial scheduling and its old rescheduling form. Manager decisions now
+use the [verified human decision process](HIRING.md).
 This booking reference does not provide a slot-listing tool.
 
 The database claim does not reserve calendars against outside writers.
