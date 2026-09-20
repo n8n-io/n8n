@@ -51,8 +51,23 @@ describe('MessageFormatter', () => {
 				});
 			});
 
+			it('should pass through resource content block with blob payload', () => {
+				const result = [
+					{ type: 'resource', resource: { uri: 'file:///test.bin', blob: 'base64data' } },
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
+			});
+
 			it('should pass through resource_link content block', () => {
-				const result = [{ type: 'resource_link', uri: 'https://example.com/resource' }];
+				const result = [
+					{
+						type: 'resource_link',
+						uri: 'https://example.com/resource',
+						name: 'Example resource',
+					},
+				];
 				expect(MessageFormatter.formatToolResult(result)).toEqual({
 					content: result,
 				});
@@ -85,6 +100,71 @@ describe('MessageFormatter', () => {
 				const result = [{ type: 'image', data: 'base64data' }];
 				expect(MessageFormatter.formatToolResult(result)).toEqual({
 					content: [{ type: 'text', text: '[{"type":"image","data":"base64data"}]' }],
+				});
+			});
+
+			it('should stringify array with resource block missing nested uri', () => {
+				const result = [{ type: 'resource', resource: { text: 'content' } }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource","resource":{"text":"content"}}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource block missing text or blob', () => {
+				const result = [{ type: 'resource', resource: { uri: 'file:///test.txt' } }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource","resource":{"uri":"file:///test.txt"}}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource block containing text and blob', () => {
+				const result = [
+					{
+						type: 'resource',
+						resource: { uri: 'file:///test.txt', text: 'content', blob: 'base64data' },
+					},
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource","resource":{"uri":"file:///test.txt","text":"content","blob":"base64data"}}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource_link block missing uri', () => {
+				const result = [{ type: 'resource_link', name: 'Example resource' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource_link","name":"Example resource"}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource_link block missing name', () => {
+				const result = [{ type: 'resource_link', uri: 'https://example.com/resource' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource_link","uri":"https://example.com/resource"}]',
+						},
+					],
 				});
 			});
 

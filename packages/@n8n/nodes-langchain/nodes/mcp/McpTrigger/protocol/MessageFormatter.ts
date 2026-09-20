@@ -38,7 +38,7 @@ export class MessageFormatter {
 			content = [
 				{
 					type: 'text' as const,
-					text: String(result as symbol | ((...args: unknown[]) => unknown)),
+					text: String(result),
 				},
 			];
 		}

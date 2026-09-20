@@ -3,6 +3,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
+import { isRecord } from '@n8n/utils/is-record';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	ICredentialDataDecryptedObject,
@@ -48,9 +49,18 @@ export type McpContentBlock =
 
 const VALID_CONTENT_TYPES = new Set(['text', 'image', 'audio', 'resource', 'resource_link']);
 
+function isValidEmbeddedResource(resource: unknown): boolean {
+	if (!isRecord(resource) || typeof resource.uri !== 'string') return false;
+
+	const hasText = typeof resource.text === 'string';
+	const hasBlob = typeof resource.blob === 'string';
+
+	return (hasText && !hasBlob) || (hasBlob && !hasText);
+}
+
 function isValidContentBlock(item: unknown): item is McpContentBlock {
-	if (typeof item !== 'object' || item === null) return false;
-	const block = item as Record<string, unknown>;
+	if (!isRecord(item)) return false;
+	const block = item;
 	if (typeof block.type !== 'string') return false;
 	if (!VALID_CONTENT_TYPES.has(block.type)) return false;
 
@@ -61,9 +71,9 @@ function isValidContentBlock(item: unknown): item is McpContentBlock {
 		case 'audio':
 			return typeof block.data === 'string' && typeof block.mimeType === 'string';
 		case 'resource':
-			return typeof block.resource === 'object' && block.resource !== null;
+			return isValidEmbeddedResource(block.resource);
 		case 'resource_link':
-			return typeof block.uri === 'string';
+			return typeof block.uri === 'string' && typeof block.name === 'string';
 		default:
 			return false;
 	}
