@@ -619,6 +619,9 @@ every reported error and warning before calling `build-workflow`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
   `{{ }}`. `$json` is only the current item from the immediate predecessor.
+  For multi-line text or prompts (LLMs, messages, emails), write them as
+  plain template literals with embedded `{{ ... }}` placeholders — **never** wrap
+  the whole text in `{{ "..." + ... }}` with string concatenation.
 - Use string values directly for discriminator fields like `resource` and
   `operation`, for example `resource: 'message'`.
 - When editing a saved workflow, leave layout alone. The source `get-as-code`
@@ -831,6 +834,29 @@ Variables must always be inside `{{ }}`:
 expr('Hello {{ $json.name }}')
 expr('Report for {{ $now.toFormat("MMMM d, yyyy") }} - {{ $json.title }}')
 expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')
+```
+
+### Multi-line prompts and text templates
+
+For AI/LLM prompt parameters, HTTP bodies, and email templates, use backtick template literals with embedded `{{ ... }}` variable slots. Do **not** wrap the entire multi-line string in a single `{{ "..." + ... }}` expression:
+
+```ts
+// ✅ Correct: Plain text with embedded {{ ... }} slots
+content: expr(`You are a support FAQ matcher. Decide whether the customer question below is answered by one of the FAQ entries.
+
+Customer question:
+{{ $('Extract Message').item.json.question }}
+
+FAQ entries (JSON):
+{{ JSON.stringify($('Read FAQ').all().map(i => i.json)) }}
+
+Respond with JSON only, in exactly this shape:
+{"resolved": true, "answer": "<the FAQ answer>"}
+or
+{"resolved": false, "answer": ""}`)
+
+// ❌ Wrong: Wrapping the whole text in {{ "..." + ... }} breaks on quote escapes, braces, and newlines
+content: expr('{{ "You are a support FAQ matcher...\\n\\n" + $("Extract Message").item.json.question + "..." }}')
 ```
 
 When `$json` is unsafe, reference the source node explicitly. This matters for
