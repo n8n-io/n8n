@@ -128,6 +128,24 @@ describe('selectMany utils', () => {
 			);
 		});
 
+		it('should cleanly complete pagination without throwing when terminal page completes all rows (#39132)', async () => {
+			// Page 1 yields 1000 items with initial estimate count 1000
+			// Terminal Page 2 yields empty array
+			getManyRowsAndCount.mockReturnValueOnce({
+				data: Array.from({ length: 1000 }, (_, k) => ({ id: k })),
+				count: 1000,
+			});
+			getManyRowsAndCount.mockReturnValueOnce({
+				data: [],
+				count: 1000,
+			});
+
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+			expect(result).toHaveLength(1000);
+		});
+
 		describe('filter conditions', () => {
 			it('should handle "eq" condition', async () => {
 				// ARRANGE
