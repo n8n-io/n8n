@@ -173,7 +173,7 @@ export const buildWorkflowInputSchema = z
 					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
 			})
 			.describe(
-				'Workspace-relative path to the TypeScript SDK workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts.',
+				'Workspace-relative source path. Use src/workflows/name.workflow.json for inline WorkflowJSON or .workflow.ts for TypeScript SDK source.',
 			),
 		sourceCode: z
 			.string()
@@ -604,14 +604,18 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 
 export function createBuildWorkflowTool(
 	context: InstanceAiContext,
-	options: { useModelForSimulation?: boolean } = {},
+	options: { useModelForSimulation?: boolean; exposeToModel?: boolean } = {},
 ) {
 	const failureTracker = new BuildFailureTracker();
 
-	return new Tool(PERSIST_WORKFLOW_TOOL_ID)
+	return new Tool(options.exposeToModel ? 'build-workflow' : PERSIST_WORKFLOW_TOOL_ID)
 		.description(
-			'Internal persistence step behind `build-workflow`: validates a compiled WorkflowJSON (or a workspace source file), ' +
-				'resolves credentials, saves the workflow, and reports the build outcome. Not exposed to the agent directly.',
+			'Persistence for build-workflow: validate and save a complete source file or inline sourceCode. ' +
+				'First describe the complete behavior in text, then call plan-build for bounded node and operation decisions. ' +
+				'Load workflow-builder for graph, parameter, and setup rules. Fill parameters from the returned node definitions. ' +
+				'Use .workflow.json for inline WorkflowJSON or .workflow.ts for SDK source. ' +
+				'Preserve every requirement, branch, wait, data mapping, and failure path. ' +
+				'This tool keeps the existing approval and credential setup flow.',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
 		.output(pickBuildWorkflowOutputSchema(context))

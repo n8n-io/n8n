@@ -4,7 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 import { extractAgentRequirements } from '../agent-compiler/requirements/extract';
-import { createBuildAgentTool } from '../tools/orchestration/build-agent.tool';
+import { createCompileAgentTool } from '../tools/orchestration/compile-agent.tool';
 import { resolveAgentBuilderTarget } from '../tools/orchestration/agent-target-binding';
 import {
 	createCompileWorkflowTool,
@@ -171,7 +171,7 @@ async function runTool(
 	const tool =
 		plan.toolName === 'build-workflow'
 			? createCompileWorkflowTool(context)
-			: createBuildAgentTool(orchestrationContext);
+			: createCompileAgentTool(orchestrationContext);
 	const schema = tool.inputSchema && 'safeParse' in tool.inputSchema ? tool.inputSchema : undefined;
 	const parsed = schema?.safeParse(plan.input);
 	if (parsed && !parsed.success)

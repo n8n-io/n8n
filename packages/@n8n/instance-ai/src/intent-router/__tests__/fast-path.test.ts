@@ -16,8 +16,8 @@ vi.mock('../../tools/workflows/compile-workflow.tool', () => ({
 		decide: async () => ({ ok: false, reason: 'unavailable', message: 'none', latencyMs: 0 }),
 	}),
 }));
-vi.mock('../../tools/orchestration/build-agent.tool', () => ({
-	createBuildAgentTool: () => ({ name: 'build-agent', handler: agentHandler }),
+vi.mock('../../tools/orchestration/compile-agent.tool', () => ({
+	createCompileAgentTool: () => ({ name: 'build-agent', handler: agentHandler }),
 }));
 
 interface Harness {

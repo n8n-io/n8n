@@ -1,163 +1,407 @@
 /**
- * `build-agent`: the compiler-backed orchestration tool for n8n Agent
- * artifacts. The agent compiler turns the user's words into a validated
- * `AgentJsonConfig` with bounded decisions; the builder delegate persists it.
- * No language model writes the config. Verification runs the behavior
- * scenarios in Preview. Targeting (`agentRef`, `name`, `agentId`, `createNew`)
- * keeps the contract of the previous tool.
+ * build-agent — orchestration tool that drives the agents-module builder
+ * (`AgentsBuilderService`) as an embedded sub-agent, one conversational turn
+ * per invocation.
+ *
+ * This is the interactive contract: the delegate session includes the
+ * builder's full standard toolset, so it may suspend for builder interactions
+ * or for a target-agent tool approval. This tool cascades the suspension
+ * through its own `ctx.suspend()` using the interaction contracts in
+ * `@n8n/api-types` and the SDK approval contract in `@n8n/agents`, so it renders
+ * as a card in the calling assistant's chat and the orchestrator checkpoint survives a process
+ * restart. On resume, the target agent and the builder's open suspension are
+ * both re-derived from persistence (no in-memory state carried across the
+ * suspend boundary) and checked for identity against the `builderCheckpoint`
+ * ref persisted in the cascaded payload before the answer is routed back.
+ * If the user abandons a cascaded question (cancel, steering message, or
+ * confirmation timeout), the builder-side checkpoint is not cleaned up
+ * eagerly — it expires via the agents module's checkpoint TTL pruning.
+ *
+ * The builder session is keyed to an instance-AI-scoped thread id
+ * (`ia-builder:<threadId>:<agentId>`) so nothing appears in the agents-module
+ * builder UI — it is a private sub-agent conversation.
  */
-import { Tool } from '@n8n/agents';
-import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import type { InterruptibleToolContext } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
+import {
+	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
+	BUILDER_NOT_CONFIGURED_CODE,
+	CONFIG_MUTATION_TOOL_NAMES,
+	channelSuspendPayloadSchema,
+	credentialSuspendPayloadSchema,
+	questionAnswerSchema,
+	questionsResumeSchema,
+	questionsSuspendPayloadSchema,
+} from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { saveAgentBuilderTarget, type AgentBuilderTarget } from './agent-target-binding';
-import { resolveAgentBuilderTarget, resolveTargetForCall } from './agent-target-resolution';
+import {
+	resolveAgentBuilderTarget,
+	saveAgentBuilderTarget,
+	type AgentBuilderTarget,
+} from './agent-target-binding';
 import {
 	builderRequiredArtifactsSchema,
 	type BuilderRequiredArtifact,
 } from './builder-required-artifact';
+import { instanceAiBuilderThreadPrefix } from './builder-thread-id';
+import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 import {
-	AgentCompilerService,
-	describeScenarioCoverage,
-	emptyAgentVerificationReport,
-	loadAgentCapabilityCatalog,
-	scenarioCoverage,
-	type AgentCompilerResult,
-	type AgentScenarioRun,
-} from '../../agent-compiler';
+	consumeStreamCascading,
+	type ConsumeStreamCascadingResult,
+} from '../../stream/consume-with-hitl';
+import type { WorkSummary } from '../../stream/work-summary-accumulator';
 import {
 	emitAgentSnapshotTraceEvent,
 	type AgentSnapshotArtifact,
 	type AgentSnapshotReason,
 } from '../../tracing/agent-snapshot-event';
+import { modelIdTraceMetadata } from '../../tracing/langsmith-tracing';
 import type {
+	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
 	OrchestrationContext,
+	SessionWorkflowRef,
 } from '../../types';
-import type { ValidationIssue } from '../../workflow-compiler';
-import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 import {
-	clarificationQuestionsSchema,
-	decisionDiagnosticsShape,
-	issueSchema,
-	optional,
-	optionalString,
-	registryFor,
-	selectDecisionService,
-	verificationLevelSchema,
-} from '../workflows/compiler-tool-support';
+	consumeUserDecisions,
+	formatParentHandoffEnvelope,
+	hydrateUserDecisions,
+	listUserDecisions,
+} from './parent-handoff-state';
+import { resolveTargetForCall } from './agent-target-resolution';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
-const workflowContextSchema = z
-	.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
-	.optional()
-	.describe('Workflows built in this conversation that the agent may attach as tools.');
+const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
+const BUILDER_SUB_AGENT_KIND = 'agent-builder';
+const BUILDER_RUN_CANCELLED_MESSAGE = 'The agent builder run was cancelled.';
 
-export const buildAgentInputSchema = z
-	.object({
-		action: z
-			.enum(['create', 'edit', 'answer', 'verify'])
-			.describe(
-				'"create": build a new agent from `request`. "edit": change the targeted agent as `request` says. ' +
-					'"answer": continue `sessionId` with the user’s reply in `request`. "verify": run the compiled behavior scenarios in Preview.',
-			),
-		request: optionalString(
-			'The user’s words: what the agent should do (create), the change (edit), or their reply (answer). Required except for verify.',
-		),
-		agentRef: optionalString(
-			'Stable per-conversation key for the agent. Reuse it on every call about the same agent.',
-		),
-		name: optionalString(
-			'Display name for a new agent. Required to create when no agentRef is bound yet.',
-		),
-		agentId: optionalString('Existing agent id to adopt (once); later calls use agentRef.'),
-		createNew: optional(z.boolean(), 'Create a second agent even though one is already bound.'),
-		sessionId: optionalString('Compiler session to continue; required with action "answer".'),
-		answers: optional(
-			z.record(z.string(), z.unknown()),
-			'Structured answers keyed by the returned question `fields`.',
-		),
-		workflowContext: workflowContextSchema,
-	})
-	.strict();
-export type BuildAgentInput = z.infer<typeof buildAgentInputSchema>;
-
-const levelsSchema = z.object({
-	schema: verificationLevelSchema,
-	references: verificationLevelSchema,
-	channels: verificationLevelSchema,
-	runnable: verificationLevelSchema,
-	previewScenarios: verificationLevelSchema,
-	publication: verificationLevelSchema,
-});
-const scenariosSchema = z.array(
-	z.object({
-		id: z.string(),
-		kind: z.string(),
-		message: z.string(),
-		expectedTools: z.array(z.string()),
-	}),
-);
-const scenarioRunSchema = z.object({
-	scenarioId: z.string(),
-	status: z.string(),
-	toolCalls: z.array(z.string()),
-	response: z.string(),
-});
-const diagnosticsSchema = z.object(decisionDiagnosticsShape);
-
-export const buildAgentOutputSchema = z
-	.object({
-		ok: z.boolean(),
-		status: z.enum(['compiled', 'needs_clarification', 'needs_artifacts', 'verified', 'failed']),
-		sessionId: z.string().optional(),
-		agentId: z.string().optional(),
-		agentRef: z.string().optional(),
-		agentName: z.string().optional(),
-		configUpdated: z.boolean(),
-		message: z.string().optional(),
-		questions: clarificationQuestionsSchema,
-		requiredArtifacts: builderRequiredArtifactsSchema.optional(),
-		summary: z.string().optional(),
-		verification: levelsSchema.optional(),
-		issues: z.array(issueSchema).optional(),
-		scenarios: scenariosSchema.optional(),
-		scenarioCoverage: z
-			.object({
-				total: z.number(),
-				covered: z.number(),
-				note: z.string(),
-				runs: z.array(scenarioRunSchema),
-			})
-			.optional(),
-		diagnostics: diagnosticsSchema.optional(),
-		error: z.string().optional(),
-	})
-	.passthrough();
-
-/** Process-wide compiler per delegate, so sessions survive across calls in a run. */
-const servicesByDomainContext = new WeakMap<InstanceAiContext, AgentCompilerService>();
-
-export function agentCompilerFor(context: InstanceAiContext): AgentCompilerService {
-	let service = servicesByDomainContext.get(context);
-	if (!service) {
-		service = new AgentCompilerService({ decisions: selectDecisionService(context) });
-		servicesByDomainContext.set(context, service);
-	}
-	return service;
+function getErrorCode(error: unknown): string | undefined {
+	if (!isRecord(error)) return undefined;
+	const code = error.code;
+	return typeof code === 'string' ? code : undefined;
 }
 
+function isBuilderNotConfiguredError(error: unknown): boolean {
+	return getErrorCode(error) === BUILDER_NOT_CONFIGURED_CODE;
+}
+
+/** `AgentsBuilderService.resumeBuild` throws `BuilderCheckpointUnavailableError`
+ *  (stable `code`, shared via `@n8n/api-types`) when the checkpoint being
+ *  resumed has expired or no longer exists. */
+function isBuilderCheckpointUnavailableError(error: unknown): boolean {
+	return getErrorCode(error) === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+}
+
+/** Either friendly-mappable failure this tool recognizes mid-stream. */
+function isFriendlyMappableBuilderError(error: unknown): boolean {
+	return isBuilderNotConfiguredError(error) || isBuilderCheckpointUnavailableError(error);
+}
+
+function didUpdateConfig(workSummary: WorkSummary): boolean {
+	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
+	return workSummary.toolCalls.some(
+		(call) =>
+			call.succeeded && (call.configMutated === true || mutationToolNames.has(call.toolName)),
+	);
+}
+
+function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): string {
+	const lines = workflowContext.map(
+		(workflow) =>
+			`- ${workflow.name} (id: ${workflow.id})${workflow.description ? `: ${workflow.description}` : ''}`,
+	);
+	return [
+		'<session-workflows>',
+		'Workflows built in this session (attachable with both workflowId and workflow name):',
+		...lines,
+		'</session-workflows>',
+	].join('\n');
+}
+
+function buildOutboundMessage(
+	message: string,
+	workflowContext: SessionWorkflowRef[] | undefined,
+	context: OrchestrationContext,
+): string {
+	const parts = [message];
+	if (workflowContext && workflowContext.length > 0) {
+		parts.push(formatWorkflowContextEnvelope(workflowContext));
+	}
+	const handoff = formatParentHandoffEnvelope(context);
+	if (handoff) parts.push(handoff);
+
+	return parts.length === 1 ? message : parts.join('\n\n');
+}
+
+async function collectRequiredArtifacts(
+	turn: BuilderTurnStream,
+	carriedRequiredArtifacts: BuilderRequiredArtifact[],
+): Promise<BuilderRequiredArtifact[]> {
+	const turnRequiredArtifacts = turn.requiredArtifacts ? await turn.requiredArtifacts : [];
+	return [...carriedRequiredArtifacts, ...turnRequiredArtifacts];
+}
+
+/** Builder sessions are keyed per assistant thread + target agent; the resume
+ *  leg must reconstruct the same `threadId` byte-identically after a restart. */
+function builderSessionFor(context: OrchestrationContext, agentId: string) {
+	const mcpTools =
+		context.mcpTools instanceof Map && context.mcpTools.size > 0 ? context.mcpTools : undefined;
+	const telemetry = context.tracing?.getTelemetry?.({
+		agentRole: BUILDER_SUB_AGENT_ROLE,
+		functionId: 'instance-ai.subagent.agent-builder',
+		executionMode: 'foreground',
+		metadata: {
+			agent_id: builderAgentIdFor(agentId),
+			target_agent_id: agentId,
+			...modelIdTraceMetadata(context.modelId),
+		},
+	});
+	return {
+		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,
+		hostThreadId: context.threadId,
+		runId: context.runId,
+		modelConfig: context.modelId,
+		...(telemetry ? { telemetry } : {}),
+		...(context.tracing?.onMemoryTaskEvent
+			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
+			: {}),
+		abortSignal: context.abortSignal,
+		...(mcpTools ? { mcpTools } : {}),
+	};
+}
+
+function builderAgentIdFor(agentId: string): string {
+	return `${BUILDER_SUB_AGENT_ROLE}:${agentId}`;
+}
+
+const buildAgentInputSchema = z.object({
+	message: z
+		.string()
+		.min(1)
+		.describe(
+			'A faithful handoff to the agent builder, which cannot see this chat. Include the ' +
+				'user’s requirements, prior answers, the detailed behavior plan, and plan-build selections. ' +
+				'Distinguish proposed implementation from facts supplied by the user.',
+		),
+	agentRef: z
+		.string()
+		.optional()
+		.describe(
+			'Short stable key you choose once for an agent in this conversation and repeat on ' +
+				'every later call for that same agent (like a workflow source filePath). Prefer a ' +
+				'slug of the display name. A repeated key continues that agent; a fresh key creates ' +
+				'a new one only when no agent is bound yet, or alongside `createNew`. Omit on ' +
+				'follow-ups for the current agent when neither switching nor creating — the active ' +
+				'target is used. When omitted on a create/switch call, the key is derived from `name`.',
+		),
+	name: z
+		.string()
+		.optional()
+		.describe(
+			'Display name for a new agent (required when creating). Also used as the addressing ' +
+				'key when `agentRef` is omitted. Omit on follow-up calls for the current agent.',
+		),
+	agentId: z
+		.string()
+		.optional()
+		.describe(
+			'Existing agent id to adopt — use when editing an agent that was not built in this ' +
+				'conversation (e.g. from the project list). Once adopted, omit on retries and prefer ' +
+				'`agentRef`. NEVER pass for a request to build a NEW agent. Agents the request merely ' +
+				'references — as sub-agents, delegation targets, or examples — are not the build ' +
+				'target: mention them in `message` instead.',
+		),
+	createNew: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set to true ONLY when the user explicitly wants an ADDITIONAL agent alongside the one ' +
+				'this conversation is already building. Leave unset otherwise: while a target is ' +
+				'bound, a fresh `agentRef`/`name` continues that agent instead of creating a second ' +
+				'one, so naming the agent for the first time cannot strand it behind a duplicate.',
+		),
+	workflowContext: z
+		.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
+		.optional()
+		.describe('Workflows built in this session the builder may attach as tools'),
+});
+
+const buildAgentOutputSchema = z.object({
+	ok: z.boolean(),
+	builderReply: z.string().optional(),
+	configUpdated: z.boolean().optional(),
+	error: z.string().optional(),
+	agentId: z
+		.string()
+		.optional()
+		.describe(
+			'Id of the agent this turn targeted. Prefer `agentRef` for follow-ups in this conversation; use `agentId` when the ref is unknown.',
+		),
+	agentRef: z
+		.string()
+		.optional()
+		.describe(
+			'Addressing key for this agent in this conversation. Pass it back as `agentRef` on later calls for the same agent.',
+		),
+	agentName: z.string().optional().describe('Display name of the targeted agent, when known.'),
+	answers: z
+		.array(questionAnswerSchema)
+		.optional()
+		.describe('Answers submitted when resuming a cascaded questions request.'),
+	requiredArtifacts: builderRequiredArtifactsSchema
+		.optional()
+		.describe(
+			'Workflows or data tables Instance AI must create outside the Agent. An agent-entrypoint workflow invokes the Agent and must not be passed back as workflowContext.',
+		),
+});
+
+type BuildAgentOutput = z.infer<typeof buildAgentOutputSchema>;
+
+/** Durable reference to the builder's own suspended checkpoint, carried inside the
+ *  cascaded suspend payload (persisted in the orchestrator's checkpoint) so the resume
+ *  leg can verify it resumes the same suspension it cascaded. */
+const builderCheckpointRefSchema = z.object({
+	runId: z.string(),
+	toolCallId: z.string(),
+	/** Whether any builder pass before this suspension already mutated the agent config. */
+	configUpdated: z.boolean(),
+	/** Host-owned artifacts reported before this suspension. */
+	requiredArtifacts: builderRequiredArtifactsSchema.optional(),
+	/** Target the suspended build belongs to; optional for checkpoints persisted before this field existed. */
+	target: z
+		.object({
+			agentId: z.string(),
+			projectId: z.string(),
+			name: z.string().optional(),
+			ref: z.string().optional(),
+		})
+		.optional(),
+});
+
+/** Envelope derived from the shared interaction contract (agent-interaction.schema.ts):
+ *  only payloads the assistant FE can render may cascade. */
+const builderSuspendPayloadSchema = z.union([
+	questionsSuspendPayloadSchema,
+	credentialSuspendPayloadSchema,
+	channelSuspendPayloadSchema,
+	APPROVAL_SUSPEND_SCHEMA,
+]);
+
+const buildAgentSuspendSchema = z.union([
+	questionsSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	credentialSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	channelSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	APPROVAL_SUSPEND_SCHEMA.extend({
+		requestId: z.string(),
+		builderCheckpoint: builderCheckpointRefSchema,
+	}),
+]);
+
+/**
+ * Resume data is NOT semantically validated at this level — it passes through
+ * byte-for-byte to the builder's suspended interactive tool, which validates
+ * it against its own shared-contract resume schema (`agent-interaction.schema.ts`).
+ * A zod union of the shared resume schemas would be wrong here: its first
+ * member (`questionsResumeSchema`) is all-optional, so it matches any object
+ * and the SDK's resume validation would strip every non-questions field
+ * (e.g. a `credentials` map) before the handler sees it.
+ */
+const buildAgentResumeSchema = z.object({}).passthrough();
+
+type BuildAgentSuspendPayload = z.infer<typeof buildAgentSuspendSchema>;
+type BuildAgentResumeData = z.infer<typeof buildAgentResumeSchema>;
+type BuildAgentToolContext = InterruptibleToolContext<
+	BuildAgentSuspendPayload,
+	BuildAgentResumeData
+>;
+
+/**
+ * Publish the `agent-spawned` event announcing the builder sub-agent to the FE.
+ * Published on the first call that constructs the builder session, and
+ * republished (idempotently) on resume — the FE may have lost the builder
+ * node across a page reload or process restart, so the resume leg re-sends it
+ * defensively.
+ */
+function publishAgentSpawned(
+	context: OrchestrationContext,
+	builderAgentId: string,
+	target: AgentBuilderTarget,
+): void {
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: builderAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: BUILDER_SUB_AGENT_ROLE,
+			tools: [],
+			kind: BUILDER_SUB_AGENT_KIND,
+			title: 'Building agent',
+			// name/projectId make the FE render the agent as a conversation artifact
+			// (artifact list + preview both require projectId).
+			targetResource: {
+				type: 'agent',
+				id: target.agentId,
+				projectId: target.projectId,
+				...(target.name ? { name: target.name } : {}),
+			},
+		},
+	});
+}
+
+/** Publish the standard failure `agent-completed` event; returns the resolved message. */
+function publishAgentBuilderFailure(
+	context: OrchestrationContext,
+	builderAgentId: string,
+	error: unknown,
+): string {
+	const message = isBuilderNotConfiguredError(error)
+		? 'The agent builder model is not configured. Set it up in the agents module settings.'
+		: error instanceof Error
+			? error.message
+			: 'The agent builder run failed unexpectedly.';
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-completed',
+		runId: context.runId,
+		agentId: builderAgentId,
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error: message },
+	});
+	return message;
+}
+
+/** Publish the terminal `agent-completed` event for a stopped builder turn: no
+ *  `error`, so the tree stays quiet and the run-level stopped indicator speaks. */
+function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgentId: string): void {
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-completed',
+		runId: context.runId,
+		agentId: builderAgentId,
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', status: 'cancelled' },
+	});
+}
+
+/** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
 async function snapshotAgent(
 	context: OrchestrationContext,
 	delegate: InstanceAiBuilderDelegate,
 	target: AgentBuilderTarget,
 	reason: AgentSnapshotReason,
 ): Promise<void> {
+	// No trace, no read — the delegate read costs a scope check and two queries.
+	// Matches the service-side call site, which early-returns on `!tracing`.
 	if (!context.tracing) return;
 	let artifact: AgentSnapshotArtifact | null = null;
 	try {
+		// An optional method may be absent, or return a non-promise on a mocked host.
 		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
-	} catch {
+	} catch (error) {
+		context.logger.debug(
+			`[agent-snapshot] ${reason} read for ${target.agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
 		return;
 	}
 	if (!artifact) return;
@@ -170,310 +414,489 @@ async function snapshotAgent(
 	});
 }
 
-const BUILDER_ROLE = 'agent-builder';
-
-/** The FE tree and the eval harness learn the target agent from these events, as they did with the sub-agent. */
-function publishBuildStarted(context: OrchestrationContext, target: AgentBuilderTarget): string {
-	const builderAgentId = `${BUILDER_ROLE}:${target.agentId}`;
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: builderAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: BUILDER_ROLE,
-			tools: [],
-			kind: BUILDER_ROLE,
-			title: 'Building agent',
-			targetResource: {
-				type: 'agent',
-				id: target.agentId,
-				projectId: target.projectId,
-				...(target.name ? { name: target.name } : {}),
-			},
-		},
-	});
-	return builderAgentId;
-}
-
-interface BuildOutput {
-	ok: boolean;
-	message?: string;
-	summary?: string;
-	error?: string;
-}
-
-/** Publishes `agent-completed` for the builder and passes the output through. */
-function finish<T extends BuildOutput>(
+/** Publish the terminal `agent-completed` event and map the result to the tool output.
+ *  A cancelled turn is intercepted by the caller, so that status never arrives here. */
+async function finishTurn(
 	context: OrchestrationContext,
 	builderAgentId: string,
-	output: T,
-): T {
-	const result = output.ok ? (output.summary ?? output.message ?? '') : '';
-	const error = output.ok
-		? undefined
-		: (output.error ?? output.message ?? 'The agent build did not complete.');
+	result: Extract<ConsumeStreamCascadingResult, { status: 'completed' | 'cancelled' | 'errored' }>,
+	carriedConfigUpdated: boolean,
+	requiredArtifacts: BuilderRequiredArtifact[],
+): Promise<BuildAgentOutput> {
+	if (result.status === 'completed') {
+		const text = await result.text;
+		const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
+		context.eventBus.publish(context.threadId, {
+			type: 'agent-completed',
+			runId: context.runId,
+			agentId: builderAgentId,
+			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200) },
+		});
+		return {
+			ok: true,
+			builderReply: text,
+			configUpdated,
+			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+		};
+	}
+
+	const error = `The agent builder run ${result.status}.`;
+	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: BUILDER_ROLE, result: result.slice(0, 200), ...(error ? { error } : {}) },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error },
 	});
-	return output;
+	return {
+		ok: false,
+		error,
+		configUpdated,
+		...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+	};
 }
 
-const identity = (target: AgentBuilderTarget) => ({
-	agentId: target.agentId,
-	...(target.ref ? { agentRef: target.ref } : {}),
-	...(target.name ? { agentName: target.name } : {}),
-});
+/** Target identity stamped on every output of a dispatched builder turn so the
+ *  orchestrator learns the addressing key (and agentId as a fallback). */
+function targetIdentity(target: AgentBuilderTarget): {
+	agentId: string;
+	agentRef?: string;
+	agentName?: string;
+} {
+	return {
+		agentId: target.agentId,
+		...(target.ref ? { agentRef: target.ref } : {}),
+		...(target.name ? { agentName: target.name } : {}),
+	};
+}
 
-function failure(message: string, extra: Record<string, unknown> = {}) {
-	return { ok: false, status: 'failed' as const, configUpdated: false, error: message, ...extra };
+/**
+ * Consume a builder turn stream to completion or suspension, and either
+ * finish the tool call or cascade the suspension through `ctx.suspend()`.
+ * Shared by the first-call and resume legs of the handler.
+ */
+async function runBuilderConsumeLoop(params: {
+	context: OrchestrationContext;
+	delegate: InstanceAiBuilderDelegate;
+	ctx: BuildAgentToolContext;
+	target: AgentBuilderTarget;
+	builderAgentId: string;
+	turn: BuilderTurnStream;
+	/** configUpdated already accumulated by passes before this one (false on the first leg; carried from the suspend payload on resume). */
+	carriedConfigUpdated: boolean;
+	/** Host-owned artifacts accumulated by passes before this one. */
+	carriedRequiredArtifacts: BuilderRequiredArtifact[];
+	/** Runs once the stream settles (any status) — used to persist a deferred agentId-path bind. */
+	onSettled?: () => Promise<void>;
+	/** Trace inputs recorded on the child run (distinct per leg: outbound message vs. resume marker). */
+	traceInputs?: unknown;
+	/** Deterministic per-leg claim id base (result.agentRunId is always '' for builder streams). */
+	dedupeBase: string;
+}): Promise<BuildAgentOutput> {
+	const {
+		context,
+		delegate,
+		ctx,
+		target,
+		builderAgentId,
+		turn,
+		carriedConfigUpdated,
+		carriedRequiredArtifacts,
+		onSettled,
+		traceInputs,
+		dedupeBase,
+	} = params;
+
+	// Every settled return goes through here, so the state a pass left behind is
+	// snapshotted on the error returns too — a pass that mutated the config, then
+	// suspended and failed on resume, is exactly the post-state a repair case
+	// grades. A suspend resumes and settles through here; a cancel throws past it.
+	const settle = async (output: BuildAgentOutput): Promise<BuildAgentOutput> => {
+		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
+		return output;
+	};
+
+	const traceRun = await startSubAgentTrace(context, {
+		agentId: builderAgentId,
+		role: BUILDER_SUB_AGENT_ROLE,
+		kind: BUILDER_SUB_AGENT_KIND,
+		metadata: { target_agent_id: target.agentId },
+		...(traceInputs !== undefined ? { inputs: traceInputs } : {}),
+	});
+
+	let result: ConsumeStreamCascadingResult;
+	try {
+		result = await withTraceRun(
+			context,
+			traceRun,
+			async () =>
+				await consumeStreamCascading({
+					agent: undefined,
+					stream: turn,
+					runId: context.runId,
+					agentId: builderAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: context.abortSignal,
+				}),
+		);
+	} catch (error) {
+		await failTraceRun(context, traceRun, error);
+		// `buildAgent`/`resumeBuild` on the delegate are async generators: calling
+		// them never throws, so errors from their bodies (builder-not-configured,
+		// an expired/missing checkpoint) only surface here, during consumption —
+		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
+		const message = publishAgentBuilderFailure(context, builderAgentId, error);
+		if (isFriendlyMappableBuilderError(error)) {
+			const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
+			return await settle({
+				ok: false,
+				error: message,
+				configUpdated: carriedConfigUpdated,
+				...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+				...targetIdentity(target),
+			});
+		}
+		throw error;
+	}
+
+	// Reaching a settled stream result (any status, including suspended) means
+	// the builder agent was constructed — scope check and existence check both
+	// passed — so a deferred agentId-path bind is now safe to persist.
+	await onSettled?.();
+	const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
+
+	if (result.status === 'cancelled') {
+		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+		publishAgentBuilderCancelled(context, builderAgentId);
+		await failTraceRun(context, traceRun, cancelled);
+		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		throw cancelled;
+	}
+
+	// The builder names (and renames) the target agent via its config tools, so
+	// the orchestrator-supplied name can be missing or stale by the time the
+	// turn settles. Refresh it so the tool output (`targetIdentity`), the
+	// republished agent-spawned event, and the thread binding all carry the
+	// agent's real display name. Best-effort: a stale title is cosmetic and
+	// must not fail an otherwise-successful turn. Skipped on cancel — abort
+	// should not wait on display-name I/O.
+	try {
+		const freshName = await delegate.resolveAgentName(target.agentId);
+		if (freshName && freshName !== target.name) {
+			target.name = freshName;
+			publishAgentSpawned(context, builderAgentId, target);
+			if (context.domainContext) {
+				await saveAgentBuilderTarget(context.domainContext, target);
+			}
+		}
+	} catch (error) {
+		context.logger.warn('Failed to refresh agent name after builder turn', {
+			agentId: target.agentId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	if (result.status !== 'suspended') {
+		const output = await finishTurn(
+			context,
+			builderAgentId,
+			result,
+			carriedConfigUpdated,
+			requiredArtifacts,
+		);
+		if (output.ok) {
+			await finishTraceRun(context, traceRun, { outputs: output });
+		} else {
+			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
+		}
+		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		return await settle({ ...output, ...targetIdentity(target) });
+	}
+
+	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
+	const builderRunId = result.suspension.runId;
+	const parsedSuspendPayload = builderRunId
+		? builderSuspendPayloadSchema.safeParse(result.suspension.suspendPayload)
+		: undefined;
+
+	if (!builderRunId || !parsedSuspendPayload?.success) {
+		if (builderRunId) {
+			try {
+				await delegate.cancelOpenSuspension(target.agentId, builderRunId);
+			} catch (error) {
+				context.logger.warn('Failed to cancel orphaned builder checkpoint', {
+					builderRunId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+		const message =
+			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
+		await failTraceRun(context, traceRun, new Error(message));
+		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+		await context.claimSubAgentUsage?.(
+			`${dedupeBase}:s:invalid`,
+			result.usage?.usage ?? [],
+			'errored',
+		);
+		return await settle({
+			ok: false,
+			error: message,
+			configUpdated: configUpdatedSoFar,
+			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+			...targetIdentity(target),
+		});
+	}
+
+	// The builder-level requestId must not leak up: the FE confirms against the
+	// orchestrator's own suspension, so a fresh one is minted here.
+	await finishTraceRun(context, traceRun, { metadata: { outcome: 'suspended' } });
+	await context.claimSubAgentUsage?.(
+		`${dedupeBase}:s:${result.suspension.toolCallId}`,
+		result.usage?.usage ?? [],
+		'suspended',
+	);
+	return await ctx.suspend({
+		...parsedSuspendPayload.data,
+		requestId: nanoid(),
+		builderCheckpoint: {
+			runId: builderRunId,
+			toolCallId: result.suspension.toolCallId,
+			configUpdated: configUpdatedSoFar,
+			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+			target: {
+				agentId: target.agentId,
+				projectId: target.projectId,
+				...(target.name ? { name: target.name } : {}),
+				...(target.ref ? { ref: target.ref } : {}),
+			},
+		},
+	});
+}
+
+/** Discriminate via the suspend payload because questionsResumeSchema accepts unrelated objects. */
+function getResumedQuestionAnswers(
+	ctx: BuildAgentToolContext,
+): Array<z.infer<typeof questionAnswerSchema>> | undefined {
+	const isQuestionsSuspension = questionsSuspendPayloadSchema.safeParse(ctx.suspendPayload);
+	if (!isQuestionsSuspension.success) return undefined;
+
+	const resume = questionsResumeSchema.safeParse(ctx.resumeData);
+	if (!resume.success || !resume.data.answers) return undefined;
+
+	return resume.data.answers;
+}
+
+/**
+ * Resume leg: re-derive the target agent and the builder's open suspension
+ * from persistence, verify they match the `builderCheckpoint` ref carried in
+ * the cascaded suspend payload, then resume the builder with the user's
+ * answer passed through unchanged.
+ */
+async function handleResume(
+	context: OrchestrationContext,
+	domainContext: InstanceAiContext,
+	delegate: InstanceAiBuilderDelegate,
+	ctx: BuildAgentToolContext,
+): Promise<BuildAgentOutput> {
+	const refParse = z
+		.object({ builderCheckpoint: builderCheckpointRefSchema })
+		.safeParse(ctx.suspendPayload);
+	if (!refParse.success) {
+		return {
+			ok: false,
+			error:
+				'The suspended build state is missing its builder checkpoint reference; the answer cannot be routed. Start a new build-agent call.',
+		};
+	}
+	const ref = refParse.data.builderCheckpoint;
+
+	// The ref-carried target routes the resume to the agent that actually asked
+	// the question, even if the active binding switched to another agent in the
+	// meantime. Fall back to the active binding only for checkpoints persisted
+	// before `target` existed on the ref.
+	const target = ref.target ?? (await resolveAgentBuilderTarget(domainContext));
+	if (!target) {
+		return {
+			ok: false,
+			error: 'No agent build in progress for this conversation.',
+			configUpdated: ref.configUpdated,
+		};
+	}
+
+	const session = builderSessionFor(context, target.agentId);
+
+	const openSuspensions = await delegate.findOpenSuspensions(target.agentId, session);
+	if (openSuspensions.length === 0) {
+		return {
+			ok: false,
+			error: 'The builder question this answer belongs to is no longer open.',
+			configUpdated: ref.configUpdated,
+			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
+			...targetIdentity(target),
+		};
+	}
+
+	const matches = openSuspensions.some(
+		(open) => open.runId === ref.runId && open.toolCallId === ref.toolCallId,
+	);
+	if (!matches) {
+		return {
+			ok: false,
+			error:
+				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
+			configUpdated: ref.configUpdated,
+			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
+			...targetIdentity(target),
+		};
+	}
+
+	const builderAgentId = builderAgentIdFor(target.agentId);
+	let turn: BuilderTurnStream;
+	try {
+		turn = await delegate.resumeBuild(
+			target.agentId,
+			{ runId: ref.runId, toolCallId: ref.toolCallId, resumeData: ctx.resumeData },
+			session,
+		);
+	} catch (error) {
+		// Only genuinely call-time-reachable errors land here (e.g. the scope
+		// check in the delegate adapter) — see the comment in
+		// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
+		// checkpoint errors can't surface at this call site.
+		publishAgentBuilderFailure(context, builderAgentId, error);
+		throw error;
+	}
+
+	publishAgentSpawned(context, builderAgentId, target);
+
+	return await runBuilderConsumeLoop({
+		context,
+		delegate,
+		ctx,
+		target,
+		builderAgentId,
+		turn,
+		carriedConfigUpdated: ref.configUpdated,
+		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
+		traceInputs: { resumed: true },
+		dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}:${ref.toolCallId}`,
+	});
 }
 
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Build, edit, or verify an n8n **Agent** with the agent compiler. ' +
-				'action "create": pass the user’s words in `request` plus `name` (and an `agentRef` to address it later); the compiler extracts what the agent must do, picks tools with bounded decisions, compiles a validated config and saves it. ' +
-				'action "edit": pass the change in `request` with the bound `agentRef`; only the affected part of the config changes. ' +
-				'action "answer": when a call returned needs_clarification, relay `message` to the user verbatim, then call again with the same `sessionId` and their reply. ' +
-				'action "verify": run the compiled behavior scenarios in Preview and report which tool paths the agent exercised. ' +
-				'When the result is needs_artifacts, build each listed workflow with build-workflow, then call again with them in `workflowContext`. ' +
-				'Never translate the request into implementation choices yourself; give the compiler the user’s words. This tool is only for Agent artifacts; workflow-anchored requests stay on build-workflow.',
+			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
+				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
+				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
+				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
+				'testing, and publishing. Forward the complete behavior plan and plan-build selections. ' +
+				'Distinguish proposed implementation from user requirements. The builder must verify each selected ' +
+				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
+				'(via the intent gate / ' +
+				'`intent-recognition`), stay on the `build-workflow` path and do not call this tool ' +
+				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
+				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
+				'provide, ask the user or use a placeholder; do not route around that by calling ' +
+				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
+				'whether it updated the Agent config. It can also return structured ' +
+				'`requiredArtifacts` for workflows or data tables Instance AI must create. Build ' +
+				'an `agent-entrypoint` workflow around the returned Agent; never pass it back in ' +
+				'`workflowContext` or attach it as an Agent tool.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)
-		.handler(async (input) => {
-			if (context.abortSignal?.aborted) return failure('The agent build was cancelled.');
+		.suspend(buildAgentSuspendSchema)
+		.resume(buildAgentResumeSchema)
+		.handler(async (input: z.infer<typeof buildAgentInputSchema>, ctx: BuildAgentToolContext) => {
+			if (context.abortSignal.aborted) {
+				throw createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+			}
+
 			const domainContext = context.domainContext;
 			const delegate = domainContext?.builderDelegate;
-			if (!domainContext || !delegate)
-				return failure('Agent building is not available in this conversation (no agents module).');
-			const invalid = validateInput(input);
-			if (invalid) return failure(invalid);
-
-			const boundTarget = await resolveAgentBuilderTarget(domainContext);
-			const resolution = await resolveTargetForCall(domainContext, delegate, input, boundTarget);
-			if (!resolution.ok) return failure(resolution.error);
-			const target = resolution.target;
-			if (resolution.bindAfterTurn) {
-				domainContext.agentBuilderTarget = target;
-				await saveAgentBuilderTarget(domainContext, target);
-			}
-			const builderAgentId = publishBuildStarted(context, target);
-			const finished = <T extends BuildOutput>(output: T): T =>
-				finish(context, builderAgentId, output);
-			const fail = (message: string) => finished(failure(message, identity(target)));
-			const service = agentCompilerFor(domainContext);
-			const catalog = await loadAgentCapabilityCatalog(delegate, {
-				nodeRegistry: registryFor(domainContext),
-				excludeAgentId: target.agentId,
-			});
-			const request = input.request ?? '';
-
-			if (input.action === 'verify')
-				return finished(await verify(delegate, service, target, input));
-
-			const { sessionId, answers, workflowContext: sessionWorkflows } = input;
-			const existing = await delegate.readAgentArtifact?.(target.agentId).catch(() => null);
-			const isEdit =
-				input.action === 'edit' ||
-				(input.action === 'answer' &&
-					(await service.getSession(sessionId ?? ''))?.intent === 'edit') ||
-				(resolution.mode === 'edit' &&
-					input.action !== 'create' &&
-					existing?.config !== undefined &&
-					existing.config.instructions.trim() !== '');
-			if (isEdit && !existing)
-				return fail(
-					`Agent ${target.agentId} has no configuration to edit yet; use action "create".`,
-				);
-			const ref = target.ref ?? target.agentId;
-			const shared = {
-				ref,
-				request,
-				catalog,
-				sessionId,
-				answers,
-				sessionWorkflows,
-				abortSignal: context.abortSignal,
-			};
-			const result =
-				isEdit && existing
-					? await service.edit({ ...shared, agentId: target.agentId, config: existing.config })
-					: await service.create({ ...shared, name: input.name ?? target.name });
-
-			const diagnostics = diagnosticsSchema.parse(result.diagnostics);
-			const blocked = <E extends object>(
-				pending: Extract<AgentCompilerResult, { message: string }>,
-				extra: E,
-				label: string,
-			) => ({
-				ok: false,
-				status: pending.status,
-				configUpdated: false,
-				sessionId: pending.sessionId,
-				...identity(target),
-				message: pending.message,
-				...extra,
-				diagnostics,
-				error: `${label}: ${pending.message}`,
-			});
-			switch (result.status) {
-				case 'needs_clarification':
-					return finished(blocked(result, { questions: result.questions }, 'Needs clarification'));
-				case 'needs_artifacts': {
-					const requiredArtifacts: BuilderRequiredArtifact[] = result.artifacts.map((artifact) => ({
-						type: 'workflow',
-						name: artifact.name,
-						purpose: artifact.purpose,
-						relationship: 'agent-tool',
-						requirements: artifact.requirements,
-					}));
-					return finished(blocked(result, { requiredArtifacts }, 'Needs artifacts'));
-				}
-				case 'failed':
-					return finished({
-						...failure(result.reason, identity(target)),
-						sessionId: result.sessionId,
-						...(result.report
-							? { verification: levelsSchema.parse(result.report), issues: result.report.issues }
-							: {}),
-						diagnostics,
-					});
-				case 'compiled':
-					break;
+			if (!domainContext || !delegate) {
+				return { ok: false, error: 'Agent building is not available on this instance.' };
 			}
 
-			if (!delegate.writeAgentArtifact)
-				return fail(
-					'This instance cannot persist compiled agents (builder delegate is missing writeAgentArtifact).',
-				);
-			const written = await delegate.writeAgentArtifact(
-				target.agentId,
-				{ config: result.config, skills: result.skills, tasks: result.tasks },
-				{ baseConfigHash: existing?.configHash ?? null },
-			);
-			const report = {
-				verification: levelsSchema.parse(result.report),
-				issues: result.report.issues,
-			};
-			if (!written.ok)
-				return finished({
-					...failure(`Saving the agent failed: ${written.errors.join(' ')}`, identity(target)),
-					sessionId: result.sessionId,
-					...report,
-					diagnostics,
+			if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
+				const output = await handleResume(context, domainContext, delegate, ctx);
+				const answers = getResumedQuestionAnswers(ctx);
+				return answers ? { ...output, answers } : output;
+			}
+
+			const existingTarget = await resolveAgentBuilderTarget(domainContext);
+			const resolution = await resolveTargetForCall(domainContext, delegate, input, existingTarget);
+			if (!resolution.ok) {
+				context.trackTelemetry?.('instance_ai_agent_build_route', {
+					thread_id: context.threadId,
+					run_id: context.runId,
+					user_id: context.userId,
+					mode: 'resolution_failed',
 				});
-			const name =
-				(await delegate.resolveAgentName(target.agentId).catch(() => undefined)) ??
-				result.config.name;
-			const savedTarget: AgentBuilderTarget = { ...target, name };
-			if (name !== target.name) {
-				domainContext.agentBuilderTarget = savedTarget;
-				await saveAgentBuilderTarget(domainContext, savedTarget);
+				return { ok: false, error: resolution.error };
 			}
-			await snapshotAgent(context, delegate, savedTarget, 'config-updated');
-			return finished({
-				ok: true,
-				status: 'compiled' as const,
-				configUpdated: true,
-				sessionId: result.sessionId,
-				...identity(savedTarget),
-				summary: result.summary,
-				message: `${result.summary} ${describeNextSteps(result)}`.trim(),
-				...report,
-				scenarios: scenariosSchema.parse(result.scenarios),
-				diagnostics,
+			context.trackTelemetry?.('instance_ai_agent_build_route', {
+				thread_id: context.threadId,
+				run_id: context.runId,
+				user_id: context.userId,
+				mode: resolution.mode,
+				agent_id: resolution.target.agentId,
 			});
+			const boundTarget = resolution.target;
+			const bindAfterTurn = resolution.bindAfterTurn;
+
+			const session = builderSessionFor(context, boundTarget.agentId);
+			await hydrateUserDecisions(domainContext);
+			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
+				...decision,
+			}));
+			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
+			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
+
+			publishAgentSpawned(context, builderAgentId, boundTarget);
+
+			// Before the builder touches it: a repair-shaped eval case seeds from the
+			// state the turn opened on. A new agent has no prior state.
+			if (resolution.mode !== 'create') {
+				await snapshotAgent(context, delegate, boundTarget, 'target-resolved');
+			}
+
+			let turn: BuilderTurnStream;
+			try {
+				turn = await delegate.streamBuild(boundTarget.agentId, outboundMessage, session);
+			} catch (error) {
+				// Only genuinely call-time-reachable errors land here (e.g. the scope
+				// check in the delegate adapter) — see the comment in
+				// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
+				// checkpoint errors can't surface at this call site.
+				publishAgentBuilderFailure(context, builderAgentId, error);
+				throw error;
+			}
+
+			const output = await runBuilderConsumeLoop({
+				context,
+				delegate,
+				ctx,
+				target: boundTarget,
+				builderAgentId,
+				turn,
+				carriedConfigUpdated: false,
+				carriedRequiredArtifacts: [],
+				traceInputs: { message: outboundMessage },
+				dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}`,
+				onSettled: bindAfterTurn
+					? async () => {
+							domainContext.agentBuilderTarget = boundTarget;
+							await saveAgentBuilderTarget(domainContext, boundTarget);
+						}
+					: undefined,
+			});
+			if (output?.ok) await consumeUserDecisions(domainContext, handedOffDecisions);
+			return output;
 		})
 		.build();
-}
-
-function validateInput(input: BuildAgentInput): string | undefined {
-	if (input.action === 'verify') return undefined;
-	if (input.action === 'answer' && !input.sessionId)
-		return 'action "answer" needs `sessionId` from the earlier call.';
-	if (input.request) return undefined;
-	return input.action === 'answer'
-		? 'action "answer" needs `request`: the user’s reply.'
-		: `action "${input.action}" needs \`request\`: the user’s words.`;
-}
-
-function describeNextSteps(result: Extract<AgentCompilerResult, { status: 'compiled' }>): string {
-	const has = (test: (issue: ValidationIssue) => boolean) => result.report.issues.some(test);
-	const notes: string[] = [];
-	if (has((issue) => issue.code === 'model_unresolved'))
-		notes.push(
-			'The agent is a draft until a model and credential are chosen in the agent settings.',
-		);
-	if (has((issue) => issue.code === 'channel_credential_unresolved'))
-		notes.push('Connect the channel credential in the agent settings before publishing.');
-	if (has((issue) => issue.code === 'compile_warning' && issue.message.includes('credential')))
-		notes.push('Some tools still need credentials.');
-	notes.push('Call action "verify" to run its behavior scenarios in Preview.');
-	return notes.join(' ');
-}
-
-async function verify(
-	delegate: InstanceAiBuilderDelegate,
-	service: AgentCompilerService,
-	target: AgentBuilderTarget,
-	input: BuildAgentInput,
-) {
-	if (!delegate.runAgentPreview)
-		return failure('Preview runs are not available on this instance.', identity(target));
-	const session = input.sessionId ? await service.getSession(input.sessionId) : undefined;
-	const scenarios = session?.scenarios ?? [];
-	if (scenarios.length === 0)
-		return failure(
-			'No compiled scenarios for this agent in this conversation; build or edit it first, then verify with that sessionId.',
-			identity(target),
-		);
-	const runs: AgentScenarioRun[] = [];
-	for (const scenario of scenarios) {
-		const record = (
-			status: AgentScenarioRun['status'],
-			response: string,
-			toolCalls: string[] = [],
-		) => runs.push({ scenarioId: scenario.id, response, toolCalls, status });
-		try {
-			const outcome = await delegate.runAgentPreview(target.agentId, scenario.message);
-			if (outcome.status === 'misconfigured') {
-				record('misconfigured', `Agent is not runnable: missing ${outcome.missing.join(', ')}.`);
-				break;
-			}
-			record(outcome.status, outcome.response, outcome.toolCalls);
-		} catch (error) {
-			record('failed', getErrorMessage(error));
-		}
-	}
-	const coverage = scenarioCoverage(scenarios, runs);
-	const allCovered = coverage.uncovered.length === 0;
-	if (session) {
-		session.report = {
-			...(session.report ?? emptyAgentVerificationReport()),
-			previewScenarios: allCovered ? 'pass' : coverage.covered > 0 ? 'warn' : 'fail',
-		};
-		session.status = allCovered ? 'verified' : session.status;
-	}
-	const note = describeScenarioCoverage(coverage);
-	return {
-		ok: allCovered,
-		status: 'verified' as const,
-		configUpdated: false,
-		sessionId: input.sessionId,
-		...identity(target),
-		message: note,
-		scenarioCoverage: {
-			total: coverage.total,
-			covered: coverage.covered,
-			note,
-			runs: runs.map((run) =>
-				scenarioRunSchema.parse({ ...run, response: run.response.slice(0, 600) }),
-			),
-		},
-	};
 }

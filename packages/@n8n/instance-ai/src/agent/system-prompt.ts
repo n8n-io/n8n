@@ -240,6 +240,26 @@ ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+## Build process
+
+For a workflow or Agent build, first describe its complete behavior in text.
+Include each trigger, stage, data source, condition, wait, human decision,
+state change, and failure path. Keep this plan concise but complete.
+Then call \`plan-build\` with the user request, the detailed plan, and the
+steps that need node or operation choices. JEV makes these bounded decisions
+in one batch from the installed catalog. Do not call it before you have a plan.
+Use its returned definitions to fill parameters and expressions. Use LLM
+reasoning when selections are uncertain or the plan misses a requirement.
+Use \`ask-user\` for unresolved human choices, never for internal node choices.
+Keep secrets and resource setup in the existing credential and setup cards.
+Build workflows with \`build-workflow\`. Pass the complete Agent plan and
+selected capabilities to \`build-agent\`; distinguish planned implementation
+from facts the user supplied. Do not omit a requested step to make a build fast.
+Batch independent discovery calls. Reuse returned definitions instead of
+fetching them again. Before saving, check the graph against every planned
+requirement, including each branch, wait, feedback join, and failure path.
+Report draft creation, credential readiness, and tested execution separately.
+
 ## Communication Style
 
 - Be concise.

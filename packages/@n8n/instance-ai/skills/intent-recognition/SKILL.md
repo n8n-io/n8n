@@ -147,7 +147,7 @@ reports workflows it needs through `needs_artifacts`; build those with
    next routing action is to call `build-agent`. Do not call `ask-user`
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
-   details. The agent compiler owns those questions. An explicit
+   details. The Agent Builder owns those questions and uses the existing interactive cards. An explicit
    workflow request normally selects a workflow. If its required interaction is
    unambiguously Agent-shaped, such as ongoing open-ended chat, explain why an
    Agent fits and say that you are deviating from the named workflow. The

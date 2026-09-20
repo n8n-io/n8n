@@ -193,14 +193,16 @@ describe('Instance AI runtime skills', () => {
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
 	});
 
-	it('ships no prompt fragment skills now that building guidance lives in the compiler', async () => {
+	it('ships workflow building guidance for the LLM planning and parameter stages', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		expect(source.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
-		expect(source.registry.skills.map(({ id }) => id)).not.toContain('workflow-builder');
+		expect(source.registry.skills.map(({ id }) => id)).toContain('workflow-builder');
 		for (const mode of ['default', 'progressive'] as const) {
 			const selected = await loadInstanceAiRuntimeSkillSourceForBuildMode(mode);
 			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
-			await expect(selected.loadSkill('workflow-builder')).resolves.toBeNull();
+			await expect(selected.loadSkill('workflow-builder')).resolves.toMatchObject({
+				id: 'workflow-builder',
+			});
 		}
 	});
 

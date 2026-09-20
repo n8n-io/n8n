@@ -82,7 +82,10 @@ const loadApplyWorkflowCredentialsTool = lazyMod(
 );
 const loadBuildWorkflowTool = lazyMod(
 	() =>
-		require('./workflows/compile-workflow.tool') as typeof import('./workflows/compile-workflow.tool'),
+		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+);
+const loadPlanBuildTool = lazyMod(
+	() => require('./workflows/plan-build.tool') as typeof import('./workflows/plan-build.tool'),
 );
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
@@ -108,8 +111,13 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-			() => loadBuildWorkflowTool().createCompileWorkflowTool(context),
+			() =>
+				loadBuildWorkflowTool().createBuildWorkflowTool(context, {
+					exposeToModel: true,
+					useModelForSimulation: false,
+				}),
 		],
+		[DOMAIN_TOOL_IDS.PLAN_BUILD, () => loadPlanBuildTool().createPlanBuildTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService

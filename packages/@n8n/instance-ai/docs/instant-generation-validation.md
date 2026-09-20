@@ -1,5 +1,35 @@
 # Instant generation with JEV
 
+## Current build path
+
+The assistant now starts with an LLM plan in plain text. `plan-build` sends
+the plan to JEV in one request. It checks coverage, progress, participant scope,
+and node operations. Options come from the installed node registry. Flat
+operation and mode fields are supported. The tool returns only the selected
+parameter definitions. Repeated services share discovery within the call.
+
+The LLM resolves uncertain choices and fills parameters and graph connections.
+It uses `ask-user` for human choices. The existing workflow persistence and
+Agent Builder paths retain their approval, question, and credential cards.
+New inline JSON workflows do not need a sandbox. The existing
+`N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` opt-in enables this input path in the
+UI and warms the JEV connection. It no longer bypasses LLM planning.
+
+The restored build path passed 252 focused regression tests. A first complex
+HR probe reached JEV in 54 seconds. Its 13 choices took 1015 ms. The full turn
+then took 235 seconds and stopped at a research approval without saving a
+workflow. This failed the build and latency targets. The revised skill removes
+conflicting sandbox requirements and checks durable progress and participant
+scope. Complex HR validation is still in progress.
+
+## Historical compiler benchmark
+
+The measurements below describe the earlier bounded compiler, before the
+LLM-first path was restored. They are not measurements of the current full
+build path. The small compiler catalog could not build the requested HR
+workflow or candidate-facing Agent. Do not use these figures to claim that
+complex workflow or Agent generation completes in one second.
+
 Live validation date: 2026-09-20. The tested model was `jev-1.13.0`, selected
 through `jev-latest`. These results cover the supported compiler operations.
 They do not establish a latency guarantee for all natural-language requests.
