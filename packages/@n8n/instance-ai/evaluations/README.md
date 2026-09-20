@@ -100,6 +100,7 @@ docker run -d --name n8n-eval \
   -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
   -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \
+  -e TYPESAFE_API_KEY=your-typesafe-key \
   -p 5678:5678 \
   n8nio/n8n:local
 
@@ -343,6 +344,7 @@ on disk. Losing this field turns it into a normal attachment test.
 | `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
+| `TYPESAFE_API_KEY` | No | Set on the **target n8n instance**. Enables Jev filtering of node search and credential lists. Unset = those tools return the unfiltered candidate list. CI maps `EVALS_TYPESAFE_KEY` to this env. |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
