@@ -21,6 +21,14 @@ review inside the tool before it calls Agent Builder. Resuming an existing
 question or credential request does not require another plan.
 The public workflow builder also requires a `plan-build` review in the current
 run. Resuming its approval card retains the prior review.
+After the LLM fills parameters, the public builder also reviews the executable
+graph with JEV. This catches differences between the written plan and the
+generated nodes. The review runs alongside credential discovery. It returns
+findings to the LLM without changing approval or setup cards. Negative and
+uncertain findings require reasoning. A review is not execution evidence.
+If JEV is unavailable, the result asks the outer LLM to perform the review. This path does not
+start another generative model request. The review also respects the existing
+parameter-sharing setting and omits credential records and pinned data.
 New inline JSON workflows do not need a sandbox. The existing
 `N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` opt-in enables this input path in the
 UI and warms the JEV connection. It no longer bypasses LLM planning.
@@ -110,6 +118,20 @@ Readback still found incomplete participant binding and a missing identity
 service. The model remained unconfigured. The existing question and credential
 cards allowed setup to be deferred. Candidate chat execution remains unverified.
 
+The builder later attached three supporting workflows for booking, rescheduling,
+and cancellation. Inspection of their executable nodes still found missing
+participant validation, partial-failure recovery, and duplicate handling.
+The new graph review flagged all three concerns in all three workflows.
+Six live review calls took 988–1060 ms while running concurrently. A separate
+repeated-input probe took 725, 348, and 320 ms with one batch. Two parallel
+batches took 753, 326, and 330 ms. This small probe did not show a consistent
+benefit from splitting six questions, so the review keeps one batch.
+
+A later edit exported 47 KB of SDK source before reading the saved node data.
+The tool descriptions now direct small repairs to `get(full=true)` and
+`jsonEdits`. This avoids the unnecessary source export. A fresh latency run
+is still needed to measure its effect.
+
 The existing UI was checked in the isolated instance. The research approval
 card retained its allow-once, session, and deny controls. The Agent model
 question accepted an answer. Postgres, Google Calendar, and Gmail credential
@@ -122,6 +144,10 @@ All 318 backend adapter tests passed. Builds, type checks, and lint passed
 for Instance AI and the CLI. Targeted-edit regression cases are pending the
 repository's required user confirmation; existing tests and live readback
 provide the current evidence for that path.
+After adding graph review, 290 existing build, plan, skill, and workflow-tool
+tests passed. The package build, type checks, and lint passed. New graph-review
+unit cases await the repository's required user confirmation. Live JEV probes
+provide the current evidence for the new review's findings and latency.
 
 ## Historical compiler benchmark
 

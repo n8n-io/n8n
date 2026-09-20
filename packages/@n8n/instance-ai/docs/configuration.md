@@ -18,6 +18,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `google-vertex-anthropic/*` (e.g. `global`, `us-east5`). Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
 | `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
 | `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
+| `N8N_INSTANCE_AI_THINKING_EFFORT` | string | unset | Optional orchestrator thinking effort: `low`, `medium`, or `high` for Anthropic and OpenAI. Empty preserves model defaults. This does not configure the embedded Agent Builder. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
@@ -28,7 +29,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `GROQ_API_KEY`, `MISTRAL_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, and
 `XAI_API_KEY`. `N8N_INSTANCE_AI_MODEL_API_KEY` supplies an explicit key instead.
 
-### Workflow compiler decisions
+### JEV decisions
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -37,15 +38,16 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_DECISION_API_KEY` | string | `JEV_API_KEY` or `''` | Bearer token for the decision service. Overrides `JEV_API_KEY`. |
 | `N8N_INSTANCE_AI_DECISION_MODEL` | string | `jev-latest` | Model name the decision service routes on. |
 | `N8N_INSTANCE_AI_DECISION_TIMEOUT_MS` | number | `1500` | Per-request latency budget for the decision service. |
-| `N8N_INSTANCE_AI_FAST_PATH_ENABLED` | boolean | `false` | Route each chat turn with a structured read before any language model runs (`docs/intent-router.md`). |
+| `N8N_INSTANCE_AI_FAST_PATH_ENABLED` | boolean | `false` | Enable inline JSON workflow building without a sandbox and warm the JEV connection. The LLM still plans first. |
 
-See `docs/workflow-compiler.md` for the decision contract and policy.
+See [current behavior and measurements](instant-generation-validation.md).
 
 Load `JEV_API_KEY` into the backend environment. Enable
-`N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` to use the compiler route in chat.
+`N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` to use inline JSON building in chat.
 Restart the backend after changing these values. JEV uses the
 [TypeSafe structured-read API](https://docs.typesafe.ai/api), not a chat API.
-Keep the normal assistant model configured for requests outside the compiler catalog.
+Keep the normal Assistant model configured for planning, parameter generation,
+and reasoning about uncertain decisions. JEV does not generate free-form text.
 
 When the fast path is enabled, startup opens the decision connection with
 `GET /v1/models`. This does not run inference. The connection pool keeps idle

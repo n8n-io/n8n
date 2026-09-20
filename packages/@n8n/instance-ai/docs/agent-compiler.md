@@ -1,7 +1,13 @@
 # Agent Compiler
 
-The agent compiler is the path behind `build-agent`. It replaces the embedded
-LLM "Agent Builder" sub-agent. As in `docs/workflow-compiler.md`, the model
+This document describes the earlier bounded compiler. The public `build-agent`
+tool uses the embedded Agent Builder. It reviews the LLM plan with JEV first
+and preserves the existing interactive setup cards. See
+[current behavior and measurements](instant-generation-validation.md).
+
+## Bounded compiler design
+
+In the bounded compiler, as in `docs/workflow-compiler.md`, the model
 only scores bounded options; deterministic code extracts requirements, plans
 an `AgentIR`, compiles the `AgentJsonConfig`, validates it and hands it to
 the agents module.

@@ -1,6 +1,14 @@
 # Intent Router (system-one fast path)
 
-With `N8N_INSTANCE_AI_FAST_PATH_ENABLED=true`, every chat turn is classified
+This document describes the earlier router. The public Assistant no longer
+runs this router before the LLM. It starts with an LLM plan and uses JEV for
+bounded decisions after planning. The opt-in flag now enables inline JSON
+workflow building and connection warmup. See
+[current behavior and measurements](instant-generation-validation.md).
+
+## Historical routing design
+
+In the earlier path, every chat turn was classified
 before any language model runs. When the router is confident, a compiler
 serves the turn and the orchestrator LLM never runs. The LLM runs only when
 the router is not confident or a compiler hands the turn back.

@@ -201,7 +201,7 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Inspect a workflow: metadata plus its structure as SDK code. Large workflows omit node parameters unless full is set; small ones include them. Pass versionId to inspect a past version instead of the current draft.',
+			'Inspect a workflow. Use full=true to read saved node IDs, parameters, connections, and version before targeted build-workflow jsonEdits. Large workflows omit node parameters by default. Pass versionId to inspect a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -215,7 +215,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with build-workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
+			'Export TypeScript SDK source when an edit needs a source file or a full rewrite. For small JSON edits, use get with full=true instead. This writes src/workflows/<name>.workflow.ts, binds it to the workflow, and returns a file path and node index. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),

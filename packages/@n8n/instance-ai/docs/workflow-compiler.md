@@ -1,6 +1,14 @@
 # Workflow Compiler
 
-The workflow compiler is the build path behind `build-workflow`. The model
+This document describes the earlier bounded compiler. It is not the public
+Assistant build path. The Assistant first writes an LLM plan, then calls
+`plan-build` for JEV decisions. The LLM fills parameters and connections.
+`build-workflow` validates and saves that source through the existing setup
+and approval flow. See [current behavior and measurements](instant-generation-validation.md).
+
+## Bounded compiler design
+
+The bounded compiler implements the legacy compilation path. The model
 never writes workflows. It scores bounded options; deterministic code
 extracts requirements, plans a typed IR, compiles the n8n JSON, validates it
 and hands it to `persist-workflow`.

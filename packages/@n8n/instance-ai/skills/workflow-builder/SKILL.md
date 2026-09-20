@@ -4,7 +4,7 @@ description: >-
   Load before building or editing a workflow. Describe the complete behavior
   in text, use plan-build for installed node and operation choices, then fill
   parameters and save with build-workflow. New workflows can use inline JSON.
-  Existing source edits use the bound workspace file. Load planning only for
+  Use targeted JSON edits for small saved-workflow changes. Load planning only for
   coordinated tasks with dependencies. Use one-off-operations for a single
   immediate node execution.
 recommended_tools:
@@ -43,6 +43,10 @@ recommended_tools:
 5. Trace the complete graph against the plan. Apply the quality checks below.
    Call `build-workflow` to validate and save. Resolve reported errors in one
    repair batch. A save is not evidence of successful execution.
+   Inspect the returned `qualityReview`, which checks executable parameters
+   and connections. Resolve each negative finding. Use LLM reasoning and
+   execution evidence for uncertain or unavailable checks. Keep repairs
+   within the requested scope and report any remaining issues.
 6. Follow the returned `postBuildFlow.instructions` when required. These own
    verification and the existing setup cards. Do not publish without user
    authorization. Report unresolved setup and unverified behavior accurately.
@@ -84,7 +88,9 @@ This extra process applies only to SDK source.
 ## Existing workflows and repairs
 
 For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
-Read the saved node IDs and current version first. Pass a `.workflow.json`
+Read the saved node IDs, parameters, and current version with
+`workflows(action="get", full=true)`. Do not export SDK source for this path.
+Pass a `.workflow.json`
 filePath, the workflow ID, and `jsonEdits: { versionId, changes }`. `changes`
 is JSON text with only changed `nodes`, source `connections`, or `nodeGroups`.
 Node fields merge by ID. Parameter keys merge at the top level. Nested values

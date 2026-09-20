@@ -16,6 +16,11 @@ import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
+import { selectDecisionService } from './compiler-tool-support';
+import {
+	buildQualityReviewSchema,
+	reviewBuiltWorkflow,
+} from '../../workflow-builder/build-quality-review';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
@@ -570,6 +575,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 
 const buildWorkflowOutputSchema = z.object({
 	success: z.boolean(),
+	qualityReview: buildQualityReviewSchema.optional(),
 	filePath: z.string(),
 	sourceHash: z.string().optional(),
 	workflowId: z.string().optional(),
@@ -1231,7 +1237,17 @@ export function createBuildWorkflowTool(
 				};
 			}
 
-			const credentialMap = await buildCredentialMap(context.credentialService);
+			const [credentialMap, qualityReview] = await Promise.all([
+				buildCredentialMap(context.credentialService),
+				options.requirePlan
+					? reviewBuiltWorkflow(
+							json,
+							selectDecisionService(context),
+							ctx.abortSignal,
+							context.allowSendingParameterValues !== false,
+						)
+					: undefined,
+			]);
 			const mockResult = await resolveCredentials(
 				json,
 				targetWorkflowId,
@@ -1642,6 +1658,7 @@ export function createBuildWorkflowTool(
 
 					return {
 						success: true,
+						qualityReview,
 						...sourceResponseBase(binding),
 						...describeSavedPublishState(saved),
 						workflowId: saved.id,
