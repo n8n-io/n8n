@@ -144,6 +144,16 @@ export class AgentHumanReview implements INodeType {
 				],
 			},
 			{
+				displayName: 'Agent Name or ID',
+				name: 'agentId',
+				type: 'options',
+				default: '',
+				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
+				typeOptions: { loadOptionsMethod: 'getAgents', loadOptionsDependsOn: ['reviewMode'] },
+				description:
+					'Which registered agent this node acts as, from the review service (its Agents panel). The ID is sent with every round and trace so reviews and spans can be grouped per agent. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName:
 					'The agent runs, its draft is sent for review, and the execution pauses. "Request changes" re-runs the agent with the feedback; only Approve or Reject continue the workflow.',
 				name: 'noticeSync',
@@ -239,16 +249,6 @@ export class AgentHumanReview implements INodeType {
 				type: 'notice',
 				default: '',
 				displayOptions: { show: { needsFallback: [true] } },
-			},
-			{
-				displayName: 'Agent Name or ID',
-				name: 'agentId',
-				type: 'options',
-				default: '',
-				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
-				typeOptions: { loadOptionsMethod: 'getAgents', loadOptionsDependsOn: ['reviewMode'] },
-				description:
-					'Which registered agent this node acts as, from the review service (its Agents panel). The ID is sent with every round and trace so reviews and spans can be grouped per agent. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Include Upstream Context',
