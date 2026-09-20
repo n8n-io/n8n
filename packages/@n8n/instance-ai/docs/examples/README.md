@@ -1,4 +1,8 @@
-# Deterministic HR booking graph
+# Deterministic HR graphs
+
+The booking graph and the [feedback process](FEEDBACK.md) share a database
+contract. Apply `hr-interview-feedback.sql` before you use either reference.
+It creates the interview roster, feedback records, and notification queue.
 
 `hr-candidate-booking.graph.json` is input for the `graph` field of
 `build-workflow`. It is not an importable n8n workflow export. Use the name
@@ -71,7 +75,10 @@ supports caller-supplied IDs through its
 
 The workflow reads back the event before it reports success. It verifies the
 ID, ownership markers, interval, attendee set, and status. A conditional
-database update then stores `<type>_scheduled`. A 409 response uses the same
+database update then stores `<type>_scheduled` and the reviewer roster in
+`hr_interview_sessions`. Both writes use one transaction. Feedback uses this
+roster, even if the candidate's assigned interviewers change later.
+A 409 response uses the same
 readback path. It never generates a replacement ID for a retry.
 
 An uncertain provider or database failure retains the pending claim. An
@@ -86,7 +93,7 @@ report a completed booking for either result.
 
 ## Validation and limits
 
-On 2026-09-20, 100 compilations produced identical JSON. Assembly took 4.1 ms
+On 2026-09-20, 100 compilations produced identical JSON. Assembly took 3.4 ms
 at p95. The comparison preserved saved parameters, executable edges, and
 group membership. It excluded editor positions and replaced local setup
 values. These times exclude model calls, validation, and persistence.
@@ -104,13 +111,14 @@ Calendar credential control. The candidate Agent has booking, interview
 details, cancellation, and rescheduling tools. Its model remains unconfigured,
 so candidate conversations have not been executed.
 
-The broader HR draft still needs the transitions that produce
-`recruiter_completed` and `technical_completed`. It also needs repairs to
-feedback deadlines, initial scheduling, and participant checks. This booking
-reference does not provide those transitions or a slot-listing tool.
+The feedback reference now produces `recruiter_completed`,
+`technical_completed`, and `final_completed`. It also provides feedback
+deadlines and queued notifications. The broader HR draft still needs repairs
+to initial scheduling, manager approval, and its old rescheduling form.
+This booking reference does not provide a slot-listing tool.
 
 The database claim does not reserve calendars against outside writers.
 Rebooking a cancelled event at its original start time can encounter the old
 event ID and require review. Production identity and Calendar access remain
 untested. Do not treat the fixture results as a complete HR lifecycle test or
-a one-second Assistant generation result.
+an Assistant generation result within the current 30-second target.

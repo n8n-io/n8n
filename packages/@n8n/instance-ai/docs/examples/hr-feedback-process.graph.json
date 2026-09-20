@@ -1,0 +1,562 @@
+{
+	"nodes": [
+		{
+			"name": "Receive Verified Scorecard",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "hr-scorecard",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"options": {
+				"webhookId": "hr-verified-scorecard"
+			}
+		},
+		{
+			"name": "Submit Verified Feedback",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"parameters": {
+				"source": "database",
+				"workflowId": {
+					"__rl": true,
+					"value": "<__PLACEHOLDER_VALUE__submit_interview_feedback workflow ID__>",
+					"mode": "id"
+				},
+				"mode": "once",
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"session_token": "={{ $json.body?.session_token ?? \"\" }}",
+						"candidate_id": "={{ $json.body?.candidate_id ?? \"\" }}",
+						"interview_type": "={{ $json.body?.interview_type ?? \"\" }}",
+						"event_id": "={{ $json.body?.event_id ?? \"\" }}",
+						"rating": "={{ $json.body?.rating ?? \"\" }}",
+						"notes": "={{ $json.body?.notes ?? \"\" }}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "session_token",
+							"displayName": "session_token",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "candidate_id",
+							"displayName": "candidate_id",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "interview_type",
+							"displayName": "interview_type",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "event_id",
+							"displayName": "event_id",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "rating",
+							"displayName": "rating",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "notes",
+							"displayName": "notes",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {
+					"waitForSubWorkflow": true
+				}
+			}
+		},
+		{
+			"name": "Return Verified Feedback Status",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"parameters": {
+				"respondWith": "firstIncomingItem",
+				"options": {
+					"responseCode": "={{ $json.error === 'INVALID_SESSION' ? 401 : $json.error ? 409 : 200 }}"
+				}
+			}
+		},
+		{
+			"name": "Check Feedback Every 15 Minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 15
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Read Pending Interview Feedback",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "SELECT s.* FROM hr_interview_sessions s JOIN candidates c ON c.id=s.candidate_id WHERE c.stage=s.interview_type||'_scheduled' AND CASE s.interview_type WHEN 'recruiter' THEN c.recruiter_event_id WHEN 'technical' THEN c.technical_event_id WHEN 'final' THEN c.final_event_id END=s.event_id ORDER BY s.created_at",
+				"options": {
+					"queryReplacement": ""
+				}
+			}
+		},
+		{
+			"name": "Select Feedback Calendar",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const s=$json;return {json:{...s,calendarId:{recruiter:'<__PLACEHOLDER_VALUE__Recruiter Google Calendar ID__>',technical:'<__PLACEHOLDER_VALUE__Technical Interview Google Calendar ID__>',final:'<__PLACEHOLDER_VALUE__Final Interview Google Calendar ID__>'}[s.interview_type]}};"
+			}
+		},
+		{
+			"name": "Read Feedback Deadline Event",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "GET",
+				"url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent($json.calendarId)+'/events/'+encodeURIComponent($json.event_id) }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"options": {
+				"onError": "continueRegularOutput"
+			}
+		},
+		{
+			"name": "Check Current Feedback Deadline",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const s=$('Select Feedback Calendar').item.json,r=$json,b=r.body;const stop=()=>({json:{eligible:false}});\nif(r.statusCode!==200||b?.id!==s.event_id||b.status!=='confirmed'||b.extendedProperties?.private?.n8nCandidateId!==s.candidate_id||b.extendedProperties?.private?.n8nInterviewType!==s.interview_type||b.attendeesOmitted===true)return stop();\nif(!Array.isArray(b.attendees)||!s.reviewer_emails.every(email=>b.attendees.some(a=>typeof a?.email==='string'&&a.email.toLowerCase()===email)))return stop();\nconst instant=value=>typeof value==='string'&&/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)?DateTime.fromISO(value,{setZone:true}).toMillis():NaN;\nconst start=instant(b.start?.dateTime),end=instant(b.end?.dateTime);\nif(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end+86400000>Date.now())return stop();\nreturn {json:{eligible:true,candidateId:s.candidate_id,interviewType:s.interview_type,eventId:s.event_id}};"
+			}
+		},
+		{
+			"name": "Feedback Reminder Due",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.eligible === true }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Queue Missing Reviewer Reminders",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "INSERT INTO hr_interview_notifications(candidate_id,interview_type,event_id,kind,recipient,period)\nSELECT s.candidate_id,s.interview_type,s.event_id,'feedback_reminder',reviewer.email,(now() AT TIME ZONE 'UTC')::date\nFROM hr_interview_sessions s JOIN candidates c ON c.id=s.candidate_id CROSS JOIN LATERAL unnest(s.reviewer_emails) AS reviewer(email)\nWHERE s.candidate_id=$1 AND s.interview_type=$2 AND s.event_id=$3 AND c.stage=$2::text||'_scheduled'\nAND CASE $2::text WHEN 'recruiter' THEN c.recruiter_event_id WHEN 'technical' THEN c.technical_event_id WHEN 'final' THEN c.final_event_id END=$3\nAND NOT EXISTS(SELECT 1 FROM hr_interview_feedback f WHERE f.candidate_id=s.candidate_id AND f.interview_type=s.interview_type AND f.event_id=s.event_id AND f.reviewer_email=reviewer.email)\nON CONFLICT(candidate_id,interview_type,event_id,kind,recipient,period) DO NOTHING RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$json.candidateId,$json.interviewType,$json.eventId] }}"
+				}
+			}
+		},
+		{
+			"name": "Deliver HR Notices Every Minute",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 1
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Claim Due HR Notices",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "WITH due AS (SELECT id FROM hr_interview_notifications WHERE status IN ('pending','processing') AND next_attempt_at<=now() ORDER BY next_attempt_at,id LIMIT 20 FOR UPDATE SKIP LOCKED), claimed AS (\nUPDATE hr_interview_notifications n SET status='processing',attempts=attempts+1,next_attempt_at=now()+interval '5 minutes' FROM due WHERE n.id=due.id RETURNING n.*)\nSELECT n.*,s.reviewer_emails,c.name,c.role,c.stage,c.email AS candidate_email,c.hiring_manager_email,\nCASE n.interview_type WHEN 'recruiter' THEN c.recruiter_event_id WHEN 'technical' THEN c.technical_event_id WHEN 'final' THEN c.final_event_id END AS current_event_id,\nEXISTS(SELECT 1 FROM hr_interview_feedback f WHERE f.candidate_id=n.candidate_id AND f.interview_type=n.interview_type AND f.event_id=n.event_id AND f.reviewer_email=n.recipient) AS has_feedback\nFROM claimed n JOIN candidates c ON c.id=n.candidate_id JOIN hr_interview_sessions s ON s.candidate_id=n.candidate_id AND s.interview_type=n.interview_type AND s.event_id=n.event_id",
+				"options": {
+					"queryReplacement": ""
+				}
+			}
+		},
+		{
+			"name": "Prepare HR Notice",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const n=$json;const current=n.current_event_id===n.event_id;const stage=n.interview_type+(n.kind==='feedback_reminder'?'_scheduled':'_completed');\nconst skipped=!current||n.stage!==stage||(n.kind==='feedback_reminder'&&n.has_feedback);\nconst recipient=n.kind==='manager_review'?n.hiring_manager_email:n.kind==='next_interview'?n.candidate_email:n.recipient;\nconst invalid=typeof recipient!=='string'||!/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(recipient);\nconst next={recruiter:'technical',technical:'final'}[n.interview_type];\nconst subject=n.kind==='manager_review'?'Hiring decision ready for review':n.kind==='next_interview'?'Choose your '+next+' interview time':'Interview feedback reminder';\nconst portal=n.kind==='next_interview'?'<__PLACEHOLDER_VALUE__Candidate interview portal URL__>':'<__PLACEHOLDER_VALUE__Staff interview review portal URL__>';\nconst message=n.kind==='manager_review'?'All final interview feedback is recorded. Please review candidate '+n.candidate_id+' and record your decision in the staff portal.':n.kind==='next_interview'?'Your '+n.interview_type+' interview feedback is complete. Please choose your '+next+' interview time in the candidate portal.':'Please record your '+n.interview_type+' interview feedback for candidate '+n.candidate_id+'.';\nreturn {json:{candidate_id:n.candidate_id,interview_type:n.interview_type,event_id:n.event_id,reviewer_emails:n.reviewer_emails,kind:n.kind,id:n.id,attempt:n.attempts,send:!skipped&&!invalid,status:skipped?'skipped':invalid?'pending':'processing',reason:skipped?'SUPERSEDED':invalid?'RECIPIENT_REQUIRED':null,recipient,subject,message:message+'\\n\\n'+portal}};"
+			}
+		},
+		{
+			"name": "HR Notice Ready",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.send }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Send HR Notice",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $json.recipient }}",
+				"subject": "={{ $json.subject }}",
+				"emailType": "text",
+				"message": "={{ $json.message }}",
+				"options": {
+					"appendAttribution": false
+				}
+			},
+			"options": {
+				"onError": "continueErrorOutput"
+			}
+		},
+		{
+			"name": "Mark HR Notice Sent",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE hr_interview_notifications SET status='sent',delivered_at=now(),last_error=NULL WHERE id=$1 AND attempts=$2 AND status='processing' RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$('Prepare HR Notice').item.json.id,$('Prepare HR Notice').item.json.attempt] }}"
+				}
+			}
+		},
+		{
+			"name": "Retry HR Notice Later",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE hr_interview_notifications SET status='pending',last_error='DELIVERY_FAILED',next_attempt_at=now()+interval '5 minutes' WHERE id=$1 AND attempts=$2 AND status='processing' RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$('Prepare HR Notice').item.json.id,$('Prepare HR Notice').item.json.attempt] }}"
+				}
+			}
+		},
+		{
+			"name": "Record HR Notice State",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE hr_interview_notifications SET status=$3,last_error=$4,next_attempt_at=now()+interval '5 minutes' WHERE id=$1 AND attempts=$2 AND status='processing' RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$json.id,$json.attempt,$json.status,$json.reason] }}"
+				}
+			}
+		},
+		{
+			"name": "Recheck Reminder Deadline",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.kind === 'feedback_reminder' }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Select Notice Calendar",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const s=$json;return {json:{...s,calendarId:{recruiter:'<__PLACEHOLDER_VALUE__Recruiter Google Calendar ID__>',technical:'<__PLACEHOLDER_VALUE__Technical Interview Google Calendar ID__>',final:'<__PLACEHOLDER_VALUE__Final Interview Google Calendar ID__>'}[s.interview_type]}};"
+			}
+		},
+		{
+			"name": "Read Notice Deadline Event",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "GET",
+				"url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent($json.calendarId)+'/events/'+encodeURIComponent($json.event_id) }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"options": {
+				"onError": "continueRegularOutput"
+			}
+		},
+		{
+			"name": "Check Notice Deadline",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const n=$('Select Notice Calendar').item.json,r=$json,b=r.body;\nconst stop=(status,reason)=>({json:{...n,send:false,status,reason}});\nif([404,410].includes(r.statusCode)||b?.status==='cancelled')return stop('skipped','EVENT_UNAVAILABLE');\nif(r.statusCode!==200)return stop('pending','CALENDAR_UNAVAILABLE');\nif(b?.id!==n.event_id||b.status!=='confirmed'||b.extendedProperties?.private?.n8nCandidateId!==n.candidate_id||b.extendedProperties?.private?.n8nInterviewType!==n.interview_type||b.attendeesOmitted===true||!Array.isArray(b.attendees)||!n.reviewer_emails.every(email=>b.attendees.some(a=>typeof a?.email==='string'&&a.email.toLowerCase()===email)))return stop('skipped','EVENT_CHANGED');\nconst instant=value=>typeof value==='string'&&/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)?DateTime.fromISO(value,{setZone:true}).toMillis():NaN;\nconst start=instant(b.start?.dateTime),end=instant(b.end?.dateTime);\nif(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return stop('skipped','EVENT_CHANGED');\nif(end+86400000>Date.now())return stop('skipped','DEADLINE_CHANGED');\nreturn {json:n};"
+			}
+		},
+		{
+			"name": "Notice Deadline Still Due",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.send }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		}
+	],
+	"edges": [
+		{
+			"from": "Receive Verified Scorecard",
+			"to": "Submit Verified Feedback"
+		},
+		{
+			"from": "Submit Verified Feedback",
+			"to": "Return Verified Feedback Status"
+		},
+		{
+			"from": "Check Feedback Every 15 Minutes",
+			"to": "Read Pending Interview Feedback"
+		},
+		{
+			"from": "Read Pending Interview Feedback",
+			"to": "Select Feedback Calendar"
+		},
+		{
+			"from": "Select Feedback Calendar",
+			"to": "Read Feedback Deadline Event"
+		},
+		{
+			"from": "Read Feedback Deadline Event",
+			"to": "Check Current Feedback Deadline"
+		},
+		{
+			"from": "Check Current Feedback Deadline",
+			"to": "Feedback Reminder Due"
+		},
+		{
+			"from": "Feedback Reminder Due",
+			"to": "Queue Missing Reviewer Reminders"
+		},
+		{
+			"from": "Deliver HR Notices Every Minute",
+			"to": "Claim Due HR Notices"
+		},
+		{
+			"from": "Claim Due HR Notices",
+			"to": "Prepare HR Notice"
+		},
+		{
+			"from": "Prepare HR Notice",
+			"to": "HR Notice Ready"
+		},
+		{
+			"from": "HR Notice Ready",
+			"to": "Record HR Notice State",
+			"output": 1
+		},
+		{
+			"from": "Send HR Notice",
+			"to": "Mark HR Notice Sent"
+		},
+		{
+			"from": "Send HR Notice",
+			"to": "Retry HR Notice Later",
+			"output": 1
+		},
+		{
+			"from": "HR Notice Ready",
+			"to": "Recheck Reminder Deadline"
+		},
+		{
+			"from": "Recheck Reminder Deadline",
+			"to": "Send HR Notice",
+			"output": 1
+		},
+		{
+			"from": "Recheck Reminder Deadline",
+			"to": "Select Notice Calendar"
+		},
+		{
+			"from": "Select Notice Calendar",
+			"to": "Read Notice Deadline Event"
+		},
+		{
+			"from": "Read Notice Deadline Event",
+			"to": "Check Notice Deadline"
+		},
+		{
+			"from": "Check Notice Deadline",
+			"to": "Notice Deadline Still Due"
+		},
+		{
+			"from": "Notice Deadline Still Due",
+			"to": "Send HR Notice"
+		},
+		{
+			"from": "Notice Deadline Still Due",
+			"to": "Record HR Notice State",
+			"output": 1
+		}
+	],
+	"groups": [
+		{
+			"name": "Record verified feedback",
+			"nodes": ["Submit Verified Feedback", "Return Verified Feedback Status"]
+		},
+		{
+			"name": "Check missing feedback",
+			"nodes": [
+				"Read Pending Interview Feedback",
+				"Select Feedback Calendar",
+				"Read Feedback Deadline Event",
+				"Check Current Feedback Deadline",
+				"Feedback Reminder Due",
+				"Queue Missing Reviewer Reminders"
+			]
+		},
+		{
+			"name": "Deliver queued notices",
+			"nodes": [
+				"Claim Due HR Notices",
+				"Prepare HR Notice",
+				"HR Notice Ready",
+				"Send HR Notice",
+				"Mark HR Notice Sent",
+				"Retry HR Notice Later",
+				"Record HR Notice State",
+				"Recheck Reminder Deadline",
+				"Select Notice Calendar",
+				"Read Notice Deadline Event",
+				"Check Notice Deadline",
+				"Notice Deadline Still Due"
+			]
+		}
+	]
+}

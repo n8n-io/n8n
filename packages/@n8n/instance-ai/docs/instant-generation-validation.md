@@ -7,6 +7,30 @@ This replaces the earlier one-second target. Measure planning, JEV decisions,
 parameter generation, save, required verification, and the final reply.
 Do not treat graph assembly time as total task time.
 
+## HR feedback integration
+
+The [feedback reference](examples/FEEDBACK.md) now connects booking, verified
+reviewer feedback, completed stages, and queued notifications. The main HR
+draft uses the verified helper instead of caller-supplied reviewer emails
+and fixed scorecard counts. Feedback reminders start from the current
+Calendar event's end time, including when no reviewer has responded.
+
+Ninety-one fixture cases passed. The same 17 feedback runtime cases also
+passed through the real webhook and sub-workflow entry. Tests used real n8n
+nodes and isolated Postgres with local identity, Calendar, and mail services.
+No real invitations or emails were sent. A query error found by the first
+reminder run was fixed before the passing run. Reminder delivery also checks
+for rescheduling after a notice enters the queue.
+
+One hundred compilations per reference produced identical JSON. Assembly
+took 3.4 ms at p95 for booking, 1.8 ms for feedback, and 2.8 ms for the feedback
+process. The references were repaired manually. These measurements do not
+prove automatic generation within 30 seconds. The latest full Assistant edit
+measurement remains 35.7 seconds. Other main HR branches and the Agent's
+model setup remain incomplete.
+
+## Existing compiler regressions
+
 Thirty new regression cases cover expression syntax, draft repairs by name,
 and filter type validation. The syntax cases cover nested objects, literal
 fields, hidden parameters, disabled nodes, placeholders, and parser errors.
