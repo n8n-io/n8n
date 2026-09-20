@@ -177,7 +177,7 @@ export function toOtlp(
 		endTimeUnixNano: nanos(trace.endedAt),
 		attributes: attrs({
 			'gen_ai.operation.name': 'invoke_agent',
-			'gen_ai.agent.name': ctx.nodeName,
+			'gen_ai.agent.name': ctx.agentName ?? ctx.nodeName,
 			'gen_ai.system': trace.model.provider,
 			'gen_ai.request.model': trace.model.name,
 			'gen_ai.request.temperature': trace.model.params.temperature,
@@ -214,6 +214,8 @@ export function toOtlp(
 			'hitl.thread_id': correlation.threadId ?? ctx.threadId,
 			'hitl.round': correlation.round ?? ctx.round,
 			'hitl.session_id': ctx.sessionId,
+			'hitl.agent_id': ctx.agentId,
+			'gen_ai.agent.id': ctx.agentId,
 			'hitl.reviewer_feedback': options.recordContent ? ctx.reviewerFeedback : undefined,
 			// Custom attributes ride along namespaced, like Langfuse metadata
 			...Object.fromEntries(

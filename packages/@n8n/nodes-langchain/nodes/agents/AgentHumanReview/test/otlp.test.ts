@@ -60,6 +60,8 @@ const trace: AgentTrace = {
 		nodeName: 'AI Agent with Human Review',
 		nodeId: 'a1',
 		round: 0,
+		agentId: 'support-assistant',
+		agentName: 'Support Assistant',
 		attributes: { team: 'support' },
 	},
 	errors: [],
@@ -107,6 +109,9 @@ describe('toOtlp', () => {
 		expect(attr(spans[0], 'gen_ai.usage.cost.total_usd')).toEqual({ doubleValue: 0.00255 });
 		expect(attr(spans[0], 'hitl.request_id')).toEqual({ stringValue: 'req-1' });
 		expect(attr(spans[0], 'hitl.attr.team')).toEqual({ stringValue: 'support' });
+		expect(attr(spans[0], 'hitl.agent_id')).toEqual({ stringValue: 'support-assistant' });
+		expect(attr(spans[0], 'gen_ai.agent.id')).toEqual({ stringValue: 'support-assistant' });
+		expect(attr(spans[0], 'gen_ai.agent.name')).toEqual({ stringValue: 'Support Assistant' });
 		expect(attr(spans[0], 'n8n.execution.id')).toEqual({ stringValue: '81' });
 		expect(attr(spans[1], 'gen_ai.request.model')).toEqual({ stringValue: 'claude-sonnet-4-6' });
 		expect(attr(spans[2], 'gen_ai.tool.name')).toEqual({ stringValue: 'Calculator' });

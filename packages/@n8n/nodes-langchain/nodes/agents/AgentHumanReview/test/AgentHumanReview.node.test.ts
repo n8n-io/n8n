@@ -2,6 +2,7 @@ import type express from 'express';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
 	IWebhookFunctions,
@@ -258,6 +259,63 @@ describe('AgentHumanReview', () => {
 			expect(otlp.headers).toMatchObject({ 'x-hitl-token': 'secret' });
 		});
 
+		it('should resolve the selected agent and send its id with the registration and the trace', async () => {
+			const ctx = executeContext({ agentId: 'support-assistant' });
+			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+				if (opts.url.endsWith('/api/agents/support-assistant')) {
+					return { id: 'support-assistant', name: 'Support Assistant', tags: { team: 'support' } };
+				}
+				if (opts.url.endsWith('/hitl')) return ACK;
+				return {};
+			});
+
+			await agentNode.execute.call(ctx);
+
+			expect(runAgentOnce).toHaveBeenCalledWith(
+				ctx,
+				expect.any(String),
+				expect.any(Object),
+				expect.objectContaining({
+					agentId: 'support-assistant',
+					agentName: 'Support Assistant',
+					agentTags: { team: 'support' },
+				}),
+			);
+			const registration = ctx.helpers.httpRequest.mock.calls
+				.map((c) => c[0])
+				.find((r) => r.url === 'http://localhost:3100/hitl')!;
+			expect(registration.body).toMatchObject({ agentId: 'support-assistant' });
+		});
+
+		it('should still register with the id when the agent lookup fails', async () => {
+			const ctx = executeContext({ agentId: 'support-assistant' });
+			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+				if (opts.url.includes('/api/agents/')) throw new Error('boom');
+				if (opts.url.endsWith('/hitl')) return ACK;
+				return {};
+			});
+
+			await agentNode.execute.call(ctx);
+
+			expect(runAgentOnce).toHaveBeenCalledWith(
+				ctx,
+				expect.any(String),
+				expect.any(Object),
+				expect.objectContaining({ agentId: 'support-assistant' }),
+			);
+			expect(ctx.putExecutionToWait).toHaveBeenCalled();
+		});
+
+		it('should omit agentId when none is selected', async () => {
+			const ctx = executeContext({ agentId: '' });
+
+			await agentNode.execute.call(ctx);
+
+			expect(
+				(ctx.helpers.httpRequest.mock.calls[0][0].body as IDataObject).agentId,
+			).toBeUndefined();
+		});
+
 		it('should send no token header when the credential has none', async () => {
 			const ctx = executeContext();
 			ctx.getCredentials.mockResolvedValue({ baseUrl: 'https://review.example.com' });
@@ -395,6 +453,52 @@ describe('AgentHumanReview', () => {
 
 			await expect(agentNode.execute.call(ctx)).rejects.toThrow('exactly one item');
 			expect(runAgentOnce).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('loadOptions.getAgents', () => {
+		it('should list agents from the review service using the credential', async () => {
+			const helpers = mock<ILoadOptionsFunctions['helpers']>();
+			const ctx = mock<ILoadOptionsFunctions>({ helpers });
+			ctx.getCredentials.mockResolvedValue({
+				baseUrl: 'http://localhost:3100/',
+				apiToken: 'secret',
+			});
+			helpers.httpRequest.mockResolvedValue({
+				agents: [
+					{ id: 'support-assistant', name: 'Support Assistant', description: 'Tier-1 replies' },
+					{ id: 'sales-bot', name: 'Sales Bot' },
+				],
+			});
+
+			const options = await agentNode.methods.loadOptions.getAgents.call(ctx);
+
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'http://localhost:3100/api/agents',
+					headers: { 'x-hitl-token': 'secret' },
+				}),
+			);
+			expect(options).toEqual([
+				{
+					name: 'Support Assistant',
+					value: 'support-assistant',
+					description: 'ID support-assistant — Tier-1 replies',
+				},
+				{ name: 'Sales Bot', value: 'sales-bot', description: 'ID sales-bot' },
+			]);
+		});
+
+		it('should return a placeholder when the service has no agents', async () => {
+			const helpers = mock<ILoadOptionsFunctions['helpers']>();
+			const ctx = mock<ILoadOptionsFunctions>({ helpers });
+			ctx.getCredentials.mockResolvedValue({ baseUrl: 'http://localhost:3100' });
+			helpers.httpRequest.mockResolvedValue({ agents: [] });
+
+			const options = await agentNode.methods.loadOptions.getAgents.call(ctx);
+
+			expect(options).toHaveLength(1);
+			expect(options[0].value).toBe('');
 		});
 	});
 

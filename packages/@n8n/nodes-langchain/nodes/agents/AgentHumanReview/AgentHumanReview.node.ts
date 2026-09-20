@@ -7,6 +7,8 @@ import {
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -27,6 +29,7 @@ import {
 	buildRegistrationBody,
 	buildTrail,
 	exportOtlp,
+	fetchAgentInfo,
 	fetchRoundsSent,
 	fetchSuggestionsHistory,
 	getServiceConfig,
@@ -238,6 +241,16 @@ export class AgentHumanReview implements INodeType {
 				displayOptions: { show: { needsFallback: [true] } },
 			},
 			{
+				displayName: 'Agent Name or ID',
+				name: 'agentId',
+				type: 'options',
+				default: '',
+				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
+				typeOptions: { loadOptionsMethod: 'getAgents', loadOptionsDependsOn: ['reviewMode'] },
+				description:
+					'Which registered agent this node acts as, from the review service (its Agents panel). The ID is sent with every round and trace so reviews and spans can be grouped per agent. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'Include Upstream Context',
 				name: 'includeContext',
 				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
@@ -375,6 +388,41 @@ export class AgentHumanReview implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials<{
+					baseUrl: string;
+					apiToken?: string;
+					allowUnauthorizedCerts?: boolean;
+				}>(HITL_CREDENTIAL);
+				const baseUrl = credentials.baseUrl.replace(/\/+$/, '');
+				const response = (await this.helpers.httpRequest({
+					url: `${baseUrl}/api/agents`,
+					method: 'GET',
+					json: true,
+					skipSslCertificateValidation: credentials.allowUnauthorizedCerts ?? false,
+					headers: credentials.apiToken ? { 'x-hitl-token': credentials.apiToken } : {},
+				})) as { agents?: Array<{ id: string; name: string; description?: string }> };
+				const agents = response.agents ?? [];
+				if (agents.length === 0) {
+					return [
+						{
+							name: 'No Agents Registered Yet',
+							value: '',
+							description: 'Add one in the review service (Agents panel), then reload this list',
+						},
+					];
+				}
+				return agents.map((a) => ({
+					name: a.name,
+					value: a.id,
+					description: a.description ? `ID ${a.id} — ${a.description}` : `ID ${a.id}`,
+				}));
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -388,15 +436,20 @@ export class AgentHumanReview implements INodeType {
 			);
 		}
 
+		const reviewMode = this.getNodeParameter('reviewMode', 0, 'sync') as ReviewMode;
+		const agentId = getParam(this, 'agentId', '') || undefined;
+		const agentInfo =
+			reviewMode === 'none'
+				? { agentId }
+				: await fetchAgentInfo(this, await getServiceConfig(this), agentId);
+
 		const input = getPromptInput(this);
 		const { output, trace } = await runAgentOnce(
 			this,
 			input,
 			getAgentOptions(this),
-			traceContext(this, { round: 0, sessionId: items[0].json.sessionId }),
+			traceContext(this, { round: 0, sessionId: items[0].json.sessionId, ...agentInfo }),
 		);
-
-		const reviewMode = this.getNodeParameter('reviewMode', 0, 'sync') as ReviewMode;
 
 		// No review: plain agent behaviour, and nothing leaves the instance.
 		if (reviewMode === 'none') {
@@ -421,7 +474,12 @@ export class AgentHumanReview implements INodeType {
 
 		// Register first. Parking after a failed registration would strand the
 		// execution forever, since nothing would exist to call the resume URL.
-		const ack = await registerDraft(this, service, output, { trail, otel, mode: reviewMode });
+		const ack = await registerDraft(this, service, output, {
+			trail,
+			otel,
+			mode: reviewMode,
+			agentId: getParam(this, 'agentId', '') || undefined,
+		});
 		const traceResult = otel ? await exportTrace(this, service, trace, otel, ack) : undefined;
 		const sent = sentRecord(service, ack.sentBody, traceResult);
 
@@ -542,12 +600,16 @@ export class AgentHumanReview implements INodeType {
 						threadId: body.threadId,
 						previousRequestId: body.requestId,
 						reviewerFeedback: body.suggestions,
+						...(await fetchAgentInfo(this, service, getParam(this, 'agentId', '') || undefined)),
 					}),
 				);
 				const otel = getParam(this, 'includeAgentTrace', true)
 					? { traceId: newTraceId(), rootSpanId: newSpanId() }
 					: undefined;
-				const ack = await registerDraft(this, service, output, { otel });
+				const ack = await registerDraft(this, service, output, {
+					otel,
+					agentId: getParam(this, 'agentId', '') || undefined,
+				});
 				const traceResult = otel ? await exportTrace(this, service, trace, otel, ack) : undefined;
 				// No workflowData: the execution stays parked on the same resume URL
 				// and the service now holds the next round for review.
@@ -671,7 +733,7 @@ async function previewRecord(
 	const registration = buildRegistrationBody(
 		ctx,
 		output,
-		{ trail, otel },
+		{ trail, otel, agentId: getParam(ctx, 'agentId', '') || undefined },
 		'<signed resume URL, generated only when review is enabled>',
 	);
 	const traceBody = otel

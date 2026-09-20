@@ -148,6 +148,8 @@ export interface RegistrationExtras {
 	agent?: AgentTrace;
 	otel?: OtlpIds;
 	mode?: 'sync' | 'async';
+	/** Id of a registered agent on the review service (its Agent dropdown). */
+	agentId?: string;
 }
 
 /** Message A exactly as it is posted. Shared by the real registration and the no-review preview. */
@@ -172,6 +174,7 @@ export function buildRegistrationBody(
 	};
 	// 'async' tells the service there is no parked execution to resume
 	if (extras.mode && extras.mode !== 'sync') body.mode = extras.mode;
+	if (extras.agentId) body.agentId = extras.agentId;
 	if (extras.trail) body.trail = extras.trail;
 	if (extras.agent) body.agent = extras.agent as unknown as IDataObject;
 	// W3C ids of the OTLP spans exported for this round, so the service can link them
@@ -363,6 +366,36 @@ export async function fetchRoundsSent(
 			error: (error as Error).message,
 		});
 		return [];
+	}
+}
+
+/**
+ * Name (and tags) of a registered agent, for the trace. Best effort: the id
+ * alone is enough for correlation, so a lookup failure must not fail the round.
+ */
+export async function fetchAgentInfo(
+	ctx: AgentContext,
+	service: ServiceConfig,
+	agentId: string | undefined,
+): Promise<{ agentId?: string; agentName?: string; agentTags?: IDataObject }> {
+	if (!agentId) return {};
+	try {
+		const baseUrl = service.url.replace(/\/hitl$/, '');
+		const agent = (await ctx.helpers.httpRequest({
+			url: `${baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
+			method: 'GET',
+			json: true,
+			timeout: service.timeout,
+			skipSslCertificateValidation: service.skipSslCertificateValidation,
+			headers: service.headers,
+		})) as { id: string; name: string; tags?: IDataObject };
+		return { agentId: agent.id, agentName: agent.name, agentTags: agent.tags };
+	} catch (error) {
+		ctx.logger.warn('Could not resolve the review agent; sending its id only', {
+			agentId,
+			error: (error as Error).message,
+		});
+		return { agentId };
 	}
 }
 
