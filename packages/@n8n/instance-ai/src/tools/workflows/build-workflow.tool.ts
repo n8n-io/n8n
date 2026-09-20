@@ -90,6 +90,8 @@ import { compileWorkflowSource, parseWorkflowJsonSource } from './workflow-sourc
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
+	getInvalidNodeContexts,
+	invalidNodeContextSchema,
 	groupingDecisionBlocker,
 	NODE_GROUP_DROPPED_CODE,
 	nodeGroupDroppedWarnings,
@@ -461,6 +463,7 @@ async function directPostBuildFlowHandoff(
 }
 
 interface ValidationFailureArgs {
+	workflow: WorkflowJSON;
 	abortSignal?: AbortSignal;
 	context: InstanceAiContext;
 	blocking: ValidationWarning[];
@@ -551,7 +554,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 	const remediation = createCodeFixableRemediation({
 		reason,
 		guidance: initialBinding.inlineDraftSource
-			? 'Repair the validation errors with draftEdits using this filePath and sourceHash. Send only changed nodes, connections, or groups. Keep the other behavior unchanged. Do not resend the full source.'
+			? 'Repair the validation errors with draftEdits using this filePath and sourceHash. Check invalidNodes for the compiled type. A node name does not select its type. If the type is wrong, set type, typeVersion, parameters, and replaceParameters: true on that node edit. Otherwise change only the invalid parameters. Send only changed nodes, connections, or groups. Keep the other behavior unchanged. Do not resend the full source.'
 			: guidance,
 	});
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
@@ -593,6 +596,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		...sourceResponseBase(binding),
 		workflowId: targetWorkflowId,
 		workItemId: resolvedWorkItemId,
+		invalidNodes: getInvalidNodeContexts(args.workflow, blocking),
 		errors: formattedErrors,
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
@@ -602,6 +606,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 
 const buildWorkflowOutputSchema = z.object({
 	success: z.boolean(),
+	invalidNodes: z.array(invalidNodeContextSchema).optional(),
 	qualityReview: buildQualityReviewSchema.optional(),
 	filePath: z.string(),
 	sourceHash: z.string().optional(),
@@ -1289,6 +1294,7 @@ export function createBuildWorkflowTool(
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					workflow: compiled.workflow,
 					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedWarnings.blocking,
@@ -1415,6 +1421,7 @@ export function createBuildWorkflowTool(
 
 			if (partitionedChatModelWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					workflow: json,
 					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedChatModelWarnings.blocking,
@@ -1526,6 +1533,7 @@ export function createBuildWorkflowTool(
 						: informational;
 
 					return await handleValidationFailure({
+						workflow: json,
 						abortSignal: ctx.abortSignal,
 						context,
 						blocking: [blocker],

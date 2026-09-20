@@ -11,6 +11,7 @@ import {
 	type TopLevelItemsSummary,
 	type WorkflowGroupViolation,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 /** Informational: a declared group was invalid and the save removed it. */
 export const NODE_GROUP_DROPPED_CODE = 'NODE_GROUP_DROPPED';
@@ -32,6 +33,21 @@ export interface ValidationWarning {
 	nodeName?: string;
 	/** Set at the creation site; `informational` never blocks save. */
 	severity?: IssueSeverity;
+}
+
+export const invalidNodeContextSchema = z.object({
+	id: z.string().optional(),
+	name: z.string(),
+	type: z.string(),
+	typeVersion: z.number(),
+});
+
+/** Show the compiled type so a repair does not infer it from the display name. */
+export function getInvalidNodeContexts(workflow: WorkflowJSON, warnings: ValidationWarning[]) {
+	const names = new Set(warnings.map((warning) => warning.nodeName));
+	return workflow.nodes.flatMap(({ id, name, type, typeVersion }) =>
+		name && names.has(name) ? [{ id, name, type, typeVersion }] : [],
+	);
 }
 
 export function collectValidationIssues(

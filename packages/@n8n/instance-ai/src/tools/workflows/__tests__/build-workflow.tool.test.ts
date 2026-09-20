@@ -25,6 +25,8 @@ import {
 } from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource, parseWorkflowJsonSource } from '../workflow-source-compiler';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
 import { appendWorkflowSourceDiagnostics } from '../workflow-source-diagnostics';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
@@ -589,6 +591,94 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.draftEditsAvailable).toBeUndefined();
 		},
 	);
+
+	it('reports the compiled node type and repairs a wrong step without rebuilding the graph', async () => {
+		const { context, filePath } = makeContext({
+			filePath: 'src/workflows/main.workflow.json',
+			overrides: { workspace: undefined },
+		});
+		const wrongType: WorkflowJSON = {
+			...generatedWorkflow,
+			nodes: [
+				...generatedWorkflow.nodes,
+				{
+					id: 'response',
+					name: 'Respond 202 Accepted',
+					type: 'n8n-nodes-base.salesforce',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { resource: 'lead', operation: 'get', responseBody: 'accepted' },
+				},
+			],
+			connections: {
+				Webhook: { main: [[{ node: 'Respond 202 Accepted', type: 'main', index: 0 }]] },
+			},
+		};
+		vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+			parseWorkflowJsonSource(source),
+		);
+		vi.mocked(partitionWarnings).mockReturnValueOnce({
+			blocking: [
+				{
+					code: 'INVALID_PARAMETER',
+					nodeName: 'Respond 202 Accepted',
+					message: 'leadId is required.',
+					severity: 'error',
+				},
+			],
+			informational: [],
+		});
+		const tool = createBuildWorkflowTool(context);
+		const failed = await executeTool<BuildToolOutput>(tool, {
+			filePath,
+			sourceCode: JSON.stringify(wrongType),
+		});
+		expect(failed).toMatchObject({
+			success: false,
+			invalidNodes: [
+				{
+					id: 'response',
+					name: 'Respond 202 Accepted',
+					type: 'n8n-nodes-base.salesforce',
+					typeVersion: 1,
+				},
+			],
+		});
+		expect(failed.remediation?.guidance).toContain('set type, typeVersion, parameters');
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		const result = await executeTool<BuildToolOutput>(tool, {
+			filePath,
+			draftEdits: {
+				sourceHash: failed.sourceHash,
+				changes: JSON.stringify([
+					{
+						name: 'Respond 202 Accepted',
+						type: 'n8n-nodes-base.respondToWebhook',
+						typeVersion: 1.4,
+						replaceParameters: true,
+						parameters: {
+							respondWith: 'text',
+							responseBody: 'accepted',
+							options: { responseCode: 202 },
+						},
+					},
+				]),
+			},
+		});
+		expect(result.success).toBe(true);
+		const saved = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0][0];
+		expect(saved.nodes[0]).toEqual(wrongType.nodes[0]);
+		expect(saved.connections).toEqual(wrongType.connections);
+		expect(saved.nodes[1]).toMatchObject({
+			id: 'response',
+			name: 'Respond 202 Accepted',
+			type: 'n8n-nodes-base.respondToWebhook',
+			typeVersion: 1.4,
+			parameters: { respondWith: 'text', responseBody: 'accepted', options: { responseCode: 202 } },
+		});
+		expect(saved.nodes[1].parameters).not.toHaveProperty('resource');
+		expect(saved.nodes[1].parameters).not.toHaveProperty('operation');
+	});
 
 	it.each([{ id: 'webhook-1' }, { name: 'Webhook' }])(
 		'repairs a failed update with %j after approval and keeps its saved base checksum',

@@ -95,3 +95,40 @@ of an existing customer. Require a renewal co-term, two buying entities,
 regional ownership, a revised legal package, and a delayed signature callback
 from an older envelope. Supply the specific request only at that later run.
 Do not encode this variation in generation rules or a production template.
+
+## First local result, 2026-09-20
+
+The baseline failed the 30-second target. The plan approval appeared after
+257.4 seconds. The run was stopped after about 27 minutes with three saved,
+unpublished drafts. Scheduling and the later sales stages were not complete.
+No standalone Sales Team Copilot Agent was created in this run. The proposed
+Agent task used the `build-workflow` kind, which also needs correction.
+
+The saved drafts were:
+
+| Draft | Nodes | Local finding |
+| --- | --- | --- |
+| Inbound Lead Processor | 15 | A duplicate note targets the new lead instead of the existing lead. |
+| Account Research & Buying Committee | 12 | Saved draft only. Research output and retry behavior remain unverified. |
+| Outreach Draft & Reply Capture | 21 | Both Code nodes fail with `Unexpected token '}'`. Reply lookup also contains a fixed `PLACEHOLDER` email. |
+
+Native Salesforce nodes ran against a local provider fixture. Three intake
+checks passed: new-record routing, opt-out routing, and stopping the duplicate
+path before owner routing. The existing-record note assertion failed. These
+checks used the first seven generated nodes without changing their business
+parameters. They do not prove the full intake workflow.
+
+The two outreach Code nodes ran separately with local manual inputs. Their
+original code and parameters were unchanged. Both failed. No messages or
+invitations were sent. The original draft versions were preserved.
+
+S01, S02, and S22 fail. The partial checks do not establish the other acceptance
+criteria. The standard plan approval card was observed. All three saved drafts
+remained unpublished. Credential and question cards were not exercised in this
+baseline, so S18 is not a complete pass.
+
+General repairs after this baseline expose the compiled node type in build
+errors and remove HR-specific wording from the shared workflow guidance.
+The repair regression preserves unrelated nodes and connections when an
+incorrect plan step selected the wrong node type. This is a regression result,
+not a passing repeat of the unseen sales holdout.

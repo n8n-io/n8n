@@ -197,12 +197,12 @@ repairs and repeat the failed scenario after saving.
 - For human feedback, associate each response with the record, stage, and
   expected reviewer. Ignore duplicates and stale responses. Require all
   expected feedback or an explicit timeout/escalation before advancing.
-  Start missing-feedback reminders from the interview deadline. A reminder
+  Start missing-feedback reminders from the response deadline. A reminder
   that starts only after a response cannot detect zero responses.
 - Keep human decisions explicit. Wire approve, reject, reschedule, cancel,
   timeout, and unknown-input routes when the request requires them.
 - Check availability before booking or rescheduling. Keep timezones explicit.
-  Store the event ID for changes and cancellation. Preserve the interview
+  Store the event ID for changes and cancellation. Preserve the event
   duration when moving it. Exclude that event from its own conflict check.
   Reject incomplete availability results, including unprocessed pages.
   Recheck conflicts before committing a slot. Use the provider's version
@@ -210,7 +210,7 @@ repairs and repeat the failed scenario after saving.
   Update durable state only after the calendar operation succeeds. Define
   which system owns each field. Do not add a second write for a field that
   already has one authoritative source. Verify retries after uncertain writes.
-- Scope participant access. A public candidate or record ID does not prove
+- Scope participant access. A public record ID does not prove
   identity. Use an authenticated or verified participant context. Keep internal
   feedback and other participants' records out of external responses.
 - Use parameterized database queries. Read the existing schema when available.
@@ -306,7 +306,7 @@ Use `nodeGroups` at the workflow root. Each group contains `id`, `name`,
 `nodeIds`, and an optional description of at most 145 characters:
 
 ```json
-{"nodeGroups":[{"id":"outreach","name":"Candidate outreach","nodeIds":["fetch","send","record"]}]}
+{"nodeGroups":[{"id":"outreach","name":"Contact outreach","nodeIds":["fetch","send","record"]}]}
 ```
 
 Those `nodeIds` must match the IDs on the member nodes. A group cannot contain
