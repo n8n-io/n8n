@@ -79,6 +79,20 @@ source connection entries. They require the current saved version. The normal
 checksum check also detects changes made during validation. The existing
 approval, validation, grouping, and setup paths still apply.
 
+Unsaved inline JSON builds now retain their source in the current thread.
+A failed build returns `draftEditsAvailable` and its `sourceHash`. The LLM can
+repair only the failed fields with `draftEdits` instead of resending the graph.
+The tool rejects a stale source hash. It clears the cached source after a save.
+Saved workflows still use `jsonEdits` and the current saved version. Regression
+tests cover context changes, stale or missing source, existing workflows, and
+the create policy. The builder also requests compact JSON to reduce output text.
+
+A live two-node regression deliberately omitted a required trigger field.
+The first build returned its diagnostic in 48 ms. The targeted retry saved in
+540 ms, including a 383 ms JEV graph review. Readback confirmed that the other
+node and both IDs stayed unchanged. The full conversation took 39.5 seconds.
+These results do not meet the one-second end-to-end generation target.
+
 A live outreach repair fixed the loop output, the skipped-item return, and
 the delivery-error path. The successful build tool call took 402 ms. The full
 chat took 62 seconds, including a rejected malformed edit and its correction.
@@ -204,6 +218,28 @@ The user then approved the new regression cases. They cover graph-review
 fallback, unchanged content during targeted edits, stale-version rejection,
 approval-card resume, and complete current and historical reads. All 322
 adapter tests passed. The affected Instance AI suites passed 307 tests.
+
+A new candidate-details workflow now reads the same `candidates` records as
+the main HR workflow. It validates a session token through a local identity
+fixture before its parameterized database query. Five Playwright API cases
+passed: three owned interviews, empty event fields, a missing candidate,
+an invalid token, and an extra caller-supplied candidate ID. The identity and
+Postgres calls were real local calls. Calendar output was pinned. Executions
+took 131–139 ms, including polling. Output checks excluded raw events and
+internal fields. Generation still took 577.1 seconds to save, including two
+validation retries. The canvas and its existing Calendar setup card were
+checked manually. The credential card accepted deferral.
+
+An Agent Builder edit replaced the Agent's direct database lookup with this
+callable workflow in 86.9 seconds. Readback found an incorrect error description
+and a conflicting identity skill. A second edit corrected them in 155.9 seconds.
+The Agent UI shows the workflow tool and corrected identity instructions.
+Its remaining mutation workflows still use an incompatible schema. The Agent
+instructions say not to call them until they are repaired. Candidate chat still
+needs a model, and real Calendar execution still needs its credential.
+
+The draft-repair change passed 149 focused tests, including six new regression
+cases. The Instance AI build, type checks, and lint passed.
 
 ## Historical compiler benchmark
 

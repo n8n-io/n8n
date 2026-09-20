@@ -61,12 +61,14 @@ Use inline WorkflowJSON when the required definitions are available. Pass
 `filePath: "src/workflows/name.workflow.json"`, `name`, and JSON text in
 `sourceCode` to `build-workflow`. No sandbox or separate SDK validation command
 is needed for this format. The persistence tool validates the graph.
+Emit compact JSON without indentation in `sourceCode`. Keep all behavior and
+parameters. This reduces generated text without changing the saved graph.
 
 WorkflowJSON contains `name`, `nodes`, `connections`, and optional `settings`.
-Each node has a unique `name`, installed `type`, numeric `typeVersion`, and
-`parameters`. Omit positions. For groups in new JSON workflows, assign unique
-local node IDs and reference those IDs in `nodeGroups`. Otherwise IDs can be
-omitted. Never change IDs when editing a saved workflow.
+Each node has a unique `id` and `name`, installed `type`, numeric `typeVersion`,
+and `parameters`. Omit positions. Assign local IDs so a failed draft can use
+targeted repairs. Reference those IDs in `nodeGroups`. Never change IDs when
+editing a saved workflow.
 Connections are indexed by source node name:
 
 ```json
@@ -90,6 +92,14 @@ If SDK source is needed, load `references/sdk-source.md`. Write a workspace
 This extra process applies only to SDK source.
 
 ## Existing workflows and repairs
+
+For an unsaved inline JSON build that returns `draftEditsAvailable`, repair
+the cached draft with `draftEdits: { sourceHash, changes }`. Reuse the failed
+build's `filePath` and `sourceHash`. Omit `sourceCode` and `workflowId`. Send
+only the changed nodes, connections, or groups. This uses the same edit format
+as `jsonEdits` below. Do not regenerate the full draft for a missing parameter
+or a group boundary error. If the source cannot be parsed, correct its JSON
+syntax in `sourceCode` instead. After a successful save, use `jsonEdits`.
 
 For a small edit to a saved workflow, use `build-workflow` with `jsonEdits`.
 Read the saved node IDs, parameters, execution settings, groups, and current version with
@@ -233,6 +243,11 @@ a trigger or a node already in another group. Members must form one connected
 section with a single entry and exit. Keep AI subnodes and their parent in the
 same group. Group each suitable downstream stage. Do not load SDK references
 to author JSON groups.
+For a branching stage, keep the branch node outside separate downstream
+groups unless the complete branch and merge fit one valid group. A node
+inside a group cannot send one output inside and another outside unless it
+is the group's exit. Prefer groups of connected linear steps when boundaries
+are uncertain. Fix group membership without changing workflow behavior.
 
 For a canvas over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} top-level items,
 declare valid groups or provide `groupingDecision: "not_warranted"` with a

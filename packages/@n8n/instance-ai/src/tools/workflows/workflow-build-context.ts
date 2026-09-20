@@ -144,6 +144,7 @@ export function sourceResponseBase(binding: WorkflowSourceFileBinding) {
 	return {
 		filePath: binding.filePath,
 		sourceHash: binding.sourceHash,
+		...(binding.inlineDraftSource && !binding.workflowId ? { draftEditsAvailable: true } : {}),
 	};
 }
 

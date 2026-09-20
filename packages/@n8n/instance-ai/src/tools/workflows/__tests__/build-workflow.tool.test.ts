@@ -6,6 +6,7 @@ import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error'
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { loadInstanceAiRuntimeSkillSourceForBuildMode } from '../../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
+import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { recordBuildPlanReview } from '../../../workflow-builder/build-plan-review';
@@ -17,9 +18,13 @@ import {
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow } from '../setup-workflow.service';
-import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
+import {
+	getWorkflowSourceFileBinding,
+	hashWorkflowSource,
+	saveWorkflowSourceFileBinding,
+} from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
-import { compileWorkflowSource } from '../workflow-source-compiler';
+import { compileWorkflowSource, parseWorkflowJsonSource } from '../workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from '../workflow-source-diagnostics';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
@@ -65,7 +70,8 @@ vi.mock('../workflow-source-diagnostics', () => ({
 	),
 }));
 
-vi.mock('../workflow-source-compiler', () => ({
+vi.mock('../workflow-source-compiler', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../workflow-source-compiler')>()),
 	compileWorkflowSource: vi.fn(),
 }));
 
@@ -119,6 +125,7 @@ type BuildToolOutput = {
 		reason?: string;
 	};
 	sourceHash?: string;
+	draftEditsAvailable?: boolean;
 	workflowId?: string;
 	workflowName?: string;
 	workItemId?: string;
@@ -339,6 +346,152 @@ describe('createBuildWorkflowTool', () => {
 			expect.anything(),
 			{ expectedChecksum: 'checksum-current' },
 		);
+	});
+
+	it('repairs an unsaved JSON draft across contexts and releases its cached source after saving', async () => {
+		let thread: ThreadRecord = {
+			id: 'thread-1',
+			resourceId: 'user-1',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			metadata: {},
+		};
+		const threadMemory = {
+			getThread: vi.fn(async () => structuredClone(thread)),
+			saveThread: vi.fn(async (updated: ThreadRecord) => {
+				thread = structuredClone(updated);
+				return thread;
+			}),
+		};
+		const { context, filePath } = makeContext({
+			filePath: 'src/workflows/main.workflow.json',
+			overrides: { workspace: undefined, threadId: thread.id, threadMemory },
+		});
+		vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+			parseWorkflowJsonSource(source),
+		);
+		vi.mocked(partitionWarnings).mockReturnValueOnce({
+			blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
+			informational: [],
+		});
+		const sourceCode = JSON.stringify(generatedWorkflow);
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			sourceHash: hashWorkflowSource(sourceCode),
+		});
+		const failed = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			sourceCode,
+		});
+		expect(failed).toMatchObject({
+			success: false,
+			draftEditsAvailable: true,
+			sourceHash: hashWorkflowSource(sourceCode),
+		});
+		expect(failed.remediation?.guidance).toContain('draftEdits');
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		const resumedContext = { ...context, runId: 'run-2' };
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(resumedContext), {
+			filePath,
+			draftEdits: {
+				sourceHash: failed.sourceHash,
+				changes: JSON.stringify({ nodes: [{ id: 'webhook-1', parameters: { path: 'inbound' } }] }),
+			},
+		});
+		expect(result.success).toBe(true);
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+			expect.objectContaining({
+				nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'inbound' } })],
+				connections: {},
+			}),
+			expect.anything(),
+		);
+		expect(
+			(await getWorkflowSourceFileBinding(resumedContext, filePath))?.inlineDraftSource,
+		).toBeUndefined();
+		expect(result.draftEditsAvailable).toBeUndefined();
+	});
+
+	it('keeps the cached draft when a repair incorrectly includes a saved workflow id', async () => {
+		const { context, filePath } = makeContext({ filePath: 'src/workflows/main.workflow.json' });
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-1',
+			draftEdits: { sourceHash: 'current-source', changes: '{"nodeGroups":[]}' },
+		});
+		expect(result.success).toBe(false);
+		expect(context.workflowService.get).not.toHaveBeenCalled();
+		expect(await getWorkflowSourceFileBinding(context, filePath)).toEqual({
+			filePath,
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+	});
+
+	it.each(['stale', 'missing', 'saved'])(
+		'rejects a %s draft before compilation or saving',
+		async (state) => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: { workspace: undefined },
+			});
+			if (state !== 'missing') {
+				await saveWorkflowSourceFileBinding(context, {
+					filePath,
+					sourceHash: 'current-source',
+					inlineDraftSource: JSON.stringify(generatedWorkflow),
+					...(state === 'saved' ? { workflowId: 'wf-1' } : {}),
+				});
+			}
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				draftEdits: {
+					sourceHash: state === 'stale' ? 'old-source' : 'current-source',
+					changes: JSON.stringify({
+						nodes: [{ id: 'webhook-1', parameters: { path: 'inbound' } }],
+					}),
+				},
+			});
+			expect(result).toMatchObject({
+				success: false,
+				remediation: { reason: 'workflow_draft_edits_invalid' },
+			});
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
+
+	it('applies the existing create policy to an unsaved draft repair', async () => {
+		const { context, filePath } = makeContext({
+			filePath: 'src/workflows/main.workflow.json',
+			overrides: {
+				workspace: undefined,
+				permissions: { createWorkflow: 'blocked' } as InstanceAiContext['permissions'],
+			},
+		});
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+		const input = {
+			filePath,
+			draftEdits: { sourceHash: 'current-source', changes: '{"nodeGroups":[]}' },
+		};
+		const tool = createBuildWorkflowTool(context);
+		const blocked = await executeTool<BuildToolOutput>(tool, input);
+		expect(blocked.remediation?.reason).toBe('permission_blocked');
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		context.permissions = { createWorkflow: 'always_allow' } as InstanceAiContext['permissions'];
+		const result = await executeTool<BuildToolOutput>(tool, input);
+		expect(result.success).toBe(true);
 	});
 
 	// The field that caused the misreport: `projectId` was advertised here as "Project

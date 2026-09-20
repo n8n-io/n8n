@@ -104,7 +104,7 @@ function validateCompiledWorkflow(
 	return warnings;
 }
 
-function parseWorkflowJsonSource(source: string): WorkflowSourceCompileResult {
+export function parseWorkflowJsonSource(source: string): WorkflowSourceCompileResult {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(source);

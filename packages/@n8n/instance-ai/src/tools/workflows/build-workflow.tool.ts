@@ -85,7 +85,7 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { applyWorkflowJsonEdits, workflowJsonEditsInputSchema } from './workflow-json-edits';
-import { compileWorkflowSource } from './workflow-source-compiler';
+import { compileWorkflowSource, parseWorkflowJsonSource } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
@@ -186,12 +186,21 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				'Full source to write to filePath before building. For WorkflowJSON, emit compact JSON without indentation to reduce output latency. Use this for creation or a full rewrite. Use draftEdits for a failed unsaved JSON build and jsonEdits for a saved workflow. Omit to build existing workspace file content after a file edit or workflow-sdk validate.',
 			),
 		jsonEdits: workflowJsonEditsInputSchema
 			.optional()
 			.describe(
 				'Targeted edits to a saved workflow. Use a .workflow.json filePath and omit sourceCode. The existing approval, validation, and setup flow still applies.',
+			),
+		draftEdits: z
+			.object({
+				sourceHash: z.string().min(1).describe('sourceHash from the failed inline JSON build.'),
+				changes: workflowJsonEditsInputSchema.shape.changes,
+			})
+			.optional()
+			.describe(
+				'Repair an unsaved inline JSON draft after validation fails. Reuse its filePath and sourceHash. Omit sourceCode, jsonEdits, and workflowId. Send only changed nodes, connections, or groups. The normal approval and validation flow still applies.',
 			),
 		workflowId: z
 			.string()
@@ -526,7 +535,13 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 			: validationErrors,
 		{ trackingErrors: validationErrors },
 	);
-	const remediation = createCodeFixableRemediation({ reason, guidance });
+	const remediation = createCodeFixableRemediation({
+		reason,
+		guidance:
+			initialBinding.inlineDraftSource && !targetWorkflowId
+				? 'Repair the validation errors with draftEdits using this filePath and sourceHash. Send only changed nodes, connections, or groups. Keep the other behavior unchanged. Do not resend the full source.'
+				: guidance,
+	});
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
 	await reportFailedWorkflowBuildOutcome(context, {
 		targetWorkflowId,
@@ -578,6 +593,7 @@ const buildWorkflowOutputSchema = z.object({
 	qualityReview: buildQualityReviewSchema.optional(),
 	filePath: z.string(),
 	sourceHash: z.string().optional(),
+	draftEditsAvailable: z.boolean().optional(),
 	workflowId: z.string().optional(),
 	workflowName: z.string().optional(),
 	workItemId: z.string().optional(),
@@ -644,11 +660,21 @@ export function createBuildWorkflowTool(
 					],
 				};
 			}
-			if (input.sourceCode !== undefined && input.jsonEdits !== undefined) {
+			if (
+				[input.sourceCode, input.jsonEdits, input.draftEdits].filter((value) => value !== undefined)
+					.length > 1
+			) {
 				return {
 					success: false,
 					filePath: input.filePath,
-					errors: ['Use either sourceCode or jsonEdits, not both.'],
+					errors: ['Use only one of sourceCode, jsonEdits, or draftEdits.'],
+				};
+			}
+			if (input.draftEdits && input.workflowId !== undefined) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: ['Omit workflowId for draftEdits. Use jsonEdits for a saved workflow.'],
 				};
 			}
 			const { groupingDecision, groupingReason } = input;
@@ -895,6 +921,32 @@ export function createBuildWorkflowTool(
 			}
 
 			let inlineSource = input.sourceCode;
+			if (input.draftEdits) {
+				try {
+					if (targetWorkflowId || !filePath.endsWith('.json')) {
+						throw new Error('draftEdits requires an unsaved inline .workflow.json draft.');
+					}
+					if (!binding.inlineDraftSource || binding.sourceHash !== input.draftEdits.sourceHash) {
+						throw new Error('The draft source is unavailable or its sourceHash changed.');
+					}
+					const parsed = parseWorkflowJsonSource(binding.inlineDraftSource);
+					if (!parsed.success) throw new Error(parsed.errors.join('\n'));
+					inlineSource = JSON.stringify(
+						applyWorkflowJsonEdits(parsed.workflow, input.draftEdits.changes),
+					);
+				} catch (error) {
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation: createCodeFixableRemediation({
+							reason: 'workflow_draft_edits_invalid',
+							guidance:
+								'Use the latest failed build sourceHash and filePath for draftEdits. Use jsonEdits with the saved version for an existing workflow. Resend sourceCode only when the draft is unavailable or cannot be parsed.',
+						}),
+					};
+				}
+			}
 			if (input.jsonEdits) {
 				try {
 					if (!targetWorkflowId || !filePath.endsWith('.json')) {
@@ -1001,8 +1053,16 @@ export function createBuildWorkflowTool(
 				};
 			}
 
-			if (sourceHash !== binding.sourceHash) {
-				binding = await saveWorkflowSourceFileBinding(context, { ...binding, sourceHash });
+			const inlineDraftSource =
+				!targetWorkflowId && inlineSource !== undefined && filePath.endsWith('.json')
+					? sourceCode
+					: undefined;
+			if (sourceHash !== binding.sourceHash || inlineDraftSource !== binding.inlineDraftSource) {
+				binding = await saveWorkflowSourceFileBinding(context, {
+					...binding,
+					sourceHash,
+					inlineDraftSource,
+				});
 			}
 
 			const { name } = input;
@@ -1551,6 +1611,7 @@ export function createBuildWorkflowTool(
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
+						inlineDraftSource: undefined,
 					});
 					// Trace-only compiled-JSON event for eval seed reconstruction — never part
 					// of the tool result, so it never enters the agent's context.

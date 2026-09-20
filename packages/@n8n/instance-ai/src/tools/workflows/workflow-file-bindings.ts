@@ -14,6 +14,7 @@ const workflowSourceFileBindingSchema = z.object({
 	workflowVersionId: z.string().optional(),
 	workflowChecksum: z.string().optional(),
 	sourceHash: z.string().optional(),
+	inlineDraftSource: z.string().optional(),
 });
 
 const workflowSourceFileBindingsSchema = z.record(z.string(), workflowSourceFileBindingSchema);
@@ -151,6 +152,7 @@ export async function bindSourceFileToExistingWorkflow(
 	return await saveWorkflowSourceFileBinding(context, {
 		...binding,
 		workflowId,
+		inlineDraftSource: undefined,
 		workflowVersionId: workflow.versionId,
 		...(workflow.checksum ? { workflowChecksum: workflow.checksum } : {}),
 	});
