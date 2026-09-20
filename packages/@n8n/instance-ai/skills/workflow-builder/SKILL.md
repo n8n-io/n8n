@@ -85,6 +85,11 @@ The target `index` selects its input. All indices are zero-based. The returned
 For Loop Over Items v3, output 0 is done and output 1 is loop. Use the
 correct connection type for AI models, tools, and memory.
 
+For unary filter operators such as boolean `true` or string `notEmpty`, set
+`operator.singleValue: true`. An empty `rightValue` is not a boolean value.
+Check the actual error code when testing a rejection path. A failure in an
+earlier node does not verify the intended guard.
+
 Use n8n expression strings such as `={{ $json.email }}`. Use
 `<__PLACEHOLDER_VALUE__Select a calendar__>` for an unknown setup value.
 For resource locators, preserve the required locator object. Use an empty

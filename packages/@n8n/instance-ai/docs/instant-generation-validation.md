@@ -23,6 +23,10 @@ JEV result. Operation discovery also handles hidden resources such as Postgres's
 `database` resource. A live catalog probe exposed all six Postgres operations
 in 753 ms, including 748 ms for JEV. JEV's operation choice remained uncertain.
 The LLM must resolve it. All 11 plan regression tests passed.
+Short node type names also take precedence over fuzzy matches. A live `Set`
+probe returned only the two Edit Fields modes. JEV chose manual mapping in
+779 ms total, including 772 ms for the decision. Quality checks remained
+uncertain and still required LLM reasoning. The 28 plan and skill tests passed.
 
 The LLM resolves uncertain choices and fills parameters and graph connections.
 It uses `ask-user` for human choices. The existing workflow persistence and

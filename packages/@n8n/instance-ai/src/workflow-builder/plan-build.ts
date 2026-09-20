@@ -79,6 +79,7 @@ export async function decideBuildPlan(
 			const exact = matches.filter(
 				(node) =>
 					node.name.toLowerCase() === normalizedSearch ||
+					node.name.split('.').at(-1)?.toLowerCase() === normalizedSearch ||
 					node.displayName.toLowerCase() === normalizedSearch,
 			);
 			pending = Promise.all(
