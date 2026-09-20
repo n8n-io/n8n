@@ -167,6 +167,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		hostThreadId: context.threadId,
 		runId: context.runId,
 		modelConfig: context.modelId,
+		...(context.thinking ? { thinking: context.thinking } : {}),
 		...(telemetry ? { telemetry } : {}),
 		...(context.tracing?.onMemoryTaskEvent
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
@@ -184,15 +185,16 @@ const buildAgentInputSchema = z.object({
 	plan: buildPlanSchema
 		.optional()
 		.describe(
-			'The complete behavior plan, required before a new build or edit. JEV reviews it before Agent Builder fills parameters. Use an empty steps list only when no node operations are needed.',
+			'The complete user request and proposed behavior, required before a new build or edit. This is a complete handoff: do not repeat it in message. JEV reviews it before Agent Builder fills parameters. Use an empty steps list only when no node operations are needed.',
 		),
 	message: z
 		.string()
 		.min(1)
+		.optional()
 		.describe(
-			'A faithful handoff to the agent builder, which cannot see this chat. Include the ' +
-				'user’s requirements, prior answers, the detailed behavior plan, and plan-build selections. ' +
-				'Distinguish proposed implementation from facts supplied by the user.',
+			'Additional context that is absent from plan, such as inspected workflow contracts or prior results. ' +
+				'Omit when plan already covers the request. Do not repeat requirements, the plan, or JEV selections. ' +
+				'Without plan, provide the complete follow-up request here. Distinguish inspected facts from assumptions.',
 		),
 	agentRef: z
 		.string()
@@ -846,6 +848,13 @@ export function createBuildAgentTool(
 						'Describe the complete behavior in the plan field, including the original request and each node operation. Then call build-agent again. No Agent was changed.',
 				};
 			}
+			const userMessage = input.message ?? input.plan?.originalRequest;
+			if (!userMessage) {
+				return {
+					ok: false,
+					error: 'Provide a behavior plan or a follow-up message. No Agent was changed.',
+				};
+			}
 			const reviewedPlan = input.plan
 				? await decideBuildPlan(
 						input.plan,
@@ -881,9 +890,18 @@ export function createBuildAgentTool(
 			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
 				...decision,
 			}));
-			const message = reviewedPlan
-				? `${input.message}\n\n<proposed-build-plan>\n${input.plan?.plan}\n${JSON.stringify(reviewedPlan)}\nValidate these proposals. Resolve every uncertain quality check before saving. Keep user requirements and approvals separate from these proposals.\n</proposed-build-plan>`
-				: input.message;
+			const message =
+				reviewedPlan && input.plan
+					? [
+							`<user-request>\n${input.plan.originalRequest}\n</user-request>`,
+							input.message && input.message !== input.plan.originalRequest
+								? `<additional-context>\n${input.message}\n</additional-context>`
+								: undefined,
+							`<proposed-build-plan>\n${input.plan.plan}\n${JSON.stringify(reviewedPlan)}\nValidate these proposals. Resolve every uncertain quality check before saving. Keep user requirements and approvals separate from these proposals.\n</proposed-build-plan>`,
+						]
+							.filter(Boolean)
+							.join('\n\n')
+					: userMessage;
 			const outboundMessage = buildOutboundMessage(message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 

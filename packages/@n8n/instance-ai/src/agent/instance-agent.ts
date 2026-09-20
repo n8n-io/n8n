@@ -109,6 +109,10 @@ export async function createInstanceAgent(
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;
+		orchestrationContext.thinking = {
+			thinkingEnabled: options.thinkingEnabled,
+			thinkingEffort: options.thinkingEffort,
+		};
 	}
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager

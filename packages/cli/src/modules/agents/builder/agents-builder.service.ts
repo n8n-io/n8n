@@ -16,12 +16,14 @@ import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	applyAgentThinking,
 	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
 	reportRequiredArtifactInputSchema,
 	resolveAIAPromptCaching,
 	resolveAIAReasoning,
 	tokenUsageToBuilderUsageItems,
 	type BuilderRequiredArtifact,
+	type BuilderDelegateSession,
 	type InstanceAiCredentialService,
 	type InstanceAiToolRegistry,
 	type ReportRequiredArtifactInput,
@@ -54,6 +56,7 @@ import { streamAgentChunks } from '../utils/agent-stream';
  * rather than falling back to the builder's own settings/tracing chains.
  */
 export interface InstanceAiBuilderSessionOptions {
+	thinking?: BuilderDelegateSession['thinking'];
 	/** Persistence thread id for this builder session (e.g. `ia-builder:<instanceThreadId>:<agentId>`). */
 	threadId: string;
 	/** The visible Instance AI thread this build turn belongs to — builder OM usage is billed against this thread. */
@@ -352,7 +355,11 @@ export class AgentsBuilderService {
 			builder.tool(tool);
 		}
 
-		builder.reasoning(resolveAIAReasoning(modelConfig));
+		if (!session.thinking) {
+			builder.reasoning(resolveAIAReasoning(modelConfig));
+		} else if (session.thinking.thinkingEnabled !== false) {
+			applyAgentThinking(builder, modelConfig, session.thinking.thinkingEffort);
+		}
 
 		return builder;
 	}

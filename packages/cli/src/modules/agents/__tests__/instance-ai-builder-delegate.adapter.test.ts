@@ -153,6 +153,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				abortSignal,
 				telemetry: sentinel,
+				thinking: { thinkingEnabled: true, thinkingEffort: 'low' },
 				mcpTools,
 			});
 
@@ -171,6 +172,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
+					thinking: { thinkingEnabled: true, thinkingEffort: 'low' },
 					mcpTools,
 					onRequiredArtifact: expect.any(Function),
 				},
@@ -268,6 +270,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'agent-1',
 				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
 				{
+					thinking: { thinkingEnabled: false },
 					threadId: 'ia-builder:t:agent-1',
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
@@ -292,6 +295,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				credentialService,
 				user,
 				{
+					thinking: { thinkingEnabled: false },
 					threadId: 'ia-builder:t:agent-1',
 					hostThreadId: 'thread-1',
 					runId: 'run-1',

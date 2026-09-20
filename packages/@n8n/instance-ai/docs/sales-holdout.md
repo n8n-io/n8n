@@ -141,3 +141,22 @@ syntax, not business behavior or external integration correctness.
 The full Turbo build also found an expression-parser import that worked in
 Node.js but failed under the editor's source alias. The parser now uses the
 public `@n8n/tournament` export. After this fix, all 72 build tasks passed.
+
+## Standalone Agent regression
+
+A separate request tested the Sales Team Copilot without the workflow plan.
+It requested Salesforce, Slack, Gmail, Calendar, and DocuSign capabilities.
+The Agent handoff started after 62.4 seconds. The embedded builder attempted
+its first configuration write after about 11 minutes. Validation rejected
+dynamic selectors that used model-generated values without resource lookup.
+The run was stopped after more than 15 minutes. The saved Agent was an empty,
+unpublished shell. It had no model or instructions. This result fails S15
+and S22. It does not establish the setup or conversation checks.
+
+The handoff repeated requirements and the proposed plan in two fields.
+The tool now accepts the request and plan once. Additional inspected context
+can still be supplied. The embedded builder also used its own medium
+reasoning setting, although the host used low effort. It now inherits the
+host's thinking policy for initial builds and resumed setup. Regression tests
+cover low effort, high effort, disabled thinking, and legacy session defaults.
+These changes need a fresh live run before a latency improvement is claimed.

@@ -122,6 +122,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			runId: session.runId,
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 			modelConfig: session.modelConfig,
+			...(session.thinking ? { thinking: session.thinking } : {}),
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 			abortSignal: session.abortSignal,

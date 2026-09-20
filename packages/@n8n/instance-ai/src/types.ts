@@ -1310,6 +1310,8 @@ export interface SessionWorkflowRef {
 
 /** Instance-AI-scoped builder session. */
 export interface BuilderDelegateSession {
+	/** Use the host's thinking policy for the embedded build and its resumed turns. */
+	thinking?: Pick<CreateInstanceAgentOptions, 'thinkingEnabled' | 'thinkingEffort'>;
 	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
 	threadId: string;
 	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
@@ -2142,6 +2144,7 @@ export interface WorkflowTaskService {
 // ── Orchestration context (plan tools) ──────────────────────────────────────
 
 export interface OrchestrationContext {
+	thinking?: BuilderDelegateSession['thinking'];
 	threadId: string;
 	runId: string;
 	messageGroupId?: string;

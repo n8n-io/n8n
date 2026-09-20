@@ -19,6 +19,9 @@ First describe the complete Agent behavior in text. Pass it in the `plan`
 field of `build-agent`. The tool runs JEV before the embedded builder fills
 parameters. Keep proposed implementation separate from the original user
 requirements. Use the existing question, credential, and approval cards.
+Put the user request and prior answers in `plan.originalRequest`. Put proposed
+behavior in `plan.plan`. Do not repeat either in `message`. Omit `message`
+unless the builder needs additional context, such as an inspected data contract.
 Use `plan-build` separately only when building prerequisite workflows.
 For a scoped edit, hand off inspection, changes, and readback in one
 `build-agent` call. The embedded builder can read the current configuration
@@ -51,9 +54,9 @@ Check the proposed capabilities before handoff:
   them atomic. Define recovery for a failure between them.
   Preserve the callable workflow's retry contract. Do not add a preliminary
   read that blocks recovery when the external record is already gone.
-- Treat candidate confirmation and business approval as different decisions.
-  Keep hiring decisions with the recruiter. Never infer an outcome from a
-  scheduling change.
+- Treat participant confirmation and business approval as different decisions.
+  Keep business decisions with the designated decision-maker. Never infer an
+  approved business outcome from a scheduling change.
   Match the workflow's behavior for an unconfirmed request. Do not describe
   it as a dry run or an availability preview unless the workflow provides that
   result. A confirmation error does not establish availability.
@@ -111,7 +114,8 @@ once it is a supported type or the user has chosen an alternative.
 
 ## Faithful handoff
 
-Keep user requirements separate from proposed implementation in `message`.
+Keep user requirements in `plan.originalRequest` and proposed implementation
+in `plan.plan`.
 Forward the user's wording as close to verbatim as possible. The requirements
 section includes only:
 
@@ -136,7 +140,7 @@ the user's requirements. Proposals do not grant approval or supply credentials.
 The host appends an <aia-handoff> block with the current user text and pending
 ask-user answers that have not yet reached Agent Builder. Treat those as the
 user's decisions for this build call, not as implementation you invented.
-Still copy user-stated model, channel, and credential choices into message; do not omit
+Still copy user-stated model, channel, and credential choices into `plan.originalRequest`; do not omit
 them because the host also injected them.
 
 Never present assumptions or JEV choices as user requirements. Do not prescribe
