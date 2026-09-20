@@ -48,6 +48,10 @@ Check the proposed capabilities before handoff:
 - Treat candidate confirmation and business approval as different decisions.
   Keep hiring decisions with the recruiter. Never infer an outcome from a
   scheduling change.
+- When the Agent extends an existing workflow, inspect its stored data contract.
+  Reuse its record IDs, tables, fields, status values, and external event IDs.
+  Do not invent a separate schema that the existing workflow never writes.
+  Include an explicit migration if the shared contract must change.
 
 Pass any missing behavior and setup requirements to the embedded builder.
 Inspect the saved configuration before describing the Agent as usable.
@@ -102,6 +106,13 @@ section includes only:
 - Explicit answers or decisions from earlier turns that are necessary for the
   current request.
 - Prerequisite workflows or data tables you created for this Agent.
+- Existing workflows or tables the user wants the Agent to use, with their
+  inspected data contract. Identify inspected facts separately from assumptions.
+
+Include related workflow IDs and their data contract in `message`. Use
+`workflowContext` only for callable workflows that the Agent should attach as
+tools. A lifecycle workflow with forms or schedule triggers is context, not
+automatically an Agent tool.
 
 Put the detailed LLM plan in the `plan` field. Identify assumptions and
 uncertain choices. The tool adds the JEV results to the handoff. The

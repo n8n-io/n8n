@@ -145,6 +145,9 @@ repairs and repeat the failed scenario after saving.
 - Use parameterized database queries. Read the existing schema when available.
   If a new schema is part of the design, include its creation or migration as
   an explicit setup requirement. Do not present assumed columns as inspected.
+  Workflows and Agents in the same system must share one data contract. Reuse
+  the existing tables, record IDs, stage values, and external event fields.
+  Verify that each field a supporting workflow reads has a known producer.
   For Postgres `queryReplacement`, use one expression that returns an array,
   such as `={{ [$json.id, $json.notes] }}`. A comma-separated string can split
   a value that contains commas. Preserve quotes and newlines in free text.

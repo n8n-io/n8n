@@ -155,6 +155,9 @@ The main HR draft and the Agent's supporting workflows also use different
 database schemas. The former stores stage event IDs in `candidates`; the latter
 expects `interviews` and `interview_slots`. They were built in separate chats.
 They still need a shared data contract before they can form one HR system.
+The build guidance now requires this contract in the Agent handoff. It also
+distinguishes a related lifecycle workflow from a callable Agent tool.
+All 17 existing skill tests passed after this guidance change.
 
 The existing UI was checked in the isolated instance. The research approval
 card retained its allow-once, session, and deny controls. The Agent model
