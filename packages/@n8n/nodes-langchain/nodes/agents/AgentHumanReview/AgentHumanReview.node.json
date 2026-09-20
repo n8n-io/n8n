@@ -1,0 +1,17 @@
+{
+	"node": "@n8n/n8n-nodes-langchain.agentHumanReview",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "An AI agent whose answer is released only after a human reviewer approves it. Revise decisions loop back to the model inside the node.",
+	"categories": ["AI"],
+	"subcategories": {
+		"AI": ["Agents", "Root Nodes"]
+	},
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+			}
+		]
+	}
+}
