@@ -7,7 +7,11 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { setupContextProperties, setupRequirementSchema } from '../setup-properties';
+import {
+	setupContextProperties,
+	setupExperimentProperties,
+	setupRequirementSchema,
+} from '../setup-properties';
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
@@ -467,6 +471,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
 		properties: z.object({
 			session_id: setupContextProperties.session_id,
+			...setupExperimentProperties,
 			has_pending_setup: z
 				.boolean()
 				.optional()

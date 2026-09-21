@@ -215,11 +215,6 @@ export class InstanceAiController {
 			}
 		}
 
-		// One active run per thread
-		if (this.instanceAiService.hasActiveRun(threadId)) {
-			throw new ConflictError('A run is already active for this thread');
-		}
-
 		if (req.headers['push-ref']) {
 			const { InstanceAiWorkflowSetupTelemetryService } = await import(
 				'./instance-ai-workflow-setup-telemetry.service.js'
@@ -228,6 +223,10 @@ export class InstanceAiController {
 				threadId,
 				req.headers['push-ref'],
 			);
+		}
+		// Keep admission and registration synchronous.
+		if (this.instanceAiService.hasActiveRun(threadId)) {
+			throw new ConflictError('A run is already active for this thread');
 		}
 		const runId = this.instanceAiService.startRun(
 			req.user,

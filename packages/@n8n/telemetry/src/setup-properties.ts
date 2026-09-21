@@ -1,6 +1,14 @@
 import { z } from 'zod/v4';
 
+const setupVariant = z.enum(['control', 'variant']).optional();
+
+export const setupExperimentProperties = {
+	variant: setupVariant,
+	'$feature/118_instance_ai_setup_overhaul': setupVariant,
+};
+
 export const setupContextProperties = {
+	...setupExperimentProperties,
 	workflow_id: z.string(),
 	thread_id: z.string(),
 	session_id: z.string().optional(),

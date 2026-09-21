@@ -2,6 +2,7 @@ import { instanceAiSetupRequirementId } from '@n8n/api-types';
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 
@@ -52,6 +53,7 @@ export function useWorkflowSetupTelemetry(deps: {
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 
 	const shownStepKeys = new Set<string>();
 	const handledStepKeys = new Set<string>();
@@ -59,6 +61,7 @@ export function useWorkflowSetupTelemetry(deps: {
 	function getSetupTelemetryContext(): SetupTelemetryContext {
 		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		return {
+			...getTelemetryPayload(),
 			session_id: rootStore.pushRef,
 			workflow_id: deps.workflowId?.value,
 			thread_id: deps.thread.id,

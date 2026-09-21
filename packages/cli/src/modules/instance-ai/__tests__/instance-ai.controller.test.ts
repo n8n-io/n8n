@@ -68,6 +68,7 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -96,6 +97,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import { InstanceAiWorkflowSetupTelemetryService } from '../instance-ai-workflow-setup-telemetry.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -353,6 +355,34 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(true);
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ConflictError);
+		});
+
+		it('admits only one overlapping request while saving session context', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const sessionSaved = createDeferredPromise();
+			const setupTelemetry = mock<InstanceAiWorkflowSetupTelemetryService>();
+			setupTelemetry.rememberSession.mockReturnValue(sessionSaved.promise);
+			Container.set(InstanceAiWorkflowSetupTelemetryService, setupTelemetry);
+			const request = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: { 'push-ref': 'session-1' },
+			});
+			let active = false;
+			instanceAiService.hasActiveRun.mockImplementation(() => active);
+			instanceAiService.startRun.mockImplementation(() => {
+				active = true;
+				return 'run-1';
+			});
+			const requests = [
+				controller.chat(request, res, THREAD_ID, payload),
+				controller.chat(request, res, THREAD_ID, payload),
+			];
+			await vi.waitFor(() => expect(setupTelemetry.rememberSession).toHaveBeenCalledTimes(2));
+			sessionSaved.resolve(undefined);
+			const results = await Promise.allSettled(requests);
+			expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+			expect(results).toContainEqual({ status: 'rejected', reason: expect.any(ConflictError) });
+			expect(instanceAiService.startRun).toHaveBeenCalledTimes(1);
 		});
 
 		it('should throw ForbiddenError when thread belongs to another user', async () => {

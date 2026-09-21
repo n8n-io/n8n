@@ -331,7 +331,6 @@ async function onConnectFromRow(credentialType: string): Promise<void> {
 	props.observeConnection?.({ type: 'started', method: 'oauth' });
 	const success = props.observeConnection
 		? await authorize(credential, undefined, {
-				abortOnPopupClose: true,
 				onOutcome: props.observeConnection,
 			})
 		: await authorize(credential);

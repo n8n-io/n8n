@@ -1244,7 +1244,6 @@ async function oAuthCredentialAuthorize() {
 
 	const outcome = await waitForOAuthCallback({
 		popup: oauthPopup,
-		abortOnPopupClose: connectionObserver.value ? true : undefined,
 		trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
 		signal: abortController.signal,
 		verifyConnected: canVerifyConnected
@@ -1255,11 +1254,7 @@ async function oAuthCredentialAuthorize() {
 
 	// A superseded or unmounted flow must not report a result: its telemetry
 	// and UI side effects would describe a flow the user is no longer running.
-	if (outcome === 'aborted') {
-		if (!abortController.signal.aborted)
-			connectionObserver.value?.({ type: 'cancelled', reason: 'oauth_closed' });
-		return;
-	}
+	if (outcome === 'aborted') return;
 
 	handleOAuthResult(outcome === 'success');
 }

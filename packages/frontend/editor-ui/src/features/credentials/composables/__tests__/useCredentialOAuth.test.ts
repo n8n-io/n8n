@@ -1214,6 +1214,32 @@ describe('useCredentialOAuth', () => {
 			}
 		});
 
+		it('keeps a tracked credential when a callback arrives after the popup reads as closed', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			useRootStore().setUrlBaseEditor('https://editor.example.com');
+			MockBroadcastChannel.silent = true;
+			mockPopup.closed = true;
+			const onOutcome = vi.fn();
+			vi.useFakeTimers();
+			try {
+				const promise = useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+					onOutcome,
+				});
+				await vi.advanceTimersByTimeAsync(700);
+				window.dispatchEvent(
+					new MessageEvent('message', {
+						data: 'success',
+						origin: 'https://editor.example.com',
+					}),
+				);
+				await expect(promise).resolves.toEqual(createdCredential);
+				expect(onOutcome).not.toHaveBeenCalled();
+				expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should keep the credential when cancelled after the callback already landed', async () => {
 			const credentialsStore = setupSuccessfulOAuthFlow();
 			// No callback message; cancel (e.g. NodeCredentials unmount) races the

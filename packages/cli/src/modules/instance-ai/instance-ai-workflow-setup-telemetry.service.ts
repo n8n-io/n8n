@@ -1,4 +1,4 @@
-import { instanceAiSetupRequirementId } from '@n8n/api-types';
+import { INSTANCE_AI_SETUP_PANEL_FLAG, instanceAiSetupRequirementId } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, WorkflowDependencyRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Telemetry } from '@/telemetry';
+import { PostHogClient } from '@/posthog';
 
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
@@ -31,6 +32,7 @@ export class InstanceAiWorkflowSetupTelemetryService {
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
 		events: EventService,
+		private readonly posthog: PostHogClient,
 	) {
 		events.on('workflow-saved', ({ workflow }) => {
 			void this.observeExisting(workflow.id);
@@ -111,6 +113,7 @@ export class InstanceAiWorkflowSetupTelemetryService {
 			const context = Container.get(InstanceAiAdapterService).createContext(user, { threadId });
 			const thread = await this.threads.findOneBy({ id: threadId });
 			const sessionId = sessionIdSchema.safeParse(thread?.metadata?.workflowSetupSessionId);
+			const assignment = (await this.posthog.getFeatureFlags(user))[INSTANCE_AI_SETUP_PANEL_FLAG];
 			let changed: Snapshot | undefined;
 			await this.repository.updateObservation(workflowId, async (previous) => {
 				const workflow = await context.workflowService.getAsWorkflowJSON(workflowId);
@@ -197,7 +200,15 @@ export class InstanceAiWorkflowSetupTelemetryService {
 					previous?.alreadyConnectedIds ??
 					credentials.filter((item) => item.is_complete).map((item) => item.item_id);
 				const build = buildComplete ?? previous?.snapshot.build_complete ?? false;
+				// Keep the first assignment, including an unenrolled cohort, across later visits.
+				const variant = previous
+					? previous.snapshot.variant
+					: assignment === 'control' || assignment === 'variant'
+						? assignment
+						: undefined;
 				const snapshot: Snapshot = {
+					variant,
+					'$feature/118_instance_ai_setup_overhaul': variant,
 					...(sessionId.success ? { session_id: sessionId.data } : {}),
 					workflow_id: workflowId,
 					thread_id: previous?.snapshot.thread_id ?? threadId,
@@ -260,19 +271,20 @@ export class InstanceAiWorkflowSetupTelemetryService {
 
 	async recordTestResult(
 		workflowId: string,
-		result: Omit<TestResult, 'workflow_id' | 'thread_id'>,
+		result: Omit<TestResult, 'workflow_id' | 'thread_id'> & { thread_id?: string },
 	): Promise<void> {
 		try {
 			const state = await this.repository.read(workflowId);
-			if (!state || ('thread_id' in result && result.thread_id !== state.snapshot.thread_id))
-				return;
-			const { user_id, workflow_id, thread_id, session_id } = state.snapshot;
+			if (!state) return;
+			const { user_id, workflow_id, thread_id, session_id, variant } = state.snapshot;
 			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED, {
 				user_id,
 				workflow_id,
 				thread_id,
 				session_id,
 				...result,
+				variant,
+				'$feature/118_instance_ai_setup_overhaul': variant,
 			});
 		} catch {
 			this.logger.debug('Could not record workflow setup execution result');

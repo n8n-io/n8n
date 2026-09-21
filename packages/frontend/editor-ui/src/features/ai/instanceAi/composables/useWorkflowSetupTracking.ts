@@ -5,6 +5,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import type { INodeUi } from '@/Interface';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 
 export type SetupConnectionPayload = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION
@@ -27,8 +28,10 @@ export function useWorkflowSetupTracking(options: {
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 	const attempts = options.attempts ?? new Map<string, SetupConnectionPayload[]>();
 	const context = () => ({
+		...getTelemetryPayload(),
 		session_id: rootStore.pushRef,
 		workflow_id: toValue(options.workflowId) ?? '',
 		thread_id: toValue(options.threadId),

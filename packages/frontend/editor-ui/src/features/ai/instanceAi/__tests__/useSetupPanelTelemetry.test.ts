@@ -2,6 +2,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { effectScope, nextTick, ref } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { mockedStore } from '@/__tests__/utils';
 import type { SetupPanelRow } from '../composables/useSetupPanelState';
 import type { SetupPanelGroup } from '../setupPanelGroups';
 import { useSetupPanelTelemetry } from '../composables/useSetupPanelTelemetry';
@@ -38,6 +40,26 @@ describe('useSetupPanelTelemetry', () => {
 		)!;
 		return { workflowId, rows, groups, ready, shownItemIds, telemetry, scope };
 	}
+
+	it.each(['control', 'variant', undefined, false])(
+		'includes the current assignment %s',
+		async (variant) => {
+			mockedStore(usePostHog).getVariant.mockReturnValue(variant);
+			const state = setup();
+			state.ready.value = true;
+			await nextTick();
+			const payload = track.mock.calls.find(([event]) => event === observed)?.[1];
+			if (typeof variant === 'string') {
+				expect(payload).toMatchObject({
+					variant,
+					'$feature/118_instance_ai_setup_overhaul': variant,
+				});
+			} else {
+				expect(payload).not.toHaveProperty('variant');
+				expect(payload).not.toHaveProperty('$feature/118_instance_ai_setup_overhaul');
+			}
+		},
+	);
 
 	it('shares impressions across overlapping views without a false navigation dismissal', async () => {
 		const thread = { id: 'thread' };

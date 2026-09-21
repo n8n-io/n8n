@@ -4,6 +4,7 @@ import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/ap
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -52,14 +53,24 @@ export function useWorkflowSetupItems(
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsLoadedForWorkflow = ref<string>();
+	const workflowCredentials = ref<ICredentialsResponse[]>([]);
+	let credentialFetchVersion = 0;
 	const credentialsAvailable = computed(() => {
 		const id = toValue(workflowId);
-		return (
-			id !== undefined &&
-			credentialsLoadedForWorkflow.value === id &&
-			credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
-		);
+		return id !== undefined && credentialsLoadedForWorkflow.value === id;
 	});
+	// Keep this workflow's result when another workflow replaces the picker's slice.
+	watch(
+		() => {
+			const id = toValue(workflowId);
+			return id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
+				? Object.values(credentialsStore.usableCredentials)
+				: undefined;
+		},
+		(credentials) => {
+			if (credentials && credentialsAvailable.value) workflowCredentials.value = credentials;
+		},
+	);
 
 	/**
 	 * The canvas host's live document store, if any. Resolved fresh so a host
@@ -79,7 +90,10 @@ export function useWorkflowSetupItems(
 	const fetchedWorkflow = ref<IWorkflowDb>();
 	const isRefreshingWorkflow = ref(false);
 	let workflowFetchVersion = 0;
-	onScopeDispose(() => workflowFetchVersion++);
+	onScopeDispose(() => {
+		workflowFetchVersion++;
+		credentialFetchVersion++;
+	});
 
 	async function refreshWorkflow({ force = false } = {}) {
 		const id = toValue(workflowId);
@@ -142,11 +156,14 @@ export function useWorkflowSetupItems(
 	// last-writer-wins and another view may have re-anchored it elsewhere.
 	function refreshUsableSlice() {
 		const id = toValue(workflowId);
+		const version = ++credentialFetchVersion;
 		if (id)
 			void credentialsStore
 				.fetchUsableCredentials({ workflowId: id })
-				.then(() => {
-					if (toValue(workflowId) === id) credentialsLoadedForWorkflow.value = id;
+				.then((credentials) => {
+					if (toValue(workflowId) !== id || version !== credentialFetchVersion) return;
+					workflowCredentials.value = credentials;
+					credentialsLoadedForWorkflow.value = id;
 				})
 				.catch(() => {});
 	}
@@ -320,7 +337,11 @@ export function useWorkflowSetupItems(
 			typeof assigned !== 'string' && assigned?.id
 				? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
 						? credentialsStore.getUsableCredentialById(assigned.id)
-						: undefined) ?? credentialsStore.getCredentialById(assigned.id))
+						: credentialsAvailable.value
+							? workflowCredentials.value.find(
+									({ id: credentialId }) => credentialId === assigned.id,
+								)
+							: undefined) ?? credentialsStore.getCredentialById(assigned.id))
 				: undefined;
 		return !credential?.isResolvable || credential.connectedByMe !== false;
 	}

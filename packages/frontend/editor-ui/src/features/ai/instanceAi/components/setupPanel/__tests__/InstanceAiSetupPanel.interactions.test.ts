@@ -531,7 +531,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(authorize).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({ id: credential.id, type: credential.type, isResolvable: true }),
 			undefined,
-			{ onOutcome: expect.any(Function), abortOnPopupClose: true },
+			{ onOutcome: expect.any(Function) },
 		);
 		expect(credentials.getUsableCredentialById(credential.id)).toMatchObject({
 			connectedByMe: true,

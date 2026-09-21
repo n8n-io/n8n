@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import { getWorkflow } from '@/app/api/workflows';
 import { useRunWorkflowApi } from '@/app/composables/useRunWorkflowApi';
 import {
@@ -42,6 +43,7 @@ export function useSetupPanelExecution(options: {
 	thread: Pick<ThreadRuntime, 'id' | 'messages' | 'sendMessage' | 'rememberManualExecution'>;
 }) {
 	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 	const workflowsStore = useWorkflowsStore();
 	const { runWorkflowApi } = useRunWorkflowApi();
 	const nodeTypesStore = useNodeTypesStore();
@@ -187,6 +189,7 @@ export function useSetupPanelExecution(options: {
 			});
 			requestSent = true;
 			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
+				...getTelemetryPayload(),
 				session_id: rootStore.pushRef,
 				test_request_id: testRequestId,
 				source: 'instance_ai_setup_panel',
@@ -246,6 +249,7 @@ export function useSetupPanelExecution(options: {
 		} catch (error) {
 			if (!executionStarted)
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED, {
+					...getTelemetryPayload(),
 					session_id: rootStore.pushRef,
 					workflow_id: workflowId,
 					thread_id: options.thread.id,

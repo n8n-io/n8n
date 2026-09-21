@@ -1,4 +1,5 @@
 import { useThreadPendingSetup } from './composables/useThreadPendingSetup';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import { computed, nextTick, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -435,6 +436,7 @@ export function createThreadRuntime(
 	initialProjectId?: string,
 ) {
 	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
@@ -1450,6 +1452,7 @@ export function createThreadRuntime(
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
+			...getTelemetryPayload(),
 			session_id: rootStore.pushRef,
 			...(pendingSetup.value !== undefined ? { has_pending_setup: pendingSetup.value } : {}),
 			thread_id: threadId,

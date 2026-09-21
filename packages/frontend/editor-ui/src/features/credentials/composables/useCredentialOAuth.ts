@@ -491,7 +491,6 @@ export function useCredentialOAuth() {
 		const success = await authorize(credential, controller.signal, {
 			popup,
 			onOutcome: options.onOutcome,
-			abortOnPopupClose: options.onOutcome ? true : undefined,
 		}).finally(() => {
 			authorizationFinished = true;
 		});
