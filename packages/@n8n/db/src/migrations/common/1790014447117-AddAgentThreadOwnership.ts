@@ -1,9 +1,9 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const previewSources = ['n8n_chat', 'mcp', 'instance-ai'];
-const projectSources = ['slack', 'telegram', 'discord', 'linear', 'task', 'workflow'];
+const projectSources = ['slack', 'telegram', 'discord', 'linear', 'task', 'workflow', 'schedule'];
 
-export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration {
+export class AddAgentThreadOwnership1790014447117 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const {
 			schemaBuilder: { addColumns, column, addForeignKey, createIndex },
@@ -27,10 +27,10 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 			'FK_agent_execution_threads_owner',
 			'SET NULL',
 		);
-		await createIndex('agent_execution_threads', ['ownerId']);
 		await createIndex('agent_checkpoints', ['threadId']);
 		await this.backfill(context);
 		await this.backfillInheritedAccess(context);
+		await createIndex('agent_execution_threads', ['ownerId']);
 	}
 
 	async down({
@@ -84,11 +84,11 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 			{ previewSources, projectSources },
 		);
 
-		await runQuery(`UPDATE ${threads} SET ${c('ownerId')} = (
-			SELECT u.${c('id')} FROM ${memory} m JOIN ${users} u
+		await runQuery(`UPDATE ${threads} SET ${c('ownerId')} = u.${c('id')}
+			FROM ${memory} m JOIN ${users} u
 			ON m.${c('resourceId')} = 'draft-chat:' || CAST(u.${c('id')} AS TEXT)
 			WHERE m.${c('id')} = ${threadId}
-		) WHERE ${threads}.${c('accessScope')} = 'user' AND ${hasPreviewMemory}`);
+			AND ${threads}.${c('accessScope')} = 'user'`);
 	}
 
 	private async backfillInheritedAccess({ escape, runQuery }: MigrationContext) {

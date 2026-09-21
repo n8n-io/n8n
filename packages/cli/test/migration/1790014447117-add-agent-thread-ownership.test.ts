@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AddAgentThreadOwnership1789736885838';
+const migrationName = 'AddAgentThreadOwnership1790014447117';
 
 describe('Agent thread ownership migration', () => {
 	let dataSource: DataSource;
@@ -28,6 +28,7 @@ describe('Agent thread ownership migration', () => {
 		{ id: 'workflow', source: 'workflow', accessScope: 'project' },
 		{ id: 'task', taskId: 'task-1', accessScope: 'project' },
 		{ id: 'task-source', source: 'task', accessScope: 'project' },
+		{ id: 'schedule-source', source: 'schedule', accessScope: 'project' },
 		{ id: 'preview-source', taskId: 'task-2', source: 'mcp', accessScope: 'user' },
 		{
 			id: 'private-child',
