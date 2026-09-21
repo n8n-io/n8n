@@ -1,0 +1,21 @@
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/__tests__/auto-fix-connections.test.ts
+  s_bc63a262ac8b3b::t_626dcb56e361d9 612-613,650-651
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  s_bc63a262ac8b3b::t_a84fca992caece 6,55,125-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "320c4a521bcb5712c4feb6131df0c8f97ad0b69e",
+  "prompts": {},
+  "sessions": {
+    "s_bc63a262ac8b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "333c9079-31ea-4739-a3e4-941d76e5eacf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
