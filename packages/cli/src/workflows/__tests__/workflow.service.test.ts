@@ -53,6 +53,7 @@ import type { WorkflowPublicationStatusService } from '@/workflows/publication/w
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { RelaxedNodeGroupRulesFlagGate } from '@/workflows/relaxed-node-group-rules-flag-gate';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 vi.mock('@/permissions.ee/check-access');
@@ -131,6 +132,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 
@@ -440,6 +442,7 @@ describe('WorkflowService', () => {
 		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
+		let relaxedNodeGroupRulesFlagGateMock: MockProxy<RelaxedNodeGroupRulesFlagGate>;
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
@@ -460,6 +463,10 @@ describe('WorkflowService', () => {
 			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
 				mock<Project>({ id: 'project-1' }),
 			);
+
+			// Default: the user is outside the rollout, so today's group rules apply.
+			relaxedNodeGroupRulesFlagGateMock = mock<RelaxedNodeGroupRulesFlagGate>();
+			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(false);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -499,6 +506,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				relaxedNodeGroupRulesFlagGateMock, // relaxedNodeGroupRulesFlagGate
 			);
 
 			vi.clearAllMocks();
@@ -636,6 +644,50 @@ describe('WorkflowService', () => {
 					nodeGroups: existingNodeGroups,
 				}),
 				getNodeTypeStub,
+				expect.anything(),
+			);
+		});
+
+		test('relaxes the group rules for a user inside the rollout', async () => {
+			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
+			setupExistingWorkflow();
+
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).toHaveBeenCalledWith(user);
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				{ relaxNodeGroupRules: true },
+			);
+		});
+
+		test('keeps the group rules for a user outside the rollout', async () => {
+			setupExistingWorkflow();
+
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+			await workflowService.update(
+				mock<User>(),
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				{ relaxNodeGroupRules: false },
 			);
 		});
 
@@ -1282,6 +1334,7 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 
 			// Bypass validation internals
@@ -1992,6 +2045,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 
@@ -2132,6 +2186,7 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 
@@ -2437,6 +2492,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 
@@ -2606,6 +2662,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 
@@ -2786,6 +2843,7 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 
@@ -2888,6 +2946,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // relaxedNodeGroupRulesFlagGate
 			);
 		});
 

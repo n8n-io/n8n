@@ -36,6 +36,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
+import { RelaxedNodeGroupRulesFlagGate } from './relaxed-node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -76,6 +77,7 @@ export class WorkflowCreationService {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly relaxedNodeGroupRulesFlagGate: RelaxedNodeGroupRulesFlagGate,
 	) {}
 
 	async prepareBatchContext(
@@ -216,6 +218,7 @@ export class WorkflowCreationService {
 		WorkflowHelpers.validateWorkflowNodeGroups(
 			newWorkflow,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			{ relaxNodeGroupRules: await this.relaxedNodeGroupRulesFlagGate.isEnabled(user) },
 		);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {

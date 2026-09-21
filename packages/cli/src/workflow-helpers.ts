@@ -166,13 +166,16 @@ export function validateWorkflowNodeGroups(
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
+	options: { relaxNodeGroupRules?: boolean } = {},
 ) {
 	const result = validateWorkflowGroups({
 		nodes: workflow.nodes,
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
+		relaxNodeGroupRules: options.relaxNodeGroupRules,
 	});
+
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
