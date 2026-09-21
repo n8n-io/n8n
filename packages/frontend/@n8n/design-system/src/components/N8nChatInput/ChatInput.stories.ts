@@ -377,7 +377,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 		const composerRef = ref<HTMLElement | null>(null);
 		const menuOpen = ref(false);
 		const value = ref('');
-		const mentionTriggerIndex = ref<number | null>(null);
+		const mentionRange = ref<{ start: number; end: number } | null>(null);
 		const savedSelection = ref({ start: 0, end: 0 });
 		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
 		const items: Array<DropdownMenuItemProps<string>> = [
@@ -422,6 +422,23 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			};
 		};
 
+		const handleCaretMove = async () => {
+			await nextTick();
+			saveSelection();
+			const range = mentionRange.value;
+			if (!range) return;
+
+			const selection = savedSelection.value;
+			if (
+				selection.start <= range.start ||
+				selection.start > range.end ||
+				selection.end > range.end
+			) {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			}
+		};
+
 		const handleKeydown = (event: KeyboardEvent) => {
 			dropdownRef.value?.handleExternalKeydown(event);
 		};
@@ -437,7 +454,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 				await openMenu();
 			} else {
 				menuOpen.value = false;
-				mentionTriggerIndex.value = null;
+				mentionRange.value = null;
 			}
 		};
 
@@ -446,20 +463,22 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			await nextTick();
 			saveSelection();
 
-			const caret = inputElement.value?.selectionStart ?? newValue.length;
+			const caret = inputElement.value?.selectionEnd ?? newValue.length;
 			const candidateIndex = caret - 1;
 			const followsWhitespace =
 				candidateIndex === 0 || /\s/.test(newValue[candidateIndex - 1] ?? '');
 			if (newValue[candidateIndex] === '@' && followsWhitespace) {
-				mentionTriggerIndex.value = candidateIndex;
+				mentionRange.value = { start: candidateIndex, end: caret };
 				await openMenu();
 				return;
 			}
 
-			const triggerIndex = mentionTriggerIndex.value;
-			if (triggerIndex !== null && (newValue[triggerIndex] !== '@' || caret <= triggerIndex)) {
+			const range = mentionRange.value;
+			if (range && (newValue[range.start] !== '@' || caret <= range.start)) {
 				menuOpen.value = false;
-				mentionTriggerIndex.value = null;
+				mentionRange.value = null;
+			} else if (range) {
+				mentionRange.value = { start: range.start, end: caret };
 			}
 		};
 
@@ -468,12 +487,12 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			const label = findItemLabel(items, itemId);
 			if (!label) return;
 
-			const triggerIndex = mentionTriggerIndex.value;
-			const start = triggerIndex ?? savedSelection.value.start;
-			const end = triggerIndex === null ? savedSelection.value.end : savedSelection.value.start;
+			const range = mentionRange.value;
+			const start = range?.start ?? savedSelection.value.start;
+			const end = range?.end ?? savedSelection.value.end;
 			const insertedText = `"${label}"`;
 			value.value = value.value.slice(0, start) + insertedText + value.value.slice(end);
-			mentionTriggerIndex.value = null;
+			mentionRange.value = null;
 
 			await nextTick();
 			const caret = start + insertedText.length;
@@ -495,6 +514,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			handleOpenChange,
 			handleUpdateModelValue,
 			handleSelect,
+			handleCaretMove,
 			saveSelection,
 			onSubmit: methods.onSubmit,
 		};
@@ -519,9 +539,10 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 					:max-length="args.maxLength"
 					@update:model-value="handleUpdateModelValue"
 					@submit="onSubmit"
-					@click="saveSelection"
-					@keyup="saveSelection"
+					@click="handleCaretMove"
+					@keyup="handleCaretMove"
 					@pointerdown.capture="saveSelection"
+					@select="handleCaretMove"
 				>
 					<template #right-actions>
 						<N8nDropdownMenu

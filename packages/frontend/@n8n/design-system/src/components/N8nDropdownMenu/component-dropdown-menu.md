@@ -323,7 +323,7 @@ const handleSelect = (itemId: string) => {
 </script>
 
 <template>
-  <textarea ref="textarea" @keydown="handleKeydown" />
+  <textarea ref="textarea" @focus="isOpen = true" @keydown="handleKeydown" />
   <N8nDropdownMenu
     ref="dropdown"
     v-model="isOpen"

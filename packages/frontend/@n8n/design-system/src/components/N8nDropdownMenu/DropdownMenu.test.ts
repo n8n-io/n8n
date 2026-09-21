@@ -1033,7 +1033,8 @@ describe('N8nDropdownMenu', () => {
 				);
 				expect(document.activeElement).not.toBe(textarea);
 
-				for (const frameHandler of pendingFrames) frameHandler(performance.now());
+				const capturedFrames = pendingFrames.slice();
+				for (const frameHandler of capturedFrames) frameHandler(performance.now());
 				expect(document.activeElement).not.toBe(textarea);
 			} finally {
 				requestAnimationFrame.mockRestore();
