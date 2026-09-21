@@ -50,7 +50,7 @@ const mocks = vi.hoisted(() => {
 	type AdditionalData = {
 		executionId?: string;
 		credentialsHelper?: unknown;
-		setExecutionStatus?: unknown;
+		setExecutionStatus?: (status: string) => void;
 	};
 
 	type V1StepExecutorDeps = {
@@ -240,13 +240,17 @@ describe('EngineV2Runtime', () => {
 
 		// `putExecutionToWait` calls the hook, and the v1 one throws for an
 		// execution that `ActiveExecutions` does not know.
-		it('drops the v1 execution status hook', async () => {
-			mocks.getBase.mockResolvedValueOnce({ setExecutionStatus: vi.fn() });
+		it('replaces the v1 execution status hook', async () => {
+			const v1Hook = vi.fn(() => {
+				throw new Error('No active execution found');
+			});
+			mocks.getBase.mockResolvedValueOnce({ setExecutionStatus: v1Hook });
 			await newRuntime().init(responseSender());
 
 			const additionalData = await additionalDataFactory()(stepContext);
 
-			expect(additionalData.setExecutionStatus).toBeUndefined();
+			expect(() => additionalData.setExecutionStatus?.('waiting')).not.toThrow();
+			expect(v1Hook).not.toHaveBeenCalled();
 		});
 
 		it('gives the step a credentials helper that asks the control plane', async () => {
