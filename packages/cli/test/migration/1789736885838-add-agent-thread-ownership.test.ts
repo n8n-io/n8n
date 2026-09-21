@@ -1,13 +1,12 @@
 import {
 	createTestMigrationContext,
 	initDbUpToMigration,
-	runSingleMigration,
 	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type QueryRunner } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 const migrationName = 'AddAgentThreadOwnership1789736885838';
@@ -61,14 +60,51 @@ describe('Agent thread ownership migration', () => {
 		}
 	}
 
-	async function expectNoStagingTable({ runQuery, tablePrefix, isSqlite }: TestMigrationContext) {
-		const tables = await runQuery(
+	async function expectNoStagingTable(queryRunner: QueryRunner) {
+		const isSqlite = queryRunner.connection.options.type !== 'postgres';
+		const tablePrefix = queryRunner.connection.options.entityPrefix ?? '';
+		const [query, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
 			isSqlite
 				? 'SELECT name FROM sqlite_temp_master WHERE name = :name'
 				: "SELECT tablename FROM pg_tables WHERE schemaname LIKE 'pg_temp_%' AND tablename = :name",
 			{ name: `${tablePrefix}agent_thread_ownership_backfill` },
+			{},
 		);
+		const tables = await queryRunner.query(query, parameters);
 		expect(tables).toEqual([]);
+	}
+
+	async function runOwnershipMigration() {
+		const allMigrations = [...dataSource.migrations];
+		const migration = allMigrations.find(
+			(candidate) => candidate.constructor.name === migrationName,
+		);
+		if (!migration) throw new Error(`Migration "${migrationName}" not found`);
+
+		const createQueryRunner = dataSource.createQueryRunner.bind(dataSource);
+		const queryRunnerSpy = vi.spyOn(dataSource, 'createQueryRunner').mockImplementation((mode) => {
+			const queryRunner = createQueryRunner(mode);
+			const commit = queryRunner.commitTransaction.bind(queryRunner);
+			queryRunner.commitTransaction = async () => {
+				await expectNoStagingTable(queryRunner);
+				await commit();
+			};
+			const rollback = queryRunner.rollbackTransaction.bind(queryRunner);
+			queryRunner.rollbackTransaction = async () => {
+				const isPostgres = queryRunner.connection.options.type === 'postgres';
+				if (!isPostgres) await expectNoStagingTable(queryRunner);
+				await rollback();
+				if (isPostgres) await expectNoStagingTable(queryRunner);
+			};
+			return queryRunner;
+		});
+		dataSource.migrations.splice(0, dataSource.migrations.length, migration);
+		try {
+			await Container.get(DbConnection).migrate();
+		} finally {
+			queryRunnerSpy.mockRestore();
+			dataSource.migrations.splice(0, dataSource.migrations.length, ...allMigrations);
+		}
 	}
 
 	async function checkFailedBackfill() {
@@ -78,7 +114,7 @@ describe('Agent thread ownership migration', () => {
 			);
 		});
 		try {
-			await expect(runSingleMigration(migrationName)).rejects.toThrow('agent_checkpoints');
+			await expect(runOwnershipMigration()).rejects.toThrow('agent_checkpoints');
 		} finally {
 			dataSource = Container.get(DataSource);
 			await withContext(async ({ escape, runQuery }) => {
@@ -88,7 +124,6 @@ describe('Agent thread ownership migration', () => {
 			});
 		}
 		await withContext(async (context) => {
-			await expectNoStagingTable(context);
 			const table = await context.queryRunner.getTable(
 				`${context.tablePrefix}agent_execution_threads`,
 			);
@@ -169,9 +204,8 @@ describe('Agent thread ownership migration', () => {
 
 	it('sets access from retained state and preserves rows through rollback and reapplication', async () => {
 		await checkFailedBackfill();
-		await runSingleMigration(migrationName);
+		await runOwnershipMigration();
 		dataSource = Container.get(DataSource);
-		await withContext(expectNoStagingTable);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			const threads = await runQuery<
 				Array<{ id: string; ownerId: string | null; accessScope: string }>
@@ -212,9 +246,8 @@ describe('Agent thread ownership migration', () => {
 				await runQuery(`SELECT "threadId" FROM ${escape.tableName('agent_execution')}`),
 			).toHaveLength(fixtures.length);
 		});
-		await runSingleMigration(migrationName);
+		await runOwnershipMigration();
 		dataSource = Container.get(DataSource);
-		await withContext(expectNoStagingTable);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			expect(
 				await runQuery(
