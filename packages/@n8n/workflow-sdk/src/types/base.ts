@@ -108,7 +108,7 @@ export interface WorkflowSettings {
 	saveExecutionProgress?: boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
-	callerPolicy?: 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
+	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	callerIds?: string;
 	/** Allow additional settings fields */
 	[key: string]: unknown;
