@@ -8,10 +8,12 @@ import {
 	AI_CATEGORY_MCP_NODES,
 	AI_MCP_TOOL_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	HTTP_REQUEST_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	REQUEST_NODE_FORM_URL,
 	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
+	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import type { NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
@@ -203,6 +205,26 @@ describe('NodesMode', () => {
 			await pressEnterOnFirstItem();
 
 			expect(emitted('nodeTypeSelected')).toBeUndefined();
+		});
+
+		it('drops a restricted node from the empty-search suggestions', async () => {
+			mockRestrictedNodeTypes({ [HTTP_REQUEST_NODE_TYPE]: 'instance' });
+			useViewStacks().pushViewStack({
+				title: 'What triggers this workflow?',
+				mode: 'nodes',
+				rootView: TRIGGER_NODE_CREATOR_VIEW,
+				search: 'missing node',
+				items: [],
+			});
+
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('No results for "missing node"')).toBeInTheDocument();
+			expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByText('Webhook'));
+			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.webhook' }]]]);
 		});
 
 		it('still adds an available node on Enter', async () => {

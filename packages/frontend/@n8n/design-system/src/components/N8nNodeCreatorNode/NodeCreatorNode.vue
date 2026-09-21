@@ -19,7 +19,6 @@ export interface Props {
 	isOfficial?: boolean;
 	hideNodeIcon?: boolean;
 	isNew?: boolean;
-	/** Greys the row and drops the pointer cursor. The consumer decides what a click does. */
 	disabled?: boolean;
 }
 
