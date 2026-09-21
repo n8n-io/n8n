@@ -66,6 +66,12 @@ export class ActiveSkills {
 		return skill;
 	}
 
+	toolDependencies(): string[] {
+		return [
+			...new Set([...this.loaded.values()].flatMap((skill) => skill.dependencies?.tools ?? [])),
+		];
+	}
+
 	instructions(): string | undefined {
 		if (this.loaded.size === 0) return undefined;
 		const sections = [...this.loaded].flatMap(([id, skill]) => {

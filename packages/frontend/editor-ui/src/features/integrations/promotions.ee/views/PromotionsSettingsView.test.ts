@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
 	createPromotionProvider: vi.fn<typeof PromotionsApi.createPromotionProvider>(),
 	updatePromotionProvider: vi.fn<typeof PromotionsApi.updatePromotionProvider>(),
 	deletePromotionProvider: vi.fn<typeof PromotionsApi.deletePromotionProvider>(),
+	fetchPromotionConnection: vi.fn<typeof PromotionsApi.fetchPromotionConnection>(),
 	fetchPromotionConnections: vi.fn<typeof PromotionsApi.fetchPromotionConnections>(),
 	createPromotionConnection: vi.fn<typeof PromotionsApi.createPromotionConnection>(),
 	updatePromotionConnection: vi.fn<typeof PromotionsApi.updatePromotionConnection>(),
@@ -75,6 +76,7 @@ const applyConfig = (branchName: string, name = 'Apply') => ({
 	id: 'config-apply',
 	name,
 	settings: { schemaVersion: 1 as const, branchName },
+	checkout: { hasCheckout: false, matchesConfig: false },
 	...timestamps,
 });
 
@@ -82,6 +84,7 @@ const promoteConfig = (baseBranchName: string, createBranchOnPromotion = false) 
 	id: 'config-promote',
 	name: 'Promote',
 	settings: { schemaVersion: 1 as const, baseBranchName, createBranchOnPromotion },
+	checkout: { hasCheckout: false, matchesConfig: false },
 	...timestamps,
 });
 
@@ -125,6 +128,7 @@ describe('PromotionsSettingsView', () => {
 		createTestingPinia();
 		api.fetchPromotionProviders.mockResolvedValue([]);
 		api.fetchPromotionProvider.mockResolvedValue(sshProvider());
+		api.fetchPromotionConnection.mockResolvedValue(instanceConnection());
 		api.fetchPromotionConnections.mockResolvedValue([]);
 		api.deletePromotionProvider.mockResolvedValue(undefined);
 		api.deletePromotionConfig.mockResolvedValue(undefined);
@@ -266,6 +270,16 @@ describe('PromotionsSettingsView', () => {
 			expect(await screen.findByTestId('promotion-providers-load-error')).toBeInTheDocument();
 		});
 
+		it('shows a load error when connection detail cannot be loaded', async () => {
+			api.fetchPromotionConnections.mockResolvedValue([instanceConnection()]);
+			api.fetchPromotionConnection.mockRejectedValueOnce(
+				new Error('Unable to load connection detail'),
+			);
+			renderView();
+
+			expect(await screen.findByTestId('promotion-providers-load-error')).toBeInTheDocument();
+		});
+
 		it('shows the saved connection after a retry', async () => {
 			api.fetchPromotionProviders
 				.mockRejectedValueOnce(new Error('Unable to load providers'))
@@ -284,6 +298,12 @@ describe('PromotionsSettingsView', () => {
 	});
 
 	describe('instance connection', () => {
+		it('does not load connection detail when no instance connection exists', async () => {
+			await renderReadyView();
+
+			expect(api.fetchPromotionConnection).not.toHaveBeenCalled();
+		});
+
 		it('creates a connection with Apply and Promote settings', async () => {
 			api.createPromotionConnection.mockResolvedValue(
 				instanceConnection({
@@ -367,13 +387,14 @@ describe('PromotionsSettingsView', () => {
 
 		it('loads the saved connection settings', async () => {
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
-			api.fetchPromotionConnections.mockResolvedValue([
-				instanceConnection({
-					configs: { apply: applyConfig('main'), promote: promoteConfig('develop', true) },
-				}),
-			]);
+			const saved = instanceConnection({
+				configs: { apply: applyConfig('main'), promote: promoteConfig('develop', true) },
+			});
+			api.fetchPromotionConnections.mockResolvedValue([saved]);
+			api.fetchPromotionConnection.mockResolvedValue(saved);
 			await renderReadyView();
 
+			expect(api.fetchPromotionConnection).toHaveBeenCalledWith(expect.anything(), 'connection-1');
 			expect(screen.getByTestId('promotion-connection-name-input')).toHaveValue('Production');
 			expect(screen.getByTestId('promotion-connection-remote-url-input')).toHaveValue(
 				'git@github.com:acme/workflows.git',
@@ -399,9 +420,9 @@ describe('PromotionsSettingsView', () => {
 					configs: { apply: applyConfig('main') },
 				}),
 			);
-			api.fetchPromotionConnections.mockResolvedValue([
-				instanceConnection({ configs: { apply: applyConfig('main') } }),
-			]);
+			const saved = instanceConnection({ configs: { apply: applyConfig('main') } });
+			api.fetchPromotionConnections.mockResolvedValue([saved]);
+			api.fetchPromotionConnection.mockResolvedValue(saved);
 			await renderReadyView();
 
 			await selectProvider('Mirror');
@@ -428,9 +449,9 @@ describe('PromotionsSettingsView', () => {
 			);
 			api.upsertPromotionPromoteConfig.mockResolvedValue(promoteConfig('main-next'));
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
-			api.fetchPromotionConnections.mockResolvedValue([
-				instanceConnection({ configs: { promote: promoteConfig('main', false) } }),
-			]);
+			const saved = instanceConnection({ configs: { promote: promoteConfig('main', false) } });
+			api.fetchPromotionConnections.mockResolvedValue([saved]);
+			api.fetchPromotionConnection.mockResolvedValue(saved);
 			api.upsertPromotionPromoteConfig.mockRejectedValueOnce(new Error('git is unreachable'));
 			await renderReadyView();
 
@@ -458,9 +479,9 @@ describe('PromotionsSettingsView', () => {
 
 		it('deletes Apply settings when Apply is turned off', async () => {
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
-			api.fetchPromotionConnections.mockResolvedValue([
-				instanceConnection({ configs: { apply: applyConfig('main') } }),
-			]);
+			const saved = instanceConnection({ configs: { apply: applyConfig('main') } });
+			api.fetchPromotionConnections.mockResolvedValue([saved]);
+			api.fetchPromotionConnection.mockResolvedValue(saved);
 			await renderReadyView();
 
 			await userEvent.click(screen.getByTestId('promotion-connection-apply-toggle'));

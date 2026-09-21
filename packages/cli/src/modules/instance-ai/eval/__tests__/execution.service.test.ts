@@ -1135,6 +1135,38 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
+		it('synthesizes numeric values for id-shaped placeholders', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Graph Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								node: placeholderValue('Facebook Page ID'),
+								account: placeholderValue('Instagram Business Account ID'),
+								note: placeholderValue('Video caption'),
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const graphNode = runArg.workflowData.nodes.find((node) => node.name === 'Graph Node');
+
+			expect(graphNode?.parameters).toMatchObject({
+				node: '100000000',
+				account: '100000000',
+				note: '__evalMockValue',
+			});
+		});
+
 		it('synthesizes validator-shaped values for selected resource placeholders', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				makeWorkflowEntity({

@@ -4,6 +4,7 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
@@ -66,6 +67,8 @@ export function useCanvasNode() {
 			!useNodeTypesStore().getIsNodeInstalled(data.value.type),
 	);
 
+	const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => data.value.type);
+
 	return {
 		node,
 		id,
@@ -89,5 +92,7 @@ export function useCanvasNode() {
 		render,
 		eventBus,
 		isNotInstalledCommunityNode,
+		isRestricted,
+		restrictionScope,
 	};
 }
