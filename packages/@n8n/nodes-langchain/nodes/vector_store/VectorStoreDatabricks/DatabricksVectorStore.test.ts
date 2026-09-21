@@ -225,6 +225,26 @@ describe('DatabricksVectorStore', () => {
 		);
 	});
 
+	describe('fromExistingIndex', () => {
+		it('skips the describe GET when the index is passed in', async () => {
+			const store = await DatabricksVectorStore.fromExistingIndex(embeddings, {
+				fetch: fetchMock,
+				host,
+				indexName: 'cat.sch.idx',
+				index: parseIndexInfo(managedDescribe),
+			});
+			expect(fetchMock).not.toHaveBeenCalled();
+
+			fetchMock.mockResolvedValueOnce(json(emptyReply));
+			await store.similaritySearch('hello', 2);
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(urlOf(0)).toBe(`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`);
+			expect(bodyOf(0)).toMatchObject({ query_text: 'hello', num_results: 2 });
+			expect(embeddings.embedQuery).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('managed-embedding index', () => {
 		it('sends query_text and never embeds on the client', async () => {
 			const store = await managedStore();
