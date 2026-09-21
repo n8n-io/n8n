@@ -2,7 +2,7 @@ operationId: promoteProjectSelection
 tags:
   - Promotions
 summary: Promote a selection of a project's workflows
-description: Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live workflows are exported, and archived or deleted ids leave the branch. An id from another project rejects the whole request before any write. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.
+description: Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live workflows are exported, and archived or deleted ids leave the branch. An id from another project rejects the whole request before any write. Send an optional commitMessage to describe the commit; a default is used when omitted. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.
 x-required-scope: gitConnection:push
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -28,6 +28,10 @@ requestBody:
               minLength: 1
               maxLength: 36
             minItems: 1
+          commitMessage:
+            type: string
+            minLength: 1
+            maxLength: 1000
         required:
           - workflowIds
 responses:

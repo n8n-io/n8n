@@ -248,11 +248,13 @@ the `instance` connection's Promote branch.
 
 ```bash
 n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -w wf-2
+n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
 ```
 
 | Flag | Description |
 |------|-------------|
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
+| `-m, --message` | Commit message. A default is used when omitted. |
 
 Archived or deleted ids leave the branch. An id from another project rejects the
 whole request before any write. Clone the `promote` direction first. The API key

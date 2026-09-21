@@ -117,14 +117,39 @@ describe('promotion-connection promote-selection command', () => {
 
 		await command.run();
 
-		// `-w` values travel as the `workflowIds` array.
-		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2']);
+		// `-w` values travel as the `workflowIds` array, with no message flag set.
+		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
 		// The count, branch, and commit live under `counts`/`git`. Reading them
 		// flat prints "undefined" while succeed() still exits 0.
 		expect(succeed).toHaveBeenCalledWith(
 			'Promoted 3 workflow(s) to main as commit abc1234.',
 			expect.anything(),
 			PROMOTE_RESULT,
+		);
+	});
+
+	it('passes the message flag as the commit message', async () => {
+		const command = new PromotionConnectionPromoteSelection([], {} as Config);
+		const internals = command as unknown as OperationInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { workflow: ['wf-1'], message: 'Promote checkout flow' },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			['wf-1'],
+			'Promote checkout flow',
 		);
 	});
 });

@@ -825,13 +825,17 @@ describe('Promotions in Public API', () => {
 
 				const first = await withVars
 					.post(`/promotions/projects/${project.id}/promote`)
-					.send({ workflowIds: ['w1', 'w2'] });
+					.send({ workflowIds: ['w1', 'w2'], commitMessage: 'Promote checkout flow' });
 				expect(first.status, JSON.stringify(first.body)).toBe(200);
 				expect(first.body).toEqual(promoteResult);
 				expect(promote).toHaveBeenLastCalledWith(
 					project.id,
 					expect.objectContaining({ id: expect.any(String) }),
-					expect.objectContaining({ workflowIds: ['w1', 'w2'], canExportVariableValues: true }),
+					expect.objectContaining({
+						workflowIds: ['w1', 'w2'],
+						commitMessage: 'Promote checkout flow',
+						canExportVariableValues: true,
+					}),
 				);
 
 				const second = await withoutVars
@@ -841,6 +845,7 @@ describe('Promotions in Public API', () => {
 				expect(promote).toHaveBeenLastCalledWith(
 					project.id,
 					expect.anything(),
+					// No commitMessage key when the client omits it; the service applies the default.
 					expect.objectContaining({ canExportVariableValues: false }),
 				);
 			} finally {

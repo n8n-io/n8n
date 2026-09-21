@@ -401,9 +401,11 @@ export class N8nClient {
 		);
 	}
 
-	async promoteProjectSelection(projectId: string, workflowIds: string[]) {
+	async promoteProjectSelection(projectId: string, workflowIds: string[], commitMessage?: string) {
 		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
 			workflowIds,
+			// Dropped by JSON serialization when undefined, so the server default applies.
+			commitMessage,
 		});
 	}
 

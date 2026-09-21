@@ -22,6 +22,10 @@ export default class PromotionConnectionPromoteSelection extends BaseCommand {
 			multiple: true,
 			required: true,
 		}),
+		message: Flags.string({
+			char: 'm',
+			description: 'Commit message. A default is used when omitted.',
+		}),
 	};
 
 	async run() {
@@ -30,6 +34,7 @@ export default class PromotionConnectionPromoteSelection extends BaseCommand {
 			const result = await this.getClient(flags).promoteProjectSelection(
 				args.projectId,
 				flags.workflow,
+				flags.message,
 			);
 			this.succeed(
 				`Promoted ${result.counts.workflows} workflow(s) to ${result.git.branchName} as commit ${result.git.commitSha}.`,

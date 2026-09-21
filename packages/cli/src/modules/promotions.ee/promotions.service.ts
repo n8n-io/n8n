@@ -402,7 +402,7 @@ export class PromotionsService {
 			instance.id,
 			actor,
 			{
-				commitMessage: PROMOTE_SELECTION_COMMIT_MESSAGE,
+				commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,
 				canExportVariableValues: request.canExportVariableValues,
 			},
 			selection,

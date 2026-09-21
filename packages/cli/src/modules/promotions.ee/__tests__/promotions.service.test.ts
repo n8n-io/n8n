@@ -963,8 +963,31 @@ describe('PromotionsService', () => {
 			expect(promoteSelection).toHaveBeenCalledWith(
 				'conn1',
 				actor,
-				expect.objectContaining({ canExportVariableValues: true }),
+				expect.objectContaining({
+					canExportVariableValues: true,
+					commitMessage: 'Promote a selection of project changes',
+				}),
 				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
+			);
+		});
+
+		it('forwards a client commit message when one is sent', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['w1', mock<Project>({ id: 'p1' })]]),
+			);
+			const promoteSelection = vi.spyOn(service, 'promoteSelection').mockResolvedValue({} as never);
+
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				commitMessage: 'Promote checkout flow',
+				canExportVariableValues: true,
+			});
+
+			expect(promoteSelection).toHaveBeenCalledWith(
+				'conn1',
+				actor,
+				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
 			);
 		});
 
