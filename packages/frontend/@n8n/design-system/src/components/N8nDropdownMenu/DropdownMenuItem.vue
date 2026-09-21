@@ -609,12 +609,6 @@ onBeforeUnmount(() => {
 
 .sub-trigger {
 	&:not([data-disabled]) {
-		&:hover,
-		&[data-highlighted] {
-			background-color: transparent;
-			cursor: pointer;
-		}
-
 		&[aria-selected='true'],
 		&[data-state='open'] {
 			background-color: var(--background--hover);
