@@ -121,13 +121,6 @@ export const Default: Story = {
 		size: 'medium',
 		spin: false,
 	},
-	parameters: {
-		s2d: {
-			initArgs: {
-				':selector': '.n8n-icon',
-			},
-		},
-	},
 };
 
 export const AllIcons: Story = {
