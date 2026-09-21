@@ -195,7 +195,19 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		const prefixes = [
 			...new Set(locations.map((location) => `${this.toRelativePath(location)}/binary_data`)),
 		];
-		await Promise.all(prefixes.map(async (prefix) => await deletePrefix(prefix)));
+		const results = await Promise.allSettled(
+			prefixes.map(async (prefix) => await deletePrefix(prefix)),
+		);
+
+		// One unremovable dir must not abort the rest of the deletion, which would
+		// leave the other prefixes on disk with their execution rows already gone.
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				this.errorReporter.warn('Could not delete binary data dir', {
+					extra: { prefix: prefixes[index], error: result.reason },
+				});
+			}
+		});
 	}
 
 	private metadataKey(fileId: string) {
