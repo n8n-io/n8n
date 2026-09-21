@@ -12,8 +12,8 @@ describe('getClientBrand', () => {
 		['Visual Studio Code', 'editor'],
 		['Codex CLI', 'cli'],
 		['ChatGPT', 'assistant'],
+		['Mistral Vibe', 'assistant'],
 		['Le Chat', 'assistant'],
-		['Mistral AI', 'assistant'],
 		['Some Unknown Client', null],
 	])('derives the type of %s as %s', (name, type) => {
 		expect(getClientBrand(name).type).toBe(type);

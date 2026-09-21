@@ -143,12 +143,12 @@ url = "${serverUrl}"`;
 						'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
 				},
 				{
-					id: 'le-chat',
-					name: 'Mistral Le Chat',
+					id: 'mistral-vibe',
+					name: 'Mistral Vibe',
 					category: 'web',
 					icon: MistralIcon,
-					// Le Chat's connectors hub. Its "Custom MCP connector" form takes the server
-					// URL and runs the OAuth consent flow.
+					// Vibe's (formerly Le Chat) connectors hub. Its "Custom MCP connector" form
+					// takes the server URL and runs the OAuth consent flow.
 					addUrl: 'https://chat.mistral.ai/connections',
 				},
 			],
