@@ -11,6 +11,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -563,32 +564,43 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 
-	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
-		agentChatAttachmentService.storeInbound.mockResolvedValue({
-			id: 'att-1',
-			fileName: 'notes.txt',
-			mimeType: 'text/plain',
-			fileSizeBytes: 5,
-		} as never);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-1');
-			yield* [];
-			throw new Error('flaky post-persist failure');
-		});
-		const { res } = makeCleanupSseResponse();
+	it.each([false, true])(
+		'keeps attachments referenced by an execution (finalization failed: %s)',
+		async (finalizationFailed) => {
+			const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+				makeController();
+			agentChatAttachmentService.storeInbound.mockResolvedValue({
+				id: 'att-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 5,
+			} as never);
+			// eslint-disable-next-line @typescript-eslint/require-await
+			agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+				yield* [];
+				if (finalizationFailed) {
+					throw new AgentExecutionRecordingError({
+						phase: 'finalize',
+						executionId: 'exec-1',
+						executionStarted: true,
+						cause: new Error('database unavailable'),
+					});
+				}
+				config.onExecutionRecorded?.('exec-1');
+				throw new Error('flaky post-persist failure');
+			});
+			const { res } = makeCleanupSseResponse();
 
-		await controller.chat(
-			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
-			res,
-			'agent-1',
-			{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
-		);
+			await controller.chat(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+				res,
+				'agent-1',
+				{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
+			);
 
-		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
-	});
+			expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
+		},
+	);
 
 	it('deletes earlier attachments when a later one in the same message fails to store', async () => {
 		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =

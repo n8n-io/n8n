@@ -26,4 +26,26 @@ describe('N8nNodeCreatorNode', () => {
 		expect(className).not.toContain('info');
 		expect(className).not.toContain('danger');
 	});
+
+	it('greys the row and renders the trailing slot when disabled', () => {
+		const { container, getByText } = render(NodeCreatorNode, {
+			props: { title: 'Gmail', description: 'Send email', disabled: true },
+			slots: { trailing: '<span data-test-id="trailing">lock</span>' },
+			global: { stubs: ['N8nIcon'] },
+		});
+
+		expect(container.firstElementChild?.className).toContain('disabled');
+		expect(getByText('lock')).toBeInTheDocument();
+	});
+
+	it('shows the action arrow instead of the trailing slot when the row has actions', () => {
+		const { container, queryByText } = render(NodeCreatorNode, {
+			props: { title: 'Gmail', showActionArrow: true },
+			slots: { trailing: '<span>lock</span>' },
+			global: { stubs: ['N8nIcon'] },
+		});
+
+		expect(container.querySelector('button')).toBeInTheDocument();
+		expect(queryByText('lock')).not.toBeInTheDocument();
+	});
 });
