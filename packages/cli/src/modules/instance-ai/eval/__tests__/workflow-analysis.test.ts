@@ -1184,6 +1184,26 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([expect.stringContaining('invalid nodeHints')]);
 	});
 
+	it.each([true, 'true'])(
+		'accepts empty triggerContent when triggerEmitsNoItems is %j, and forwards the flag',
+		async (flag) => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					globalContext: '',
+					nodeHints: { Slack: 'foo' },
+					triggerEmitsNoItems: flag,
+				}),
+			);
+
+			const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.triggerEmitsNoItems).toBe(true);
+			expect(result.warnings).toEqual([]);
+		},
+	);
+
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');
 
