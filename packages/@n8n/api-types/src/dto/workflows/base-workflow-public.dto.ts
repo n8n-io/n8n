@@ -85,7 +85,7 @@ const workflowSettingsWritePublicSchema = z
 		// Accepted but ignored: a stored workflow can hold any value here, so a GET-then-PUT must not fail on it
 		engineType: z.string().nullable().optional().openapi(workflowSettingsFieldDocs.engineType),
 		callerPolicy: z
-			.enum(['none', 'workflowsFromAList', 'workflowsFromSameOwner'])
+			.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 			.optional()
 			.openapi(workflowSettingsFieldDocs.callerPolicy),
 		callerIds: z.string().optional().openapi(workflowSettingsFieldDocs.callerIds),
