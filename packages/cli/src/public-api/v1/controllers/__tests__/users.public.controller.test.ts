@@ -65,6 +65,26 @@ describe('UsersPublicController', () => {
 			expect(result.data[0]).not.toHaveProperty('mfaSecret');
 			expect(result.data[0]).not.toHaveProperty('disabled');
 		});
+
+		it('emits user-retrieved-all-users telemetry', async () => {
+			userService.getUsersAndCount.mockResolvedValue({ users: [buildUser()], count: 1 });
+
+			await controller.getUsers(
+				caller,
+				mock<Response>(),
+				mock<ListUsersQueryDto>({
+					limit: 100,
+					cursor: undefined,
+					includeRole: false,
+					projectId: undefined,
+				}),
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-all-users', {
+				userId: caller.user.id,
+				publicApi: true,
+			});
+		});
 	});
 
 	describe('getUser', () => {
@@ -87,6 +107,22 @@ describe('UsersPublicController', () => {
 			expect(result).not.toHaveProperty('password');
 			expect(result).not.toHaveProperty('mfaSecret');
 			expect(result).not.toHaveProperty('disabled');
+		});
+
+		it('emits user-retrieved-user telemetry', async () => {
+			userService.getUser.mockResolvedValue(buildUser());
+
+			await controller.getUser(
+				caller,
+				mock<Response>(),
+				'user-id',
+				mock<GetUserQueryDto>({ includeRole: false }),
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-user', {
+				userId: caller.user.id,
+				publicApi: true,
+			});
 		});
 
 		it('throws NotFoundError when the user does not exist', async () => {
