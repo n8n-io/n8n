@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/app/components/ContactInstanceAdminModal.vue
+  ai_agent 1-91
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.test.ts
+  ai_agent 20,71-78,109,302-351
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  ai_agent 18,116-117,128-129,146-151,208,324-362
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsRestrictedCallout.test.ts
+  ai_agent 1-59
+packages/frontend/editor-ui/src/app/components/ContactInstanceAdminModal.test.ts
+  ai_agent 1-71
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  ai_agent 2213
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  ai_agent 60,78,224-227,352,354-355,466-470,803,854,869
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  ai_agent 34,116,177-178,180-183,648-649,700-702,730-736
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsRestrictedCallout.vue
+  ai_agent 1-97
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 2424-2433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4fa3ec2b400a1a2dac4c2c123040a4d4ca43ae0c",
+  "prompts": {}
+}
