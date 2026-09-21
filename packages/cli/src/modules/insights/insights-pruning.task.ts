@@ -22,6 +22,9 @@ export class InsightsPruningTask implements SystemTask {
 
 	readonly durable = true;
 
+	/** Only the in-memory timer, which runs while the system-task flag is off, honours this. */
+	readonly retryDelaySeconds = 1;
+
 	constructor(
 		private readonly insightsConfig: InsightsConfig,
 		private readonly pruningService: InsightsPruningService,

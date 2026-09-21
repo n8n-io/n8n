@@ -17,6 +17,7 @@ describe('InsightsPruningTask', () => {
 		});
 		expect(task.effects).toBe('idempotent');
 		expect(task.durable).toBe(true);
+		expect(task.retryDelaySeconds).toBe(1);
 	});
 
 	it('should prune insights on run', async () => {
