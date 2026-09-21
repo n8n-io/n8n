@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_c31a79bd607050::t_3ceff46d39282a 58-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fc1a6d1e1894b05e289e26c88da0cd1b833f178",
+  "prompts": {},
+  "sessions": {
+    "s_c31a79bd607050": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cea4d277-d175-4e35-a676-4f5787522b8c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
