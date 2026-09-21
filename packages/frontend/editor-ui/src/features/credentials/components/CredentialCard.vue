@@ -245,7 +245,7 @@ function moveResource() {
 				</N8nBadge>
 			</N8nText>
 		</template>
-		<div :class="$style.cardDescription">
+		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">
 			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
@@ -267,6 +267,18 @@ function moveResource() {
 				/>
 			</span>
 		</div>
+		<N8nTooltip v-if="data.description" placement="top" as-child>
+			<template #content>{{ data.description }}</template>
+			<N8nText
+				tag="p"
+				size="small"
+				color="text-light"
+				:class="$style.credentialDescription"
+				data-test-id="credential-card-description"
+			>
+				{{ data.description }}
+			</N8nText>
+		</N8nTooltip>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
@@ -336,6 +348,20 @@ function moveResource() {
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing--sm);
+}
+
+.hasDescription {
+	padding-bottom: var(--spacing--3xs);
+}
+
+.credentialDescription {
+	display: block;
+	width: 0;
+	min-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-bottom: var(--spacing--sm);
 }
 
 .privateCredentialIndicator {

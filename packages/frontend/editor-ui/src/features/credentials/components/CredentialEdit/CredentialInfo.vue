@@ -3,18 +3,49 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { ElCol, ElRow } from 'element-plus';
-import { N8nText } from '@n8n/design-system';
+import { N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
+import { useId } from 'vue';
 type Props = {
 	currentCredential: ICredentialsResponse | ICredentialsDecryptedResponse | null;
+	description: string;
+	readonly: boolean;
 };
 
 defineProps<Props>();
+const emit = defineEmits<{ 'update:description': [value: string] }>();
 
 const i18n = useI18n();
+const descriptionId = useId();
 </script>
 
 <template>
 	<div :class="$style.container">
+		<ElRow>
+			<ElCol :span="8" :class="$style.label">
+				<N8nInputLabel
+					:input-name="descriptionId"
+					:label="i18n.baseText('credentialEdit.credentialInfo.description')"
+				/>
+			</ElCol>
+			<ElCol :span="16">
+				<N8nInput
+					:id="descriptionId"
+					:model-value="description"
+					type="textarea"
+					:rows="4"
+					:maxlength="CREDENTIAL_DESCRIPTION_MAX_LENGTH"
+					:readonly="readonly"
+					:placeholder="
+						readonly
+							? undefined
+							: i18n.baseText('credentialEdit.credentialInfo.description.placeholder')
+					"
+					data-test-id="credential-description"
+					@update:model-value="emit('update:description', $event)"
+				/>
+			</ElCol>
+		</ElRow>
 		<ElRow v-if="currentCredential">
 			<ElCol :span="8" :class="$style.label">
 				<N8nText :compact="true" :bold="true">

@@ -35,6 +35,7 @@ interface OAuthAuthorizationOptions {
 }
 
 interface CreateAndAuthorizeOptions {
+	description?: string | null;
 	onAuthorizationStarted?: (reopen: () => void) => void;
 	projectId?: string;
 	workflowId?: string;
@@ -452,6 +453,7 @@ export function useCredentialOAuth() {
 				{
 					id: '',
 					name,
+					...(options.description !== undefined ? { description: options.description } : {}),
 					type: credentialTypeName,
 					data,
 				},

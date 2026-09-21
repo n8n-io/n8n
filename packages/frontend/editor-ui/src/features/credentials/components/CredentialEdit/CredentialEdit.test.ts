@@ -18,6 +18,8 @@ import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
@@ -406,7 +408,7 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByTestId('credential-save-button')).not.toBeInTheDocument());
 	});
 
-	test('hides menu item when credential is managed', async () => {
+	test('shows all tabs for an unmanaged credential', async () => {
 		const credentialsStore = useCredentialsStore();
 
 		credentialsStore.state.credentials = {
@@ -428,7 +430,7 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByText('Sharing')).toBeInTheDocument());
 	});
 
-	test('shows menu item when credential is not managed', async () => {
+	test('shows Connection and Details for a managed credential', async () => {
 		const credentialsStore = useCredentialsStore();
 
 		credentialsStore.state.credentials = {
@@ -445,8 +447,8 @@ describe('CredentialEdit', () => {
 			},
 		});
 
-		await retry(() => expect(queryByText('Details')).not.toBeInTheDocument());
-		await retry(() => expect(queryByText('Connection')).not.toBeInTheDocument());
+		await retry(() => expect(queryByText('Details')).toBeInTheDocument());
+		await retry(() => expect(queryByText('Connection')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Sharing')).not.toBeInTheDocument());
 	});
 
@@ -1358,6 +1360,164 @@ describe('CredentialEdit', () => {
 
 			return { credentialsStore, uiStore, ...renderResult };
 		};
+
+		describe('descriptions', () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+
+			const setupExistingCredential = (overrides: Partial<ICredentialsResponse> = {}) => {
+				const { credentialsStore, pinia } = setupNewCredential(credentialType);
+				const credential = createCredentialResponse({
+					createdAt: '2026-05-22T10:00:00.000Z',
+					updatedAt: '2026-05-22T10:00:00.000Z',
+					description: 'Use for test reports',
+					...overrides,
+				});
+				credentialsStore.state.credentials = { [credential.id]: credential };
+				credentialsStore.getCredentialData.mockResolvedValue(credential);
+				const render = () =>
+					renderComponent({
+						props: {
+							activeId: credential.id,
+							modalName: CREDENTIAL_EDIT_MODAL_KEY,
+							mode: 'edit',
+						},
+						pinia,
+					});
+
+				return { credentialsStore, credential, render };
+			};
+
+			test('saves the description in one request and shows it after reopening', async () => {
+				const { credentialsStore, credential, render } = setupExistingCredential();
+				const savedCredential = { ...credential, description: 'Use for production reports' };
+				credentialsStore.updateCredential.mockResolvedValue(savedCredential);
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+				const saveButton = within(view.getByTestId('credential-save-button')).getByRole('button');
+				expect(input).toHaveValue(credential.description);
+				expect(saveButton).toBeDisabled();
+
+				await userEvent.clear(input);
+				await userEvent.type(input, `  ${savedCredential.description}  `);
+				await userEvent.click(saveButton);
+
+				await waitFor(() => expect(input).toHaveValue(savedCredential.description));
+				expect(credentialsStore.updateCredential).toHaveBeenCalledExactlyOnceWith({
+					id: credential.id,
+					data: expect.objectContaining({
+						description: `  ${savedCredential.description}  `,
+						data: {},
+					}),
+				});
+				expect(saveButton).toBeDisabled();
+
+				view.unmount();
+				credentialsStore.getCredentialData.mockResolvedValue(savedCredential);
+				const reopened = render();
+				await userEvent.click(await reopened.findByText('Details'));
+				expect(reopened.getByRole('textbox', { name: 'Description' })).toHaveValue(
+					savedCredential.description,
+				);
+			});
+
+			test.each(['', '   '])('clears the description when saved as %j', async (description) => {
+				const { credentialsStore, credential, render } = setupExistingCredential();
+				const clearedCredential = { ...credential, description: null };
+				credentialsStore.updateCredential.mockResolvedValue(clearedCredential);
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+				await userEvent.clear(input);
+				if (description) await userEvent.type(input, description);
+				await userEvent.click(
+					within(view.getByTestId('credential-save-button')).getByRole('button'),
+				);
+
+				await waitFor(() =>
+					expect(credentialsStore.updateCredential).toHaveBeenCalledExactlyOnceWith({
+						id: credential.id,
+						data: expect.objectContaining({ description }),
+					}),
+				);
+				await waitFor(() => expect(input).toHaveValue(''));
+				view.unmount();
+				credentialsStore.getCredentialData.mockResolvedValue(clearedCredential);
+				const reopened = render();
+				await userEvent.click(await reopened.findByText('Details'));
+				expect(reopened.getByRole('textbox', { name: 'Description' })).toHaveValue('');
+			});
+
+			test('limits description input to 512 characters', async () => {
+				const description = 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
+				const { render } = setupExistingCredential({ description });
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+
+				await userEvent.type(input, 'b');
+
+				expect(input).toHaveValue(description);
+			});
+
+			test.each<[string, Scope[], boolean]>([
+				['read-only', ['credential:read'], false],
+				['managed', ['credential:read', 'credential:update'], true],
+			])('keeps a %s credential description read-only', async (_name, scopes, isManaged) => {
+				const { credentialsStore, credential, render } = setupExistingCredential({
+					scopes,
+					isManaged,
+				});
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+
+				expect(input).toHaveAttribute('readonly');
+				await userEvent.type(input, 'changed');
+				expect(input).toHaveValue(credential.description);
+				expect(view.queryByTestId('credential-save-button')).not.toBeInTheDocument();
+				expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
+			});
+
+			test.each([credentialType.name, TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE])(
+				'saves a description before the first save from the assistant modal for %s',
+				async (name) => {
+					const { credentialsStore, pinia } = setupNewCredential(
+						{ ...credentialType, name },
+						{ hideAskAssistant: true },
+					);
+					const view = renderComponent({
+						props: { activeId: name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+						pinia,
+					});
+					await userEvent.click(await view.findByText('Details'));
+					const input = view.getByRole('textbox', { name: 'Description' });
+					expect(input).toHaveValue('');
+					expect(view.queryByText('Created')).not.toBeInTheDocument();
+					await userEvent.type(input, 'Use for production reports');
+					await userEvent.click(
+						within(view.getByTestId('credential-save-button')).getByRole('button'),
+					);
+
+					await waitFor(() =>
+						expect(credentialsStore.createNewCredential).toHaveBeenCalledTimes(1),
+					);
+					expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: name,
+							description: 'Use for production reports',
+							data: {},
+						}),
+						'personal-project',
+						undefined,
+					);
+				},
+			);
+		});
 
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {

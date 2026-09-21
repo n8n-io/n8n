@@ -952,6 +952,21 @@ describe('useCredentialOAuth', () => {
 			);
 		});
 
+		it('includes the description when it creates an OAuth credential', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ description: 'Use for production alerts' }),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
 		it('keeps project scope when quick connecting from an unsaved workflow', async () => {
 			const store = setupSuccessfulOAuthFlow();
 			store.fetchUsableCredentials.mockResolvedValue([]);

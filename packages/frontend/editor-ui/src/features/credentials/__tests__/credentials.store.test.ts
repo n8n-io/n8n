@@ -438,6 +438,29 @@ describe('credentials.store', () => {
 	});
 
 	describe('createNewCredential', () => {
+		it.each(['Use for production reports', null])(
+			'passes description %j as credential metadata',
+			async (description) => {
+				const store = useCredentialsStore();
+				const credential = mock<ICredentialsResponse>({ id: 'new-cred', description });
+				vi.mocked(credentialsApi.createNewCredential).mockResolvedValue(credential);
+
+				await store.createNewCredential({
+					id: '',
+					name: 'Reporting account',
+					type: 'httpBasicAuth',
+					data: { user: 'reports' },
+					description,
+				});
+
+				expect(credentialsApi.createNewCredential).toHaveBeenCalledExactlyOnceWith(
+					mockRootStore.restApiContext,
+					expect.objectContaining({ description, data: { user: 'reports' } }),
+				);
+				expect(store.getCredentialById(credential.id)?.description).toBe(description);
+			},
+		);
+
 		it('should pass isGlobal parameter to API when creating credential', async () => {
 			const store = useCredentialsStore();
 

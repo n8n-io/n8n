@@ -75,6 +75,26 @@ describe('CredentialCard', () => {
 		mockIsOAuthCredentialType.mockReturnValue(true);
 	});
 
+	it('shows the full description as plain text on hover', async () => {
+		const description = '<b>Production reports</b>. '.repeat(15);
+		const data = createCredential({ description });
+		const { getByTestId, findByTestId } = renderComponent({ props: { data } });
+		const descriptionText = getByTestId('credential-card-description');
+
+		expect(descriptionText).toHaveTextContent(description.trim());
+		await userEvent.hover(descriptionText);
+		const tooltip = await findByTestId('tooltip-content');
+		expect(tooltip).toHaveTextContent(description.trim());
+		expect(tooltip.querySelector('b')).toBeNull();
+	});
+
+	it.each([undefined, null, ''])('omits an empty description (%s)', (description) => {
+		const data = createCredential({ description });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
+	});
+
 	it('should render name and home project name', () => {
 		const projectName = 'Test Project';
 		const data = createCredential({

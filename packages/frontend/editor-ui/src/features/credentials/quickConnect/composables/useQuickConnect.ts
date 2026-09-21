@@ -146,6 +146,7 @@ export function useQuickConnect() {
 		projectId?: string;
 		workflowId?: string;
 		credentialFetchScope?: CredentialFetchScope;
+		description?: string | null;
 	}): Promise<ICredentialsResponse | null> {
 		cleanUpDanglingHandlers();
 		const { credentialTypeName, nodeType, source } = connectParams;
@@ -158,11 +159,16 @@ export function useQuickConnect() {
 
 		if (isOAuthCredentialType(credentialTypeName)) {
 			const credential =
-				connectParams.projectId || connectParams.workflowId
+				connectParams.projectId ||
+				connectParams.workflowId ||
+				connectParams.description !== undefined
 					? await createAndAuthorize(credentialTypeName, nodeType, {
 							projectId: connectParams.projectId,
 							workflowId: connectParams.workflowId,
 							credentialFetchScope: connectParams.credentialFetchScope,
+							...(connectParams.description !== undefined
+								? { description: connectParams.description }
+								: {}),
 						})
 					: await createAndAuthorize(credentialTypeName, nodeType);
 			return credential;
@@ -205,6 +211,9 @@ export function useQuickConnect() {
 					{
 						id: '',
 						name: credentialType.displayName,
+						...(connectParams.description !== undefined
+							? { description: connectParams.description }
+							: {}),
 						type: credentialTypeName,
 						data: {
 							...credentialData,

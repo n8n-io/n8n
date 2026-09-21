@@ -2,12 +2,15 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
+import type {
+	CredentialPayload,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from '../../credentials.types';
 
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
 	INode,
 	INodeParameters,
 	ITelemetryTrackProperties,
@@ -37,7 +40,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
@@ -162,6 +164,7 @@ const activeTab = ref('connection');
 const modalBus = ref(createEventBus());
 const isDeleting = ref(false);
 const hasUnsavedChanges = ref(false);
+const credentialDescription = ref('');
 const isSaved = ref(false);
 const loading = ref(false);
 const hasUserSpecifiedName = ref(false);
@@ -268,6 +271,18 @@ const {
 	getChangedSharedFields,
 } = form;
 
+watch(currentCredential, (credential) => {
+	credentialDescription.value = credential?.description ?? '';
+});
+
+const canEditDescription = computed(
+	() =>
+		!isEditingManagedCredential.value &&
+		(isNewCredential.value
+			? credentialPermissions.value.create
+			: credentialPermissions.value.update),
+);
+
 const hideAskAssistant = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
@@ -312,7 +327,7 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		...(isInstanceCredential.value
+		...(isInstanceCredential.value || isEditingManagedCredential.value
 			? []
 			: [
 					{
@@ -321,19 +336,11 @@ const sidebarItems = computed(() => {
 						position: 'top',
 					} satisfies IMenuItem,
 				]),
-		// Deliberately hidden for Templated Custom Auth to keep the modal to the
-		// guided essentials; the type's machinery lives in the Connection pane's
-		// "Edit setup" state. Trade-off: the id and created/updated timestamps
-		// (CredentialInfo) have no other surface for this type.
-		...(credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
-			? []
-			: [
-					{
-						id: 'details',
-						label: i18n.baseText('credentialEdit.credentialEdit.details'),
-						position: 'top',
-					} satisfies IMenuItem,
-				]),
+		{
+			id: 'details',
+			label: i18n.baseText('credentialEdit.credentialEdit.details'),
+			position: 'top',
+		},
 	];
 
 	return menuItems;
@@ -350,18 +357,13 @@ const defaultCredentialTypeName = computed(() => {
 });
 
 const showSaveButton = computed(() => {
-	if (isQuickConnectMode.value) return false;
+	if (isQuickConnectMode.value || isEditingManagedCredential.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
 	return true;
 });
 
-const showHeaderSaveButton = computed(
-	() =>
-		showSaveButton.value &&
-		!!credentialType.value &&
-		(activeTab.value === 'connection' || activeTab.value === 'sharing'),
-);
+const showHeaderSaveButton = computed(() => showSaveButton.value && !!credentialType.value);
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
@@ -642,6 +644,12 @@ function onNameEdit(text: string) {
 	credentialName.value = text;
 }
 
+function onDescriptionEdit(text: string) {
+	if (!canEditDescription.value || text === credentialDescription.value) return;
+	credentialDescription.value = text;
+	hasUnsavedChanges.value = true;
+}
+
 function scrollToTop() {
 	setTimeout(() => {
 		if (contentRef.value) {
@@ -682,9 +690,10 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 
 	assert(credentialTypeName.value);
-	const credentialDetails: ICredentialsDecrypted = {
+	const credentialDetails: CredentialPayload = {
 		id: credentialId.value,
 		name: credentialName.value,
+		...(canEditDescription.value ? { description: credentialDescription.value } : {}),
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
 		isGlobal: isSharedGlobally.value,
@@ -877,7 +886,7 @@ const createToastMessagingForNewCredentials = (project?: CredentialHomeProject |
 };
 
 async function createCredential(
-	credentialDetails: ICredentialsDecrypted,
+	credentialDetails: CredentialPayload,
 	project?: CredentialHomeProject | null,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
@@ -927,7 +936,7 @@ async function createCredential(
 }
 
 async function updateCredential(
-	credentialDetails: ICredentialsDecrypted,
+	credentialDetails: CredentialPayload,
 ): Promise<ICredentialsResponse | null> {
 	let credential: ICredentialsResponse | null = null;
 	try {
@@ -1329,6 +1338,7 @@ async function onQuickConnect(): Promise<void> {
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,
+		...(canEditDescription.value ? { description: credentialDescription.value } : {}),
 		nodeType: ndvStore.value.activeNode.type,
 		source: 'credential_type',
 		serviceName,
@@ -1436,7 +1446,7 @@ const { width } = useElementSize(credNameRef);
 			</template>
 			<template #content>
 				<div :class="$style.container" data-test-id="credential-edit-dialog">
-					<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
+					<div :class="$style.sidebar">
 						<N8nMenuItem
 							v-for="item in sidebarItems"
 							:key="item.id"
@@ -1503,7 +1513,12 @@ const { width } = useElementSize(credNameRef);
 						/>
 					</div>
 					<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
-						<CredentialInfo :current-credential="currentCredential" />
+						<CredentialInfo
+							:current-credential="currentCredential"
+							:description="credentialDescription"
+							:readonly="!canEditDescription"
+							@update:description="onDescriptionEdit"
+						/>
 					</div>
 				</div>
 			</template>

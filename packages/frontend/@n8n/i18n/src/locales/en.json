@@ -1139,6 +1139,8 @@
 	"credentialEdit.credentialEdit.info.sharee.team": "Only users with credential edit permission can edit this connection",
 	"credentialEdit.credentialInfo.allowUseBy": "Allow use by",
 	"credentialEdit.credentialInfo.created": "Created",
+	"credentialEdit.credentialInfo.description": "Description",
+	"credentialEdit.credentialInfo.description.placeholder": "Tell AI when to use this credential, for example, for production reports",
 	"credentialEdit.credentialInfo.id": "ID",
 	"credentialEdit.credentialInfo.lastModified": "Last modified",
 	"credentialEdit.credentialEdit.setupGuide": "Setup guide",

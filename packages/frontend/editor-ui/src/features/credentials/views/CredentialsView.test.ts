@@ -116,6 +116,7 @@ describe('CredentialsView', () => {
 				id: '1',
 				name: 'test',
 				type: 'test',
+				description: 'Use for production reports',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
 				isManaged: false,
@@ -125,6 +126,9 @@ describe('CredentialsView', () => {
 		projectsStore.isProjectHome = false;
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('resources-list-item')).toBeVisible();
+		expect(getByTestId('credential-card-description')).toHaveTextContent(
+			'Use for production reports',
+		);
 	});
 
 	it('should disable cards based on permissions', () => {

@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type {
 	CredentialFetchScope,
+	CredentialPayload,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -438,7 +439,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const createNewCredential = async (
-		data: ICredentialsDecrypted,
+		data: CredentialPayload,
 		projectId?: string,
 		uiContext?: string,
 		options?: { skipStoreUpdate?: boolean },
@@ -446,6 +447,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
 			name: data.name,
+			...(data.description !== undefined ? { description: data.description } : {}),
 			type: data.type,
 			data: data.data ?? {},
 			projectId,
@@ -476,7 +478,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const updateCredential = async (params: {
-		data: ICredentialsDecrypted;
+		data: CredentialPayload;
 		id: string;
 	}): Promise<ICredentialsResponse> => {
 		const { id, data } = params;

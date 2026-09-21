@@ -334,6 +334,25 @@ describe('useQuickConnect()', () => {
 				);
 			});
 
+			it('passes the description to OAuth Quick Connect', async () => {
+				mockIsOAuthCredentialType.mockReturnValue(true);
+				mockCreateAndAuthorize.mockResolvedValue(null);
+
+				await useQuickConnect().connect({
+					credentialTypeName: 'slackOAuth2Api',
+					nodeType: 'n8n-nodes-base.slack',
+					source: 'credential_type',
+					serviceName: 'Slack',
+					description: 'Use for production alerts',
+				});
+
+				expect(mockCreateAndAuthorize).toHaveBeenCalledExactlyOnceWith(
+					'slackOAuth2Api',
+					'n8n-nodes-base.slack',
+					{ description: 'Use for production alerts' },
+				);
+			});
+
 			describe.each(['@n8n/n8n-nodes-langchain', '@n8n/n8n-nodes-langchain.pinecone'])(
 				'pinecone quick connect with packageName configured as "%s"',
 				(packageName) => {
@@ -652,6 +671,24 @@ describe('useQuickConnect()', () => {
 
 							expect(mockGetQuickConnectApiKey).toHaveBeenCalled();
 							expect(result).toEqual(mockCredential);
+						});
+
+						it('includes the description in the created credential', async () => {
+							await useQuickConnect().connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'credential_type',
+								serviceName: 'Firecrawl',
+								description: 'Use for test crawls',
+							});
+
+							expect(mockCreateNewCredential).toHaveBeenCalledExactlyOnceWith(
+								expect.objectContaining({
+									description: 'Use for test crawls',
+									data: { apiKey: 'firecrawl-api-key', allowedHttpRequestDomains: 'none' },
+								}),
+								'project-123',
+							);
 						});
 
 						describe('user data replacement in consent text', () => {
