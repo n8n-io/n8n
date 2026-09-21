@@ -1282,16 +1282,16 @@ describe('useCanvasLayout', () => {
 		test('grows a sticky note when needed to keep covering the same group boxes', () => {
 			const { layout } = createStickyOverParallelGroupsSetup({
 				x: 400,
-				y: -56,
+				y: -64,
 				width: 1400,
-				height: 480,
+				height: 488,
 			});
 			const result = layout('all');
 			const stickyResult = result.nodes.find((node) => node.id === 'sticky');
 
 			assert(stickyResult);
 			assert(stickyResult.height !== undefined);
-			expect(stickyResult.height).toBeGreaterThan(480);
+			expect(stickyResult.height).toBeGreaterThan(488);
 			expect(stickyResult.width).toBe(1400);
 
 			const positions = toPositions(result);
