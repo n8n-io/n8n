@@ -80,7 +80,7 @@ const workflowSettingsWritePublicSchema = z
 			.optional()
 			.openapi(workflowSettingsFieldDocs.binaryMode),
 		callerPolicy: z
-			.enum(['none', 'workflowsFromAList', 'workflowsFromSameOwner'])
+			.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 			.optional()
 			.openapi(workflowSettingsFieldDocs.callerPolicy),
 		callerIds: z.string().optional().openapi(workflowSettingsFieldDocs.callerIds),
