@@ -5,6 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -119,6 +120,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -497,27 +499,32 @@ export class AgentExecutionService {
 	/**
 	 * Delete a thread and all its associated runs. The FK on agent_execution
 	 * cascades, so deleting the thread removes the runs in one statement.
-	 * Blob-stored timelines are deleted in parallel with the thread row.
+	 * The transaction removes all database rows. External data is deleted after commit.
 	 */
 	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
-		// Verify ownership before deleting anything
-		const thread = await this.agentExecutionThreadRepository.findOneBy({
-			id: threadId,
-			projectId,
-			agentId,
+		const refs = await this.txRunner.run({}, async (ctx) => {
+			const deletion = await this.agentExecutionThreadRepository.deleteSession(
+				projectId,
+				agentId,
+				threadId,
+				ctx,
+			);
+			if (!deletion) return null;
+
+			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
+			return deletion;
 		});
-		if (!thread) return false;
+		if (!refs) return false;
 
-		const blobRefs = this.toBlobRefs(
-			await this.agentExecutionRepository.findBlobRefsByThreadId(threadId),
-		);
-
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
-		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
-			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
 			this.agentExecutionLogStore.delete(
-				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
+				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+					agentId,
+					threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
 			),
 		]);
 		return true;

@@ -3,14 +3,21 @@ import type {
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
-import { Agent as RuntimeAgent, Tool, type StreamChunk } from '@n8n/agents';
+import {
+	Agent as RuntimeAgent,
+	Tool,
+	type SerializableAgentState,
+	type StreamChunk,
+} from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig } from '@n8n/config';
+import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -76,18 +83,21 @@ describe('AgentExecutionRepository', () => {
 		await testDb.terminate();
 	});
 
-	function recordingServices() {
+	function recordingServices(memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>()) {
+		const memory = mock<N8nMemory>();
+		memory.getImplementation.mockReturnValue(memoryBackend);
 		const executionService = new AgentExecutionService(
 			mockLogger(),
 			repository,
 			threadRepo,
-			mock<N8nMemory>(),
+			memory,
 			mock<Telemetry>(),
 			mock<AgentChatAttachmentService>(),
 			mock<AgentExecutionLogStore>(),
 			mock<StorageConfig>({ modeTag: 'db' }),
 			mock<ErrorReporter>(),
 			mock<AgentExecutionUpdateBroadcaster>(),
+			Container.get(TransactionRunner),
 		);
 		return {
 			executionService,
@@ -99,6 +109,42 @@ describe('AgentExecutionRepository', () => {
 		const chunks: StreamChunk[] = [];
 		for await (const chunk of stream) chunks.push(chunk);
 		return chunks;
+	}
+
+	function checkpointStateWithChildren(
+		state: string,
+		threadId: string,
+		children: Array<{ runId: string; agentId: string; threadId: string }>,
+	): string {
+		const checkpoint = jsonParse<SerializableAgentState>(state);
+		const pendingToolCalls = Object.fromEntries(
+			children.map((child, index) => [
+				`delegated-${index}`,
+				{
+					toolCallId: `delegated-${index}`,
+					toolName: 'delegate_subagent',
+					input: {},
+					suspended: true,
+					runId: `parent-${index}`,
+					resumeSchema: { type: 'object' },
+					suspendPayload: { type: 'approval' },
+					continuation: {
+						runId: child.runId,
+						toolCallId: `child-${index}`,
+						taskPath: `/root/child_${index}`,
+						subAgentId: child.agentId,
+						childCount: index,
+						threadId: child.threadId,
+						resumeContext: { agentId: child.agentId },
+					},
+				},
+			]),
+		);
+		return JSON.stringify({
+			...checkpoint,
+			persistence: { ...checkpoint.persistence, threadId },
+			pendingToolCalls: { ...checkpoint.pendingToolCalls, ...pendingToolCalls },
+		});
 	}
 
 	function createApprovalAgentFactory(threadId: string) {
@@ -271,6 +317,109 @@ describe('AgentExecutionRepository', () => {
 			await secondConnection.destroy();
 		}
 	}
+
+	it('removes retained and delegated checkpoints without deleting child history', async () => {
+		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
+		const { executionService } = recordingServices();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const retainedRunId = uuid();
+		const childRunId = uuid();
+		const nestedRunId = uuid();
+		const otherThreadRunId = uuid();
+		const otherAgentRunId = uuid();
+		const otherAgent = await agentRepo.save(
+			agentRepo.create({
+				id: uuid(),
+				name: 'Other Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+				skills: {},
+			}),
+		);
+		const childThread = await createThread({
+			id: uuid(),
+			agentId: otherAgent.id,
+			agentName: otherAgent.name,
+			sessionNumber: 2,
+			parentThreadId: threadId,
+			parentAgentId: agentId,
+		});
+		const childExecution = await createExecution({
+			threadId: childThread.id,
+			userMessage: 'Child task',
+		});
+		const parentState = checkpointStateWithChildren(state, threadId, [
+			{ runId: childRunId, agentId: otherAgent.id, threadId: childThread.id },
+		]);
+		const childState = checkpointStateWithChildren(state, childThread.id, [
+			{ runId: nestedRunId, agentId: otherAgent.id, threadId: childThread.id },
+			{ runId: suspension.runId, agentId, threadId },
+		]);
+		await checkpointRepo.update({ runId: suspension.runId }, { state: parentState });
+		await checkpointRepo.insert([
+			{ runId: retainedRunId, agentId, threadId, expired: true, state: parentState },
+			{
+				runId: childRunId,
+				agentId: otherAgent.id,
+				threadId: childThread.id,
+				expired: false,
+				state: childState,
+			},
+			{
+				runId: nestedRunId,
+				agentId: otherAgent.id,
+				threadId: childThread.id,
+				expired: true,
+				state,
+			},
+			{ runId: otherThreadRunId, agentId, threadId: uuid(), expired: false, state },
+			{ runId: otherAgentRunId, agentId: otherAgent.id, threadId, expired: false, state },
+		]);
+		const before = await checkpointRepo.find({ order: { runId: 'ASC' } });
+		const otherProject = await createTeamProject();
+
+		expect(await executionService.deleteThread(projectId, otherAgent.id, threadId)).toBe(false);
+		expect(await executionService.deleteThread(otherProject.id, agentId, threadId)).toBe(false);
+		expect(await checkpointRepo.find({ order: { runId: 'ASC' } })).toEqual(before);
+		expect(await executionService.deleteThread(projectId, agentId, threadId)).toBe(true);
+
+		for (const runId of [suspension.runId, retainedRunId, childRunId, nestedRunId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toBeNull();
+		}
+		for (const runId of [otherThreadRunId, otherAgentRunId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toEqual(
+				before.find((row) => row.runId === runId),
+			);
+		}
+		expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+		expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
+		expect(await threadRepo.findOneBy({ id: childThread.id })).toMatchObject({
+			id: childThread.id,
+		});
+		expect(await repository.findOneBy({ id: childExecution.id })).toMatchObject({
+			id: childExecution.id,
+			threadId: childThread.id,
+		});
+		expect(await storage.getStatus(suspension.runId, agentId)).toEqual({ status: 'not-found' });
+	});
+
+	it('rolls back session database cleanup when memory cleanup fails', async () => {
+		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
+		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
+		memoryBackend.deleteThread.mockRejectedValue(new Error('Memory cleanup failed'));
+		const { executionService } = recordingServices(memoryBackend);
+		const executionsBefore = await repository.findByThreadIdOrdered(threadId);
+
+		await expect(executionService.deleteThread(projectId, agentId, threadId)).rejects.toThrow(
+			'Memory cleanup failed',
+		);
+
+		expect(await checkpointRepo.findByRunId(suspension.runId)).not.toBeNull();
+		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
+		expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executionsBefore);
+	});
 
 	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
 		const fixture = await startSuspendedApprovalRun();
