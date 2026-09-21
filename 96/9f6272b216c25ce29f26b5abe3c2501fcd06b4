@@ -1,0 +1,30 @@
+packages/cli/src/public-api/v1/controllers/variables.public.controller.ts
+  s_dd85f6d6552f69::t_ef7901786de385 35-37
+packages/cli/test/integration/public-api/variables.test.ts
+  s_dd85f6d6552f69::t_a11d93451b5623 6
+  s_dd85f6d6552f69::t_c88af7c64fbe2b 3
+  s_dd85f6d6552f69::t_42647fb48d4cae 72-82,84-98
+  s_dd85f6d6552f69::t_da256472a83ea0 83
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_dd85f6d6552f69::t_b39f33c6999926 1331-1333,1344-1349,1352,1357
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_dd85f6d6552f69::t_e47c447d6e4cdb 154
+packages/cli/test/integration/environments/source-control-import-variables.test.ts
+  s_dd85f6d6552f69::t_f7be0ee6402da8 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "969f6272b216c25ce29f26b5abe3c2501fcd06b4",
+  "prompts": {},
+  "sessions": {
+    "s_dd85f6d6552f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7afa0ce8-7d1f-4ba9-834a-182ab3064acc",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/@n8n/api-types/src/index.ts
+  h_ed1b2d65e81e8e 155
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  h_ed1b2d65e81e8e 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2229591a190c14bb756c54f3a3021347f1890ddb",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

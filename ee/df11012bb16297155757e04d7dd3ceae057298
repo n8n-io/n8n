@@ -1,0 +1,147 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_6610d2fa750fed::t_4d7ab80425b0f9 146-151,157-158
+  s_6610d2fa750fed::t_a1cb955bb686e5 161-166
+  s_6610d2fa750fed::t_9c637ad0d7a369 125
+  s_6610d2fa750fed::t_b777e0b74215cf 19,23,30
+  s_6610d2fa750fed::t_27c1febfc807b4 26
+  s_6610d2fa750fed::t_4327458ab2d13e 76-77,84,87-95
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_6610d2fa750fed::t_3d6c5f66eb2728 11
+  s_6610d2fa750fed::t_b777e0b74215cf 1,16
+  s_6610d2fa750fed::t_913e7d77e7c442 94-148
+packages/cli/src/modules/n8n-packages/entities/agent/agent.types.ts
+  s_6610d2fa750fed::t_273a0d30aca0ad 1,3-38
+  s_6610d2fa750fed::t_b777e0b74215cf 2
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_6610d2fa750fed::t_e8bf8ebe374de1 135
+  s_6610d2fa750fed::t_51bd84f7af3914 152-165,168
+  s_6610d2fa750fed::t_08497e0d4de0f8 13
+  s_6610d2fa750fed::t_668b6854937321 268-271
+  s_6610d2fa750fed::t_c4ef8aa648b321 362
+  s_6610d2fa750fed::t_5f376409765959 73
+  s_6610d2fa750fed::t_c93be1c2c11476 350
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_6610d2fa750fed::t_30f425db7f7667 24
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  ai_agent 49
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_6610d2fa750fed::t_3bdac21a548d3e 138
+  s_6610d2fa750fed::t_fed67095138a42 391,405
+  s_6610d2fa750fed::t_4af929f223b350 82
+  s_6610d2fa750fed::t_9c3d35b898b10c 433-435
+  s_6610d2fa750fed::t_81152397faab5f 117
+  s_6610d2fa750fed::t_f29bde60af19b3 206
+  s_6610d2fa750fed::t_815fd096550099 266,282
+  s_6610d2fa750fed::t_855162e1064e1e 229
+  s_6610d2fa750fed::t_9b6a0383d4d0da 378
+  s_6610d2fa750fed::t_0a2ddfb52bd38c 8-9
+  s_6610d2fa750fed::t_0d4d970551b733 63
+  s_6610d2fa750fed::t_b777e0b74215cf 6-7,23,56-57
+  s_6610d2fa750fed::t_996d63e20ddd2e 349-352
+  s_6610d2fa750fed::t_003d2c653b62b3 105
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  ai_agent 11-16
+  s_6610d2fa750fed::t_c052f5c50ff7b1 83-93
+  s_6610d2fa750fed::t_ab1c70a6606bf8 176-228
+  s_6610d2fa750fed::t_da344ae852b03d 25
+  s_6610d2fa750fed::t_ef8a94d5fb7088 17
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_6610d2fa750fed::t_1adccb8b1d7416 166-168
+packages/cli/src/modules/n8n-packages/__tests__/export-import-agent.integration.test.ts
+  s_6610d2fa750fed::t_7c2058a3245ff0 28
+  s_6610d2fa750fed::t_36503264ef1fe6 153
+  s_6610d2fa750fed::t_d8e7e31bb8ea17 37-40
+  s_6610d2fa750fed::t_bd2cab3a52ddcc 15
+  s_6610d2fa750fed::t_05b4c7e9b7ef91 3-9,13,16-21,24-27,30-36,41-152,154-266,268-272,275-282,287-294
+  s_6610d2fa750fed::t_e77b070fa4380c 267,273-274,283
+  s_6610d2fa750fed::t_3a92dc881ed28c 14
+  s_6610d2fa750fed::t_b45136327cbb63 2
+  ai_agent 284-286
+  s_6610d2fa750fed::t_eb681be2fbdd92 29
+  s_6610d2fa750fed::t_81341b7f1bee62 22
+  s_6610d2fa750fed::t_b777e0b74215cf 1,23
+  s_6610d2fa750fed::t_af1ff11d8da241 10-12
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_6610d2fa750fed::t_0e4f1a360e5565 45
+  s_6610d2fa750fed::t_233614f7a96f37 56
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_6610d2fa750fed::t_29a343728b0a0d 129
+  s_6610d2fa750fed::t_f56357ee3bbc48 175
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_6610d2fa750fed::t_9598ebc3190533 1-40
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  ai_agent 1185-1187,1288-1290,1360-1362,1434-1435
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_6610d2fa750fed::t_0c495952290404 1
+  s_6610d2fa750fed::t_36a857a636c4f3 2-6,8-42,44-46,53-147
+  s_6610d2fa750fed::t_b777e0b74215cf 7
+  s_6610d2fa750fed::t_0685142cdf8851 43,47-52
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_6610d2fa750fed::t_55fbcff3e04a12 4
+  s_6610d2fa750fed::t_ecc746d5114c26 226
+  s_6610d2fa750fed::t_61fce1cd230197 501
+  s_6610d2fa750fed::t_ea83ae82b3e4cd 467-475
+  s_6610d2fa750fed::t_b111914420a384 628
+  s_6610d2fa750fed::t_c37ee0632628bf 375-377,388
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  ai_agent 2346-2348,2412
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_6610d2fa750fed::t_d4ca34321ade13 322
+  s_6610d2fa750fed::t_c32148954c467e 265
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_6610d2fa750fed::t_a1988d33fab315 21
+  s_6610d2fa750fed::t_09427052aa8347 184
+  s_6610d2fa750fed::t_d41f0aeaa60a62 164
+  s_6610d2fa750fed::t_49bc8a2d654ae4 293
+  s_6610d2fa750fed::t_7eaf195ca7fa0c 214
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_6610d2fa750fed::t_dac3ca46186704 70,83
+  s_6610d2fa750fed::t_cf911e710feed9 14
+packages/cli/src/modules/n8n-packages/n8n-packages.config.ts
+  s_6610d2fa750fed::t_241de68972536c 23-29
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_6610d2fa750fed::t_8bda5477f1fa25 1-3,5-60
+  s_6610d2fa750fed::t_b777e0b74215cf 4
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  ai_agent 133-135,202
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_6610d2fa750fed::t_e38b0daa76eb8e 96
+  s_6610d2fa750fed::t_375d4cb9922e55 266
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_6610d2fa750fed::t_ea0a20414fc42f 37
+  s_6610d2fa750fed::t_444b9327c81d37 89,95
+  s_6610d2fa750fed::t_4db9063088feb3 155-164,169-181,187
+  s_6610d2fa750fed::t_d11bfc504d2b89 53
+  s_6610d2fa750fed::t_b777e0b74215cf 1,14-16
+  s_6610d2fa750fed::t_92946a0715615b 165-168
+  s_6610d2fa750fed::t_7c2b81a2efc76f 5
+  s_6610d2fa750fed::t_eb0239c896d341 51-52
+packages/cli/src/modules/n8n-packages/entities/agent/agent-reference-rebinding.ts
+  s_6610d2fa750fed::t_bf0d9441de07bb 1-39,44-73
+  ai_agent 40-43
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_6610d2fa750fed::t_21324d544d042a 29-35
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_6610d2fa750fed::t_bf48e8def04535 1-102
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_6610d2fa750fed::t_ea1629cb0a9007 6,12
+  s_6610d2fa750fed::t_619de53afa253f 81-82,93
+  s_6610d2fa750fed::t_22e94733ea9567 78-80,91-92,102-103
+  s_6610d2fa750fed::t_854821505aa510 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eedf11012bb16297155757e04d7dd3ceae057298",
+  "prompts": {},
+  "sessions": {
+    "s_6610d2fa750fed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c5efe46-184d-4ac3-b6dd-0047eaddc1af",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

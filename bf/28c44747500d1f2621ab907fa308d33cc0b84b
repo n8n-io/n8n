@@ -1,0 +1,29 @@
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_aeb8767c6711c5::t_410d347c2943c3 186-210
+  s_aeb8767c6711c5::t_cdd12199b114c6 320-338,348-349,351-369,373,375-376
+  s_aeb8767c6711c5::t_cbe4dc9231f35d 339-347
+  s_aeb8767c6711c5::t_8a9521d534211c 350,370-372,374
+  s_aeb8767c6711c5::t_173337208da297 426,500-504,699
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_aeb8767c6711c5::t_8761bde88c666f 536-570,573-576
+  s_aeb8767c6711c5::t_c95ec65455b3b8 571-572
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_aeb8767c6711c5::t_173337208da297 35-36,123
+  s_aeb8767c6711c5::t_410d347c2943c3 367-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf28c44747500d1f2621ab907fa308d33cc0b84b",
+  "prompts": {},
+  "sessions": {
+    "s_aeb8767c6711c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee3ca96c-243a-447f-b721-9220b07c2646",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

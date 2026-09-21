@@ -1,0 +1,46 @@
+packages/cli/src/services/__tests__/canvas-only-personal-space-role.service.test.ts
+  s_bf11149c12c496::t_0f7cff7238490e 21
+  s_bf11149c12c496::t_19e51cc65420ed 180,192,197,204,214
+  s_bf11149c12c496::t_03b9f10094ddab 1-20,22-142,144-179,181-191,193-196,198-203,205-213,215-218
+  s_bf11149c12c496::t_36952a5cec0f12 143
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_bf11149c12c496::t_3c91d2345b9176 226
+packages/cli/src/services/canvas-only-personal-space-role.service.ts
+  s_bf11149c12c496::t_1259ef15dcaef9 102-104,106-107,110
+  s_bf11149c12c496::t_f97e64a8d862c4 1-41,43-101,105,108-109,111-149
+  s_bf11149c12c496::t_b6af827107ed32 42
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  s_bf11149c12c496::t_3c91d2345b9176 46
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_bf11149c12c496::t_3c91d2345b9176 5,240
+packages/cli/src/services/role.service.ts
+  s_bf11149c12c496::t_3c91d2345b9176 211,227,229-231,234,238,248,259,262-265,297
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_bf11149c12c496::t_f3ec2e65a1aec7 68
+  s_bf11149c12c496::t_64b5cdbba1f0d1 35
+  s_bf11149c12c496::t_fdee00397d6d72 183-189
+packages/cli/src/commands/start.ts
+  s_bf11149c12c496::t_bcf92130e59995 43
+  s_bf11149c12c496::t_653ec20baffe34 275-279
+packages/cli/test/integration/public-api/roles-canvas-only.test.ts
+  s_bf11149c12c496::t_a3857bfeaf3cd2 3,5,7,80,82-84,114,116-118
+  s_bf11149c12c496::t_906a3f3f4a11c7 152
+packages/cli/src/controllers/role.controller.ts
+  s_bf11149c12c496::t_3c91d2345b9176 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9481cc33e28770a89214a13f191c499e4fbc5172",
+  "prompts": {},
+  "sessions": {
+    "s_bf11149c12c496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2b111cf-21f0-4119-9a78-95309420ed84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

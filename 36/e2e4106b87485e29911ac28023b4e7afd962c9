@@ -1,0 +1,24 @@
+AGENTS.md
+  s_1c45d18cf14868::t_d840480034d17b 44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "36e2e4106b87485e29911ac28023b4e7afd962c9",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c45d18cf14868": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f8b129e-d118-4a7d-af9b-a0c6cc1cd1f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

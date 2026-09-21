@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_973b463afe42a2::t_323380ca35e0d8 2
+  s_973b463afe42a2::t_d7cdd4eff3876d 319,900-913
+  s_973b463afe42a2::t_dce75f7a878c62 456
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_973b463afe42a2::t_27d810cb49c09f 745,748-752
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_973b463afe42a2::t_1ac2afbe1a4867 275-288,292-295
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_973b463afe42a2::t_27d810cb49c09f 215-219,224-226
+packages/@n8n/instance-ai/src/runtime/__tests__/run-state-registry.test.ts
+  s_973b463afe42a2::t_6217de9bf2cf2a 1314-1356
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_973b463afe42a2::t_202ef9aa15a4a4 45,48,55,221,227-232,234-240,242,248-258
+  s_973b463afe42a2::t_2c84f0e1701136 59,220,233,241,243-247
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_973b463afe42a2::t_23eea7f42c041a 462-466,505,510-516
+  s_973b463afe42a2::t_b469159025ce31 501-504,506-509,517-521
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe52880883d182de9a605b4d8181c247ad0e2a43",
+  "prompts": {},
+  "sessions": {
+    "s_973b463afe42a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fca40b86-fc05-4bef-a2e6-8395f321d651",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

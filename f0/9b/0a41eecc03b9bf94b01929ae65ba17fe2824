@@ -1,0 +1,143 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_a1f3204f753ed2::t_5dd1a809c73d20 265,287,339,348
+  s_a1f3204f753ed2::t_843f5cb729b0b2 173,223,310,346,352,447
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_a1f3204f753ed2::t_5dd1a809c73d20 27
+  s_a1f3204f753ed2::t_34215a512631f8 341
+  s_a1f3204f753ed2::t_843f5cb729b0b2 7,25-26,208,219,259,274-276,288,306-307,310-312,317,322,325,327,332-334,336,374-376,378-379,392-395,398,400-401
+  h_7555c3ee6524cf 54
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 336
+packages/@n8n/api-types/src/agents/index.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 11
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 498
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_a1f3204f753ed2::t_843f5cb729b0b2 26,57,189,257,415-416
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_a1f3204f753ed2::t_5dd1a809c73d20 178,194-196
+  s_a1f3204f753ed2::t_843f5cb729b0b2 173,188,190,208,214-216
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1,13,15-16,21,23
+  s_a1f3204f753ed2::t_5dd1a809c73d20 4,7,9
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_a1f3204f753ed2::t_843f5cb729b0b2 11,53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatBackgroundJobSignal.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1,7,11,19,22
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1,22,24,55,190,193-195
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 2-3,13,15,20,25,29,75
+  s_a1f3204f753ed2::t_5dd1a809c73d20 30-35,37,54,115,174
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 53-54,59,77
+  s_a1f3204f753ed2::t_5dd1a809c73d20 55
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_a1f3204f753ed2::t_843f5cb729b0b2 40,477
+  s_a1f3204f753ed2::t_5dd1a809c73d20 337-339
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_a1f3204f753ed2::t_843f5cb729b0b2 66
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1,29
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1004,1013
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 170,183,188
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 139
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 9,46,811,828,849,870,924,960,994,1026
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 2,531,536-537
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 2-4,10-11,13,45,49,53,63,77,81,86-87,91,96-97,107-108,111,126,138,147-148,150,158-159,174,181,185,194,200-201,208,211,221,224,229,232,237,244,248,250,257,265
+  s_a1f3204f753ed2::t_5dd1a809c73d20 33,66,74,79,92,102,109,112,116-118,122-123,125,129,133,135-137,144,146,149,151,154,164,166-167,169,173,176,178,180,184,187,191,193,196,206,212,214,242,249,253
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 63,111
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 2,270,272
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 289
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 135
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 210
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 113,143,193,245,255,258
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 9,179,225,844,919,928,961,1112,1126
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 143,148,156,165,171,181,194,209,287,442,447,459,461,646,674,974,1004,1013,1026,1043,1047
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_a1f3204f753ed2::t_843f5cb729b0b2 10,140
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 112
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 4,129
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 7,265,331,334,339
+packages/@n8n/api-types/src/agents/types.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 5,339
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_a1f3204f753ed2::t_63455abd75c44d 66,68
+  s_a1f3204f753ed2::t_77be674ff9b0c0 140
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_777ff9b58f0c74::t_b1a92fa383c461 7
+  s_a1f3204f753ed2::t_843f5cb729b0b2 19,24,26
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_a1f3204f753ed2::t_5dd1a809c73d20 894
+  s_a1f3204f753ed2::t_843f5cb729b0b2 884,898,901-903
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.scss
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1,15
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1,14,132-133,437,440,448,618
+  s_a1f3204f753ed2::t_5dd1a809c73d20 279-280
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_7555c3ee6524cf 7575
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 6,86
+packages/@n8n/api-types/src/push/agents.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 11,28
+packages/frontend/editor-ui/src/features/agents/components/AgentChatBackgroundJobSignal.vue
+  s_a1f3204f753ed2::t_5dd1a809c73d20 19,22,24,28
+  s_a1f3204f753ed2::t_843f5cb729b0b2 2,5,7
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_a1f3204f753ed2::t_843f5cb729b0b2 37,53,63,111-112,121,137,156,166,182,194,198,579,592,598,600,604-605,612,635,701,712,722,742,758,762,768,773
+  s_a1f3204f753ed2::t_5dd1a809c73d20 107,115,157-158,160,163,167,606,609-610,613,615,618-619,621,624
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 80,95,102,112,123-124,128
+packages/frontend/editor-ui/src/features/agents/utils/background-job-labels.ts
+  s_a1f3204f753ed2::t_843f5cb729b0b2 1
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_a1f3204f753ed2::t_5dd1a809c73d20 2427
+  s_a1f3204f753ed2::t_843f5cb729b0b2 2416,2437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f09b0a41eecc03b9bf94b01929ae65ba17fe2824",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_777ff9b58f0c74": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1789388666005",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_a1f3204f753ed2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09fc3-7946-7571-8e49-3446e00ed07d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_b657e90b8812af::t_f6930a0ebcfd68 95,97
+  s_b657e90b8812af::t_e85eeb49acd75a 84
+  s_b657e90b8812af::t_7f2ed65e763a92 21,40-42,52-83,85-94,96,98-106
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_b657e90b8812af::t_130e0c72dd46a4 117
+  s_b657e90b8812af::t_6f08bdc369ab57 145
+  s_b657e90b8812af::t_7f2ed65e763a92 7-44,46-116,118-137
+  s_b657e90b8812af::t_ee9e8b20ad0fcc 45
+  s_b657e90b8812af::t_2e7c315adfc4de 174
+packages/cli/src/executions/execution-list.service.ts
+  s_b657e90b8812af::t_2f33897e6dd9de 113
+  s_b657e90b8812af::t_3393bba273894d 33
+  s_b657e90b8812af::t_7f2ed65e763a92 11-32,34-94
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_b657e90b8812af::t_e2977f7a033d2b 57
+  s_b657e90b8812af::t_16690492859717 84-97
+packages/cli/src/executions/merge-execution-pages.ts
+  s_b657e90b8812af::t_7f2ed65e763a92 4-30
+packages/cli/src/executions/__tests__/merge-execution-pages.test.ts
+  s_b657e90b8812af::t_7f2ed65e763a92 3-80
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_b657e90b8812af::t_c1e516349f705f 111
+  s_b657e90b8812af::t_99d71c90580e53 242
+  s_b657e90b8812af::t_a025c650b9740a 78
+  s_b657e90b8812af::t_24024f9cbf7415 188-193
+packages/cli/src/executions/execution-cursor.ts
+  s_b657e90b8812af::t_d9829beaad626b 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3fea2600b036f07929766f49e6bcdfeba0429f6",
+  "prompts": {},
+  "sessions": {
+    "s_b657e90b8812af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "426da0c5-5c8d-43c8-834f-b42cae6044b9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

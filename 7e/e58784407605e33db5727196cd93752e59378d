@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_18fb7c6372e1c8::t_1e9856e7d071eb 774-775,786
+  s_18fb7c6372e1c8::t_3e323d999238aa 815,819
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_18fb7c6372e1c8::t_e2aabfe6af066c 144
+  s_18fb7c6372e1c8::t_0f8258e7de419f 138-143
+packages/@n8n/agents/src/runtime/__tests__/strip-orphaned-tool-messages.test.ts
+  s_18fb7c6372e1c8::t_1419e6a9a66dba 272-293
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_18fb7c6372e1c8::t_3a33c84c24ff6d 551-554
+  s_18fb7c6372e1c8::t_bb5e5f953e2850 271-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ee58784407605e33db5727196cd93752e59378d",
+  "prompts": {},
+  "sessions": {
+    "s_18fb7c6372e1c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "059118a9-efb3-42f4-8a2f-b78e198d35cd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

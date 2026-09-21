@@ -1,0 +1,40 @@
+packages/@n8n/instance-ai/evaluations/README.md
+  s_a2999f6753c62b::t_17c2d471fea784 10,174,176,1073
+  s_a2999f6753c62b::t_1986d5376aefcb 5,7,689,691
+  s_a2999f6753c62b::t_a186bd9f9c9032 16
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_a2999f6753c62b::t_5f7632b593d4ca 754-755,757,768,771
+  s_a2999f6753c62b::t_a186bd9f9c9032 4-6,8,13-18,253,738-741,762,841-843
+  s_a2999f6753c62b::t_17c2d471fea784 11
+packages/@n8n/instance-ai/scripts/run-eval-lanes.sh
+  s_a2999f6753c62b::t_a186bd9f9c9032 370
+.github/workflows/ci-instance-ai-evals.yml
+  s_a2999f6753c62b::t_e5c3cb1bd546a6 31,63,118-124,131,136,141
+  s_a2999f6753c62b::t_1986d5376aefcb 4
+  s_a2999f6753c62b::t_17c2d471fea784 2
+.agents/skills/create-agent-builder-eval/local-setup.md
+  s_a2999f6753c62b::t_af9aa98cae4032 1-99
+packages/@n8n/instance-ai/evaluations/data/agents/index.ts
+  s_a2999f6753c62b::t_a186bd9f9c9032 2-6
+.agents/skills/create-agent-builder-eval/SKILL.md
+  s_a2999f6753c62b::t_af9aa98cae4032 1-102,113-156,158
+  s_a2999f6753c62b::t_17c2d471fea784 103-112,157
+.claude/plugins/n8n/skills/create-agent-builder-eval
+  s_a2999f6753c62b::t_a182ad6f1e5738 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "325682752b85def2e21700072ed626dcfc106dea",
+  "prompts": {},
+  "sessions": {
+    "s_a2999f6753c62b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a080bf-405e-70f0-8af9-fbce616d04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

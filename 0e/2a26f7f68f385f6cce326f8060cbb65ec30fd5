@@ -1,0 +1,32 @@
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_b37613d166d184::t_6aec77e9398b30 3,519
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_b37613d166d184::t_d3316e018d5e1a 1-225
+packages/cli/src/modules/otel/__tests__/support/otel-integration-utils.ts
+  s_b37613d166d184::t_b6546deee7555c 26,56-57
+packages/cli/src/modules/otel/otel.service.ts
+  s_b37613d166d184::t_3d1c66cb240fdb 5,38,41-45,53,188,192-193,198-207
+packages/cli/src/modules/otel/__tests__/support/otel-test-provider.ts
+  s_b37613d166d184::t_e6fa5be9b81838 15-16
+packages/cli/src/modules/otel/README.md
+  s_b37613d166d184::t_7672ac212b86d6 45-122
+  s_b37613d166d184::t_ea12b96ac29022 15-42
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_b37613d166d184::t_aa536249bf9f91 228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e2a26f7f68f385f6cce326f8060cbb65ec30fd5",
+  "prompts": {},
+  "sessions": {
+    "s_b37613d166d184": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4b624e2-8631-4d19-baf5-4df3db2ba8e8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

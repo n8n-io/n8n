@@ -1,0 +1,31 @@
+scripts/lint-parity/snapshot.mjs
+  s_6eb3add10e67c1::t_65dc907c383638 1-114
+scripts/lint-parity/samples.json
+  s_6eb3add10e67c1::t_253b60bcd73aa5 1-479
+packages/@n8n/utils/src/create-event-queue.test.ts
+  s_6eb3add10e67c1::t_006dbc461ea313 42
+packages/@n8n/utils/src/retry.test.ts
+  s_6eb3add10e67c1::t_006dbc461ea313 64
+scripts/lint-parity/samples.mjs
+  s_6eb3add10e67c1::t_253b60bcd73aa5 1-105
+scripts/lint-parity/diff.mjs
+  s_6eb3add10e67c1::t_29df51df632ae2 1-99
+packages/@n8n/eslint-config/src/configs/base.ts
+  s_6eb3add10e67c1::t_ecef94ce0f7968 417,437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "087ce3f3d679827c516f41c04c3755070da89d92",
+  "prompts": {},
+  "sessions": {
+    "s_6eb3add10e67c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "416647ba-ceb9-4ddb-9008-a0e34a4b1157",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

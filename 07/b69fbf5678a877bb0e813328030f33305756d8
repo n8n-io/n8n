@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/assistant/views/SettingsAIView.vue
+  s_5bd9e5cbe605b4::t_d38bade803b42c 44
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5bd9e5cbe605b4::t_d38bade803b42c 5233,5240,5246
+packages/frontend/editor-ui/src/features/ai/assistant/components/HubSwitcher.vue
+  s_5bd9e5cbe605b4::t_d38bade803b42c 5,11,30-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "07b69fbf5678a877bb0e813328030f33305756d8",
+  "prompts": {},
+  "sessions": {
+    "s_5bd9e5cbe605b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73f7a060-c12e-4ef2-8b42-6202b2d3429f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

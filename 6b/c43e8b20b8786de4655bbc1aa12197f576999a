@@ -1,0 +1,110 @@
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_71c6da2ee47cd3::t_19b26356a490b4 37-43,109
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-2,4,12,62-64,71-72,76-78,80-81,85-87,92,100,104,112-113,116,119,121-122,127-128
+  s_4c46dcfe1ba789::t_9317a33118b923 14,18,65,74-75,90
+  s_4c46dcfe1ba789::t_f1ea1f245992e5 28,34
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 70,115,120,123
+  s_71c6da2ee47cd3::t_c470b0a9f3961f 79,102
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 37-46,48
+  s_4c46dcfe1ba789::t_eed36ddb86f263 47
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 3,106-108,152-154,160,171,177,201,218,230,238,246,270,278,287,298,305,316,331,341,368,383
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 2-8,47,52,63,74,77-81,91,165-169,201,205-231,235
+  s_4c46dcfe1ba789::t_6c72c81609f986 232-233
+  s_4c46dcfe1ba789::t_e86cea15aea75d 234
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1-5,7-13,17-18,32-45,59-61,64-69,74-83,86,88,90-92,99-100,103
+  s_4c46dcfe1ba789::t_533d342b8bac27 14-15,20,23-31,55-56,63,70-72,101,104-111
+  s_4c46dcfe1ba789::t_ab1cf56a8e54a1 49
+  s_4c46dcfe1ba789::t_a519961dfa21ce 51-52
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 4,62,66,95,108-110
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 86-90
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 2-3,10
+  s_71c6da2ee47cd3::t_d67313882bd806 4-8
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_a3125dfe40640a::t_98f95192499fa6 2147-2149
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 65-70,72
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 2,7-9,14,17,24,27,30
+  s_71c6da2ee47cd3::t_4d94f6f753024f 3,5-6,13,23,26,31-47
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,8-15,17,19-29,31-34,36,41-45,47-49,52-53,56-60,63-65,75
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 37-40,54-55,61-62,70-73
+  s_1b8554cde45c62::t_16ec079be70cdf 74
+  s_ae088f5e88fc8b::t_685d3531daff92 96
+packages/@n8n/engine/src/response-channel/response-transport.ts
+  s_4c46dcfe1ba789::t_946e879a98e68f 1,3,5-9,20
+  s_71c6da2ee47cd3::t_1e866fe525a390 4,10-12,15-19,22-23
+packages/@n8n/engine/src/response-channel/in-memory-transport.ts
+  s_4c46dcfe1ba789::t_946e879a98e68f 2-3,6,9-11,20,24-25,27
+  s_71c6da2ee47cd3::t_1e866fe525a390 4-5,7-8,12,19,23,28
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-5
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 34-35,38,102
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-3,7-18,21,23
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 4-6,22,24
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 22,41-46,54
+  s_4c46dcfe1ba789::t_b5320423cf528d 40,50-51
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_4c46dcfe1ba789::t_d973a62943d7dd 444,446,451,518
+packages/workflow/src/interfaces.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 3764-3769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6bc43e8b20b8786de4655bbc1aa12197f576999a",
+  "prompts": {},
+  "sessions": {
+    "s_1b8554cde45c62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "412d6818-efbe-45e8-bbc3-57789facf6a6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_a3125dfe40640a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "075b8cbd-4b8b-47a1-8eab-be2d73d8c62b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ae088f5e88fc8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "889b53f9-e9c3-4e3b-b556-d6d34bb1180e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

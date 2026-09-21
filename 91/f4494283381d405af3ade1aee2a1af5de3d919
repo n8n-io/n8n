@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_fdaede93b7b3d2 1784-1828
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b04c58447561ba::t_ce282d78149977 666-673,676,764-765,785
+  s_b04c58447561ba::t_366ca29804642e 181-183,770-777,779-784
+  s_b04c58447561ba::t_b453c0da9e5a86 678,692
+  s_b04c58447561ba::t_a811502abe912a 361-364,374-377,661,674,677,679
+  s_b04c58447561ba::t_616dd9483b497f 70,663-665,675,680,685,703,711,720-732,756-757,766-769,778
+  s_b04c58447561ba::t_43b070affad65f 688-689,710
+  s_b04c58447561ba::t_14239a49ae5845 786
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_b04c58447561ba::t_c3bd19004443ac 225
+  s_b04c58447561ba::t_81f0cca4a5346a 227,241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "91f4494283381d405af3ade1aee2a1af5de3d919",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

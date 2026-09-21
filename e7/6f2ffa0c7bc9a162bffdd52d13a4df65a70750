@@ -1,0 +1,34 @@
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_1057459915ebdc::t_ab40007e85c4b3 32,36
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_1057459915ebdc::t_38e6e257d74ee2 212,223-224,248,258,265,277-280,282-284
+  s_1057459915ebdc::t_9df1a6cc12fef8 5,51-53,93-96,100,104-116,144,152-156,174,186
+  s_1057459915ebdc::t_bcd2e253594d1e 217-222,281
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_1057459915ebdc::t_ab40007e85c4b3 34,36
+packages/cli/test/integration/workflow-history-compaction.service.test.ts
+  s_1057459915ebdc::t_dcd8741cc55e6e 126,209,262,303,346
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_1057459915ebdc::t_9d0ac6e15757cc 33,36,38,40,47,56
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_1057459915ebdc::t_2cacaeb2b3157e 3,220-222,224-293,299-301,308
+  s_1057459915ebdc::t_a7c578515ba5b4 223,294-298,302-307
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  s_1057459915ebdc::t_9d0ac6e15757cc 27,29,31,33,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e76f2ffa0c7bc9a162bffdd52d13a4df65a70750",
+  "prompts": {},
+  "sessions": {
+    "s_1057459915ebdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe1186a5-619a-4f80-95bd-fa54d570b158",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

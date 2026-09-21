@@ -1,0 +1,24 @@
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  ai_agent 6,15,19,22-27,30-32,37,51-52,56
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  ai_agent 2-3,8-14,16-23
+  s_2b982a746d2c2a::t_b18493243e5503 43
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  ai_agent 42-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bb965ffd8f8f825c96c767a0a32735837304027",
+  "prompts": {},
+  "sessions": {
+    "s_2b982a746d2c2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f641c50-3998-4bf5-a9bf-cb8ed965925e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

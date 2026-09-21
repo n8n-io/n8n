@@ -1,0 +1,96 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9f941c28d7508a::t_77c4c5c7c4b970 75-80,128-133,583
+  s_9f941c28d7508a::t_d6dfbf9d2aeaba 451,600
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9f941c28d7508a::t_4ab94ac04a40ec 168-169,645
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9f941c28d7508a::t_cbc37859a5ab5d 47-48,69-70,196
+  s_9f941c28d7508a::t_d6dfbf9d2aeaba 211,254
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/fix-with-assistant.test.ts
+  s_9f941c28d7508a::t_016cabc384ff61 101
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_9f941c28d7508a::t_e493db3174d4d1 7,29
+packages/frontend/editor-ui/src/features/agents/utils/fix-with-assistant.ts
+  s_9f941c28d7508a::t_13b4e98c8cead7 1,19,182-202,204-208,210
+  s_9f941c28d7508a::t_7d83e6ee03414a 79-80
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_9f941c28d7508a::t_b6e72318d7dc31 67-73,75,138-144,173,270-276
+  s_9f941c28d7508a::t_2f01a7768c00d7 74
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_9f941c28d7508a::t_cb0ddcda5e98fd 45,229
+  s_9f941c28d7508a::t_dc03f161bf1c40 89
+  s_9f941c28d7508a::t_6deb16b252b7ea 243-262
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_9f941c28d7508a::t_53b1633bbb2125 47-52,134,355-361,363-364
+  s_9f941c28d7508a::t_d20f5fbde240ea 131-133
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9f941c28d7508a::t_3b3a62990d1b13 238-240,242-246,249
+  s_9f941c28d7508a::t_e265ecb1fdf1c0 307,510-511,534,624
+  s_9f941c28d7508a::t_c2cfd3aa08bb25 557
+  s_9f941c28d7508a::t_60e99587d9f781 740
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_9f941c28d7508a::t_e493db3174d4d1 22,62
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9f941c28d7508a::t_d6dfbf9d2aeaba 107,366,401,436,448,621
+  s_9f941c28d7508a::t_98f77cbb0b316c 339-365,367-369
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_9f941c28d7508a::t_3b3a62990d1b13 195
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-change-request.test.ts
+  s_9f941c28d7508a::t_b4eaaa3e85439b 1-4,16-18,20-27,41-45
+  s_9f941c28d7508a::t_096d022b1f73f7 5-15,19,28
+  s_9f941c28d7508a::t_bc3df0acf72229 29-31
+  s_9f941c28d7508a::t_fa01e6af77b62d 32-40
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_9f941c28d7508a::t_e493db3174d4d1 21,64
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_9f941c28d7508a::t_b76532436ceee5 163,220
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9f941c28d7508a::t_dc03f161bf1c40 653-655
+packages/workflow/src/interfaces.ts
+  s_9f941c28d7508a::t_4ab94ac04a40ec 3416-3420
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_9f941c28d7508a::t_c2cfd3aa08bb25 234
+packages/frontend/editor-ui/src/features/agents/utils/agent-change-request.ts
+  s_9f941c28d7508a::t_7d83e6ee03414a 1-2,8,56-63,65-68,74
+  s_9f941c28d7508a::t_c9e4da0f00d081 3-7,64,69-73,75
+  s_9f941c28d7508a::t_a1a0df75918ec8 9-17,21,48-50,53-54,76
+  s_9f941c28d7508a::t_fa01e6af77b62d 18-20,22-24,26,30-31,33-34,39-40,44,46
+  s_9f941c28d7508a::t_7b77d33e9b1861 25,27,36,41
+  s_9f941c28d7508a::t_fd01d9f1987ae5 28-29,32,35,37-38,42-43,45,47,51-52,55
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_9f941c28d7508a::t_fd6e5d5d88d0af 31-37
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_9f941c28d7508a::t_7cafe5d113464e 3,152-161,562,565-568
+  s_9f941c28d7508a::t_fa59d4e262dccc 30
+  s_9f941c28d7508a::t_b23b6de7ee129d 31,45
+  s_9f941c28d7508a::t_3116bf61e80306 147-151,162-166
+  s_9f941c28d7508a::t_a7b5466b2444e2 551-558,563-564,569-570
+  s_9f941c28d7508a::t_9fa47754a4abcf 560
+  s_9f941c28d7508a::t_033166a0b95da5 698-700,704-705
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_9f941c28d7508a::t_99a095c0143415 203-212,214-224
+  s_9f941c28d7508a::t_d6dfbf9d2aeaba 213
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_9f941c28d7508a::t_be645746d3363b 283-299
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_9f941c28d7508a::t_e6fd5446233448 41,43-44,48,50,126-155,159-172
+  s_9f941c28d7508a::t_9fa47754a4abcf 45
+  s_9f941c28d7508a::t_7c0f8aa8a8c135 46-47,49
+  s_9f941c28d7508a::t_835778c4f93caa 156-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d7b46ff5724ac8bd8649377178af8e2f598779b",
+  "prompts": {},
+  "sessions": {
+    "s_9f941c28d7508a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bdb18f-23b3-4cc5-9f30-0cd317430f8d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

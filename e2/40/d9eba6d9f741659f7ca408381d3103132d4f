@@ -1,0 +1,26 @@
+packages/nodes-base/credentials/SlackApi.credentials.ts
+  s_8c555e7a05b282::t_696a8ca0888501 30,32
+packages/nodes-base/nodes/Slack/SlackTrigger.node.ts
+  s_8c555e7a05b282::t_8f2aa1e9c04de7 56
+packages/nodes-base/nodes/Slack/test/SlackTriggerHelpers.test.ts
+  s_8c555e7a05b282::t_cfa6c2286608a9 51,56-57,61,63,68-80
+  s_8c555e7a05b282::t_36177c995eca21 177,179,182-184,191,193,195,197,200
+packages/nodes-base/nodes/Slack/SlackTriggerHelpers.ts
+  s_8c555e7a05b282::t_0587affe5f428b 96-97,99-102,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e240d9eba6d9f741659f7ca408381d3103132d4f",
+  "prompts": {},
+  "sessions": {
+    "s_8c555e7a05b282": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2b98f05-ad8b-449c-9cd5-c2b0e526862d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

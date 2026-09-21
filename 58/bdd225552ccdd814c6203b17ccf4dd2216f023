@@ -1,0 +1,54 @@
+packages/cli/src/modules/mcp-registry/registry/mock-servers.ts
+  s_1b995c2a71c1af::t_e122b51cc8348e 96-97,99-101,125,127
+  s_1b995c2a71c1af::t_9b8786974aec44 88-95,102-112,114-116,123
+  s_1b995c2a71c1af::t_3dd7f8419bf49c 113
+  s_1b995c2a71c1af::t_7120f675ba0a90 98
+  s_1b995c2a71c1af::t_bcc663a809b958 117-122
+  s_1b995c2a71c1af::t_7e12486f36b803 124
+  s_1b995c2a71c1af::t_c7aa67087d3c99 126
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.types.ts
+  s_1b995c2a71c1af::t_79032a53c7e36a 67
+  s_1b995c2a71c1af::t_c7d8eb46db6740 29-32
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_1b995c2a71c1af::t_cd226ef29980af 88-101
+packages/cli/src/modules/mcp-registry/__tests__/node-description-transform.test.ts
+  s_1b995c2a71c1af::t_889f9f0f60de45 10
+  s_1b995c2a71c1af::t_d413bba603eb10 635-695,697,699
+  s_1b995c2a71c1af::t_1fc802752d4f1d 380-401
+  s_1b995c2a71c1af::t_1619edbe70c21a 696
+  s_1b995c2a71c1af::t_b6556a5b7c04a9 698
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_1b995c2a71c1af::t_07a33174bfa738 93-96,100
+  s_1b995c2a71c1af::t_d125f52289e182 155-159,187-191
+  s_1b995c2a71c1af::t_ab8fd7cc507472 56-59,64
+  s_1b995c2a71c1af::t_63c33e52a5d096 195-199
+  s_1b995c2a71c1af::t_703eebd139f73d 61-62,66-69,180-186
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_1b995c2a71c1af::t_20d79a57bf5f67 321,342,343
+  s_1b995c2a71c1af::t_bffb0b6d16e060 344
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_1b995c2a71c1af::t_782c7c1c5f93d2 142
+packages/workflow/src/mcp-helpers.ts
+  s_1b995c2a71c1af::t_0ea7614543989b 40
+  s_1b995c2a71c1af::t_ef2e7d0b6e3a05 14-20
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_1b995c2a71c1af::t_dedbc6f98ef363 27-28
+  s_1b995c2a71c1af::t_9e24d5b858fd1a 29,32-48,52-53,57
+  s_1b995c2a71c1af::t_7ee27c9e93a4f7 82-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "58bdd225552ccdd814c6203b17ccf4dd2216f023",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

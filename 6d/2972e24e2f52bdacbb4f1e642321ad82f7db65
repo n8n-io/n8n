@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/controllers/variables.public.controller.ts
+  s_a4b6e25f647aa9::t_c83bd15ea80aa8 99,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6d2972e24e2f52bdacbb4f1e642321ad82f7db65",
+  "prompts": {},
+  "sessions": {
+    "s_a4b6e25f647aa9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c0c918b-4350-4608-9acf-5bd3def6ca7b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

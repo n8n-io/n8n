@@ -1,0 +1,27 @@
+packages/cli/src/executions/execution.service.ts
+  s_61c25f16a88895::t_bad15aa5ca287c 260-270
+packages/cli/src/executions/executions.controller.ts
+  s_61c25f16a88895::t_bad15aa5ca287c 137-144
+packages/cli/test/integration/public-api/executions.test.ts
+  s_61c25f16a88895::t_bad15aa5ca287c 436-441
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_61c25f16a88895::t_bad15aa5ca287c 224-228,303-307,366-371,409,423,438,451,464
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_61c25f16a88895::t_bad15aa5ca287c 433,435-438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f4b81b22bb7c150246d03983e83f82b7b6702a13",
+  "prompts": {},
+  "sessions": {
+    "s_61c25f16a88895": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c430397-0614-49ec-84bc-eadc10ba77d5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

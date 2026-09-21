@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_92a7a75845d057::t_4c6183b9c5eb1d 404,406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a0ffaf8ab84161d1ac508fedb7c34f3320d163ed",
+  "prompts": {},
+  "sessions": {
+    "s_92a7a75845d057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8732cc5d-32fb-4984-a453-2336070d33ab",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_ee42afc3269266::t_7db8ff43c87e12 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "641e21ce4e251c91c7d7861567998f1ca62e2f56",
+  "prompts": {},
+  "sessions": {
+    "s_ee42afc3269266": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b23dc48-0461-447b-8f28-aa0ac73f6802",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

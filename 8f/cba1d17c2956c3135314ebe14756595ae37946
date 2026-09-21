@@ -1,0 +1,33 @@
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_1057459915ebdc::t_e0161e8a721d34 10-15,17-21
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  ai_agent 5,18-19,21,66,73-77,79,82-88,90,92-95,98-99,134-135
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  ai_agent 1-42
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  ai_agent 1-38
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  ai_agent 1-38
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  ai_agent 1-59
+packages/cli/eslint.config.mjs
+  ai_agent 404
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  ai_agent 52,56,69,73,93,95,97,111,116,139,163,187,208,213,234,239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8fcba1d17c2956c3135314ebe14756595ae37946",
+  "prompts": {},
+  "sessions": {
+    "s_1057459915ebdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe1186a5-619a-4f80-95bd-fa54d570b158",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

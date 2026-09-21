@@ -1,0 +1,134 @@
+packages/workflow/test/expression.test.ts
+  s_d9675397affb4a::t_6160d16d2a7109 1010-1018,1026,1028-1035,1037-1051
+  s_d9675397affb4a::t_e854e5c6870c9d 14,1027
+  s_d9675397affb4a::t_2953b7ba42349c 1019-1025,1036
+  s_d9675397affb4a::t_8fdba07386c21f 1052-1054
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_d9675397affb4a::t_ccf69bbef622c9 475,477
+  s_d9675397affb4a::t_063d4ee11966aa 476
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_d9675397affb4a::t_b74c67c3c4e55b 23,34
+  s_d9675397affb4a::t_d489e84b877eba 78-79
+  s_d9675397affb4a::t_f311bafad5d1d1 134-148
+  s_d9675397affb4a::t_36f615188aa29c 35
+packages/workflow/src/interfaces.ts
+  s_d9675397affb4a::t_b7da4a74f124ef 28,1186
+  s_d9675397affb4a::t_0d3f9067b9e779 29,1182-1185,3852-3857
+  s_d9675397affb4a::t_59719edc5dd9ff 27,3229
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/datatype.completions.ts
+  s_d9675397affb4a::t_69b8d12d72f17c 1264-1265
+  s_d9675397affb4a::t_43231cf3565188 15-17,74-77
+  s_d9675397affb4a::t_8bf141917d70bd 107-108,1263,1266-1311,1313-1317
+  s_d9675397affb4a::t_59efee6f0bb215 1312
+  s_d9675397affb4a::t_4fb82d808bbb76 1318-1319
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/completions.test.ts
+  s_d9675397affb4a::t_141b5256e365e9 125
+  s_d9675397affb4a::t_bf8706839f7143 111,158
+packages/core/src/execution-engine/workflow-execute.ts
+  s_d9675397affb4a::t_71ced12c12e1ff 72
+  s_d9675397affb4a::t_86c173a907e686 1409-1421
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  s_d9675397affb4a::t_063d4ee11966aa 25
+  s_d9675397affb4a::t_1054bb09e2ae23 28-30,55
+  s_d9675397affb4a::t_59719edc5dd9ff 7
+packages/cli/src/workflows/publication/__tests__/data-table-trigger-subscription-reconciler.test.ts
+  s_d9675397affb4a::t_ed5b8b5224c3af 6,9
+  s_d9675397affb4a::t_0c4b3cd9b021e4 1-5,7-8,10-25,36-40,42-66
+  s_d9675397affb4a::t_2b385e25451176 41
+  s_d9675397affb4a::t_d741b0c29b68d9 26-35
+packages/@n8n/expression-runtime/src/bridge/bridge-messages.ts
+  s_d9675397affb4a::t_e52b31a4b45d2a 246-259,281
+  s_d9675397affb4a::t_cc77af282af93e 245
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_d9675397affb4a::t_45d71d460d7aba 173-175,181-190,192-220
+  s_d9675397affb4a::t_b9474c5d61fbd2 176-180,191
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_d9675397affb4a::t_dbbc44d787fed6 339-376
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/dataTable.completions.test.ts
+  s_d9675397affb4a::t_b28bcefb1358d4 51,55
+  s_d9675397affb4a::t_c251cbd44db346 48,57
+  s_d9675397affb4a::t_135be73a5c3dd1 26
+  s_d9675397affb4a::t_ca1db7f22c93a7 1-25,27-47,49-50,52-54,56,58-64
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.ts
+  s_d9675397affb4a::t_69b8d12d72f17c 109
+  s_d9675397affb4a::t_235958077d7168 43-44,110-123,282-286,426,434,539
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_d9675397affb4a::t_a6d919c2344d29 429-434
+packages/workflow/test/data-table-expression-refs.test.ts
+  s_d9675397affb4a::t_71c230a03c262f 6-26,46-53,56-72,77-93
+  s_d9675397affb4a::t_b26c21ad59ad83 27-42,74-76,105
+  s_d9675397affb4a::t_b28bcefb1358d4 43-45,54-55,73,115
+  s_d9675397affb4a::t_b06cb6373e5e7a 1-5,94-104,106-114,116-117
+packages/cli/src/modules/data-table/data-table-proxy.service.ts
+  s_d9675397affb4a::t_b446f8a7a82d54 14,98,102-103,106-107
+  s_d9675397affb4a::t_278ed3ce318732 99-101,104-105,108
+  s_d9675397affb4a::t_08c69d4a8baf7b 109-110
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/constants.ts
+  s_d9675397affb4a::t_7ac18ac9b54367 226-233
+  s_d9675397affb4a::t_a378fc910b3754 225
+packages/core/src/execution-engine/routing-node.ts
+  s_d9675397affb4a::t_063d4ee11966aa 137-139
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d9675397affb4a::t_40810479f51b0f 798-802,804
+  s_d9675397affb4a::t_58bfe874e4dbab 803
+packages/workflow/src/data-table.types.ts
+  s_d9675397affb4a::t_b7da4a74f124ef 283-287
+  s_d9675397affb4a::t_6e65e6ffe3996c 264,266-270,273-276,282
+  s_d9675397affb4a::t_1ec4384d2c0369 265,271-272,277-281
+packages/core/src/execution-engine/__tests__/data-table-expressions.test.ts
+  s_d9675397affb4a::t_2d18d336ea67e9 2-3,22-23,28,30-32,34,36-37,92-95,108,117,129
+  s_d9675397affb4a::t_be9b09c0177851 11,57-64,66-67
+  s_d9675397affb4a::t_be7b02d83c17ae 1,4-10,12-13,15-21,24-27,29,33,35,38-51,54-55,71-91,96-107,109-116,118-127,141-142,145-146,166-191
+  s_d9675397affb4a::t_8ec98234a91df2 14
+  s_d9675397affb4a::t_0c0139242cf8cb 52-53
+  s_d9675397affb4a::t_02b968151cf120 56,65,68-70
+  s_d9675397affb4a::t_7c4b6b793825d8 128,130-140,143-144
+  s_d9675397affb4a::t_d1e2a7edb866fa 147-165
+packages/cli/src/workflows/publication/data-table-trigger-subscription-reconciler.ts
+  s_d9675397affb4a::t_ab5072ff1c071a 21-23,67
+packages/core/src/execution-engine/data-table-expressions.ts
+  s_d9675397affb4a::t_87922fa12908e5 1-3,7-8,11-19,24,39-42,44-49,54-64,67-72,77,116,120-123,125-127,129-133,144-146,178,180
+  s_d9675397affb4a::t_750df2817badb9 20-21,73,76
+  s_d9675397affb4a::t_54ccec1ef92224 27-30
+  s_d9675397affb4a::t_82f6558704c19c 5-6,9,22-23,25-26,31-38,78-82,84,87,89-99,102-113,117,134,147-158,164,166,170-173
+  s_d9675397affb4a::t_1bdf51d0e592df 43,50-53,65-66,74-75,124,135-136,138-143,159-163,165,167-169,174-176
+  s_d9675397affb4a::t_e155824461f333 85-86,88,100-101,114-115,118-119,128,177,179
+  s_d9675397affb4a::t_c39a22d27a6628 4,10,83,137
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_d9675397affb4a::t_a6d919c2344d29 509-510,626-641
+  s_d9675397affb4a::t_65e46a704ad00e 642-643
+packages/workflow/src/data-table-expression-refs.ts
+  s_d9675397affb4a::t_3182551bf6342a 188
+  s_d9675397affb4a::t_59719edc5dd9ff 9-13,163-185
+  s_d9675397affb4a::t_b06cb6373e5e7a 195-202,204-227,233-235
+  s_d9675397affb4a::t_bf7f4881241590 3-6,18-20,23-24,51-52,55,57-58,73-74,84-112,134-145,203,228-232
+  s_d9675397affb4a::t_c39a22d27a6628 26-31
+  s_d9675397affb4a::t_65c9a73107e08a 1,7-8,14-17,21-22,25,32-50,53-54,56,59-72,75-83,113-133,146-150,152-162,186-187,189-194
+  s_d9675397affb4a::t_69b8d12d72f17c 2,151
+packages/frontend/editor-ui/src/app/composables/useDataTableExpressions.ts
+  s_d9675397affb4a::t_1f9075afbcf780 1-3,5-87,89-107
+  s_d9675397affb4a::t_c39a22d27a6628 4,88
+packages/workflow/src/index.ts
+  s_d9675397affb4a::t_65c9a73107e08a 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "17025e46ad048da9d7c207e12207fdbdc72c6bd5",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d9675397affb4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09ca5a38-0a1b-47ad-bee1-8001e15ae12d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

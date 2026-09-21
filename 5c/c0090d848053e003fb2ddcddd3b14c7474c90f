@@ -1,0 +1,21 @@
+packages/@n8n/config/src/decorators.ts
+  s_16fdb2a0e62f0d::t_34f96b59af72c4 63-65
+packages/@n8n/config/test/decorators.test.ts
+  s_16fdb2a0e62f0d::t_fe889016f48eb5 43,56-61,68-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5cc0090d848053e003fb2ddcddd3b14c7474c90f",
+  "prompts": {},
+  "sessions": {
+    "s_16fdb2a0e62f0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ed43002-afb6-4a23-a675-489f6eb0745f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

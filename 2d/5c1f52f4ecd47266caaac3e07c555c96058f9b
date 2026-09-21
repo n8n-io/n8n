@@ -1,0 +1,48 @@
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_95de11c49048b8::t_045f1d698bfeaf 14,84,101,109,153,169,175,309
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_95de11c49048b8::t_92a160d0215969 10-14
+  s_95de11c49048b8::t_045f1d698bfeaf 37
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_95de11c49048b8::t_56256c8ebdc5f9 659
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_95de11c49048b8::t_00cedfb0b16be1 100-105
+  s_95de11c49048b8::t_9150a1114cdf80 107
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.ts
+  s_95de11c49048b8::t_1a2a3be4d1dd74 6
+  s_95de11c49048b8::t_dff98ce09f207f 188,220
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-connection.test.ts
+  s_95de11c49048b8::t_56256c8ebdc5f9 21
+  s_95de11c49048b8::t_6cfcd993d1fcb4 59,74,104-107,114,120-122,129-131,139-153,155
+  s_95de11c49048b8::t_c3ae7f6df48501 154,156-157
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_95de11c49048b8::t_4afb059956f2d5 43-47
+  s_95de11c49048b8::t_3c6fa915871cbc 408-417
+  s_95de11c49048b8::t_1f0a7f68e4349c 406-407
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_95de11c49048b8::t_dff98ce09f207f 3,13-14
+  s_95de11c49048b8::t_a228652a1cb770 45,84-85,88-92,103-112,119-122,129-135
+  s_95de11c49048b8::t_d33f83875f62d0 136-137
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_95de11c49048b8::t_caae421f64cd50 852
+packages/workflow/src/mcp-helpers.ts
+  s_95de11c49048b8::t_1764fb5977b460 8-15,19-22,43-48,50
+  s_95de11c49048b8::t_dff98ce09f207f 24-31
+  s_95de11c49048b8::t_39efc6993eb013 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2d5c1f52f4ecd47266caaac3e07c555c96058f9b",
+  "prompts": {},
+  "sessions": {
+    "s_95de11c49048b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28dcfb2e-d83c-4b2d-9160-5bf3bcf6d168",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

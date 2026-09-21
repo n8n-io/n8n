@@ -1,0 +1,37 @@
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_966eb9d98dd73e::t_2e30c8159271fb 179-180
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_966eb9d98dd73e::t_c8e05385611189 278
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_966eb9d98dd73e::t_a08f4fc1f3f737 470-472
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_966eb9d98dd73e::t_9cc1eb23b00232 110
+  s_966eb9d98dd73e::t_0d3cd178014a20 71-72
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_966eb9d98dd73e::t_196c31dd2c7f7f 82-90
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_966eb9d98dd73e::t_2a1e19fe45b444 27-34,36
+packages/cli/src/executions/parse-range-query.middleware.ts
+  s_966eb9d98dd73e::t_489cf7b6afef1d 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ce54ac0186829ce494dc9682c5bcc72a76b5bf1",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_966eb9d98dd73e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea838960-363c-4ebf-a8ce-0435a332bc16",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_da76d9a372587f::t_d381535d23b5ef 398,430
+  s_da76d9a372587f::t_4f24b928f2e4cc 198-214
+  s_da76d9a372587f::t_3f2382cfc3ac88 607,618
+  s_da76d9a372587f::t_8ec1f5a4e0cc48 652
+  s_da76d9a372587f::t_76669287638a57 650,653-654,662
+  s_da76d9a372587f::t_5aefe5bdc769f4 515-517,519-520
+  s_da76d9a372587f::t_8a6819460aeb56 31
+  s_da76d9a372587f::t_c1f031b99f0531 383
+  s_da76d9a372587f::t_7db60b3fcf2a8f 514,518,522-541,543-545,547
+  s_da76d9a372587f::t_d86bcc974b9cc9 542
+  s_da76d9a372587f::t_3860efd18bf445 658
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_da76d9a372587f::t_0a79d683097c03 7664
+  s_da76d9a372587f::t_cd2ed2c2c7753d 7665
+  s_da76d9a372587f::t_1e120f27063582 7669-7673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3e3c51dc3a1457caa37901a0539228897df6c17d",
+  "prompts": {},
+  "sessions": {
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

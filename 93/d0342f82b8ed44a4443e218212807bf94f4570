@@ -1,0 +1,63 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_fd8fba793fcded::t_51ea504b5c734d 442
+packages/cli/src/modules/promotions.ee/constants.ts
+  s_fd8fba793fcded::t_b523bca21da23d 7-9
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_fd8fba793fcded::t_0c02f4425fecc0 448-459,465,468-470,472,478,481,488-491,493-494
+  ai_agent 460-463
+  s_0558287d5e6974::t_c7891d443c2c7a 464,466-467,471,473-477,479-480,482-487,492
+packages/cli/src/modules/promotions.ee/promotions.controller.ts
+  s_fd8fba793fcded::t_37173dc0ac0fd5 1-29
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_fd8fba793fcded::t_e22d08f35ace2a 798-876
+  s_fd8fba793fcded::t_98a0ac8b46d09d 133-134
+packages/cli/test/integration/shared/types.ts
+  s_fd8fba793fcded::t_83b2f93b438db8 29
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_fd8fba793fcded::t_8314b4381c7291 40-46
+  s_fd8fba793fcded::t_ac508ce426398c 5,10
+  s_fd8fba793fcded::t_9e2676aa5e5965 313-323,332-340,342-387
+  s_0558287d5e6974::t_32268afef38db2 324-331
+  s_fd8fba793fcded::t_1c79d8b5ef47f0 90-91
+  s_fd8fba793fcded::t_163106e76eb294 341
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_fd8fba793fcded::t_1ca1522bc437c0 303-306
+packages/cli/test/integration/promotions/promote-selection.controller.test.ts
+  s_fd8fba793fcded::t_85bcf744195615 1-59
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_fd8fba793fcded::t_7fee8a8f8015d3 14-15
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_fd8fba793fcded::t_08a72329ed8f0f 57-58
+  ai_agent 818
+  s_fd8fba793fcded::t_51138a7b6ec76e 2
+  s_fd8fba793fcded::t_c89bc0dfde6e6d 803-817,819-875
+  s_fd8fba793fcded::t_4e7499f3586c6a 20
+  s_fd8fba793fcded::t_6d51af5fd6519d 123-124
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_fd8fba793fcded::t_73b6a679a26b97 3-4
+  s_fd8fba793fcded::t_98fa4acc4fe774 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "93d0342f82b8ed44a4443e218212807bf94f4570",
+  "prompts": {},
+  "sessions": {
+    "s_0558287d5e6974": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e95ff10e-29ad-434c-b48d-c8417a26b245",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_fd8fba793fcded": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9fe6ec7-70f6-467b-9854-48b8259e78f0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

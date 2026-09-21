@@ -1,0 +1,62 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_4cb1018c4e1065 57-58,65-69,106,125-126,128,130-134
+packages/cli/test/migration/1789138249046-add-active-thread-claim-to-agent-execution.test.ts
+  s_b04c58447561ba::t_afb1bd9adae030 101-108,111-112,115,145,171
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_40fe090169a7e5 171,191
+  s_b04c58447561ba::t_f475ed48074b7b 103,105
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_49821e20d18076::t_8b86cceee18e74 16,365-366,383
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_49821e20d18076::t_b0299f9033bc2b 99-101,155-156,161-165
+  s_b04c58447561ba::t_f363175f569cc0 166
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_ea45222196e2e4 223,244,251,253,256-257,275,277-278,283,304,317
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_b04c58447561ba::t_f852865536451d 69,81-84
+  s_b04c58447561ba::t_e48f2c2dfaa08f 20
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_b04c58447561ba::t_3088230cc4cb3e 69
+  s_b04c58447561ba::t_f19c3217fe9655 22-26,73-76,254
+packages/@n8n/db/src/migrations/common/1789138249046-AddActiveThreadClaimToAgentExecution.ts
+  s_b04c58447561ba::t_937abb0460e672 11-13,49,52,62,75
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_b04c58447561ba::t_75e6492b4b1645 69,71
+docs/generated/postgres-schema/README.md
+  s_b04c58447561ba::t_f4183ed927ffe0 22
+docs/generated/postgres-schema/public.agent_execution.md
+  s_b04c58447561ba::t_dd034816b2153d 55
+docs/generated/sqlite-schema/README.md
+  s_b04c58447561ba::t_b4f9fd551bf0a2 22
+docs/generated/sqlite-schema/agent_execution.md
+  s_b04c58447561ba::t_3dd04567f5beb9 9,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3163f426ae99083d655c48283653231b01598b2d",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_49821e20d18076": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "539bc159-400b-4e05-bd35-aafdcbe0c804",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-change-request.test.ts
+  s_9f941c28d7508a::t_9fc7325b3466c1 15
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9f941c28d7508a::t_571690c4f166d5 2,776
+  s_9f941c28d7508a::t_7e95257f3714b9 768-775,777-787
+packages/frontend/editor-ui/src/features/agents/utils/agent-change-request.ts
+  s_9f941c28d7508a::t_c572558ccca51a 20,23,66-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ce943cceff0adc390ce9bb62cd40d3d39537a44",
+  "prompts": {},
+  "sessions": {
+    "s_9f941c28d7508a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bdb18f-23b3-4cc5-9f30-0cd317430f8d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

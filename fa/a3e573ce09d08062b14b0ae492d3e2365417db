@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_13cf415df802d6::t_78f54e224d6d1c 867-884
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_13cf415df802d6::t_02b47ef8a20a55 437-438
+  s_13cf415df802d6::t_fc4d1a8e755941 441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "faa3e573ce09d08062b14b0ae492d3e2365417db",
+  "prompts": {},
+  "sessions": {
+    "s_13cf415df802d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c0ec642-e533-422b-82bc-34688614dc2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

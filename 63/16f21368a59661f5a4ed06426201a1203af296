@@ -1,0 +1,19 @@
+docker/images/n8n-base/Dockerfile
+  s_5aa737c7621a93::t_a8eadbebc8a861 16-25,27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6316f21368a59661f5a4ed06426201a1203af296",
+  "prompts": {},
+  "sessions": {
+    "s_5aa737c7621a93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fadcd750-cfa3-485f-905d-ab3832cb2b22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

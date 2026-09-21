@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_dc1bcc8544e6b1::t_96bf6d15b2a5ed 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6e5cacfd41a8b9c091521cd43e8b228ab0a11286",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

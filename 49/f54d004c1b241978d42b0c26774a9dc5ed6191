@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_f4692a58b76ac8::t_7346adab744a2e 238,241,244
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_f4692a58b76ac8::t_ba97451f06d585 118,131-132,134,137,152-153,156,159,173-174,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "49f54d004c1b241978d42b0c26774a9dc5ed6191",
+  "prompts": {},
+  "sessions": {
+    "s_f4692a58b76ac8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3aec2e99-8e31-4e85-a6f6-6fa09d8c1106",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

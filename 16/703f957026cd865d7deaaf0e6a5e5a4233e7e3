@@ -1,0 +1,96 @@
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_adb5d982725a9c::t_1ff3bfe6140c0f 53
+  ai_agent 54-61
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_651ee2f369602c 3
+  s_adb5d982725a9c::t_d9ce4beb51e957 5
+  s_adb5d982725a9c::t_485bdfe092aa7c 75,88-92
+  s_adb5d982725a9c::t_6b6c10c500f92a 93,95-96
+  s_adb5d982725a9c::t_49c4cc52cad6d4 98
+  s_adb5d982725a9c::t_d531e1240aed96 154
+  s_adb5d982725a9c::t_c682eec2cf1181 214-221,238-256
+  s_adb5d982725a9c::t_932b1040a27513 222-223,227-237
+  ai_agent 224
+  s_adb5d982725a9c::t_a99a0531c096a8 225-226
+  s_adb5d982725a9c::t_a09582b0620cbc 258-263
+  s_adb5d982725a9c::t_c19b8296f8cb6d 271-275
+  s_adb5d982725a9c::t_07aed822c64fbe 366-378
+  s_adb5d982725a9c::t_72eec78b07cbbb 383-384
+  s_adb5d982725a9c::t_513ccdb89430ea 393-394
+  s_adb5d982725a9c::t_c319ebff582e1b 964-966,969-979
+  s_adb5d982725a9c::t_a2dc7aa3da71ce 984,1028,1165,1207,1355,2092
+  s_adb5d982725a9c::t_b889bb8ba06702 1385-1396
+  s_adb5d982725a9c::t_5eaead9502e2a7 1406,1414,1417-1419
+  s_adb5d982725a9c::t_827641fcdd7e54 1436,1439
+  s_adb5d982725a9c::t_f2c110bedfc512 1456-1457,1459
+  s_adb5d982725a9c::t_ab6b82affdffa9 2097-2098,2106,2114,2125-2130,2132-2144
+  s_adb5d982725a9c::t_365b9b47aad9c8 2112-2113,2117
+  s_adb5d982725a9c::t_b320a8d8e84c31 2119-2123
+  s_adb5d982725a9c::t_927bd2fd21e075 2173
+  s_adb5d982725a9c::t_31743fcdc70beb 2182,2187
+  s_adb5d982725a9c::t_c7a112698f7a41 2279-2283
+  s_adb5d982725a9c::t_ecdfba5a49c312 2308,2311-2314
+  s_adb5d982725a9c::t_8599fdd6818d10 2331
+  s_adb5d982725a9c::t_2ccd8d3f458d72 2364
+  s_adb5d982725a9c::t_2e62dff51a04a8 79,94,196,884-885
+packages/frontend/editor-ui/src/features/agents/composables/useCreateAgent.test.ts
+  ai_agent 1-2,5-6,9-11,14-16,18-20,22,24-29
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  ai_agent 41,53,423
+  s_adb5d982725a9c::t_863cc1c6ef91b4 335-338
+  s_adb5d982725a9c::t_87cd0bc533b367 339-343
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.vue
+  ai_agent 3,15,31,74
+packages/frontend/editor-ui/src/features/agents/__tests__/createAgentRoute.test.ts
+  ai_agent 1-2,4-11,15-18
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_adb5d982725a9c::t_d88ab54fe0699a 6804-6805
+  s_adb5d982725a9c::t_040cb74b8b2140 8007
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_adb5d982725a9c::t_eddb33a4f1b5d0 37-39,41
+  s_adb5d982725a9c::t_d87500db1afeed 143-144,153,161-162
+  s_adb5d982725a9c::t_77f2c80adb6c59 180,182-194,197-229
+  s_adb5d982725a9c::t_159c510f878f04 181
+  ai_agent 7,424,429-434
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  ai_agent 27,56,235
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_adb5d982725a9c::t_7eb945d4866a9b 13,20
+  s_adb5d982725a9c::t_6a792308c0d739 44-47,64
+  s_adb5d982725a9c::t_432cc5c96ffbe5 173,175-181,183-184
+  s_adb5d982725a9c::t_29e941f9815488 174,182,185-191
+  s_adb5d982725a9c::t_f08a9644cb5c64 321-326
+  ai_agent 26,125
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  ai_agent 26
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  ai_agent 4,238,284,389,396
+packages/frontend/editor-ui/src/features/agents/createAgentRoute.ts
+  ai_agent 2-3,6-10,12-15,17-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_adb5d982725a9c::t_0db9d822d1ec3f 36-37
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  ai_agent 15,30-38,306,329,380,386
+packages/frontend/editor-ui/src/features/agents/composables/useCreateAgent.ts
+  ai_agent 1,3-4,7-9,11-13,15-19,21-22
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  ai_agent 7,437
+packages/@n8n/telemetry/src/events/agents.ts
+  ai_agent 454,456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16703f957026cd865d7deaaf0e6a5e5a4233e7e3",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_6ce85d4a1f6067::t_bdb48e2389350c 69
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_6ce85d4a1f6067::t_e2eb01a94e0dfb 308-314
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_6ce85d4a1f6067::t_28a4a27012f506 3,30,135-139
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_6ce85d4a1f6067::t_81aba5166eed0f 2
+  s_6ce85d4a1f6067::t_3357f8400a32ea 11,581-587
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_6ce85d4a1f6067::t_3357f8400a32ea 1-185,187-192,194-199
+  s_6ce85d4a1f6067::t_c213f81a108500 186,193
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_6ce85d4a1f6067::t_bdb48e2389350c 2
+  s_6ce85d4a1f6067::t_09eed61a7b1db0 3
+  s_6ce85d4a1f6067::t_3357f8400a32ea 27,31,83-94,96,99-101,115-121,131-133,147,153-157,160-164,197
+  s_6ce85d4a1f6067::t_c213f81a108500 148,262-263
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ce85d4a1f6067::t_3357f8400a32ea 7926
+  s_6ce85d4a1f6067::t_bdb48e2389350c 7886,7925
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewButton.vue
+  s_6ce85d4a1f6067::t_28a4a27012f506 1-80
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_6ce85d4a1f6067::t_3357f8400a32ea 22
+  s_6ce85d4a1f6067::t_28a4a27012f506 27,221-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "894c24d2825f3394fdbc85d92428a89a3a248abb",
+  "prompts": {},
+  "sessions": {
+    "s_6ce85d4a1f6067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4c4-d4ab-7d52-b983-c70679bb264f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+packages/@n8n/instance-ai/src/tools/index.ts
+  ai_agent 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61606bd896ee6cbb4522de7a0fdaf918f1212716",
+  "prompts": {}
+}

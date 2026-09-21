@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_f489685fba5f6b::t_840220a02f4015 530
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_f489685fba5f6b::t_cc337c1d0dde3a 424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0b237188a47d189d2fc3bb052d0efc2822175bc7",
+  "prompts": {},
+  "sessions": {
+    "s_f489685fba5f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a873cd76-015f-4b9b-95b0-e7a8bccf4620",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

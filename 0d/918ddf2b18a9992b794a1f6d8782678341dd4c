@@ -1,0 +1,26 @@
+packages/testing/code-health/src/rules/lint-config-layering.rule.test.ts
+  s_aeae5940919df8::t_648f97f9e5fb45 13-16,30,35-37,113,119-143,157-198
+packages/testing/code-health/src/rules/encryption-boundary.rule.ts
+  s_aeae5940919df8::t_241644d606f1f7 63,68-71,74,218,227
+packages/testing/code-health/src/rules/encryption-boundary.rule.test.ts
+  s_aeae5940919df8::t_1d6648beb23bcf 236
+  s_aeae5940919df8::t_cc2c7f3f99e19b 184-217
+packages/testing/code-health/src/rules/lint-config-layering.rule.ts
+  s_aeae5940919df8::t_7efb3a100639b2 13-20,23,28-57,111-124,130,135,147,150,172-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d918ddf2b18a9992b794a1f6d8782678341dd4c",
+  "prompts": {},
+  "sessions": {
+    "s_aeae5940919df8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59328d06-cada-4319-b271-ac4e29634236",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_adb5d982725a9c::t_26ad473ccf7c7c 824-829
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44acddee103d498b5f6fedf21a3fd6a2a0df55b1",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

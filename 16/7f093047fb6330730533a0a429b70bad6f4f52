@@ -1,0 +1,953 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.appContext.test.ts
+  s_8fed88675c1307::t_168e199a38c0e1 1-96
+packages/cli/src/modules/apps/rendering/__tests__/rich-text.test.ts
+  s_8fed88675c1307::t_71ca55a93a73d0 23
+  s_8fed88675c1307::t_6816db9a67aa33 1-22,24-37
+packages/@n8n/instance-ai/src/index.ts
+  s_8fed88675c1307::t_9bce8ad1bb47a7 702-704
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_8fed88675c1307::t_94bacb9a85b29d 455-482,485-490
+  s_8fed88675c1307::t_f255ce01c2ca23 47-48,483-484
+  s_8fed88675c1307::t_2779c8a459b685 324-354
+  s_8fed88675c1307::t_a7409bbd9f16ca 45-46,49-53
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/guest.ts
+  s_8fed88675c1307::t_387d77e6f723cf 15-20
+packages/cli/src/modules/apps/serving/app-serving.service.ts
+  s_8fed88675c1307::t_c1a2a72ea1ab44 9,17,20,23,54,64
+  s_8fed88675c1307::t_5598ac53cf11b8 14-16,18-19,22
+  s_8fed88675c1307::t_593d7a85b67401 48-50,55-56,58-59
+  s_8fed88675c1307::t_f8c0b66d1067ff 5-6
+  s_8fed88675c1307::t_13f25ac94039f3 13
+  s_8fed88675c1307::t_548063fd13d037 3,7,21,25-28,34-44,47,51-53,57,66-68,70-72
+  s_8fed88675c1307::t_b8b235d54f739e 69
+  s_8fed88675c1307::t_8a7f95858bce09 4
+  s_8fed88675c1307::t_70e9125e52c9da 60-63,65
+  s_8fed88675c1307::t_172435b038c68e 24
+  s_8fed88675c1307::t_be548ea0b410f5 73
+packages/@n8n/instance-ai/src/tools/__tests__/apps.tool.test.ts
+  s_8fed88675c1307::t_a414f1af3e10d1 303
+  s_8fed88675c1307::t_6875fecefb05bf 1-122,126-185,187-302,304-338,346-372,380-402,410-486,494-541,549-690,694-718
+  s_8fed88675c1307::t_62c15667d19790 123-125,186,339-345,373-379,403-409,487-493,542-548,691-693
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_8fed88675c1307::t_ed98abf66dc233 109-116
+  s_8fed88675c1307::t_7278e00ca898a7 33-35
+packages/cli/src/modules/apps/rendering/styles/app.css
+  s_8fed88675c1307::t_89e92c717528cb 22-25
+  s_8fed88675c1307::t_d3b483cbea0d1a 202-210,216-227
+  s_8fed88675c1307::t_8e9e5fa5862b66 229-236
+  s_8fed88675c1307::t_0cd4a9e1bbc6d6 168-201,211-215,228
+  s_8fed88675c1307::t_7996b7f39f563a 1-21,26-167
+packages/cli/templates/partials/app-block-paragraph.handlebars
+  s_8fed88675c1307::t_76420fa44bf3e0 1
+packages/cli/src/modules/apps/runtime/__tests__/app-isolate-pool.test.ts
+  s_8fed88675c1307::t_f698e6f192d70f 90
+  s_8fed88675c1307::t_2d453237caa5d0 1-79,86-89,91-129
+  s_8fed88675c1307::t_a2ee17dbcd5ac3 80-85
+packages/frontend/editor-ui/src/features/apps/apps.api.ts
+  s_8fed88675c1307::t_670ad329d421e0 8,36
+  s_8fed88675c1307::t_bbaee0ff097336 3-7,9-10,32-35,37,41-42,97,99-130,137-142,144-147,154
+  s_8fed88675c1307::t_cef1baa727ec4e 1
+  s_8fed88675c1307::t_c150e6e6bbb27f 38-40,98
+  s_8fed88675c1307::t_a0cb7f80eba48b 131-136,143,148-153
+packages/frontend/editor-ui/src/features/apps/__tests__/apps.store.test.ts
+  s_8fed88675c1307::t_40a0e82052b3a0 7-21
+  s_8fed88675c1307::t_f27247d73a020a 1-6,22-27,29-94,96-100
+  s_8fed88675c1307::t_217e7beb715409 95
+  s_8fed88675c1307::t_940a03b17200d3 28
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/guest.test.ts
+  s_8fed88675c1307::t_35def66c40c5d2 48-60
+  s_8fed88675c1307::t_d8a11d0f71733b 20
+packages/cli/test/integration/apps/app-auth.integration.test.ts
+  s_8fed88675c1307::t_e39537ca433804 1-2,4-8,10,12-20,22-31,33-37,39-43,46-73,75-76,86,103-105,107,114,120,123-124,128-132,137-138,191-210,212,214,219-222,224,226-228,230-232,234-236,241-243,245-251,254,256-268,279-282,284-287,312-343,347-349,352-357,360-362,365-370,375-377,380-384
+  s_8fed88675c1307::t_4b71bf1b75432e 3,11,21,32,38,44-45,74,77-85,87-88,91-102,106,108-113,115-119,121-122,125-127,133-136,139-190,211,213,215-218,223,225,229,233,237-240,244,252-253,255,269-278,283,288-311,344-346,350-351,358-359,363-364,371-374,378-379
+  s_8fed88675c1307::t_8a7f95858bce09 9
+  s_8fed88675c1307::t_ece5ae4ce98c60 89-90
+  s_8fed88675c1307::t_7047a06553781b 385-387
+packages/cli/src/modules/apps/rendering/renderer-registry.ts
+  s_8fed88675c1307::t_5598ac53cf11b8 1-7,9-11,16-20
+  s_8fed88675c1307::t_1a5ff3f21d2510 12-14
+  s_8fed88675c1307::t_894ddcad8b0bc6 15
+  s_8fed88675c1307::t_513915a97e387a 8
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.vue
+  s_8fed88675c1307::t_393e38157e5c18 211-212
+packages/cli/package.json
+  s_8fed88675c1307::t_b19514625c7a9c 71,76
+  s_8fed88675c1307::t_e0905ce52b4a6c 120
+  s_8fed88675c1307::t_7b36da14c5f873 10-11,13
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_8fed88675c1307::t_f91eeefb9ffa13 744
+  s_8fed88675c1307::t_240872245e50ff 46
+  s_8fed88675c1307::t_987038e225171f 236
+  s_8fed88675c1307::t_79fe316585a546 569
+  s_8fed88675c1307::t_639f4f97daabad 193
+  s_8fed88675c1307::t_dea92c7f7cfa45 693
+packages/frontend/editor-ui/src/features/apps/components/blocks/CodeBlockConfig.vue
+  s_8fed88675c1307::t_356b98197054c5 1-7,9-30
+  s_8fed88675c1307::t_7cb18ba3a927c1 8
+packages/@n8n/instance-ai/src/types.ts
+  s_8fed88675c1307::t_cfeb4490cba569 1276-1278
+  s_8fed88675c1307::t_35534735c26ad3 1041-1068,1073-1089
+  s_8fed88675c1307::t_0d058fc207052e 19-20
+  s_8fed88675c1307::t_e540f3fc72cbb8 18
+  s_8fed88675c1307::t_6b70e4b7ee3e08 1069-1072
+packages/cli/src/modules/apps/errors/app-version-not-found.error.ts
+  s_8fed88675c1307::t_ae5bd2e2470462 1-7
+packages/@n8n/api-types/src/schemas/app-page-api.ts
+  s_8fed88675c1307::t_0ffc0241686d2c 1-108,114-147
+  s_8fed88675c1307::t_dee62d0b9ab665 109-113
+packages/cli/src/modules/apps/serving/__tests__/app-token.service.test.ts
+  s_8fed88675c1307::t_3b712a923ccb74 1-122
+packages/cli/templates/partials/app-block-divider.handlebars
+  s_8fed88675c1307::t_f3a657c505c706 1
+packages/cli/src/modules/apps/rendering/blocks/__tests__/table.renderer.test.ts
+  s_8fed88675c1307::t_f71dcbc59fd9e3 27,36
+  s_8fed88675c1307::t_0898bd625be253 7-11,15-25,37-62,67,69-70,79,83,91,100,110-119,121-128,130-134,136-139,141-195,197-210
+  s_8fed88675c1307::t_945aa9e7d419c8 71-74
+  s_8fed88675c1307::t_ee1c44488d956f 1-3,5-6,12-14,26,28-35,63-66,68,75-78,80,85-90,92-94,99,101-104,109,196
+  s_8fed88675c1307::t_70e9125e52c9da 81-82,84,95-98,105-108
+  s_8fed88675c1307::t_0ee6739e00b88d 135,140
+  s_8fed88675c1307::t_983bac76728eea 4
+  s_8fed88675c1307::t_72498a59e1a43a 120
+  s_8fed88675c1307::t_fcbbbef6fc2e5b 129
+packages/frontend/editor-ui/src/features/apps/components/AppBasicsForm.vue
+  s_8fed88675c1307::t_d87fe40f365658 2-9,12,44,57-60,69,94-103
+  s_8fed88675c1307::t_9900efabad79cb 32-36
+  s_8fed88675c1307::t_a5e571163a9731 1,10-11,13-31,37-43,45-56,61-68,70-93,104-135
+packages/cli/src/modules/apps/app.repository.ts
+  s_8fed88675c1307::t_dc77dfd0710d7f 31
+  s_8fed88675c1307::t_d92b3fbeb85fc3 46-49
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_8fed88675c1307::t_d228f69ec86f7d 162
+packages/frontend/editor-ui/src/features/apps/components/__tests__/PageTree.test.ts
+  s_8fed88675c1307::t_fd7a5b17a467e0 1-35,41-68,70-81,83-113,115-119,123-133
+  s_8fed88675c1307::t_527606644458ec 36-40,120-122
+  s_8fed88675c1307::t_ac242d0174c9fd 69,82,114
+packages/cli/src/modules/apps/serving/viewer.service.ts
+  s_8fed88675c1307::t_e9c6030f3ccfa8 7,24,27,34,38-41,44-45
+  s_8fed88675c1307::t_5157021219bf1d 1-6,8-23,25-26,28-33,35-37,42-43,46-52
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ArtifactCard.vue
+  s_8fed88675c1307::t_4e305142b3e85d 9,26-29,35,40-43,47-49,77-84
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/worker/app-api.worker.ts
+  s_8fed88675c1307::t_daa8ebdc4d0413 63-64
+  s_8fed88675c1307::t_2e3214ea2883f1 1-62,65-96
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.contextChip.ts
+  s_8fed88675c1307::t_097bdcd06bde09 21-30
+packages/@n8n/db/src/migrations/sqlite/1788953408255-AddAuthToApp.ts
+  s_8fed88675c1307::t_baa5d52e533976 1-10
+packages/cli/templates/app.js
+  s_8fed88675c1307::t_0c2a6e1b0ecf01 47,50,57,82
+  s_8fed88675c1307::t_c9fa5aa1149c57 5-6,10-11,13-15,19-31,34-43,45-46,48-49,51-56,58-60,74-77,81,96,102,122,124-126,128-142,144
+  s_8fed88675c1307::t_d39185446393aa 66
+  s_8fed88675c1307::t_6fa29174953715 1-4,7-9,12,33,61-64,68-73,78-79,83-95,97-101,103-121,123,127,143,145
+  s_8fed88675c1307::t_12666f7eccd649 65,67
+  s_8fed88675c1307::t_c0c0204a95752d 16-18,32
+  s_8fed88675c1307::t_b8c686b30a9e1e 44
+  s_8fed88675c1307::t_4743d8f1759776 80
+  s_8fed88675c1307::t_8dd6a86dc9275d 146-148
+packages/frontend/editor-ui/src/features/apps/components/__tests__/pageContentEditor.utils.test.ts
+  s_8fed88675c1307::t_34530859ff3b8d 1-34,36,42-43,66-78,82-102,120-122
+  s_8fed88675c1307::t_9bcc5ad8041745 35,44-65,103-119
+  s_8fed88675c1307::t_b45928572c9454 37-41,79-81
+packages/@n8n/api-types/src/dto/app/create-page.dto.ts
+  s_8fed88675c1307::t_6f685138e97999 3,10
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useBuildingArtifactIds.ts
+  s_8fed88675c1307::t_c38d0ff05175c6 3-7
+  s_8fed88675c1307::t_dcb4b3931bc6f0 17-20
+  s_8fed88675c1307::t_18618acd6e776e 32-38
+packages/frontend/editor-ui/src/features/apps/__tests__/pageTree.utils.test.ts
+  s_8fed88675c1307::t_217e7beb715409 1-42
+packages/cli/src/modules/apps/serving/render-page.ts
+  s_8fed88675c1307::t_07b6167e61cbef 1,3
+  s_8fed88675c1307::t_70e9125e52c9da 5-6
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_8fed88675c1307::t_f255ce01c2ca23 1518
+  s_8fed88675c1307::t_53978a8a03debb 75
+  s_8fed88675c1307::t_60a4d4482ff12f 817-821
+  s_8fed88675c1307::t_e5c1cd0b2d0c89 1509-1517,1519-1520
+  s_8fed88675c1307::t_7700d230e92cb3 109
+  s_8fed88675c1307::t_d4c8e26d93563b 321,325-352
+  s_8fed88675c1307::t_2decb2b52f56e4 1138-1143
+  s_8fed88675c1307::t_5edc3eaf8987b6 28
+  s_8fed88675c1307::t_6d9e0d9662dab6 959-967
+  s_8fed88675c1307::t_145d241457c954 302-303
+  s_8fed88675c1307::t_34986d478fed43 57,64
+  s_8fed88675c1307::t_20376bfc5f3d92 47
+  s_8fed88675c1307::t_48a8901c599fa5 1005-1008
+  s_8fed88675c1307::t_a0e68218783589 739-751
+  s_8fed88675c1307::t_e560581e26f03e 160-163
+  s_8fed88675c1307::t_071bb3644aa203 353
+packages/cli/templates/partials/app-block-button.handlebars
+  s_8fed88675c1307::t_47f8b41a2e6d34 1-7
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.test.ts
+  s_8fed88675c1307::t_6386acaa7f71ce 249-261
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_8fed88675c1307::t_1a17cc0a595172 45-46,50-54
+  s_8fed88675c1307::t_ca63e60cf4539f 29-44,47-49
+packages/@n8n/api-types/src/schemas/__tests__/app.schema.test.ts
+  s_8fed88675c1307::t_7b644bd423d24b 5-7
+  s_8fed88675c1307::t_92b2fce728fd24 1-4,8-18,20-22
+  s_8fed88675c1307::t_9faf11f79e0bcc 19
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppThemeForm.test.ts
+  s_8fed88675c1307::t_02fa5e6da30ed9 16
+  s_8fed88675c1307::t_859b9d8185b7ab 1-15,17-44,47-71
+  s_8fed88675c1307::t_d28f503d29c28a 45-46
+packages/cli/templates/partials/app-page-menu.handlebars
+  s_8fed88675c1307::t_271f0691c76e18 2,4,6,8
+packages/cli/templates/partials/app-block-form.handlebars
+  s_8fed88675c1307::t_8ade63187bc834 1-38
+packages/@n8n/api-types/src/schemas/__tests__/app-content.schema.test.ts
+  s_8fed88675c1307::t_92b2fce728fd24 1-17,22-24,30-33,43-44,50-54,60-66,69-76,85,94,96-100,106-115,120-129
+  s_8fed88675c1307::t_240da47dddf898 25-29
+  s_8fed88675c1307::t_9faf11f79e0bcc 95
+  s_8fed88675c1307::t_7b644bd423d24b 18-21,34-42,45-49,55-59,77-84,86-89,101-105,116-119
+  s_8fed88675c1307::t_dab2cdf9514193 67-68
+  s_8fed88675c1307::t_b27f77230070b2 90-93
+packages/@n8n/api-types/src/dto/app/update-page.dto.ts
+  s_8fed88675c1307::t_6f685138e97999 1,7
+packages/cli/test/integration/apps/app-actions.controller.integration.test.ts
+  s_8fed88675c1307::t_70e9125e52c9da 134-135,137,167-168,170,184-185,187,203-204,206,209-212,217-218,220
+  s_8fed88675c1307::t_72c820ad4c7827 24
+  s_8fed88675c1307::t_260b215495df3c 71-72,189-192
+  s_8fed88675c1307::t_91ba1f30cf1dfc 10-11
+  s_8fed88675c1307::t_2d4a9c1920a56f 44,49-68
+  s_8fed88675c1307::t_03376562dac4bf 136,169,186,205
+  s_8fed88675c1307::t_e197ea9a02036f 183
+  s_8fed88675c1307::t_ddaae637e7bdb5 257-259,261-264,266,268-275,277-280,282,284-290,292-295,298-302
+  s_8fed88675c1307::t_46edb2a524491e 1-8,12-18,20-23,25-29,31-35,37-43,45-48,69,73-82,89-95,97-105,108-110,130-132,138-141,144-147,165,171-174,177-181,188,193-195,198-202,207-208,213-214,221,223-225,229-231,233-237,240-256,303
+  s_8fed88675c1307::t_cea62b41f70f12 148,150-157,160-164
+  s_8fed88675c1307::t_e7835bef187e9d 9,19,30,36,70,83-88,96,106-107,111-129,133,142-143,149,158-159,166,175-176,182,196-197,215-216,219,222,226-228,232,238-239,260,265,267,276,281,283,291,296-297
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_8fed88675c1307::t_620775a66f1907 1097
+  s_8fed88675c1307::t_4fbff9979ad7a5 384,389-395,401-412
+  s_8fed88675c1307::t_2dd3d3aca7aa0c 508
+  s_8fed88675c1307::t_1802e5ca3af259 1
+  s_8fed88675c1307::t_81829910c920b0 55
+  s_8fed88675c1307::t_bc1040840667a4 130-143
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_8fed88675c1307::t_c38d0ff05175c6 223,225-228
+  s_8fed88675c1307::t_2200c350c56a54 5,8
+  s_8fed88675c1307::t_1bfe5767883338 284
+  s_8fed88675c1307::t_b852ce7a8c24b6 631-637
+  s_8fed88675c1307::t_98fea678db02e8 224,229-246
+  s_8fed88675c1307::t_36d8739c72b4ef 28
+  s_8fed88675c1307::t_22bdd798564773 437-492
+packages/cli/templates/partials/app-block-error.handlebars
+  s_8fed88675c1307::t_9ddbfa3ea68c34 1-8
+packages/cli/src/modules/apps/rendering/blocks/divider.renderer.ts
+  s_8fed88675c1307::t_0d5b4eb29c4606 1-3,5-6,8-9
+  s_8fed88675c1307::t_70eda3eb312087 4
+  s_8fed88675c1307::t_fd864c23f52005 7
+packages/cli/src/modules/apps/runtime/page-context.factory.ts
+  s_8fed88675c1307::t_21258808c49189 5-11
+  s_8fed88675c1307::t_3e784c946af885 1-4,12-14,16-30,35-45,51-76,83-113,117-179,183-261,263-277,282-307,310-316,318-321,327-417,438,442-532,534-536
+  s_8fed88675c1307::t_1aaff90d2fc14d 418-437,439-441
+  s_8fed88675c1307::t_41edd6358c2512 15
+  s_8fed88675c1307::t_dac8f353adedd7 317
+  s_8fed88675c1307::t_70e9125e52c9da 31-34,46-50,77-82,114-116,180-182,278-281,308-309,322-326
+  s_8fed88675c1307::t_a8ef5a01aa7499 533
+  s_8fed88675c1307::t_d8e1c015a84319 262
+packages/cli/src/modules/apps/page.repository.ts
+  s_8fed88675c1307::t_76a336787de547 12-18
+  s_8fed88675c1307::t_f538c640c0f23b 46
+packages/cli/src/modules/apps/runtime/register-data-renderers.ts
+  s_8fed88675c1307::t_18341a41b24a74 1-13
+packages/cli/src/modules/apps/rendering/rich-text.ts
+  s_8fed88675c1307::t_62c619a62029c2 1-12
+packages/cli/test/migration/1788870185907-remove-data-workflow-id-from-page.test.ts
+  s_8fed88675c1307::t_70e9125e52c9da 1-94,110-125,127-129,131-152
+  s_8fed88675c1307::t_61d45df980d527 95-109,126,130
+packages/frontend/editor-ui/src/features/apps/module.descriptor.ts
+  s_8fed88675c1307::t_cdce8b251ff904 55
+packages/frontend/editor-ui/src/features/apps/components/pageContentEditor.utils.ts
+  s_8fed88675c1307::t_e0335edcdc6019 1-4,6-12,14-16,26-29,31-57
+  s_8fed88675c1307::t_90fe029d3fee2d 5,13,17-25,30
+packages/cli/src/modules/apps/serving/__tests__/viewer.service.test.ts
+  s_8fed88675c1307::t_d97a2e4eb2a250 32-35
+  s_8fed88675c1307::t_6d4b107b8c6b85 8,13,24-25,30,60-61,66,70-71,78-79,87
+  s_8fed88675c1307::t_647e1d1a5ce59a 1-7,9-12,14-23,26-29,31,36-59,62-65,67-69,72-77,80-86,88-116
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_8fed88675c1307::t_95240da62f88ef 154,158,163-165,167,169,177,180,430
+  s_8fed88675c1307::t_29f036ff277f70 36-45,151-153,155
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_8fed88675c1307::t_2bc46eab836d46 292,300-303,313
+  s_8fed88675c1307::t_d6694ebbbfc114 382-396
+packages/@n8n/api-types/src/schemas/app-content.schema.ts
+  s_8fed88675c1307::t_73a58c9d197424 27
+  s_8fed88675c1307::t_7b644bd423d24b 91-95
+  s_8fed88675c1307::t_9359b6f589e428 66-67
+  s_8fed88675c1307::t_badd58811fc7cc 1-26,28-65,68-90,96-136
+packages/cli/src/modules/apps/rendering/page-renderer.ts
+  s_8fed88675c1307::t_9d05ca7024ed67 75
+  s_8fed88675c1307::t_3db27fba287c2e 102-103
+  s_8fed88675c1307::t_ff23586591851c 62
+  s_8fed88675c1307::t_caf5a4089cbe6e 1-42,47-52,58-61,63-74,76-101,104-106
+  s_8fed88675c1307::t_f04501b0f56269 43-46
+  s_8fed88675c1307::t_b70c1ed142951b 53-57
+packages/cli/src/modules/data-table/__tests__/data-table-proxy.service.integration.test.ts
+  s_8fed88675c1307::t_790763e98b4827 295-306
+packages/frontend/editor-ui/src/features/apps/components/blocks/FormBlockTool.tool.ts
+  s_8fed88675c1307::t_9c81a62f0fce39 6-21,26-48
+  s_8fed88675c1307::t_c150e6e6bbb27f 1-5,22-25
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_8fed88675c1307::t_a8b9e8cf972794 1443
+  s_8fed88675c1307::t_944e140d43f44b 1870-1872
+  s_8fed88675c1307::t_4f9d5084754605 81-89
+  s_8fed88675c1307::t_1fa1722739df92 1326-1341,1347
+  s_8fed88675c1307::t_6aca96e4a53963 1841-1843
+  s_8fed88675c1307::t_daff097fcb24e8 1461
+  s_8fed88675c1307::t_a467a39d05c8c9 328
+packages/frontend/editor-ui/package.json
+  s_8fed88675c1307::t_fe099ebcf8bab9 40-44
+packages/cli/src/modules/apps/apps.service.ts
+  s_8fed88675c1307::t_7afb23e6d310cd 1-8,11-14,17-18,20,26-28,35-36,53-60,86,133-226,228-234
+  s_8fed88675c1307::t_70e9125e52c9da 227
+  s_8fed88675c1307::t_76a336787de547 85
+  s_8fed88675c1307::t_cfd63620a90d13 61
+  s_8fed88675c1307::t_68f677fe13e0ba 87-89
+  s_8fed88675c1307::t_ed3bb51a4c8f3b 235-237
+packages/cli/test/integration/apps/app-serving.controller.integration.test.ts
+  s_8fed88675c1307::t_5f2fad501b715b 1,6,25,30,38,43-52,54-61,63,66,77,91-94,97-104,112,122,130,137,153,165,175,178,181-190,192-195,197-203,205-209,211-219,221-222
+  s_8fed88675c1307::t_516279c4ac1643 2
+  s_8fed88675c1307::t_1fa261cc7be6ee 68,79,95,106,114,124,157,167,180,191,210
+  s_8fed88675c1307::t_630e04a4ec30d6 196
+  s_8fed88675c1307::t_9bb62d572f7c1b 204
+  s_8fed88675c1307::t_61b03eb526d25d 53
+  s_8fed88675c1307::t_ad16fe8488aa7a 142
+  s_8fed88675c1307::t_2dea7dc8c8ae56 105
+  s_8fed88675c1307::t_a58cd62e70058e 179
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_8fed88675c1307::t_62e6756c7836e2 1288-1395
+  s_8fed88675c1307::t_be9385aa8bbbe9 1
+packages/@n8n/instance-ai/skills/app-builder/references/code-examples.md
+  s_8fed88675c1307::t_fea7414eb76919 1-113
+packages/cli/src/modules/apps/rendering/blocks/html.renderer.ts
+  s_8fed88675c1307::t_be9e30bdf1d5c2 2,4,17,20
+  s_8fed88675c1307::t_0f8c86d94da126 1,3,5-16,18-19,21-22,24-25
+  s_8fed88675c1307::t_9933080ac63d1c 23
+packages/cli/templates/partials/app-block-header.handlebars
+  s_8fed88675c1307::t_a15aa9b3c4b23b 1
+  s_8fed88675c1307::t_30ff4b4e992efc 2-7
+packages/cli/src/utils/__tests__/cors.util.test.ts
+  s_8fed88675c1307::t_3823ea398e9905 136-167
+packages/cli/templates/partials/app-block-list.handlebars
+  s_8fed88675c1307::t_7017a9d665637f 1-2,4-6,8-9
+  s_8fed88675c1307::t_10ee0039ff6837 3,7
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_8fed88675c1307::t_5f88a42a1e99e4 22,36,43
+  s_8fed88675c1307::t_f255ce01c2ca23 461-463,540
+  s_8fed88675c1307::t_eb4ff228f85ace 538-539,543,551
+  s_8fed88675c1307::t_c792ccb9108f74 113-122
+  s_8fed88675c1307::t_446c2df7c3199d 152
+  s_8fed88675c1307::t_20f7fb692a7489 13
+  s_8fed88675c1307::t_ae30dcb85cf75a 241-252
+  s_8fed88675c1307::t_c38d0ff05175c6 46-50
+  s_8fed88675c1307::t_e3148c35437093 61-66
+  s_8fed88675c1307::t_1393676889e993 168-173,175-179
+  s_8fed88675c1307::t_3554a4e75f1e4c 448-460,464-476
+  s_8fed88675c1307::t_222aae0b0ff014 140
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_8fed88675c1307::t_a54d864a5ecba2 113-122
+  s_8fed88675c1307::t_510b2746d85e37 1021-1051,1063,1075,1079,1082-1106
+  s_8fed88675c1307::t_c38d0ff05175c6 1052-1062,1064-1074,1076-1078,1080-1081
+packages/frontend/editor-ui/src/features/apps/components/AppCodeEditor.vue
+  s_8fed88675c1307::t_e03944d79bfbd2 19
+  s_8fed88675c1307::t_f47761f39f4a7b 1-18,20-130
+packages/cli/src/modules/apps/rendering/blocks/table.renderer.ts
+  s_8fed88675c1307::t_39118ad054f761 8,24-25,32,53-54,56-58,86-88,93,109,112,114-120,122,134
+  s_8fed88675c1307::t_1c31b282ca3dad 7,11,33-35,59-61,83-85,89-91,94,98-108,110-111,113,123-133,135
+  s_8fed88675c1307::t_42f5f9bdb48c5b 121
+  s_8fed88675c1307::t_93bd980c711cc5 1-6,9-10,12,26-31,36-49,62-82,92,95-97,136-138
+  s_8fed88675c1307::t_fa7aa852a0af62 13-23
+  s_8fed88675c1307::t_a42f3e8e3e3548 50-52,55
+packages/frontend/editor-ui/src/features/apps/components/__tests__/PageEditor.test.ts
+  s_8fed88675c1307::t_e9b780ee989420 31
+  s_8fed88675c1307::t_fd7a5b17a467e0 1-30,32-75,104-138
+  s_8fed88675c1307::t_df7543f631be97 76-103
+packages/cli/src/modules/apps/errors/app-content-invalid.error.ts
+  s_8fed88675c1307::t_615f82c3111350 1-12
+packages/cli/src/modules/apps/rendering/blocks/image.renderer.ts
+  s_8fed88675c1307::t_4cdd9edf84f003 12
+  s_8fed88675c1307::t_0fef91b7c5b130 4-7,9-10,13-18
+  s_8fed88675c1307::t_1c188b20d2b747 1-3,8,11
+packages/cli/src/modules/apps/rendering/blocks/paragraph.renderer.ts
+  s_8fed88675c1307::t_ccdbd70ca57848 5-7,9-10,13-14
+  s_8fed88675c1307::t_e7e026d90e27ac 1-3,8,11
+  s_8fed88675c1307::t_b08f5dd3bbd2bd 4,12
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_8fed88675c1307::t_0d4fb699862485 78-81
+packages/@n8n/api-types/src/dto/app/update-app.dto.ts
+  s_8fed88675c1307::t_6f685138e97999 12
+  s_8fed88675c1307::t_642402dd1e88d5 1-6,13
+packages/cli/templates/partials/app-block-unsupported.handlebars
+  s_8fed88675c1307::t_c66e453f85cef1 1-3
+packages/cli/templates/app-page.handlebars
+  s_8fed88675c1307::t_942fb7b3279b68 6-7
+  s_8fed88675c1307::t_bbe00b59725914 14,17
+  s_8fed88675c1307::t_4d25eeee2c6b84 22-23,28
+  s_8fed88675c1307::t_29ea3a3b29d650 16,18,21,24,29-30
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_8fed88675c1307::t_282d6b241eef68 43
+  s_8fed88675c1307::t_340d8d151d2d8f 132-136
+  s_8fed88675c1307::t_76200b1419d4ba 187-191
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_8fed88675c1307::t_f11e37858fc9fd 245-269
+  s_8fed88675c1307::t_a716c99fdcd93e 395-403
+  s_8fed88675c1307::t_a6193e04cffccf 143
+  s_8fed88675c1307::t_4ac2687b64c0f2 526
+  s_8fed88675c1307::t_8069078f46c249 60-65
+  s_8fed88675c1307::t_049fd5b2f829f6 432-450
+  s_8fed88675c1307::t_a435cc3e0daa5a 98-99
+  s_8fed88675c1307::t_54eabf0e0e3e76 553
+  s_8fed88675c1307::t_098286223522d1 9,15-18
+packages/frontend/editor-ui/src/features/apps/components/PageTree.vue
+  s_8fed88675c1307::t_ac242d0174c9fd 12,154
+  s_8fed88675c1307::t_527606644458ec 4-5,8,72-73,102-107
+  s_8fed88675c1307::t_a5e571163a9731 15,18,21,29-34,37,40-48,50-60,62-69,75,77-79,82-98,101,108-110,112-116,120-121,124,130-136,138-140,142-153,155-167,169-210,212,219,222,225-226,229,232-236,239,241,243-254
+packages/cli/src/modules/apps/rendering/interpolate.ts
+  s_8fed88675c1307::t_95de9d2475d770 3-19,34-35
+  s_8fed88675c1307::t_4e7bec98a2b0d8 1-2,20-33,36-40
+packages/frontend/editor-ui/src/features/apps/components/blocks/HtmlBlockConfig.vue
+  s_8fed88675c1307::t_5298baad565ac9 27
+  s_8fed88675c1307::t_57eb82832d36dc 26
+  s_8fed88675c1307::t_99fc2eba76b58b 48-51
+  s_8fed88675c1307::t_5196b5ace3a85f 1-25,28-47,52
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_8fed88675c1307::t_cbf898bb38988f 36-41
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_8fed88675c1307::t_95240da62f88ef 9-12,37-45
+  s_8fed88675c1307::t_385b6864af4c63 100-102
+  s_8fed88675c1307::t_a445da7ed8f12c 1-8,13-36,46-84,88-99,103-115,126-138,144-149
+  s_8fed88675c1307::t_14d2e3a3142788 116-125
+  s_8fed88675c1307::t_d7e9eeb42029ac 139-143
+  s_8fed88675c1307::t_4cab20d8a4bee5 85-87
+packages/@n8n/db/src/migrations/common/1788870185907-RemoveDataWorkflowIdFromPage.ts
+  s_8fed88675c1307::t_76af065f1f2000 4,11-12,16,21-27
+  s_8fed88675c1307::t_46029b16ad8235 3,5-9,13,17-20,28
+  s_8fed88675c1307::t_15684c79c697a5 1-2,10,14-15,29-30
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_8fed88675c1307::t_9c4ef15bd9d6ce 563-570
+  s_8fed88675c1307::t_bc61367daec2a0 13
+  s_8fed88675c1307::t_22f1b2e23380d2 37
+  s_8fed88675c1307::t_ce6008e3846576 260-262
+  s_8fed88675c1307::t_faf62e80047ce1 1041-1069,1071-1079
+  s_8fed88675c1307::t_62c15667d19790 1070
+packages/frontend/editor-ui/src/features/apps/components/blocks/mountVueTool.ts
+  s_8fed88675c1307::t_24bddb9e73dc8f 1-25
+packages/cli/templates/partials/app-block-html.handlebars
+  s_8fed88675c1307::t_2e48903b505321 1
+packages/cli/templates/app-page-unpublished.handlebars
+  s_8fed88675c1307::t_01e830f5c5fe29 1-37
+packages/cli/src/modules/apps/rendering/blocks/__tests__/button.renderer.test.ts
+  s_8fed88675c1307::t_8777325823c174 38
+  s_8fed88675c1307::t_70e9125e52c9da 47
+  s_8fed88675c1307::t_48ec86a7c08ad7 67
+  s_8fed88675c1307::t_a322f143ba6a68 4
+  s_8fed88675c1307::t_f50d26536b11aa 34,59
+  s_8fed88675c1307::t_df003450539059 1-3,5-33,35-37,39-46,48-58,60-66,68-74
+packages/cli/src/modules/apps/serving/app-token.service.ts
+  s_8fed88675c1307::t_2c6312f776419e 1-97
+packages/frontend/editor-ui/src/features/apps/components/blocks/ParagraphTool.tool.ts
+  s_8fed88675c1307::t_d2fbe11804f35e 1-16
+packages/cli/src/modules/apps/rendering/blocks/list.renderer.ts
+  s_8fed88675c1307::t_5a4419a8430e2c 4,14
+  s_8fed88675c1307::t_5feca38c4faa72 1-3,8,11
+  s_8fed88675c1307::t_3ec04ebea7ea76 12
+  s_8fed88675c1307::t_4793f6c05cad62 5-7,9-10,13,15-17
+packages/frontend/editor-ui/src/features/apps/components/AddAppModal.vue
+  s_8fed88675c1307::t_3e64818461cf3f 2,5,9,27-50,52-59,61-62,67,91-92,94-118,132
+packages/frontend/editor-ui/src/features/apps/__tests__/AppDetailsView.test.ts
+  s_8fed88675c1307::t_012ece787dcc44 4,10,14,17,26-32,56-57,68,76-82,118,127,129,153-157,159-165,168,170-173,175-182,184-186,189-201,203-205,210-212,215,217-219,224-237,239-250,252-262
+  s_8fed88675c1307::t_cb8f4d4964a507 21-25
+  s_8fed88675c1307::t_632769d9ba0686 135-152,158,166-167
+  s_8fed88675c1307::t_b45928572c9454 124-126
+  s_8fed88675c1307::t_f766cb74de490e 74-75,83-84
+  s_8fed88675c1307::t_ac242d0174c9fd 169,174
+  s_8fed88675c1307::t_1b06a62b52650e 1-3,5-9,11-13,15-16,18-20,33-37,39-55,58-67,69-73,85-117,119-123,128,130-134,238,251,263-264
+  s_8fed88675c1307::t_940a03b17200d3 38
+  s_8fed88675c1307::t_3f61e884339009 183,187-188,202,206-209,213-214,216,220-223
+packages/frontend/editor-ui/src/features/apps/components/blocks/ButtonBlockConfig.vue
+  s_8fed88675c1307::t_d1db5ba08db3ae 98
+  s_8fed88675c1307::t_527606644458ec 151-155
+  s_8fed88675c1307::t_643b61789b4c97 1-7,9-21,23-44,46-49,59,61-64,66,68-69,74,77-78,81,84-87,95-97,99-102,104-107,114-124,126-129,131-132,140-141,143-150,156-163,166-186
+  s_8fed88675c1307::t_b704cf5471932f 94
+  s_8fed88675c1307::t_8fdc6e9677bd91 125,130,135,142
+  s_8fed88675c1307::t_ec3b208a93fe92 90
+  s_8fed88675c1307::t_710e9baec7d764 165
+  s_8fed88675c1307::t_64be0285c1d537 108-113
+  s_8fed88675c1307::t_7ecd34342fd44f 22,50-58,65,67,70-71,73,75-76,79-80,82-83,88-89,91-93,103,133-134,136-139,164
+  s_8fed88675c1307::t_1be1c845b10f15 8,45,60,72
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/client/useAppTypescript.ts
+  s_8fed88675c1307::t_b20f524a89885c 11
+  s_8fed88675c1307::t_c150e6e6bbb27f 22-25
+  s_8fed88675c1307::t_4e5920b7a4cdd2 1-10,12-21,26-69
+packages/cli/src/modules/apps/rendering/templates.ts
+  s_8fed88675c1307::t_07b6167e61cbef 1-59
+packages/@n8n/db/src/migrations/sqlite/1788870185907-RemoveDataWorkflowIdFromPage.ts
+  s_8fed88675c1307::t_a39bea082ab068 1-10
+packages/frontend/editor-ui/src/features/apps/components/blocks/ImageBlockTool.tool.ts
+  s_8fed88675c1307::t_31fd960c194045 1-42
+packages/cli/src/modules/apps/apps.controller.ts
+  s_8fed88675c1307::t_0aa1a3b09fc750 63
+  s_8fed88675c1307::t_cf81e7b870ded9 25-42,109,139-175,205,213,230-253
+packages/@n8n/api-types/src/schemas/app-version.schema.ts
+  s_8fed88675c1307::t_5f1dd1d63f464b 1-19
+packages/frontend/editor-ui/src/features/apps/components/blocks/ImageBlockConfig.vue
+  s_8fed88675c1307::t_76d248dd51cfce 1-72
+biome.jsonc
+  s_8fed88675c1307::t_33976f7bee0916 41-45
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_8fed88675c1307::t_c651c89e0daafa 268-316
+packages/cli/test/migration/1788953408255-add-auth-to-app.test.ts
+  s_8fed88675c1307::t_85610ee4261238 1-152
+packages/cli/src/modules/apps/runtime/__tests__/app-code-runtime.test.ts
+  s_8fed88675c1307::t_03376562dac4bf 99
+  s_8fed88675c1307::t_b795a5ba2d000e 203
+  s_8fed88675c1307::t_d4648fc197848f 1-98,100-202,204-208
+packages/@n8n/instance-ai/skills/app-builder/references/styling.md
+  s_8fed88675c1307::t_636063346cf195 100,102-106
+  s_8fed88675c1307::t_04015ae4ec1fc2 40
+  s_8fed88675c1307::t_6f26cf63684614 1-39,41-99,101,107-138
+packages/frontend/editor-ui/src/features/apps/components/AppPreview.vue
+  s_8fed88675c1307::t_2441eb089dde28 1-80,85-194
+  s_8fed88675c1307::t_527606644458ec 81-84
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8fed88675c1307::t_d5e072528e1485 5163-5168,5170-5181
+  s_8fed88675c1307::t_d176f644984613 5239-5240
+  s_8fed88675c1307::t_01c5791a6a0ad3 5156-5158,5161-5162,5169,5192-5193
+  s_8fed88675c1307::t_4318597853fd72 5200,5202-5205,5207-5209,5212-5223,5228-5238
+  s_8fed88675c1307::t_8e1aa8d81c8e0e 5206
+  s_8fed88675c1307::t_85839eaa0ad7b4 5210-5211
+  s_8fed88675c1307::t_6539ceb9ec554d 5183-5185
+  s_8fed88675c1307::t_cb5cde0de3056e 5224-5226
+  s_8fed88675c1307::t_b63b434603f3cf 5227
+  s_8fed88675c1307::t_8e88047580e04c 7414-7428
+  s_8fed88675c1307::t_c8ddeaf3f0626e 5151
+packages/cli/src/modules/apps/rendering/blocks/header.renderer.ts
+  s_8fed88675c1307::t_f7e8e3e6797d39 4,13
+  s_8fed88675c1307::t_b2ce9d840b802d 1-3,8,11
+  s_8fed88675c1307::t_e119dc367d907d 5-7,9-10,14-22
+  s_8fed88675c1307::t_1a3e68f1aa8f6c 12
+packages/frontend/editor-ui/src/features/apps/components/AppThemeForm.vue
+  s_8fed88675c1307::t_e27c0ab62e769b 55
+  s_8fed88675c1307::t_11ddaa481bcec3 1-7,10-41,43-54,56-72,74-75,77-140,155-173,182
+  s_8fed88675c1307::t_fc1cd958923b00 9
+  s_8fed88675c1307::t_670ad329d421e0 76
+  s_8fed88675c1307::t_084d42a7f1752f 73
+  s_8fed88675c1307::t_fa35e53a762217 174-181
+  s_8fed88675c1307::t_12f473b267fc54 42
+  s_8fed88675c1307::t_0a1e0300e112e2 141-154
+  s_8fed88675c1307::t_7570c5bffa1c8e 8
+packages/cli/templates/partials/app-block-image.handlebars
+  s_8fed88675c1307::t_d1c6ce603a331a 1-4
+packages/frontend/editor-ui/src/features/apps/components/AppPreviewFrame.vue
+  s_8fed88675c1307::t_3f5217e2d4972b 1-60
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAppPreview.vue
+  s_8fed88675c1307::t_f7e798c72db8cf 1-9,12-14,16-37,39-61
+  s_8fed88675c1307::t_f255ce01c2ca23 10-11,15,38
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_8fed88675c1307::t_b667ca4018e99a 1402-1408
+  s_8fed88675c1307::t_3a3f8e4454b4c4 1433-1436,1457-1511
+  s_8fed88675c1307::t_3f61e884339009 16,1393-1401,1409-1432
+  s_8fed88675c1307::t_c38d0ff05175c6 1437-1456
+  s_8fed88675c1307::t_c9e014b42d2e66 15
+packages/@n8n/db/src/migrations/common/1788953408255-AddAuthToApp.ts
+  s_8fed88675c1307::t_2702b09578dd93 1-2,5,20-21,25-26
+  s_8fed88675c1307::t_1279482beacab7 22-23
+  s_8fed88675c1307::t_7e3728579dacc3 14-16
+  s_8fed88675c1307::t_de14e7e1fa3006 3-4,6-13,17-19,24
+packages/frontend/editor-ui/src/features/apps/apps.types.ts
+  s_8fed88675c1307::t_34bf75d73f62e7 27-30
+  s_8fed88675c1307::t_3b28028e2e67e5 31
+  s_8fed88675c1307::t_75304fa225ec34 1,8
+  s_8fed88675c1307::t_5a0fe9b30bd7e3 2,7,10-12,22,36-48
+packages/cli/src/utils/cors.util.ts
+  s_8fed88675c1307::t_eeb4cfed2a7a4a 3-10,24-30
+packages/cli/test/migration/1788870173613-create-app-version-table.test.ts
+  s_8fed88675c1307::t_61d45df980d527 124-138,230,232
+  s_8fed88675c1307::t_70e9125e52c9da 1-123,139-229,231,233
+packages/cli/src/modules/apps/__tests__/app-page-api.test.ts
+  s_8fed88675c1307::t_f324eb0920e7fc 1-70,74-75
+  s_8fed88675c1307::t_71bb39a2dd74b8 71-73
+packages/frontend/editor-ui/src/features/apps/components/blocks/TableBlockConfig.vue
+  s_8fed88675c1307::t_7c9a5e933743c2 3
+  s_8fed88675c1307::t_032b110c461dcc 56-57
+  s_8fed88675c1307::t_baae3b0e0708b7 79-80
+  s_8fed88675c1307::t_27d8b8cace3f2f 142,153,164,174,180,188,215
+  s_8fed88675c1307::t_853c39ccabb8bf 200-206
+  s_8fed88675c1307::t_eb34a43c03ceb9 87-90
+  s_8fed88675c1307::t_7dc604face7a6e 1-2,4-14,16-44,47-55,58-78,81-86,91-99,106-120,122-141,143-152,154-163,165-173,175-179,181-187,189-199,207-214,216-223,235-262
+  s_8fed88675c1307::t_cfbd1c579ceeb0 121
+  s_8fed88675c1307::t_1ac1c216daeb9b 224-234
+  s_8fed88675c1307::t_c49e34788c784c 100-105
+  s_8fed88675c1307::t_e39a07db5924bc 15,45-46
+packages/cli/src/modules/apps/runtime/app-code-runtime.ts
+  s_8fed88675c1307::t_d8e1c015a84319 184
+  s_8fed88675c1307::t_179635af98a2c2 322
+  s_8fed88675c1307::t_9ff2a762ef2293 345-354
+  s_8fed88675c1307::t_70e9125e52c9da 266-270,413-416
+  s_8fed88675c1307::t_9ba311c8c5b13f 2-39,49-141,143-183,185-265,271-288,290-321,323-340,343-344,355-412,417-431
+  s_8fed88675c1307::t_fa5459e353492f 40-48
+  s_8fed88675c1307::t_2d778a263ab67a 142,341-342
+  s_8fed88675c1307::t_ac828520bfc9d8 1
+  s_8fed88675c1307::t_125f1ee8bfee95 289
+packages/cli/src/modules/apps/app-version.entity.ts
+  s_8fed88675c1307::t_41c6a298df0423 1-28
+packages/frontend/editor-ui/src/features/apps/AppDetailsView.vue
+  s_8fed88675c1307::t_0c8491297d8c9a 37-40,44,47,49
+  s_8fed88675c1307::t_69edb60c2621b9 121
+  s_8fed88675c1307::t_bc6bdd561b602b 165-178
+  s_8fed88675c1307::t_f255ce01c2ca23 46
+  s_8fed88675c1307::t_b980a2f2fe4b43 429,433-436,454,457,461-464
+  s_8fed88675c1307::t_751b2c58ffa820 19-20,22-23,27,31-32,34-35,41-43,45,48,55,64-65,87-88,93-100,104,106-117,133-134,139-144,150-151,154-156,179-181,217,222-228,239-247,249-257,262-263,265-273,290,293-295,298-326,329-331,333-341,350-353,355-376,381-388,390-391,394-427,473-474,477-479,482-485,488
+  s_8fed88675c1307::t_379a1126a29fac 56
+  s_8fed88675c1307::t_527606644458ec 63,68-70,135-138,258-261
+  s_8fed88675c1307::t_c3d77b20e25b17 26
+  s_8fed88675c1307::t_73d409a6a85f94 277-281
+  s_8fed88675c1307::t_c147d52ba8d039 284-289,291-292
+  s_8fed88675c1307::t_595e83b8038d94 2-11,21,28,33,36,61-62,73,76-86,89-92,101-103,105,184-216,218-221,230-233,238,248,264,282-283,296-297,327-328,332,342-349,354,377-378,392-393,439,442-443,447-451,455,459-460,465-472,475-476,480-481,491-495
+  s_8fed88675c1307::t_d966ab8b2f91fc 118,229
+packages/frontend/editor-ui/src/features/apps/modals.ts
+  s_8fed88675c1307::t_670ad329d421e0 3
+packages/cli/templates/partials/app-block-table.handlebars
+  s_8fed88675c1307::t_b10e390c8fd4d6 6-10,12-16,46-50
+  s_8fed88675c1307::t_da86396a944e26 1-5,11,17-45,51-57
+packages/frontend/editor-ui/src/features/apps/components/blocks/HtmlBlockTool.tool.ts
+  s_8fed88675c1307::t_c150e6e6bbb27f 1-5
+  s_8fed88675c1307::t_0071d00678eaa2 6-42
+packages/cli/src/modules/apps/rendering/types.ts
+  s_8fed88675c1307::t_92d43b84147b14 1-2,5-10,12-30
+  s_8fed88675c1307::t_9dfdacc1103c15 3-4,11
+packages/cli/src/modules/data-table/data-table-proxy.service.ts
+  s_8fed88675c1307::t_a7e4a4c6f47a1f 120-124
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_8fed88675c1307::t_377a13c99b5ff7 4161
+  s_8fed88675c1307::t_e531b48abeaa9c 4904-4967,4971-5199
+  s_8fed88675c1307::t_b7ace821c13551 1295-1297
+  s_8fed88675c1307::t_ae1bafc50cb33f 4968-4970
+  s_8fed88675c1307::t_0ceb193a374b4e 4211-4215
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_8fed88675c1307::t_ffdc09f4f14d86 54-57
+  s_8fed88675c1307::t_1cd8c55841e894 90-93
+  s_8fed88675c1307::t_73ca825958a3f1 119-124,135,151-154
+  s_8fed88675c1307::t_c41748f21dec05 155
+packages/cli/src/modules/apps/app.entity.ts
+  s_8fed88675c1307::t_d64d19a32ba448 3-5,21,32-39
+  s_8fed88675c1307::t_19ac4081e5c382 23-24
+  s_8fed88675c1307::t_a4fc3837f8f9b1 1
+  s_8fed88675c1307::t_08921f825edd8a 22
+packages/cli/src/modules/apps/runtime/__tests__/page-context.factory.test.ts
+  s_8fed88675c1307::t_d8a0cb546adb94 3,10-19,24-25,27-94,96-98,100-108,110-130,132-164,166-176,181,183-199,204,206-229,232-239,241-257,259-276,278-283
+  s_8fed88675c1307::t_b4b065549e2985 165,182,205
+  s_8fed88675c1307::t_20e5848be13e54 20
+  s_8fed88675c1307::t_b620dc31487e73 26
+  s_8fed88675c1307::t_eca5f303c2e1e5 1,21-23
+  s_8fed88675c1307::t_0f0415c49c4996 258,277
+  s_8fed88675c1307::t_ad40ec24713124 230-231
+  s_8fed88675c1307::t_03376562dac4bf 4-9,177-180,200-203
+  s_8fed88675c1307::t_8d5d3159b60d9a 240
+  s_8fed88675c1307::t_fcbbbef6fc2e5b 95,99
+  s_8fed88675c1307::t_c9314d938179d5 2
+  s_8fed88675c1307::t_dd32c1c1f129ab 109,131
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_8fed88675c1307::t_4033f8209c5a8d 111
+packages/cli/src/modules/apps/rendering/sanitize-html.ts
+  s_8fed88675c1307::t_e8f4e86a91220e 1-76,94-101
+  s_8fed88675c1307::t_591e2216f0905d 77-93,102-110
+pnpm-workspace.yaml
+  s_8fed88675c1307::t_1dc105d8443ee0 97-101
+packages/frontend/editor-ui/src/features/apps/components/blocks/TableBlockTool.tool.ts
+  s_8fed88675c1307::t_e02f1a808f58aa 6-21,26-48
+  s_8fed88675c1307::t_c150e6e6bbb27f 1-5,22-25
+packages/cli/src/modules/apps/rendering/blocks/form.renderer.ts
+  s_8fed88675c1307::t_b6e6a95d26a4a8 1-70
+packages/cli/src/modules/apps/rendering/blocks/code.renderer.ts
+  s_8fed88675c1307::t_93a251e8ecb531 1-51
+packages/cli/src/modules/apps/app-version.repository.ts
+  s_8fed88675c1307::t_c21efd46ccc2c0 1-30
+packages/cli/templates/app.css
+  s_8fed88675c1307::t_eaac2d7c508f65 1
+  s_8fed88675c1307::t_d20aa3e91ec7b4 2
+  s_8fed88675c1307::t_f4d229734f0012 3-5
+packages/@n8n/instance-ai/src/tools/apps.tool.ts
+  s_8fed88675c1307::t_64b5846b3ec8fd 176
+  s_8fed88675c1307::t_9ab27780557b8b 336-340
+  s_8fed88675c1307::t_8e90c215ba550b 188
+  s_8fed88675c1307::t_5ed2cb7798b855 171
+  s_8fed88675c1307::t_25d7f011a28247 169,177-181
+  s_8fed88675c1307::t_8968e1ceaefd0e 146-147
+  s_8fed88675c1307::t_e008fe82a0da15 1-7,9-19,21-143,145,148-168,170,172-174,183-187,189-209,211-335,341-554
+  s_8fed88675c1307::t_c924e668549ca0 8
+  s_8fed88675c1307::t_56411c003ce70c 20
+  s_8fed88675c1307::t_62c15667d19790 144,175,182
+  s_8fed88675c1307::t_4e692ffae53ad4 210
+packages/@n8n/db/src/migrations/common/1788870173613-CreateAppVersionTable.ts
+  s_8fed88675c1307::t_03130333dfef39 1-2,11,54-55,65-66
+  s_8fed88675c1307::t_70e9125e52c9da 12-14
+  s_8fed88675c1307::t_bdfdbba13ee38b 20-22
+  s_8fed88675c1307::t_303bed4d502e78 3-10,15-19,23-53,56-64
+packages/frontend/editor-ui/src/features/apps/apps.store.ts
+  s_8fed88675c1307::t_670ad329d421e0 21-27,49-50
+  s_8fed88675c1307::t_18cb8113d1f40e 6,13-14,16-17,51-52,98-118,125,131-134
+packages/@n8n/db/src/migrations/sqlite/1788870173613-CreateAppVersionTable.ts
+  s_8fed88675c1307::t_86559ff51ae377 1-10
+packages/cli/src/modules/apps/serving/app-serving.controller.ts
+  s_8fed88675c1307::t_ddfb9fcf08c4df 152-163,176-178,183
+  s_8fed88675c1307::t_d6a8f0af72315f 94,101,107-112
+  s_8fed88675c1307::t_5ef7075abf98e0 1,6,8,15,26-27,31,35-42,63,65,92-93,95-100,102-106,129,149-151,164-172
+  s_8fed88675c1307::t_c8a5989980bcc9 4-5,9-10,12,16,28-30,32-34,44,60,62,66-67,73-75,82,113-115,179-180
+  s_8fed88675c1307::t_2b0b4822231203 11,13,17,45-56,61,64,70-72,76-81,83-91,116,118-121,125,131-132,140-148,173-175,181
+  s_8fed88675c1307::t_f77f71ded4706c 43
+  s_8fed88675c1307::t_2fd700e6df8318 57
+  s_8fed88675c1307::t_e32a588c3dd996 182
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_8fed88675c1307::t_3e99d2ac97c6a4 135
+  s_8fed88675c1307::t_a9a02ddbd83e01 368-370
+  s_8fed88675c1307::t_d105cbf44f9be5 460-462
+  s_8fed88675c1307::t_a69d2902555c1d 3398,3407
+  s_8fed88675c1307::t_ae1bafc50cb33f 3569-3573
+  s_8fed88675c1307::t_ecf284bf5d8cc6 13-18
+  s_8fed88675c1307::t_183f0c2518bca3 153-155
+  s_8fed88675c1307::t_45d757c6c204cb 3530,3532-3568,3574-3580
+  s_8fed88675c1307::t_5c2a7e4a64351c 509-526
+  s_8fed88675c1307::t_dac13f5675c082 178
+  s_8fed88675c1307::t_315fdd6bd43506 432
+  s_8fed88675c1307::t_8836444aabb82d 508,3384-3397,3399-3406,3408-3529
+  s_8fed88675c1307::t_b38b25b5abac05 83-85
+  s_8fed88675c1307::t_a61d5a952cffdd 3531
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppBasicsForm.test.ts
+  s_8fed88675c1307::t_217e7beb715409 1-2,4-15,17-44,47-56,58-60,78-82,84-96
+  s_8fed88675c1307::t_ac242d0174c9fd 45-46,83
+  s_8fed88675c1307::t_c13833b7b7a444 3,16,57,61-77
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppPreview.test.ts
+  s_8fed88675c1307::t_fd7a5b17a467e0 1-15,17-40,46-68,70-100
+  s_8fed88675c1307::t_ac242d0174c9fd 69
+  s_8fed88675c1307::t_527606644458ec 41-45
+  s_8fed88675c1307::t_940a03b17200d3 16
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_8fed88675c1307::t_c4efef0acd4343 112-114
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_8fed88675c1307::t_4356629f2c7b34 41-44
+  s_8fed88675c1307::t_c576b6f3c5e4de 223-224
+  s_8fed88675c1307::t_f4b7bcb234fa08 277
+  s_8fed88675c1307::t_89557a9878ff00 56,65
+  s_8fed88675c1307::t_7c650d45cf6c29 403-409
+  s_8fed88675c1307::t_5f6b7424209bde 304
+  s_8fed88675c1307::t_b75e32ffa407d4 305
+packages/cli/src/modules/apps/rendering/register-static-renderers.ts
+  s_8fed88675c1307::t_0c9c5a75229e56 1-17
+packages/cli/src/modules/apps/apps.module.ts
+  s_8fed88675c1307::t_b5b4843392256b 7-8,11,22,25
+  s_8fed88675c1307::t_82a90282dc75b0 9-10,16
+  s_8fed88675c1307::t_5fcd94232328cb 13-15
+packages/frontend/editor-ui/src/features/apps/components/blocks/CodeBlockTool.tool.ts
+  s_8fed88675c1307::t_c150e6e6bbb27f 1-5
+  s_8fed88675c1307::t_c71960f3c47dbb 6-42
+packages/frontend/editor-ui/src/features/apps/pageTree.utils.ts
+  s_8fed88675c1307::t_cdce8b251ff904 38,58-90
+  s_8fed88675c1307::t_f157648ad90a08 18-20,22-26,28,32-37
+  s_8fed88675c1307::t_09a1565c09081c 39
+packages/cli/src/modules/apps/actions/table-actions.ts
+  s_8fed88675c1307::t_6f1dc3bcaf613f 1-24,27-39,43-87
+  s_8fed88675c1307::t_7245773a0e7aa5 25-26
+  s_8fed88675c1307::t_95577d742d1a93 40-42
+  s_8fed88675c1307::t_dadbcad478f649 88-90
+packages/frontend/editor-ui/src/features/apps/components/PageEditor.vue
+  s_8fed88675c1307::t_527606644458ec 116-121
+  s_8fed88675c1307::t_1c7ea7fd1664cf 159
+  s_8fed88675c1307::t_2441eb089dde28 1-62,68-115,122-125,137-158,160-267
+  s_8fed88675c1307::t_d52f9a2973cd33 63-67
+  s_8fed88675c1307::t_dd383b4c2f67a5 126-136
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppPreviewFrame.test.ts
+  s_8fed88675c1307::t_28892774880d51 1-31
+packages/frontend/editor-ui/src/features/apps/components/blocks/ButtonBlockTool.tool.ts
+  s_8fed88675c1307::t_c150e6e6bbb27f 1-6
+  s_8fed88675c1307::t_ce3c6fad4b7f8d 7-62
+packages/frontend/editor-ui/src/features/apps/components/blocks/FormBlockConfig.vue
+  s_8fed88675c1307::t_3b651d8b823744 1-35,37-64,71-80,82-86,88-103
+  s_8fed88675c1307::t_bc8b3372982c16 81
+  s_8fed88675c1307::t_2898b211ad7995 65-70
+  s_8fed88675c1307::t_9d8815ca778c84 87
+  s_8fed88675c1307::t_e9567cf3abdf8b 36
+packages/frontend/editor-ui/src/features/apps/components/blocks/__tests__/tools.test.ts
+  s_8fed88675c1307::t_90125973bac3b9 90-99
+  s_8fed88675c1307::t_16557b1d51a843 9
+  s_8fed88675c1307::t_b45928572c9454 12-15,56-59,67-71,75-76,79-83
+  s_8fed88675c1307::t_eeea937d159e52 37-50
+  s_8fed88675c1307::t_dac135e876e557 1-8,10-11,16-36,51-55,60-66,72-74,77-78,84-89,100-117
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppCodeEditor.test.ts
+  s_8fed88675c1307::t_b9c075ceaf9cbf 1-9,13-46
+  s_8fed88675c1307::t_b45928572c9454 10-12
+packages/@n8n/instance-ai/skills/app-builder/references/block-catalog.md
+  s_8fed88675c1307::t_aca67bbb71407c 21-24
+  s_8fed88675c1307::t_1e101753ffdd44 78-80,91-102
+  s_8fed88675c1307::t_bd50ce39e8d7d0 1-20,25-77,81-90,103-188
+packages/@n8n/instance-ai/docs/tools.md
+  s_8fed88675c1307::t_8f682c23c64b6a 829-869
+  s_8fed88675c1307::t_1e7c16797726ac 20
+  s_8fed88675c1307::t_430c004f855635 1249
+packages/cli/src/modules/apps/rendering/blocks/__tests__/code.renderer.test.ts
+  s_8fed88675c1307::t_1129a88a455339 1-3,5-23,30-33,38-39,45-50,55-71
+  s_8fed88675c1307::t_50685f603322fc 24,29
+  s_8fed88675c1307::t_1cabfd1287d84f 4
+  s_8fed88675c1307::t_70e9125e52c9da 25-28,34-37,40-44,51-52,54
+  s_8fed88675c1307::t_b795a5ba2d000e 53
+packages/@n8n/api-types/src/index.ts
+  s_8fed88675c1307::t_057232d4fd7324 760-766,769-790
+  s_8fed88675c1307::t_2a45885bbefcc8 505
+  s_8fed88675c1307::t_bf89350c9611fe 767-768
+  s_8fed88675c1307::t_2030f8a5098e4e 312
+  s_8fed88675c1307::t_6d76b378c60435 407
+packages/cli/src/modules/apps/actions/__tests__/table-actions.test.ts
+  s_8fed88675c1307::t_e743bfb9c4e38b 89
+  s_8fed88675c1307::t_ee1b9c23f2f989 1-88,90-139
+packages/cli/src/modules/apps/rendering/blocks/__tests__/form.renderer.test.ts
+  s_8fed88675c1307::t_fcbbbef6fc2e5b 41,58,65,67
+  s_8fed88675c1307::t_acd75ae245163f 23,28
+  s_8fed88675c1307::t_70e9125e52c9da 33-36,48-53,57,64,66
+  s_8fed88675c1307::t_7fc9b44cbe0d5d 4
+  s_8fed88675c1307::t_a2ae611d1203b8 1-3,5-22,24-27,29-32,37-40,42-47,54-56,59-63,68-70
+packages/cli/test/integration/apps/apps.controller.integration.test.ts
+  s_8fed88675c1307::t_14cee842a1f097 3
+  s_8fed88675c1307::t_09c61e915df285 41
+  s_8fed88675c1307::t_b96c07a493d081 94-138,142-146,148-228,230-231,233-234,237-246
+  s_8fed88675c1307::t_95240da62f88ef 272-287
+  s_8fed88675c1307::t_70e9125e52c9da 139-141,147,229
+packages/cli/src/modules/apps/rendering/blocks/button.renderer.ts
+  s_8fed88675c1307::t_0648f39febb003 1-36
+packages/frontend/editor-ui/src/features/apps/components/PageContentEditor.vue
+  s_8fed88675c1307::t_d2fbe11804f35e 18,73-74,77
+  s_8fed88675c1307::t_9d15f4a089dcbf 90-92
+  s_8fed88675c1307::t_519acca410c320 119-124,178
+  s_8fed88675c1307::t_01c5791a6a0ad3 98,125-177
+  s_8fed88675c1307::t_1bd2eda2fec04a 6,19-20,22,50-54
+  s_8fed88675c1307::t_f47626e72151dc 2
+  s_8fed88675c1307::t_d146100300ebc8 62-67,75-76,78-81
+  s_8fed88675c1307::t_6bc75beed4efa5 17
+  s_8fed88675c1307::t_c78fb4169464c3 1,3-5,7-16,23-49,55-61,68-72,82-89,93-97,99-118,179-191
+  s_8fed88675c1307::t_d69d7b62fd4b86 21
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8fed88675c1307::t_b3549541da4a5f 3620-3621,3637-3640,3651
+  s_8fed88675c1307::t_1642df9b47fb8c 288-301,314-317,338-340
+  s_8fed88675c1307::t_7756dc4f1789e1 363
+  s_8fed88675c1307::t_511470227669cb 19
+  s_8fed88675c1307::t_ae1bafc50cb33f 366-369
+  s_8fed88675c1307::t_e2cac7116ab958 3736-3743
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_8fed88675c1307::t_654a0571eabef0 53,62
+  s_8fed88675c1307::t_c38d0ff05175c6 675
+  s_8fed88675c1307::t_75004e11ccc765 673-674,676-805
+  s_8fed88675c1307::t_22bad27a32ffee 262-290
+packages/cli/src/modules/apps/serving/__tests__/app-serving.service.test.ts
+  s_8fed88675c1307::t_11649ed490746b 3-4,8-14,18-29,32,36,39,42-43,46,48,50,52,55-60,62,65-66,78
+  s_8fed88675c1307::t_7ef754f009ebb4 16-17,44-45,49,53,63
+  s_8fed88675c1307::t_0f76e85318e53a 37
+  s_8fed88675c1307::t_42196066609481 69-72,74,76-77
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_8fed88675c1307::t_8d9da62458285f 44,51,56
+  s_8fed88675c1307::t_ea9909e4104a3e 497-509
+  s_8fed88675c1307::t_039532ffc52df2 356-448
+packages/cli/src/modules/apps/runtime/app-isolate-pool.ts
+  s_8fed88675c1307::t_ee6326ed137932 1-255
+packages/cli/src/modules/apps/rendering/__tests__/sanitize-html.test.ts
+  s_8fed88675c1307::t_70e9125e52c9da 5,9
+  s_8fed88675c1307::t_2c2efe0315a7eb 1-4,6-8,10-57
+packages/cli/src/modules/apps/actions/app-actions.controller.ts
+  s_8fed88675c1307::t_88d5d3452e8fa0 231-236
+  s_8fed88675c1307::t_7b304efec70091 15
+  s_8fed88675c1307::t_945aa9e7d419c8 91-93,101
+  s_8fed88675c1307::t_2e0feb1c6bd44b 1-5,7-13,16-18,20,24-42,48-58,60,66-67,69,71-75,78-81,83-86,88-90,94-100,102-113,119-121,128-160,162-184,186-187,189-195,197-200,206-230,237-245,249-286
+  s_8fed88675c1307::t_2f3933f725516c 19
+  s_8fed88675c1307::t_70e9125e52c9da 43-47,201-205,246-248
+  s_8fed88675c1307::t_47fbb1a815cc4b 161
+  s_8fed88675c1307::t_cfc23f1d6bb133 185,196
+  s_8fed88675c1307::t_2707c8c37cf788 14,21-23,76-77,82,114-118,188
+  s_8fed88675c1307::t_97f016924ab65c 6,59,61-65
+  s_8fed88675c1307::t_bceb96271ada36 122-127
+  s_8fed88675c1307::t_55115519ef10e0 68,70
+  s_8fed88675c1307::t_4147d2bb7a15f1 87
+packages/cli/src/modules/apps/rendering/__tests__/page-renderer.test.ts
+  s_8fed88675c1307::t_fcbbbef6fc2e5b 21,25
+  s_8fed88675c1307::t_eab15d2dd05bd8 1,79-83,86,96,104,112,119
+  s_8fed88675c1307::t_9906e47015298f 102-103,105-111,113-118,120-123
+  s_8fed88675c1307::t_be81706fa05738 2-20,22-24,26-78,84-85,87-95,97-101,124-129
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_8fed88675c1307::t_bfcdabce4cdec8 20
+  s_8fed88675c1307::t_0f5ba171855df5 53
+packages/cli/src/modules/apps/rendering/assert-block-type.ts
+  s_8fed88675c1307::t_075f77c3dc3ddd 1-14
+packages/cli/src/modules/apps/rendering/__tests__/interpolate.test.ts
+  s_8fed88675c1307::t_10acaa915eabd3 1-45
+docs/generated/sqlite-schema/user.md
+  s_8fed88675c1307::t_e8c1980dcdbc02 22,61,169-176
+docs/generated/sqlite-schema/workflow_entity.md
+  s_8fed88675c1307::t_d29bb9ea442820 23
+pnpm-lock.yaml
+  s_8fed88675c1307::t_c8f247adefd088 126-140,1165,1523,1608,1647,1783,1805,1934,1974,2118,2280,2305,2378,2598,2835,2887,3036,3098,3223,3572,3581,3649,3695,4170,4673-4675,4688-4690,4826-4828,5442,6035,6111-6125,7176,7234,7311,7410,7458,7483,7505,9266-9274,9417-9440,13636-13728,16433-16438,17478-17481,19225-19228,20586-20589,23318-23320,23325-23328,28508-28513,28831-28865,29109,29111,29129-29133,33150,33264-33334,34547-34557,34580-34591,34593,34597,34791,34798-34811,34821,34829-34846,34859,34861,34888-34896,34905-34912,35621,36657-36660,37875-37879,38223-38236,38251-38264,38270,38272,38275,38278-38279,38465-38506,40197-40198,41962-41963,45410-45411,45414-45415,46428-46448,46471,46504-46534,46566-46596
+docs/generated/postgres-schema/README.md
+  s_813937a97e78de::t_633685a194cd13 42-43,224-226,724-725,734-741
+docs/generated/postgres-schema/public.app.md
+  s_d68b182e39eb78::t_f561b3801a1e34 7-8,10,21,24-25,45-46,51-52,61-68
+docs/generated/postgres-schema/public.app_version.md
+  s_d68b182e39eb78::t_144055a0bb906b 1-83
+docs/generated/postgres-schema/public.page.md
+  s_d68b182e39eb78::t_2aa7981bb495ca 54-55
+docs/generated/postgres-schema/public.project.md
+  s_d68b182e39eb78::t_2ac94bbf689e78 153-154
+docs/generated/postgres-schema/public.user.md
+  s_d68b182e39eb78::t_0b5fe0f22db642 11,55,163-170
+docs/generated/sqlite-schema/README.md
+  s_d68b182e39eb78::t_bd26ed31c555d3 42-43,101,206,208-209,711-712,721-728
+docs/generated/sqlite-schema/app.md
+  s_0d3566f4137668::t_7f00f4bc3bedb7 9,18-19,21,32-34,50-51,56-57,66-73
+docs/generated/sqlite-schema/app_version.md
+  s_0d3566f4137668::t_7e11052070420d 1-90
+docs/generated/sqlite-schema/page.md
+  s_0d3566f4137668::t_e4752eff81bf12 9,30-31,61-62
+docs/generated/sqlite-schema/project.md
+  s_0d3566f4137668::t_a07a5ef2088b74 159-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "167f093047fb6330730533a0a429b70bad6f4f52",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0d3566f4137668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a842d93af5ae5efc7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_813937a97e78de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab1c5563ece53d510",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8fed88675c1307": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a96b2f2-c9aa-4ec0-94bd-4ee430cd7c07",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_d68b182e39eb78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a970b3acf8688c172",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

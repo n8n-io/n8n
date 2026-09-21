@@ -1,0 +1,65 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_d9ec11e100c216::t_a19c2972a1fd4f 379-381
+  s_87aa929f7db679::t_9d3eee2f069313 540,633-642,644-653,655-657
+  s_d9ec11e100c216::t_e99db400d25029 20-25,31,72
+  s_87aa929f7db679::t_a8f0700b997e63 393,395,400-405,408-409,532,630-632,658
+  s_d9ec11e100c216::t_71202897c43f73 353,355,375-378,382-391,643,654,659
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d9ec11e100c216::t_3a2e5362b40675 7702
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_d9ec11e100c216::t_e64b7bbfb1fe1b 8-9
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_d9ec11e100c216::t_0c146e2035fa12 902-906
+  s_d9ec11e100c216::t_b365970b96ccfd 901
+  s_d9ec11e100c216::t_792f964d80ae39 824
+  s_d9ec11e100c216::t_0d1cefbae2a1fb 72,93,782-786,790,822-823,825-827,909
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_d9ec11e100c216::t_d9bda502d9a89d 120
+  s_d9ec11e100c216::t_dd1b0e0a3a7abe 128
+  s_d9ec11e100c216::t_792f964d80ae39 18
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_35d60f8cc3a39b::t_ea3dcf3bbce4ca 73-82
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_35d60f8cc3a39b::t_e67ef07e6309be 270,275,347-348,351,361,366-370
+  s_35d60f8cc3a39b::t_d0b23ac81d660d 644,668,710,771
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_d9ec11e100c216::t_c0748385b925ca 14,71,181
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_35d60f8cc3a39b::t_003814f8b60c77 824-825,863,865,868,900-901,904,926,957,959-968,977-984
+  s_35d60f8cc3a39b::t_65420791b822d6 958,969-974,976
+  ai_agent 862,899
+  s_35d60f8cc3a39b::t_3ed0aabfed3e28 985
+  s_35d60f8cc3a39b::t_e90be992640943 975
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0dedbe163a1bc4ff044f80bc124e1eb291c4b369",
+  "prompts": {},
+  "sessions": {
+    "s_35d60f8cc3a39b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a09f41-5ee8-710a-807f-7fb5e2d39f82",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_87aa929f7db679": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a09f3f-b443-710a-807f-7fb3c148b081",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_d9ec11e100c216": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a09f31-dec9-710a-807f-7fb18daa10c4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
