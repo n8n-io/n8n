@@ -346,6 +346,7 @@ function handleThreadAction(action: string, threadId: string) {
 					variant="ghost"
 					icon="list"
 					data-test-id="instance-ai-view-all-threads"
+					:class="$style.viewAll"
 					@click="openAllThreads"
 				>
 					{{ i18n.baseText('instanceAi.threads.viewAll') }}
@@ -402,5 +403,11 @@ function handleThreadAction(action: string, threadId: string) {
 
 .footer .status {
 	flex: 1;
+}
+
+.viewAll {
+	flex: 1;
+	width: 100%;
+	justify-content: flex-start;
 }
 </style>
