@@ -2,6 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 
 import {
+	N8nActionPill,
 	N8nIcon,
 	N8nOption,
 	N8nSelect,
@@ -20,6 +21,17 @@ export type CredentialOption = {
 	homeProject?: ProjectSharingData;
 };
 
+/**
+ * A pinned, non-credential option rendered above the credential list — used for
+ * the managed "Gateway credits" row. Matches the NodeCredentials look: wallet
+ * icon, label, a balance pill, and a checkmark when selected.
+ */
+export type ManagedCredentialOption = {
+	value: string;
+	label: string;
+	pill?: { text: string; type: 'default' | 'danger' | 'info' };
+};
+
 const props = defineProps<{
 	credentialOptions: CredentialOption[];
 	selectedCredentialId: string | null;
@@ -29,6 +41,7 @@ const props = defineProps<{
 	disabled?: boolean;
 	teleported?: boolean;
 	size?: SelectSize;
+	managedOption?: ManagedCredentialOption | null;
 }>();
 
 const emit = defineEmits<{
@@ -53,6 +66,14 @@ const filteredOptions = computed(() => {
 			(option.homeProject?.name && matches(filter.value, option.homeProject.name)),
 	);
 });
+
+const showManagedOption = computed(
+	() => props.managedOption && (!filter.value || matches(filter.value, props.managedOption.label)),
+);
+
+const isManagedSelected = computed(
+	() => props.managedOption != null && props.selectedCredentialId === props.managedOption.value,
+);
 
 const onFilter = (newFilter = '') => {
 	filter.value = newFilter;
@@ -89,6 +110,29 @@ const onCreateNewCredential = async () => {
 		:popper-class="$style.selectPopper"
 		@update:model-value="onCredentialSelected"
 	>
+		<template v-if="isManagedSelected" #prefix>
+			<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
+		</template>
+		<N8nOption
+			v-if="showManagedOption && managedOption"
+			:key="managedOption.value"
+			:data-test-id="`node-credentials-select-item-${managedOption.value}`"
+			:label="managedOption.label"
+			:value="managedOption.value"
+			@click="closeSelect"
+		>
+			<div :class="$style.managedOption">
+				<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
+				<N8nText :class="$style.managedOptionName">{{ managedOption.label }}</N8nText>
+				<N8nActionPill
+					v-if="managedOption.pill"
+					size="small"
+					:type="managedOption.pill.type"
+					:text="managedOption.pill.text"
+				/>
+				<N8nIcon v-if="isManagedSelected" icon="check" size="large" :class="$style.checkIcon" />
+			</div>
+		</N8nOption>
 		<N8nOption
 			v-for="item in filteredOptions"
 			:key="item.id"
@@ -147,6 +191,27 @@ const onCreateNewCredential = async () => {
 .credentialOption {
 	display: flex;
 	flex-direction: column;
+}
+
+.managedOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.optionIcon {
+	display: flex;
+	align-items: center;
+}
+
+.managedOptionName {
+	color: var(--color--text);
+}
+
+.checkIcon {
+	flex-shrink: 0;
+	margin-left: auto;
+	color: var(--color--text--shade-1);
 }
 
 .newCredential {

@@ -3,11 +3,20 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
 import AgentWebSearchSection from '../components/AgentWebSearchSection.vue';
 import AgentCredentialSelect from '../components/AgentCredentialSelect.vue';
 import type { AgentJsonConfig } from '../types';
 
 const openNewCredentialMock = vi.hoisted(() => vi.fn());
+
+// Mutable per test so the n8n Connect gating (enabled + served credential type)
+// can be exercised without touching the real gateway stores.
+const aiGatewayState = vi.hoisted(() => ({
+	isEnabled: false,
+	servedTypes: new Set<string>(),
+}));
 
 type MockProject = { id: string; scopes: string[] };
 const CREDENTIAL_CREATE_SCOPES = ['credential:create'];
@@ -49,6 +58,16 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: aiGatewayState.isEnabled },
+		balance: { value: undefined },
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		fetchWallet: vi.fn().mockResolvedValue(undefined),
+		canServeCredentialType: (type: string) => aiGatewayState.servedTypes.has(type),
+	}),
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -182,6 +201,62 @@ describe('AgentWebSearchSection', () => {
 		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
 		projectsStoreState.personalProject = null;
 		projectsStoreState.myProjects = [];
+		aiGatewayState.isEnabled = false;
+		aiGatewayState.servedTypes = new Set();
+	});
+
+	function getManagedOption(wrapper: ReturnType<typeof mount>) {
+		return wrapper.findComponent(AgentCredentialSelect).props('managedOption') as {
+			value: string;
+			label: string;
+			pill?: { text: string; type: string };
+		} | null;
+	}
+
+	it('offers the n8n Connect option when the gateway serves the Brave credential type', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)?.value).toBe(AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('hides the n8n Connect option for SearXNG, which the gateway does not serve', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mount(AgentWebSearchSection, {
+			props: {
+				config: makeConfig({
+					model: 'deepseek/deepseek-chat',
+					config: { webSearch: { enabled: true, provider: 'searxng' } },
+				} as Partial<AgentJsonConfig>),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		expect(getManagedOption(wrapper)).toBeNull();
+	});
+
+	it('emits the managed tag when the n8n Connect option is selected', async () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mountWithFallbackPicker();
+
+		wrapper
+			.findComponent(AgentCredentialSelect)
+			.vm.$emit('update:modelValue', AI_GATEWAY_MANAGED_TAG);
+		await nextTick();
+
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(getWebSearchConfig(last)).toEqual({
+			enabled: true,
+			provider: 'brave',
+			credential: AI_GATEWAY_MANAGED_TAG,
+		});
 	});
 
 	it('treats sparse native web search config as disabled', async () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDropdownMenu,
@@ -12,7 +12,9 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -28,7 +30,10 @@ import {
 	type WebSearchMethod,
 	withWebSearchConfig,
 } from '../utils/nativeWebSearch';
-import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentCredentialSelect, {
+	type AgentCredentialOption,
+	type ManagedCredentialOption,
+} from './AgentCredentialSelect.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -44,6 +49,14 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const aiGateway = useAiGateway();
+
+onMounted(() => {
+	// Load the gateway config so the managed option can be gated, and the wallet
+	// for its balance subtitle. Both self-guard when n8n Connect is disabled.
+	void aiGateway.fetchConfig();
+	if (aiGateway.isEnabled.value) void aiGateway.fetchWallet();
+});
 const DEFAULT_CAPABILITIES = { webSearch: false } as const;
 const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
 const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
@@ -159,6 +172,39 @@ watch(
 const fallbackCredentialType = computed(() =>
 	webSearchMethod.value === 'searxng' ? 'searXngApi' : 'braveSearchApi',
 );
+
+// Balance pill for the managed row, matching NodeCredentials.
+const balancePill = computed<{ text: string; type: 'default' | 'danger' } | undefined>(() => {
+	const balance = aiGateway.balance.value;
+	if (balance === undefined) return undefined;
+	const depleted = balance <= 0;
+	return {
+		text: depleted
+			? i18n.baseText('aiGateway.wallet.noCredits')
+			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+				}),
+		type: depleted ? 'danger' : 'default',
+	};
+});
+
+// n8n Connect (Gateway credits) is offered as a credential option only when the
+// gateway can actually serve the selected provider's credential type. SearXNG is
+// self-hosted, so this stays hidden for it.
+const managedCredentialOption = computed<ManagedCredentialOption | null>(() => {
+	if (
+		!aiGateway.isEnabled.value ||
+		!aiGateway.canServeCredentialType(fallbackCredentialType.value)
+	) {
+		return null;
+	}
+	return {
+		value: AI_GATEWAY_MANAGED_TAG,
+		label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
+		...(balancePill.value && { pill: balancePill.value }),
+	};
+});
+
 const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
 	credentialsStore.allCredentials
 		.filter((credential) => credential.type === fallbackCredentialType.value)
@@ -407,6 +453,7 @@ function onCreateFallbackCredential() {
 					<AgentCredentialSelect
 						:model-value="fallbackWebSearchCredential"
 						:credentials="fallbackCredentials"
+						:managed-option="managedCredentialOption"
 						:placeholder="i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')"
 						:credential-permissions="credentialPermissions"
 						:disabled="props.disabled"
