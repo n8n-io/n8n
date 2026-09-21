@@ -92,28 +92,6 @@ function onSelectAgent(agent: AgentSubAgentOption) {
 	useWhen.value = '';
 }
 
-function onRowKeydown(event: KeyboardEvent, agent: AgentSubAgentOption) {
-	if (event.target !== event.currentTarget) return;
-	if (event.key === 'Enter' || event.key === ' ') {
-		event.preventDefault();
-		onSelectAgent(agent);
-		return;
-	}
-	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-
-	event.preventDefault();
-	const row = event.currentTarget;
-	if (!(row instanceof HTMLElement)) return;
-	const rows = Array.from(
-		row.parentElement?.querySelectorAll<HTMLElement>(
-			'[data-testid="agent-sub-agents-modal-row"]',
-		) ?? [],
-	);
-	const currentIndex = rows.indexOf(row);
-	const offset = event.key === 'ArrowDown' ? 1 : -1;
-	rows[(currentIndex + offset + rows.length) % rows.length]?.focus();
-}
-
 function onBack() {
 	if (isEditing.value) return;
 	selectedAgent.value = null;
@@ -186,9 +164,9 @@ function onConfirm() {
 						v-for="agent in filteredAgents"
 						:key="agent.id"
 						:class="$style.row"
-						tabindex="0"
+						role="group"
+						:aria-label="agent.name"
 						data-testid="agent-sub-agents-modal-row"
-						@keydown="onRowKeydown($event, agent)"
 					>
 						<div :class="$style.iconWrapper">
 							<N8nIcon icon="bot" :size="24" :class="$style.itemIcon" />

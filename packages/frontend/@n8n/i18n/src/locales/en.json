@@ -8769,6 +8769,7 @@
 	"agents.channels.modal.notRunning": "Not running",
 	"agents.channels.modal.notRunning.tooltip": "This channel couldn't be started. n8n keeps retrying it.",
 	"agents.channels.modal.removeChannel": "Remove channel",
+	"agents.channels.modal.credentialRequired": "Select a credential.",
 	"agents.channels.modal.saveChannelError": "Channel couldn't be saved. Try again.",
 	"agents.channels.modal.removeChannelError": "Channel couldn't be removed. Try again.",
 	"agents.channels.modal.slackAppNotDeleted.title": "Slack app wasn't removed",

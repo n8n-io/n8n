@@ -20,6 +20,4 @@ Do not change the Design System for this pattern. Add reusable behavior to the
 Agent feature components. Keep all changes inside the Agents scope unless an
 existing shared component needs an opt-in prop.
 
-Use the canonical Storybook stories in `AgentModal.stories.ts` as the visual
-reference. Add or update unit tests for shell behavior and for each migrated
-flow.
+Add or update unit tests for shell behavior and for each migrated flow.

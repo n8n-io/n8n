@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { FocusScope } from 'reka-ui';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
 import {
@@ -67,9 +66,11 @@ const {
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const currentView = ref<ChannelView>(props.view);
+const openedFromList = ref(props.view === 'list');
 const viewSession = ref(0);
 const credentialIdAtEditOpen = ref('');
 const channelActionInFlight = ref(false);
+const saveAttempted = ref(false);
 const pendingDisconnect = ref<{
 	channelType: string;
 	credentialId: string;
@@ -274,17 +275,22 @@ function connectAction(channelType: string) {
 
 function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
+	openedFromList.value = true;
+	saveAttempted.value = false;
 	currentView.value = `${channelType}_setup`;
 }
 
 function goToEdit(channelType: string) {
 	prepareChannelEdit(channelType);
+	openedFromList.value = true;
+	saveAttempted.value = false;
 	currentView.value = `${channelType}_edit`;
 }
 
 function goBackToList() {
 	if (actionInFlight.value) return;
 	captureConnectedCredential(null);
+	saveAttempted.value = false;
 	currentView.value = 'list';
 }
 
@@ -335,6 +341,7 @@ async function runBeforeSave(): Promise<boolean> {
 
 async function saveChannelConfig() {
 	if (actionInFlight.value) return;
+	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
@@ -483,6 +490,8 @@ watch(
 		if (isOpen) {
 			viewSession.value += 1;
 			void loadChannelState();
+			openedFromList.value = props.view === 'list';
+			saveAttempted.value = false;
 			currentView.value = props.view;
 		} else {
 			captureConnectedCredential(null);
@@ -497,7 +506,7 @@ watch(
 		:open="open"
 		:step="currentStep"
 		:title="headerText"
-		:show-back="currentView !== 'list'"
+		:show-back="currentView !== 'list' && openedFromList"
 		:show-footer="showFooterActions"
 		:busy="actionInFlight"
 		:trap-focus="!credentialModalOpen"
@@ -514,15 +523,6 @@ watch(
 				:disabled="headerContentDisabled"
 			/>
 		</template>
-
-		<FocusScope
-			v-if="credentialModalOpen"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
-			<span hidden aria-hidden="true" />
-		</FocusScope>
 
 		<div data-testid="agent-channel-modal" :class="$style.container">
 			<div v-show="currentView === 'list'" key="list" :class="$style.listView">
@@ -578,6 +578,14 @@ watch(
 					@connect="saveChannelConfig"
 					@connected="handlePlatformConnected"
 				/>
+				<N8nText
+					v-if="saveAttempted && !currentChannelCredentialId"
+					size="small"
+					color="danger"
+					data-testid="agent-channel-credential-required"
+				>
+					{{ i18n.baseText('agents.channels.modal.credentialRequired' as BaseTextKey) }}
+				</N8nText>
 			</div>
 		</div>
 

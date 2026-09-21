@@ -13,7 +13,6 @@ import {
 } from 'n8n-workflow';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
-import { FocusScope } from 'reka-ui';
 
 import { getWorkflow } from '@/app/api/workflows';
 import { VIEWS } from '@/app/constants';
@@ -928,7 +927,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:editable-title="Boolean(configData) && !configIsCustom"
 		:show-back="Boolean(configData)"
 		:show-footer="Boolean(configData)"
-		:busy="isCredentialModalOpen"
+		:busy="isCredentialModalOpen || isCreatingWorkflow"
 		:trap-focus="!isCredentialModalOpen"
 		:disable-outside-pointer-events="!isCredentialModalOpen"
 		data-testid="agent-tools-connection-modal"
@@ -937,15 +936,6 @@ function handleRowActivate(item: ToolConnectionItem) {
 		@update:title="updateConfigTitle"
 		@back="backToPicker"
 	>
-		<FocusScope
-			v-if="isCredentialModalOpen"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
-			<span hidden aria-hidden="true" />
-		</FocusScope>
-
 		<ToolsConnectionModal
 			v-show="!configData"
 			:open="isOpen"

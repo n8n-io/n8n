@@ -11,6 +11,7 @@ import {
 	type DialogSize,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { FocusScope } from 'reka-ui';
 import { computed, nextTick, useSlots, useTemplateRef } from 'vue';
 
 const props = withDefaults(
@@ -147,10 +148,24 @@ function onOpenAutoFocus(event: Event) {
 					@click="close"
 				/>
 			</div>
-			<N8nText v-if="props.titleError" size="small" color="danger" :class="$style.titleError">
+			<N8nText
+				v-if="props.titleError"
+				size="small"
+				color="danger"
+				:class="[$style.titleError, props.showBack && $style.titleErrorWithBack]"
+			>
 				{{ props.titleError }}
 			</N8nText>
 		</N8nDialogHeader>
+
+		<FocusScope
+			v-if="!props.trapFocus"
+			as-child
+			@mount-auto-focus.prevent
+			@unmount-auto-focus.prevent
+		>
+			<span hidden aria-hidden="true" />
+		</FocusScope>
 
 		<div ref="body" :class="$style.body" data-testid="agent-modal-body">
 			<slot />
@@ -183,6 +198,10 @@ function onOpenAutoFocus(event: Event) {
 }
 
 .titleError {
+	min-width: 0;
+}
+
+.titleErrorWithBack {
 	padding-left: calc(var(--spacing--xl) + var(--spacing--2xs));
 }
 
@@ -232,7 +251,7 @@ function onOpenAutoFocus(event: Event) {
 	flex-shrink: 0;
 	opacity: 0;
 	color: var(--color--text--tint-1);
-	transition: opacity var(--duration--quick) ease;
+	transition: opacity var(--duration--snappy) ease;
 }
 
 .headerActions {
@@ -299,7 +318,7 @@ function onOpenAutoFocus(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		:global(.n8n-button) {
+		:global(.button) {
 			flex: 1;
 		}
 	}

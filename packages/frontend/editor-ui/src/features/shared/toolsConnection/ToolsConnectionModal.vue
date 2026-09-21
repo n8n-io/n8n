@@ -463,6 +463,11 @@ function handleOpenChange(value: boolean) {
 .embedded {
 	height: 100%;
 	min-height: 0;
+
+	.body {
+		height: min(60dvh, calc(var(--height--5xl) * 5));
+		max-height: 100%;
+	}
 }
 
 .searchInput {

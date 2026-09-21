@@ -50,7 +50,14 @@ const SkillViewerStub = defineComponent({
 			() => emit('update:valid', computeValid()),
 		);
 		return () =>
-			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [h('span', props.selectedPath)]);
+			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [
+				h('span', props.selectedPath),
+				h(
+					'span',
+					{ 'data-testid': 'agent-skill-instructions-error' },
+					props.errors?.instructions ?? '',
+				),
+			]);
 	},
 });
 
@@ -61,11 +68,13 @@ function renderModal({
 	skill,
 	skillId,
 	availableTools,
+	existingSkillNames,
 }: {
 	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
 	skill?: AgentSkill;
 	skillId?: string;
 	availableTools?: Array<{ name: string; label: string }>;
+	existingSkillNames?: string[];
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -92,6 +101,7 @@ function renderModal({
 				skill,
 				skillId,
 				availableTools,
+				existingSkillNames,
 				onConfirm,
 			},
 		},
@@ -152,6 +162,19 @@ describe('AgentSkillModal', () => {
 		expect(showMessage).not.toHaveBeenCalled();
 	});
 
+	it('uses the next available default name for a new skill', () => {
+		const { container } = renderModal({
+			existingSkillNames: [
+				'agents.builder.skills.defaultName',
+				'agents.builder.skills.defaultName 2',
+			],
+		});
+
+		expect(container.querySelector('[data-testid="agent-modal-title-input"]')).toHaveValue(
+			'agents.builder.skills.defaultName 3',
+		);
+	});
+
 	it('explains why overlong instructions cannot be saved', async () => {
 		const onConfirm = vi.fn();
 		const { container } = renderModal({
@@ -170,6 +193,9 @@ describe('AgentSkillModal', () => {
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(
+			container.querySelector('[data-testid="agent-skill-instructions-error"]'),
+		).toHaveTextContent('agents.builder.skills.validation.instructionsMaxLength');
 	});
 
 	it('adds and removes references from the file navigation', async () => {

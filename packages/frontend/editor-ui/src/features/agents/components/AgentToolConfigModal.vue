@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { FocusScope } from 'reka-ui';
 import { computed, ref } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import AgentModal from './modals/AgentModal.vue';
 import AgentToolConfigForm, { type AgentToolConfigModalData } from './AgentToolConfigForm.vue';
 
@@ -25,6 +25,11 @@ const isOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true
 const isCustomTool = computed(
 	() => props.data.kind !== 'mcpServer' && props.data.toolRef.type === 'custom',
 );
+const canRender = computed(() => {
+	if (props.data.kind === 'mcpServer') return Boolean(props.data.initialNode);
+	if (props.data.toolRef.type === 'custom' || props.data.toolRef.type === 'workflow') return true;
+	return toolRefToNode(props.data.toolRef) !== null;
+});
 const removeLabel = computed(() => {
 	if (props.data.kind === 'mcpServer') {
 		return i18n.baseText('agents.builder.tools.mcp.remove' as BaseTextKey);
@@ -72,6 +77,7 @@ function handleRemove() {
 
 <template>
 	<AgentModal
+		v-if="canRender"
 		:open="isOpen"
 		:title="title"
 		:editable-title="!isCustomTool"
@@ -82,14 +88,6 @@ function handleRemove() {
 		@update:open="onOpenChange"
 		@update:title="updateTitle"
 	>
-		<FocusScope
-			v-if="credentialModalOpen"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
-			<span hidden aria-hidden="true" />
-		</FocusScope>
 		<AgentToolConfigForm
 			ref="form"
 			:data="data"

@@ -2909,6 +2909,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1100;
 		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
 
 		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
 		await nextTick();
@@ -2922,6 +2923,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1100;
 		await nextTick();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 
 		await (wrapper.vm as unknown as { onOpenPreview: () => Promise<boolean> }).onOpenPreview();
 		await flushPromises();

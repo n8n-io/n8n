@@ -145,9 +145,6 @@ const customToolTitle = computed(() => {
 });
 const title = computed(() => (isCustomTool.value ? customToolTitle.value : nodeName.value));
 
-const canRender = computed(
-	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
-);
 const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
 const showApprovalSetting = computed(
 	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
@@ -297,7 +294,7 @@ function handleNodeNameUpdate(name: string) {
 	nodeName.value = name;
 }
 
-defineExpose({ canRender, canSave, confirm, remove, changeTitle, credentialModalOpen, title });
+defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title });
 </script>
 
 <template>
@@ -374,7 +371,7 @@ defineExpose({ canRender, canSave, confirm, remove, changeTitle, credentialModal
 .contentWrapper {
 	--agent-tool-config-content-max-height: min(
 		calc(var(--spacing--5xl) * 2),
-		calc(var(--dialog--max-height) - var(--spacing--5xl))
+		calc(70dvh - var(--spacing--5xl))
 	);
 
 	display: flex;

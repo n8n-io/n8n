@@ -199,6 +199,7 @@ const statusTooltip = computed(() => {
 	color: var(--color--text--tint-1);
 	font-family: inherit;
 	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
 	white-space: nowrap;
 	cursor: pointer;
 

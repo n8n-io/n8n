@@ -42,10 +42,21 @@ const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
+function getDefaultSkillName(): string {
+	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);
+	const existingNames = new Set(
+		(props.data.existingSkillNames ?? []).map((name) => name.trim().toLowerCase()),
+	);
+	if (!existingNames.has(baseName.toLowerCase())) return baseName;
+
+	let suffix = 2;
+	while (existingNames.has(`${baseName} ${suffix}`.toLowerCase())) suffix += 1;
+	return `${baseName} ${suffix}`;
+}
+
 const skill = ref<AgentSkill>(
 	normalizeSkill({
-		name:
-			props.data.skill?.name ?? i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey),
+		name: props.data.skill?.name ?? getDefaultSkillName(),
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
 		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
@@ -273,5 +284,11 @@ function onRemove() {
 	height: min(70dvh, calc(var(--height--5xl) * 6));
 	min-height: 0;
 	display: flex;
+}
+
+@media (max-width: 480px) {
+	.content {
+		flex-direction: column;
+	}
 }
 </style>

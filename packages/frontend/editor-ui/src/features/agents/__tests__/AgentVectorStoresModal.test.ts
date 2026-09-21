@@ -220,6 +220,7 @@ describe('AgentVectorStoresModal', () => {
 		expect(confirmButton.attributes('disabled')).toBeUndefined();
 		await confirmButton.trigger('click');
 		expect(onConfirm).not.toHaveBeenCalled();
+		expect(wrapper.text()).toContain('agents.builder.vectorStores.modal.credential.required');
 
 		await fillQdrantConnection(wrapper);
 		expect(confirmButton.attributes('disabled')).toBeUndefined();

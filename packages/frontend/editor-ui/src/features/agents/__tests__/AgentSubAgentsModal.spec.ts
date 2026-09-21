@@ -116,6 +116,8 @@ describe('AgentSubAgentsModal', () => {
 		expect(
 			wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').attributes('disabled'),
 		).toBeUndefined();
+		await confirmButton.trigger('click');
+		expect(onConfirm).not.toHaveBeenCalled();
 
 		await wrapper
 			.find('[data-testid="agent-sub-agents-modal-use-when"]')

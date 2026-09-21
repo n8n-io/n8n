@@ -6,7 +6,6 @@ Use these components:
 
 - `packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue`
 - `packages/frontend/editor-ui/src/features/agents/components/modals/AgentModalMultiStep.vue`
-- `packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.stories.ts`
 
 `AgentModal` owns the dialog shell. It owns the title, Back, Close, body scroll,
 and footer layout. `AgentModalMultiStep` adds stable step layout and a subtle
@@ -17,7 +16,7 @@ step transition. The feature component owns its data and step history.
 | Area | Rule |
 | --- | --- |
 | Width | Use `2xlarge` by default. Keep one width for all steps. |
-| Header | Use a top divider. Put Back on the left and Close on the right. |
+| Header | Keep the header's bottom divider. Put Back on the left and Close on the right. |
 | Title | Use an editable local name when the asset supports one. Do not add an asset icon. |
 | Body | Focus the first body field. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
 | Footer | Do not add a divider. Put Remove on the left and Save on the right. |

@@ -35,6 +35,7 @@ export const AgentModalTestStub = defineComponent({
 				<input
 					v-if="editableTitle"
 					:value="title"
+					:disabled="busy"
 					data-testid="agent-modal-title-input"
 					@input="$emit('update:title', $event.target.value)"
 				/>
@@ -46,8 +47,14 @@ export const AgentModalTestStub = defineComponent({
 					@click="$emit('update:open', false)"
 				/>
 			</header>
+			<div v-if="!trapFocus" data-testid="nested-credential-focus-scope" />
 			<main><slot /></main>
-			<footer v-if="showFooter !== false">
+			<footer
+				v-if="
+					showFooter === true ||
+					(showFooter !== false && ($slots.footerLeft || $slots.footerActions || $slots.footer))
+				"
+			>
 				<slot name="footerLeft" />
 				<slot name="footerActions" />
 				<slot name="footer" />
@@ -65,7 +72,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		title: { type: String, default: '' },
 		editableTitle: { type: Boolean, default: false },
 		showBack: { type: Boolean, default: false },
-		showFooter: { type: Boolean, default: false },
+		showFooter: { type: Boolean, default: undefined },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },

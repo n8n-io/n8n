@@ -120,31 +120,13 @@ function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
 
+function handleInteractOutside(event: Event) {
+	if (credentialModalOpen.value) event.preventDefault();
+}
+
 function selectProvider(provider: AgentVectorStoreProvider) {
 	submitted.value = false;
 	selectedProvider.value = provider;
-}
-
-function onRowKeydown(event: KeyboardEvent, provider: AgentVectorStoreProvider) {
-	if (event.target !== event.currentTarget) return;
-	if (event.key === 'Enter' || event.key === ' ') {
-		event.preventDefault();
-		selectProvider(provider);
-		return;
-	}
-	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-
-	event.preventDefault();
-	const row = event.currentTarget;
-	if (!(row instanceof HTMLElement)) return;
-	const rows = Array.from(
-		row.parentElement?.querySelectorAll<HTMLElement>(
-			'[data-testid="agent-vector-stores-modal-row"]',
-		) ?? [],
-	);
-	const currentIndex = rows.indexOf(row);
-	const offset = event.key === 'ArrowDown' ? 1 : -1;
-	rows[(currentIndex + offset + rows.length) % rows.length]?.focus();
 }
 
 function goBack() {
@@ -450,7 +432,10 @@ onMounted(() => {
 		:show-back="Boolean(selectedProvider) && !isEditing"
 		:show-footer="Boolean(selectedProvider)"
 		:busy="testing"
+		:trap-focus="!credentialModalOpen"
+		:disable-outside-pointer-events="!credentialModalOpen"
 		data-testid="agent-vector-stores-modal"
+		@interact-outside="handleInteractOutside"
 		@update:open="!$event && closeModal()"
 		@update:title="onNameInput"
 		@back="goBack"
@@ -465,9 +450,9 @@ onMounted(() => {
 					v-for="provider in providerOrder"
 					:key="provider"
 					:class="$style.row"
-					tabindex="0"
+					role="group"
+					:aria-label="AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS[provider].displayName"
 					data-testid="agent-vector-stores-modal-row"
-					@keydown="onRowKeydown($event, provider)"
 				>
 					<div :class="$style.iconWrapper">
 						<CredentialIcon
