@@ -1,7 +1,7 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue';
 import type { ChatMessage } from '../chat.types';
 import { collectChatArtifacts } from '@n8n/chat-hub';
-import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { useResizablePanel } from '@n8n/design-system';
 
 export function useChatArtifacts(
 	container: Ref<HTMLElement>,
@@ -19,12 +19,20 @@ export function useChatArtifacts(
 		return artifacts[index];
 	});
 	const isViewerVisible = computed(() => allArtifacts.value.length > 0 && !isViewerCollapsed.value);
-	const panelResizer = useResizablePanel('N8N_CHAT_ARTIFACT_VIEWER_WIDTH', {
+	const panelResizer = useResizablePanel({
 		container,
-		defaultSize: (size) => size * 0.6,
-		minSize: 300,
-		maxSize: (size) => size - 300,
-		allowFullSize: true,
+		width: {
+			localStorageKey: 'N8N_CHAT_ARTIFACT_VIEWER_WIDTH',
+			defaultSize: function getDefaultWidth(size) {
+				return size * 0.6;
+			},
+			minSize: 300,
+			maxSize: function getMaxWidth(size) {
+				return size - 300;
+			},
+			allowFullSize: true,
+			snap: true,
+		},
 	});
 
 	// Reset collapsed state when artifacts change
@@ -40,7 +48,6 @@ export function useChatArtifacts(
 		if (panelResizer.isFullSize.value) {
 			isViewerCollapsed.value = true;
 		}
-		panelResizer.onResizeEnd();
 	}
 
 	function handleCloseViewer() {
@@ -78,10 +85,10 @@ export function useChatArtifacts(
 		allArtifacts,
 		isViewerVisible,
 		isViewerCollapsed,
-		viewerSize: computed(() => panelResizer.size.value),
-		isViewerResizing: computed(() => panelResizer.isResizing.value),
+		viewerSize: panelResizer.width,
+		isViewerResizing: panelResizer.isResizing,
 		handleOpenViewer,
-		handleViewerResize: panelResizer.onResize,
+		panelResizer,
 		handleViewerResizeEnd,
 		handleCloseViewer,
 		handleDownload,

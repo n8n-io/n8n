@@ -10,11 +10,6 @@ export const MCP_APPS_FLAG = '087_mcp_apps';
 export const MCP_APPS_VARIANT_CONTROL = 'control';
 export const MCP_APPS_VARIANT_ENABLED = 'variant';
 
-// Rollout flag for the instance-context read surface on the MCP server: the
-// activity tools and the node-usage tool. Separate from the Instance AI read
-// flag so the two surfaces roll out independently against the same data.
-export const MCP_INSTANCE_CONTEXT_FLAG = '114_mcp_instance_context';
-
 export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write', 'agent:execute'] as const;
 
 /**

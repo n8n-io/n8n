@@ -409,6 +409,20 @@ describe('EvalExecutionService', () => {
 			expect(result.executionId).toBe(DB_EXECUTION_ID);
 		});
 
+		it('pins the trigger to zero items when the scenario says it emits nothing', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {};
+			hints.triggerEmitsNoItems = true;
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.Webhook).toEqual([]);
+		});
+
 		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = { body: { email: 'jane@example.com' } };
@@ -1133,6 +1147,38 @@ describe('EvalExecutionService', () => {
 			expect(result.errors).toEqual(
 				expect.arrayContaining([expect.stringContaining('HTTP Request')]),
 			);
+		});
+
+		it('synthesizes numeric values for id-shaped placeholders', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Graph Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								node: placeholderValue('Facebook Page ID'),
+								account: placeholderValue('Instagram Business Account ID'),
+								note: placeholderValue('Video caption'),
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const graphNode = runArg.workflowData.nodes.find((node) => node.name === 'Graph Node');
+
+			expect(graphNode?.parameters).toMatchObject({
+				node: '100000000',
+				account: '100000000',
+				note: '__evalMockValue',
+			});
 		});
 
 		it('synthesizes validator-shaped values for selected resource placeholders', async () => {

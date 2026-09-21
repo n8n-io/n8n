@@ -3,7 +3,7 @@ import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-pr
 import { VM_LAZY_CACHE_BENCHMARK_PROFILE } from '../../../../utils/benchmark';
 import { runKafkaBacklogTest } from '../harness/kafka-backlog-harness';
 
-const MESSAGE_COUNT = 2_000;
+const MESSAGE_COUNT = 20_000;
 
 test.use({
 	capability: benchConfig(
@@ -22,7 +22,7 @@ test.describe(
 		],
 	},
 	() => {
-		test('Kafka trigger + 1 noop, 1KB payload, 2k msgs (VM lazy + compile cache)', async ({
+		test('Kafka trigger + 1 noop, 1KB payload, 20k msgs (VM lazy + compile cache)', async ({
 			api,
 			services,
 		}, testInfo) => {
@@ -31,7 +31,7 @@ test.describe(
 				services,
 				testInfo,
 				messageCount: MESSAGE_COUNT,
-				timeoutMs: 180_000,
+				timeoutMs: 600_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				minimumCompletionRatio: 1,
 				dimensions: VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,

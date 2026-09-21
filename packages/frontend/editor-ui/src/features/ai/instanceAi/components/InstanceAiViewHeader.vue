@@ -1,14 +1,7 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nIcon,
-	N8nPopover,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -22,7 +15,7 @@ const props = withDefaults(
 		showThreadHistoryLabel?: boolean;
 		/** Falls back to the route param when omitted (the full assistant page's own use). */
 		threadId?: string;
-		/** Passed through to the popover's `InstanceAiThreadList` — an embedding host scopes
+		/** Passed through to `InstanceAiThreadList` — an embedding host scopes
 		 * and disables the shared history instead of routing through it. */
 		threadList?: {
 			filter?: (thread: InstanceAiThreadSummary) => boolean;
@@ -31,7 +24,7 @@ const props = withDefaults(
 		};
 	}>(),
 	{
-		showThreadHistoryLabel: false,
+		showThreadHistoryLabel: true,
 		threadId: undefined,
 		threadList: undefined,
 	},
@@ -47,7 +40,6 @@ const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
-const threadMenuOpen = ref(false);
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 
@@ -65,21 +57,20 @@ const threadCreditsUsed = computed(() =>
 );
 
 function handleThreadSelect(threadId: string) {
-	threadMenuOpen.value = false;
 	emit('select', threadId);
 }
 </script>
 
 <template>
 	<div :class="$style.header">
-		<N8nPopover
-			v-model:open="threadMenuOpen"
-			side="bottom"
-			align="start"
-			:side-offset="4"
-			width="calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))"
-			:enable-scrolling="false"
-			:content-class="$style.threadHistoryPopover"
+		<InstanceAiThreadList
+			max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
+			:filter="threadList?.filter"
+			:navigate="threadList?.navigate"
+			:disabled="threadList?.disabled"
+			:active-thread-id="threadId"
+			@select="handleThreadSelect"
+			@deleted="emit('deleted', $event)"
 		>
 			<template #trigger>
 				<N8nTooltip
@@ -92,35 +83,20 @@ function handleThreadSelect(threadId: string) {
 					<N8nButton
 						variant="ghost"
 						size="small"
-						:class="[
-							$style.threadHistoryButton,
-							{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
-						]"
+						icon="history"
+						icon-size="large"
+						:icon-only="!props.showThreadHistoryLabel"
+						:class="$style.threadHistoryButton"
 						data-test-id="instance-ai-sidebar-toggle"
 						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
 					>
-						<template #icon>
-							<N8nIcon icon="history" size="large" />
-						</template>
-						<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
+						<span v-if="props.showThreadHistoryLabel" :class="$style.threadHistoryLabel">
 							{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 						</span>
 					</N8nButton>
 				</N8nTooltip>
 			</template>
-			<template #content>
-				<InstanceAiThreadList
-					max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
-					:filter="threadList?.filter"
-					:navigate="threadList?.navigate"
-					:disabled="threadList?.disabled"
-					:active-thread-id="threadId"
-					@close="threadMenuOpen = false"
-					@select="handleThreadSelect"
-					@deleted="emit('deleted', $event)"
-				/>
-			</template>
-		</N8nPopover>
+		</InstanceAiThreadList>
 		<slot name="title" />
 		<div :class="$style.headerActions">
 			<CreditsSettingsDropdown
@@ -156,7 +132,7 @@ function handleThreadSelect(threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--background--surface);
+	background-color: var(--n8n-ia-header--background, var(--background--surface));
 }
 
 .headerActions {
@@ -164,10 +140,6 @@ function handleThreadSelect(threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.threadHistoryPopover {
-	overflow: hidden;
 }
 
 .threadHistoryButton {

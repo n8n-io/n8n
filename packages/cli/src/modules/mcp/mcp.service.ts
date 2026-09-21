@@ -3,7 +3,7 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_INSTANCE_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
@@ -144,13 +144,10 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
-/** Per-user resolution of every PostHog-gated MCP feature. */
+/** User experience gates and the shared instance activity gate. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/**
-	 * The instance-context read surface: the four tools, the `n8n://instance/context` resource,
-	 * and the sentence in the instructions that points a client at them.
-	 */
+	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
@@ -259,23 +256,19 @@ export class McpService {
 		private readonly mcpConfig: McpConfig,
 	) {}
 
-	/**
-	 * Resolves every PostHog-gated MCP feature for a user with a single flags
-	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog.
-	 */
+	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpInstanceContextEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
-		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
-		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
-		// surfacing as `unassigned`).
-		const flags = await this.postHogClient.getFeatureFlags(user);
+		const [userFlags, instanceFlag] = await Promise.allSettled([
+			this.postHogClient.getFeatureFlags(user),
+			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+		]);
+		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			instanceContextEnabled:
-				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
+			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			// Multivariate flag: only the `variant` arm enables the feature.
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
@@ -632,16 +625,9 @@ export class McpService {
 			// every other execution read here sits behind `execution:read`.
 			const executionGranted = allowedToolNames?.has('get_workflow_execution') ?? true;
 
-			// The two activity tools also need the log to be *written*. `N8N_ACTIVITY_LOG_ENABLED`
-			// is off by default, and a tool that answers from a store nothing writes to reports an
-			// empty feed — which an agent reads as "nothing has happened here", the exact wrong
-			// conclusion. The inventory and run legs do not come from the log, so the context tool
-			// and node-usage stay available either way.
-			const activityLogWritten = this.globalConfig.activityLog.enabled;
-
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (activityLogWritten && this.moduleRegistry.isActive('instance-ai')) {
+			if (this.moduleRegistry.isActive('instance-ai')) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);

@@ -42,6 +42,7 @@ export class CommunityNodeTypesService {
 			communityNodesMetadata = await getCommunityNodesMetadata(
 				environment,
 				this.config.aiNodeSdkVersion,
+				this.config.nodesApiVersion,
 			);
 		} catch (error) {
 			this.logger.error('Failed to fetch community nodes metadata', {
@@ -90,7 +91,12 @@ export class CommunityNodeTypesService {
 			let data: StrapiCommunityNodeType[] = [];
 			if (this.config.enabled && this.config.verifiedEnabled) {
 				if (this.communityNodeTypes.size === 0) {
-					data = await getCommunityNodeTypes(environment, {}, this.config.aiNodeSdkVersion);
+					data = await getCommunityNodeTypes(
+						environment,
+						{},
+						this.config.aiNodeSdkVersion,
+						this.config.nodesApiVersion,
+					);
 					this.updateCommunityNodeTypes(data);
 					return;
 				}
@@ -113,6 +119,7 @@ export class CommunityNodeTypesService {
 						environment,
 						qs,
 						this.config.aiNodeSdkVersion,
+						this.config.nodesApiVersion,
 					);
 					data.push(...batchData);
 				}

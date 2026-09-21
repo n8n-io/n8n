@@ -860,6 +860,8 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialType,
 		credentialId,
+		credentialDescriptionLength,
+		publicApi,
 		projectId,
 		projectType,
 		uiContext,
@@ -869,11 +871,15 @@ export class TelemetryEventRelay extends EventRelay {
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
-		this.telemetry.track('User created credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
+			source: 'backend',
+			public_api: publicApi,
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			has_description: credentialDescriptionLength > 0,
+			description_length: credentialDescriptionLength,
 			project_id: projectId,
 			project_type: projectType,
 			uiContext,
@@ -908,17 +914,21 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		credentialDescriptionLength,
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
-		this.telemetry.track('User updated credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
+			source: 'backend',
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			has_description: credentialDescriptionLength > 0,
+			description_length: credentialDescriptionLength,
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
@@ -2435,11 +2445,17 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Custom Roles
 
-	private customRoleCreated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-created']) {
+	private customRoleCreated({
+		userId,
+		roleSlug,
+		scopes,
+		source,
+	}: RelayEventMap['custom-role-created']) {
 		this.telemetry.track('User created custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
 			scopes,
+			source,
 		});
 	}
 

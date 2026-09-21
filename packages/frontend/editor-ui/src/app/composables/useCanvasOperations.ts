@@ -67,6 +67,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { isNodeTypeRestricted } from '@n8n/frontend-module-type-availability-policies';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -3492,8 +3493,12 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
-	async function copyNodes(ids: string[]) {
-		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
+	async function copyNodes(ids: string[]): Promise<boolean> {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		const hasRestrictedNode = nodes.some((node) => isNodeTypeRestricted(node.type));
+		if (hasRestrictedNode) return false;
+
+		const workflowData = deepCopy(getNodesToSave(nodes));
 
 		workflowData.meta = {
 			...workflowData.meta,
@@ -3507,10 +3512,13 @@ export function useCanvasOperations() {
 			node_types: workflowData.nodes.map((node) => node.type),
 			workflow_id: workflowDocumentStore.value.workflowId,
 		});
+
+		return true;
 	}
 
 	async function cutNodes(ids: string[]) {
-		await copyNodes(ids);
+		if (!(await copyNodes(ids))) return;
+
 		deleteNodes(ids);
 	}
 

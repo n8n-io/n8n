@@ -187,29 +187,38 @@ describe('OAuthConsentService', () => {
 			});
 		});
 
-		it('should include the resource scope-tools mapping when available', async () => {
-			const sessionToken = 'valid-session-token';
-			const sessionPayload = {
-				clientId: 'client-123',
-				redirectUri: 'https://example.com/callback',
-				codeChallenge: 'challenge',
-				state: null,
-			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
-			const scopeTools = { 'workflow:read': ['search_workflows', 'get_workflow_details'] };
+		it.each([false, true])(
+			'awaits scope tools for a resource-aware session: %s',
+			async (hasResource) => {
+				const sessionToken = 'valid-session-token';
+				const sessionPayload = {
+					clientId: 'client-123',
+					redirectUri: 'https://example.com/callback',
+					codeChallenge: 'challenge',
+					state: null,
+					resource: hasResource ? 'https://example.com/mcp' : undefined,
+				};
+				const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+				const scopeTools = { 'workflow:read': ['search_workflows', 'get_workflow_details'] };
 
-			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
-			protectedResourceRegistry.getDefaultResource.mockReturnValue({
-				scopes: INSTANCE_SCOPES,
-				authorize: async () => true,
-				getScopeTools: () => scopeTools,
-			} as unknown as ProtectedResource);
+				oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+				oauthClientRepository.findOne.mockResolvedValue(client);
+				const resource = mock<ProtectedResource>({
+					scopes: INSTANCE_SCOPES,
+					authorize: async () => true,
+					// Explicit: consent narrows per user through this when present, and
+					// the deep mock would otherwise auto-create one returning undefined.
+					getGrantableScopes: async () => [...INSTANCE_SCOPES],
+					getScopeTools: async () => scopeTools,
+				});
+				protectedResourceRegistry.getDefaultResource.mockReturnValue(resource);
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(resource);
 
-			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
+				const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
-			expect(result).toMatchObject({ ok: true, scopeTools });
-		});
+				expect(result).toMatchObject({ ok: true, scopeTools });
+			},
+		);
 
 		it('should cap the grantable scopes at what the client requested', async () => {
 			const sessionToken = 'valid-session-token';

@@ -133,6 +133,19 @@ export class AiPreferenceService {
 		return groupAiPreferences(rows, projects);
 	}
 
+	async getApplicableForProject(user: User, projectId: string): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user).has(projectId, 'read');
+		const project = readable ? await this.projectRepository.findOneBy({ id: projectId }) : null;
+		// Global access does not include another user's personal project.
+		const foreignPersonal =
+			project?.type === 'personal' &&
+			(await this.projectRepository.getPersonalProjectForUser(user.id))?.id !== project.id;
+		if (!project || foreignPersonal) {
+			throw new NotFoundError(`Project with id ${projectId} not found`);
+		}
+		return await this.getApplicable(user.id, [project]);
+	}
+
 	/**
 	 * For callers with no current project, such as the MCP server. A project counts when the
 	 * caller may read its preferences, the same rule as the REST read, so a membership that

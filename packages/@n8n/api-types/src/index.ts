@@ -152,6 +152,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
+	credentialTypeNameParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -357,6 +358,7 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
@@ -365,6 +367,7 @@ export {
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
+	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
@@ -425,6 +428,7 @@ export {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	computerUseChannelSchema,
 	domainAccessActionSchema,
@@ -497,6 +501,7 @@ export {
 	findUnbackedSeedWorkflowTools,
 	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
+	resolveInstanceAiPermissions,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -703,7 +708,6 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_INSTANCE_CONTEXT_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,

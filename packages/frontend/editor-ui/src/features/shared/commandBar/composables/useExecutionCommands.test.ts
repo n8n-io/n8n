@@ -68,6 +68,9 @@ vi.mock('@n8n/permissions', () => ({
 			update: true,
 			execute: true,
 		},
+		execution: {
+			delete: true,
+		},
 	})),
 }));
 
@@ -157,6 +160,9 @@ describe('useExecutionCommands', () => {
 				update: true,
 				execute: true,
 			},
+			execution: {
+				delete: true,
+			},
 		});
 
 		vi.clearAllMocks();
@@ -213,6 +219,9 @@ describe('useExecutionCommands', () => {
 				workflow: {
 					update: false,
 					execute: true,
+				},
+				execution: {
+					delete: true,
 				},
 			});
 
@@ -384,6 +393,9 @@ describe('useExecutionCommands', () => {
 					update: true,
 					execute: false,
 				},
+				execution: {
+					delete: true,
+				},
 			});
 
 			mockExecutionsStore.activeExecution = createMockExecution('exec-1', 'running');
@@ -511,11 +523,14 @@ describe('useExecutionCommands', () => {
 			expect(deleteCommand?.title).toBe('executionDetails.deleteExecution');
 		});
 
-		it('should not include delete command when user has no update permission', () => {
+		it('should not include delete command when user cannot delete executions, even with workflow edit rights', () => {
 			mockGetResourcePermissions.mockReturnValue({
 				workflow: {
-					update: false,
+					update: true,
 					execute: true,
+				},
+				execution: {
+					delete: false,
 				},
 			});
 

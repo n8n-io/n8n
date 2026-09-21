@@ -1,3 +1,4 @@
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
 import { inProduction } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 
@@ -33,6 +34,7 @@ describe('CommunityNodeTypesService', () => {
 			enabled: true,
 			verifiedEnabled: true,
 			aiNodeSdkVersion: 1,
+			nodesApiVersion: N8N_NODES_API_VERSION,
 		};
 		communityPackagesServiceMock = {};
 
@@ -51,26 +53,36 @@ describe('CommunityNodeTypesService', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1, N8N_NODES_API_VERSION);
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith(
+				'production',
+				{},
+				1,
+				N8N_NODES_API_VERSION,
+			);
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith(
+				'production',
+				{},
+				1,
+				N8N_NODES_API_VERSION,
+			);
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1, N8N_NODES_API_VERSION);
 		});
 
 		it('should call setTimestampForRetry when detectUpdates returns scheduleRetry', async () => {

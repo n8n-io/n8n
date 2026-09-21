@@ -20,6 +20,7 @@ import { computed, defineComponent, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 
@@ -268,6 +269,40 @@ describe('NodeView', () => {
 			const { findByTestId } = renderNodeView();
 
 			expect(await findByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+	});
+
+	describe('Type availability policies', () => {
+		let fetchForProject: ReturnType<typeof vi.fn>;
+
+		beforeEach(() => {
+			fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+		});
+
+		it('loads the policies of the resolved project on mount', async () => {
+			useProjectsStore().personalProject = { id: 'personal', name: 'Personal' } as Project;
+
+			renderNodeView();
+
+			await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('personal'));
+		});
+
+		it('loads the policies again when the resolved project changes', async () => {
+			useProjectsStore().personalProject = { id: 'personal', name: 'Personal' } as Project;
+			renderNodeView();
+			await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('personal'));
+
+			useProjectsStore().setCurrentProject({ id: 'team', name: 'Team' } as Project);
+
+			await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('team'));
+		});
+
+		it('does not load policies without a project', async () => {
+			renderNodeView();
+
+			await waitFor(() => expect(fetchForProject).not.toHaveBeenCalled());
 		});
 	});
 

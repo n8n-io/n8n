@@ -124,7 +124,7 @@ export class OAuthConsentService {
 					redirectUri: sessionPayload.redirectUri,
 					scopes,
 					previousScopes: await this.previousScopes(user.id, client.id, scopes),
-					scopeTools: resource.getScopeTools?.(),
+					scopeTools: await resource.getScopeTools?.(),
 					uiHints: resource.uiHints,
 					isFirstParty: client.isFirstParty,
 				};
@@ -149,7 +149,7 @@ export class OAuthConsentService {
 				redirectUri: sessionPayload.redirectUri,
 				scopes,
 				previousScopes: await this.previousScopes(user.id, client.id, scopes),
-				scopeTools: defaultResource?.getScopeTools?.(),
+				scopeTools: await defaultResource?.getScopeTools?.(),
 				uiHints: defaultResource?.uiHints,
 				isFirstParty: client.isFirstParty,
 			};
