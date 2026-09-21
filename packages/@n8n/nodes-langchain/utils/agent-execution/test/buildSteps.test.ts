@@ -421,6 +421,43 @@ describe('buildSteps', () => {
 				});
 			});
 
+			it('should preserve a tool argument named id in reconstructed history', () => {
+				// AI-2805: The resource ID and the tool-call ID are separate values.
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Linear MCP Client',
+								input: { id: 'DEVP-1168' },
+								type: NodeConnectionTypes.AiTool,
+								id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+								metadata: {
+									itemIndex: 0,
+								},
+							},
+							data: {
+								data: {
+									ai_tool: [[{ json: { identifier: 'DEVP-1168' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+							},
+						},
+					],
+					metadata: {},
+				};
+
+				const result = buildSteps(response, itemIndex);
+
+				expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]).toMatchObject({
+					id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+					args: { id: 'DEVP-1168' },
+				});
+			});
+
 			it('should use custom log if provided', () => {
 				const response: EngineResponse<RequestResponseMetadata> = {
 					actionResponses: [
