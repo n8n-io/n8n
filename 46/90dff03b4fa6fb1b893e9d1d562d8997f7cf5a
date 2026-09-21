@@ -267,6 +267,8 @@ packages/@n8n/api-types/src/agents/dto.ts
   s_1f6041c4c88d94::t_075416638919bf 15,94,103
 packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
   s_1f6041c4c88d94::t_cf50e3fa027104 38,40,129
+  s_a52facf53351c5::t_7ad2fa5cad26d1 8,47
+  s_a52facf53351c5::t_a74eaf17a64f34 23-37,39,41,128,130-137
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
   s_1f6041c4c88d94::t_fe5a6bf5f2e497 117
 packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
@@ -291,6 +293,7 @@ packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
 packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
   s_1f6041c4c88d94::t_c93ef34c96f496 198-200
   s_1f6041c4c88d94::t_cf50e3fa027104 197,201-202,226,341,366-367,375,392-393
+  s_a52facf53351c5::t_7ad2fa5cad26d1 371
 packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
   s_1f6041c4c88d94::t_e0925b0a349c45 119-121,204-206,222-224
   s_1f6041c4c88d94::t_437dcf919e17d1 10-12,26,69,219,237-248
