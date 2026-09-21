@@ -410,7 +410,7 @@ Declare one only when all three rows hold. If one row fails, use the surface nam
 |---|---|
 | The module needs a runtime action or a reactive read, not a component | Use `componentRegistry` |
 | The target is shell-core state with no path down to an L2 package | Import the L2 package |
-| No contribution surface fits (modals, commands, resources, push handlers) | Use that surface |
+| No contribution surface fits (components, modals, commands, resources, push handlers, parameter inputs) | Use the contribution surface that fits |
 
 Four files hold one capability:
 
