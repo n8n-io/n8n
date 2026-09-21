@@ -142,6 +142,11 @@ const stubs = {
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
+	N8nIconButton: {
+		props: ['disabled', 'icon', 'variant', 'size', 'iconSize', 'href', 'target', 'rel', 'title'],
+		template:
+			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+	},
 	N8nSwitch2: {
 		props: ['modelValue'],
 		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',

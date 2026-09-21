@@ -60,6 +60,12 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 	},
+	N8nIconButton: {
+		props: ['variant', 'size', 'icon', 'iconSize', 'disabled', 'href', 'target', 'rel', 'title'],
+		emits: ['click'],
+		template:
+			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	},
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['tag', 'size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 	N8nInput: {
