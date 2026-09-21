@@ -358,29 +358,41 @@ describe('PromotionSelectModal', () => {
 			expect(applied).toHaveBeenCalledWith('applied');
 		});
 
-		it('should warn instead of reporting counts when apply pauses on bindings', async () => {
-			server.post('/api/v1/promotions/connections/connection-1/apply', () => ({
-				connectionId: 'connection-1',
-				configId: 'config-1',
-				status: 'blocked',
-				preflight: {},
-				git: { commitSha: 'a'.repeat(40), branchName: 'main' },
-			}));
-			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
-			await findByText('Payment Handler');
+		it.each([
+			{
+				result: { status: 'blocked', preflight: {} },
+				message:
+					'Some credentials or variables are not set up on this instance yet. Nothing was changed.',
+			},
+			{
+				result: { status: 'source-changed' },
+				message: 'The source changed since this preview. Refresh and review the changes again.',
+			},
+		])(
+			'should warn and keep the modal open when apply pauses with $result.status',
+			async ({ result, message }) => {
+				server.post('/api/v1/promotions/connections/connection-1/apply', () => ({
+					connectionId: 'connection-1',
+					configId: 'config-1',
+					git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+					...result,
+				}));
+				const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+				await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+				await userEvent.click(await findByTestId('promotion-apply-all'));
 
-			await waitFor(() =>
-				expect(showMessage).toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'warning', title: 'Apply paused' }),
-				),
-			);
-			expect(showMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
-			expect(useUIStore().closeModal).not.toHaveBeenCalled();
-			expect(applied).not.toHaveBeenCalled();
-		});
+				await waitFor(() =>
+					expect(showMessage).toHaveBeenCalledWith(
+						expect.objectContaining({ type: 'warning', title: 'Apply paused', message }),
+					),
+				);
+				expect(showMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+				await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+				expect(useUIStore().closeModal).not.toHaveBeenCalled();
+				expect(applied).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should show the error and still refetch the changes when apply fails', async () => {
 			server.post(

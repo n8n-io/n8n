@@ -1,6 +1,7 @@
 import { ref, watch, type Ref } from 'vue';
 import type { PromotionDirection } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { getPromotableChanges } from '../promotions.api';
 
 /** How many rows the change preview lists for a project in one direction, while `enabled` holds. */
@@ -10,13 +11,15 @@ export function usePromotionChangeCount(
 	enabled: Ref<boolean>,
 ) {
 	const rootStore = useRootStore();
+	const { next } = useLatestFetch();
 	const count = ref(0);
 	/** True when the last check failed, so the banner can say so instead of hiding. */
 	const failed = ref(false);
 
 	async function fetchCount() {
-		// Capture the project this request is for, so a slow response for a project the
-		// user already navigated away from cannot overwrite the current count.
+		// Only the newest request may write, so a slow answer for a project the user left
+		// and came back to cannot overwrite the current state.
+		const isLatest = next();
 		const requestedProjectId = projectId.value;
 		count.value = 0;
 		failed.value = false;
@@ -29,11 +32,9 @@ export function usePromotionChangeCount(
 				requestedProjectId,
 				direction,
 			);
-			if (projectId.value !== requestedProjectId) return;
-			count.value = changes.length;
+			if (isLatest()) count.value = changes.length;
 		} catch {
-			if (projectId.value !== requestedProjectId) return;
-			failed.value = true;
+			if (isLatest()) failed.value = true;
 		}
 	}
 

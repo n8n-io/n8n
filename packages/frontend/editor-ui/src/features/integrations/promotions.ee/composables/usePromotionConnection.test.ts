@@ -34,6 +34,22 @@ describe('usePromotionConnection', () => {
 		expect(header.hasPromoteConfig.value).toBe(false);
 	});
 
+	it('should report no configured direction when the instance has no connection', async () => {
+		vi.mocked(api.fetchPromotionConnections).mockResolvedValue([]);
+		const {
+			connection: current,
+			hasApplyConfig,
+			hasPromoteConfig,
+			load,
+		} = usePromotionConnection();
+
+		await load();
+
+		expect(current.value).toBeNull();
+		expect(hasApplyConfig.value).toBe(false);
+		expect(hasPromoteConfig.value).toBe(false);
+	});
+
 	it('should treat a failed lookup as no connection and retry on the next load', async () => {
 		vi.mocked(api.fetchPromotionConnections)
 			.mockRejectedValueOnce(new Error('offline'))

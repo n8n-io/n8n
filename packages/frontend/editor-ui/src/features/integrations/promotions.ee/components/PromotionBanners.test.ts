@@ -90,8 +90,28 @@ describe('PromotionBanners', () => {
 			scopes: ['project:export'],
 		});
 		expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
-		usersStore.currentUser = mock<IUser>({ globalScopes: [] });
+		// Listing connections alone is not enough, the direction needs its own scope.
+		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
 		await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
+	});
+
+	it('shows nothing while the promotion feature is off', async () => {
+		const connectionsRequest = vi.fn(() =>
+			connections({
+				promote: { id: 'config-1' },
+				apply: { id: 'config-2', settings: { branchName: 'main' } },
+			}),
+		);
+		server.get('/api/v1/promotions/connections', connectionsRequest);
+		settingsStore.settings = { ...settingsStore.settings, envFeatureFlags: {} };
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+		});
+		const { queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(connectionsRequest).not.toHaveBeenCalled());
+		expect(queryByTestId('promotion-banner')).not.toBeInTheDocument();
+		expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument();
 	});
 
 	it('shows incoming changes only with pull access and an apply configuration', async () => {
