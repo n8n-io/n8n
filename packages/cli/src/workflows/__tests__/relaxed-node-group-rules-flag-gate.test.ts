@@ -5,17 +5,17 @@ import { mock } from 'vitest-mock-extended';
 
 import type { PostHogClient } from '@/posthog';
 
-import { FlexibleGroupsFlagGate } from '../flexible-groups-flag-gate';
+import { RelaxedNodeGroupRulesFlagGate } from '../relaxed-node-group-rules-flag-gate';
 
-describe('FlexibleGroupsFlagGate', () => {
+describe('RelaxedNodeGroupRulesFlagGate', () => {
 	let postHogClient: Mocked<PostHogClient>;
-	let gate: FlexibleGroupsFlagGate;
+	let gate: RelaxedNodeGroupRulesFlagGate;
 
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
 		postHogClient = mock<PostHogClient>();
-		gate = new FlexibleGroupsFlagGate(postHogClient);
+		gate = new RelaxedNodeGroupRulesFlagGate(postHogClient);
 	});
 
 	it('resolves true when the flag is on for the user', async () => {

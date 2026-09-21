@@ -15,7 +15,7 @@ import { PostHogClient } from '@/posthog';
  * this needs no caching or error handling of its own.
  */
 @Service()
-export class FlexibleGroupsFlagGate {
+export class RelaxedNodeGroupRulesFlagGate {
 	constructor(private readonly postHogClient: PostHogClient) {}
 
 	async isEnabled(user: User): Promise<boolean> {
