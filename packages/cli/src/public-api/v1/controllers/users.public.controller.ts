@@ -142,11 +142,7 @@ export class UsersPublicController {
 		_res: Response,
 		@Body body: CreateUsersPublicDto,
 	): Promise<InvitedUsersPublicDto> {
-		const usersInvited = await this.userService.inviteUser(req.user, body);
-
-		// `UserService.inviteUser` types `error` as optional, but every code path sets it (to '' on
-		// success). Normalize here so the response always matches the documented, non-optional shape.
-		return usersInvited.map(({ user, error }) => ({ user, error: error ?? '' }));
+		return await this.userService.inviteUser(req.user, body);
 	}
 
 	@Delete('/:userId')

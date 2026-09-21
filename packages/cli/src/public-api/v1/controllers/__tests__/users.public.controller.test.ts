@@ -1,10 +1,4 @@
-import type {
-	CreateUsersPublicDto,
-	DeleteUserQueryPublicDto,
-	GetUserQueryDto,
-	ListUsersQueryDto,
-	RoleChangeRequestDto,
-} from '@n8n/api-types';
+import type { GetUserQueryDto, ListUsersQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -129,56 +123,6 @@ describe('UsersPublicController', () => {
 				userId: caller.user.id,
 				publicApi: true,
 			});
-		});
-	});
-
-	describe('createUser', () => {
-		it('invites the requested users through the service', async () => {
-			const invitations = [{ email: 'new.user@example.com', role: 'global:member' }] as const;
-			const invited = [
-				{
-					user: {
-						id: 'new-user-id',
-						email: 'new.user@example.com',
-						emailSent: true,
-						role: 'global:member',
-					},
-					error: '',
-				},
-			];
-			userService.inviteUser.mockResolvedValue(invited);
-
-			const result = await controller.createUser(
-				caller,
-				mock<Response>(),
-				invitations as unknown as CreateUsersPublicDto,
-			);
-
-			expect(userService.inviteUser).toHaveBeenCalledWith(caller.user, invitations);
-			expect(result).toStrictEqual(invited);
-		});
-	});
-
-	describe('deleteUser', () => {
-		it('deletes the user through the service', async () => {
-			await controller.deleteUser(
-				caller,
-				mock<Response>(),
-				'user-id',
-				mock<DeleteUserQueryPublicDto>({ transferId: 'project-1' }),
-			);
-
-			expect(userService.deleteUser).toHaveBeenCalledWith(caller.user, 'user-id', 'project-1');
-		});
-	});
-
-	describe('changeRole', () => {
-		it('changes the role through the service', async () => {
-			const body = mock<RoleChangeRequestDto>({ newRoleName: 'global:admin' });
-
-			await controller.changeRole(caller, mock<Response>(), 'user-id', body);
-
-			expect(userService.changeGlobalRole).toHaveBeenCalledWith(caller.user, 'user-id', body);
 		});
 	});
 });

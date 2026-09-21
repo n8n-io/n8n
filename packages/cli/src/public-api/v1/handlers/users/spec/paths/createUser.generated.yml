@@ -75,7 +75,6 @@ responses:
                 readOnly: true
             required:
               - user
-              - error
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

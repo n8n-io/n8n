@@ -22,7 +22,7 @@ const invitedUserResultSchema = z.object({
 		}),
 		role: z.string().openapi({ readOnly: true, example: 'global:member' }),
 	}),
-	error: z.string().openapi({
+	error: z.string().optional().openapi({
 		readOnly: true,
 		description: 'The reason the invite failed for this user. Empty when the invite succeeded.',
 	}),
