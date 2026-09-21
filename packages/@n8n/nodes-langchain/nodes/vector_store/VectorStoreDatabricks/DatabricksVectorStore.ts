@@ -4,7 +4,7 @@ import { Document, type DocumentInterface } from '@langchain/core/documents';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError, toPathSegment } from 'n8n-workflow';
 
 type Fetch = typeof fetch;
 
@@ -49,7 +49,6 @@ function sanitizeMessage(message: string): string {
 
 const FULL_NAME = /^[^/\s]+\.[^/\s]+\.[^/\s]+$/;
 
-// `.` and `..` survive encodeURIComponent, so the shape is checked before a URL is built.
 // The index name is user input (UserError); `sourceTable` comes from the server, so that path is
 // an OperationalError and the echoed value is sanitized
 function assertFullName(
@@ -170,14 +169,14 @@ export class DatabricksVectorStore extends VectorStore {
 		const info = parseIndexInfo(
 			await databricksRequest(
 				fetchFn,
-				`${host}/api/2.0/vector-search/indexes/${encodeURIComponent(indexName)}`,
+				`${host}/api/2.0/vector-search/indexes/${toPathSegment(indexName)}`,
 			),
 		);
 
 		if (info.indexType === 'DELTA_SYNC' && !info.schemaColumns && info.sourceTable) {
 			assertFullName(info.sourceTable, 'table', OperationalError);
 			const response = await fetchFn(
-				`${host}/api/2.1/unity-catalog/tables/${encodeURIComponent(info.sourceTable)}`,
+				`${host}/api/2.1/unity-catalog/tables/${toPathSegment(info.sourceTable)}`,
 			);
 			// No UC privilege on the source table: the dropdown shows nothing and documents are content-only
 			if (response.ok) {
@@ -313,7 +312,7 @@ export class DatabricksVectorStore extends VectorStore {
 
 		const response = await databricksRequest(
 			this.fetch,
-			`${this.host}/api/2.0/vector-search/indexes/${encodeURIComponent(name)}/upsert-data`,
+			`${this.host}/api/2.0/vector-search/indexes/${toPathSegment(name)}/upsert-data`,
 			{ method: 'POST', body: JSON.stringify({ inputs_json: JSON.stringify(rows) }) },
 		);
 		if (!isRecord(response) || response.status !== 'SUCCESS') {
@@ -354,7 +353,7 @@ export class DatabricksVectorStore extends VectorStore {
 
 		const response = await databricksRequest(
 			this.fetch,
-			`${this.host}/api/2.0/vector-search/indexes/${encodeURIComponent(name)}/query`,
+			`${this.host}/api/2.0/vector-search/indexes/${toPathSegment(name)}/query`,
 			{
 				method: 'POST',
 				body: JSON.stringify({
