@@ -522,6 +522,7 @@ describe('InstanceAiInput', () => {
 				prefillId: 'build-agent',
 				promptModified: false,
 			},
+			expect.any(Number),
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -817,6 +818,7 @@ describe('InstanceAiInput', () => {
 				],
 				expect.any(Function),
 				{ kind: 'user_typed' },
+				expect.any(Number),
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1007,7 +1009,13 @@ describe('InstanceAiInput', () => {
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 
 		expect(emitted().submit).toEqual([
-			['Make the first workflow simpler', undefined, expect.any(Function), { kind: 'user_typed' }],
+			[
+				'Make the first workflow simpler',
+				undefined,
+				expect.any(Function),
+				{ kind: 'user_typed' },
+				expect.any(Number),
+			],
 		]);
 	});
 
@@ -1043,7 +1051,13 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(getByRole('textbox'), 'Drop the third workflow{Enter}');
 
 		expect(emitted().submit).toEqual([
-			['Drop the third workflow', undefined, expect.any(Function), { kind: 'user_typed' }],
+			[
+				'Drop the third workflow',
+				undefined,
+				expect.any(Function),
+				{ kind: 'user_typed' },
+				expect.any(Number),
+			],
 		]);
 	});
 

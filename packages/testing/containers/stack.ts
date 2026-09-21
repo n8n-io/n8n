@@ -9,6 +9,7 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
+import { assertEngineSupported } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -29,12 +30,20 @@ import type {
 	StackConfig,
 	StartContext,
 } from './services/types';
+import { StartupDeadline } from './startup-deadline';
 import { recordStartupFailure } from './startup-diagnostics';
 import { createTelemetryRecorder } from './telemetry';
 
 const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
 
 export type N8NConfig = StackConfig;
+
+export interface ReplaceN8NOptions {
+	/** The image the replacement main boots. */
+	image: string;
+	/** Merged over the stack's original user env (e.g. a feature flag flip). */
+	env?: Record<string, string>;
+}
 
 export interface N8NStack {
 	attemptId: string;
@@ -53,6 +62,15 @@ export interface N8NStack {
 	metrics: ServiceHelpers['observability']['metrics'];
 	findContainers: (namePattern: string | RegExp) => StartedTestContainer[];
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
+	/**
+	 * Stops the current n8n main and boots a replacement with the requested
+	 * image, keeping the service containers, network, host port, and
+	 * readiness/logging/cleanup behavior. Data survives the swap when it lives
+	 * outside the replaced container: in the postgres service, or in a
+	 * `userHomeHostDir` mount (the sqlite file and user folder). Single-main
+	 * stacks only — the substrate of the upgrade/downgrade cycles.
+	 */
+	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
 	/**
@@ -103,6 +121,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		workers = 0,
 		webhooks = 0,
 		postgres: usePostgresConfig = false,
+		engine,
 		env = {},
 		projectName,
 		resourceQuota,
@@ -112,23 +131,41 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		external = false,
 		networkName,
 		coverageHostDir,
+		image,
+		userHomeHostDir,
+		user,
+		startupTimeoutMs,
 	} = config;
+
+	if (userHomeHostDir && (mains > 1 || workers > 0 || webhooks > 0)) {
+		throw new Error('userHomeHostDir supports single-main stacks only (one shared home)');
+	}
 
 	const log = createElapsedLogger('stack');
 
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
+
+	assertEngineSupported({ engine, isQueueMode, usePostgres });
+
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
 	const resources = new ResourceTracker();
+	const startupDeadlineMs = startupTimeoutMs ?? 300_000;
+	const startupDeadline = new StartupDeadline(startupDeadlineMs);
 
-	if (needsLoadBalancer) {
-		allocatedLbPort = await getPort();
-	} else {
-		allocatedMainPort = await getPort();
+	try {
+		if (needsLoadBalancer) {
+			allocatedLbPort = await startupDeadline.run(async () => await getPort());
+		} else {
+			allocatedMainPort = await startupDeadline.run(async () => await getPort());
+		}
+	} catch (error) {
+		startupDeadline.dispose();
+		throw error;
 	}
 
 	const containers: StartedTestContainer[] = [];
@@ -141,12 +178,27 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const telemetry = createTelemetryRecorder(config);
 
 	let network: StartedNetwork;
+	let cleanupStarted = false;
 	try {
 		telemetry.startStage('network');
 		const networkStart = performance.now();
 		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
-		network = await new Network(uuid).start();
-		resources.trackNetwork(network);
+		startupDeadline.throwIfAborted();
+		const networkPromise = new Network(uuid).start();
+		const trackedNetworkPromise = networkPromise.then(async (startedNetwork) => {
+			if (cleanupStarted) {
+				try {
+					await startedNetwork.stop();
+				} catch (error: unknown) {
+					const message = error instanceof Error ? error.message : String(error);
+					console.error(`[stack] Late network cleanup failed: ${message}`);
+				}
+				return startedNetwork;
+			}
+			resources.trackNetwork(startedNetwork);
+			return startedNetwork;
+		});
+		network = await startupDeadline.run(async () => await trackedNetworkPromise);
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
 		telemetry.finishStage();
 	} catch (error) {
@@ -154,6 +206,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		telemetry.setFailurePhase('network');
 		const message = error instanceof Error ? error.message : String(error);
 		telemetry.flush(false, `Network creation failed: ${message}`);
+		cleanupStarted = true;
+		const cleanup = await resources.dispose();
+		attachCleanupReport(error, cleanup);
+		startupDeadline.dispose();
 		throw error;
 	}
 
@@ -198,7 +254,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			telemetry.startStage(`hosted:${name}`, 'hosted');
 			let hostedEnv: Record<string, string> | undefined;
 			try {
-				hostedEnv = await SERVICE_REGISTRY[name].hostedEnv?.(ctx);
+				hostedEnv = await startupDeadline.run(
+					async () => await (SERVICE_REGISTRY[name].hostedEnv?.(ctx) ?? Promise.resolve(undefined)),
+				);
+				startupDeadline.throwIfAborted();
 				telemetry.finishStage();
 			} catch (error) {
 				telemetry.finishStage('failure', error);
@@ -224,7 +283,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			telemetry.startStage(`service:${name}`);
 			const endAcquisition = resources.beginAcquisition();
 			try {
+				startupDeadline.throwIfAborted();
 				const result = await service.start(network, uniqueProjectName, options, ctx);
+				startupDeadline.throwIfAborted();
 				const serviceContainers =
 					'containers' in result && Array.isArray(result.containers)
 						? (result.containers as StartedTestContainer[])
@@ -297,6 +358,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				serviceEnvironment: environment,
 				userEnvironment: env,
 				usePostgres,
+				engine,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
@@ -308,7 +370,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 					resources.trackContainer(container);
 					if (!containers.includes(container)) containers.push(container);
 				},
+				startupDeadline,
+				image,
+				userHomeHostDir,
+				user,
+				startupTimeoutMs,
 			});
+			startupDeadline.throwIfAborted();
 			telemetry.finishStage();
 		} catch (error) {
 			telemetry.finishStage('failure', error);
@@ -325,7 +393,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		if (lbResult) {
 			telemetry.startStage('load-balancer-readiness');
 			try {
-				await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
+				await pollContainerHttpEndpoint(
+					lbResult.container,
+					'/healthz/readiness',
+					startupDeadline.remainingMs,
+					startupDeadline.signal,
+				);
 				telemetry.finishStage();
 			} catch (error) {
 				telemetry.finishStage('failure', error);
@@ -351,7 +424,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						/\[launcher:js\].*Received message `broker:runnerregistered`/,
 						/\[launcher:py\].*Received message `broker:runnerregistered`/,
 					],
-					{ since: n8nStartedAtSeconds },
+					{
+						since: n8nStartedAtSeconds,
+						timeoutMs: startupDeadline.remainingMs,
+						signal: startupDeadline.signal,
+					},
 				);
 				telemetry.finishStage();
 			} catch (error) {
@@ -406,7 +483,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		telemetry.startStage('network-quiet');
 		try {
-			await waitForNetworkQuiet();
+			await waitForNetworkQuiet(1000, startupDeadline.remainingMs, startupDeadline.signal);
+			startupDeadline.throwIfAborted();
 			telemetry.finishStage();
 		} catch (error) {
 			telemetry.finishStage('failure', error);
@@ -481,6 +559,50 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				const container = containers.find((c) => regex.test(c.getName()));
 				return container ? await container.stop() : null;
 			},
+			async replaceN8N(options: ReplaceN8NOptions): Promise<void> {
+				if (mains > 1 || needsLoadBalancer) {
+					throw new Error('replaceN8N supports single-main stacks only');
+				}
+				const current = containers.find((c) => c.getName().endsWith('-n8n'));
+				if (current) {
+					await current.stop();
+					containers.splice(containers.indexOf(current), 1);
+				}
+				const endAcquisition = resources.beginAcquisition();
+				const replacementDeadline = new StartupDeadline(startupDeadlineMs);
+				try {
+					await createN8NInstances({
+						mains: 1,
+						workers: 0,
+						projectName: uniqueProjectName,
+						network,
+						serviceEnvironment: environment,
+						userEnvironment: { ...env, ...options.env },
+						usePostgres,
+						// Without this the replacement main drops the engine-v2 module, and a
+						// workflow that still asks for engine 2.0 fails far from the cause.
+						engine,
+						baseUrl,
+						// The same host port keeps `baseUrl` valid across the swap.
+						allocatedPort: allocatedMainPort,
+						resourceQuota,
+						filesToMount,
+						coverageHostDir,
+						registerContainer: (container) => {
+							resources.trackContainer(container);
+							if (!containers.includes(container)) containers.push(container);
+						},
+						startupDeadline: replacementDeadline,
+						image: options.image,
+						userHomeHostDir,
+						user,
+						startupTimeoutMs,
+					});
+				} finally {
+					replacementDeadline.dispose();
+					endAcquisition();
+				}
+			},
 			mainUrls,
 			internalMainUrls,
 			startupDiagnostics: n8nResult.diagnostics,
@@ -500,6 +622,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const cleanup = await resources.dispose();
 		attachCleanupReport(error, cleanup);
 		throw error;
+	} finally {
+		startupDeadline.dispose();
 	}
 }
 

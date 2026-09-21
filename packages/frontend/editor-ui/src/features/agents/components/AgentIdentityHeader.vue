@@ -67,10 +67,13 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 </script>
 
 <template>
-	<div :class="$style.text" data-testid="agent-identity-header">
+	<div
+		:class="$style.text"
+		:style="personalisationStyle(personalisation)"
+		data-testid="agent-identity-header"
+	>
 		<N8nIconPicker
 			v-model="iconPickerModel"
-			:style="personalisationStyle(personalisation)"
 			:button-tooltip="i18n.baseText('agents.builder.agent.personalisation.change')"
 			button-size="xlarge"
 			:is-read-only="props.disabled"

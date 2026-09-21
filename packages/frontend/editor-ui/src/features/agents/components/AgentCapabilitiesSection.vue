@@ -7,16 +7,16 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import { N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
-import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import type {
 	ToolMenuItem,
 	ToolOpenTarget,
@@ -27,6 +27,7 @@ import type {
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentSkillsSection from './AgentSkillsSection.vue';
 import AgentWebSearchSection from './AgentWebSearchSection.vue';
 
 export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
@@ -120,93 +121,7 @@ const selectedSubAgents = computed(() =>
 		};
 	}),
 );
-// `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
-// @n8n/i18n's built type declarations — matches the same workaround already
-// used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
-const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
-/** Kind-specific overrides, keyed `<kind>.<code>` or `tool.<toolType>.<code>`. */
-const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'subAgent.missing_reference':
-		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
-	'subAgent.incompatible_reference':
-		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
-	'skill.missing_reference':
-		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
-	'tool.workflow.missing_reference':
-		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
-	'tool.workflow.incompatible_reference':
-		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
-	'tool.custom.missing_reference':
-		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
-	'tool.node.missing_reference':
-		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
-	'mcpServer.incompatible_credential':
-		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
-};
-
-/**
- * Reason-specific overrides for `incompatible_reference` issues that carry a
- * `reason` discriminator (currently workflow tools). Keyed by the `reason`
- * string emitted by the backend. Takes precedence over the kind/code key so
- * the message names the actual problem (e.g. "contains a Wait node") instead
- * of the generic "can't be used as an agent tool".
- */
-const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
-	incompatible_nodes:
-		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
-	no_supported_trigger:
-		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
-	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
-};
-
-function issueMessage(issue: AgentConfigValidationIssue): string {
-	const { kind, toolType, id } = issue.capability;
-	const key =
-		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
-		(kind === 'tool' && toolType
-			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
-			: undefined) ??
-		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
-		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, {
-		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
-	});
-}
-
-function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
-	return [...new Set(issues.map(issueMessage))];
-}
-
-function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
-	return props.validationIssues.filter((issue) => issue.capability.kind === kind);
-}
-
-/** Group a capability kind's issues into per-key message lists, keyed by `keyOf`. */
-function groupIssueMessages<TKey>(
-	kind: AgentConfigValidationIssue['capability']['kind'],
-	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
-	include: (issue: AgentConfigValidationIssue) => boolean = () => true,
-): Map<TKey, string[]> {
-	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
-	for (const issue of issuesFor(kind)) {
-		if (!include(issue)) continue;
-		const key = keyOf(issue);
-		if (key === undefined) continue;
-		const existing = byKey.get(key);
-		if (existing) existing.push(issue);
-		else byKey.set(key, [issue]);
-	}
-	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
-}
+const { groupIssueMessages } = useAgentCapabilityIssueMessages(() => props.validationIssues);
 
 // Warnings (an unpublished workflow) render orange and leave the preview usable;
 // everything else is a red error.
@@ -222,9 +137,6 @@ const toolWarningMessages = computed(() =>
 );
 const mcpServerIssueMessages = computed(() =>
 	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
-);
-const skillIssueMessages = computed(() =>
-	groupIssueMessages('skill', (issue) => issue.capability.id),
 );
 const subAgentIssueMessages = computed(() =>
 	groupIssueMessages('subAgent', (issue) => issue.capability.id),
@@ -659,29 +571,14 @@ function openExistingSubAgentModal(subAgent: {
 					</div>
 				</AgentChipRow>
 
-				<AgentChipRow
+				<AgentSkillsSection
 					v-else-if="section === 'skills'"
-					:label="i18n.baseText('agents.builder.skills.title')"
-					:item-count="skills.length"
-					:add-label="i18n.baseText('agents.builder.skills.add')"
-					add-button-test-id="agent-capabilities-add-skill"
+					:skills="skills"
 					:disabled="props.disabled"
-					@add="emit('add-skill')"
-				>
-					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-						<AgentChipButton
-							icon="sparkles"
-							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-							:invalid-reasons="skillIssueMessages.get(id) ?? []"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-skill-row"
-							@click="emit('open-skill', id)"
-						>
-							{{ skill.name || id }}
-						</AgentChipButton>
-					</div>
-				</AgentChipRow>
+					:validation-issues="props.validationIssues"
+					@open-skill="emit('open-skill', $event)"
+					@add-skill="emit('add-skill')"
+				/>
 
 				<AgentChipRow
 					v-else
