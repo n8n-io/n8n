@@ -13,6 +13,7 @@ import {
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
+	GLOBAL_ADMIN_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
 	RoleMappingRuleRepository,
@@ -42,7 +43,13 @@ import {
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
-import { createChatUser, createMember, createOwner, createUser } from './shared/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createMember,
+	createOwner,
+	createUser,
+} from './shared/db/users';
 import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({
@@ -1207,6 +1214,91 @@ describe('GET /project/:projectId', () => {
 			lastName: testUser2.lastName,
 			role: 'project:admin',
 		});
+	});
+
+	test('should list global owners and admins as implicit members, separate from relations', async () => {
+		const [ownerUser, adminUser, projectAdmin, editor] = await Promise.all([
+			createOwner(),
+			createAdmin(),
+			createMember(),
+			createMember(),
+		]);
+		const teamProject = await createTeamProject(undefined, projectAdmin);
+		await linkUserToProject(editor, teamProject, 'project:editor');
+
+		const resp = await testServer.authAgentFor(editor).get(`/projects/${teamProject.id}`);
+		expect(resp.status).toBe(200);
+
+		// The membership table is untouched: only the two real relations.
+		expect(resp.body.data.relations.length).toBe(2);
+		expect(resp.body.data.relations.map((r: { id: string }) => r.id)).toEqual(
+			expect.arrayContaining([projectAdmin.id, editor.id]),
+		);
+		expect(resp.body.data.relations.map((r: { id: string }) => r.id)).not.toContain(adminUser.id);
+
+		expect(resp.body.data.implicitMembers).toEqual(
+			expect.arrayContaining([
+				{
+					id: ownerUser.id,
+					email: ownerUser.email,
+					firstName: ownerUser.firstName,
+					lastName: ownerUser.lastName,
+					globalRole: { slug: 'global:owner', displayName: 'Owner' },
+				},
+				{
+					id: adminUser.id,
+					email: adminUser.email,
+					firstName: adminUser.firstName,
+					lastName: adminUser.lastName,
+					globalRole: { slug: 'global:admin', displayName: 'Admin' },
+				},
+			]),
+		);
+		// Plain members never appear, whether or not they are related to the project.
+		expect(resp.body.data.implicitMembers.map((m: { id: string }) => m.id)).not.toContain(
+			editor.id,
+		);
+		expect(resp.body.data.implicitMembers.map((m: { id: string }) => m.id)).not.toContain(
+			projectAdmin.id,
+		);
+	});
+
+	test('should list a global owner who is also a real member in both arrays', async () => {
+		const ownerUser = await createOwner();
+		const teamProject = await createTeamProject();
+		await linkUserToProject(ownerUser, teamProject, 'project:editor');
+
+		const resp = await testServer.authAgentFor(ownerUser).get(`/projects/${teamProject.id}`);
+		expect(resp.status).toBe(200);
+
+		expect(resp.body.data.relations.map((r: { id: string }) => r.id)).toContain(ownerUser.id);
+		expect(resp.body.data.implicitMembers.map((m: { id: string }) => m.id)).toContain(ownerUser.id);
+	});
+
+	test('should leave out disabled global admins', async () => {
+		const [ownerUser, disabledAdmin, projectAdmin] = await Promise.all([
+			createOwner(),
+			createUser({ role: GLOBAL_ADMIN_ROLE, disabled: true }),
+			createMember(),
+		]);
+		const teamProject = await createTeamProject(undefined, projectAdmin);
+
+		const resp = await testServer.authAgentFor(projectAdmin).get(`/projects/${teamProject.id}`);
+		expect(resp.status).toBe(200);
+
+		const implicitIds = resp.body.data.implicitMembers.map((m: { id: string }) => m.id);
+		expect(implicitIds).toContain(ownerUser.id);
+		expect(implicitIds).not.toContain(disabledAdmin.id);
+	});
+
+	test('should return no implicit members for a personal project', async () => {
+		const [ownerUser, member] = await Promise.all([createOwner(), createMember()]);
+		const personalProject = await getPersonalProject(member);
+
+		const resp = await testServer.authAgentFor(ownerUser).get(`/projects/${personalProject.id}`);
+		expect(resp.status).toBe(200);
+
+		expect(resp.body.data.implicitMembers).toEqual([]);
 	});
 
 	test('should have correct folder scopes when, as an admin / owner, I fetch a project created by a different user', async () => {

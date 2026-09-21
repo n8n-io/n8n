@@ -22,6 +22,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				sortBy: { type: Array },
 				page: { type: Number },
 				itemsPerPage: { type: Number },
+				rowProps: { type: [Object, Function] },
 			},
 			emits: ['update:sort-by', 'update:page', 'update:items-per-page', 'update:options'],
 			template: `
@@ -35,7 +36,12 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="(item, index) in items" :key="index" :data-test-id="'row-' + index">
+							<tr
+								v-for="(item, index) in items"
+								:key="index"
+								:data-test-id="'row-' + index"
+								v-bind="typeof rowProps === 'function' ? rowProps(item, index) : rowProps"
+							>
 								<td v-for="header in headers" :key="header.key" :data-test-id="'cell-' + header.key + '-' + index">
 									<slot :name="'item.' + header.key" :item="item" :value="header.value ? header.value(item) : item[header.key]" />
 								</td>
@@ -67,6 +73,14 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				color: { type: String },
 			},
 			template: '<span><slot /></span>',
+		},
+		N8nTooltip: {
+			name: 'N8nTooltip',
+			props: {
+				content: { type: String },
+				placement: { type: String },
+			},
+			template: '<div :data-test-id="`tooltip`" :data-tooltip-content="content"><slot /></div>',
 		},
 	};
 });
@@ -109,7 +123,8 @@ vi.mock('./ProjectMembersActionsCell.vue', () => ({
 			actions: { type: Array, required: true },
 		},
 		emits: ['action'],
-		template: '<div :data-test-id="`actions-cell-` + data.id"></div>',
+		template:
+			'<div :data-test-id="`actions-cell-` + data.id" :data-actions-count="actions.length"></div>',
 	},
 }));
 
@@ -560,6 +575,57 @@ describe('ProjectMembersTable', () => {
 			expect(screen.getByTestId('data-table')).toBeInTheDocument();
 			// Pagination should still be hidden due to our page-sizes configuration
 			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+		});
+	});
+	describe('Members with access from a global role', () => {
+		const implicitMember: ProjectMemberData = {
+			id: 'owner-1',
+			firstName: 'Olive',
+			lastName: 'Owner',
+			email: 'owner@example.com',
+			role: 'global:owner',
+			alwaysHasAccess: true,
+			globalRoleDisplayName: 'Owner',
+		};
+
+		it('should show the global role name instead of a role dropdown', () => {
+			renderComponent({
+				props: {
+					data: { items: [implicitMember], count: 1 },
+					currentUserId: 'someone-else',
+					canEditRole: true,
+				},
+			});
+
+			expect(screen.queryByTestId(`role-dropdown-${implicitMember.id}`)).not.toBeInTheDocument();
+			expect(screen.getByTestId('project-member-always-has-access')).toHaveTextContent('Owner');
+		});
+
+		it('should offer no actions even when the table has actions', () => {
+			renderComponent({
+				props: {
+					data: { items: [implicitMember], count: 1 },
+					currentUserId: 'someone-else',
+					actions: [{ label: 'Remove user', value: 'remove' }],
+				},
+			});
+
+			expect(screen.getByTestId(`actions-cell-${implicitMember.id}`)).toHaveAttribute(
+				'data-actions-count',
+				'0',
+			);
+		});
+
+		it('should grey out only the rows that have access from a global role', () => {
+			renderComponent({
+				props: {
+					data: { items: [mockMembers[0], implicitMember], count: 2 },
+					currentUserId: 'someone-else',
+				},
+			});
+
+			expect(screen.getByTestId('row-0')).not.toHaveClass('alwaysHasAccessRow');
+			expect(screen.getByTestId('row-1')).toHaveClass('alwaysHasAccessRow');
 		});
 	});
 });

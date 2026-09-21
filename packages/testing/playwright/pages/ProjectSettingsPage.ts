@@ -69,20 +69,36 @@ export class ProjectSettingsPage extends BasePage {
 		return this.getMembersTable().locator('tbody tr');
 	}
 
+	getMemberRowByEmail(email: string): Locator {
+		return this.getMemberRows().filter({ hasText: email });
+	}
+
+	/**
+	 * Rows for users who reach the project through a global role. Their access is
+	 * permanent, so the row has no role dropdown and no actions.
+	 */
+	getAlwaysHasAccessRows(): Locator {
+		return this.getMemberRows().filter({
+			has: this.page.getByTestId('project-member-always-has-access'),
+		});
+	}
+
+	async expectRowAlwaysHasAccess(row: Locator, globalRole: string) {
+		await expect(row.getByTestId('project-member-always-has-access')).toHaveText(globalRole);
+		await expect(this.getMemberRoleDropdownForRow(row)).toHaveCount(0);
+		await expect(row.getByTestId('action-toggle')).toHaveCount(0);
+		// The row is greyed out, so it reads as access you cannot act on.
+		await expect
+			.poll(async () => await row.evaluate((el) => getComputedStyle(el).opacity))
+			.not.toBe('1');
+	}
+
 	getMembersTableHeader(name: string): Locator {
 		return this.getMembersTable().getByText(name);
 	}
 
 	getMemberRoleDropdownForRow(row: Locator): Locator {
 		return row.getByTestId('project-member-role-dropdown');
-	}
-
-	getMemberRoleTextForRow(row: Locator, role: string): Locator {
-		return row.getByText(role);
-	}
-
-	async expectTableHasMemberCount(expectedCount: number) {
-		await expect(this.getMemberRows()).toHaveCount(expectedCount);
 	}
 
 	getDangerZoneTitle(): Locator {

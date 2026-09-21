@@ -6130,6 +6130,7 @@
 	"projects.settings.role.upgrade.tooltip": "Upgrade to Pro or Enterprise to assign Editor and Viewer roles",
 	"projects.settings.table.header.user": "@:_reusableBaseText.user",
 	"projects.settings.table.header.role": "@:_reusableBaseText.role",
+	"projects.settings.table.row.alwaysHasAccess.tooltip": "Instance owners and admins always have access to this project. You cannot remove them.",
 	"projects.settings.table.row.removeUser": "Remove user",
 	"projects.settings.role.admin.description": "Can edit workflows, credentials, and project settings",
 	"projects.settings.role.editor.description": "Can edit workflows and credentials",

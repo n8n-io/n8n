@@ -16,7 +16,6 @@ import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -127,11 +126,22 @@ const shouldFetchAllUsers = computed(
 	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
 );
 
+// Instance owners and admins reach every team project through their global
+// role, so the backend lists them next to the real relations.
+const implicitMembersById = computed(
+	() =>
+		new Map(
+			(projectsStore.currentProject?.implicitMembers ?? []).map((member) => [member.id, member]),
+		),
+);
+
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
-		return !isAlreadySharedWithUser;
+		// Adding them would create a relation that the member list gives no way to
+		// remove again, and it would buy them nothing: they already have access.
+		return !isAlreadySharedWithUser && !implicitMembersById.value.has(user.id);
 	}),
 );
 
@@ -160,19 +170,8 @@ const onAddMember = async (userId: string) => {
 	const user = usersStore.usersById[userId];
 	if (!user) return;
 
-	// Default to project admin for instance owners and admins
-	let role = firstLicensedRole.value;
+	const role = firstLicensedRole.value;
 	if (!role) return;
-
-	// If user is instance owner or admin, default to project admin
-	if (user.role === ROLE.Owner || user.role === ROLE.Admin) {
-		const projectAdminRole = rolesStore.processedProjectRoles.find(
-			(r) => r.slug === 'project:admin' && r.licensed,
-		);
-		if (projectAdminRole) {
-			role = 'project:admin';
-		}
-	}
 
 	// Optimistically update UI
 	if (!formData.value.relations.find((r) => r.id === userId)) {
@@ -511,11 +510,14 @@ watch(
 
 // Add users property to the relation objects,
 // So that the table has access to the full user data
-const relationUsers = computed(() =>
-	formData.value.relations.map((relation) => {
+const relationUsers = computed<ProjectMemberData[]>(() => {
+	const implicitMembers = implicitMembersById.value;
+
+	const rows: ProjectMemberData[] = formData.value.relations.map((relation) => {
 		const user = usersStore.usersById[relation.id];
 		// Ensure type safety for UI display while preserving original role in formData
 		const safeRole: Role['slug'] = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+		const implicitMember = implicitMembers.get(relation.id);
 
 		return {
 			...user,
@@ -524,9 +526,30 @@ const relationUsers = computed(() =>
 			firstName: relation?.firstName ?? user?.firstName ?? null,
 			lastName: relation?.lastName ?? user?.lastName ?? null,
 			email: relation?.email ?? user?.email ?? null,
+			...(implicitMember && {
+				alwaysHasAccess: true,
+				globalRoleDisplayName: implicitMember.globalRole.displayName,
+			}),
 		};
-	}),
-);
+	});
+
+	// Append the implicit members who hold no relation, so the existing rows keep
+	// their order.
+	for (const member of implicitMembers.values()) {
+		if (rows.some((row) => row.id === member.id)) continue;
+		rows.push({
+			id: member.id,
+			firstName: member.firstName ?? null,
+			lastName: member.lastName ?? null,
+			email: member.email ?? null,
+			role: member.globalRole.slug,
+			alwaysHasAccess: true,
+			globalRoleDisplayName: member.globalRole.displayName,
+		});
+	}
+
+	return rows;
+});
 
 const membersTableData = computed(() => ({
 	items: relationUsers.value,

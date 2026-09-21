@@ -120,7 +120,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				addEmitter('n8nUserSelect', emit as unknown as Emitter);
 				return {};
 			},
-			template: '<div data-test-id="project-members-select" :data-disabled="disabled"></div>',
+			template:
+				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-user-ids="users.map((u) => u.id).join(\',\')"></div>',
 		}),
 		N8nIconPicker: defineComponent({
 			name: 'N8nIconPickerStub',
@@ -1049,6 +1050,129 @@ describe('ProjectSettings', () => {
 			await nextTick();
 
 			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
+		});
+	});
+	describe('members with access from a global role', () => {
+		const ownerImplicitMember = {
+			id: 'owner-1',
+			email: 'olive@example.com',
+			firstName: 'Olive',
+			lastName: 'Owner',
+			globalRole: { slug: 'global:owner', displayName: 'Owner' },
+		};
+
+		it('adds implicit members to the table alongside the real relations', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('2');
+		});
+
+		it('shows one row for a user who is both a relation and an implicit member', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [
+					{
+						id: '1',
+						email: 'john@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
+		});
+
+		it('renders the table for a project whose only members are implicit', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations: [],
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
+		});
+
+		it('leaves implicit members out of the add-member dropdown', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [
+					{
+						id: '2',
+						email: 'jane@example.com',
+						firstName: 'Jane',
+						lastName: 'Roe',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			// Jane already has access, and the merged row offers no way to undo an add.
+			expect(getByTestId('project-members-select').getAttribute('data-user-ids')).toBe(
+				'current-user',
+			);
+		});
+
+		it('ignores a remove action for a member who has no relation', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [ownerImplicitMember],
+			};
+			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('action', {
+				action: 'remove',
+				userId: ownerImplicitMember.id,
+			});
+			await nextTick();
+
+			expect(removeSpy).not.toHaveBeenCalled();
+			expect(getByTestId('members-count').textContent).toBe('2');
+		});
+
+		it('counts implicit members towards the search threshold and filters them', async () => {
+			const relations = Array.from({ length: 9 }, (_, i) => ({
+				id: `relation-${i}`,
+				firstName: `Member${i}`,
+				lastName: 'Relation',
+				email: `member${i}@example.com`,
+				role: 'project:editor',
+			}));
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations,
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('10');
+
+			const search = getByTestId('project-members-search');
+			await userEvent.type(getInput(search), 'Olive');
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
 		});
 	});
 });

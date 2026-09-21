@@ -8,6 +8,7 @@ import {
 	type ProjectRelationRepository,
 	type SharedCredentials,
 	type User,
+	type UserRepository,
 	ProjectRelation as ProjectRelationEntity,
 	PROJECT_ADMIN_ROLE,
 	PROJECT_VIEWER_ROLE,
@@ -46,6 +47,7 @@ describe('ProjectService', () => {
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
 	const userManagementMailer = mock<UserManagementMailer>();
+	const userRepository = mock<UserRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
@@ -60,6 +62,7 @@ describe('ProjectService', () => {
 		logger,
 		eventService,
 		userManagementMailer,
+		userRepository,
 	);
 
 	beforeEach(() => {

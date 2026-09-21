@@ -10,6 +10,7 @@ import {
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	type ProjectListOptions,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,6 +22,8 @@ import {
 	type GlobalRole,
 	type ProjectRole,
 	AssignableProjectRole,
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
@@ -94,6 +97,7 @@ export class ProjectService {
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	private get workflowService() {
@@ -977,6 +981,21 @@ export class ProjectService {
 		return await this.projectRelationRepository.find({
 			where: { projectId },
 			relations: { user: true, role: true },
+		});
+	}
+
+	/**
+	 * Users who always reach this project through their global role, whether or
+	 * not a project relation exists for them. Personal projects are never shared
+	 * this way, so they return an empty list.
+	 */
+	async getImplicitProjectMembers(project: Pick<Project, 'id' | 'type'>): Promise<User[]> {
+		if (project.type !== 'team') return [];
+
+		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
+			projectId: project.id,
+			projectRoleSlugs: [],
+			globalRoleSlugs: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
 		});
 	}
 
