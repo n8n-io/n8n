@@ -1244,6 +1244,14 @@ export function getNodeInputs(
 	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
+	options: {
+		/**
+		 * Surface a failed `inputs` expression instead of reporting no inputs.
+		 * Swallowing suits rendering; callers judging validity need the error,
+		 * since an empty list otherwise reads as "requires nothing".
+		 */
+		throwOnExpressionError?: boolean;
+	} = {},
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
@@ -1251,13 +1259,30 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
-		return (workflow.expression.getSimpleParameterValue(
+		const resolved = workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		) || []) as NodeConnectionType[];
+		);
+
+		// The engine swallows a runtime error inside an expression and yields
+		// `null`, which would otherwise read as "this node needs no inputs".
+		// Only syntax errors reach the catch below, so callers judging validity
+		// need anything that is not a list treated as unresolved. Scoped to an
+		// actual expression: a type that declares no `inputs` at all has nothing
+		// to resolve and genuinely requires nothing.
+		if (
+			options.throwOnExpressionError &&
+			typeof nodeTypeData.inputs === 'string' &&
+			!Array.isArray(resolved)
+		) {
+			throw new UnexpectedError('the inputs expression did not resolve to a list');
+		}
+
+		return (resolved || []) as NodeConnectionType[];
 	} catch (e) {
+		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}

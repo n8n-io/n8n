@@ -1,5 +1,12 @@
-import type { INode, INodeType, IConnections } from './interfaces';
-import { displayParameter } from './node-helpers';
+import type {
+	INode,
+	INodeType,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+	IConnections,
+} from './interfaces';
+import { displayParameter, getNodeInputs } from './node-helpers';
+import type { Workflow } from './workflow';
 
 export interface NodeValidationIssue {
 	credential?: string;
@@ -10,6 +17,60 @@ export interface NodeCredentialIssue {
 	type: 'missing' | 'not-configured';
 	displayName: string;
 	credentialName: string;
+}
+
+/** A `Pick` so both the editor's snapshot accessor and the engine's `Workflow` fit. */
+export type WorkflowForInputValidation = Pick<
+	Workflow,
+	'expression' | 'getNode' | 'connectionsByDestinationNode'
+>;
+
+/**
+ * Inputs a node declares as required with nothing enabled connected to them.
+ *
+ * Inputs can be conditional, so they are resolved against the node's current
+ * parameters first. A disabled source counts as absent, matching the runtime
+ * ("must be connected and enabled").
+ *
+ * Shared so the editor warning and the publish check agree; callers format their
+ * own message.
+ */
+export function getUnconnectedRequiredInputs(
+	workflow: WorkflowForInputValidation,
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+	options: { throwOnExpressionError?: boolean } = {},
+): INodeInputConfiguration[] {
+	const unconnected: INodeInputConfiguration[] = [];
+	// Required by the type on purpose. A missing map is not an empty graph: it
+	// would read every required input as unconnected. Better a loud TypeError
+	// here than a silent over-report from an accessor cast past the type.
+	const arrivals = workflow.connectionsByDestinationNode[node.name];
+
+	// A node can declare several inputs of one type — an agent's Chat Model and
+	// Fallback Model are both `ai_languageModel` — and each is satisfied on its
+	// own index. Counting position per type mirrors how the engine resolves them
+	// (`validateInputConfiguration` filters by type, then indexes into the
+	// type's connections), so one connected model cannot satisfy both.
+	const indexByType = new Map<string, number>();
+
+	for (const input of getNodeInputs(workflow, node, nodeTypeDescription, options)) {
+		const type = typeof input === 'string' ? input : input.type;
+		const inputIndex = indexByType.get(type) ?? 0;
+		indexByType.set(type, inputIndex + 1);
+
+		if (typeof input === 'string' || input.required !== true) continue;
+
+		const sources = arrivals?.[type]?.[inputIndex] ?? [];
+		const hasEnabledSource = sources.some((source) => {
+			const parent = workflow.getNode(source.node);
+			return parent ? !parent.disabled : false;
+		});
+
+		if (!hasEnabledSource) unconnected.push(input);
+	}
+
+	return unconnected;
 }
 
 /**

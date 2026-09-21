@@ -252,6 +252,8 @@ describe('emit-instance-ai', () => {
 			'hasProperty',
 			'isPlainObject',
 			// Validation
+			'connectRequiredSubnodeInputs',
+			'describeAddedSubnodeConnection',
 			'containsExpression',
 			'isSensitiveHeader',
 			'isCredentialFieldName',

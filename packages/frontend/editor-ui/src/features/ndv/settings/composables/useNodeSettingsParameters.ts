@@ -171,6 +171,8 @@ export function useNodeSettingsParameters() {
 
 		nodeHelpers.updateNodeParameterIssuesByName(node.name);
 		nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+		// A parameter can change which inputs the node exposes, e.g. `autoFix`.
+		nodeHelpers.updateNodeInputIssuesByName(node.name);
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 
