@@ -194,6 +194,13 @@ describe('buildMockedStepRunData', () => {
 });
 
 describe('collectAncestorNames', () => {
+	it('does not count the target as its own ancestor', () => {
+		const selfLooping = [node('Target')];
+		const connections = connect(['Target', 'Target']);
+
+		expect(collectAncestorNames(selfLooping, connections, 'Target')).toEqual([]);
+	});
+
 	it('returns every node that can reach the target, and nothing downstream', () => {
 		const nodes = [node('Trigger'), node('A'), node('Target'), node('After')];
 		const connections = connect(['Trigger', 'A'], ['A', 'Target'], ['Target', 'After']);
@@ -399,6 +406,43 @@ describe('planStepRun', () => {
 		});
 
 		expect(plan.inputMode).toBe('mocked');
+	});
+});
+
+// Mocking walks the same edges from the same roots as the ancestor walk, so a
+// target with a node above it always has something to mock, and a mocked
+// request never has to be refused. A self loop broke that: the mock skipped the
+// target, the ancestor walk counted it, and the plan reported the target as a
+// node above itself.
+describe('a mocked request never goes unhonoured', () => {
+	const shapes: Array<[string, INode[], IConnections]> = [
+		['a chain above the target', [node('Trigger'), node('Target')], connect(['Trigger', 'Target'])],
+		['nothing above the target', [node('Target')], {}],
+		['a self loop', [node('Target')], connect(['Target', 'Target'])],
+		[
+			'a two-node cycle',
+			[node('Target'), node('Other')],
+			connect(['Target', 'Other'], ['Other', 'Target']),
+		],
+		[
+			'a self loop below a trigger',
+			[node('Trigger'), node('Target')],
+			connect(['Trigger', 'Target'], ['Target', 'Target']),
+		],
+	];
+
+	it.each(shapes)('%s', (_label, nodes, connections) => {
+		const plan = planStepRun({
+			nodes,
+			connections,
+			targetName: 'Target',
+			mockItems: toExecutionItems([{ id: 1 }]),
+		});
+
+		expect(plan.unhonoredInput).toBeUndefined();
+		// Either the plan mocked the path, or there was no path to mock.
+		const ancestors = collectAncestorNames(nodes, connections, 'Target');
+		expect(plan.mockedNodeNames.length > 0 || ancestors.length === 0).toBe(true);
 	});
 });
 

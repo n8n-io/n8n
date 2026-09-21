@@ -53,12 +53,16 @@ export interface StepRunPlan {
 	 */
 	rootNodeNames?: string[];
 	/**
-	 * Set when the caller asked for mocked or reused input, the graph could not
-	 * supply it, and a chain run would execute real nodes above the target. The
-	 * caller must refuse the run instead of silently downgrading it.
+	 * Set when the caller asked to replay an earlier execution, the reused run
+	 * data does not cover the path, and a run would execute real nodes above the
+	 * target. The caller must refuse the run instead of silently downgrading it.
+	 *
+	 * Mocked input has no such case. It mocks the direct parents of the roots and
+	 * walks up from there, which is the same walk `collectAncestorNames` makes,
+	 * so a target with a node above it always has something to mock.
 	 */
 	unhonoredInput?: {
-		requested: Exclude<StepRunInputMode, 'chain'>;
+		requested: 'reused-execution';
 		upstreamNodeNames: string[];
 	};
 }
@@ -318,19 +322,25 @@ export function collectAncestorNames(
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const connectionsByDestination = mapConnectionsByDestination(connections);
 
-	const seen = new Set<string>();
+	// The target is never its own ancestor, even when an edge loops back to it.
+	// It runs either way, and `buildMockedStepRunData` skips it for the same
+	// reason — the two walks have to agree, or a plan can report a node above
+	// the target that it never mocked.
+	const ancestors = new Set<string>();
+	const visited = new Set<string>([targetName]);
 	const queue = [...rootNames];
 
 	while (queue.length > 0) {
 		const current = queue.shift() as string;
 		for (const edge of directParents(connectionsByDestination, nodesByName, current)) {
-			if (seen.has(edge.node.name)) continue;
-			seen.add(edge.node.name);
+			if (visited.has(edge.node.name)) continue;
+			visited.add(edge.node.name);
+			ancestors.add(edge.node.name);
 			queue.push(edge.node.name);
 		}
 	}
 
-	return [...seen];
+	return [...ancestors];
 }
 
 /**
@@ -505,27 +515,25 @@ export function planStepRun(args: {
 	}
 
 	// The chain is the intended mode only when the caller asked for it. Reaching
-	// it after a request for mocked or reused input means the plan could not keep
-	// the nodes above the target from running, and those nodes write to real
-	// systems — report it instead of running them.
-	const requested: Exclude<StepRunInputMode, 'chain'> | undefined =
-		mockItems !== undefined
-			? 'mocked'
-			: priorRunData !== undefined
-				? 'reused-execution'
-				: undefined;
-
+	// it after a request to replay an execution means the plan could not keep the
+	// nodes above the target from running, and those nodes write to real systems
+	// — report it instead of running them.
+	//
+	// A request for mocked input cannot reach here with work left to refuse:
+	// mocking walks the same edges as `collectAncestorNames`, so it mocks nothing
+	// only when the target has nothing above it, and then a chain run is what the
+	// caller wanted anyway.
 	return {
 		inputMode: 'chain',
 		mockedNodeNames: [],
 		reusedNodeNames: [],
 		...throughRoots,
-		...(requested !== undefined && ancestors.length > 0
+		...(priorRunData !== undefined && ancestors.length > 0
 			? {
 					unhonoredInput: {
-						requested,
-						// Name the nodes that would really run, which for a replay is the
-						// part of the ancestry the reused execution does not cover.
+						requested: 'reused-execution',
+						// Name the nodes that would really run, which is the part of the
+						// ancestry the reused execution does not cover.
 						upstreamNodeNames: uncovered.length > 0 ? uncovered : ancestors,
 					},
 				}

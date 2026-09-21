@@ -2156,12 +2156,9 @@ export class InstanceAiAdapterService {
 				if (plan.unhonoredInput) {
 					const names = plan.unhonoredInput.upstreamNodeNames;
 					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
-					const cause =
-						plan.unhonoredInput.requested === 'reused-execution'
-							? `Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}"`
-							: `There is no way to supply input to "${nodeName}" without running the nodes above it`;
 					throw new UserError(
-						`${cause}, so the run would execute them for real (${upstream}). ` +
+						`Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}", ` +
+							`so the run would execute them for real (${upstream}). ` +
 							'Pick an execution that reached those nodes, or omit both options to run the chain on purpose.',
 					);
 				}
