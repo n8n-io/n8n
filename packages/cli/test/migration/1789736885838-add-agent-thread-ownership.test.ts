@@ -20,13 +20,14 @@ describe('Agent thread ownership migration', () => {
 	const now = new Date('2026-09-01T12:00:00Z');
 	const fixtures = [
 		{ id: 'memory', resource: `draft-chat:${ownerId}`, ownerId, accessScope: 'user' },
-		{ id: `test-${agentId}:${ownerId}`, ownerId, accessScope: 'user' },
-		{ id: `test-${agentId}`, accessScope: 'user' },
+		{ id: `test-${agentId}:${ownerId}`, accessScope: 'user' },
+		{ id: `test-${agentId}:workflow`, source: 'workflow', accessScope: 'project' },
 		{ id: 'missing-user', resource: `draft-chat:${randomUUID()}`, accessScope: 'user' },
 		{ id: 'unknown', accessScope: 'user' },
 		{ id: 'integration', resource: 'integration:slack:U123', accessScope: 'project' },
 		{ id: 'workflow', source: 'workflow', accessScope: 'project' },
 		{ id: 'task', taskId: 'task-1', accessScope: 'project' },
+		{ id: 'task-source', source: 'task', accessScope: 'project' },
 		{
 			id: 'private-child',
 			source: 'subagent',

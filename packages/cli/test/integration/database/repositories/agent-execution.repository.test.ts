@@ -854,12 +854,15 @@ describe('AgentExecutionRepository', () => {
 		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });
 	});
 
-	it('uses the persisted memory scope before recording a legacy preview session', async () => {
+	it.each(['custom', 'legacy'])('uses persisted ownership for a %s preview ID', async (format) => {
 		const owner = await createMember();
 		const other = await createAdmin();
 		const { executionService } = recordingServices();
 		const memory = Container.get(N8nMemory).getImplementation(agentId);
-		const threadId = uuid();
+		const threadId = format === 'legacy' ? `test-${agentId}:${other.id}` : 'test-demo';
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+			true,
+		);
 		await memory.saveThread({ id: threadId, resourceId: `draft-chat:${owner.id}` });
 		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
 			true,
@@ -867,7 +870,14 @@ describe('AgentExecutionRepository', () => {
 		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, other.id)).toBe(
 			false,
 		);
-		await createThread({ id: threadId, accessScope: 'user', ownerId: null });
+		await createThread({ id: threadId, accessScope: 'user', ownerId: owner.id });
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+			true,
+		);
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, other.id)).toBe(
+			false,
+		);
+		await threadRepo.update(threadId, { ownerId: null });
 		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
 			false,
 		);

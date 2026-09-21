@@ -697,7 +697,6 @@ export class AgentExecutionService {
 		agentId: string,
 		userId: string,
 	): Promise<boolean> {
-		if (threadId.startsWith('test-') && threadId !== `test-${agentId}:${userId}`) return false;
 		const thread = await this.findThreadById(threadId);
 		if (thread) {
 			return thread.accessScope === 'user' && threadBelongsTo(thread, projectId, agentId, userId);

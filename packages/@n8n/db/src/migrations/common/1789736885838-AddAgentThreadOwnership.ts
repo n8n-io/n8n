@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const previewSources = ['chat', 'n8n_chat', 'preview', 'mcp', 'instance-ai'];
-const projectSources = ['slack', 'telegram', 'discord', 'linear', 'task', 'schedule', 'workflow'];
+const previewSources = ['n8n_chat', 'mcp', 'instance-ai'];
+const projectSources = ['slack', 'telegram', 'discord', 'linear', 'task', 'workflow'];
 
 export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -55,8 +55,6 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 		const memory = escape.tableName('agents_threads');
 		const users = escape.tableName('user');
 		const threadId = `${threads}.${c('id')}`;
-		const agentId = `${threads}.${c('agentId')}`;
-		const legacyPrefix = `'test-' || CAST(${agentId} AS TEXT) || ':'`;
 		const hasPreviewMemory = `EXISTS (
 			SELECT 1 FROM ${memory} m
 			WHERE m.${c('id')} = ${threadId} AND m.${c('resourceId')} LIKE 'draft-chat:%'
@@ -80,7 +78,7 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 		await runQuery(
 			`UPDATE ${threads} SET ${c('accessScope')} = 'project'
 			WHERE (${threads}.${c('taskId')} IS NOT NULL OR ${hasProjectMemory} OR ${hasProjectExecution})
-			AND NOT (${hasPreviewMemory} OR ${threadId} LIKE ${legacyPrefix} || '%' OR ${hasPreviewExecution})`,
+			AND NOT (${hasPreviewMemory} OR ${hasPreviewExecution})`,
 			{ previewSources, projectSources },
 		);
 
@@ -89,14 +87,6 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 			ON m.${c('resourceId')} = 'draft-chat:' || CAST(u.${c('id')} AS TEXT)
 			WHERE m.${c('id')} = ${threadId}
 		) WHERE ${threads}.${c('accessScope')} = 'user' AND ${hasPreviewMemory}`);
-
-		await runQuery(`UPDATE ${threads} SET ${c('ownerId')} = (
-			SELECT u.${c('id')} FROM ${users} u
-			WHERE ${threadId} = ${legacyPrefix} || CAST(u.${c('id')} AS TEXT)
-		) WHERE ${threads}.${c('accessScope')} = 'user'
-			AND ${threads}.${c('ownerId')} IS NULL
-			AND NOT (${hasPreviewMemory})
-			AND ${threadId} LIKE ${legacyPrefix} || '%'`);
 	}
 
 	private async backfillInheritedAccess({ escape, runQuery }: MigrationContext) {
