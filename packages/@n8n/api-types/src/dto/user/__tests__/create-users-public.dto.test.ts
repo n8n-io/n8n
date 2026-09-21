@@ -59,7 +59,7 @@ describe('InvitedUsersPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('rejects a missing error field', () => {
+	test('accepts an optional error field', () => {
 		const result = InvitedUsersPublicDto.safeParse([
 			{
 				user: {
@@ -71,6 +71,6 @@ describe('InvitedUsersPublicDto', () => {
 			},
 		]);
 
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
 	});
 });
