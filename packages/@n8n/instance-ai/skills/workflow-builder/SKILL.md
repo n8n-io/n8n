@@ -198,6 +198,8 @@ follow its build → publish → assign steps.
    method name, method type, credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
+   For new model choices, follow `model-selection` before writing code,
+   even without credentials.
 5. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
@@ -796,7 +798,6 @@ asked for that exact name.
 ## Node Configuration Safety Rules
 
 - Fetch `nodes(action="type-definition")` for parameter names and shapes.
-  Model IDs in `@builderHint` annotations are advisory.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
   model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
