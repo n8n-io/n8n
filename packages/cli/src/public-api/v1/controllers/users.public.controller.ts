@@ -5,7 +5,7 @@ import {
 	UserPublicDto,
 	userIdentifierParamSchema,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -20,10 +20,10 @@ import {
 	RequiresUserQuota,
 } from '@n8n/decorators';
 import type { Response } from 'express';
+import pick from 'lodash/pick';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { toPublicApiUser } from '@/public-api/v1/handlers/users/users.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -32,6 +32,18 @@ import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 
 const tags = ['User'];
+
+const userProperties = ['id', 'email', 'firstName', 'lastName', 'isPending', 'mfaEnabled'] as const;
+
+function toPublicApiUser(user: User, options?: { includeRole: boolean }): UserPublicDto {
+	const publicApiUser = {
+		...pick(user, ...userProperties),
+		createdAt: user.createdAt.toISOString(),
+		updatedAt: user.updatedAt.toISOString(),
+	};
+
+	return options?.includeRole ? { ...publicApiUser, role: user.role?.slug } : publicApiUser;
+}
 
 @PublicApiController('/users')
 export class UsersPublicController {
@@ -75,7 +87,7 @@ export class UsersPublicController {
 		});
 
 		return {
-			data: toPublicApiUser(users, { includeRole }),
+			data: users.map((user) => toPublicApiUser(user, { includeRole })),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
 	}
