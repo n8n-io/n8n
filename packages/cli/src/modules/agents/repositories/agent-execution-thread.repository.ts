@@ -3,6 +3,7 @@ import type { SerializableAgentState } from '@n8n/agents';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import chunk from 'lodash/chunk';
 import { jsonParse } from 'n8n-workflow';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
@@ -15,6 +16,7 @@ import {
 } from '../utils/delegated-child-checkpoints';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
+const CHECKPOINT_BATCH_SIZE = 400;
 
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
@@ -296,7 +298,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			threadId,
 		);
 		const checkpointRunIds = await this.findSessionCheckpointRunIds(manager, agentId, threadId);
-		if (checkpointRunIds.length > 0) await manager.delete(AgentCheckpoint, checkpointRunIds);
+		for (const batch of chunk(checkpointRunIds, CHECKPOINT_BATCH_SIZE)) {
+			await manager.delete(AgentCheckpoint, batch);
+		}
 		if (attachments.length > 0) {
 			await manager.delete(
 				AgentChatAttachment,
@@ -326,10 +330,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		while (currentLevel.length > 0) {
 			const children = collectUnvisitedChildCheckpoints(currentLevel, visited);
 			if (children.length === 0) break;
-			const childRows = await manager.find(AgentCheckpoint, {
-				select: ['runId', 'agentId', 'state'],
-				where: children,
-			});
+			const childRows = await this.findCheckpointRows(manager, children);
 			currentLevel = childRows.flatMap((row) =>
 				row.agentId ? [{ row, agentId: row.agentId }] : [],
 			);
@@ -337,6 +338,22 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 
 		return checkpoints.map(({ row }) => row.runId);
+	}
+
+	private async findCheckpointRows(
+		manager: EntityManager,
+		checkpoints: DelegatedChildCheckpoint[],
+	): Promise<AgentCheckpoint[]> {
+		const rows: AgentCheckpoint[] = [];
+		for (const batch of chunk(checkpoints, CHECKPOINT_BATCH_SIZE)) {
+			rows.push(
+				...(await manager.find(AgentCheckpoint, {
+					select: ['runId', 'agentId', 'state'],
+					where: batch,
+				})),
+			);
+		}
+		return rows;
 	}
 
 	private async findExternalRefs(

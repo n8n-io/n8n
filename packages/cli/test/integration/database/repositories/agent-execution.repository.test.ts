@@ -17,6 +17,7 @@ import { DataSource, EntityManager } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
+import chunk from 'lodash/chunk';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -443,6 +444,36 @@ describe('AgentExecutionRepository', () => {
 			threadId: childThread.id,
 		});
 		expect(await storage.getStatus(suspension.runId, agentId)).toEqual({ status: 'not-found' });
+	});
+
+	it('removes a large batch of delegated checkpoints', async () => {
+		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
+		const { executionService } = recordingServices();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const childThreadId = uuid();
+		const children = Array.from({ length: 1_000 }, () => ({
+			runId: uuid(),
+			agentId,
+			threadId: childThreadId,
+		}));
+
+		await checkpointRepo.update(
+			{ runId: suspension.runId },
+			{ state: checkpointStateWithChildren(state, threadId, children) },
+		);
+		const childCheckpoints = children.map(({ runId }) => ({
+			runId,
+			agentId,
+			threadId: childThreadId,
+			expired: false,
+			state,
+		}));
+		for (const batch of chunk(childCheckpoints, 400)) await checkpointRepo.insert(batch);
+
+		expect(await executionService.deleteThread(projectId, agentId, threadId)).toBe(true);
+		expect(await checkpointRepo.findByRunId(suspension.runId)).toBeNull();
+		expect(await checkpointRepo.find({ where: { threadId: childThreadId } })).toEqual([]);
 	});
 
 	it.each([0, 1])('keeps attachments added after reading %i attachment rows', async (count) => {
