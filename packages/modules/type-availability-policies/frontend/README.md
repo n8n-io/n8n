@@ -27,8 +27,10 @@ and on a cold tree turbo builds them first.
 for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes. The
 shell reads restriction through these and never through the store directly.
 
-`ContactInstanceAdminModal` lists the instance owners with a mail link. The shell renders it where
-a restricted node needs a contact action; the module owns its copy and behaviour.
+`ContactInstanceAdminModal` lists the instance owners with a mail link. `RestrictedNodePopover` is the
+explanation for a row in a list: the lock trigger, the hover-opened popover and the dialog. The caller
+passes the row element and whether the row is keyboard-active. The shell renders both where a
+restricted node appears; the module owns their copy and behaviour.
 
 `packages/@n8n/module-cli/frontend-module-guide.md` holds the descriptor contract, the
 registration points, the import boundaries and the setup a module needs to render UI.
