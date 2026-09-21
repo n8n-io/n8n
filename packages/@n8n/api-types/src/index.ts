@@ -164,6 +164,7 @@ export {
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
 	tagIdParamSchema,
+	testRunIdParamSchema,
 	userIdParamSchema,
 	variableIdParamSchema,
 	workflowIdParamSchema,

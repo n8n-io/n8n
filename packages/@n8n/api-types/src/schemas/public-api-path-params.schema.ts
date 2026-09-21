@@ -19,6 +19,7 @@ export const executionIdParamSchema = numericIdParamSchema('The ID of the execut
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');
+export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
 export const folderIdParamSchema = stringIdParamSchema('The ID of the folder.');
