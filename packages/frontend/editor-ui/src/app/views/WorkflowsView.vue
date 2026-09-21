@@ -674,6 +674,8 @@ async function onPromotionApplied() {
 	const projectId = route.params.projectId as string | undefined;
 	if (projectId) {
 		await projectsStore.getMyProjects();
+		// The user moved on while the projects loaded, the route watcher owns the new page.
+		if (route.params.projectId !== projectId) return;
 		if (!projectsStore.myProjects.some(({ id }) => id === projectId)) {
 			toast.showMessage({
 				title: i18n.baseText('promotions.applied.projectRemoved'),
