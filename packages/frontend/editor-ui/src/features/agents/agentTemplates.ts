@@ -15,10 +15,10 @@ export interface AgentTemplate {
 		name: string;
 		instructions: string;
 		tools?: AgentJsonToolConfig[];
-	/** Draft channel integrations (empty `credentialId`) so the trigger
-	 * chips show as highlighted until the user connects a credential.
-	 * The trigger types are derived from this list — no separate
-	 * `connectedTriggers` field is needed. */
+		/** Draft channel integrations (empty `credentialId`) so the trigger
+		 * chips show as highlighted until the user connects a credential.
+		 * The trigger types are derived from this list — no separate
+		 * `connectedTriggers` field is needed. */
 		integrations?: AgentIntegrationConfig[];
 	};
 }
