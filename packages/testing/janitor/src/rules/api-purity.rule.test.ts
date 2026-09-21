@@ -78,15 +78,23 @@ test('fetches data', async () => {
 		expect(violations[0].message).toContain('fetch');
 	});
 
-	test('allows route.fetch() calls', ({ project, createFile }) => {
+	test('allows route.fetch() calls and detects other member fetch calls', ({
+		project,
+		createFile,
+	}) => {
 		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`test('forwards a request', async ({ page }) => {
 	await page.route('**/api/**', async (route) => await route.fetch());
+	await client.fetch('/api/workflows');
 });`,
 		);
 
-		expect(rule.analyzeProject(project, [file])).toHaveLength(0);
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('fetch');
+		expect(violations[0].line).toBe(3);
 	});
 
 	test('detects multiple raw API calls', ({ project, createFile }) => {
