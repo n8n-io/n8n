@@ -21,6 +21,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -205,6 +206,7 @@ export class AiPreferenceService {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
 		await this.assertScopeHasRoom(target);
+		await this.assertNotDuplicate(target, request.content);
 
 		const row = await this.aiPreferenceRepository.save(
 			this.aiPreferenceRepository.create({
@@ -231,6 +233,9 @@ export class AiPreferenceService {
 		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.
 		if (moved) await this.assertScopeHasRoom(target);
+		if (moved || row.content !== request.content) {
+			await this.assertNotDuplicate(target, request.content, row.id);
+		}
 
 		// `source` is not touched: it records the surface that created the row. An assistant
 		// edit of a row a person wrote does not make that row the assistant's.
@@ -402,6 +407,20 @@ export class AiPreferenceService {
 			throw new BadRequestError(
 				`A ${scope.scope} cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`,
 			);
+		}
+	}
+
+	/** Every surface refuses a restatement at this one point. A duplicate is a
+	 *  409, not a 400: the request is well formed, the state conflicts. */
+	private async assertNotDuplicate(target: PreferenceTarget, content: string, excludeId?: string) {
+		const scope = aiPreferenceTargetOf(target);
+		const exists = await this.aiPreferenceRepository.existsForTargetWithContent(
+			scope,
+			content,
+			excludeId,
+		);
+		if (exists) {
+			throw new ConflictError(`This ${scope.scope} already has a preference with the same text`);
 		}
 	}
 

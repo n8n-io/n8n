@@ -60,6 +60,24 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		return await this.count({ where: whereTarget(target) });
 	}
 
+	/** Exact-match duplicate probe for a write. Content is stored trimmed by the
+	 *  request schema, so equality is the right comparison. `excludeId` lets an
+	 *  edit ignore its own row. */
+	async existsForTargetWithContent(
+		target: AiPreferenceTarget,
+		content: string,
+		excludeId?: string,
+	): Promise<boolean> {
+		const count = await this.count({
+			where: {
+				...whereTarget(target),
+				content,
+				...(excludeId ? { id: Not(excludeId) } : {}),
+			},
+		});
+		return count > 0;
+	}
+
 	/** No visibility filter. The service authorizes the row before it returns or acts on it. */
 	async findByIdWithRelations(id: string): Promise<AiPreference | null> {
 		return await this.findOne({ where: { id }, relations: RELATIONS });
