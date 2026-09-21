@@ -60,12 +60,26 @@
 							}
 						]
 					},
+					"languagesUi": {
+						"languagesValues": [
+							{
+								"languageType": "code",
+								"languageCode": "en-US",
+								"preference": "preferred"
+							},
+							{
+								"languageType": "custom",
+								"customLanguage": "Klingon",
+								"preference": "preferred"
+							}
+						]
+					},
 					"posixAccountsUi": {
 						"posixAccountsValues": [
 							{
 								"username": "jdoe",
-								"uid": 1001,
-								"gid": 1001,
+								"uid": "1001",
+								"gid": "1001",
 								"homeDirectory": "/home/jdoe",
 								"shell": "/bin/bash",
 								"gecos": "John Doe",

@@ -11,7 +11,6 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 					givenName: 'test',
 					familyName: 'new',
 				},
-				primaryEmail: 'one@example.com',
 				phones: [
 					{
 						type: 'assistant',
@@ -21,10 +20,11 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 				],
 				emails: [
 					{
-						address: 'newone@example.com',
 						type: 'home',
+						address: 'newone@example.com',
 					},
 				],
+				primaryEmail: 'one@example.com',
 				orgUnitPath: '/',
 				recoveryEmail: 'recovery@example.com',
 				organizations: [
@@ -32,13 +32,6 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						name: 'Acme',
 						title: 'Engineer',
 						type: 'work',
-						customType: '',
-						department: '',
-						costCenter: '',
-						description: '',
-						domain: '',
-						location: '',
-						symbol: '',
 						fullTimeEquivalent: 100000,
 						primary: true,
 					},
@@ -49,11 +42,20 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						value: 'boss@example.com',
 					},
 				],
+				languages: [
+					{
+						languageCode: 'en-US',
+						preference: 'preferred',
+					},
+					{
+						customLanguage: 'Klingon',
+					},
+				],
 				posixAccounts: [
 					{
 						username: 'jdoe',
-						uid: 1001,
-						gid: 1001,
+						uid: '1001',
+						gid: '1001',
 						homeDirectory: '/home/jdoe',
 						shell: '/bin/bash',
 						gecos: 'John Doe',

@@ -776,20 +776,29 @@ export const userExtraFields: INodeProperties[] = [
 				displayName: 'Language',
 				values: [
 					{
+						displayName: 'Language Type',
+						name: 'languageType',
+						type: 'options',
+						options: [
+							{ name: 'Language Code', value: 'code' },
+							{ name: 'Custom Language', value: 'custom' },
+						],
+						default: 'code',
+						description:
+							'The API accepts a language code or a custom language, but not both at the same time',
+					},
+					{
 						displayName: 'Language Code',
 						name: 'languageCode',
 						type: 'string',
 						default: '',
 						placeholder: 'e.g. en-US',
-						description:
-							'The language code, following the BCP 47 standard. Leave empty and use Custom Language for unsupported languages.',
-					},
-					{
-						displayName: 'Custom Language',
-						name: 'customLanguage',
-						type: 'string',
-						default: '',
-						description: 'A free-form name for a language not supported by a language code',
+						displayOptions: {
+							show: {
+								languageType: ['code'],
+							},
+						},
+						description: 'The language code, following the BCP 47 standard',
 					},
 					{
 						displayName: 'Preference',
@@ -800,8 +809,24 @@ export const userExtraFields: INodeProperties[] = [
 							{ name: 'Preferred', value: 'preferred' },
 						],
 						default: 'preferred',
-						description:
-							'Whether this language is preferred. Only applies when Language Code is set.',
+						displayOptions: {
+							show: {
+								languageType: ['code'],
+							},
+						},
+						description: 'Whether this language is preferred',
+					},
+					{
+						displayName: 'Custom Language',
+						name: 'customLanguage',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								languageType: ['custom'],
+							},
+						},
+						description: 'A free-form name for a language not supported by a language code',
 					},
 				],
 			},
@@ -1048,15 +1073,17 @@ export const userExtraFields: INodeProperties[] = [
 					{
 						displayName: 'UID',
 						name: 'uid',
-						type: 'number',
-						default: 0,
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. 1001',
 						description: 'The POSIX compliant user ID',
 					},
 					{
 						displayName: 'GID',
 						name: 'gid',
-						type: 'number',
-						default: 0,
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. 1001',
 						description: 'The default group ID',
 					},
 					{

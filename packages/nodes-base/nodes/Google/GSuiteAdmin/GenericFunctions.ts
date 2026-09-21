@@ -44,6 +44,15 @@ export async function googleApiRequest(
 	}
 }
 
+// A fixedCollection always returns every field it declares, so entries arrive padded
+// with defaults the user never filled in. The API stores those as real values (a blank
+// shell, a 0% FTE), so they have to go before the request is sent.
+const isUnset = (value: unknown) =>
+	value === undefined || value === null || value === '' || value === false || value === 0;
+
+const stripUnset = (entry: IDataObject): IDataObject =>
+	Object.fromEntries(Object.entries(entry).filter(([, value]) => !isUnset(value)));
+
 /**
  * Maps the shared writable User attributes (defined in `userExtraFields` in
  * UserDescription.ts) from a create/update collection onto the request body.
@@ -65,10 +74,10 @@ export function mapUserExtraFields(fields: IDataObject, body: IDataObject): void
 
 	// Single-object fixedCollections
 	if (fields.genderUi) {
-		body.gender = (fields.genderUi as IDataObject).genderValues;
+		body.gender = stripUnset((fields.genderUi as IDataObject).genderValues as IDataObject);
 	}
 	if (fields.notesUi) {
-		body.notes = (fields.notesUi as IDataObject).notesValues;
+		body.notes = stripUnset((fields.notesUi as IDataObject).notesValues as IDataObject);
 	}
 
 	// Array fixedCollections: unwrap the `*Values` wrapper into the API array
@@ -87,29 +96,22 @@ export function mapUserExtraFields(fields: IDataObject, body: IDataObject): void
 	];
 	for (const [uiKey, valuesKey, bodyKey] of arrayMappings) {
 		if (fields[uiKey]) {
-			body[bodyKey] = (fields[uiKey] as IDataObject)[valuesKey];
+			const entries = ((fields[uiKey] as IDataObject)[valuesKey] ?? []) as IDataObject[];
+			body[bodyKey] = entries.map(stripUnset);
 		}
 	}
 
-	// sshPublicKeys: omit expirationTimeUsec when unset (0) so keys don't expire at epoch
-	if (Array.isArray(body.sshPublicKeys)) {
-		body.sshPublicKeys = (body.sshPublicKeys as IDataObject[]).map((entry) => {
-			if (!entry.expirationTimeUsec) {
-				const { expirationTimeUsec, ...rest } = entry;
-				return rest;
+	// languageType only drives which field the UI shows; the API doesn't know it, and it
+	// rejects a languageCode next to a customLanguage. preference applies to a code only.
+	if (Array.isArray(body.languages)) {
+		body.languages = (body.languages as IDataObject[]).map(({ languageType, ...rest }) => {
+			if (languageType === 'custom') {
+				delete rest.languageCode;
+				delete rest.preference;
+			} else {
+				delete rest.customLanguage;
 			}
-			return entry;
-		});
-	}
-
-	// organizations: omit fullTimeEquivalent when unset (0) so a blank field doesn't set 0% FTE
-	if (Array.isArray(body.organizations)) {
-		body.organizations = (body.organizations as IDataObject[]).map((entry) => {
-			if (!entry.fullTimeEquivalent) {
-				const { fullTimeEquivalent, ...rest } = entry;
-				return rest;
-			}
-			return entry;
+			return rest;
 		});
 	}
 }

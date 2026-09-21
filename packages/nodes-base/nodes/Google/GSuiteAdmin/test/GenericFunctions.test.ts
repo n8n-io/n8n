@@ -245,8 +245,8 @@ describe('Google GSuiteAdmin Node', () => {
 						posixAccountsValues: [
 							{
 								username: 'jdoe',
-								uid: 1001,
-								gid: 1001,
+								uid: '1001',
+								gid: '1001',
 								homeDirectory: '/home/jdoe',
 								shell: '/bin/bash',
 								operatingSystemType: 'linux',
@@ -262,8 +262,8 @@ describe('Google GSuiteAdmin Node', () => {
 				posixAccounts: [
 					{
 						username: 'jdoe',
-						uid: 1001,
-						gid: 1001,
+						uid: '1001',
+						gid: '1001',
 						homeDirectory: '/home/jdoe',
 						shell: '/bin/bash',
 						operatingSystemType: 'linux',
@@ -330,6 +330,71 @@ describe('Google GSuiteAdmin Node', () => {
 
 			expect(body).toEqual({
 				organizations: [{ name: 'Acme' }, { name: 'Globex', fullTimeEquivalent: 100000 }],
+			});
+		});
+
+		it('should strip defaults the user never filled in', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					posixAccountsUi: {
+						posixAccountsValues: [
+							{
+								username: 'grace',
+								uid: '3003',
+								gid: '0',
+								homeDirectory: '',
+								shell: '',
+								gecos: '',
+								systemId: '',
+								accountId: '',
+								operatingSystemType: 'linux',
+								primary: false,
+							},
+						],
+					},
+					genderUi: { genderValues: { type: 'female', customGender: '' } },
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				posixAccounts: [{ username: 'grace', uid: '3003', gid: '0', operatingSystemType: 'linux' }],
+				gender: { type: 'female' },
+			});
+		});
+
+		it('should keep languageCode and customLanguage entries mutually exclusive', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					languagesUi: {
+						languagesValues: [
+							{
+								languageType: 'code',
+								languageCode: 'en-US',
+								preference: 'preferred',
+								customLanguage: '',
+							},
+							{
+								languageType: 'custom',
+								languageCode: '',
+								preference: 'preferred',
+								customLanguage: 'Klingon',
+							},
+						],
+					},
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				languages: [
+					{ languageCode: 'en-US', preference: 'preferred' },
+					{ customLanguage: 'Klingon' },
+				],
 			});
 		});
 
