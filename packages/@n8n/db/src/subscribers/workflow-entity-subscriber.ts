@@ -18,7 +18,13 @@ export class WorkflowEntitySubscriber implements EntitySubscriberInterface<Workf
 	}
 
 	beforeUpdate(event: UpdateEvent<WorkflowEntity>) {
-		if (event.entity && Object.prototype.hasOwnProperty.call(event.entity, 'nodes')) {
+		const hasTrackedChanges =
+			(event.updatedColumns?.length ?? 0) > 0 || (event.updatedRelations?.length ?? 0) > 0;
+		const changesNodes = hasTrackedChanges
+			? (event.updatedColumns?.some((column) => column.propertyName === 'nodes') ?? false)
+			: event.entity && Object.prototype.hasOwnProperty.call(event.entity, 'nodes');
+
+		if (changesNodes) {
 			this.assertContentWriteAllowed();
 		}
 	}

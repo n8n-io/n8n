@@ -76,6 +76,11 @@ ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
 			errors: [typeormHit],
 		},
 		{
+			code: '// oxlint-disable-next-line n8n-local-rules/no-unsealed-workflow-entity-write\nexport const x = 1;',
+			options,
+			errors: [sealHit],
+		},
+		{
 			code: '/* eslint-disable n8n-local-rules/no-unsealed-workflow-entity-write */',
 			options,
 			errors: [sealHit],

@@ -5,6 +5,8 @@ import { WorkflowEntitySubscriber } from '../workflow-entity-subscriber';
 import type { WorkflowEntity } from '../../entities';
 import { runWorkflowContentWrite } from '../../repositories/workflow-content-write-context';
 
+type UpdatedColumn = UpdateEvent<WorkflowEntity>['updatedColumns'][number];
+
 describe('WorkflowEntitySubscriber', () => {
 	const subscriber = new WorkflowEntitySubscriber(true);
 
@@ -16,14 +18,38 @@ describe('WorkflowEntitySubscriber', () => {
 
 	it('rejects node updates outside a cleared repository write', () => {
 		expect(() =>
-			subscriber.beforeUpdate(mock<UpdateEvent<WorkflowEntity>>({ entity: { nodes: [] } })),
+			subscriber.beforeUpdate(
+				mock<UpdateEvent<WorkflowEntity>>({
+					entity: { nodes: [] },
+					updatedColumns: [],
+					updatedRelations: [],
+				}),
+			),
 		).toThrow('Workflow content writes must use a policy-cleared repository method');
 	});
 
-	it('allows metadata-only updates', () => {
+	it('allows a full entity save when only metadata changed', () => {
 		expect(() =>
-			subscriber.beforeUpdate(mock<UpdateEvent<WorkflowEntity>>({ entity: { active: false } })),
+			subscriber.beforeUpdate(
+				mock<UpdateEvent<WorkflowEntity>>({
+					entity: { active: false, nodes: [] },
+					updatedColumns: [mock<UpdatedColumn>({ propertyName: 'active' })],
+					updatedRelations: [],
+				}),
+			),
 		).not.toThrow();
+	});
+
+	it('rejects a full entity save when nodes changed', () => {
+		expect(() =>
+			subscriber.beforeUpdate(
+				mock<UpdateEvent<WorkflowEntity>>({
+					entity: { nodes: [] },
+					updatedColumns: [mock<UpdatedColumn>({ propertyName: 'nodes' })],
+					updatedRelations: [],
+				}),
+			),
+		).toThrow('Workflow content writes must use a policy-cleared repository method');
 	});
 
 	it('allows content writes inside the repository context', async () => {
@@ -35,7 +61,13 @@ describe('WorkflowEntitySubscriber', () => {
 
 		await expect(
 			runWorkflowContentWrite(async () => {
-				subscriber.beforeUpdate(mock<UpdateEvent<WorkflowEntity>>({ entity: { nodes: [] } }));
+				subscriber.beforeUpdate(
+					mock<UpdateEvent<WorkflowEntity>>({
+						entity: { nodes: [] },
+						updatedColumns: [],
+						updatedRelations: [],
+					}),
+				);
 			}),
 		).resolves.toBeUndefined();
 	});

@@ -1,7 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { DeploymentKey, User } from '@n8n/db';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKey, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -9,14 +9,14 @@ import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['encryption-keys'] });
 
-let deploymentKeyRepository: DeploymentKeyRepository;
+let keyStore: Repository<DeploymentKey>;
 let owner: User;
 let ownerAgent: SuperAgentTest;
 let member: User;
 let memberAgent: SuperAgentTest;
 
 beforeAll(() => {
-	deploymentKeyRepository = Container.get(DeploymentKeyRepository);
+	keyStore = Container.get(DataSource).getRepository(DeploymentKey);
 });
 
 beforeEach(async () => {
@@ -39,8 +39,8 @@ const seedKey = async (
 	}> = {},
 ) => {
 	const { createdAt, updatedAt, ...rest } = overrides;
-	const saved = await deploymentKeyRepository.save(
-		deploymentKeyRepository.create({
+	const saved = await keyStore.save(
+		keyStore.create({
 			type: 'data_encryption',
 			value: 'seed-value',
 			algorithm: 'aes-256-cbc',
@@ -49,11 +49,11 @@ const seedKey = async (
 		}),
 	);
 	if (createdAt || updatedAt) {
-		await deploymentKeyRepository.update(saved.id, {
+		await keyStore.update(saved.id, {
 			...(createdAt ? { createdAt } : {}),
 			...(updatedAt ? { updatedAt } : {}),
 		});
-		return await deploymentKeyRepository.findOneByOrFail({ id: saved.id });
+		return await keyStore.findOneByOrFail({ id: saved.id });
 	}
 	return saved;
 };
@@ -318,7 +318,7 @@ describe('POST /encryption/keys', () => {
 		});
 		expect(response.body.data).not.toHaveProperty('value');
 
-		const rows = await deploymentKeyRepository.find({ where: { type: 'data_encryption' } });
+		const rows = await keyStore.find({ where: { type: 'data_encryption' } });
 		expect(rows).toHaveLength(2);
 
 		const active = rows.filter((r: DeploymentKey) => r.status === 'active');
@@ -328,7 +328,7 @@ describe('POST /encryption/keys', () => {
 		expect(active[0].value.length).toBeGreaterThan(0);
 		expect(JSON.stringify(response.body)).not.toContain(active[0].value);
 
-		const reloadedPrevious = await deploymentKeyRepository.findOneByOrFail({
+		const reloadedPrevious = await keyStore.findOneByOrFail({
 			id: previousActive.id,
 		});
 		expect(reloadedPrevious.status).toBe('inactive');
@@ -345,7 +345,7 @@ describe('POST /encryption/keys', () => {
 	test('returns 403 for a non-owner user', async () => {
 		await memberAgent.post('/encryption/keys').send({ type: 'data_encryption' }).expect(403);
 
-		const rows = await deploymentKeyRepository.find();
+		const rows = await keyStore.find();
 		expect(rows).toHaveLength(0);
 	});
 });

@@ -38,6 +38,10 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 	],
 	invalid: [
 		{
+			code: '/* eslint-disable n8n-local-rules/no-legacy-cipher-methods */\nconst a = 1;',
+			errors: [{ messageId: 'noDisable', data: { rule: 'no-legacy-cipher-methods' } }],
+		},
+		{
 			code: '// eslint-disable-next-line n8n-local-rules/no-legacy-cipher-methods\nconst a = 1;',
 			errors: [{ messageId: 'noDisable', data: { rule: 'no-legacy-cipher-methods' } }],
 		},

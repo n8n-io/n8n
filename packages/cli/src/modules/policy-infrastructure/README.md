@@ -194,8 +194,10 @@ subject. Only `PolicyEnforcementService` may import the minter; a lint rule
 enforces that.
 
 The workflow entity subscriber rejects inserts and node-bearing updates outside
-the repository's scoped write context. The repository opens that context only
-after it validates the matching clearance token.
+the repository's scoped write context. Policy-cleared repository methods open
+that context after they validate the matching token. Standalone node execution
+is the documented exception: it opens the context without a save token, then
+enforces the policy before the temporary workflow starts.
 
 ## Add a check
 

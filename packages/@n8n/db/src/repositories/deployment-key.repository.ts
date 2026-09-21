@@ -1,11 +1,10 @@
 import { Service } from '@n8n/di';
 import { DataSource, IsNull } from '@n8n/typeorm';
-import type { DeepPartial, Repository } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
-import { DeploymentKey } from '../entities/deployment-key';
+import { DeploymentKey, OAUTH_JWE_PRIVATE_KEY_TYPE } from '../entities/deployment-key';
 import { DbLock, DbLockService } from '../services/db-lock.service';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
@@ -52,34 +51,6 @@ export class DeploymentKeyRepository {
 		this.store = new DeploymentKeyStore(dataSource, transactionRunner);
 	}
 
-	async find(...args: Parameters<Repository<DeploymentKey>['find']>) {
-		return await this.store.find(...args);
-	}
-
-	async findOne(...args: Parameters<Repository<DeploymentKey>['findOne']>) {
-		return await this.store.findOne(...args);
-	}
-
-	async findOneByOrFail(...args: Parameters<Repository<DeploymentKey>['findOneByOrFail']>) {
-		return await this.store.findOneByOrFail(...args);
-	}
-
-	create(entity: DeepPartial<DeploymentKey>): DeploymentKey {
-		return this.store.create(entity);
-	}
-
-	async save(entity: DeepPartial<DeploymentKey>): Promise<DeploymentKey> {
-		return await this.store.save(entity);
-	}
-
-	async insert(...args: Parameters<Repository<DeploymentKey>['insert']>) {
-		return await this.store.insert(...args);
-	}
-
-	async update(...args: Parameters<Repository<DeploymentKey>['update']>) {
-		return await this.store.update(...args);
-	}
-
 	/**
 	 * Reads the active signing secret of the given type and returns it in
 	 * usable form. Storage format is this repository's concern: a row marked
@@ -97,7 +68,7 @@ export class DeploymentKeyRepository {
 		type: string,
 		{ rewrapLegacy = false }: { rewrapLegacy?: boolean } = {},
 	): Promise<string | null> {
-		const row = await this.findActiveByType(type);
+		const row = await this.store.findOne({ where: { type, status: 'active' } });
 		if (!row) return null;
 		if (row.algorithm === SECRET_WRAP_ALGORITHM) {
 			try {
@@ -134,7 +105,7 @@ export class DeploymentKeyRepository {
 	 * silently ignored; the caller should read the winner's value afterwards.
 	 */
 	async seedSigningSecret(type: string, secret: string): Promise<void> {
-		await this.insertOrIgnore({
+		await this.insertIgnoringConflict({
 			type,
 			value: this.cipher.encryptDEKWithInstanceKey(secret),
 			status: 'active',
@@ -167,16 +138,49 @@ export class DeploymentKeyRepository {
 		});
 	}
 
-	async findActiveByType(type: string): Promise<DeploymentKey | null> {
+	async findActiveIdentifier(type: string): Promise<DeploymentKey | null> {
 		return await this.store.findOne({ where: { type, status: 'active' } });
 	}
 
-	async findAllByType(type: string): Promise<DeploymentKey[]> {
-		return await this.store.find({ where: { type } });
+	async seedActiveIdentifier(type: string, value: string): Promise<void> {
+		await this.insertIgnoringConflict({ type, value, status: 'active', algorithm: null });
 	}
 
 	async findDataEncryptionKeys(): Promise<DeploymentKey[]> {
 		return await this.store.find({ where: { type: 'data_encryption' } });
+	}
+
+	async findActiveDataEncryptionKeys(): Promise<DeploymentKey[]> {
+		return await this.store.find({ where: { type: 'data_encryption', status: 'active' } });
+	}
+
+	async findDataEncryptionKeyById(id: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({ where: { id, type: 'data_encryption' } });
+	}
+
+	async findDataEncryptionKeyByAlgorithm(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({ where: { type: 'data_encryption', algorithm } });
+	}
+
+	async findActiveDataEncryptionKeyByAlgorithm(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({
+			where: { type: 'data_encryption', algorithm, status: 'active' },
+		});
+	}
+
+	async seedActiveDataEncryptionKey(value: string, algorithm: string): Promise<void> {
+		await this.insertIgnoringConflict({
+			type: 'data_encryption',
+			value,
+			algorithm,
+			status: 'active',
+		});
+	}
+
+	async insertInactiveDataEncryptionKey(value: string, algorithm: string): Promise<DeploymentKey> {
+		return await this.store.save(
+			this.store.create({ type: 'data_encryption', value, algorithm, status: 'inactive' }),
+		);
 	}
 
 	async rewrapLegacyDataEncryptionValue(
@@ -229,14 +233,23 @@ export class DeploymentKeyRepository {
 	 * On a unique-index conflict (concurrent multi-main startup), the insert
 	 * is silently ignored. The caller should read the winner's value afterwards.
 	 */
-	async insertOrIgnore(
+	private async insertIgnoringConflict(
 		entityData: Pick<DeploymentKey, 'type' | 'value' | 'status' | 'algorithm'>,
 	): Promise<void> {
 		const entity = this.store.create(entityData);
 		await this.store.createQueryBuilder().insert().values(entity).orIgnore().execute();
 	}
 
-	async insertAsActive(entity: DeploymentKey & { status: 'active' }): Promise<DeploymentKey> {
+	async insertAndActivateDataEncryptionKey(
+		value: string,
+		algorithm: string,
+	): Promise<DeploymentKey> {
+		const entity = this.store.create({
+			type: 'data_encryption',
+			value,
+			algorithm,
+			status: 'active',
+		});
 		return await this.transactionRunner.run({}, async (ctx) => {
 			const tx = this.store.managerForContext(ctx);
 			await tx.update(
@@ -248,14 +261,40 @@ export class DeploymentKeyRepository {
 		});
 	}
 
-	async promoteToActive(id: string, type: string): Promise<void> {
+	async activateDataEncryptionKey(id: string): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			const tx = this.store.managerForContext(ctx);
-			const target = await tx.findOne(DeploymentKey, { where: { id, type } });
-			if (!target) throw new UnexpectedError(`Deployment key '${id}' of type '${type}' not found`);
+			const target = await tx.findOne(DeploymentKey, {
+				where: { id, type: 'data_encryption' },
+			});
+			if (!target) throw new UnexpectedError(`Data encryption key '${id}' not found`);
 
-			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
-			await tx.update(DeploymentKey, { id, type }, { status: 'active' });
+			await tx.update(
+				DeploymentKey,
+				{ type: 'data_encryption', status: 'active' },
+				{ status: 'inactive' },
+			);
+			await tx.update(DeploymentKey, { id, type: 'data_encryption' }, { status: 'active' });
+		});
+	}
+
+	async deactivateDataEncryptionKey(id: string): Promise<void> {
+		await this.store.update({ id, type: 'data_encryption' }, { status: 'inactive' });
+	}
+
+	async findActiveOAuthJweKey(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({
+			where: { type: OAUTH_JWE_PRIVATE_KEY_TYPE, algorithm, status: 'active' },
+		});
+	}
+
+	async insertActiveOAuthJweKey(id: string, value: string, algorithm: string): Promise<void> {
+		await this.store.insert({
+			id,
+			type: OAUTH_JWE_PRIVATE_KEY_TYPE,
+			value,
+			algorithm,
+			status: 'active',
 		});
 	}
 }

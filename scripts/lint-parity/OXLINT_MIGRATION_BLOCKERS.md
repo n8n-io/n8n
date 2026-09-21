@@ -11,7 +11,7 @@ A blocker is complete when all of these conditions are true:
 
 1. Oxlint enforces equivalent behavior, or we intentionally retire the rule.
 2. We remove the rule from `oxlint-gap.json` if it is present there.
-3. `node scripts/lint-parity/oxlint-parity.mjs` passes.
+3. `node scripts/lint-parity/oxlint-parity.mjs --pkg packages/<package> --eslint /tmp/eslint-snapshot.json` passes.
 4. The affected packages no longer need an ESLint pass for that rule.
 5. We test fixer behavior when the rule has a fixer.
 
@@ -145,6 +145,7 @@ Do not keep ESLint only because a rule is type-aware. Check whether Oxlint alrea
 The main exceptions are:
 
 - `@typescript-eslint/naming-convention`, which has no native equivalent.
+- `@typescript-eslint/consistent-type-imports`, which diverges for decorated files.
 - `@typescript-eslint/prefer-optional-chain`, which has a known semantic divergence.
 
 ## Work order
@@ -172,11 +173,12 @@ Inspect package rule downgrades and overrides:
 node scripts/lint-parity/majority.mjs
 ```
 
-After a config change, record and compare snapshots:
+Before changing the config, create the baseline snapshot. After the change, create the second snapshot and compare them:
 
 ```sh
 pnpm turbo run build --filter=@n8n/eslint-config
 node scripts/lint-parity/snapshot.mjs --out /tmp/lint-before.json
+# Change the config.
 node scripts/lint-parity/snapshot.mjs --out /tmp/lint-after.json
 node scripts/lint-parity/diff.mjs /tmp/lint-before.json /tmp/lint-after.json
 ```

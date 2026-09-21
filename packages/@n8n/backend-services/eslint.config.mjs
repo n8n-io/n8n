@@ -17,6 +17,10 @@ export default defineConfig(
 							message:
 								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
 						},
+						{
+							rule: 'no-unsealed-workflow-entity-write',
+							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
 					],
 				},
 			],
