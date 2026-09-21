@@ -1,33 +1,41 @@
-import { FLEXIBLE_GROUPS_CANVAS_FLAG } from '@n8n/api-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { useFlexibleGroups } from './useFlexibleGroups';
 
-const isFeatureEnabled = vi.hoisted(() => vi.fn());
+const settingsState = { flexibleGroupsEnabled: false };
+const posthogState = { enabled: false };
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		settings: { workflowsFlexibleGroupsEnabled: settingsState.flexibleGroupsEnabled },
+	}),
+}));
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled }),
+	usePostHog: () => ({ isFeatureEnabled: () => posthogState.enabled }),
 }));
 
 describe('useFlexibleGroups', () => {
-	beforeEach(() => {
-		isFeatureEnabled.mockReset();
+	it('is enabled via the operator override even when the PostHog flag is off', () => {
+		// The user payload drops the flags when PostHog answers too slowly at
+		// login, so the settings override must still turn the feature on.
+		settingsState.flexibleGroupsEnabled = true;
+		posthogState.enabled = false;
+
+		expect(useFlexibleGroups().isEnabled.value).toBe(true);
 	});
 
-	it('is enabled when the flag is on', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === FLEXIBLE_GROUPS_CANVAS_FLAG);
+	it('is enabled via the PostHog cohort flag when the override is off', () => {
+		settingsState.flexibleGroupsEnabled = false;
+		posthogState.enabled = true;
 
-		const { isEnabled } = useFlexibleGroups();
-
-		expect(isEnabled.value).toBe(true);
+		expect(useFlexibleGroups().isEnabled.value).toBe(true);
 	});
 
-	it('is disabled when the flag is off', () => {
-		isFeatureEnabled.mockReturnValue(false);
+	it('is disabled when neither signal is set', () => {
+		settingsState.flexibleGroupsEnabled = false;
+		posthogState.enabled = false;
 
-		const { isEnabled } = useFlexibleGroups();
-
-		expect(isEnabled.value).toBe(false);
-		expect(isFeatureEnabled).toHaveBeenCalledWith(FLEXIBLE_GROUPS_CANVAS_FLAG);
+		expect(useFlexibleGroups().isEnabled.value).toBe(false);
 	});
 });

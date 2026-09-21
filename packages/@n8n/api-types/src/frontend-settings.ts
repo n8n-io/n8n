@@ -178,6 +178,12 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	/**
+	 * The `N8N_WORKFLOWS_FLEXIBLE_GROUPS_ENABLED` operator override. The canvas
+	 * reads it alongside the PostHog flag, because the flags in the user payload
+	 * are dropped when PostHog answers too slowly at login.
+	 */
+	workflowsFlexibleGroupsEnabled: boolean;
 	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
