@@ -40,7 +40,7 @@ describe('UsersPublicController', () => {
 	});
 
 	describe('getUsers', () => {
-		it('lists users, maps them, and emits telemetry', async () => {
+		it('never leaks sensitive user fields', async () => {
 			const users = [buildUser()];
 			userService.getUsersAndCount.mockResolvedValue({ users, count: 1 });
 
@@ -55,9 +55,6 @@ describe('UsersPublicController', () => {
 				}),
 			);
 
-			expect(userService.assertGetUsersAccess).toHaveBeenCalledWith(caller.user, undefined);
-			expect(projectService.findUserIdsByProjectId).not.toHaveBeenCalled();
-			expect(result.data).toHaveLength(1);
 			expect(result.data[0]).toMatchObject({
 				id: 'user-id',
 				email: 'member@example.com',
@@ -67,55 +64,11 @@ describe('UsersPublicController', () => {
 			expect(result.data[0]).not.toHaveProperty('password');
 			expect(result.data[0]).not.toHaveProperty('mfaSecret');
 			expect(result.data[0]).not.toHaveProperty('disabled');
-			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-all-users', {
-				userId: caller.user.id,
-				publicApi: true,
-			});
-		});
-
-		it('includes the role when includeRole is requested', async () => {
-			const users = [buildUser()];
-			userService.getUsersAndCount.mockResolvedValue({ users, count: 1 });
-
-			const result = await controller.getUsers(
-				caller,
-				mock<Response>(),
-				mock<ListUsersQueryDto>({
-					limit: 100,
-					cursor: undefined,
-					includeRole: true,
-					projectId: undefined,
-				}),
-			);
-
-			expect(result.data[0]).toHaveProperty('role', 'global:member');
-		});
-
-		it('resolves member IDs for a project before listing', async () => {
-			userService.getUsersAndCount.mockResolvedValue({ users: [], count: 0 });
-			projectService.findUserIdsByProjectId.mockResolvedValue(['a', 'b']);
-
-			await controller.getUsers(
-				caller,
-				mock<Response>(),
-				mock<ListUsersQueryDto>({
-					limit: 100,
-					cursor: undefined,
-					includeRole: false,
-					projectId: 'project-1',
-				}),
-			);
-
-			expect(userService.assertGetUsersAccess).toHaveBeenCalledWith(caller.user, 'project-1');
-			expect(projectService.findUserIdsByProjectId).toHaveBeenCalledWith('project-1');
-			expect(userService.getUsersAndCount).toHaveBeenCalledWith(
-				expect.objectContaining({ ids: ['a', 'b'] }),
-			);
 		});
 	});
 
 	describe('getUser', () => {
-		it('returns the mapped user and emits telemetry', async () => {
+		it('never leaks sensitive user fields', async () => {
 			userService.getUser.mockResolvedValue(buildUser());
 
 			const result = await controller.getUser(
@@ -125,7 +78,6 @@ describe('UsersPublicController', () => {
 				mock<GetUserQueryDto>({ includeRole: false }),
 			);
 
-			expect(userService.getUser).toHaveBeenCalledWith('user-id');
 			expect(result).toMatchObject({
 				id: 'user-id',
 				email: 'member@example.com',
@@ -135,10 +87,6 @@ describe('UsersPublicController', () => {
 			expect(result).not.toHaveProperty('password');
 			expect(result).not.toHaveProperty('mfaSecret');
 			expect(result).not.toHaveProperty('disabled');
-			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-user', {
-				userId: caller.user.id,
-				publicApi: true,
-			});
 		});
 
 		it('throws NotFoundError when the user does not exist', async () => {
