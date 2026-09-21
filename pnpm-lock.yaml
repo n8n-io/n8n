@@ -6864,6 +6864,9 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6898,6 +6901,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.1)
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))

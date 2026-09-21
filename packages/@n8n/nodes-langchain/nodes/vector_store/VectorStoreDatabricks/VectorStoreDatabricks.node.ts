@@ -14,14 +14,14 @@ import {
 } from 'n8n-workflow';
 
 import {
-	assertHttpsHost,
 	createDatabricksAuthFetch,
 	type DatabricksFetchContext,
-} from '../../llms/LmChatDatabricks/auth-fetch';
+} from '@utils/databricks/auth-fetch';
+import { assertHttpsHost } from '@utils/databricks/constants';
 import {
 	DATABRICKS_CREDENTIAL_TYPE,
 	type DatabricksOAuth2Credential,
-} from '../../llms/LmChatDatabricks/token-provider';
+} from '@utils/databricks/token-provider';
 import { DatabricksVectorStore, type DatabricksIndexInfo } from './DatabricksVectorStore';
 
 const REQUEST_TIMEOUT_MS = 60_000;
@@ -293,7 +293,10 @@ export class VectorStoreDatabricks extends createVectorStoreNode<DatabricksVecto
 		displayName: 'Databricks Vector Store',
 		name: 'vectorStoreDatabricks',
 		description: 'Work with your data in Databricks Vector Search',
-		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
+		icon: {
+			light: 'file:../../shared/icons/databricks.svg',
+			dark: 'file:../../shared/icons/databricks.dark.svg',
+		},
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoredatabricks/',
 		credentials: [

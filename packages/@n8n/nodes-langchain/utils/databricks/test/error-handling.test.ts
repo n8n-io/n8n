@@ -2,7 +2,7 @@ import type { INode } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 import { RateLimitError } from 'openai';
 
-import { OAuth2SessionExpiredError } from '../../../../utils/oauth2-token-provider';
+import { OAuth2SessionExpiredError } from '../../oauth2-token-provider';
 import { makeDatabricksFailedAttemptHandler, wrapDatabricksErrorFetch } from '../error-handling';
 
 const mockNode: INode = {

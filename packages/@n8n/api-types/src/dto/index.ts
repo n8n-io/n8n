@@ -312,12 +312,12 @@ export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-docu
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
 export {
 	ListNodeTypePolicyDocumentsQueryDto,
-	NodeTypePolicyAttachmentsPublicDto,
-	NodeTypePolicyDocumentListPublicDto,
-	NodeTypePolicyDocumentPublicDto,
-	NodeTypePolicyDocumentWriteResultPublicDto,
-	NodeTypePolicyEffectivePublicDto,
-	NodeTypePolicyEffectiveWriteResultPublicDto,
+	PolicyAttachmentsPublicDto,
+	PolicyDocumentListPublicDto,
+	PolicyDocumentPublicDto,
+	PolicyDocumentWriteResultPublicDto,
+	PolicyEffectivePublicDto,
+	PolicyEffectiveWriteResultPublicDto,
 } from './node-type-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,

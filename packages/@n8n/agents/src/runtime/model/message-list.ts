@@ -408,6 +408,11 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.inputSet.has(m));
 	}
 
+	removeInput(): void {
+		this.all = this.all.filter((message) => !this.inputSet.has(message));
+		this.inputSet.clear();
+	}
+
 	/** All messages currently in the list, as live references. */
 	messages(): readonly AgentDbMessage[] {
 		return this.all;

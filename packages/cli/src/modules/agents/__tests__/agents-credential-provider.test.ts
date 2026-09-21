@@ -48,6 +48,7 @@ describe('AgentsCredentialProvider', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
 				...listItem({ id: 'allowed' }),
+				description: null,
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
@@ -207,6 +208,7 @@ describe('AgentsCredentialProvider', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
 				...listItem({ id: 'allowed' }),
+				description: null,
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],

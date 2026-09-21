@@ -162,6 +162,7 @@ erDiagram
   boolean expired
   varchar_255_ runId
   text state
+  text threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_credential_dependency" {

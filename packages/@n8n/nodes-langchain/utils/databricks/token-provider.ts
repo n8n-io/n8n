@@ -9,8 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { OAuth2TokenData, RefreshingTokenSource } from '../../../utils/oauth2-token-provider';
-import { createRefreshingOAuth2TokenProvider } from '../../../utils/oauth2-token-provider';
+import type { OAuth2TokenData, RefreshingTokenSource } from '../oauth2-token-provider';
+import { createRefreshingOAuth2TokenProvider } from '../oauth2-token-provider';
 
 export const DATABRICKS_CREDENTIAL_TYPE = 'databricksOAuth2Api';
 

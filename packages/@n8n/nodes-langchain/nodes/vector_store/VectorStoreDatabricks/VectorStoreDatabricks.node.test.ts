@@ -16,14 +16,14 @@ import type {
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { getDatabricksTokenProvider } from '../../llms/LmChatDatabricks/token-provider';
+import { getDatabricksTokenProvider } from '@utils/databricks/token-provider';
 import { DatabricksVectorStore } from './DatabricksVectorStore';
 import { VectorStoreDatabricks } from './VectorStoreDatabricks.node';
 
 vi.mock('./DatabricksVectorStore', () => ({
 	DatabricksVectorStore: { fromExistingIndex: vi.fn(), describeIndex: vi.fn() },
 }));
-vi.mock('../../llms/LmChatDatabricks/token-provider');
+vi.mock('@utils/databricks/token-provider');
 vi.mock('@n8n/ai-utilities', async (importActual) => ({
 	...(await importActual()),
 	proxyFetch: vi.fn(),

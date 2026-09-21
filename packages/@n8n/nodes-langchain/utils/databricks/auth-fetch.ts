@@ -2,15 +2,13 @@ import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
 import {
 	assertUrlAllowed,
 	getCredentialAllowedDomains,
-	NodeOperationError,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
-	type INode,
 	type ISupplyDataFunctions,
 	type NodeEgressFilter,
 } from 'n8n-workflow';
 
-import type { RefreshingTokenSource } from '../../../utils/oauth2-token-provider';
+import type { RefreshingTokenSource } from '../oauth2-token-provider';
 import { databricksAuthHeaders } from './constants';
 import type { DatabricksOAuth2Credential } from './token-provider';
 import { getDatabricksTokenProvider } from './token-provider';
@@ -19,14 +17,6 @@ export type DatabricksFetchContext =
 	| IExecuteFunctions
 	| ISupplyDataFunctions
 	| ILoadOptionsFunctions;
-
-// Every request carries a secret (bearer token, or the client secret on the
-// mint path), so an http host would ship it in cleartext
-export function assertHttpsHost(ctx: { getNode(): INode }, host: string) {
-	if (!URL.canParse(host) || new URL(host).protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Databricks host must use https');
-	}
-}
 
 /**
  * The token-refreshing fetch every Databricks AI node sends its requests through.
