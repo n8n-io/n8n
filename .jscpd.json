@@ -7,6 +7,13 @@
     "**/fixtures/**",
     "**/locales/**",
     "**/i18n/**",
-    "**/*.generated.*"
+    "**/*.generated.*",
+    "**/__schema__/**",
+    "**/cassettes/**",
+    "packages/@n8n/typeorm/test/**",
+    "docs/generated/**",
+    "**/test/**/*.workflow.json",
+    "**/test/**/workflow.*.json",
+    "**/test/**/workflows/**"
   ]
 }
