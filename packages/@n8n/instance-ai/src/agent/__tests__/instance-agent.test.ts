@@ -947,6 +947,22 @@ describe('createInstanceAgent', () => {
 		});
 	});
 
+	it.each([{ thinkingEnabled: true, thinkingEffort: 'low' as const }, { thinkingEnabled: false }])(
+		'passes the host thinking policy to orchestration tools: %j',
+		async (thinking) => {
+			const orchestrationContext = { runId: 'thinking-forward' };
+			await createInstanceAgent({
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: { runLabel: 'thinking-forward' },
+				orchestrationContext,
+				memoryConfig: {},
+				mcpManager: createMcpManagerStub(),
+				...thinking,
+			} as never);
+			expect(orchestrationContext).toMatchObject({ thinking });
+		},
+	);
+
 	it('skips thinking when explicitly disabled', async () => {
 		await createInstanceAgent({
 			modelId: 'anthropic/claude-opus-4-8',

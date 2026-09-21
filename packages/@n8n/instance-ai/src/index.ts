@@ -32,6 +32,7 @@ import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
 import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
+import type * as IntentRouterMod from './intent-router';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
 import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
@@ -165,6 +166,7 @@ const loadStreamRunner = lazyModule(
 const loadLivenessPolicy = lazyModule(
 	() => require('./runtime/liveness-policy') as typeof LivenessPolicyMod,
 );
+const loadIntentRouter = lazyModule(() => require('./intent-router') as typeof IntentRouterMod);
 const loadWorkflowLoop = lazyModule(() => require('./workflow-loop') as typeof WorkflowLoopMod);
 const loadWorkflowLoopRuntime = lazyModule(
 	() => require('./workflow-loop/runtime') as typeof WorkflowLoopRuntimeMod,
@@ -187,6 +189,8 @@ export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
+export { SystemOneDecisionClient } from './workflow-compiler/decision/systemone-client';
+export type { DecisionService as WorkflowCompilerDecisionService } from './workflow-compiler/decision/decision-service';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
 export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
@@ -475,6 +479,12 @@ defineLazyExport(
 	() => loadPlannedTaskPermissions().PLANNED_TASK_PERMISSION_OVERRIDES,
 );
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
+/** Structured-read intent routing and direct compiler execution for a chat turn (no LLM). */
+export const runInstanceAiFastPath: typeof IntentRouterMod.runFastPath = lazyFunction(
+	() => loadIntentRouter().runFastPath,
+);
+export type { FastPathOutcome, IntentRoute, RouteDecision, RouterState } from './intent-router';
+
 export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEvents = lazyFunction(
 	() => loadAgentTree().buildAgentTreeFromEvents,
 );

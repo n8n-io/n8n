@@ -29,6 +29,10 @@ import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from '../agent-capabilities';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentTaskService } from '../agent-task.service';
+import type { AgentTestRunService } from '../agent-test-run.service';
+import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
+import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
 import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
@@ -41,6 +45,10 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentSkills = mock<AgentSkillsService>();
 	const credentialService = mock<InstanceAiCredentialService>();
 	const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+	const agentTasks = mock<AgentTaskService>();
+	const attachableWorkflows = mock<AttachableWorkflowsService>();
+	const defaultModelResolver = mock<AgentDefaultModelResolverService>();
+	const agentTestRun = mock<AgentTestRunService>();
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
@@ -50,6 +58,10 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentConfig,
 		agentSkills,
 		agentIntegrationPersistenceService,
+		agentTasks,
+		attachableWorkflows,
+		defaultModelResolver,
+		agentTestRun,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -141,6 +153,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				abortSignal,
 				telemetry: sentinel,
+				thinking: { thinkingEnabled: true, thinkingEffort: 'low' },
 				mcpTools,
 			});
 
@@ -159,6 +172,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
+					thinking: { thinkingEnabled: true, thinkingEffort: 'low' },
 					mcpTools,
 					onRequiredArtifact: expect.any(Function),
 				},
@@ -256,6 +270,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'agent-1',
 				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
 				{
+					thinking: { thinkingEnabled: false },
 					threadId: 'ia-builder:t:agent-1',
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
@@ -280,6 +295,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				credentialService,
 				user,
 				{
+					thinking: { thinkingEnabled: false },
 					threadId: 'ia-builder:t:agent-1',
 					hostThreadId: 'thread-1',
 					runId: 'run-1',

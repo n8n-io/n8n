@@ -1,5 +1,7 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { validateWorkflow, workflow as workflowBuilder } from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
@@ -38,6 +40,79 @@ describe('compileWorkflowSource', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	it('returns expression diagnostics that block a malformed JSON build', async () => {
+		const nodeTypesProvider = mock<INodeTypes>({
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: {
+					properties: [{ displayName: 'JSON Body', name: 'jsonBody', type: 'json', default: '' }],
+				},
+			}),
+		});
+		const result = await compileWorkflowSource(
+			makeContext({ nodeTypesProvider }),
+			'src/workflows/booking.workflow.json',
+			JSON.stringify({
+				name: 'Candidate booking',
+				nodes: [
+					{
+						id: 'event',
+						name: 'Create Interview Event',
+						type: 'test.request',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { jsonBody: '={{ {candidate: {status: "ready"}} }}' },
+					},
+				],
+				connections: {},
+			}),
+		);
+		expect(result).toMatchObject({
+			success: true,
+			warnings: [
+				expect.objectContaining({
+					code: 'INVALID_EXPRESSION',
+					nodeName: 'Create Interview Event',
+					severity: 'error',
+				}),
+			],
+		});
+		expect(runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('reports invalid generated JavaScript before saving a JSON workflow', async () => {
+		const source = JSON.stringify({
+			name: 'Draft response',
+			nodes: [
+				{
+					id: 'draft',
+					name: 'Draft',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { jsCode: 'return [{ json: { subject: "Demo" } }];}' },
+				},
+			],
+			connections: {},
+		});
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/draft.workflow.json',
+			source,
+		);
+		expect(result).toMatchObject({
+			success: true,
+			warnings: [
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					nodeName: 'Draft',
+					severity: 'error',
+					message: expect.stringContaining('invalid JavaScript syntax'),
+				}),
+			],
+		});
+		expect(runInSandbox).not.toHaveBeenCalled();
 	});
 
 	it('parses WorkflowJSON sources in process without sandbox execution', async () => {

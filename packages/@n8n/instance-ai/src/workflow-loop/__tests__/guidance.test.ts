@@ -428,7 +428,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Node configuration is invalid after schema change');
 		});
 
-		it('should instruct to load workflow-builder, edit the source file, and rebuild with filePath', () => {
+		it('should route the structural repair through build-workflow action "edit"', () => {
 			const action: WorkflowLoopAction = {
 				type: 'rebuild',
 				workflowId: 'wf-rebuild-2',
@@ -436,9 +436,9 @@ describe('formatWorkflowLoopGuidance', () => {
 				failureDetails: 'Broken connections',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflow-builder');
+			expect(result).not.toContain('workflow-builder');
 			expect(result).toContain('build-workflow');
-			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
+			expect(result).toContain('action "edit"');
 			expect(result).toContain('workflowId "wf-rebuild-2"');
 			expect(result).toContain('structural repair');
 		});
@@ -485,7 +485,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Suggested fix');
 		});
 
-		it('should instruct to load workflow-builder, edit the source file, and build with filePath', () => {
+		it('should route the targeted fix through build-workflow action "debug"', () => {
 			const action: WorkflowLoopAction = {
 				type: 'patch',
 				workflowId: 'wf-patch-4',
@@ -494,9 +494,9 @@ describe('formatWorkflowLoopGuidance', () => {
 				diagnosis: 'Condition always evaluates to true',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflow-builder');
+			expect(result).not.toContain('workflow-builder');
 			expect(result).toContain('build-workflow');
-			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
+			expect(result).toContain('action "debug"');
 			expect(result).toContain('workflowId "wf-patch-4"');
 			expect(result).toContain('targeted fix');
 		});

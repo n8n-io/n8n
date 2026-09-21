@@ -1,8 +1,8 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent. Then call build-agent with the user's
-  request after any required orchestrator-owned prerequisites are ready. Agent
+  Load immediately after an Agent intent. Describe a complete plan,
+  then hand the user request and plan to build-agent for JEV review. Agent
   Builder owns Agent setup and implementation questions. Governs prerequisite
   creation, faithful handoff, targeting, testing, and publishing. Use directly
   for routine Agent follow-ups; rerun intent-recognition only when the requested
@@ -15,6 +15,64 @@ recommended_tools:
 
 # Agent Builder
 
+First describe the complete Agent behavior in text. Pass it in the `plan`
+field of `build-agent`. The tool runs JEV before the embedded builder fills
+parameters. Keep proposed implementation separate from the original user
+requirements. Use the existing question, credential, and approval cards.
+Put the user request and prior answers in `plan.originalRequest`. Put proposed
+behavior in `plan.plan`. Do not repeat either in `message`. Omit `message`
+unless the builder needs additional context, such as an inspected data contract.
+Use `plan-build` separately only when building prerequisite workflows.
+For a scoped edit, hand off inspection, changes, and readback in one
+`build-agent` call. The embedded builder can read the current configuration
+and skills before it edits them. Use a read-only handoff when the user asks
+for a review without changes.
+
+## Plan quality
+
+Check the proposed capabilities before handoff:
+
+- Keep query structure fixed. Let the model supply typed values, not SQL or
+  unrestricted query syntax. Select only the fields needed for the task.
+- Separate identity verification from conversation. Asking for an email
+  address does not verify it. Participant tools need a verified session or an
+  opaque, validated access token. Mark a missing identity integration as a
+  setup requirement. Keep participant data tools unavailable until it is ready.
+- Bind record and event lookups to that verified participant. The model must
+  not choose another participant's scope or an arbitrary external event ID.
+  A `$fromAI` value remains model input even when its description says it is
+  verified. Pass a token to a tool that validates it and derives the participant
+  ID before the query, or use trusted runtime context. An instruction to call
+  an identity tool first does not enforce that sequence.
+- Prefer availability or free/busy operations when the task needs free slots.
+  Do not return unrelated calendar event details to a participant.
+- Use a workflow tool when booking or editing needs an ordered procedure:
+  validate access, check availability, apply the calendar change, persist the
+  returned event ID and state, then send confirmation. Include retry and
+  recovery behavior. Direct independent tools are insufficient for that contract.
+  A calendar change and a database write are separate effects. Do not call
+  them atomic. Define recovery for a failure between them.
+  Preserve the callable workflow's retry contract. Do not add a preliminary
+  read that blocks recovery when the external record is already gone.
+- Treat participant confirmation and business approval as different decisions.
+  Keep business decisions with the designated decision-maker. Never infer an
+  approved business outcome from a scheduling change.
+  Match the workflow's behavior for an unconfirmed request. Do not describe
+  it as a dry run or an availability preview unless the workflow provides that
+  result. A confirmation error does not establish availability.
+- When the Agent extends an existing workflow, inspect its stored data contract.
+  Reuse its record IDs, tables, fields, status values, and external event IDs.
+  Do not invent a separate schema that the existing workflow never writes.
+  Include an explicit migration if the shared contract must change.
+
+Pass any missing behavior and setup requirements to the embedded builder.
+Inspect the saved configuration before describing the Agent as usable.
+When a tool contract changes, include an audit of every attached skill in the
+handoff. Check its instructions, description, and `allowedTools`. Update stale
+input names and removed tool references. Editing only the main instructions
+does not update the skills. A skill must not claim that a message was sent or
+an escalation was recorded unless a configured action did that work.
+
 ## Routing
 
 Use this skill after `intent-recognition` chooses an agent-anchored design, or
@@ -22,9 +80,9 @@ when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
-For a new Agent request, make the first `build-agent` call with a faithful copy
-of the request as soon as any required orchestrator-owned prerequisites are
-ready. Before that call, use `ask-user` only to choose a supported channel or to
+For a new Agent request, describe the plan first. Then
+make the first `build-agent` call with the request and plan once any
+required prerequisites are ready. Before that call, use `ask-user` only to choose a supported channel or to
 define a workflow or data-table prerequisite that the orchestrator must create.
 Only ask about the channel after `list-agent-capabilities` shows that the
 requested channel is unsupported. Do not collect model, service, tool, topic,
@@ -34,7 +92,7 @@ Agent Builder asks those questions through the `build-agent` call.
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
 request — target that Agent and call `build-agent`. Do not reroute to
-`workflow-builder`, and do not spawn a workflow to satisfy a capability change
+`build-workflow`, and do not spawn a workflow to satisfy a capability change
 on the Agent.
 
 ## Supported channels & unsupported requests
@@ -56,30 +114,40 @@ once it is a supported type or the user has chosen an alternative.
 
 ## Faithful handoff
 
-Treat `message` as a faithful handoff of the user's request, not an Agent build
-specification authored by you. Forward the user's wording as close to verbatim
-as possible. Include only:
+Keep user requirements in `plan.originalRequest` and proposed implementation
+in `plan.plan`.
+Forward the user's wording as close to verbatim as possible. The requirements
+section includes only:
 
 - Requirements, constraints, and implementation choices the user explicitly
   stated.
 - Explicit answers or decisions from earlier turns that are necessary for the
   current request.
 - Prerequisite workflows or data tables you created for this Agent.
+- Existing workflows or tables the user wants the Agent to use, with their
+  inspected data contract. Identify inspected facts separately from assumptions.
+
+Include related workflow IDs and their data contract in `message`. Use
+`workflowContext` only for callable workflows that the Agent should attach as
+tools. A lifecycle workflow with forms or schedule triggers is context, not
+automatically an Agent tool.
+
+Put the detailed LLM plan in the `plan` field. Identify assumptions and
+uncertain choices. The tool adds the JEV results to the handoff. The
+embedded builder must validate these proposals against its capabilities and
+the user's requirements. Proposals do not grant approval or supply credentials.
 
 The host appends an <aia-handoff> block with the current user text and pending
 ask-user answers that have not yet reached Agent Builder. Treat those as the
 user's decisions for this build call, not as implementation you invented.
-Still copy user-stated model, channel, and credential choices into message; do not omit
+Still copy user-stated model, channel, and credential choices into `plan.originalRequest`; do not omit
 them because the host also injected them.
 
-Never infer, invent, expand, recommend, or prescribe implementation details the
-user did not request, and never present your assumptions as user requirements.
-In particular, do not choose or tell the builder which model, instructions,
-tools, tool types, integrations, channels, MCP servers, workflows, skills,
-tasks, memory, credentials, triggers, schedules, approvals, or test strategy to
-use.
+Never present assumptions or JEV choices as user requirements. Do not prescribe
+a model, channel, credential, or approval policy that the user did not choose.
+The embedded builder owns those choices and their existing interactive cards.
 
-Do not translate an outcome or named service into a specific implementation.
+Do not silently translate an outcome into an implementation requirement.
 For example, forward "a Slack agent that says hello to me" without turning it
 into a request for a Slack node tool. Preserve unspecified and ambiguous
 implementation details so the builder can resolve them with its own guidance
@@ -92,8 +160,8 @@ create when they must be attached to or used by the Agent:
 
 - Create a workflow tool only when one Agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow to be
-  reusable, manually callable, or usable outside the Agent. Follow
-  `workflow-builder`, then pass the built workflow in `workflowContext`.
+  reusable, manually callable, or usable outside the Agent. Build it with
+  `build-workflow`, then pass the built workflow in `workflowContext`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
   and create the required tables via `data-tables`. The builder cannot create
   tables.
@@ -127,7 +195,7 @@ called by the Agent. Never ask the user to create prerequisites manually.
 ## Targeting across turns
 
 Address Agents in this conversation with `agentRef`, a short stable key similar
-to a workflow `filePath`.
+to a workflow compiler `sessionId`.
 
 - For the first Agent, pass a fresh `agentRef` and `name`.
 - Reuse that `agentRef` on later calls. Calls with neither `agentRef` nor

@@ -307,10 +307,11 @@ reach another branch within one trigger's run — or report the partial coverage
 and let the user decide whether to run it.
 If `fixtureOverrides` is rejected with `invalid_fixture_override`, the target
 node was not classified as simulated in the build outcome. Do not retry the same
-override. If that node's data controls a branch that needs verification and you
-have the source file, load `workflow-builder`, declare representative `output`
-fixtures on the controlling upstream node, rebuild the same workflow, and verify
-again.
+override. If that node's data controls a branch that needs verification, pass
+representative items for the controlling upstream node through
+`fixtureOverrides` once it is classified as simulated, or report which
+execution path stayed unexercised (`executionPathCoverage`) and let the user
+decide.
 
 **Never edit or copy a saved workflow to reach a branch.** Disabling, deleting,
 or reordering nodes to steer a test mutates the user's workflow and leaves it
@@ -369,15 +370,14 @@ For a repair on a published workflow:
    `setupRequirement`, and `postBuildFlow` from the tool output. If the output
    is missing a `workflowId`, explain that the build did not submit.
    - Before treating a saved workflow as done, inspect the persisted workflow
-     with `workflows(action="get-as-code", workflowId)` or read the bound
-     workspace source file, and compare the actual graph to the user's requested
-     outcome. Build/save success only means a workflow was saved; it does not
+     with `workflows(action="get-as-code", workflowId)` and compare the actual
+     graph to the user's requested outcome. Build/save success only means a workflow was saved; it does not
      prove the saved workflow is good.
    - If the persisted workflow is missing the requested outcome, has an obvious
-     dead-end draft shape, or the verification evidence is weak, load the
-     `workflow-builder` skill and patch the same workflow with `build-workflow`
-     using the existing `workflowId` and `workItemId`; then inspect and verify
-     again.
+     dead-end draft shape, or the verification evidence is weak, call
+     `build-workflow` with action "edit" (or "debug" after a failed run), the
+     existing `workflowId` and `workItemId`, and the change in plain words; then
+     inspect and verify again.
    - If `verificationReadiness.status === "already_verified"`, do not repeat
      automatic verification. Read the saved claim before describing the workflow
      as verified. For tracked multi-trigger builds, follow the verification
@@ -514,8 +514,8 @@ Skip this follow-up when:
 
 If the user says yes:
 
-1. Load `workflow-builder` and build a separate error workflow using the user's
-   requested notification destination. Keep the error workflow scoped to the
+1. Call `build-workflow` with action "create" and build a separate error
+   workflow using the user's requested notification destination. Keep the error workflow scoped to the
    target workflow the user opted in for.
 2. Do not ask whether this new error workflow needs its own error workflow.
 3. The error workflow must be published before it can be assigned. If the user
@@ -526,12 +526,9 @@ If the user says yes:
 4. After publish succeeds, set the original workflow's workflow-level
    `settings.errorWorkflow` to the **error workflow's workflowId**. Do not use
    the published `activeVersionId`, workflow name, a placeholder, or a local SDK
-   id. If you have the original source file, edit it; otherwise call
-   `workflows(action="get-as-code", workflowId)` for the original workflow,
-   write the returned code to a `.workflow.ts` file, add
-   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, and call
-   `build-workflow` for the original workflow. The workflow edit approval card
-   is the HITL surface for this assignment.
+   id. Call `build-workflow` with action "edit", the original `workflowId`, and
+   the request "set the error workflow to <published-error-workflow-id>". The
+   workflow edit approval card is the HITL surface for this assignment.
 5. Summarize the result with explicit per-workflow language: this error
    workflow was assigned only to the named target workflow. Mention that n8n has
    no global or instance-wide error workflow setting only when the user

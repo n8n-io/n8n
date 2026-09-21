@@ -11,7 +11,7 @@ import {
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
-const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
+const AGENTS_MODULE_SKILL_IDS = ['intent-recognition'] as const;
 
 describe('Instance AI runtime skills', () => {
 	afterEach(() => {
@@ -55,53 +55,13 @@ describe('Instance AI runtime skills', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it('points the workflow-builder skill at the SDK language reference', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
-			'utf-8',
-		);
-		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
-	});
-
 	// Code nodes were 19% of all nodes in production builds versus 10% in public
 	// templates, and half of a sample were plain field shaping. The old rule ended
 	// with an escape hatch ("if it makes it simpler, go ahead and use code node").
-	it('prefers native nodes over Code nodes with no escape hatch', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
-			'utf-8',
-		);
-		expect(skill).not.toMatch(/if it makes it simpler, go ahead and use code node/i);
-		expect(skill).toContain('Native node first');
-		expect(skill).toContain('Edit Fields (Set)');
-		expect(skill).toContain('Native node mappings');
-		// The Python bullet that follows the rule stays as it was.
-		expect(skill).toContain(
-			'Write Code nodes in JavaScript unless the user explicitly asks for Python.',
-		);
-	});
 
 	// The builder agent has been observed recalling a pre-ADO-5627 `.group()` signature
 	// with no description argument, so the call is spelled out in the skill itself
 	// rather than only linked — a wrong prior is not corrected by a pointer.
-	it('states the node-group call and points at the node-groups reference', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
-			'utf-8',
-		);
-		expect(skill).toContain('knowledge-base/reference/node-groups.md');
-		expect(skill).toContain('.group(name, members, { description })');
-	});
-
-	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
-			'utf-8',
-		);
-		expect(skill).toContain('unsolicited `sticky()`');
-		expect(skill).toContain('workflow-sdk validate');
-		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
-	});
 
 	it('loads the bundled credential-recipe-research skill', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
@@ -174,8 +134,8 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('data-table-manager');
 		expect(loaded?.instructions).toContain('## Routing');
 		expect(loaded?.instructions).toContain('For workflow builds that create or write Data Tables');
-		expect(loaded?.instructions).toContain('`workflow-builder`');
-		expect(loaded?.instructions).toContain('before `build-workflow`');
+		expect(loaded?.instructions).toContain('`build-workflow`');
+		expect(loaded?.instructions).toContain('before\ncalling `build-workflow`');
 	});
 
 	it('loads the bundled config-evals skill and its linked files', async () => {
@@ -233,16 +193,16 @@ describe('Instance AI runtime skills', () => {
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
 	});
 
-	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
+	it('ships workflow building guidance for the LLM planning and parameter stages', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
-		const progressive = source.registry.skills.find(
-			(skill) => skill.name === 'progressive-building',
-		);
-		expect(progressive?.id).toBe('progressive-building');
+		expect(source.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
+		expect(source.registry.skills.map(({ id }) => id)).toContain('workflow-builder');
 		for (const mode of ['default', 'progressive'] as const) {
 			const selected = await loadInstanceAiRuntimeSkillSourceForBuildMode(mode);
-			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
 			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
+			await expect(selected.loadSkill('workflow-builder')).resolves.toMatchObject({
+				id: 'workflow-builder',
+			});
 		}
 	});
 
@@ -323,82 +283,6 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Source: [Page title](page URL)');
 		expect(loaded?.instructions).toContain('Sources:');
 		expect(loaded?.instructions).toContain('pages returned by `n8n-docs`');
-	});
-
-	it('loads the bundled workflow-builder skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
-		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
-
-		expect(skill?.name).toBe('workflow-builder');
-		expect(skill?.platforms).toBeUndefined();
-		expect(skill?.recommendedTools).toEqual([
-			'read_file',
-			'write_file',
-			'edit_file',
-			'execute_command',
-			'build-workflow',
-			'workflows',
-			'nodes',
-			'data-tables',
-			'credentials',
-			'verify-built-workflow',
-			'executions',
-		]);
-		expect(skill?.description).toContain('Load before calling build-workflow');
-		expect(skill?.description).toContain('Default path for all single-workflow work');
-		expect(skill?.description).toContain('workflow-sdk validate');
-		expect(skill?.description).toContain('load data-table-manager first');
-		expect(skill?.description).toContain('Do not load planning or create-tasks first');
-
-		const loaded = await source.loadSkill('workflow-builder');
-		expect(loaded?.instructions).toContain('## Routing');
-		expect(loaded?.instructions).toContain('build-workflow');
-		expect(loaded?.instructions).toContain('filePath');
-		expect(loaded?.instructions).toContain('workspace_write_file');
-		expect(loaded?.instructions).toContain(
-			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
-		);
-		expect(loaded?.instructions).toContain('workspace source file');
-		expect(loaded?.instructions).toContain('nodes(action="suggested")');
-		expect(loaded?.instructions).toContain('nodes(action="search")');
-		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
-		expect(loaded?.instructions).toContain('Verification');
-		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
-		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
-		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
-		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
-		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
-		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
-		expect(loaded?.instructions).toContain('references/error-workflows.md');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
-		expect(loaded?.instructions).toContain(
-			'knowledge-base/reference/workflow-builder-guardrails.md',
-		);
-		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
-		expect(loaded?.instructions).toContain('knowledge base');
-		expect(loaded?.instructions).toContain('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('never load `templates/index.json`');
-		expect(loaded?.instructions).toContain('node-types/index.txt');
-		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
-		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
-		expect(loaded?.instructions).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
-		expect(loaded?.instructions).toContain('together with the `load_skill` call');
-		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
-		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
-		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
-		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
-		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
-		expect(loaded?.instructions).toContain(
-			'never ask for\nsetup values before the first successful build',
-		);
-		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
-		expect(loaded?.instructions).toContain('.to(isImportant)');
-		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain(
-			'Do NOT wire branches as standalone statements after `export default`',
-		);
-		expect(loaded?.instructions).toContain('never reaches the builder');
 	});
 
 	it('loads the bundled planning skill', async () => {

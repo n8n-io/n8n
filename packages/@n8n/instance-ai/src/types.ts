@@ -73,6 +73,7 @@ import type {
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
+import type { DecisionService as WorkflowCompilerDecisionService } from './workflow-compiler/decision/decision-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -129,11 +130,23 @@ export interface WorkflowDetail extends WorkflowSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
 	settings?: Record<string, unknown>;
+	nodeGroups?: WorkflowJSON['nodeGroups'];
 	/** SHA-256 checksum of workflow content fields — used for optimistic-concurrency saves. */
 	checksum?: string;
 }
 
-export interface WorkflowNode {
+export interface WorkflowNode
+	extends Pick<
+		WorkflowJSON['nodes'][number],
+		| 'disabled'
+		| 'executeOnce'
+		| 'retryOnFail'
+		| 'maxTries'
+		| 'waitBetweenTries'
+		| 'alwaysOutputData'
+		| 'onError'
+	> {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
@@ -380,6 +393,8 @@ export interface NodeDescription extends NodeSummary {
 	}>;
 	inputs: string[];
 	outputs: string[];
+	outputNames?: string[];
+	builderHint?: string;
 	webhooks?: unknown[];
 	polling?: boolean;
 	triggerPanel?: unknown;
@@ -402,6 +417,7 @@ export interface WorkflowVersionSummary {
 export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowJSON['nodeGroups'];
 }
 
 export type WorkflowListStatus = 'active' | 'archived' | 'all';
@@ -512,7 +528,7 @@ export interface InstanceAiWorkflowService {
 	 *  versionId you'll pin to it land in one round-trip. */
 	getWorkflowSnapshot(
 		workflowId: string,
-	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number; checksum?: string }>;
 	/**
 	 * Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.).
 	 *
@@ -1294,6 +1310,8 @@ export interface SessionWorkflowRef {
 
 /** Instance-AI-scoped builder session. */
 export interface BuilderDelegateSession {
+	/** Use the host's thinking policy for the embedded build and its resumed turns. */
+	thinking?: Pick<CreateInstanceAgentOptions, 'thinkingEnabled' | 'thinkingEffort'>;
 	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
 	threadId: string;
 	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
@@ -1416,6 +1434,46 @@ export interface InstanceAiBuilderDelegate {
 		skills: Record<string, AgentSkill>;
 		configHash: string | null;
 	} | null>;
+	/** Persist a compiled agent artifact: config fenced on `baseConfigHash`, then skills and tasks. */
+	writeAgentArtifact?(
+		agentId: string,
+		artifact: {
+			config: AgentJsonConfig;
+			skills?: Record<string, AgentSkill>;
+			tasks?: Array<{
+				name: string;
+				objective: string;
+				cronExpression: string;
+				timezone: string;
+				enabled: boolean;
+			}>;
+		},
+		options: { baseConfigHash: string | null },
+	): Promise<
+		| { ok: true; configHash: string; skillIds: string[]; taskIds: string[] }
+		| { ok: false; errors: string[] }
+	>;
+	/** Workflows in the project an agent can call as tools (Execute Workflow Trigger). */
+	listAttachableWorkflows?(
+		searchTerm?: string,
+	): Promise<Array<{ id: string; name: string; published: boolean }>>;
+	/** Host default model and credential for a new agent, when one can be resolved. */
+	resolveDefaultModel?(): Promise<{ model: string; credential: string } | null>;
+	/** Run one draft-agent turn in Preview and report which tools it called. */
+	runAgentPreview?(
+		agentId: string,
+		message: string,
+		options?: { sessionId?: string; abortSignal?: AbortSignal },
+	): Promise<
+		| {
+				status: 'completed' | 'suspended';
+				response: string;
+				toolCalls: string[];
+				sessionId: string;
+				executionId?: string;
+		  }
+		| { status: 'misconfigured'; missing: string[] }
+	>;
 }
 
 // ── Computer Use state ──────────────────────────────────────────────────────
@@ -1630,6 +1688,8 @@ export interface InstanceAiContext {
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
 	threadMemory?: PatchableThreadMemory;
+	/** Bounded-decision backend for the compilers; set from `N8N_INSTANCE_AI_DECISION_URL`. */
+	decisionService?: WorkflowCompilerDecisionService;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
@@ -2084,6 +2144,7 @@ export interface WorkflowTaskService {
 // ── Orchestration context (plan tools) ──────────────────────────────────────
 
 export interface OrchestrationContext {
+	thinking?: BuilderDelegateSession['thinking'];
 	threadId: string;
 	runId: string;
 	messageGroupId?: string;
@@ -2212,6 +2273,8 @@ export interface CreateInstanceAgentOptions {
 	disableDeferredTools?: boolean;
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
+	/** Override Anthropic or OpenAI reasoning effort when configured by the host. */
+	thinkingEffort?: 'low' | 'medium' | 'high';
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
 

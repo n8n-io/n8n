@@ -38,10 +38,6 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
-	getSessionAgentByRef,
-	normalizeAgentRef,
-	readPendingAgentTarget,
-	rereadAgentBuilderTarget,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
@@ -76,7 +72,10 @@ import {
 	hydrateUserDecisions,
 	listUserDecisions,
 } from './parent-handoff-state';
+import { resolveTargetForCall } from './agent-target-resolution';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
+import { selectDecisionService } from '../workflows/compiler-tool-support';
+import { buildPlanSchema, decideBuildPlan } from '../../workflow-builder/plan-build';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
 const BUILDER_SUB_AGENT_KIND = 'agent-builder';
@@ -168,6 +167,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		hostThreadId: context.threadId,
 		runId: context.runId,
 		modelConfig: context.modelId,
+		...(context.thinking ? { thinking: context.thinking } : {}),
 		...(telemetry ? { telemetry } : {}),
 		...(context.tracing?.onMemoryTaskEvent
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
@@ -182,13 +182,19 @@ function builderAgentIdFor(agentId: string): string {
 }
 
 const buildAgentInputSchema = z.object({
+	plan: buildPlanSchema
+		.optional()
+		.describe(
+			'The complete user request and proposed behavior, required before a new build or edit. This is a complete handoff: do not repeat it in message. JEV reviews it before Agent Builder fills parameters. Use an empty steps list only when no node operations are needed.',
+		),
 	message: z
 		.string()
 		.min(1)
+		.optional()
 		.describe(
-			'A faithful handoff to the agent builder, which cannot see this chat. Include the ' +
-				'user’s explicit requirements, decisions, and relevant prior answers, but never infer ' +
-				'or prescribe implementation details the user did not request.',
+			'Additional context that is absent from plan, such as inspected workflow contracts or prior results. ' +
+				'Omit when plan already covers the request. Do not repeat requirements, the plan, or JEV selections. ' +
+				'Without plan, provide the complete follow-up request here. Distinguish inspected facts from assumptions.',
 		),
 	agentRef: z
 		.string()
@@ -789,261 +795,22 @@ async function handleResume(
 	});
 }
 
-type TargetResolution =
-	| {
-			ok: true;
-			target: AgentBuilderTarget;
-			bindAfterTurn: boolean;
-			mode: 'create' | 'edit' | 'continued';
-	  }
-	| { ok: false; error: string };
-
-const NO_TARGET_INPUT_ERROR =
-	'Pass `name` (and optionally `agentRef`) to create a new agent, `agentId` to adopt an existing one, or omit both to continue the current agent.';
-const UNKNOWN_REF_ERROR =
-	'Unknown `agentRef`. Pass `name` to create a new agent under that key, or `agentId` to adopt an existing agent.';
-const AGENT_ID_NEEDS_PROJECT_ERROR =
-	'Cannot bind to agentId without an active project context. Start this conversation from within a project.';
-
-/** Best-effort display-name lookup so the first agent-spawned event can label the
- *  artifact; a lookup failure must not fail the turn. */
-async function resolveAgentNameSafely(
-	delegate: InstanceAiBuilderDelegate,
-	agentId: string,
-): Promise<string | undefined> {
-	try {
-		return await delegate.resolveAgentName(agentId);
-	} catch {
-		return undefined;
-	}
-}
-
-/**
- * The id the frontend minted for an unsaved new-agent artifact on this thread,
- * so the build persists the agent the user already has open rather than a
- * second one beside it. Ignored when it belongs to a different project.
- */
-async function pendingAgentIdFor(context: InstanceAiContext): Promise<string | undefined> {
-	const pending = await readPendingAgentTarget(context);
-	return pending && pending.projectId === context.projectId ? pending.agentId : undefined;
-}
-
-function agentRefConflictError(ref: string, boundAgentId: string, passedAgentId: string): string {
-	return (
-		`\`agentRef\` "${ref}" is already bound to agent ${boundAgentId} in this conversation, ` +
-		`but \`agentId\` ${passedAgentId} was passed. Continue the bound agent (omit \`agentId\`, ` +
-		'or pass its id), or pick a different `agentRef` for a new agent.'
-	);
-}
-
-/**
- * Resolve which agent this call should build/edit. Identity is keyed by
- * `slug(agentRef ?? name)` in the session registry — a repeated key continues,
- * an unknown key adopts (with `agentId`) or, when no target is bound yet,
- * creates (with `name`). A bound target stays active when neither key nor id
- * is given, and also when an unknown key arrives without `createNew`: naming
- * an agent is how the model addresses a new one, so treating that as a create
- * would strand the agent the user already has open behind a duplicate.
- * agentId-path binds are always deferred (`bindAfterTurn: true`) — persisting
- * before the builder run settles would let a hallucinated/forbidden/missing
- * agentId permanently poison the thread (no unbind path exists). A create
- * binds immediately since `delegate.createAgent` already proves the agent exists.
- */
-async function resolveTargetForCall(
-	domainContext: InstanceAiContext,
-	delegate: InstanceAiBuilderDelegate,
-	input: z.infer<typeof buildAgentInputSchema>,
-	boundTarget: AgentBuilderTarget | undefined,
-): Promise<TargetResolution> {
-	const keySource = input.agentRef ?? input.name;
-	const key = keySource ? normalizeAgentRef(keySource) : undefined;
-
-	if (key) {
-		const sessionAgent = await getSessionAgentByRef(domainContext, key);
-		if (sessionAgent) {
-			if (input.agentId && input.agentId !== sessionAgent.agentId) {
-				return {
-					ok: false,
-					error: agentRefConflictError(key, sessionAgent.agentId, input.agentId),
-				};
-			}
-			const target: AgentBuilderTarget = {
-				...sessionAgent,
-				ref: key,
-				...(input.name ? { name: input.name } : {}),
-			};
-			// Same agent as the active binding — no re-persist needed.
-			if (boundTarget?.agentId === target.agentId) {
-				return {
-					ok: true,
-					target: { ...boundTarget, ...target },
-					bindAfterTurn: false,
-					mode: 'edit',
-				};
-			}
-			// Switch-back: deferred so a deleted-since-registry agent can't clobber
-			// the current binding on a failed turn.
-			return { ok: true, target, bindAfterTurn: true, mode: 'edit' };
-		}
-
-		// Active target already addresses this key (e.g. just created this turn,
-		// or a handoff whose registry row isn't available) — continue without
-		// creating a duplicate.
-		const boundKey = boundTarget?.ref
-			? normalizeAgentRef(boundTarget.ref)
-			: boundTarget?.name
-				? normalizeAgentRef(boundTarget.name)
-				: undefined;
-		if (boundTarget && boundKey === key) {
-			if (input.agentId && input.agentId !== boundTarget.agentId) {
-				return {
-					ok: false,
-					error: agentRefConflictError(key, boundTarget.agentId, input.agentId),
-				};
-			}
-			return {
-				ok: true,
-				target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
-				bindAfterTurn: false,
-				mode: 'edit',
-			};
-		}
-
-		if (input.agentId) {
-			if (input.agentId === boundTarget?.agentId) {
-				return {
-					ok: true,
-					target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
-					bindAfterTurn: false,
-					mode: 'edit',
-				};
-			}
-			if (!domainContext.projectId) {
-				return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
-			}
-			const name = input.name ?? (await resolveAgentNameSafely(delegate, input.agentId));
-			return {
-				ok: true,
-				target: {
-					agentId: input.agentId,
-					projectId: domainContext.projectId,
-					ref: key,
-					...(name ? { name } : {}),
-				},
-				bindAfterTurn: true,
-				mode: 'edit',
-			};
-		}
-
-		if (input.name) {
-			// Naming an agent is how the model addresses a new one, so on the first
-			// build request of a thread that already has a target — the artifact the
-			// user opened — an unrecognised key would strand that agent behind a
-			// duplicate. Continue the bound agent unless a second one was asked for
-			// explicitly. `name` is not applied here: the builder names the agent as
-			// part of the build, and overwriting would clobber a name the user chose.
-			if (boundTarget && !input.createNew) {
-				// Persisted after the turn so the key we hand back resolves on later
-				// calls — the tool reports this `agentRef`, and without registering it
-				// the model could not address the agent by it again.
-				return {
-					ok: true,
-					target: { ...boundTarget, ref: key },
-					bindAfterTurn: true,
-					mode: 'continued',
-				};
-			}
-			// Adoption is authorized when the id came from this thread's
-			// own pending marker: the editor may have won the insert on it and
-			// already configured the row. Without a marker the backend mints the id,
-			// which cannot collide — so `adoptOnCollision` would be meaningless.
-			const pendingId = await pendingAgentIdFor(domainContext);
-			// `createNew` asks for a second agent explicitly, so it keeps creating.
-			if (!pendingId && !input.createNew) {
-				// No marker can also mean the editor persisted the artifact and bound it
-				// since this turn read its target — which deleted the marker. Creating
-				// now would mint a second agent beside that one and then overwrite its
-				// binding, so continue it instead (same policy as a target bound before
-				// the turn started).
-				const rebound = await rereadAgentBuilderTarget(domainContext);
-				if (rebound) {
-					return {
-						ok: true,
-						target: { ...rebound, ref: key },
-						bindAfterTurn: true,
-						mode: 'continued',
-					};
-				}
-			}
-			const created = await delegate.createAgent(
-				input.name,
-				pendingId ? { id: pendingId, adoptOnCollision: true } : undefined,
-			);
-			const target: AgentBuilderTarget = {
-				agentId: created.agentId,
-				projectId: created.projectId,
-				// An adopted row keeps the name it was configured with; labelling the
-				// binding with the requested one would show a name nothing persisted.
-				name: created.name ?? input.name,
-				ref: key,
-			};
-			domainContext.agentBuilderTarget = target;
-			await saveAgentBuilderTarget(domainContext, target);
-			// Adopting means the editor won the insert on the pending id, so this turn
-			// is editing an existing agent — which the pre-turn snapshot depends on.
-			return {
-				ok: true,
-				target,
-				bindAfterTurn: false,
-				mode: created.adopted ? 'edit' : 'create',
-			};
-		}
-
-		return { ok: false, error: UNKNOWN_REF_ERROR };
-	}
-
-	// No addressing key (`name` always produces one) — agentId alone adopts,
-	// otherwise continue the bound target.
-	if (input.agentId) {
-		if (input.agentId === boundTarget?.agentId) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
-		}
-		if (!domainContext.projectId) {
-			return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
-		}
-		const name = await resolveAgentNameSafely(delegate, input.agentId);
-		return {
-			ok: true,
-			target: {
-				agentId: input.agentId,
-				projectId: domainContext.projectId,
-				...(name ? { name, ref: normalizeAgentRef(name) } : {}),
-			},
-			bindAfterTurn: true,
-			mode: 'edit',
-		};
-	}
-
-	if (boundTarget) {
-		return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
-	}
-	return { ok: false, error: NO_TARGET_INPUT_ERROR };
-}
-
-export function createBuildAgentTool(context: OrchestrationContext) {
+export function createBuildAgentTool(
+	context: OrchestrationContext,
+	options: { requirePlan?: boolean } = {},
+) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
 			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
 				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
 				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
 				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
-				'testing, and publishing. In `message`, forward only the user’s explicit requirements ' +
-				'and relevant prior decisions; never infer, invent, expand, recommend, or prescribe ' +
-				'implementation details. Do not translate a named outcome or service into an ' +
-				'implementation choice — for example, do not turn “a Slack agent” into a Slack node ' +
+				'testing, and publishing. Supply the detailed behavior in plan. This tool runs JEV ' +
+				'before the embedded builder configures tools and parameters. ' +
+				'Distinguish proposed implementation from user requirements. The builder must verify each selected ' +
 				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
 				'(via the intent gate / ' +
-				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
+				'`intent-recognition`), stay on the `build-workflow` path and do not call this tool ' +
 				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +
@@ -1074,6 +841,29 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				return answers ? { ...output, answers } : output;
 			}
 
+			if (options.requirePlan && !input.plan) {
+				return {
+					ok: false,
+					error:
+						'Describe the complete behavior in the plan field, including the original request and each node operation. Then call build-agent again. No Agent was changed.',
+				};
+			}
+			const userMessage = input.message ?? input.plan?.originalRequest;
+			if (!userMessage) {
+				return {
+					ok: false,
+					error: 'Provide a behavior plan or a follow-up message. No Agent was changed.',
+				};
+			}
+			const reviewedPlan = input.plan
+				? await decideBuildPlan(
+						input.plan,
+						domainContext.nodeService,
+						selectDecisionService(domainContext),
+						context.abortSignal,
+					)
+				: undefined;
+
 			const existingTarget = await resolveAgentBuilderTarget(domainContext);
 			const resolution = await resolveTargetForCall(domainContext, delegate, input, existingTarget);
 			if (!resolution.ok) {
@@ -1100,7 +890,19 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
 				...decision,
 			}));
-			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
+			const message =
+				reviewedPlan && input.plan
+					? [
+							`<user-request>\n${input.plan.originalRequest}\n</user-request>`,
+							input.message && input.message !== input.plan.originalRequest
+								? `<additional-context>\n${input.message}\n</additional-context>`
+								: undefined,
+							`<proposed-build-plan>\n${input.plan.plan}\n${JSON.stringify(reviewedPlan)}\nValidate these proposals. Resolve every uncertain quality check before saving. Keep user requirements and approvals separate from these proposals.\n</proposed-build-plan>`,
+						]
+							.filter(Boolean)
+							.join('\n\n')
+					: userMessage;
+			const outboundMessage = buildOutboundMessage(message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);

@@ -1,4 +1,5 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
@@ -57,6 +58,26 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
+
+	/** Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: model fallback, then abstain. */
+	@Env('N8N_INSTANCE_AI_DECISION_URL')
+	decisionUrl: string = process.env.JEV_API_KEY ? 'https://api.typesafe.ai' : '';
+
+	/** Bearer token for the decision service. Optional. */
+	@Env('N8N_INSTANCE_AI_DECISION_API_KEY')
+	decisionApiKey: string = process.env.JEV_API_KEY ?? '';
+
+	/** Model name the decision service routes on. */
+	@Env('N8N_INSTANCE_AI_DECISION_MODEL')
+	decisionModel: string = 'jev-latest';
+
+	/** Per-request latency budget for the decision service, in milliseconds. */
+	@Env('N8N_INSTANCE_AI_DECISION_TIMEOUT_MS')
+	decisionTimeoutMs: number = 1500;
+
+	/** Enable inline workflow builds without a sandbox and warm the decision service connection. */
+	@Env('N8N_INSTANCE_AI_FAST_PATH_ENABLED')
+	fastPathEnabled: boolean = false;
 
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
@@ -189,6 +210,10 @@ export class InstanceAiConfig {
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;
+
+	/** Optional Anthropic or OpenAI reasoning effort. Empty preserves the model default. */
+	@Env('N8N_INSTANCE_AI_THINKING_EFFORT', z.enum(['', 'low', 'medium', 'high']))
+	thinkingEffort: '' | 'low' | 'medium' | 'high' = '';
 
 	/**
 	 * Let the assistant discover and connect MCP registry servers.

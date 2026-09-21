@@ -16,6 +16,11 @@ import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
+import { selectDecisionService } from './compiler-tool-support';
+import {
+	buildQualityReviewSchema,
+	reviewBuiltWorkflow,
+} from '../../workflow-builder/build-quality-review';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
@@ -79,10 +84,14 @@ import {
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
-import { compileWorkflowSource } from './workflow-source-compiler';
+import { applyWorkflowJsonEdits, workflowJsonEditsInputSchema } from './workflow-json-edits';
+import { compileWorkflowGraph, workflowGraphSchema } from './workflow-graph';
+import { compileWorkflowSource, parseWorkflowJsonSource } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
+	getInvalidNodeContexts,
+	invalidNodeContextSchema,
 	groupingDecisionBlocker,
 	NODE_GROUP_DROPPED_CODE,
 	nodeGroupDroppedWarnings,
@@ -97,6 +106,10 @@ import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
+import {
+	getBuildPlanSelections,
+	hasBuildPlanReview,
+} from '../../workflow-builder/build-plan-review';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
 	groupingOutcomeSchema,
@@ -114,7 +127,10 @@ import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
  *  consumer falls back to source replay. */
 const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 
-const confirmationSuspendSchema = z.object({
+/** Tool id of the persistence step. It is composed by `build-workflow`, never registered on its own. */
+export const PERSIST_WORKFLOW_TOOL_ID = 'persist-workflow';
+
+export const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
@@ -170,13 +186,36 @@ export const buildWorkflowInputSchema = z
 					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
 			})
 			.describe(
-				'Workspace-relative path to the TypeScript SDK workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts.',
+				'Workspace-relative source path. Use src/workflows/name.workflow.json for inline WorkflowJSON or .workflow.ts for TypeScript SDK source.',
 			),
 		sourceCode: z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				'Full source to write to filePath before building. Prefer graph for new workflows so code assembles the JSON. Use sourceCode for an existing full artifact or SDK source. For WorkflowJSON, emit compact JSON without indentation. Use draftEdits to repair the last failed JSON build and jsonEdits to edit the saved workflow. Omit to build existing workspace file content after a file edit or workflow-sdk validate.',
+			),
+		graph: workflowGraphSchema
+			.optional()
+			.describe(
+				'Preferred for new workflows. Supply installed node types, parameters, and explicit edges by node name. Code generates IDs, positions, groups, and n8n connections. Include every branch and loopback. Use a .workflow.json filePath and name. Omit sourceCode, jsonEdits, and draftEdits. The existing approval, validation, and credential setup flow still applies.',
+			),
+		jsonEdits: workflowJsonEditsInputSchema
+			.optional()
+			.describe(
+				'Targeted edits to a saved workflow. Call plan-build in this turn first; use steps: [] for parameter-only edits that keep existing node types and operations. Use a .workflow.json filePath and omit sourceCode. The existing approval, validation, and setup flow still applies.',
+			),
+		draftEdits: z
+			.object({
+				sourceHash: z.string().min(1).describe('sourceHash from the failed inline JSON build.'),
+				changes: workflowJsonEditsInputSchema.shape.changes.describe(
+					workflowJsonEditsInputSchema.shape.changes.description +
+						' For draftEdits only, an existing node can use its exact unique name instead of id. ' +
+						'Prefer name when graph assembly generated the id. Never guess the generated id.',
+				),
+			})
+			.optional()
+			.describe(
+				'Repair the cached source from a failed inline JSON build, including a failed update. Reuse its filePath and sourceHash. Omit sourceCode, jsonEdits, and workflowId. Send only changed nodes, connections, or groups. The bound workflow version, approval, and validation checks still apply.',
 			),
 		workflowId: z
 			.string()
@@ -424,6 +463,7 @@ async function directPostBuildFlowHandoff(
 }
 
 interface ValidationFailureArgs {
+	workflow: WorkflowJSON;
 	abortSignal?: AbortSignal;
 	context: InstanceAiContext;
 	blocking: ValidationWarning[];
@@ -511,7 +551,12 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 			: validationErrors,
 		{ trackingErrors: validationErrors },
 	);
-	const remediation = createCodeFixableRemediation({ reason, guidance });
+	const remediation = createCodeFixableRemediation({
+		reason,
+		guidance: initialBinding.inlineDraftSource
+			? 'Repair the validation errors with draftEdits using this filePath and sourceHash. Check invalidNodes for the compiled type. A node name does not select its type. If the type is wrong, set type, typeVersion, parameters, and replaceParameters: true on that node edit. Otherwise change only the invalid parameters. Send only changed nodes, connections, or groups. Keep the other behavior unchanged. Do not resend the full source.'
+			: guidance,
+	});
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
 	await reportFailedWorkflowBuildOutcome(context, {
 		targetWorkflowId,
@@ -551,6 +596,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		...sourceResponseBase(binding),
 		workflowId: targetWorkflowId,
 		workItemId: resolvedWorkItemId,
+		invalidNodes: getInvalidNodeContexts(args.workflow, blocking),
 		errors: formattedErrors,
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
@@ -560,8 +606,11 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 
 const buildWorkflowOutputSchema = z.object({
 	success: z.boolean(),
+	invalidNodes: z.array(invalidNodeContextSchema).optional(),
+	qualityReview: buildQualityReviewSchema.optional(),
 	filePath: z.string(),
 	sourceHash: z.string().optional(),
+	draftEditsAvailable: z.boolean().optional(),
 	workflowId: z.string().optional(),
 	workflowName: z.string().optional(),
 	workItemId: z.string().optional(),
@@ -599,23 +648,60 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 		: buildWorkflowOutputSchema;
 }
 
-export function createBuildWorkflowTool(context: InstanceAiContext) {
+export function createBuildWorkflowTool(
+	context: InstanceAiContext,
+	options: { useModelForSimulation?: boolean; exposeToModel?: boolean; requirePlan?: boolean } = {},
+) {
 	const failureTracker = new BuildFailureTracker();
 
-	return new Tool('build-workflow')
+	return new Tool(options.exposeToModel ? 'build-workflow' : PERSIST_WORKFLOW_TOOL_ID)
 		.description(
-			'Build and save a workflow from workflow source. ' +
-				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
-				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
-				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
-				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
+			'Persistence for build-workflow: validate and save a complete source file or inline sourceCode. ' +
+				'First describe the complete behavior in text, then call plan-build for bounded node and operation decisions. ' +
+				'Load workflow-builder for graph, parameter, and setup rules. Fill parameters from the returned node definitions. ' +
+				'Prefer graph for deterministic JSON assembly from nodes, parameters, and named edges. Use .workflow.json for graph or inline WorkflowJSON, or .workflow.ts for SDK source. ' +
+				'Preserve every requirement, branch, wait, data mapping, and failure path. ' +
+				'This tool keeps the existing approval and credential setup flow.',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
 		.output(pickBuildWorkflowOutputSchema(context))
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			if (options.requirePlan && !ctx.resumeData && !(await hasBuildPlanReview(context))) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [
+						'Describe the requested behavior and call plan-build before this build or edit. Resolve its quality checks and operation choices before saving. No workflow was changed.',
+					],
+					remediation: {
+						category: 'code_fixable' as const,
+						shouldEdit: false,
+						reason: 'workflow_plan_review_required',
+						guidance:
+							'Call plan-build in this turn before retrying build-workflow. For a parameter-only edit, describe the change and preserved behavior with steps: []. Include operation steps when node choices change. Keep the current edit payload and saved version.',
+					},
+				};
+			}
+			if (
+				[input.sourceCode, input.graph, input.jsonEdits, input.draftEdits].filter(
+					(value) => value !== undefined,
+				).length > 1
+			) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: ['Use only one of graph, sourceCode, jsonEdits, or draftEdits.'],
+				};
+			}
+			if (input.draftEdits && input.workflowId !== undefined) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: ['Omit workflowId for draftEdits. Reuse the filePath from the failed build.'],
+				};
+			}
 			const { groupingDecision, groupingReason } = input;
 			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
 				const guidance =
@@ -859,10 +945,114 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
-			// Persist inline source first so the workspace file stays canonical for later repairs.
-			if (input.sourceCode !== undefined && context.workspace) {
+			let inlineSource = input.sourceCode;
+			if (input.graph) {
 				try {
-					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
+					if (!filePath.endsWith('.json') || !input.name?.trim()) {
+						throw new Error('graph requires a .workflow.json filePath and a workflow name.');
+					}
+					const selections = input.graph.planId
+						? await getBuildPlanSelections(
+								context,
+								input.graph.planId,
+								ctx.resumeData?.approved === true,
+							)
+						: [];
+					inlineSource = JSON.stringify(
+						compileWorkflowGraph(input.name, input.graph, selections, context.nodeTypesProvider),
+					);
+				} catch (error) {
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation: createCodeFixableRemediation({
+							reason: 'workflow_graph_invalid',
+							guidance:
+								'Correct graph and retry. Use unique node names and reference those names in every edge and group. No workflow was saved.',
+						}),
+					};
+				}
+			}
+			if (input.draftEdits) {
+				try {
+					if (!filePath.endsWith('.json')) {
+						throw new Error('draftEdits requires cached inline .workflow.json source.');
+					}
+					if (!binding.inlineDraftSource || binding.sourceHash !== input.draftEdits.sourceHash) {
+						throw new Error('The draft source is unavailable or its sourceHash changed.');
+					}
+					if (targetWorkflowId) {
+						if (!binding.workflowChecksum) {
+							throw new Error('The saved workflow base is unavailable. Read it before retrying.');
+						}
+						const snapshot = await context.workflowService.getWorkflowSnapshot(targetWorkflowId);
+						if (snapshot.checksum !== binding.workflowChecksum) {
+							throw new WorkflowSaveConflictError(targetWorkflowId);
+						}
+					}
+					const parsed = parseWorkflowJsonSource(binding.inlineDraftSource);
+					if (!parsed.success) throw new Error(parsed.errors.join('\n'));
+					inlineSource = JSON.stringify(
+						applyWorkflowJsonEdits(parsed.workflow, input.draftEdits.changes, {
+							allowNameLookup: true,
+						}),
+					);
+				} catch (error) {
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation:
+							error instanceof WorkflowSaveConflictError
+								? createSaveFailureRemediation(error, true)
+								: createCodeFixableRemediation({
+										reason: 'workflow_draft_edits_invalid',
+										guidance:
+											'Use the latest failed build sourceHash and filePath for draftEdits. Use jsonEdits with the current saved version when no cached build source is available. Resend sourceCode only when the source is unavailable or cannot be parsed.',
+									}),
+					};
+				}
+			}
+			if (input.jsonEdits) {
+				try {
+					if (!targetWorkflowId || !filePath.endsWith('.json')) {
+						throw new Error('jsonEdits requires a saved workflow and a .workflow.json filePath.');
+					}
+					const snapshot = await context.workflowService.getWorkflowSnapshot(targetWorkflowId);
+					if (snapshot.versionId !== input.jsonEdits.versionId || !snapshot.checksum) {
+						throw new WorkflowSaveConflictError(targetWorkflowId);
+					}
+					inlineSource = JSON.stringify(
+						applyWorkflowJsonEdits(snapshot.json, input.jsonEdits.changes),
+					);
+					binding = await saveWorkflowSourceFileBinding(context, {
+						...binding,
+						workflowVersionId: snapshot.versionId,
+						workflowChecksum: snapshot.checksum,
+					});
+				} catch (error) {
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowId: targetWorkflowId,
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation:
+							error instanceof WorkflowSaveConflictError
+								? createSaveFailureRemediation(error, true)
+								: createCodeFixableRemediation({
+										reason: 'workflow_json_edits_invalid',
+										guidance:
+											'Correct jsonEdits and retry. Read the current workflow before using its node IDs and version.',
+									}),
+					};
+				}
+			}
+
+			// Persist inline source first so the workspace file stays canonical for later repairs.
+			if (inlineSource !== undefined && context.workspace) {
+				try {
+					await writeWorkspaceFile(context.workspace, filePath, inlineSource, {
 						logger: context.logger,
 						resourceLabel: 'Workflow source file',
 						abortSignal: ctx.abortSignal,
@@ -895,11 +1085,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			let sourceCode: string;
 			let sourceHash: string;
 			try {
-				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
-					context,
-					filePath,
-					ctx.abortSignal,
-				));
+				if (inlineSource !== undefined && !context.workspace) {
+					// Inline JSON does not need a sandbox.
+					sourceCode = inlineSource;
+					sourceHash = hashWorkflowSource(sourceCode);
+				} else {
+					({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
+						context,
+						filePath,
+						ctx.abortSignal,
+					));
+				}
 			} catch (error) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
@@ -924,8 +1120,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			if (sourceHash !== binding.sourceHash) {
-				binding = await saveWorkflowSourceFileBinding(context, { ...binding, sourceHash });
+			const inlineDraftSource =
+				inlineSource !== undefined && filePath.endsWith('.json') ? sourceCode : undefined;
+			if (sourceHash !== binding.sourceHash || inlineDraftSource !== binding.inlineDraftSource) {
+				binding = await saveWorkflowSourceFileBinding(context, {
+					...binding,
+					sourceHash,
+					inlineDraftSource,
+				});
 			}
 
 			const { name } = input;
@@ -1092,6 +1294,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					workflow: compiled.workflow,
 					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedWarnings.blocking,
@@ -1160,7 +1363,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const credentialMap = await buildCredentialMap(context.credentialService);
+			const [credentialMap, qualityReview] = await Promise.all([
+				buildCredentialMap(context.credentialService),
+				options.requirePlan
+					? reviewBuiltWorkflow(
+							json,
+							selectDecisionService(context),
+							ctx.abortSignal,
+							context.allowSendingParameterValues !== false,
+						)
+					: undefined,
+			]);
 			const mockResult = await resolveCredentials(
 				json,
 				targetWorkflowId,
@@ -1208,6 +1421,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedChatModelWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					workflow: json,
 					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedChatModelWarnings.blocking,
@@ -1319,6 +1533,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: informational;
 
 					return await handleValidationFailure({
+						workflow: json,
 						abortSignal: ctx.abortSignal,
 						context,
 						blocking: [blocker],
@@ -1446,6 +1661,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
 							fallbackModelConfig: context.modelId,
+							useModel: options.useModelForSimulation,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {
@@ -1463,6 +1679,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
+						inlineDraftSource: undefined,
 					});
 					// Trace-only compiled-JSON event for eval seed reconstruction — never part
 					// of the tool result, so it never enters the agent's context.
@@ -1570,6 +1787,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 					return {
 						success: true,
+						qualityReview,
 						...sourceResponseBase(binding),
 						...describeSavedPublishState(saved),
 						workflowId: saved.id,

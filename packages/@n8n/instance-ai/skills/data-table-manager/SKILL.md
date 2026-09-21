@@ -7,7 +7,7 @@ description: >-
   create, inspect, import, seed, query, update, clean up, rename columns in, or
   delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
   load before building or planning workflows that create or write to Data
-  Tables (then load workflow-builder before build-workflow).
+  Tables (then call build-workflow).
 recommended_tools:
   - data-tables
   - parse-file
@@ -19,8 +19,8 @@ platforms:
 
 ## Routing
 
-For workflow builds that create or write Data Tables, load this skill, then
-`workflow-builder`, before `build-workflow`.
+For workflow builds that create or write Data Tables, load this skill before
+calling `build-workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
 `data-tables` and, for attachments, `parse-file`. Do not spawn another agent or

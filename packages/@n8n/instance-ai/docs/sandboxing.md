@@ -2,7 +2,9 @@
 
 Instance AI uses a remote sandbox workspace to build workflows from
 `@n8n/workflow-sdk` source. The sandbox keeps file writes and command execution
-off the n8n host. Workflow building is unavailable when sandboxing is disabled.
+off the n8n host. SDK source requires this sandbox. With
+`N8N_INSTANCE_AI_FAST_PATH_ENABLED=true`, inline `.workflow.json` source can
+use the existing validation and persistence flow without a sandbox.
 
 Agent building is separate. `build-agent` delegates to
 `AgentsBuilderService` in the agents module and does not use the Instance AI

@@ -14,6 +14,12 @@ export interface ExpressionCode {
 
 export type ExpressionChunk = ExpressionCode | ExpressionText;
 
+/** Parse with the runtime grammar without evaluating the expression. */
+export async function validateExpressionSyntax(expression: string): Promise<void> {
+	const { getParsedExpression } = await import('@n8n/tournament');
+	getParsedExpression(expression);
+}
+
 const OPEN_BRACKET = /(?<escape>\\|)(?<brackets>\{\{)/;
 const CLOSE_BRACKET = /(?<escape>\\|)(?<brackets>\}\})/;
 

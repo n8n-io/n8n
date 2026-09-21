@@ -42,6 +42,7 @@ export interface VerificationNodePreview {
 }
 
 export interface VerifyBuiltWorkflowOutput {
+	workflowVersionId?: string;
 	resolvedWorkItemId?: string;
 	executionId?: string;
 	success: boolean;

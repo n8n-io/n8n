@@ -87,9 +87,11 @@ import type {
 	McpRegistryServerSummary,
 	ModelConfig,
 	FolderResolutionFailure,
+	WorkflowCompilerDecisionService,
 } from '@n8n/instance-ai';
 import {
 	BuilderTemplatesService,
+	SystemOneDecisionClient,
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
@@ -330,6 +332,8 @@ export class InstanceAiAdapterService {
 
 	private readonly allowSendingParameterValues: boolean;
 
+	private decisionService?: WorkflowCompilerDecisionService;
+
 	/**
 	 * Service-level cache for node type descriptions. Reads from the static JSON
 	 * file that FrontendService writes at startup, avoiding the expensive
@@ -483,6 +487,7 @@ export class InstanceAiAdapterService {
 			credentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
+		const decisionService = this.createDecisionService();
 		return {
 			userId: user.id,
 			projectId,
@@ -520,6 +525,7 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			...(decisionService ? { decisionService } : {}),
 			// Optional call for the same reason as addPostProcessor?.() above:
 			// adapter tests construct the service with placeholder deps.
 			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
@@ -1430,6 +1436,7 @@ export class InstanceAiAdapterService {
 					json: toWorkflowJSON(wf, { redactParameters }),
 					versionId: wf.versionId,
 					updatedAt: wf.updatedAt.getTime(),
+					checksum: await calculateWorkflowChecksum(wf),
 				};
 			},
 
@@ -1751,16 +1758,9 @@ export class InstanceAiAdapterService {
 					autosaved: version.autosaved ?? false,
 					isActive: version.versionId === activeVersionId,
 					isCurrentDraft: version.versionId === currentDraftVersionId,
-					nodes: (version.nodes ?? []).map(
-						(n): WorkflowNode => ({
-							name: n.name,
-							type: n.type,
-							typeVersion: n.typeVersion,
-							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
-							position: n.position,
-						}),
-					),
+					nodes: (version.nodes ?? []).map((node) => toWorkflowNode(node, redactParameters)),
 					connections: version.connections as Record<string, unknown>,
+					...(version.nodeGroups ? { nodeGroups: version.nodeGroups } : {}),
 				} satisfies WorkflowVersionDetail;
 			},
 
@@ -3206,6 +3206,33 @@ export class InstanceAiAdapterService {
 		ttlMs: 15 * 60 * 1000,
 	});
 
+	/** Prepare the configured connection before the first interactive turn. */
+	async warmDecisionService(): Promise<void> {
+		if (!this.globalConfig.instanceAi.fastPathEnabled) return;
+		const service = this.createDecisionService();
+		if (service instanceof SystemOneDecisionClient) await service.warmup();
+	}
+
+	/** Structured-read backend. An explicit URL or JEV_API_KEY enables it. */
+	private createDecisionService(): WorkflowCompilerDecisionService | undefined {
+		const config = this.globalConfig.instanceAi;
+		if (!config.decisionUrl) return undefined;
+		this.decisionService ??= new SystemOneDecisionClient({
+			baseUrl: config.decisionUrl,
+			...(config.decisionApiKey ? { apiKey: config.decisionApiKey } : {}),
+			model: config.decisionModel,
+			timeoutMs: config.decisionTimeoutMs,
+			fetchImpl: this.outboundHttp
+				.transport({
+					// The decision URL is admin-configured infrastructure and can be internal.
+					useDefaultSsrfPolicy: 'unsafe',
+					timeouts: { keepAliveTimeout: 60_000 },
+				})
+				.asCustomFetch(),
+		});
+		return this.decisionService;
+	}
+
 	private createWebResearchAdapter(
 		user: User,
 		searchProxyConfig?: ServiceProxyConfig,
@@ -3567,8 +3594,14 @@ export class InstanceAiAdapterService {
 							? { displayOptions: c.displayOptions as Record<string, unknown> }
 							: {}),
 					})),
-					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
-					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
+					inputs: Array.isArray(desc.inputs)
+						? desc.inputs.map((input) => (typeof input === 'string' ? input : input.type))
+						: [],
+					outputs: Array.isArray(desc.outputs)
+						? desc.outputs.map((output) => (typeof output === 'string' ? output : output.type))
+						: [],
+					...(desc.outputNames ? { outputNames: desc.outputNames } : {}),
+					...(desc.builderHint?.searchHint ? { builderHint: desc.builderHint.searchHint } : {}),
 					...(desc.webhooks ? { webhooks: desc.webhooks } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
@@ -5047,6 +5080,25 @@ function toWorkflowJSON(
 	};
 }
 
+function toWorkflowNode(node: WorkflowEntity['nodes'][number], redact: boolean): WorkflowNode {
+	return {
+		id: node.id,
+		name: node.name,
+		type: node.type,
+		typeVersion: node.typeVersion,
+		parameters: redact ? undefined : node.parameters,
+		position: node.position,
+		webhookId: node.webhookId,
+		disabled: node.disabled,
+		executeOnce: node.executeOnce,
+		retryOnFail: node.retryOnFail,
+		maxTries: node.maxTries,
+		waitBetweenTries: node.waitBetweenTries,
+		alwaysOutputData: node.alwaysOutputData,
+		onError: node.onError ?? (node.continueOnFail ? 'continueRegularOutput' : undefined),
+	};
+}
+
 function toWorkflowDetail(
 	workflow: WorkflowEntity,
 	options?: { redactParameters?: boolean },
@@ -5060,18 +5112,10 @@ function toWorkflowDetail(
 		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
-		nodes: (workflow.nodes ?? []).map(
-			(n): WorkflowNode => ({
-				name: n.name,
-				type: n.type,
-				typeVersion: n.typeVersion,
-				parameters: redact ? undefined : n.parameters,
-				position: n.position,
-				webhookId: n.webhookId,
-			}),
-		),
+		nodes: (workflow.nodes ?? []).map((node) => toWorkflowNode(node, redact)),
 		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 

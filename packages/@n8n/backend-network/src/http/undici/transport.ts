@@ -60,6 +60,8 @@ export interface TransportTimeoutOptions {
 	headersTimeout?: number;
 	bodyTimeout?: number;
 	connectTimeout?: number;
+	/** Keep an idle connection available between user turns. */
+	keepAliveTimeout?: number;
 }
 
 /** Options for {@link createDispatcherTransport}. */
@@ -200,6 +202,7 @@ function toAgentTimeoutOptions(timeouts?: TransportTimeoutOptions): TransportTim
 		...(timeouts.headersTimeout !== undefined && { headersTimeout: timeouts.headersTimeout }),
 		...(timeouts.bodyTimeout !== undefined && { bodyTimeout: timeouts.bodyTimeout }),
 		...(timeouts.connectTimeout !== undefined && { connectTimeout: timeouts.connectTimeout }),
+		...(timeouts.keepAliveTimeout !== undefined && { keepAliveTimeout: timeouts.keepAliveTimeout }),
 	};
 }
 

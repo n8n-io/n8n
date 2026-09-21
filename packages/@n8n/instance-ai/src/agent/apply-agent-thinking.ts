@@ -16,7 +16,11 @@ function isGpt56Model(modelId: ModelConfig): boolean {
 	return id.includes('gpt-5.6');
 }
 
-export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
+export function applyAgentThinking(
+	agent: Agent,
+	modelId: ModelConfig,
+	effort?: 'low' | 'medium' | 'high',
+): void {
 	const provider = resolveModelProvider(modelId);
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
@@ -43,13 +47,13 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (provider === 'openai') {
 		agent.thinking('openai', {
-			reasoningEffort: isGpt56Model(modelId) ? 'medium' : 'high',
+			reasoningEffort: effort ?? (isGpt56Model(modelId) ? 'medium' : 'high'),
 		});
 		return;
 	}
 
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
-		agent.thinking(provider, { mode: 'adaptive', effort: 'medium' });
+		agent.thinking(provider, { mode: 'adaptive', effort: effort ?? 'medium' });
 		return;
 	}
 

@@ -543,16 +543,13 @@ export const validateFilterParameter = (
 		(issues, condition, index) => {
 			const key = `${nodeProperties.name}.${index}`;
 
-			try {
-				parseFilterConditionValues(condition, value.options, {
-					index,
-					unresolvedExpressions: true,
-					errorFormat: 'inline',
-				});
-			} catch (error) {
-				if (error instanceof FilterError) {
-					issues[key].push(error.message);
-				}
+			const result = parseFilterConditionValues(condition, value.options, {
+				index,
+				unresolvedExpressions: true,
+				errorFormat: 'inline',
+			});
+			if (!result.ok) {
+				issues[key] = [result.error.message];
 			}
 
 			return issues;

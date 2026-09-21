@@ -10,7 +10,7 @@ description: >-
   including compound requests, independent automations introduced mid-build,
   one-off questions or reports that need external systems you cannot query
   directly, and requests that need clarification before an anchor can be
-  chosen. An explicit Agent request routes to agent-builder before ask-user.
+  chosen. An explicit Agent request routes to build-agent before ask-user.
   Do not load for routine edits or extensions when the conversation already
   targets a workflow or Agent.
 ---
@@ -28,7 +28,7 @@ The deciding question is not a single "workflow or agent" label — it is two
 questions: who owns the top-level control flow, and does the other primitive
 show up inside that flow.
 
-If the user asked to build, route on the result: workflow-builder for
+If the user asked to build, route on the result: `build-workflow` for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
 agent-anchored (a tool-use loop), `ask-user` for needs-clarification, or answer
@@ -127,9 +127,11 @@ tools on the agent. For example, looking up and inserting Data Table rows are
 two direct node tools; an atomic lookup-transform-write procedure is one
 workflow tool.
 
-After choosing an agent-anchored design, load `agent-builder` before calling
-`build-agent`. It owns prerequisite creation and the handoff to the delegated
-builder.
+After choosing an agent-anchored design, call `build-agent` with the user's
+words (action "create" for a new agent, "edit" for the bound one). It compiles
+the agent, asks for what it cannot derive through `needs_clarification`, and
+reports workflows it needs through `needs_artifacts`; build those with
+`build-workflow` first and pass them in `workflowContext`.
 
 ## Decision Steps
 
@@ -142,10 +144,10 @@ builder.
    even when it could implement the same behavior. You may explain a simpler
    workflow alternative, but switch only after the user chooses it. Route
    missing setup and implementation choices to Agent Builder. The immediate
-   next routing action is to load `agent-builder`. Do not call `ask-user`
+   next routing action is to call `build-agent`. Do not call `ask-user`
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
-   details. Agent Builder owns those questions. An explicit
+   details. The Agent Builder owns those questions and uses the existing interactive cards. An explicit
    workflow request normally selects a workflow. If its required interaction is
    unambiguously Agent-shaped, such as ongoing open-ended chat, explain why an
    Agent fits and say that you are deviating from the named workflow. The
@@ -267,7 +269,7 @@ editor/canvas context shows an existing agent and the user asks to change,
 add, or remove its configuration or capabilities (instructions, model,
 tools, skills, tasks, channels, memory, sub-agents), classify
 **agent-anchored** and route to `build-agent` targeting that agent. Do not
-route to `workflow-builder`, and do not treat the request as a workflow
+route to `build-workflow`, and do not treat the request as a workflow
 change even when a workflow is also in context, unless the user explicitly
 names the workflow as the target. A capability the agent cannot have is
 still an agent-anchored request — handle it per Unsupported capabilities

@@ -1,0 +1,379 @@
+{
+	"nodes": [
+		{
+			"name": "When Called by HR Process",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.2,
+			"parameters": {
+				"inputSource": "workflowInputs",
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "session_token",
+							"type": "string"
+						},
+						{
+							"name": "candidate_id",
+							"type": "string"
+						},
+						{
+							"name": "interview_type",
+							"type": "string"
+						},
+						{
+							"name": "event_id",
+							"type": "string"
+						},
+						{
+							"name": "rating",
+							"type": "string"
+						},
+						{
+							"name": "notes",
+							"type": "string"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Validate Feedback Input",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const rows=$input.all(),p=rows[0]?.json??{};const fail=error=>[{json:{error}}];\nif(rows.length!==1)return fail('INVALID_FEEDBACK');\nif(typeof p.session_token!=='string'||!p.session_token.trim())return fail('INVALID_SESSION');\nif(!['recruiter','technical','final'].includes(p.interview_type)||!['strong_yes','yes','no','strong_no'].includes(p.rating))return fail('INVALID_FEEDBACK');\nif(typeof p.candidate_id!=='string'||!p.candidate_id||p.candidate_id.length>256||typeof p.event_id!=='string'||!p.event_id||p.event_id.length>1024)return fail('INVALID_FEEDBACK');\nif(typeof p.notes!=='string'||!p.notes.trim()||p.notes.length>10000)return fail('INVALID_FEEDBACK');\nreturn [{json:{session_token:p.session_token,candidateId:p.candidate_id,type:p.interview_type,eventId:p.event_id,rating:p.rating,notes:p.notes}}];"
+			}
+		},
+		{
+			"name": "Feedback Input Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Validate Reviewer Session",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "POST",
+				"url": "<__PLACEHOLDER_VALUE__Verified staff session validation URL__>",
+				"sendBody": true,
+				"contentType": "json",
+				"specifyBody": "keypair",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "token",
+							"value": "={{ $json.session_token }}"
+						}
+					]
+				},
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			}
+		},
+		{
+			"name": "Check Verified Reviewer",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const r=$input.first().json,b=r.body;if(r.statusCode!==200||b?.verified!==true||b?.actorType!=='staff'||typeof b.reviewerEmail!=='string'||!/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(b.reviewerEmail))return [{json:{error:'INVALID_SESSION'}}];return [{json:{reviewerEmail:b.reviewerEmail.trim().toLowerCase()}}];"
+			}
+		},
+		{
+			"name": "Reviewer Identity Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Read Assigned Interview",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "SELECT c.id,s.interview_type,s.event_id,s.reviewer_emails FROM candidates c JOIN hr_interview_sessions s ON s.candidate_id=c.id WHERE c.id=$1 AND s.interview_type=$2 AND s.event_id=$3 AND $4=ANY(s.reviewer_emails) AND c.stage IN ($2::text||'_scheduled',$2::text||'_completed') AND CASE $2::text WHEN 'recruiter' THEN c.recruiter_event_id WHEN 'technical' THEN c.technical_event_id WHEN 'final' THEN c.final_event_id END=$3 LIMIT 1",
+				"options": {
+					"queryReplacement": "={{ [$('Validate Feedback Input').first().json.candidateId,$('Validate Feedback Input').first().json.type,$('Validate Feedback Input').first().json.eventId,$('Check Verified Reviewer').first().json.reviewerEmail] }}"
+				}
+			},
+			"options": {
+				"alwaysOutputData": true
+			}
+		},
+		{
+			"name": "Check Assigned Interview",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const row=$input.first().json;if(typeof row.id!=='string'||!Array.isArray(row.reviewer_emails)||!row.reviewer_emails.length)return [{json:{error:'INTERVIEW_NOT_AVAILABLE'}}];\nconst calendarId={recruiter:'<__PLACEHOLDER_VALUE__Recruiter Google Calendar ID__>',technical:'<__PLACEHOLDER_VALUE__Technical Interview Google Calendar ID__>',final:'<__PLACEHOLDER_VALUE__Final Interview Google Calendar ID__>'}[row.interview_type];\nif(!calendarId)return [{json:{error:'INTERVIEW_NOT_AVAILABLE'}}];return [{json:{candidateId:row.id,type:row.interview_type,eventId:row.event_id,reviewers:row.reviewer_emails,calendarId}}];"
+			}
+		},
+		{
+			"name": "Reviewer Assigned",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Read Current Interview Event",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "GET",
+				"url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent($json.calendarId)+'/events/'+encodeURIComponent($json.eventId) }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			}
+		},
+		{
+			"name": "Verify Completed Interview",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const r=$input.first().json,b=r.body,c=$('Check Assigned Interview').first().json;const fail=error=>[{json:{error}}];\nif([404,410].includes(r.statusCode)||b?.status==='cancelled')return fail('INTERVIEW_NOT_AVAILABLE');\nif(r.statusCode!==200)return fail('PROVIDER_ERROR');\nif(b?.id!==c.eventId||b.status!=='confirmed'||b.extendedProperties?.private?.n8nCandidateId!==c.candidateId||b.extendedProperties?.private?.n8nInterviewType!==c.type||b.attendeesOmitted===true)return fail('INTERVIEW_NOT_AVAILABLE');\nif(!Array.isArray(b.attendees)||!c.reviewers.every(email=>b.attendees.some(a=>typeof a?.email==='string'&&a.email.toLowerCase()===email)))return fail('INTERVIEW_NOT_AVAILABLE');\nconst instant=value=>typeof value==='string'&&/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)?DateTime.fromISO(value,{setZone:true}).toMillis():NaN;\nconst start=instant(b.start?.dateTime),end=instant(b.end?.dateTime);\nif(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return fail('INTERVIEW_NOT_AVAILABLE');\nif(end>Date.now())return fail('INTERVIEW_NOT_FINISHED');\nreturn [{json:{eventEnd:new Date(end).toISOString()}}];"
+			}
+		},
+		{
+			"name": "Interview Evidence Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Record Interview Feedback",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "SELECT * FROM hr_submit_interview_feedback($1,$2,$3,$4,$5,$6,$7)",
+				"options": {
+					"queryReplacement": "={{ [$('Validate Feedback Input').first().json.candidateId,$('Validate Feedback Input').first().json.type,$('Validate Feedback Input').first().json.eventId,$('Check Verified Reviewer').first().json.reviewerEmail,$('Validate Feedback Input').first().json.rating,$('Validate Feedback Input').first().json.notes,$('Verify Completed Interview').first().json.eventEnd] }}"
+				}
+			},
+			"options": {
+				"alwaysOutputData": true
+			}
+		},
+		{
+			"name": "Return Feedback Result",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const row=$input.first().json;if(row.error)return [{json:{error:row.error}}];if(row.accepted!==true)return [{json:{error:'FEEDBACK_NOT_RECORDED'}}];const p=$('Validate Feedback Input').first().json;return [{json:{accepted:true,duplicate:row.duplicate,stageComplete:row.stage_complete,expectedCount:row.expected_count,receivedCount:row.received_count,candidateId:p.candidateId,interviewType:p.type}}];"
+			}
+		},
+		{
+			"name": "Return Feedback Error",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return [{json:{error:$input.first().json.error}}];"
+			}
+		}
+	],
+	"edges": [
+		{
+			"from": "When Called by HR Process",
+			"to": "Validate Feedback Input"
+		},
+		{
+			"from": "Validate Feedback Input",
+			"to": "Feedback Input Valid"
+		},
+		{
+			"from": "Feedback Input Valid",
+			"to": "Validate Reviewer Session"
+		},
+		{
+			"from": "Validate Reviewer Session",
+			"to": "Check Verified Reviewer"
+		},
+		{
+			"from": "Check Verified Reviewer",
+			"to": "Reviewer Identity Valid"
+		},
+		{
+			"from": "Reviewer Identity Valid",
+			"to": "Read Assigned Interview"
+		},
+		{
+			"from": "Read Assigned Interview",
+			"to": "Check Assigned Interview"
+		},
+		{
+			"from": "Check Assigned Interview",
+			"to": "Reviewer Assigned"
+		},
+		{
+			"from": "Reviewer Assigned",
+			"to": "Read Current Interview Event"
+		},
+		{
+			"from": "Read Current Interview Event",
+			"to": "Verify Completed Interview"
+		},
+		{
+			"from": "Verify Completed Interview",
+			"to": "Interview Evidence Valid"
+		},
+		{
+			"from": "Interview Evidence Valid",
+			"to": "Record Interview Feedback"
+		},
+		{
+			"from": "Record Interview Feedback",
+			"to": "Return Feedback Result"
+		},
+		{
+			"from": "Feedback Input Valid",
+			"to": "Return Feedback Error",
+			"output": 1
+		},
+		{
+			"from": "Reviewer Identity Valid",
+			"to": "Return Feedback Error",
+			"output": 1
+		},
+		{
+			"from": "Reviewer Assigned",
+			"to": "Return Feedback Error",
+			"output": 1
+		},
+		{
+			"from": "Interview Evidence Valid",
+			"to": "Return Feedback Error",
+			"output": 1
+		}
+	],
+	"groups": [
+		{
+			"name": "Validate feedback",
+			"nodes": ["Validate Feedback Input", "Feedback Input Valid"]
+		},
+		{
+			"name": "Verify reviewer",
+			"nodes": ["Validate Reviewer Session", "Check Verified Reviewer", "Reviewer Identity Valid"]
+		},
+		{
+			"name": "Check assigned interview",
+			"nodes": ["Read Assigned Interview", "Check Assigned Interview", "Reviewer Assigned"]
+		},
+		{
+			"name": "Verify Calendar evidence",
+			"nodes": [
+				"Read Current Interview Event",
+				"Verify Completed Interview",
+				"Interview Evidence Valid"
+			]
+		},
+		{
+			"name": "Store current feedback",
+			"nodes": ["Record Interview Feedback", "Return Feedback Result"]
+		}
+	]
+}

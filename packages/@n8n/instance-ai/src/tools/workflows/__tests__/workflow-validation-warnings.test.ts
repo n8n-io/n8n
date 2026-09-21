@@ -2,12 +2,46 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnections } from 'n8n-workflow';
 
 import {
+	getInvalidNodeContexts,
 	groupingDecisionBlocker,
 	partitionWarnings,
 	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
 	type ValidationWarning,
 } from '../workflow-validation-warnings';
+
+describe('getInvalidNodeContexts', () => {
+	it('returns each affected node once without its parameters or credentials', () => {
+		const node = {
+			id: 'response',
+			name: 'Send response',
+			type: 'n8n-nodes-base.salesforce',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: { privateInput: 'test value' },
+			credentials: { salesforceOAuth2Api: { id: 'test', name: 'Test CRM' } },
+		};
+		const workflow: WorkflowJSON = {
+			name: 'Intake',
+			nodes: [node, { ...node, id: 'other', name: 'Other' }],
+			connections: {},
+		};
+		const warnings = ['Send response', 'Send response', 'Missing', undefined].map((nodeName) => ({
+			code: 'INVALID_PARAMETER',
+			nodeName,
+			message: 'Invalid input.',
+		}));
+		expect(getInvalidNodeContexts(workflow, warnings)).toEqual([
+			{
+				id: 'response',
+				name: 'Send response',
+				type: 'n8n-nodes-base.salesforce',
+				typeVersion: 1,
+			},
+		]);
+		expect(getInvalidNodeContexts(workflow, [])).toEqual([]);
+	});
+});
 
 describe('partitionWarnings', () => {
 	it('keeps informational severity soft and treats other issues as blocking', () => {

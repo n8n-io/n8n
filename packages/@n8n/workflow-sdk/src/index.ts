@@ -1,3 +1,8 @@
+export {
+	generateDeterministicNodeId,
+	generateDeterministicGroupId,
+} from './workflow-builder/string-utils';
+
 // Core types
 export type {
 	// Workflow and node types
@@ -153,6 +158,8 @@ export {
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
 // Validation
+export { validateWorkflowExpressionSyntax } from './validation/validate-expression-syntax';
+export { validateWorkflowCodeSyntax } from './validation/validate-code-syntax';
 export {
 	validateWorkflow,
 	ValidationError,

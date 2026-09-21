@@ -4,13 +4,12 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
-import {
-	loadInstanceAiRuntimeSkillSource,
-	loadInstanceAiRuntimeSkillSourceForBuildMode,
-} from '../../../skills/runtime-skills';
+import { loadInstanceAiRuntimeSkillSourceForBuildMode } from '../../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
+import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import { recordBuildPlanReview } from '../../../workflow-builder/build-plan-review';
 import {
 	autoImportMissingSdkSymbols,
 	buildWorkflowInputSchema,
@@ -19,9 +18,15 @@ import {
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow } from '../setup-workflow.service';
-import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
+import {
+	getWorkflowSourceFileBinding,
+	hashWorkflowSource,
+	saveWorkflowSourceFileBinding,
+} from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
-import { compileWorkflowSource } from '../workflow-source-compiler';
+import { compileWorkflowSource, parseWorkflowJsonSource } from '../workflow-source-compiler';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
 import { appendWorkflowSourceDiagnostics } from '../workflow-source-diagnostics';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
@@ -67,7 +72,8 @@ vi.mock('../workflow-source-diagnostics', () => ({
 	),
 }));
 
-vi.mock('../workflow-source-compiler', () => ({
+vi.mock('../workflow-source-compiler', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../workflow-source-compiler')>()),
 	compileWorkflowSource: vi.fn(),
 }));
 
@@ -121,6 +127,7 @@ type BuildToolOutput = {
 		reason?: string;
 	};
 	sourceHash?: string;
+	draftEditsAvailable?: boolean;
 	workflowId?: string;
 	workflowName?: string;
 	workItemId?: string;
@@ -250,6 +257,607 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
+	describe('deterministic graph input', () => {
+		const graph = {
+			nodes: [
+				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, parameters: {} },
+			],
+			edges: [],
+		};
+
+		it('saves assembled JSON through the existing validator without a workspace', async () => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/graph.workflow.json',
+				overrides: { workspace: undefined },
+			});
+			await recordBuildPlanReview(context);
+			vi.mocked(compileWorkflowSource).mockImplementationOnce(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			const result = await executeTool<BuildToolOutput>(
+				createBuildWorkflowTool(context, { requirePlan: true }),
+				{ filePath, name: 'Graph', graph },
+			);
+			expect(result.success).toBe(true);
+			const saved = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0][0];
+			expect(saved).toMatchObject({
+				name: 'Graph',
+				nodes: [
+					{
+						name: 'Start',
+						id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+						type: 'n8n-nodes-base.manualTrigger',
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+			expect(compileWorkflowSource).toHaveBeenCalledOnce();
+			expect(resolveCredentials).toHaveBeenCalled();
+			expect(analyzeWorkflow).toHaveBeenCalled();
+		});
+
+		it('returns invalid references without writing a source file or saving a workflow', async () => {
+			const { context, files, filePath } = makeContext({
+				filePath: 'src/workflows/graph.workflow.json',
+			});
+			const before = files.get(filePath);
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Invalid',
+				graph: { ...graph, edges: [{ from: 'Start', to: 'Missing' }] },
+			});
+			expect(result).toMatchObject({
+				success: false,
+				errors: ['Unknown connection node: Start -> Missing.'],
+			});
+			expect(files.get(filePath)).toBe(before);
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('keeps graph edits behind the existing approval card and resumes after approval', async () => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/graph.workflow.json',
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			await recordBuildPlanReview(context);
+			const tool = createBuildWorkflowTool(context, { requirePlan: true });
+			const input = { filePath, workflowId: 'wf-existing', name: 'Graph', graph };
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-existing',
+					approvalDetails: { action: 'edit-workflow', summary: undefined },
+				}),
+			);
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			vi.mocked(compileWorkflowSource).mockImplementationOnce(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledOnce();
+		});
+
+		it('resumes an approved graph with the stored operation selection', async () => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/selected.workflow.json',
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			const planId = await recordBuildPlanReview(context, [
+				{ id: 'start', nodeType: 'n8n-nodes-base.manualTrigger', version: 1 },
+			]);
+			const tool = createBuildWorkflowTool(context, { requirePlan: true });
+			const input = {
+				filePath,
+				workflowId: 'wf-existing',
+				name: 'Graph',
+				graph: { planId, nodes: [{ name: 'Start', step: 'start', parameters: {} }], edges: [] },
+			};
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledOnce();
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			context.runId = 'resumed-run';
+			vi.mocked(compileWorkflowSource).mockImplementationOnce(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-existing',
+				expect.objectContaining({
+					nodes: [
+						expect.objectContaining({
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+						}),
+					],
+				}),
+				expect.anything(),
+			);
+		});
+	});
+
+	it('requires the LLM plan review in the current run before a public build', async () => {
+		const { context, filePath } = makeContext({});
+		const tool = createBuildWorkflowTool(context, { requirePlan: true });
+		const missing = await executeTool<BuildToolOutput>(tool, { filePath });
+		expect(missing.success).toBe(false);
+		expect(missing.errors?.join(' ')).toContain('plan-build');
+		expect(missing.remediation).toMatchObject({
+			shouldEdit: false,
+			reason: 'workflow_plan_review_required',
+			guidance: expect.stringContaining('steps: []'),
+		});
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		await recordBuildPlanReview(context);
+		expect((await executeTool<BuildToolOutput>(tool, { filePath })).success).toBe(true);
+		context.runId = 'next-run';
+		expect((await executeTool<BuildToolOutput>(tool, { filePath })).success).toBe(false);
+	});
+
+	it('resumes the existing approval without requesting another plan review', async () => {
+		const { context, filePath } = makeContext({});
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context, { requirePlan: true }),
+			{ filePath },
+			{ resumeData: { approved: true } },
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it.each(['parameters', 'parameterUpdates'] as const)(
+		'rejects stale %s before compilation or persistence',
+		async (mode) => {
+			const { context } = makeContext({ filePath: 'src/workflows/main.workflow.json' });
+			context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+				json: {
+					...generatedWorkflow,
+					nodes: generatedWorkflow.nodes.map((node) => ({
+						...node,
+						parameters: { path: 'original' },
+					})),
+				},
+				versionId: 'newer-version',
+				checksum: 'current-checksum',
+				updatedAt: 1,
+			});
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath: 'src/workflows/main.workflow.json',
+				workflowId: 'wf-1',
+				jsonEdits: {
+					versionId: 'old-version',
+					changes: JSON.stringify({
+						nodes: [
+							{
+								id: 'webhook-1',
+								...(mode === 'parameters'
+									? { parameters: { path: 'changed' } }
+									: { parameterUpdates: [{ path: ['path'], value: 'changed' }] }),
+							},
+						],
+					}),
+				},
+			});
+			expect(result.success).toBe(false);
+			expect(result.remediation?.reason).toBe('workflow_modified_externally');
+			expect(result.remediation?.guidance).toContain('full=true');
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['parameters', 'parameterUpdates'] as const)(
+		'keeps %s behind the existing approval card and resumes after approval',
+		async (mode) => {
+			const { context, files, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+				json: {
+					...generatedWorkflow,
+					nodes: generatedWorkflow.nodes.map((node) => ({
+						...node,
+						parameters: { path: 'original' },
+					})),
+				},
+				versionId: 'v-current',
+				checksum: 'checksum-current',
+				updatedAt: 1,
+			});
+			await recordBuildPlanReview(context);
+			const tool = createBuildWorkflowTool(context, { requirePlan: true });
+			const input = {
+				filePath,
+				workflowId: 'wf-1',
+				jsonEdits: {
+					versionId: 'v-current',
+					changes: JSON.stringify({
+						nodes: [
+							{
+								id: 'webhook-1',
+								...(mode === 'parameters'
+									? { parameters: { path: 'changed' } }
+									: { parameterUpdates: [{ path: ['path'], value: 'changed' }] }),
+							},
+						],
+					}),
+				},
+			};
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					approvalDetails: { action: 'edit-workflow', summary: undefined },
+				}),
+			);
+			expect(context.workflowService.getWorkflowSnapshot).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(JSON.parse(files.get(filePath)!)).toMatchObject({
+				nodes: [{ parameters: { path: 'changed' } }],
+			});
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-1',
+				expect.anything(),
+				{ expectedChecksum: 'checksum-current' },
+			);
+		},
+	);
+
+	it.each([{ id: 'webhook-1' }, { name: 'Webhook' }])(
+		'repairs an unsaved JSON draft with %j across contexts and releases its cached source after saving',
+		async (selector) => {
+			let thread: ThreadRecord = {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				metadata: {},
+			};
+			const threadMemory = {
+				getThread: vi.fn(async () => structuredClone(thread)),
+				saveThread: vi.fn(async (updated: ThreadRecord) => {
+					thread = structuredClone(updated);
+					return thread;
+				}),
+			};
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: { workspace: undefined, threadId: thread.id, threadMemory },
+			});
+			vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			vi.mocked(partitionWarnings).mockReturnValueOnce({
+				blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
+				informational: [],
+			});
+			const sourceCode = JSON.stringify(generatedWorkflow);
+			await saveWorkflowSourceFileBinding(context, {
+				filePath,
+				sourceHash: hashWorkflowSource(sourceCode),
+			});
+			const failed = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				sourceCode,
+			});
+			expect(failed).toMatchObject({
+				success: false,
+				draftEditsAvailable: true,
+				sourceHash: hashWorkflowSource(sourceCode),
+			});
+			expect(failed.remediation?.guidance).toContain('draftEdits');
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			const resumedContext = { ...context, runId: 'run-2' };
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(resumedContext), {
+				filePath,
+				draftEdits: {
+					sourceHash: failed.sourceHash,
+					changes: JSON.stringify({ nodes: [{ ...selector, parameters: { path: 'inbound' } }] }),
+				},
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'inbound' } })],
+					connections: {},
+				}),
+				expect.anything(),
+			);
+			expect(
+				(await getWorkflowSourceFileBinding(resumedContext, filePath))?.inlineDraftSource,
+			).toBeUndefined();
+			expect(result.draftEditsAvailable).toBeUndefined();
+		},
+	);
+
+	it('reports the compiled node type and repairs a wrong step without rebuilding the graph', async () => {
+		const { context, filePath } = makeContext({
+			filePath: 'src/workflows/main.workflow.json',
+			overrides: { workspace: undefined },
+		});
+		const wrongType: WorkflowJSON = {
+			...generatedWorkflow,
+			nodes: [
+				...generatedWorkflow.nodes,
+				{
+					id: 'response',
+					name: 'Respond 202 Accepted',
+					type: 'n8n-nodes-base.salesforce',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { resource: 'lead', operation: 'get', responseBody: 'accepted' },
+				},
+			],
+			connections: {
+				Webhook: { main: [[{ node: 'Respond 202 Accepted', type: 'main', index: 0 }]] },
+			},
+		};
+		vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+			parseWorkflowJsonSource(source),
+		);
+		vi.mocked(partitionWarnings).mockReturnValueOnce({
+			blocking: [
+				{
+					code: 'INVALID_PARAMETER',
+					nodeName: 'Respond 202 Accepted',
+					message: 'leadId is required.',
+					severity: 'error',
+				},
+			],
+			informational: [],
+		});
+		const tool = createBuildWorkflowTool(context);
+		const failed = await executeTool<BuildToolOutput>(tool, {
+			filePath,
+			sourceCode: JSON.stringify(wrongType),
+		});
+		expect(failed).toMatchObject({
+			success: false,
+			invalidNodes: [
+				{
+					id: 'response',
+					name: 'Respond 202 Accepted',
+					type: 'n8n-nodes-base.salesforce',
+					typeVersion: 1,
+				},
+			],
+		});
+		expect(failed.remediation?.guidance).toContain('set type, typeVersion, parameters');
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		const result = await executeTool<BuildToolOutput>(tool, {
+			filePath,
+			draftEdits: {
+				sourceHash: failed.sourceHash,
+				changes: JSON.stringify([
+					{
+						name: 'Respond 202 Accepted',
+						type: 'n8n-nodes-base.respondToWebhook',
+						typeVersion: 1.4,
+						replaceParameters: true,
+						parameters: {
+							respondWith: 'text',
+							responseBody: 'accepted',
+							options: { responseCode: 202 },
+						},
+					},
+				]),
+			},
+		});
+		expect(result.success).toBe(true);
+		const saved = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0][0];
+		expect(saved.nodes[0]).toEqual(wrongType.nodes[0]);
+		expect(saved.connections).toEqual(wrongType.connections);
+		expect(saved.nodes[1]).toMatchObject({
+			id: 'response',
+			name: 'Respond 202 Accepted',
+			type: 'n8n-nodes-base.respondToWebhook',
+			typeVersion: 1.4,
+			parameters: { respondWith: 'text', responseBody: 'accepted', options: { responseCode: 202 } },
+		});
+		expect(saved.nodes[1].parameters).not.toHaveProperty('resource');
+		expect(saved.nodes[1].parameters).not.toHaveProperty('operation');
+	});
+
+	it.each([{ id: 'webhook-1' }, { name: 'Webhook' }])(
+		'repairs a failed update with %j after approval and keeps its saved base checksum',
+		async (selector) => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: { workspace: undefined },
+			});
+			context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+				json: generatedWorkflow,
+				versionId: 'v-current',
+				checksum: 'checksum-current',
+				updatedAt: 1,
+			});
+			vi.mocked(compileWorkflowSource).mockImplementation(async (_context, _path, source) =>
+				parseWorkflowJsonSource(source),
+			);
+			vi.mocked(partitionWarnings).mockReturnValueOnce({
+				blocking: [{ code: 'INVALID_PARAMETER', message: 'Path is required.', severity: 'error' }],
+				informational: [],
+			});
+			const tool = createBuildWorkflowTool(context);
+			const failed = await executeTool<BuildToolOutput>(tool, {
+				filePath,
+				workflowId: 'wf-1',
+				sourceCode: JSON.stringify(generatedWorkflow),
+			});
+			expect(failed).toMatchObject({ success: false, draftEditsAvailable: true });
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			vi.mocked(compileWorkflowSource).mockClear();
+			context.permissions = {
+				updateWorkflow: 'require_approval',
+			} as InstanceAiContext['permissions'];
+			const input = {
+				filePath,
+				draftEdits: {
+					sourceHash: failed.sourceHash,
+					changes: JSON.stringify({ nodes: [{ ...selector, parameters: { path: 'repaired' } }] }),
+				},
+			};
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend });
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					approvalDetails: { action: 'edit-workflow' },
+				}),
+			);
+			expect(context.workflowService.getWorkflowSnapshot).not.toHaveBeenCalled();
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			const result = await executeTool<BuildToolOutput>(tool, input, {
+				resumeData: { approved: true },
+			});
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({
+					nodes: [expect.objectContaining({ id: 'webhook-1', parameters: { path: 'repaired' } })],
+					connections: {},
+				}),
+				{ expectedChecksum: 'checksum-current' },
+			);
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(
+				(await getWorkflowSourceFileBinding(context, filePath))?.inlineDraftSource,
+			).toBeUndefined();
+			expect(result.draftEditsAvailable).toBeUndefined();
+		},
+	);
+
+	it('rejects a draft repair when the saved workflow changed after the failed update', async () => {
+		const { context, filePath } = makeContext({
+			filePath: 'src/workflows/main.workflow.json',
+			overrides: { workspace: undefined },
+		});
+		context.workflowService.getWorkflowSnapshot = vi.fn().mockResolvedValue({
+			json: generatedWorkflow,
+			versionId: 'v-newer',
+			checksum: 'checksum-newer',
+			updatedAt: 2,
+		});
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			workflowId: 'wf-1',
+			workflowChecksum: 'checksum-original',
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			draftEdits: { sourceHash: 'current-source', changes: '{"nodeGroups":[]}' },
+		});
+		expect(result.remediation?.reason).toBe('workflow_modified_externally');
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('keeps the cached draft when a repair incorrectly includes a saved workflow id', async () => {
+		const { context, filePath } = makeContext({ filePath: 'src/workflows/main.workflow.json' });
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-1',
+			draftEdits: { sourceHash: 'current-source', changes: '{"nodeGroups":[]}' },
+		});
+		expect(result.success).toBe(false);
+		expect(context.workflowService.get).not.toHaveBeenCalled();
+		expect(await getWorkflowSourceFileBinding(context, filePath)).toEqual({
+			filePath,
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+	});
+
+	it.each(['stale', 'missing', 'unversioned'])(
+		'rejects a %s draft before compilation or saving',
+		async (state) => {
+			const { context, filePath } = makeContext({
+				filePath: 'src/workflows/main.workflow.json',
+				overrides: { workspace: undefined },
+			});
+			if (state !== 'missing') {
+				await saveWorkflowSourceFileBinding(context, {
+					filePath,
+					sourceHash: 'current-source',
+					inlineDraftSource: JSON.stringify(generatedWorkflow),
+					...(state === 'unversioned' ? { workflowId: 'wf-1' } : {}),
+				});
+			}
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				draftEdits: {
+					sourceHash: state === 'stale' ? 'old-source' : 'current-source',
+					changes: JSON.stringify({
+						nodes: [{ id: 'webhook-1', parameters: { path: 'inbound' } }],
+					}),
+				},
+			});
+			expect(result).toMatchObject({
+				success: false,
+				remediation: { reason: 'workflow_draft_edits_invalid' },
+			});
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
+
+	it('applies the existing create policy to an unsaved draft repair', async () => {
+		const { context, filePath } = makeContext({
+			filePath: 'src/workflows/main.workflow.json',
+			overrides: {
+				workspace: undefined,
+				permissions: { createWorkflow: 'blocked' } as InstanceAiContext['permissions'],
+			},
+		});
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			sourceHash: 'current-source',
+			inlineDraftSource: JSON.stringify(generatedWorkflow),
+		});
+		const input = {
+			filePath,
+			draftEdits: { sourceHash: 'current-source', changes: '{"nodeGroups":[]}' },
+		};
+		const tool = createBuildWorkflowTool(context);
+		const blocked = await executeTool<BuildToolOutput>(tool, input);
+		expect(blocked.remediation?.reason).toBe('permission_blocked');
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		context.permissions = { createWorkflow: 'always_allow' } as InstanceAiContext['permissions'];
+		const result = await executeTool<BuildToolOutput>(tool, input);
+		expect(result.success).toBe(true);
+	});
+
 	// The field that caused the misreport: `projectId` was advertised here as "Project
 	// ID to create the workflow in", while the adapter resolved the bound project and
 	// ignored it. So the agent picked a project, the workflow went somewhere else, and
@@ -263,25 +871,19 @@ describe('createBuildWorkflowTool', () => {
 		// the old silent drop is exactly what let a build report a project it never
 		// wrote to.
 		expect(() =>
-			buildWorkflowInputSchema.parse({ filePath: 'wf.workflow.ts', projectId: 'other-project-id' }),
+			buildWorkflowInputSchema.parse({
+				filePath: 'wf.workflow.ts',
+				projectId: 'other-project-id',
+			}),
 		).toThrow(/projectId/);
 	});
 
-	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
+	it('describes itself as the internal persistence step behind build-workflow', () => {
 		const { context } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
-
-		expect(tool.description).toContain('workflow-builder');
-		expect(tool.description).toContain('data-table-manager');
-		expect(tool.description).toContain('load_skill');
-		expect(tool.description).toContain(
-			'Use TypeScript SDK .workflow.ts source for new and existing workflows.',
-		);
-		expect(tool.description).not.toContain('WorkflowJSON .json source for existing workflow edits');
-		expect(buildWorkflowInputSchema.shape.filePath.description).toContain(
-			'Workspace-relative path to the TypeScript SDK workflow source file',
-		);
-		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
+		expect(tool.name).toBe('persist-workflow');
+		expect(tool.description).toContain('build-workflow');
+		expect(tool.description).not.toContain('load_skill');
 	});
 
 	describe('publish state', () => {
@@ -525,34 +1127,6 @@ describe('createBuildWorkflowTool', () => {
 			workflowVersionId: 'v-1',
 			sourceHash: hashWorkflowSource(source),
 		});
-	});
-
-	it('uses the selected post-build instructions without sharing them across modes', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
-		const policy = await source.loadSkill('progressive-building');
-		if (!policy) throw new Error('Expected the progressive policy');
-		for (const mode of ['default', 'progressive', 'default'] as const) {
-			const { context, filePath } = makeContext({
-				source: 'workflow source',
-				overrides: {
-					runtimeSkillCatalog: await loadInstanceAiRuntimeSkillSourceForBuildMode(mode),
-				},
-			});
-
-			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-				filePath,
-				name: 'Request tracker',
-			});
-
-			expect(result.success).toBe(true);
-			expect(result.postBuildFlow?.skillId).toBe('post-build-flow');
-			expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
-			expect(result.postBuildFlow?.instructions?.includes(policy.instructions)).toBe(
-				mode === 'progressive',
-			);
-			expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
-			expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
-		}
 	});
 
 	it.each([
@@ -1227,50 +1801,67 @@ describe('createBuildWorkflowTool', () => {
 			credentialNeedsAction: false,
 		} as SetupRequest;
 
-		it('announces the checklist on save, including bound slots, while routing only on open ones', async () => {
-			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
-			const emitter = {
-				emit: vi.fn(() => true),
-				announce: vi.fn().mockResolvedValue(undefined),
-				merge: vi.fn(() => true),
-				lastWorkflowId: vi.fn(),
-				workflowIds: vi.fn(() => []),
-			};
-			const { context, filePath } = makeContext({
-				source: 'workflow source from workspace',
-				overrides: { setupItemsEmitter: emitter },
-			});
+		it.each(['source', 'graph'])(
+			'announces the checklist for %s, including bound slots, while routing only on open ones',
+			async (format) => {
+				vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
+				const emitter = {
+					emit: vi.fn(() => true),
+					announce: vi.fn().mockResolvedValue(undefined),
+					merge: vi.fn(() => true),
+					lastWorkflowId: vi.fn(),
+					workflowIds: vi.fn(() => []),
+				};
+				const { context, filePath } = makeContext({
+					source: 'workflow source from workspace',
+					...(format === 'graph' ? { filePath: 'src/workflows/setup.workflow.json' } : {}),
+					overrides: { setupItemsEmitter: emitter },
+				});
 
-			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-				filePath,
-				name: 'Daily Weather to Slack',
-			});
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					name: 'Daily Weather to Slack',
+					...(format === 'graph'
+						? {
+								graph: {
+									nodes: [openSlackRequest, boundGmailRequest].map(({ node }) => ({
+										name: node.name,
+										type: node.type,
+										typeVersion: node.typeVersion,
+										parameters: node.parameters,
+									})),
+									edges: [],
+								},
+							}
+						: {}),
+				});
 
-			expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
-				context,
-				'wf-1',
-				undefined,
-				expect.objectContaining({ includeSettled: true }),
-			);
-			expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
-				{
-					id: 'wf-1:credential:slackApi',
-					kind: 'credential',
-					credentialType: 'slackApi',
-					nodeBindings: [{ nodeName: 'Post alert' }],
-				},
-				{
-					id: 'wf-1:credential:gmailOAuth2',
-					kind: 'credential',
-					credentialType: 'gmailOAuth2',
-					nodeBindings: [{ nodeName: 'Send digest' }],
-				},
-			]);
-			expect(result).toMatchObject({
-				success: true,
-				setupRequirement: { status: 'required', reason: 'workflow-needs-setup' },
-			});
-		});
+				expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
+					context,
+					'wf-1',
+					undefined,
+					expect.objectContaining({ includeSettled: true }),
+				);
+				expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Post alert' }],
+					},
+					{
+						id: 'wf-1:credential:gmailOAuth2',
+						kind: 'credential',
+						credentialType: 'gmailOAuth2',
+						nodeBindings: [{ nodeName: 'Send digest' }],
+					},
+				]);
+				expect(result).toMatchObject({
+					success: true,
+					setupRequirement: { status: 'required', reason: 'workflow-needs-setup' },
+				});
+			},
+		);
 
 		it('reports no setup requirement from a snapshot made only of bound slots', async () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);

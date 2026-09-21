@@ -1,11 +1,12 @@
 import merge from 'lodash/merge';
 import { DateTime } from 'luxon';
 
-import type { FilterConditionValue, FilterValue } from '../src/interfaces';
+import type { FilterConditionValue, FilterValue, INodeProperties } from '../src/interfaces';
 import {
 	arrayContainsValue,
 	executeFilter,
 	executeFilterConditionAsync,
+	validateFilterParameter,
 } from '../src/node-parameters/filter-parameter';
 
 type DeepPartial<T> = {
@@ -34,6 +35,72 @@ const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 	);
 
 describe('FilterParameter', () => {
+	describe('validateFilterParameter', () => {
+		const property: INodeProperties = {
+			displayName: 'Conditions',
+			name: 'conditions',
+			type: 'filter',
+			default: {},
+		};
+		const condition: FilterConditionValue = {
+			id: 'number',
+			leftValue: 12,
+			rightValue: 24,
+			operator: { type: 'number', operation: 'equals' },
+		};
+
+		it('reports strict type errors at their condition indexes', () => {
+			const value = filterFactory({
+				conditions: [
+					condition,
+					{ ...condition, id: 'left', leftValue: '12' },
+					{ ...condition, id: 'right', rightValue: '24' },
+				],
+			});
+			expect(validateFilterParameter(property, value)).toEqual({
+				'conditions.1': ["Wrong type: '12' is a string but was expecting a number [item 0]"],
+				'conditions.2': ["Wrong type: '24' is a string but was expecting a number [item 0]"],
+			});
+		});
+
+		it('reports a failed loose conversion', () => {
+			const value = filterFactory({
+				options: { typeValidation: 'loose' },
+				conditions: [{ ...condition, leftValue: 'not a number' }],
+			});
+			expect(validateFilterParameter(property, value)).toEqual({
+				'conditions.0': [
+					"Conversion error: the string 'not a number' can't be converted to a number [item 0]",
+				],
+			});
+		});
+
+		it('accepts unresolved expressions and single-value operators without changing inputs', () => {
+			const value = filterFactory({
+				conditions: [
+					{ ...condition, leftValue: '={{ $json.count }}', rightValue: '={{ $json.expected }}' },
+					{
+						id: 'ready',
+						leftValue: true,
+						rightValue: '',
+						operator: { type: 'boolean', operation: 'true', singleValue: true },
+					},
+				],
+			});
+			const original = structuredClone(value);
+			expect(validateFilterParameter(property, value)).toEqual({});
+			expect(value).toEqual(original);
+		});
+
+		it('accepts convertible values only when loose validation is enabled', () => {
+			const value = filterFactory({
+				options: { typeValidation: 'loose' },
+				conditions: [{ ...condition, leftValue: '12' }],
+			});
+			expect(validateFilterParameter(property, value)).toEqual({});
+		});
+	});
+
 	describe('executeFilter', () => {
 		it('should support and/or combinators', () => {
 			const falseCondition: FilterConditionValue = {

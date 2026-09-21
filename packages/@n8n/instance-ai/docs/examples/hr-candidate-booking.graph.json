@@ -1,0 +1,724 @@
+{
+	"nodes": [
+		{
+			"name": "When Called by Agent",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.2,
+			"parameters": {
+				"inputSource": "workflowInputs",
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "session_token",
+							"type": "string"
+						},
+						{
+							"name": "interview_type",
+							"type": "string"
+						},
+						{
+							"name": "start",
+							"type": "string"
+						},
+						{
+							"name": "confirmed",
+							"type": "boolean"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Check Booking Request",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "function instant(value){if(typeof value!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value))return NaN;return DateTime.fromISO(value,{setZone:true}).toMillis();}\nconst rows=$input.all(),p=rows[0]?.json??{};const fail=error=>[{json:{error}}];\nif(rows.length!==1)return fail('INVALID_INPUT');\nif(p.confirmed!==true)return fail('CONFIRMATION_REQUIRED');\nif(!['recruiter','technical','final'].includes(p.interview_type))return fail('INVALID_INTERVIEW_TYPE');\nif(typeof p.session_token!=='string'||!p.session_token.trim())return fail('INVALID_SESSION');\nconst start=instant(p.start);if(!Number.isFinite(start)||start<=Date.now())return fail('INVALID_START_TIME');\nreturn [{json:{session_token:p.session_token,interview_type:p.interview_type,start:new Date(start).toISOString()}}];"
+			}
+		},
+		{
+			"name": "Request Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Validate Session Token",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "POST",
+				"url": "<__PLACEHOLDER_VALUE__Candidate identity validation URL__>",
+				"sendBody": true,
+				"contentType": "json",
+				"specifyBody": "keypair",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "token",
+							"value": "={{ $json.session_token }}"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"timeout": 10000
+				}
+			}
+		},
+		{
+			"name": "Check Verified Identity",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const r=$input.first().json,b=r.body;if(r.statusCode!==200||b?.verified!==true||typeof b.candidateId!=='string'||!b.candidateId.trim())return [{json:{error:'INVALID_SESSION'}}];return [{json:{candidateId:b.candidateId}}];"
+			}
+		},
+		{
+			"name": "Identity Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Read Candidate Booking",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "SELECT id,name,email,role,recruiter_email,hiring_manager_email,technical_interviewers,stage,updated_at::text AS record_version,(updated_at < NOW() - INTERVAL '15 minutes') AS claim_expired,CASE $2::text WHEN 'recruiter' THEN recruiter_event_id WHEN 'technical' THEN technical_event_id WHEN 'final' THEN final_event_id END AS event_id,md5(jsonb_build_array('n8n-hr-booking-v1',id,$2::text,$3::text)::text) AS booking_id FROM candidates WHERE id=$1 LIMIT 1",
+				"options": {
+					"queryReplacement": "={{ [$('Check Verified Identity').first().json.candidateId, $('Check Booking Request').first().json.interview_type, $('Check Booking Request').first().json.start] }}"
+				}
+			},
+			"options": {
+				"alwaysOutputData": true
+			}
+		},
+		{
+			"name": "Check Booking Context",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const row=$input.first().json,p=$('Check Booking Request').first().json;const type=p.interview_type;const fail=error=>[{json:{error}}];\nif(typeof row.id!=='string'||!row.id)return fail('CANDIDATE_NOT_FOUND');\nconst eligible={recruiter:['contacted','recruiter_cancelled'],technical:['recruiter_completed','technical_cancelled'],final:['technical_completed','final_cancelled']}[type];\nconst owns=row.event_id===row.booking_id;\nif(row.stage===type+'_scheduled'&&!owns)return fail('ALREADY_SCHEDULED');\nif(row.stage===type+'_booking'&&!owns)return fail('BOOKING_IN_PROGRESS');\nif(!((eligible.includes(row.stage)&&!row.event_id)||(owns&&[type+'_booking',type+'_scheduled'].includes(row.stage))))return fail('INTERVIEW_NOT_ELIGIBLE');\nconst email=value=>typeof value==='string'&&/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value);\nconst assigned=type==='recruiter'?[row.recruiter_email]:type==='technical'?row.technical_interviewers:[row.hiring_manager_email];\nif(!email(row.email)||!Array.isArray(assigned)||assigned.length===0||!assigned.every(email)||assigned.some(e=>e.toLowerCase()===row.email.toLowerCase()))return fail('INTERVIEW_SETUP_REQUIRED');\nconst interviewers=[...new Set(assigned.map(e=>e.toLowerCase()))];\nif(interviewers.length>49)return fail('INTERVIEW_SETUP_REQUIRED');\nconst calendarId={recruiter:'<__PLACEHOLDER_VALUE__Recruiter Google Calendar ID__>',technical:'<__PLACEHOLDER_VALUE__Technical Interview Google Calendar ID__>',final:'<__PLACEHOLDER_VALUE__Final Interview Google Calendar ID__>'}[type];\nconst end=new Date(Date.parse(p.start)+(type==='recruiter'?45:60)*60000).toISOString();\nreturn [{json:{candidateId:row.id,type,start:p.start,end,eventId:row.booking_id,calendarId,stage:row.stage,claimExpired:row.claim_expired===true,recordVersion:row.record_version,eligible,reviewers:interviewers,attendees:[...new Set([row.email.toLowerCase(),...interviewers])],calendars:[...new Set([calendarId,...interviewers])]}}];"
+			}
+		},
+		{
+			"name": "Booking Context Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Read Existing Booking",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "GET",
+				"url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent($('Check Booking Context').first().json.calendarId) + '/events/' + encodeURIComponent($('Check Booking Context').first().json.eventId) }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"timeout": 10000
+				}
+			}
+		},
+		{
+			"name": "Check Existing Booking",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "function instant(value){if(typeof value!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value))return NaN;return DateTime.fromISO(value,{setZone:true}).toMillis();}\nconst r=$input.first().json,b=r.body,c=$('Check Booking Context').first().json;const fail=error=>[{json:{error}}];\nfunction eventMatches(){\n if(r.statusCode!==200||b?.id!==c.eventId||b?.status!=='confirmed'||b.attendeesOmitted===true)return false;\n if(b.extendedProperties?.private?.n8nCandidateId!==c.candidateId||b.extendedProperties?.private?.n8nInterviewType!==c.type)return false;\n if(instant(b.start?.dateTime)!==Date.parse(c.start)||instant(b.end?.dateTime)!==Date.parse(c.end))return false;\n if(!Array.isArray(b.attendees)||b.attendees.some(a=>typeof a?.email!=='string'))return false;\n const actual=[...new Set(b.attendees.map(a=>a.email.toLowerCase()))].sort();return JSON.stringify(actual)===JSON.stringify([...c.attendees].sort());\n}\nif(r.statusCode===404){if(c.stage===c.type+'_booking'&&c.claimExpired)return fail('BOOKING_REVIEW_REQUIRED');if(c.stage===c.type+'_scheduled')return fail('BOOKING_CHANGED');return [{json:{eventExists:false}}];}\nif(r.statusCode===410||b?.status==='cancelled')return fail('BOOKING_CHANGED');\nif(r.statusCode!==200)return fail('PROVIDER_ERROR');\nif(![c.type+'_booking',c.type+'_scheduled'].includes(c.stage)||!eventMatches())return fail('BOOKING_CHANGED');\nreturn [{json:{eventExists:true,recordVersion:c.recordVersion,alreadyBooked:true}}];"
+			}
+		},
+		{
+			"name": "Calendar Read Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Booking Exists",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.eventExists }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Check Interviewer Calendars",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "POST",
+				"url": "https://www.googleapis.com/calendar/v3/freeBusy",
+				"sendBody": true,
+				"contentType": "json",
+				"specifyBody": "json",
+				"jsonBody": "={{ {timeMin:$('Check Booking Context').first().json.start,timeMax:$('Check Booking Context').first().json.end,items:$('Check Booking Context').first().json.calendars.map(id=>({id}))} }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"timeout": 10000
+				}
+			}
+		},
+		{
+			"name": "Check Complete Availability",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "function instant(value){if(typeof value!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value))return NaN;return DateTime.fromISO(value,{setZone:true}).toMillis();}\nconst r=$input.first().json,b=r.body,c=$('Check Booking Context').first().json;const fail=error=>[{json:{error}}];\nif(r.statusCode!==200)return fail('PROVIDER_ERROR');\nif(instant(b?.timeMin)!==Date.parse(c.start)||instant(b?.timeMax)!==Date.parse(c.end)||!b?.calendars||typeof b.calendars!=='object')return fail('AVAILABILITY_INCOMPLETE');\nfor(const id of c.calendars){const calendar=b.calendars[id];if(!calendar||!Array.isArray(calendar.busy)||(calendar.errors!==undefined&&(!Array.isArray(calendar.errors)||calendar.errors.length>0)))return fail('AVAILABILITY_INCOMPLETE');\n for(const range of calendar.busy){const start=instant(range?.start),end=instant(range?.end);if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return fail('AVAILABILITY_INCOMPLETE');if(start<Date.parse(c.end)&&end>Date.parse(c.start))return fail('SLOT_UNAVAILABLE');}}\nreturn [{json:{available:true}}];"
+			}
+		},
+		{
+			"name": "Calendars Available",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Claim Candidate Booking",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE candidates SET stage=$2::text||'_booking',recruiter_event_id=CASE WHEN $2::text='recruiter' THEN $3 ELSE recruiter_event_id END,technical_event_id=CASE WHEN $2::text='technical' THEN $3 ELSE technical_event_id END,final_event_id=CASE WHEN $2::text='final' THEN $3 ELSE final_event_id END,updated_at=NOW() WHERE id=$1 AND stage=$4 AND updated_at::text=$5 AND ((stage=ANY($6::text[]) AND COALESCE(CASE $2::text WHEN 'recruiter' THEN recruiter_event_id WHEN 'technical' THEN technical_event_id WHEN 'final' THEN final_event_id END,'')='') OR (stage=$2::text||'_booking' AND CASE $2::text WHEN 'recruiter' THEN recruiter_event_id WHEN 'technical' THEN technical_event_id WHEN 'final' THEN final_event_id END=$3)) RETURNING id,updated_at::text AS record_version",
+				"options": {
+					"queryReplacement": "={{ [$('Check Booking Context').first().json.candidateId,$('Check Booking Context').first().json.type,$('Check Booking Context').first().json.eventId,$('Check Booking Context').first().json.stage,$('Check Booking Context').first().json.recordVersion,$('Check Booking Context').first().json.eligible] }}"
+				}
+			},
+			"options": {
+				"alwaysOutputData": true
+			}
+		},
+		{
+			"name": "Check Booking Claim",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const row=$input.first().json,c=$('Check Booking Context').first().json;if(row.id!==c.candidateId||typeof row.record_version!=='string')return [{json:{error:'RECORD_CHANGED'}}];return [{json:{recordVersion:row.record_version}}];"
+			}
+		},
+		{
+			"name": "Booking Claimed",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Create Interview Event",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "POST",
+				"url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent($('Check Booking Context').first().json.calendarId) + '/events' }}",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "sendUpdates",
+							"value": "all"
+						}
+					]
+				},
+				"sendBody": true,
+				"contentType": "json",
+				"specifyBody": "json",
+				"jsonBody": "={{ {id:$('Check Booking Context').first().json.eventId,summary:$('Check Booking Context').first().json.type+' interview',start:{dateTime:$('Check Booking Context').first().json.start},end:{dateTime:$('Check Booking Context').first().json.end},attendees:$('Check Booking Context').first().json.attendees.map(email=>({email})),extendedProperties:{private:{n8nCandidateId:$('Check Booking Context').first().json.candidateId,n8nInterviewType:$('Check Booking Context').first().json.type} },guestsCanModify:false,guestsCanInviteOthers:false,visibility:'private'} }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"timeout": 10000
+				}
+			}
+		},
+		{
+			"name": "Check Create Status",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const r=$input.first().json;if(![200,201,409].includes(r.statusCode))return [{json:{error:'PROVIDER_ERROR'}}];return [{json:{alreadyBooked:r.statusCode===409}}];"
+			}
+		},
+		{
+			"name": "Create Result Recoverable",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Read Created Booking",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "GET",
+				"url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent($('Check Booking Context').first().json.calendarId) + '/events/' + encodeURIComponent($('Check Booking Context').first().json.eventId) }}",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleCalendarOAuth2Api",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"timeout": 10000
+				}
+			}
+		},
+		{
+			"name": "Verify Created Booking",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "function instant(value){if(typeof value!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value))return NaN;return DateTime.fromISO(value,{setZone:true}).toMillis();}\nconst r=$input.first().json,b=r.body,c=$('Check Booking Context').first().json;const fail=error=>[{json:{error}}];\nfunction eventMatches(){\n if(r.statusCode!==200||b?.id!==c.eventId||b?.status!=='confirmed'||b.attendeesOmitted===true)return false;\n if(b.extendedProperties?.private?.n8nCandidateId!==c.candidateId||b.extendedProperties?.private?.n8nInterviewType!==c.type)return false;\n if(instant(b.start?.dateTime)!==Date.parse(c.start)||instant(b.end?.dateTime)!==Date.parse(c.end))return false;\n if(!Array.isArray(b.attendees)||b.attendees.some(a=>typeof a?.email!=='string'))return false;\n const actual=[...new Set(b.attendees.map(a=>a.email.toLowerCase()))].sort();return JSON.stringify(actual)===JSON.stringify([...c.attendees].sort());\n}\nif(!eventMatches())return fail('PROVIDER_ERROR');return [{json:{recordVersion:$('Check Booking Claim').first().json.recordVersion,alreadyBooked:$('Check Create Status').first().json.alreadyBooked}}];"
+			}
+		},
+		{
+			"name": "Created Event Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"name": "Complete Candidate Booking",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "WITH completed AS (\nUPDATE candidates SET stage=$2::text||'_scheduled',updated_at=NOW() WHERE id=$1 AND stage IN ($2::text||'_booking',$2::text||'_scheduled') AND CASE $2::text WHEN 'recruiter' THEN recruiter_event_id WHEN 'technical' THEN technical_event_id WHEN 'final' THEN final_event_id END=$3 AND updated_at::text=$4 AND NOT EXISTS (SELECT 1 FROM hr_interview_sessions WHERE candidate_id=$1 AND interview_type=$2::text AND event_id=$3 AND NOT (reviewer_emails @> $8::text[] AND reviewer_emails <@ $8::text[])) RETURNING id,$2::text AS interview_type,$5::boolean AS already_booked,$6::text AS start,$7::text AS end\n), recorded AS (\n INSERT INTO hr_interview_sessions (candidate_id,interview_type,event_id,reviewer_emails)\n SELECT id,$2::text,$3,$8::text[] FROM completed\n ON CONFLICT (candidate_id,interview_type,event_id) DO NOTHING RETURNING candidate_id\n)\nSELECT completed.* FROM completed WHERE EXISTS (SELECT 1 FROM recorded)\n OR EXISTS (SELECT 1 FROM hr_interview_sessions WHERE candidate_id=$1 AND interview_type=$2::text AND event_id=$3 AND reviewer_emails @> $8::text[] AND reviewer_emails <@ $8::text[])",
+				"options": {
+					"queryReplacement": "={{ [$('Check Booking Context').first().json.candidateId,$('Check Booking Context').first().json.type,$('Check Booking Context').first().json.eventId,$json.recordVersion,$json.alreadyBooked,$('Check Booking Context').first().json.start,$('Check Booking Context').first().json.end,$('Check Booking Context').first().json.reviewers] }}"
+				}
+			},
+			"options": {
+				"alwaysOutputData": true
+			}
+		},
+		{
+			"name": "Return Verified Booking",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const row=$input.first().json;if(row.id!==$('Check Booking Context').first().json.candidateId)return [{json:{error:'RECORD_CHANGED'}}];return [{json:{booked:true,alreadyBooked:row.already_booked,interviewType:row.interview_type,start:row.start,end:row.end}}];"
+			}
+		},
+		{
+			"name": "Return Booking Error",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return [{json:{error:$input.first().json.error}}];"
+			}
+		}
+	],
+	"edges": [
+		{
+			"from": "When Called by Agent",
+			"to": "Check Booking Request"
+		},
+		{
+			"from": "Check Booking Request",
+			"to": "Request Valid"
+		},
+		{
+			"from": "Request Valid",
+			"to": "Validate Session Token"
+		},
+		{
+			"from": "Request Valid",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Validate Session Token",
+			"to": "Check Verified Identity"
+		},
+		{
+			"from": "Check Verified Identity",
+			"to": "Identity Valid"
+		},
+		{
+			"from": "Identity Valid",
+			"to": "Read Candidate Booking"
+		},
+		{
+			"from": "Identity Valid",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Read Candidate Booking",
+			"to": "Check Booking Context"
+		},
+		{
+			"from": "Check Booking Context",
+			"to": "Booking Context Valid"
+		},
+		{
+			"from": "Booking Context Valid",
+			"to": "Read Existing Booking"
+		},
+		{
+			"from": "Booking Context Valid",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Read Existing Booking",
+			"to": "Check Existing Booking"
+		},
+		{
+			"from": "Check Existing Booking",
+			"to": "Calendar Read Valid"
+		},
+		{
+			"from": "Calendar Read Valid",
+			"to": "Booking Exists"
+		},
+		{
+			"from": "Calendar Read Valid",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Booking Exists",
+			"to": "Complete Candidate Booking"
+		},
+		{
+			"from": "Booking Exists",
+			"to": "Check Interviewer Calendars",
+			"output": 1
+		},
+		{
+			"from": "Check Interviewer Calendars",
+			"to": "Check Complete Availability"
+		},
+		{
+			"from": "Check Complete Availability",
+			"to": "Calendars Available"
+		},
+		{
+			"from": "Calendars Available",
+			"to": "Claim Candidate Booking"
+		},
+		{
+			"from": "Calendars Available",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Claim Candidate Booking",
+			"to": "Check Booking Claim"
+		},
+		{
+			"from": "Check Booking Claim",
+			"to": "Booking Claimed"
+		},
+		{
+			"from": "Booking Claimed",
+			"to": "Create Interview Event"
+		},
+		{
+			"from": "Booking Claimed",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Create Interview Event",
+			"to": "Check Create Status"
+		},
+		{
+			"from": "Check Create Status",
+			"to": "Create Result Recoverable"
+		},
+		{
+			"from": "Create Result Recoverable",
+			"to": "Read Created Booking"
+		},
+		{
+			"from": "Create Result Recoverable",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Read Created Booking",
+			"to": "Verify Created Booking"
+		},
+		{
+			"from": "Verify Created Booking",
+			"to": "Created Event Valid"
+		},
+		{
+			"from": "Created Event Valid",
+			"to": "Complete Candidate Booking"
+		},
+		{
+			"from": "Created Event Valid",
+			"to": "Return Booking Error",
+			"output": 1
+		},
+		{
+			"from": "Complete Candidate Booking",
+			"to": "Return Verified Booking"
+		}
+	],
+	"groups": [
+		{
+			"name": "Validate request",
+			"nodes": ["Check Booking Request", "Request Valid"]
+		},
+		{
+			"name": "Verify candidate identity",
+			"nodes": ["Validate Session Token", "Check Verified Identity", "Identity Valid"]
+		},
+		{
+			"name": "Read candidate state",
+			"nodes": ["Read Candidate Booking", "Check Booking Context", "Booking Context Valid"]
+		},
+		{
+			"name": "Read calendar state",
+			"nodes": ["Read Existing Booking", "Check Existing Booking", "Calendar Read Valid"]
+		},
+		{
+			"name": "Check interviewer calendars",
+			"nodes": ["Check Interviewer Calendars", "Check Complete Availability", "Calendars Available"]
+		},
+		{
+			"name": "Claim booking",
+			"nodes": ["Claim Candidate Booking", "Check Booking Claim", "Booking Claimed"]
+		},
+		{
+			"name": "Create event",
+			"nodes": ["Create Interview Event", "Check Create Status", "Create Result Recoverable"]
+		},
+		{
+			"name": "Verify event",
+			"nodes": ["Read Created Booking", "Verify Created Booking", "Created Event Valid"]
+		},
+		{
+			"name": "Record booking",
+			"nodes": ["Complete Candidate Booking", "Return Verified Booking"]
+		}
+	],
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

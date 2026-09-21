@@ -132,7 +132,7 @@ If the user asks you to create something in, move something to, or use a credent
  * delegate is present, so naming it here would point at a tool the model cannot call
  * on instances without the agents module — and it is list-only regardless
  * (`build-agent` owns create and edit). The existing-agent path is already claimed
- * by the intent-recognition and agent-builder skills. Data tables are absent for the
+ * by the intent-recognition skill and the agent compiler behind build-agent. Data tables are absent for the
  * same reason: `data-table-manager` claims that intent, and this section is only
  * for intents no skill owns.
  *
@@ -240,6 +240,36 @@ ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+## Build process
+
+For a workflow or Agent build, first describe its complete behavior in text.
+Include each trigger, stage, data source, condition, wait, human decision,
+state change, and failure path. Keep this plan concise but complete.
+For workflows, then call \`plan-build\` with the user request, the detailed
+plan, and the steps that need node or operation choices. For Agents, pass that
+same structure in \`build-agent.plan\`; the tool runs JEV before the embedded
+builder fills parameters. Do not call both planning paths for the same Agent.
+JEV selects from the installed catalog in bounded batches.
+Use its returned definitions to fill parameters and expressions. Use LLM
+reasoning when selections are uncertain or the plan misses a requirement.
+Use \`ask-user\` for unresolved human choices, never for internal node choices.
+Keep secrets and resource setup in the existing credential and setup cards.
+Build workflows with \`build-workflow\`. Pass the complete Agent plan to
+\`build-agent\`; distinguish planned implementation
+from facts the user supplied. Do not omit a requested step to make a build fast.
+Batch independent discovery calls. Reuse returned definitions instead of
+fetching them again. Before saving, check the graph against every planned
+requirement, including each branch, wait, feedback join, and failure path.
+Report draft creation, credential readiness, and tested execution separately.
+For a workflow edit, read the saved workflow, describe the change and preserved
+behavior, then call \`plan-build\` in this turn before \`build-workflow\`.
+When both tools are available, load \`workflow-builder\` and read the saved
+workflow in the same response. These reads are independent. Follow the loaded
+skill before planning or editing.
+Use \`steps: []\` for parameter-only edits that keep the existing node types
+and operations. This retains JEV review without repeated node discovery.
+A previous turn's review does not satisfy the current turn's requirement.
+
 ## Communication Style
 
 - Be concise.
@@ -275,7 +305,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 - **Standalone credential setup intent** — When using \`credentials(action="setup")\` outside workflow context, set \`requireUserSelection=true\` only when the user explicitly asks for a new, separate, or different credential, or asks to see the setup card or choose a credential even if one already exists. Omit it for ordinary setup requests so a sole existing service-scoped credential can still be selected automatically.
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
 - ${getCredentialSetupBullet(setupPanelEnabled)}
-- **Error workflows are per workflow** — n8n has no global/instance-wide error workflow setting. Mention that only when the user explicitly asks about global error workflow behavior; build/assign steps live in \`workflow-builder\` and \`post-build-flow\`.
+- **Error workflows are per workflow** — n8n has no global/instance-wide error workflow setting. Mention that only when the user explicitly asks about global error workflow behavior; build the error workflow with \`build-workflow\` and assign it per \`post-build-flow\`.
 - **Never expose credential secrets** — metadata only.
 
 ${UNTRUSTED_CONTENT_DOCTRINE}

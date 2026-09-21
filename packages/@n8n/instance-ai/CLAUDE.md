@@ -25,6 +25,9 @@ Read these docs before starting any implementation:
 - `docs/memory.md` — memory tiers, scoping model, sub-agent memory
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
+- `docs/workflow-compiler.md` — decision-assisted workflow compiler behind `build-workflow`
+- `docs/agent-compiler.md` — decision-assisted agent compiler behind `build-agent`
+- `docs/intent-router.md` — structured-read intent routing that serves turns without the LLM
 - `docs/configuration.md` — environment variables, minimal setup, storage, event bus
 
 ## E2E Testing

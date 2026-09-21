@@ -194,8 +194,8 @@ describe('report-verification-verdict tool', () => {
 		});
 		expect((result as { guidance: string }).guidance).toContain('PATCH NEEDED');
 		expect((result as { guidance: string }).guidance).toContain('workItemId');
-		expect((result as { guidance: string }).guidance).toContain('workspace source file');
-		expect((result as { guidance: string }).guidance).toContain('filePath');
+		expect((result as { guidance: string }).guidance).toContain('action "debug"');
+		expect((result as { guidance: string }).guidance).toContain('workflowId "wf-123"');
 	});
 
 	it('preserves specific failure signatures for code-fixable remediation', async () => {
@@ -373,10 +373,10 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('workflow-builder');
+		expect((result as { guidance: string }).guidance).toContain('action "edit"');
 		expect((result as { guidance: string }).guidance).toContain('build-workflow');
 		expect((result as { guidance: string }).guidance).toContain('workflowId "wf-123"');
-		expect((result as { guidance: string }).guidance).toContain('filePath');
+		expect((result as { guidance: string }).guidance).toContain('action "answer"');
 	});
 
 	it('returns blocked guidance when action is blocked', async () => {

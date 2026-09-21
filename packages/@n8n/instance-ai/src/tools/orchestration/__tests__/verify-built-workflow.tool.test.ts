@@ -5,7 +5,7 @@ import {
 	agentToolWorkflow,
 	mcpToolWorkflow,
 } from '../../../__tests__/agent-tool-workflow';
-import { executeTool } from '../../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
 import { successfulVerification } from '../../../__tests__/verification-fixtures';
 import type { WorkflowLoopStorage } from '../../../storage/workflow-loop-storage';
 import type {
@@ -2413,5 +2413,317 @@ describe('verify-built-workflow tool — publish state', () => {
 		expect(result.success).toBe(true);
 		expect(result.claim?.liveState).toBeUndefined();
 		expect(result.liveStateNote).toBeUndefined();
+	});
+});
+
+describe('verify-built-workflow scenarios', () => {
+	const input = {
+		workItemId: 'wi_1',
+		workflowId: 'wf_1',
+		fixTargetNodeNames: ['Transform'],
+		scenarios: [
+			{ name: 'confirmed', inputData: { confirmed: true } },
+			{ name: 'unconfirmed', inputData: { confirmed: false } },
+		],
+	};
+	type BatchOutput = VerifyBuiltWorkflowOutput & {
+		scenarioResults: Array<{ name: string; result: VerifyBuiltWorkflowOutput }>;
+		scenariosNotRun: string[];
+	};
+
+	it('runs scenarios in order with separate inputs and retains each result', async () => {
+		const context = createContext();
+		const before = structuredClone(input);
+		let active = 0;
+		const run = vi.mocked(context.domainContext!.executionService.run);
+		run.mockImplementation(async (_workflowId, data) => {
+			expect(active++).toBe(0);
+			await Promise.resolve();
+			active--;
+			return {
+				executionId: data?.confirmed ? 'yes' : 'no',
+				status: 'success',
+				workflowVersionId: 'draft-v1',
+				data: { Transform: [{ confirmed: data?.confirmed }] },
+			};
+		});
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), input);
+		expect(result.success).toBe(true);
+		expect(
+			result.scenarioResults.map(({ name, result: entry }) => [name, entry.executionId]),
+		).toEqual([
+			['confirmed', 'yes'],
+			['unconfirmed', 'no'],
+		]);
+		expect(result.scenariosNotRun).toEqual([]);
+		expect(result.claim).toBeUndefined();
+		expect(input).toEqual(before);
+		expect(run).toHaveBeenCalledTimes(2);
+	});
+
+	it.each(['error', 'waiting', 'running'] as const)(
+		'stops on a %s result without running later scenarios',
+		async (status) => {
+			const context = createContext();
+			const run = vi.mocked(context.domainContext!.executionService.run);
+			run.mockResolvedValueOnce({
+				executionId: 'first',
+				status: 'success',
+				data: { Transform: [{}] },
+			});
+			run.mockResolvedValueOnce({
+				executionId: 'second',
+				status,
+				error: status === 'error' ? 'Failed' : undefined,
+			});
+			const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), {
+				...input,
+				scenarios: [...input.scenarios, { name: 'later' }],
+			});
+			expect(result.success).toBe(false);
+			expect(result.scenarioResults).toHaveLength(2);
+			expect(result.scenarioResults[0].result.success).toBe(true);
+			expect(result.scenariosNotRun).toEqual(['later']);
+			expect(run).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it('keeps earlier results when a later verification throws', async () => {
+		const context = createContext();
+		const run = vi.mocked(context.domainContext!.executionService.run);
+		run.mockResolvedValueOnce({
+			executionId: 'first',
+			status: 'success',
+			data: { Transform: [{}] },
+		});
+		run.mockRejectedValueOnce(new Error('Connection closed'));
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), {
+			...input,
+			scenarios: [...input.scenarios, { name: 'later' }],
+		});
+		expect(result.success).toBe(false);
+		expect(result.scenarioResults[0].result.executionId).toBe('first');
+		expect(result.scenarioResults[1].result.error).toContain('Read its verification state');
+		expect(result.scenariosNotRun).toEqual(['later']);
+		expect(run).toHaveBeenCalledTimes(2);
+	});
+
+	it('applies the existing simulation plan check to a batch', async () => {
+		const context = createContext();
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			summary: 'Built',
+		});
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), input);
+		expect(result.success).toBe(false);
+		expect(result.scenarioResults[0].result.remediation?.reason).toBe('missing_simulation_plan');
+		expect(result.scenariosNotRun).toEqual(['unconfirmed']);
+		expect(context.domainContext!.executionService.run).not.toHaveBeenCalled();
+	});
+
+	it('does not permit a scenario to override a real node with a fixture', async () => {
+		const context = createContext();
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), {
+			...input,
+			scenarios: [
+				{ name: 'bad fixture', fixtureOverrides: { Transform: [{}] } },
+				input.scenarios[1],
+			],
+		});
+		expect(result.success).toBe(false);
+		expect(result.scenarioResults[0].result.error).toContain('Transform');
+		expect(context.domainContext!.executionService.run).not.toHaveBeenCalled();
+	});
+
+	it('uses the persisted attempt budget for every scenario', async () => {
+		const { ctx, getOutcome } = makeContext(
+			makeBuildOutcome({ verifyAttempts: MAX_VERIFY_ATTEMPTS - 1 }),
+			{ executionId: 'last', status: 'success', data: { 'Form Trigger': [{}] } },
+		);
+		const result = await executeTool<BatchOutput>(
+			createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext),
+			{ ...input, workItemId: 'wi-1', workflowId: 'wf-1' },
+		);
+		expect(result.success).toBe(false);
+		expect(getOutcome().verifyAttempts).toBe(MAX_VERIFY_ATTEMPTS);
+		expect(result.scenarioResults[1].result.remediation?.reason).toBe('verify_budget_exhausted');
+		expect(ctx.domainContext.executionService.run).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops when the workflow changes during a scenario', async () => {
+		const context = createContext();
+		const run = vi.mocked(context.domainContext!.executionService.run);
+		run.mockImplementation(async () => {
+			vi.mocked(context.domainContext!.workflowService.getWorkflowHead).mockResolvedValue({
+				versionId: 'draft-v2',
+				activeVersionId: null,
+				updatedAt: 1,
+			});
+			await Promise.resolve();
+			return { executionId: 'first', status: 'success', data: { Transform: [{}] } };
+		});
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), input);
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('workflow changed');
+		expect(result.scenarioResults[0].result.success).toBe(true);
+		expect(result.scenariosNotRun).toEqual(['unconfirmed']);
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops when the executed version differs from the initial draft', async () => {
+		const context = createContext();
+		const run = vi.mocked(context.domainContext!.executionService.run);
+		run.mockResolvedValue({
+			executionId: 'older',
+			status: 'success',
+			workflowVersionId: 'draft-v0',
+			data: { Transform: [{}] },
+		});
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), input);
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('different workflow version');
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not execute scenarios when the workflow version cannot be read', async () => {
+		const context = createContext();
+		vi.mocked(context.domainContext!.workflowService.getWorkflowHead).mockRejectedValue(
+			new Error('Unavailable'),
+		);
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), input);
+		expect(result.success).toBe(false);
+		expect(result.scenariosNotRun).toEqual(['confirmed', 'unconfirmed']);
+		expect(context.domainContext!.executionService.run).not.toHaveBeenCalled();
+	});
+
+	it.each([true, false])(
+		'respects cancellation before the next scenario (initially aborted: %s)',
+		async (initiallyAborted) => {
+			const controller = new AbortController();
+			const context = createContext({ abortSignal: controller.signal });
+			if (initiallyAborted) controller.abort();
+			const run = vi.mocked(context.domainContext!.executionService.run);
+			run.mockImplementation(async () => {
+				controller.abort();
+				await Promise.resolve();
+				return { executionId: 'first', status: 'success', data: { Transform: [{}] } };
+			});
+			const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), input);
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('cancelled');
+			expect(run).toHaveBeenCalledTimes(initiallyAborted ? 0 : 1);
+		},
+	);
+
+	it('preserves simulated evidence and repair target limits for each scenario', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					{
+						nodeName: 'Send Slack',
+						verdict: 'simulate',
+						reason: 'Sends a message',
+						confidence: 'high',
+						source: 'deterministic',
+					},
+				],
+				simulationFixtures: { 'Send Slack': [{ ok: true }] },
+			}),
+			{ executionId: 'simulated', status: 'success', data: { 'Send Slack': [{ ok: true }] } },
+		);
+		const result = await executeTool<BatchOutput>(
+			createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext),
+			{
+				...input,
+				workItemId: 'wi-1',
+				workflowId: 'wf-1',
+				fixTargetNodeNames: ['Send Slack'],
+				scenarios: [
+					{ name: 'sent', fixtureOverrides: { 'Send Slack': [{ ok: true }] } },
+					{ name: 'queued', fixtureOverrides: { 'Send Slack': [{ queued: true }] } },
+				],
+			},
+		);
+		expect(result.success).toBe(true);
+		expect(result.claim).toBeUndefined();
+		for (const scenario of result.scenarioResults) {
+			expect(scenario.result.simulatedNodes).toEqual([
+				{ nodeName: 'Send Slack', reason: 'Sends a message' },
+			]);
+			expect(scenario.result.claim?.level).not.toBe('verified');
+		}
+		expect(ctx.domainContext.executionService.run).toHaveBeenNthCalledWith(
+			2,
+			'wf-1',
+			undefined,
+			expect.objectContaining({
+				verificationPinData: { 'Send Slack': [{ queued: true }] },
+			}),
+		);
+	});
+
+	it('passes a shared trigger and an explicit trigger override to the verifier', async () => {
+		const context = createContext();
+		vi.mocked(context.domainContext!.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			name: 'Multiple triggers',
+			nodes: ['First', 'Second'].map((name) => ({
+				id: name,
+				name,
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			})),
+			connections: {},
+		});
+		const result = await executeTool<BatchOutput>(createVerifyBuiltWorkflowTool(context), {
+			...input,
+			triggerNodeName: 'First',
+			scenarios: [input.scenarios[0], { ...input.scenarios[1], triggerNodeName: 'Second' }],
+		});
+		expect(result.success).toBe(true);
+		const run = context.domainContext!.executionService.run;
+		expect(run).toHaveBeenNthCalledWith(
+			1,
+			'wf_1',
+			{ confirmed: true },
+			expect.objectContaining({ triggerNodeName: 'First' }),
+		);
+		expect(run).toHaveBeenNthCalledWith(
+			2,
+			'wf_1',
+			{ confirmed: false },
+			expect.objectContaining({ triggerNodeName: 'Second' }),
+		);
+	});
+
+	it.each([
+		{ scenarios: [] },
+		{ scenarios: Array.from({ length: 11 }, (_, i) => ({ name: String(i) })) },
+		{ scenarios: [{ name: 'same' }, { name: ' same ' }] },
+		{ scenarios: [{}] },
+		{ scenarios: [{ name: ' ' }] },
+		{ inputData: {} },
+		{ fixtureOverrides: {} },
+		{ allowZeroItemFixtures: [] },
+		{ scenarios: [{ name: 'override', workflowId: 'other' }] },
+	])('rejects ambiguous or invalid scenario input: %j', (invalid) => {
+		expect(
+			parseToolInput(createVerifyBuiltWorkflowTool(createContext()), { ...input, ...invalid })
+				.success,
+		).toBe(false);
+	});
+
+	it('accepts a single verification request and a valid scenario batch', () => {
+		const tool = createVerifyBuiltWorkflowTool(createContext());
+		expect(
+			parseToolInput(tool, { workflowId: 'wf_1', inputData: { confirmed: true } }).success,
+		).toBe(true);
+		expect(parseToolInput(tool, input).success).toBe(true);
 	});
 });

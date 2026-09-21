@@ -1,0 +1,371 @@
+{
+	"nodes": [
+		{
+			"name": "Receive Manager Decision",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "hr-manager-decision",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"options": {
+				"webhookId": "hr-manager-decision"
+			}
+		},
+		{
+			"name": "Validate Manager Decision",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const p=$json.body;const fail=error=>({json:{error}});\nif(!p||typeof p!=='object'||Array.isArray(p))return fail('INVALID_DECISION');\nif(typeof p.session_token!=='string'||!p.session_token.trim()||p.session_token.length>8192)return fail('INVALID_SESSION');\nif(typeof p.candidate_id!=='string'||!p.candidate_id.trim()||p.candidate_id.length>256||typeof p.event_id!=='string'||!p.event_id.trim()||p.event_id.length>1024)return fail('INVALID_DECISION');\nif(typeof p.request_id!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(p.request_id)||!['offer','reject','on_hold','more_info'].includes(p.decision)||typeof p.notes!=='string'||!p.notes.trim()||p.notes.length>10000)return fail('INVALID_DECISION');\nreturn {json:{sessionToken:p.session_token,candidateId:p.candidate_id,eventId:p.event_id,requestId:p.request_id,decision:p.decision,notes:p.notes}};"
+			}
+		},
+		{
+			"name": "Manager Decision Input Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Validate Manager Session",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"parameters": {
+				"method": "POST",
+				"url": "<__PLACEHOLDER_VALUE__Verified staff session validation URL__>",
+				"sendBody": true,
+				"contentType": "json",
+				"specifyBody": "keypair",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "token",
+							"value": "={{ $json.sessionToken }}"
+						}
+					]
+				},
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"options": {
+				"onError": "continueRegularOutput"
+			}
+		},
+		{
+			"name": "Check Verified Manager",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const r=$json,b=r.body;\nif(!r.statusCode||r.statusCode>=500)return {json:{error:'IDENTITY_UNAVAILABLE'}};\nif(r.statusCode!==200||b?.verified!==true||b?.actorType!=='staff'||typeof b.reviewerEmail!=='string'||!/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(b.reviewerEmail))return {json:{error:'INVALID_SESSION'}};\nreturn {json:{managerEmail:b.reviewerEmail.trim().toLowerCase()}};"
+			}
+		},
+		{
+			"name": "Manager Identity Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ !$json.error }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Record Human Hiring Decision",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "SELECT hr_record_hiring_decision($1,$2,$3,$4,$5,$6) AS result",
+				"options": {
+					"queryReplacement": "={{ [$('Validate Manager Decision').item.json.candidateId,$('Validate Manager Decision').item.json.eventId,$('Validate Manager Decision').item.json.requestId,$json.managerEmail,$('Validate Manager Decision').item.json.decision,$('Validate Manager Decision').item.json.notes] }}"
+				}
+			}
+		},
+		{
+			"name": "Read Hiring Decision Result",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const r=$json.result;return {json:r&&typeof r==='object'?r:{error:'DECISION_NOT_RECORDED'}};"
+			}
+		},
+		{
+			"name": "Return Manager Decision Status",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"parameters": {
+				"respondWith": "firstIncomingItem",
+				"options": {
+					"responseCode": "={{ $json.error === 'INVALID_SESSION' ? 401 : $json.error === 'IDENTITY_UNAVAILABLE' ? 503 : $json.error === 'INVALID_DECISION' ? 400 : $json.error ? 409 : 200 }}"
+				}
+			}
+		},
+		{
+			"name": "Deliver Hiring Notices Every Minute",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 1
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Claim Due Hiring Notices",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "WITH due AS (SELECT id FROM hr_hiring_decisions WHERE status IN ('pending','processing') AND next_attempt_at<=now() ORDER BY next_attempt_at,id LIMIT 20 FOR UPDATE SKIP LOCKED), claimed AS (\nUPDATE hr_hiring_decisions d SET status='processing',attempts=attempts+1,next_attempt_at=now()+interval '5 minutes' FROM due WHERE d.id=due.id RETURNING d.*)\nSELECT d.*,c.stage,c.email AS candidate_email,c.final_event_id,s.reviewer_emails,\n(SELECT max(id) FROM hr_hiring_decisions x WHERE x.candidate_id=d.candidate_id AND x.event_id=d.event_id) AS latest_id\nFROM claimed d JOIN candidates c ON c.id=d.candidate_id\nLEFT JOIN hr_interview_sessions s ON s.candidate_id=d.candidate_id AND s.interview_type='final' AND s.event_id=d.event_id",
+				"options": {
+					"queryReplacement": ""
+				}
+			}
+		},
+		{
+			"name": "Prepare Hiring Notice",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const d=$json;const expected=d.decision==='reject'?'rejected':d.decision;\nconst skipped=d.id!==d.latest_id||d.final_event_id!==d.event_id||d.stage!==expected;\nconst emails=d.decision==='more_info'?d.reviewer_emails:[d.candidate_email];\nconst invalid=!Array.isArray(emails)||emails.length===0||emails.some(e=>typeof e!=='string'||!/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(e));\nconst subjects={offer:'Next steps with your hiring team',reject:'Your application update',on_hold:'Your application is on hold',more_info:'Additional interview information requested'};\nconst messages={offer:'The hiring manager approved the next step. Your recruiter will contact you with the details.',reject:'The hiring team has decided not to proceed with your application. Thank you for your time.',on_hold:'Your application is currently on hold. Your recruiter will contact you when there is an update.',more_info:'The hiring manager requested more information for candidate '+d.candidate_id+'. Please review the decision notes in the staff portal.'};\nconst portal=d.decision==='more_info'?'<__PLACEHOLDER_VALUE__Staff interview review portal URL__>':'<__PLACEHOLDER_VALUE__Candidate interview portal URL__>';\nreturn {json:{id:d.id,attempt:d.attempts,send:!skipped&&!invalid,status:skipped?'skipped':invalid?'pending':'processing',reason:skipped?'SUPERSEDED':invalid?'RECIPIENT_REQUIRED':null,recipient:invalid?'':emails.join(','),subject:subjects[d.decision],message:messages[d.decision]+'\\n\\n'+portal}};"
+			}
+		},
+		{
+			"name": "Hiring Notice Ready",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"parameters": {
+				"conditions": {
+					"combinator": "and",
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.send }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Send Hiring Notice",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $json.recipient }}",
+				"subject": "={{ $json.subject }}",
+				"emailType": "text",
+				"message": "={{ $json.message }}",
+				"options": {
+					"appendAttribution": false
+				}
+			},
+			"options": {
+				"onError": "continueErrorOutput"
+			}
+		},
+		{
+			"name": "Mark Hiring Notice Sent",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE hr_hiring_decisions SET status='sent',delivered_at=now(),last_error=NULL WHERE id=$1 AND attempts=$2 AND status='processing' RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$('Prepare Hiring Notice').item.json.id,$('Prepare Hiring Notice').item.json.attempt] }}"
+				}
+			}
+		},
+		{
+			"name": "Retry Hiring Notice Later",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE hr_hiring_decisions SET status='pending',last_error='DELIVERY_FAILED',next_attempt_at=now()+interval '5 minutes' WHERE id=$1 AND attempts=$2 AND status='processing' RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$('Prepare Hiring Notice').item.json.id,$('Prepare Hiring Notice').item.json.attempt] }}"
+				}
+			}
+		},
+		{
+			"name": "Record Hiring Notice State",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.7,
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "UPDATE hr_hiring_decisions SET status=$3,last_error=$4,next_attempt_at=now()+interval '5 minutes' WHERE id=$1 AND attempts=$2 AND status='processing' RETURNING id",
+				"options": {
+					"queryReplacement": "={{ [$json.id,$json.attempt,$json.status,$json.reason] }}"
+				}
+			}
+		}
+	],
+	"edges": [
+		{
+			"from": "Receive Manager Decision",
+			"to": "Validate Manager Decision"
+		},
+		{
+			"from": "Validate Manager Decision",
+			"to": "Manager Decision Input Valid"
+		},
+		{
+			"from": "Manager Decision Input Valid",
+			"to": "Validate Manager Session"
+		},
+		{
+			"from": "Manager Decision Input Valid",
+			"to": "Return Manager Decision Status",
+			"output": 1
+		},
+		{
+			"from": "Validate Manager Session",
+			"to": "Check Verified Manager"
+		},
+		{
+			"from": "Check Verified Manager",
+			"to": "Manager Identity Valid"
+		},
+		{
+			"from": "Manager Identity Valid",
+			"to": "Record Human Hiring Decision"
+		},
+		{
+			"from": "Manager Identity Valid",
+			"to": "Return Manager Decision Status",
+			"output": 1
+		},
+		{
+			"from": "Record Human Hiring Decision",
+			"to": "Read Hiring Decision Result"
+		},
+		{
+			"from": "Read Hiring Decision Result",
+			"to": "Return Manager Decision Status"
+		},
+		{
+			"from": "Deliver Hiring Notices Every Minute",
+			"to": "Claim Due Hiring Notices"
+		},
+		{
+			"from": "Claim Due Hiring Notices",
+			"to": "Prepare Hiring Notice"
+		},
+		{
+			"from": "Prepare Hiring Notice",
+			"to": "Hiring Notice Ready"
+		},
+		{
+			"from": "Hiring Notice Ready",
+			"to": "Send Hiring Notice"
+		},
+		{
+			"from": "Hiring Notice Ready",
+			"to": "Record Hiring Notice State",
+			"output": 1
+		},
+		{
+			"from": "Send Hiring Notice",
+			"to": "Mark Hiring Notice Sent"
+		},
+		{
+			"from": "Send Hiring Notice",
+			"to": "Retry Hiring Notice Later",
+			"output": 1
+		}
+	],
+	"groups": [
+		{
+			"name": "Record verified human decision",
+			"nodes": [
+				"Validate Manager Decision",
+				"Manager Decision Input Valid",
+				"Validate Manager Session",
+				"Check Verified Manager",
+				"Manager Identity Valid",
+				"Record Human Hiring Decision",
+				"Read Hiring Decision Result",
+				"Return Manager Decision Status"
+			]
+		},
+		{
+			"name": "Deliver hiring notices",
+			"nodes": [
+				"Claim Due Hiring Notices",
+				"Prepare Hiring Notice",
+				"Hiring Notice Ready",
+				"Send Hiring Notice",
+				"Mark Hiring Notice Sent",
+				"Retry Hiring Notice Later",
+				"Record Hiring Notice State"
+			]
+		}
+	]
+}

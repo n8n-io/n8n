@@ -100,7 +100,7 @@ Plans are stored in thread-scoped storage.
 ### 2. Orchestrator-Led Execution
 
 Work runs in the orchestrator itself: workflow building via the
-`workflow-builder` skill and `build-workflow`, data-table operations, web
+the workflow compiler behind `build-workflow`, data-table operations, web
 research, credential setup with Computer Use, config-based evaluations, and MCP tools.
 
 ### 3. Observational Memory
@@ -119,7 +119,7 @@ tool usage guidelines.
 ```mermaid
 graph TD
     O[Orchestrator Agent] -->|planning skill + load create-tasks| S3[Planned Tasks]
-    O -->|workflow-builder skill| T10[build-workflow]
+    O -->|workflow compiler| T10[build-workflow]
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
@@ -142,14 +142,14 @@ graph TD
 - Read-only queries (`workflows`, `executions`, `credentials` read actions)
 - Execution triggers (`executions(action="run")`)
 - Planning (`planning` skill + deferred `create-tasks`)
-- Workflow building (`workflow-builder` skill + workspace files + `build-workflow`)
+- Workflow building (`build-workflow` → workflow compiler → `persist-workflow`)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 - Data-table work (`data-table-manager` skill + `data-tables` / `parse-file`)
 - Config-based evaluations (`config-evals` skill + `eval-config`)
 
 **Planned tasks** (`planning` skill + `create-tasks`):
 - Dependency-aware task graphs with parallel execution
-- `build-workflow` tasks run as orchestrator follow-ups with the workflow-builder skill
+- `build-workflow` tasks run as orchestrator follow-ups that call `build-workflow`
 - `checkpoint` tasks run as orchestrator follow-ups for semantic or cross-workflow validation
 - User approves the plan before execution starts
 - Workflow runtime verification is tracked separately as a workflow-loop
@@ -170,7 +170,7 @@ The agent package — framework-agnostic business logic.
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state
   machine for workflow builds
-- **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
+- **Workflow compiler** (`workflow-compiler/`) — decision-assisted compiler: requirements, bounded decisions, IR, deterministic compile and validation (see `docs/workflow-compiler.md`)
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage
@@ -327,7 +327,7 @@ determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Orchestrator follow-up with workflow-builder skill | `nodes`, workspace file tools, `build-workflow`, etc. |
+| `build-workflow` | Orchestrator follow-up calling the workflow compiler | `nodes`, `build-workflow`, etc. |
 | `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the

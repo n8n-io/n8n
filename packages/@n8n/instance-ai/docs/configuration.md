@@ -18,6 +18,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `google-vertex-anthropic/*` (e.g. `global`, `us-east5`). Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
 | `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
 | `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
+| `N8N_INSTANCE_AI_THINKING_EFFORT` | string | unset | Optional orchestrator thinking effort: `low`, `medium`, or `high` for Anthropic and OpenAI. Empty preserves model defaults. This does not configure the embedded Agent Builder. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
@@ -27,6 +28,31 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `COHERE_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`,
 `GROQ_API_KEY`, `MISTRAL_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, and
 `XAI_API_KEY`. `N8N_INSTANCE_AI_MODEL_API_KEY` supplies an explicit key instead.
+
+### JEV decisions
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `JEV_API_KEY` | string | unset | TypeSafe API key. Sets the default decision URL to `https://api.typesafe.ai` and supplies the default decision key. |
+| `N8N_INSTANCE_AI_DECISION_URL` | string | TypeSafe when `JEV_API_KEY` is set; otherwise `''` | Base URL of the structured-read decision service (`POST /v1/systemone`). Empty: the compilers fall back to the run's model, then abstain and ask. |
+| `N8N_INSTANCE_AI_DECISION_API_KEY` | string | `JEV_API_KEY` or `''` | Bearer token for the decision service. Overrides `JEV_API_KEY`. |
+| `N8N_INSTANCE_AI_DECISION_MODEL` | string | `jev-latest` | Model name the decision service routes on. |
+| `N8N_INSTANCE_AI_DECISION_TIMEOUT_MS` | number | `1500` | Per-request latency budget for the decision service. |
+| `N8N_INSTANCE_AI_FAST_PATH_ENABLED` | boolean | `false` | Enable inline JSON workflow building without a sandbox and warm the JEV connection. The LLM still plans first. |
+
+See [current behavior and measurements](instant-generation-validation.md).
+
+Load `JEV_API_KEY` into the backend environment. Enable
+`N8N_INSTANCE_AI_FAST_PATH_ENABLED=true` to use inline JSON building in chat.
+Restart the backend after changing these values. JEV uses the
+[TypeSafe structured-read API](https://docs.typesafe.ai/api), not a chat API.
+Keep the normal Assistant model configured for planning, parameter generation,
+and reasoning about uncertain decisions. JEV does not generate free-form text.
+
+When the fast path is enabled, startup opens the decision connection with
+`GET /v1/models`. This does not run inference. The connection pool keeps idle
+connections for up to 60 seconds, subject to server limits. A cold connection,
+service delay, clarification, approval, or fallback can exceed one second.
 
 ### Tracing
 
@@ -109,10 +135,9 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | number | `300000` | How early a Daytona token is refreshed before expiry (5 minutes). |
 | `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all three packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
-When sandbox is enabled, Instance AI writes workflow source files in the runtime
-workspace and `build-workflow` runs TypeScript sources through the sandbox
-`tsx` build runner before saving. The model still calls only `build-workflow`;
-there is no no-sandbox TypeScript build fallback.
+`build-workflow` compiles workflows in-process; it does not need the sandbox.
+When a sandbox workspace exists, the compiled `.workflow.json` is also written
+there for inspection.
 
 Sandbox workspaces persist per thread. The same remote sandbox is reused across
 messages, runs, and background tasks in a conversation. Service shutdown stops

@@ -5,6 +5,7 @@ import type { ExpressionAnalysis } from './ExpressionBuilder';
 import { FunctionEvaluator } from './FunctionEvaluator';
 
 export type { ExpressionEvaluator, ExpressionEvaluatorClass } from './Evaluator';
+export { getParsedExpression } from './ExpressionBuilder';
 export * from './ast';
 
 const DATA_NODE_NAME = '___n8n_data';

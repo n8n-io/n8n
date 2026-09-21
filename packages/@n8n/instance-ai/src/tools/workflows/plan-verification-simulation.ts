@@ -55,6 +55,8 @@ export interface PlanVerificationSimulationInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Use conservative verdicts and schema fixtures when generation must stay deterministic. */
+	useModel?: boolean;
 	logger?: Logger;
 }
 
@@ -345,6 +347,7 @@ export async function planVerificationSimulation({
 	workflowId,
 	outputSchemaLookup,
 	fallbackModelConfig,
+	useModel = true,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -356,6 +359,7 @@ export async function planVerificationSimulation({
 			workflow,
 			mockedNodeNames,
 			fallbackModelConfig,
+			useModel,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
 		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
@@ -375,7 +379,7 @@ export async function planVerificationSimulation({
 					!itemsForNode(declaredFixtures, verdict.nodeName)?.length,
 			);
 			const generatedFixtures =
-				planNeedingGeneratedFixtures.length > 0
+				useModel && planNeedingGeneratedFixtures.length > 0
 					? await generateSimulationFixtures({
 							workflow,
 							plan: planNeedingGeneratedFixtures,

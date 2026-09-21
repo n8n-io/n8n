@@ -32,6 +32,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const modelCalls: unknown[] = [];
 	const promptCachingCalls: unknown[] = [];
 	const reasoningCalls: string[] = [];
+	const thinkingCalls: Array<{ provider: string; options: unknown }> = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
 	const observationalMemoryCalls: Array<{
@@ -59,6 +60,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 		reasoning(effort: string) {
 			reasoningCalls.push(effort);
+			return this;
+		}
+		thinking(provider: string, options: unknown) {
+			thinkingCalls.push({ provider, options });
 			return this;
 		}
 		instructions(text: string) {
@@ -131,6 +136,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		modelCalls,
 		promptCachingCalls,
 		reasoningCalls,
+		thinkingCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
 		observationalMemoryCalls,
@@ -239,6 +245,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
 		agentsSdkMocks.reasoningCalls.length = 0;
+		agentsSdkMocks.thinkingCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
 		agentsSdkMocks.observationalMemoryCalls.length = 0;
@@ -567,6 +574,48 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.reasoningCalls).toEqual(['medium']);
+	});
+
+	it.each([
+		{ thinkingEnabled: true, thinkingEffort: 'low' as const },
+		{ thinkingEnabled: true, thinkingEffort: 'high' as const },
+		{ thinkingEnabled: false, thinkingEffort: 'low' as const },
+	])('keeps the host thinking policy for build and resume: %j', async (thinking) => {
+		const { service, user, credentialProvider, credentialService, n8nCheckpointStorage } = setup();
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+		const session = { ...baseSession, thinking };
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				session,
+			),
+		);
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				credentialService,
+				user,
+				session,
+			),
+		);
+		expect(agentsSdkMocks.reasoningCalls).toEqual([]);
+		const expected = {
+			provider: 'anthropic',
+			options: { mode: 'adaptive', effort: thinking.thinkingEffort },
+		};
+		expect(agentsSdkMocks.thinkingCalls).toEqual(
+			thinking.thinkingEnabled ? [expected, expected] : [],
+		);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {

@@ -78,7 +78,7 @@ calls `create-tasks` with
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `build-workflow` directly.
+call `build-workflow` directly.
 The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
@@ -110,7 +110,7 @@ The plan is shown to the user for approval before execution starts.
 - On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
-- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
+- `build-workflow` → orchestrator follow-up run that calls `build-workflow`
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
@@ -383,35 +383,45 @@ once; subsequent repairs can reuse only `filePath`.
 
 ### `build-workflow`
 
-Compile, validate, and save a workspace workflow source file. Inline source and
-string patches are not accepted; edit the workspace file first and then call
-this tool with `filePath`.
+Build, edit, or debug a workflow with the workflow compiler
+(`docs/workflow-compiler.md`). The orchestrator passes the user's words; the
+compiler extracts requirements, picks operations with bounded decisions,
+compiles a validated workflow, and saves it through the internal
+`persist-workflow` step (credentials, approval card, setup analysis,
+verification plan).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
-| `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
+| `action` | `create` \| `edit` \| `debug` \| `answer` | yes | What to do |
+| `request` | string | create, edit, answer | The user's words: behavior to build, change to make, or reply to a question |
+| `workflowId` | string | edit, debug | Target workflow |
+| `executionId` | string | no | Failed execution used as debug evidence (defaults to the latest failed one) |
+| `sessionId` | string | answer | Compiler session returned by the earlier call |
+| `answers` | object | no | Structured answers keyed by the returned question `fields` |
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `preferNewCredentials` | string[] | no | Credential types to create fresh |
+| `executionIntent` | `one-off` \| `reusable` | no | Sticky execution intent |
+| `folderPath` | string | no | Folder for a new workflow; advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
-conversation is bound to, and nothing can redirect it. The field used to exist and
-the adapter ignored it, so a build could report a project it had not written to.
+conversation is bound to.
 
-**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, folder?, remediation?, errors?, warnings? }`
-— `folder` is `{ id, name, path }` when the workflow was created inside a folder.
+**Returns**: `{ success, status, sessionId, message?, questions?, summary?,
+verification?, issues?, executionPaths?, changedNodeNames?, credentialTypes?,
+generator?, diagnostics?, ...persist fields }`.
 
-**Behavior**: Reads the source file from the runtime workspace, compiles
-TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
-directly, validates the resulting workflow JSON server-side, resolves
-credentials, saves by the workflow ID bound to the source file, and persists the
-latest source hash and workflow version in thread metadata. If the file has no
-saved workflow ID, the build creates a new workflow unless `workflowId` is
-provided to bind the file to an existing workflow. If the bound workflow no
-longer exists, the tool returns blocked remediation rather than creating a
-replacement.
+- `status: "needs_clarification"` — relay `message` verbatim, then call
+  `action: "answer"` with the same `sessionId` and the user's reply.
+- `status: "needs_setup"` — a debug run found a credential failure; run
+  `workflows(action="setup")`.
+- `status: "compiled"` — the workflow was saved. The persist fields
+  (`workflowId`, `verificationReadiness`, `setupRequirement`, `postBuildFlow`,
+  `mockedNodeNames`, …) keep their previous meaning.
+- `verification` reports each static level as `pass`, `warn`, `fail` or
+  `not_run`; `fixtureTests` and `integrationTests` are `not_run` until
+  `verify-built-workflow` runs.
 
 ### `workflows(action="delete")`
 
@@ -1185,76 +1195,37 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Agent Builder Tool
 
-### `build-agent` *(orchestration tool — requires the `agents` backend module)*
+### `build-agent`
 
-Delegates agent building to the agents-module builder chat
-(`AgentsBuilderService`) running as an embedded sub-agent: one conversational
-turn per call. Registered in `createOrchestrationTools` only when the host
-provides `builderDelegate` (agents module active). The builder's own prompt
-and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
-`call_agent` target-tool approvals) and
-lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
-the sub-agent session no longer excludes them. Forward publish/unpublish/
-activate/make-live intents to `build-agent`; never tell the user to open the
-agent editor and click Publish. The builder also inherits the orchestrator's
-validated, approval-wrapped MCP connector tools so it can use the same external
-context while designing the agent; connector tools that conflict with a native
-builder tool name are skipped. Builder session state is keyed to
-instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
-appears in the agents-module builder UI.
+Build, edit, or verify an n8n Agent with the agent compiler
+(`docs/agent-compiler.md`). The orchestrator passes the user's words; the
+compiler extracts requirements, picks tools with bounded decisions, compiles a
+validated `AgentJsonConfig` and saves it through the builder delegate. No
+language model writes the config.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
-| `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
-| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
-| `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
+| `action` | `create` \| `edit` \| `answer` \| `verify` | yes | What to do |
+| `request` | string | create, edit, answer | The user's words |
+| `agentRef` | string | no | Stable per-conversation key; reuse it for the same agent |
+| `name` | string | create | Display name for a new agent |
+| `agentId` | string | no | Adopt an existing agent once |
+| `createNew` | boolean | no | Create a second agent although one is bound |
+| `sessionId` | string | answer, verify | Compiler session from the earlier call |
+| `answers` | object | no | Structured answers keyed by the returned question `fields` |
+| `workflowContext` | array | no | Workflows built this conversation, attachable as tools |
 
-**Returns**: `{ ok: true, builderReply, configUpdated, agentId,
-agentName?, requiredArtifacts? }` on success, or `{ ok: false, error,
-configUpdated?, agentId?, agentName?, requiredArtifacts? }` on failure
-(`agentId`/`agentName` identify the targeted agent
-once a builder turn was dispatched; precondition failures before any turn
-omit them). `configUpdated` is optional: it's included (reporting mutations
-from passes that already ran) once a builder turn has actually been
-dispatched — mid-turn failures and resume failures that still carry a prior
-checkpoint ref — but omitted for precondition failures before any turn
-starts (agents module not configured, missing `name`/`agentId`, no project
-context to bind `agentId`, or a resume whose suspend payload has no
-checkpoint ref to carry).
+**Returns**: `{ ok, status, sessionId?, agentId?, agentRef?, agentName?, configUpdated,
+message?, questions?, requiredArtifacts?, summary?, verification?, issues?,
+scenarios?, scenarioCoverage?, diagnostics?, error? }`.
 
-`requiredArtifacts` contains structured workflows or data tables that the
-embedded builder cannot create. Build an `agent-tool` workflow and pass it back
-through `workflowContext`. Build an `agent-entrypoint` workflow around the
-returned Agent ID and never attach it to the Agent; this is used for unsupported
-chat channels whose trigger and reply nodes live in a workflow. Requirements
-reported before an interactive suspension are carried across its checkpoint.
+- `needs_clarification` — relay `message` verbatim, then call `action: "answer"`.
+- `needs_artifacts` — build each listed workflow with `build-workflow` (starting
+  with an Execute Workflow Trigger), then call again with `workflowContext`.
+- `compiled` — saved. `verification` reports schema, references, channels,
+  runnable and previewScenarios as `pass`/`warn`/`fail`/`not_run`.
+- `verified` — the Preview scenario runs and their coverage.
 
-**Interactive requests:** when the builder suspends on one of its interactive
-tools (batched questions, a credential picker, channel setup, or a standard SDK
-approval requested by a target-agent test run), this tool
-cascades the suspension through its own suspend/resume so it renders as a
-chat card directly in the assistant conversation — no manual relaying, and the
-suspension survives a process restart. On resume, the tool takes the target
-agent from the checkpoint ref carried in the suspend payload (falling back
-to the persisted active binding for older checkpoints), re-derives the
-builder's open suspension from persistence, and verifies they match the
-suspension it originally cascaded before routing the answer back; a stale
-or superseded suspension fails the call instead of silently resuming the
-wrong one.
-
-**Targeting:** the first call must pass `name` (new agent) or `agentId`
-(existing agent); the active target is persisted to thread metadata so
-follow-up calls keep editing the same agent without repeating them. The
-target is rebindable: a `name` matching an agent already targeted this
-conversation switches back to it (tracked in a per-thread registry), while
-an unmatched name creates another agent and switches to it (the same name
-as the active target just continues it), a different `agentId` switches to
-that agent (persisted only once the builder turn settles, so a bad id
-cannot clobber the existing binding), and `agentId` wins when both are
-given. Prefer switching by the `agentId` returned from earlier calls; the
-name lookup is the fallback when the id is unknown.
 
 ### `agents` *(domain tool — requires the `agents` backend module)*
 

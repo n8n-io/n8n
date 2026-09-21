@@ -3875,6 +3875,8 @@ export class InstanceAiService {
 				context.currentUserAttachments = fileAttachments;
 			}
 
+			// The LLM plans first. The plan-build tool batches bounded decisions through JEV.
+
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
 			if (!tracing && process.env.E2E_TESTS === 'true') {
@@ -4861,6 +4863,7 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			thinkingEffort: this.instanceAiConfig.thinkingEffort || undefined,
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both

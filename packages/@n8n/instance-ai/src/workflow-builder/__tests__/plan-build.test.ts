@@ -1,0 +1,683 @@
+import { mock } from 'vitest-mock-extended';
+import { describe, expect, it } from 'vitest';
+
+import type { InstanceAiNodeService } from '../../types';
+import type { DecisionService } from '../../workflow-compiler/decision/decision-service';
+import { buildPlanSchema, decideBuildPlan } from '../plan-build';
+
+const plan = {
+	originalRequest: 'Email a candidate and book an interview after they confirm a time.',
+	plan: 'Email available times. Wait for confirmation. Book the confirmed interview.',
+	steps: [
+		{ id: 'outreach', intent: 'Send email to the candidate', search: 'Gmail' },
+		{ id: 'confirmation', intent: 'Wait for candidate confirmation', search: 'Wait' },
+	],
+};
+
+function services(coverage = 0.99) {
+	const nodes = mock<Required<InstanceAiNodeService>>();
+	nodes.listSearchable.mockResolvedValue([
+		{
+			name: 'n8n-nodes-base.gmail',
+			displayName: 'Gmail',
+			description: 'Send email',
+			version: 2.1,
+			inputs: ['main'],
+			outputs: ['main'],
+		},
+		{
+			name: 'n8n-nodes-base.wait',
+			displayName: 'Wait',
+			description: 'Wait for confirmation',
+			version: 1.1,
+			inputs: ['main'],
+			outputs: ['main'],
+		},
+	]);
+	nodes.listDiscriminators.mockImplementation(async (type) =>
+		type.endsWith('.gmail')
+			? { resources: [{ name: 'message', operations: ['send', 'get'] }] }
+			: null,
+	);
+	nodes.getNodeTypeDefinition.mockResolvedValue({ content: 'Live parameter definition' });
+	nodes.getDescription.mockResolvedValue({
+		name: 'n8n-nodes-base.wait',
+		displayName: 'Wait',
+		description: 'Wait for confirmation',
+		version: 1.1,
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	});
+	const decisions = mock<DecisionService>({ kind: 'systemone' });
+	decisions.decide.mockResolvedValue({
+		ok: true,
+		model: 'fixture',
+		answers: {
+			coverage: { type: 'noul', noul: coverage },
+			progress: { type: 'noul', noul: 0.99 },
+			scope: { type: 'noul', noul: 0.99 },
+			step_0: {
+				type: 'choice',
+				choice: 'option_0',
+				confidence: 0.99,
+				probabilities: { option_0: 0.99, none_of_these: 0.01 },
+			},
+			step_1: {
+				type: 'choice',
+				choice: 'option_0',
+				confidence: 0.99,
+				probabilities: { option_0: 0.99, none_of_these: 0.01 },
+			},
+		},
+		problems: [],
+		latencyMs: 120,
+	});
+	return { nodes, decisions };
+}
+
+describe('LLM plan and bounded decisions', () => {
+	it('reviews a parameter-only plan without catalog or definition lookups', async () => {
+		const { nodes, decisions } = services();
+		const input = {
+			originalRequest: 'Change the confirmed interview duration from 45 to 60 minutes.',
+			plan: 'Change only duration_minutes in the Ready output to 60. Preserve the other output, input types, condition, and connections.',
+			steps: [],
+		};
+		const result = await decideBuildPlan(input, nodes, decisions);
+		expect(result.status).toBe('ready');
+		expect(result.selections).toEqual([]);
+		expect(result.definitions).toEqual([]);
+		expect(nodes.listSearchable).not.toHaveBeenCalled();
+		expect(nodes.getDescription).not.toHaveBeenCalled();
+		expect(nodes.getNodeTypeDefinition).not.toHaveBeenCalled();
+		expect(decisions.decide).toHaveBeenCalledWith(
+			expect.objectContaining({
+				state: input,
+				questions: {
+					coverage: expect.anything(),
+					progress: expect.anything(),
+					scope: expect.anything(),
+				},
+			}),
+		);
+	});
+
+	it('prefers an exact display name without its parenthetical alias', async () => {
+		const { nodes, decisions } = services();
+		nodes.listSearchable.mockResolvedValue([
+			{
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields (Set)',
+				description: 'Edit fields',
+				version: 3.5,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+			{
+				name: 'n8n-nodes-base.editImage',
+				displayName: 'Edit Image',
+				description: 'Edit image fields',
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		]);
+		nodes.listDiscriminators.mockResolvedValue(null);
+		const result = await decideBuildPlan(
+			{ ...plan, steps: [{ id: 'fields', intent: 'Set output fields', search: 'Edit Fields' }] },
+			nodes,
+			decisions,
+		);
+		expect(result.selections[0].selected?.nodeType).toBe('n8n-nodes-base.set');
+		expect(nodes.getDescription).toHaveBeenCalledOnce();
+		expect(nodes.getDescription).toHaveBeenCalledWith('n8n-nodes-base.set', 3.5, expect.anything());
+		expect(Object.keys(decisions.decide.mock.calls[0][0].questions.step_0.criteria ?? {})).toEqual([
+			'option_0',
+			'none_of_these',
+		]);
+	});
+
+	describe.each(['coverage', 'progress', 'scope'])('parameter edit %s check', (check) => {
+		it.each([
+			{ label: 'negative', value: 0.05, outcome: 'no' },
+			{ label: 'uncertain', value: 0.5, outcome: 'uncertain' },
+			{ label: 'missing', value: undefined, outcome: 'uncertain' },
+		])('keeps a $label answer in LLM review', async ({ value, outcome }) => {
+			const { nodes, decisions } = services();
+			decisions.decide.mockResolvedValue({
+				ok: true,
+				model: 'fixture',
+				answers: Object.fromEntries(
+					['coverage', 'progress', 'scope'].flatMap((key) =>
+						key === check && value === undefined
+							? []
+							: [[key, { type: 'noul' as const, noul: key === check ? (value ?? 0.5) : 0.99 }]],
+					),
+				),
+				problems: [],
+				latencyMs: 10,
+			});
+			const result = await decideBuildPlan(
+				{
+					originalRequest: 'Change the local duration constant to 60.',
+					plan: 'Change the duration constant to 60. Preserve all other behavior.',
+					steps: [],
+				},
+				nodes,
+				decisions,
+			);
+			expect(result).toMatchObject({
+				status: 'needs_reasoning',
+				checks: { [check]: outcome },
+			});
+			expect(nodes.listSearchable).not.toHaveBeenCalled();
+		});
+	});
+
+	it('grounds the full plan in installed operations and returns their parameter definitions', async () => {
+		const { nodes, decisions } = services();
+		const description = await nodes.getDescription('n8n-nodes-base.wait');
+		nodes.getDescription.mockResolvedValue({
+			...description,
+			outputs: ['main', 'main'],
+			outputNames: ['done', 'loop'],
+			builderHint: 'Return each batch to the loop node.',
+		});
+		const result = await decideBuildPlan(plan, nodes, decisions);
+		expect(result.status).toBe('ready');
+		expect(result.selections[0].selected).toMatchObject({
+			nodeType: 'n8n-nodes-base.gmail',
+			resource: 'message',
+			operation: 'send',
+		});
+		expect(result.capabilities).toContainEqual({
+			nodeType: 'n8n-nodes-base.gmail',
+			version: 2.1,
+			operations: [
+				{ resource: 'message', operation: 'send' },
+				{ resource: 'message', operation: 'get' },
+			],
+		});
+		expect(result.definitions).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ definition: { content: 'Live parameter definition' } }),
+			]),
+		);
+		expect(result.wiring).toContainEqual({
+			nodeType: 'n8n-nodes-base.wait',
+			version: 1.1,
+			inputs: ['main'],
+			outputs: [
+				{ index: 0, type: 'main', name: 'done' },
+				{ index: 1, type: 'main', name: 'loop' },
+			],
+			hint: 'Return each batch to the loop node.',
+		});
+		expect(decisions.decide).toHaveBeenCalledOnce();
+		expect(decisions.decide).toHaveBeenCalledWith(
+			expect.objectContaining({
+				state: plan,
+				questions: expect.objectContaining({
+					coverage: expect.anything(),
+					step_0: expect.anything(),
+					step_1: expect.anything(),
+				}),
+			}),
+		);
+	});
+
+	it.each([
+		{ name: 'CRM', resource: 'contact', operation: 'update' },
+		{ name: 'Inventory', resource: 'shipment', operation: 'create' },
+		{ name: 'Service Desk', resource: 'ticket', operation: 'close' },
+	])(
+		'bounds a large $name catalog without hiding its capabilities',
+		async ({ name, resource, operation }) => {
+			const { nodes, decisions } = services();
+			const type = `test.${name.toLowerCase().replaceAll(' ', '')}`;
+			nodes.listSearchable.mockResolvedValue([
+				{
+					name: type,
+					displayName: name,
+					description: 'Manage records',
+					version: 1,
+					inputs: ['main'],
+					outputs: ['main'],
+				},
+			]);
+			nodes.listDiscriminators.mockResolvedValue({
+				resources: [
+					...Array.from({ length: 100 }, (_, i) => ({
+						name: `unrelated${i}`,
+						operations: ['get'],
+					})),
+					{ name: resource, operations: [operation] },
+				],
+			});
+			const result = await decideBuildPlan(
+				{
+					originalRequest: `Use ${name} to ${operation} the ${resource}.`,
+					plan: `Use the installed ${name} operation.`,
+					steps: [
+						{
+							id: 'action',
+							search: `${name} ${resource} ${operation}`,
+							intent: `${operation} the ${resource}`,
+						},
+					],
+				},
+				nodes,
+				decisions,
+			);
+			expect(result.selections[0].selected).toMatchObject({ nodeType: type, resource, operation });
+			expect(result.capabilities[0].operations).toHaveLength(101);
+			const choices = decisions.decide.mock.calls[0][0].questions.step_0.criteria;
+			expect(Object.keys(choices ?? {})).toHaveLength(13);
+			expect(choices).toHaveProperty('none_of_these');
+		},
+	);
+
+	it('uses live resource and operation values instead of SDK file names', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [{ name: 'custom_object', operations: ['add_note'] }],
+		});
+		const description = await nodes.getDescription('n8n-nodes-base.gmail');
+		nodes.getDescription.mockResolvedValue({
+			...description,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'addNote',
+					displayOptions: { show: { resource: ['customObject'] } },
+					options: [{ name: 'Add Note', value: 'addNote' }],
+				},
+			],
+		});
+		const result = await decideBuildPlan({ ...plan, steps: [plan.steps[0]] }, nodes, decisions);
+		expect(result.selections[0].selected).toMatchObject({
+			resource: 'customObject',
+			operation: 'addNote',
+		});
+		expect(result.capabilities[0].operations).toEqual([
+			{ resource: 'customObject', operation: 'addNote' },
+		]);
+		expect(nodes.getNodeTypeDefinition).toHaveBeenCalledWith(
+			'n8n-nodes-base.gmail',
+			expect.objectContaining({ resource: 'customObject', operation: 'addNote' }),
+		);
+	});
+
+	it('uses each step intent to narrow a shared service catalog', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [
+				...Array.from({ length: 40 }, (_, i) => ({
+					name: `unrelated${i}`,
+					operations: ['archive'],
+				})),
+				{ name: 'message', operations: ['send', 'get'] },
+			],
+		});
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: [
+					{ id: 'send', search: 'Gmail', intent: 'send message' },
+					{ id: 'read', search: 'Gmail', intent: 'get message' },
+				],
+			},
+			nodes,
+			decisions,
+		);
+		expect(result.selections.map(({ selected }) => selected?.operation)).toEqual(['send', 'get']);
+		expect(nodes.listDiscriminators).toHaveBeenCalledOnce();
+	});
+
+	it('keeps truncated uncertain choices in LLM review with the full capabilities', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [
+				{ name: 'message', operations: Array.from({ length: 50 }, (_, i) => `action${i}`) },
+			],
+		});
+		decisions.decide.mockResolvedValue({
+			ok: false,
+			reason: 'timeout',
+			message: 'Timed out',
+			latencyMs: 1500,
+		});
+		const result = await decideBuildPlan({ ...plan, steps: [plan.steps[0]] }, nodes, decisions);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.selections[0]).toMatchObject({
+			selected: undefined,
+			candidateCount: 50,
+			candidatesTruncated: true,
+		});
+		expect(result.selections[0].candidates).toHaveLength(12);
+		expect(result.capabilities[0].operations).toHaveLength(50);
+		expect(result.definitions).toEqual([]);
+	});
+
+	it('prefers the longest installed name before resource and operation qualifiers', async () => {
+		const { nodes, decisions } = services();
+		nodes.listSearchable.mockResolvedValue(
+			['CRM', 'CRM Tool', 'CRM Trigger'].map((name) => ({
+				name: `test.${name.replaceAll(' ', '')}`,
+				displayName: name,
+				description: 'CRM records',
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+			})),
+		);
+		nodes.listDiscriminators.mockResolvedValue(null);
+		await decideBuildPlan(
+			{
+				...plan,
+				steps: [
+					{ id: 'tool', intent: 'Find a contact with a tool', search: 'CRM Tool contact get' },
+				],
+			},
+			nodes,
+			decisions,
+		);
+		expect(nodes.getDescription).toHaveBeenCalledOnce();
+		expect(nodes.getDescription).toHaveBeenCalledWith('test.CRMTool', 1, expect.anything());
+	});
+
+	it('keeps quality results when a short plan has a large operation batch', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue({
+			resources: [
+				{ name: 'message', operations: Array.from({ length: 50 }, (_, i) => `action${i}`) },
+			],
+		});
+		decisions.decide.mockImplementation(async ({ questions }) =>
+			'coverage' in questions
+				? {
+						ok: true,
+						model: 'fixture',
+						latencyMs: 10,
+						problems: [],
+						answers: {
+							coverage: { type: 'noul', noul: 0.99 },
+							progress: { type: 'noul', noul: 0.99 },
+							scope: { type: 'noul', noul: 0.99 },
+						},
+					}
+				: { ok: false, reason: 'timeout', message: 'Timed out', latencyMs: 1500 },
+		);
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: Array.from({ length: 5 }, (_, i) => ({ ...plan.steps[0], id: `step${i}` })),
+			},
+			nodes,
+			decisions,
+		);
+		expect(decisions.decide).toHaveBeenCalledTimes(2);
+		expect(result).toMatchObject({
+			status: 'needs_reasoning',
+			checks: { coverage: 'yes', progress: 'yes', scope: 'yes' },
+			decisionFailures: ['timeout'],
+		});
+	});
+
+	it('returns an incomplete plan to LLM reasoning instead of treating node matches as a complete build', async () => {
+		const { nodes, decisions } = services(0.05);
+		const result = await decideBuildPlan(plan, nodes, decisions);
+		expect(result).toMatchObject({ status: 'needs_reasoning', coverage: 'no' });
+		expect(result.guidance).toContain('ask-user');
+	});
+
+	it('supplies the schema for a single unresolved candidate without accepting it', async () => {
+		const { nodes, decisions } = services();
+		decisions.decide.mockResolvedValue({
+			ok: false,
+			reason: 'unavailable',
+			message: 'Unavailable',
+			latencyMs: 1,
+		});
+		const result = await decideBuildPlan(
+			{ ...plan, steps: [...plan.steps, { ...plan.steps[1], id: 'second_confirmation' }] },
+			nodes,
+			decisions,
+		);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.selections.every(({ selected }) => selected === undefined)).toBe(true);
+		expect(result.wiring).toHaveLength(2);
+		expect(result.definitions).toEqual([]);
+		expect(result.candidateDefinitions).toEqual([
+			expect.objectContaining({
+				nodeType: 'n8n-nodes-base.wait',
+				definition: { content: 'Live parameter definition' },
+			}),
+		]);
+		expect(result.guidance).toContain('not accepted choices');
+	});
+
+	it('narrows flat operation definitions and shares discovery for repeated services', async () => {
+		const { nodes, decisions } = services();
+		nodes.listDiscriminators.mockResolvedValue(null);
+		const description = await nodes.getDescription('n8n-nodes-base.gmail');
+		nodes.getDescription.mockClear();
+		nodes.getDescription.mockResolvedValue({
+			...description,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Send', value: 'send' }],
+				},
+			],
+		});
+		const result = await decideBuildPlan(
+			{ ...plan, steps: [plan.steps[0], { ...plan.steps[0], id: 'reminder' }] },
+			nodes,
+			decisions,
+		);
+		expect(result.status).toBe('ready');
+		expect(result.selections.every(({ selected }) => selected?.operation === 'send')).toBe(true);
+		expect(nodes.getDescription).toHaveBeenCalledOnce();
+		expect(nodes.getNodeTypeDefinition).toHaveBeenCalledOnce();
+		expect(nodes.getNodeTypeDefinition).toHaveBeenCalledWith(
+			'n8n-nodes-base.gmail',
+			expect.objectContaining({ operation: 'send' }),
+		);
+	});
+
+	it('supplies an uncertain proposed operation schema for LLM reasoning without accepting the choice', async () => {
+		const { nodes, decisions } = services();
+		decisions.decide.mockResolvedValue({
+			ok: true,
+			model: 'fixture',
+			latencyMs: 100,
+			problems: [],
+			answers: {
+				coverage: { type: 'noul', noul: 0.99 },
+				progress: { type: 'noul', noul: 0.99 },
+				scope: { type: 'noul', noul: 0.99 },
+				step_0: {
+					type: 'choice',
+					choice: 'option_1',
+					confidence: 0.52,
+					probabilities: { option_0: 0.45, option_1: 0.52, none_of_these: 0.03 },
+				},
+			},
+		});
+		const result = await decideBuildPlan({ ...plan, steps: [plan.steps[0]] }, nodes, decisions);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.selections[0].selected).toBeUndefined();
+		expect(result.definitions).toEqual([]);
+		expect(result.candidateDefinitions).toEqual([
+			expect.objectContaining({
+				nodeType: 'n8n-nodes-base.gmail',
+				resource: 'message',
+				operation: 'get',
+				definition: { content: 'Live parameter definition' },
+			}),
+		]);
+	});
+
+	it('requires reasoning when parameter definitions are unavailable', async () => {
+		const { nodes, decisions } = services();
+		nodes.getNodeTypeDefinition.mockResolvedValue(null);
+		expect((await decideBuildPlan(plan, nodes, decisions)).status).toBe('needs_reasoning');
+	});
+
+	it('discovers operations scoped to a hidden resource when split definitions are unavailable', async () => {
+		const { nodes, decisions } = services();
+		nodes.listSearchable.mockResolvedValue([
+			{
+				name: 'n8n-nodes-base.postgres',
+				displayName: 'Postgres',
+				description: 'Read and write records',
+				version: 2.7,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		]);
+		nodes.listDiscriminators.mockResolvedValue(null);
+		nodes.getDescription.mockResolvedValue({
+			name: 'n8n-nodes-base.postgres',
+			displayName: 'Postgres',
+			description: 'Read and write records',
+			version: 2.7,
+			group: ['transform'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'hidden',
+					default: 'database',
+					options: [{ name: 'Database', value: 'database' }],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['database'] } },
+					options: [
+						{ name: 'Execute Query', value: 'executeQuery' },
+						{ name: 'Insert', value: 'insert' },
+					],
+				},
+			],
+		});
+		const result = await decideBuildPlan(
+			{
+				originalRequest: 'Read owned interviews from Postgres.',
+				plan: 'Run a fixed parameterized query for the verified candidate.',
+				steps: [{ id: 'read', intent: 'Execute a fixed SQL query', search: 'Postgres' }],
+			},
+			nodes,
+			decisions,
+		);
+		expect(result.selections[0].selected).toMatchObject({
+			resource: 'database',
+			operation: 'executeQuery',
+		});
+		expect(result.capabilities[0].operations).toEqual([
+			{ resource: 'database', operation: 'executeQuery' },
+			{ resource: 'database', operation: 'insert' },
+		]);
+		expect(nodes.getNodeTypeDefinition).toHaveBeenCalledWith(
+			'n8n-nodes-base.postgres',
+			expect.objectContaining({ resource: 'database', operation: 'executeQuery' }),
+		);
+	});
+
+	it('retains quality checks and successful choices when a large plan batch times out', async () => {
+		const { nodes, decisions } = services();
+		decisions.decide.mockImplementation(async ({ questions }) => {
+			if ('step_8' in questions)
+				return { ok: false, reason: 'timeout', message: 'Timed out', latencyMs: 1500 };
+			return {
+				ok: true,
+				model: 'fixture',
+				latencyMs: 200,
+				problems: [],
+				answers: Object.fromEntries(
+					Object.entries(questions).map(([key, question]) => [
+						key,
+						question.type === 'noul'
+							? { type: 'noul', noul: 0.99 }
+							: {
+									type: 'choice',
+									choice: 'option_0',
+									confidence: 0.99,
+									probabilities: { option_0: 0.99, none_of_these: 0.01 },
+								},
+					]),
+				),
+			};
+		});
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: Array.from({ length: 16 }, (_, i) => ({ ...plan.steps[0], id: `email_${i}` })),
+			},
+			nodes,
+			decisions,
+		);
+		expect(decisions.decide).toHaveBeenCalledTimes(3);
+		expect(result).toMatchObject({
+			status: 'needs_reasoning',
+			checks: { coverage: 'yes', progress: 'yes', scope: 'yes' },
+			decisionStatus: 'incomplete',
+			decisionFailures: ['timeout'],
+		});
+		expect(result.selections.slice(0, 8).every(({ selected }) => selected)).toBe(true);
+		expect(result.selections.slice(8).every(({ selected }) => !selected)).toBe(true);
+	});
+
+	it('returns progress and scope concerns to the LLM even when coverage passes', async () => {
+		const { nodes, decisions } = services();
+		const outcome = await decisions.decide({
+			name: 'fixture',
+			schemaVersion: '1',
+			state: {},
+			questions: {},
+		});
+		if (!outcome.ok) throw new Error('Expected a successful fixture');
+		decisions.decide.mockResolvedValue({
+			...outcome,
+			answers: { ...outcome.answers, progress: { type: 'noul', noul: 0.05 } },
+		});
+		expect(await decideBuildPlan(plan, nodes, decisions)).toMatchObject({
+			status: 'needs_reasoning',
+			checks: { coverage: 'yes', progress: 'no', scope: 'yes' },
+		});
+	});
+
+	it('does not turn an unavailable integration into a different service', async () => {
+		const { nodes, decisions } = services();
+		const result = await decideBuildPlan(
+			{
+				...plan,
+				steps: [{ id: 'missing', intent: 'Use an unavailable ATS', search: 'Unavailable ATS' }],
+			},
+			nodes,
+			decisions,
+		);
+		expect(result.status).toBe('needs_reasoning');
+		expect(result.selections[0].selected).toBeUndefined();
+	});
+
+	it('rejects duplicate step ids and stops a cancelled plan before discovery', async () => {
+		expect(
+			buildPlanSchema.safeParse({ ...plan, steps: [plan.steps[0], plan.steps[0]] }).success,
+		).toBe(false);
+		const { nodes, decisions } = services();
+		await expect(decideBuildPlan(plan, nodes, decisions, AbortSignal.abort())).rejects.toThrow();
+		expect(nodes.listSearchable).not.toHaveBeenCalled();
+	});
+});
