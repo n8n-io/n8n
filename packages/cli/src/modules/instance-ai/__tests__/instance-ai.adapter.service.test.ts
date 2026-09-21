@@ -5673,7 +5673,10 @@ describe('createExecutionAdapter runStep()', () => {
 			expect(runData.executionData.manualData.dirtyNodeNames).toEqual(['Send']);
 			expect(runData.executionData.manualData.source).toBe('instance_ai');
 		} finally {
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
+			// Assigning `undefined` stores the string "undefined", which leaves the
+			// variable set for every later test in this file.
+			if (previous === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
 		}
 	});
 
@@ -5690,7 +5693,10 @@ describe('createExecutionAdapter runStep()', () => {
 			// `runManually` instead of replaying a prepared stack.
 			expect(runData.executionData.executionData).toBeUndefined();
 		} finally {
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
+			// Assigning `undefined` stores the string "undefined", which leaves the
+			// variable set for every later test in this file.
+			if (previous === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
 		}
 	});
 
