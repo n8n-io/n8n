@@ -136,6 +136,9 @@ Playground.argTypes = {
 		options: [...playgroundItemCounts],
 		description: 'Number of tabs. Map to the Figma "number of items" property.',
 	},
+	options: { table: { disable: true } },
+	modelValue: { table: { disable: true } },
+	justified: { table: { disable: true } },
 };
 
 const options: Array<TabOptions<string>> = [
