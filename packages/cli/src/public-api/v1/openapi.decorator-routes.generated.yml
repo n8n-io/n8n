@@ -24,6 +24,9 @@ paths:
   /credentials/schema/{credentialTypeName}:
     get:
       $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
+  /discover:
+    get:
+      $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
