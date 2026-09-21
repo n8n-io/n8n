@@ -75,7 +75,9 @@ test.describe(
 			expect(webhookResponse.status()).toBe(404);
 		});
 
-		test('regular webhooks are served on /webhook and return 404 on /form', async ({ api }) => {
+		test('regular webhooks are served on /webhook and return 404 on /form @engine:v2', async ({
+			api,
+		}) => {
 			const webhookPath = `webhook-test-${nanoid()}`;
 			const workflow: Partial<IWorkflowBase> = {
 				name: `Webhook Endpoint Test ${nanoid()}`,

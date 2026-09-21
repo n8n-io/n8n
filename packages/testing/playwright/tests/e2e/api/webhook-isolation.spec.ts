@@ -30,12 +30,18 @@ test.describe(
 			'respond-to-webhook-text-csp-header',
 			'respond-to-webhook-json-as-text-html',
 		];
+		const engineV2WebhookPaths = new Set([
+			'webhook-response-data-text-html',
+			'webhook-response-data-wo-content-type',
+			'webhook-response-data-csp-header',
+		]);
 
 		const expectedCSP =
 			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
 
 		for (const webhookPath of webhookPaths) {
-			test(`Webhook responses should include the correct response headers for ${webhookPath}`, async ({
+			const engineTag = engineV2WebhookPaths.has(webhookPath) ? ' @engine:v2' : '';
+			test(`Webhook responses should include the correct response headers for ${webhookPath}${engineTag}`, async ({
 				api,
 			}) => {
 				const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
