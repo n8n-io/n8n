@@ -658,8 +658,8 @@ describe('AgentExecutionRepository', () => {
 				expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
 				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 				expect(
-					await executionService.canUsePreviewThread(threadId, projectId, uuid(), owner.id),
-				).toBe(false);
+					await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id),
+				).toBe(true);
 
 				const resumed = await resume(owner);
 				const next = resumed.find((chunk) => chunk.type === 'tool-call-suspended');
