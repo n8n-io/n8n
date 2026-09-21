@@ -15,6 +15,7 @@ import {
 	N8nMarkdownEditor,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -282,10 +283,6 @@ const executionSummary = computed(() => {
 	});
 });
 
-const toggleScheduleLabel = computed(() =>
-	i18n.baseText(enabled.value ? 'agents.builder.tasks.pause' : 'agents.builder.tasks.unpause'),
-);
-
 const objectiveError = computed(() => {
 	if (!objective.value.trim()) {
 		return i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
@@ -336,6 +333,10 @@ function onToggleEnabled(value: boolean) {
 	if (!current) return;
 	enabled.value = value;
 	props.data.onToggle?.({ id: current.id, enabled: value });
+}
+
+function onPauseToggle(paused: boolean) {
+	onToggleEnabled(!paused);
 }
 
 function onPreview() {
@@ -623,6 +624,18 @@ async function onSave() {
 					</div>
 				</div>
 
+				<div v-if="isEditing" :class="$style.pauseControl" data-testid="agent-task-pause-control">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.tasks.pause') }}
+					</N8nText>
+					<N8nSwitch2
+						:model-value="!enabled"
+						:aria-label="i18n.baseText('agents.builder.tasks.pause')"
+						data-testid="agent-task-toggle"
+						@update:model-value="(paused) => onPauseToggle(Boolean(paused))"
+					/>
+				</div>
+
 				<N8nText v-if="errorMessage" :class="$style.error" size="small">
 					{{ errorMessage }}
 				</N8nText>
@@ -642,14 +655,6 @@ async function onSave() {
 					{{ i18n.baseText('generic.delete') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton
-						v-if="isEditing"
-						variant="subtle"
-						data-testid="agent-task-toggle"
-						@click="onToggleEnabled(!enabled)"
-					>
-						{{ toggleScheduleLabel }}
-					</N8nButton>
 					<AgentPreviewButton
 						:is-runnable="props.data.isRunnable === true"
 						:validation-issues="props.data.validationIssues ?? []"
@@ -747,6 +752,12 @@ async function onSave() {
 
 .error {
 	color: var(--color--danger);
+}
+
+.pauseControl {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .footer {

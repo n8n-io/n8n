@@ -135,6 +135,12 @@ const stubs = {
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
+	N8nSwitch2: {
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template:
+			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	},
 	AgentPreviewButton: {
 		props: ['isRunnable', 'testId', 'validationIssues'],
 		emits: ['open-preview'],
@@ -376,7 +382,7 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('pauses and unpauses an existing task through the modal callback', async () => {
+	it('pauses and unpauses an existing task with the inline toggle', async () => {
 		const onToggle = vi.fn();
 		const { getByTestId, getByText, queryByText } = renderModal({
 			task: makeTask(),
@@ -384,20 +390,21 @@ describe('AgentTaskModal', () => {
 			onToggle,
 		});
 
-		expect(getByTestId('agent-task-toggle')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByTestId('agent-task-pause-control')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
 		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 
 		await fireEvent.click(getByTestId('agent-task-toggle'));
 
 		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
-		expect(getByTestId('agent-task-toggle')).toHaveTextContent('agents.builder.tasks.unpause');
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'true');
 		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
 		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
 
 		await fireEvent.click(getByTestId('agent-task-toggle'));
 
 		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
-		expect(getByTestId('agent-task-toggle')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
 		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 	});
 
@@ -566,7 +573,7 @@ describe('AgentTaskModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('shows the edit actions in the footer for existing tasks only', async () => {
+	it('shows the edit-only controls for existing tasks', async () => {
 		const { getByTestId, rerender, queryByTestId } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
@@ -574,6 +581,7 @@ describe('AgentTaskModal', () => {
 		});
 
 		expect(getByTestId('agent-task-delete')).toHaveTextContent('generic.delete');
+		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
 		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
 		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
 		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');
@@ -591,6 +599,7 @@ describe('AgentTaskModal', () => {
 		});
 
 		expect(queryByTestId('agent-task-toggle')).toBeNull();
+		expect(queryByTestId('agent-task-pause-control')).toBeNull();
 		expect(queryByTestId('agent-task-delete')).toBeNull();
 		expect(getByTestId('agent-task-preview')).toBeInTheDocument();
 		expect(getByTestId('agent-task-save')).toBeInTheDocument();
