@@ -13,7 +13,13 @@
     "packages/@n8n/typeorm/test/**",
     "docs/generated/**",
     "**/test/**/*.workflow.json",
+    "**/tests/**/*.workflow.json",
+    "**/__tests__/**/*.workflow.json",
     "**/test/**/workflow.*.json",
-    "**/test/**/workflows/**"
+    "**/tests/**/workflow.*.json",
+    "**/__tests__/**/workflow.*.json",
+    "**/test/**/workflows/**/*.json",
+    "**/tests/**/workflows/**/*.json",
+    "**/__tests__/**/workflows/**/*.json"
   ]
 }
