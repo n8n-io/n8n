@@ -70,4 +70,11 @@ export class WorkflowsConfig {
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;
+
+	/**
+	 * Force-enables the flexible canvas groups flag (`117_flexible_groups_canvas`).
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 */
+	@Env('N8N_WORKFLOWS_FLEXIBLE_GROUPS_ENABLED')
+	flexibleGroupsEnabled: boolean = false;
 }

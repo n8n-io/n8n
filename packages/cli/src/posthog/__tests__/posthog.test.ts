@@ -317,7 +317,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
-
+				globalConfig.workflows.flexibleGroupsEnabled = false;
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -366,6 +366,21 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '110_instance_ai_folder_exploration': 'test' });
+			});
+
+			it('force-enables the flexible-groups flag when N8N_WORKFLOWS_FLEXIBLE_GROUPS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ '117_flexible_groups_canvas': false }),
+				);
+
+				globalConfig.workflows.flexibleGroupsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '117_flexible_groups_canvas': true });
 			});
 
 			it('applies the generic override map on top of resolved flags', async () => {

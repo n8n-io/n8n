@@ -825,6 +825,7 @@ export {
 	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export { FLEXIBLE_GROUPS_CANVAS_FLAG } from './constants/canvas-feature-flags';
 export {
 	MOONSHOTAI_KIMI_K3_MODEL_ID,
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,
