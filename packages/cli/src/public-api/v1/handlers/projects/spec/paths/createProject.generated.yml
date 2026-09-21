@@ -21,7 +21,44 @@ requestBody:
             example: Marketing
           id:
             type: string
-            readOnly: true
+            minLength: 1
+            maxLength: 36
+            description: Project ID. The server generates an ID when omitted.
+            example: VmwOO9HeTEj20kxM
+          icon:
+            type: object
+            nullable: true
+            properties:
+              type:
+                type: string
+                enum:
+                  - emoji
+                  - icon
+              value:
+                type: string
+                minLength: 1
+              color:
+                type: string
+            required:
+              - type
+              - value
+          description:
+            type: string
+            nullable: true
+            maxLength: 512
+            example: Workflows the marketing team owns.
+          customTelemetryTags:
+            type: array
+            items:
+              type: object
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+              required:
+                - key
+                - value
           type:
             type: string
             readOnly: true
@@ -122,5 +159,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

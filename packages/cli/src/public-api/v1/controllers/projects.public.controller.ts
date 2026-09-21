@@ -26,6 +26,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	GlobalScope,
 	Licensed,
 	Param,
 	Patch,
@@ -99,19 +100,25 @@ export class ProjectsPublicController {
 	}
 
 	@Post('/')
+	@GlobalScope('project:create')
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('project:create')
 	@ApiSummary('Create a project')
 	@ApiDescription('Create a project on your instance.')
 	@ApiTags(tags)
 	@ApiResponse(201, CreatedProjectPublicDto)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(400)
 	async createProject(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateProjectPublicDto,
 	): Promise<CreatedProjectPublicDto> {
-		const project = await this.projectService.createTeamProject(req.user, { name: body.name });
+		const project = await this.projectService.createTeamProject(
+			req.user,
+			{ name: body.name, icon: body.icon ?? undefined },
+			{ id: body.id, description: body.description, customTelemetryTags: body.customTelemetryTags },
+		);
 
 		const scopes = await this.projectService.getProjectScopesForUser(req.user, project.id);
 
