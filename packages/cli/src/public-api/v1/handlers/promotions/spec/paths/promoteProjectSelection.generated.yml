@@ -34,6 +34,7 @@ requestBody:
             maxLength: 1000
         required:
           - workflowIds
+        additionalProperties: false
 responses:
   '200':
     description: Operation successful.
