@@ -66,7 +66,10 @@ export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 				let match;
 				while ((match = regex.exec(content)) !== null) {
 					const matchedNode = file.getDescendantAtPos(match.index);
-					if (match[0].startsWith('fetch') && Node.isPropertyAccessExpression(matchedNode?.getParent())) {
+					if (
+						match[0].startsWith('fetch') &&
+						Node.isPropertyAccessExpression(matchedNode?.getParent())
+					) {
 						continue;
 					}
 
