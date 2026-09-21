@@ -8,7 +8,7 @@ import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
 
-import { INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
+import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
 const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
@@ -65,39 +65,38 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('withholds them from consent when the module is inactive', async () => {
+		it('keeps only node usage in consent when the module is inactive', async () => {
 			moduleRegistry.isActive.mockImplementation((name) => name !== 'instance-ai');
+
+			const scopeTools = await resource.getScopeTools();
+
+			for (const tool of ACTIVITY_LOG_TOOLS) {
+				expect(scopeTools['workflow:read']).not.toContain(tool);
+			}
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			// Unrelated entries under the same scope are untouched.
+			expect(scopeTools['workflow:read']).toContain('search_workflows');
+		});
+
+		it('withholds all context tools from consent when the instance flag is off', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
 
 			const scopeTools = await resource.getScopeTools();
 
 			for (const tool of INSTANCE_CONTEXT_TOOLS) {
 				expect(scopeTools['workflow:read']).not.toContain(tool);
 			}
-			// Unrelated entries under the same scope are untouched.
-			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});
 
-		it('withholds the activity tools from consent when the instance flag is off', async () => {
-			moduleRegistry.isActive.mockReturnValue(true);
-			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
-
-			const scopeTools = await resource.getScopeTools();
-
-			expect(scopeTools['workflow:read']).not.toContain('get_instance_activity');
-			expect(scopeTools['workflow:read']).not.toContain('expand_instance_activity');
-			// Node usage reads its own index, so the log has no bearing on it.
-			expect(scopeTools['workflow:read']).toContain('get_node_usage');
-		});
-
-		it('withholds activity tools when the instance flag cannot be read', async () => {
+		it('withholds all context tools when the instance flag cannot be read', async () => {
 			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
 
 			const scopeTools = await resource.getScopeTools();
 
-			expect(scopeTools['workflow:read']).not.toContain('get_instance_context');
-			expect(scopeTools['workflow:read']).not.toContain('get_instance_activity');
-			expect(scopeTools['workflow:read']).not.toContain('expand_instance_activity');
-			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			for (const tool of INSTANCE_CONTEXT_TOOLS) {
+				expect(scopeTools['workflow:read']).not.toContain(tool);
+			}
 		});
 
 		it('checks the activity flag without a user argument', async () => {

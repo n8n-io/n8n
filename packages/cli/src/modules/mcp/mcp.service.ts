@@ -3,7 +3,6 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_INSTANCE_CONTEXT_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -146,12 +145,8 @@ export type McpAppsResolution = {
 /** User experience gates and the shared instance activity gate. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/**
-	 * The instance-context read surface: the four tools, the `n8n://instance/context` resource,
-	 * and the sentence in the instructions that points a client at them.
-	 */
+	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
-	instanceActivityEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
 };
@@ -260,7 +255,7 @@ export class McpService {
 
 	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpInstanceContextEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
 		const [userFlags, instanceFlag] = await Promise.allSettled([
 			this.postHogClient.getFeatureFlags(user),
@@ -270,9 +265,7 @@ export class McpService {
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			instanceContextEnabled:
-				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
-			instanceActivityEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
+			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			// Multivariate flag: only the `variant` arm enables the feature.
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
@@ -463,7 +456,6 @@ export class McpService {
 				instructions: getMcpInstructions({
 					isInstanceContextEnabled:
 						featureFlags.instanceContextEnabled &&
-						featureFlags.instanceActivityEnabled &&
 						this.moduleRegistry.isActive('instance-ai') &&
 						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
@@ -632,7 +624,7 @@ export class McpService {
 
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (featureFlags.instanceActivityEnabled && this.moduleRegistry.isActive('instance-ai')) {
+			if (this.moduleRegistry.isActive('instance-ai')) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);

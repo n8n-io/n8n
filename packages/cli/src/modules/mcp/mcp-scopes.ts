@@ -139,19 +139,14 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	...FOLDER_FEATURE_TOOLS,
 ]);
 
-/**
- * Tools only registered when the instance-context read surface is on
- * (`N8N_MCP_INSTANCE_CONTEXT_ENABLED` or its rollout flag) and the `instance-ai`
- * module is active. Same role as BUILDER_TOOLS and AGENT_TOOLS: it lets the
- * scope-map drift guard tell "not mapped" from "not registered here".
- */
-/** Tools that require the shared instance activity gate. */
+/** Context tools that also require the instance-ai module. */
 export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_context',
 	'get_instance_activity',
 	'expand_instance_activity',
 ]);
 
+/** Tools that require the shared instance activity gate. */
 export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_context',
 	'get_instance_activity',

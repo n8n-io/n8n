@@ -206,10 +206,6 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
 
-	/** Enables the MCP context surface. Activity reads also need the instance activity flag. */
-	@Env('N8N_MCP_INSTANCE_CONTEXT_ENABLED')
-	mcpInstanceContextEnabled: boolean = false;
-
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;

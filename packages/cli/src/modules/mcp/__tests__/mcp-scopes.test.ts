@@ -1,6 +1,7 @@
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
@@ -67,7 +68,6 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	instanceActivityEnabled: true,
 	// On by default so the drift guards below cover `get_user_preferences`. Its own
 	// registration tests set it explicitly either way.
 	aiPreferencesEnabled: true,
@@ -143,6 +143,12 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		postHogClient = mockInstance(PostHogClient),
+	}: {
+		builderEnabled?: boolean;
+		foldersLicensed?: boolean;
+		instanceAiActive?: boolean;
+		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
 			mockLogger(),
@@ -155,6 +161,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {
+					...new EndpointsConfig(),
 					webhook: '/webhook',
 					webhookTest: '/webhook-test',
 					rest: 'rest',
@@ -183,7 +190,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(LicenseState, {
 				isFoldersLicensed: vi.fn().mockReturnValue(foldersLicensed),
 			}),
-			mockInstance(PostHogClient),
+			postHogClient,
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
@@ -228,33 +235,28 @@ describe('McpService scope enforcement', () => {
 		expect(unregistered).toEqual([]);
 	});
 
-	/**
-	 * The registration branch itself, which every other test here leaves dark. It resolves the
-	 * reader out of the container behind a dynamic import, so a wrong path or a missing binding
-	 * would otherwise only surface at runtime on a real instance.
-	 */
-	it('registers the instance-context tools when the flag and the module are both on', async () => {
-		mockInstance(InstanceContextService);
-		mockInstance(WorkflowDependencyQueryService);
+	it.each([true, false])(
+		'sets all context tools and the resource from the shared flag override: %s',
+		async (enabled) => {
+			mockInstance(InstanceContextService);
+			mockInstance(WorkflowDependencyQueryService);
+			const config = mockInstance(GlobalConfig, {
+				diagnostics: { enabled: false },
+				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled } },
+			});
+			const service = buildService({
+				instanceAiActive: true,
+				postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
+			});
 
-		const server = await buildService({ instanceAiActive: true }).getServer(
-			user,
-			mcpFeatureFlags({ instanceContextEnabled: true }),
-		);
+			const flags = await service.resolveFeatureFlags(user);
+			const server = await service.getServer(user, flags);
 
-		const registered = getRegisteredToolNames(server);
-		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).toContain(name);
-	});
-
-	it('registers none of them with the module active but the flag off', async () => {
-		const server = await buildService({ instanceAiActive: true }).getServer(
-			user,
-			mcpFeatureFlags({ instanceContextEnabled: false }),
-		);
-
-		const registered = getRegisteredToolNames(server);
-		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
-	});
+			const registered = getRegisteredToolNames(server);
+			for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(enabled);
+			expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(enabled);
+		},
+	);
 
 	/**
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
@@ -376,30 +378,6 @@ describe('McpService scope enforcement', () => {
 
 		expect(getRegisteredToolNames(server)).not.toContain('get_instance_context');
 		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
-	});
-
-	/**
-	 * The log is off by default, and a tool answering from a store nothing writes to reports an
-	 * empty feed — which an agent reads as "nothing has happened here".
-	 */
-	it('withholds activity tools when the instance activity flag is off', async () => {
-		mockInstance(InstanceContextService);
-		mockInstance(WorkflowDependencyQueryService);
-
-		const server = await buildService({
-			instanceAiActive: true,
-		}).getServer(
-			user,
-			mcpFeatureFlags({ instanceContextEnabled: true, instanceActivityEnabled: false }),
-		);
-
-		const registered = getRegisteredToolNames(server);
-		expect(registered).not.toContain('get_instance_activity');
-		expect(registered).not.toContain('expand_instance_activity');
-		expect(registered).not.toContain('get_instance_context');
-		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
-		// Node usage reads its own index, so the log has no bearing on it.
-		expect(registered).toContain('get_node_usage');
 	});
 
 	/**
