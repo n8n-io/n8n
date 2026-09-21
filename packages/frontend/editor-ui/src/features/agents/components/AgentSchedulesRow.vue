@@ -17,6 +17,7 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isPublished: boolean;
+		isRunnable?: boolean;
 		reloadKey?: number;
 		/** No agent row exists yet, so an unsaved agent has no tasks to load. */
 		agentUnsaved?: boolean;
@@ -26,6 +27,7 @@ const props = withDefaults(
 	{
 		taskRefs: () => [],
 		disabled: false,
+		isRunnable: false,
 		validationIssues: () => [],
 	},
 );
@@ -33,6 +35,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'preview-task': [instructions: string];
 }>();
 
 const i18n = useI18n();
@@ -116,12 +119,15 @@ function openTaskModal(task: TaskRow | null) {
 			ensureAgentPersisted: props.ensureAgentPersisted,
 			task,
 			isPublished: props.isPublished,
+			isRunnable: props.isRunnable,
+			validationIssues: props.validationIssues,
 			taskState: task
 				? {
 						enabled: task.enabled,
 					}
 				: undefined,
 			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
+			onPreview: (instructions: string) => emit('preview-task', instructions),
 			onSaved: () => {
 				void reloadTasks();
 				emit('tasks-changed');

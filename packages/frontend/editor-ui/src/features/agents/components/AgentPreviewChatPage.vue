@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -10,7 +10,7 @@ import type {
 } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
 		initialized: boolean;
@@ -32,6 +32,7 @@ const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const inputDraft = ref('');
@@ -44,6 +45,16 @@ function focusInput(options?: FocusOptions) {
 function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
 }
+
+watch(
+	[() => props.initialPrompt, chatPanel],
+	([prompt, panel]) => {
+		if (!prompt || !panel) return;
+		panel.sendMessageFromOutside(prompt);
+		emit('initial-consumed');
+	},
+	{ immediate: true, flush: 'post' },
+);
 
 defineExpose({ focusInput, getConversationMarkdown });
 </script>

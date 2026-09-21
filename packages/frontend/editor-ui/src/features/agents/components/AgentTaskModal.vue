@@ -3,6 +3,7 @@ import {
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
 	StrictTimeZoneSchema,
+	type AgentConfigValidationIssue,
 	type AgentTaskDto,
 } from '@n8n/api-types';
 import {
@@ -14,7 +15,6 @@ import {
 	N8nMarkdownEditor,
 	N8nOption,
 	N8nSelect,
-	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -25,15 +25,9 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createAgentTask,
-	deleteAgentTask,
-	runAgentTask,
-	updateAgentTask,
-} from '../composables/useAgentApi';
+import { createAgentTask, deleteAgentTask, updateAgentTask } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import {
 	buildCron,
@@ -46,6 +40,7 @@ import {
 	type ScheduleFrequency,
 	weekdayLabel,
 } from '../utils/scheduleBuilder';
+import AgentPreviewButton from './AgentPreviewButton.vue';
 
 export type AgentTaskModalData = {
 	projectId: string;
@@ -53,10 +48,13 @@ export type AgentTaskModalData = {
 	ensureAgentPersisted?: () => Promise<void>;
 	task?: AgentTaskDto | null;
 	isPublished: boolean;
+	isRunnable?: boolean;
+	validationIssues?: AgentConfigValidationIssue[];
 	taskState?: {
 		enabled: boolean;
 	};
 	onToggle?: (payload: { id: string; enabled: boolean }) => void;
+	onPreview?: (instructions: string) => void;
 	onSaved: () => void;
 };
 
@@ -71,7 +69,6 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const task = computed(() => props.data.task ?? null);
@@ -81,7 +78,6 @@ const scheduleTouched = ref(isEditing.value);
 // next publish (see AgentTaskService), so warn before the edit silently no-ops.
 const showRepublishHint = computed(() => isEditing.value && props.data.isPublished);
 const enabled = ref(props.data.taskState?.enabled ?? true);
-const running = ref(false);
 const deleting = ref(false);
 
 const name = ref('');
@@ -276,6 +272,20 @@ const scheduleDescription = computed(() => {
 	return describeSchedule(cronExpression.value) ?? '';
 });
 
+const executionSummary = computed(() => {
+	if (!enabled.value && isEditing.value) {
+		return i18n.baseText('agents.builder.tasks.schedule.executionPaused');
+	}
+	if (!nextOccurrenceText.value) return '';
+	return i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
+		interpolate: { occurrence: nextOccurrenceText.value },
+	});
+});
+
+const toggleScheduleLabel = computed(() =>
+	i18n.baseText(enabled.value ? 'agents.builder.tasks.pause' : 'agents.builder.tasks.unpause'),
+);
+
 const objectiveError = computed(() => {
 	if (!objective.value.trim()) {
 		return i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
@@ -328,26 +338,12 @@ function onToggleEnabled(value: boolean) {
 	props.data.onToggle?.({ id: current.id, enabled: value });
 }
 
-async function onRun() {
-	const current = task.value;
-	if (!current || running.value) return;
-	running.value = true;
-	try {
-		await runAgentTask(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-			current.id,
-		);
-		toast.showMessage({
-			title: i18n.baseText('agents.builder.tasks.executeStarted'),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.tasks.executeError'));
-	} finally {
-		running.value = false;
-	}
+function onPreview() {
+	objectiveTouched.value = true;
+	if (objectiveError.value || !props.data.onPreview) return;
+
+	closeModal();
+	props.data.onPreview(objective.value.trim());
 }
 
 async function onDelete() {
@@ -438,35 +434,6 @@ async function onSave() {
 						)
 					}}
 				</N8nHeading>
-				<div v-if="isEditing" :class="$style.headerActions">
-					<N8nTooltip
-						:content="
-							props.data.isPublished
-								? i18n.baseText('agents.builder.tasks.republishHint')
-								: i18n.baseText('agents.builder.tasks.publishHint')
-						"
-						placement="top"
-					>
-						<N8nSwitch2
-							:model-value="enabled"
-							data-testid="agent-task-toggle"
-							@update:model-value="(value) => onToggleEnabled(Boolean(value))"
-						/>
-					</N8nTooltip>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.execute')" placement="top">
-						<N8nButton
-							variant="ghost"
-							size="small"
-							icon-only
-							:loading="running"
-							:aria-label="i18n.baseText('agents.builder.tasks.execute')"
-							data-testid="agent-task-run"
-							@click="onRun"
-						>
-							<template #icon><N8nIcon icon="play" :size="16" /></template>
-						</N8nButton>
-					</N8nTooltip>
-				</div>
 			</div>
 		</template>
 
@@ -635,24 +602,26 @@ async function onSave() {
 							/>
 						</N8nSelect>
 					</div>
-					<N8nText v-if="nextOccurrenceText">
-						<span v-if="scheduleDescription">{{ scheduleDescription }} · </span>
-						{{
-							i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
-								interpolate: { occurrence: nextOccurrenceText },
-							})
-						}}
-					</N8nText>
+					<div v-if="executionSummary" :class="$style.scheduleSummary">
+						<N8nText :class="$style.help" size="small">
+							<span v-if="scheduleDescription">{{ scheduleDescription }} · </span>
+							{{ executionSummary }}
+						</N8nText>
+						<N8nTooltip
+							v-if="showRepublishHint"
+							:content="i18n.baseText('agents.builder.tasks.republishHint')"
+							placement="top"
+						>
+							<span
+								:class="$style.infoIcon"
+								:aria-label="i18n.baseText('agents.builder.tasks.republishHint')"
+								tabindex="0"
+							>
+								<N8nIcon icon="info" size="small" />
+							</span>
+						</N8nTooltip>
+					</div>
 				</div>
-
-				<N8nText
-					v-if="showRepublishHint"
-					:class="$style.help"
-					size="small"
-					data-testid="agent-task-republish-hint"
-				>
-					{{ i18n.baseText('agents.builder.tasks.republishHint') }}
-				</N8nText>
 
 				<N8nText v-if="errorMessage" :class="$style.error" size="small">
 					{{ errorMessage }}
@@ -670,12 +639,23 @@ async function onSave() {
 					@click="onDelete"
 				>
 					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-					{{ i18n.baseText('agents.builder.tasks.delete') }}
+					{{ i18n.baseText('generic.delete') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
-						{{ i18n.baseText('agents.builder.tasks.cancel') }}
+					<N8nButton
+						v-if="isEditing"
+						variant="subtle"
+						data-testid="agent-task-toggle"
+						@click="onToggleEnabled(!enabled)"
+					>
+						{{ toggleScheduleLabel }}
 					</N8nButton>
+					<AgentPreviewButton
+						:is-runnable="props.data.isRunnable === true"
+						:validation-issues="props.data.validationIssues ?? []"
+						test-id="agent-task-preview"
+						@open-preview="onPreview"
+					/>
 					<N8nButton
 						variant="solid"
 						:disabled="saving"
@@ -683,7 +663,7 @@ async function onSave() {
 						data-testid="agent-task-save"
 						@click="onSave"
 					>
-						{{ i18n.baseText('agents.builder.tasks.save') }}
+						{{ i18n.baseText('generic.save') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -698,12 +678,6 @@ async function onSave() {
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	padding-right: var(--spacing--xl);
-}
-
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 
 .content {
@@ -755,6 +729,18 @@ async function onSave() {
 	width: 14rem;
 }
 
+.scheduleSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.infoIcon {
+	display: inline-flex;
+	color: var(--color--text--tint-1);
+	cursor: help;
+}
+
 .help {
 	color: var(--color--text--tint-1);
 }
@@ -771,6 +757,7 @@ async function onSave() {
 
 .footerActions {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	margin-left: auto;
 }

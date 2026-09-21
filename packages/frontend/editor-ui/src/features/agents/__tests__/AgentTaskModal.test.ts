@@ -49,18 +49,10 @@ function setBrowserTimezone(timeZone: string): void {
 const createAgentTaskSpy = vi.fn();
 const updateAgentTaskSpy = vi.fn();
 const deleteAgentTaskSpy = vi.fn();
-const runAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentTask: (...args: unknown[]) => createAgentTaskSpy(...args),
 	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
-	runAgentTask: (...args: unknown[]) => runAgentTaskSpy(...args),
 	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
-}));
-
-const showMessageSpy = vi.fn();
-const showErrorSpy = vi.fn();
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
 }));
 
 const confirmSpy = vi.fn();
@@ -139,12 +131,15 @@ const stubs = {
 	N8nIcon: { template: '<span />' },
 	N8nButton: {
 		props: ['disabled', 'loading'],
+		emits: ['click'],
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
-	N8nSwitch2: {
-		props: ['modelValue'],
-		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	AgentPreviewButton: {
+		props: ['isRunnable', 'testId', 'validationIssues'],
+		emits: ['open-preview'],
+		template:
+			'<button :data-testid="testId" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -381,17 +376,29 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('toggles an existing task through the modal callback', async () => {
+	it('pauses and unpauses an existing task through the modal callback', async () => {
 		const onToggle = vi.fn();
-		const { getByTestId } = renderModal({
+		const { getByTestId, getByText, queryByText } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
 			onToggle,
 		});
 
+		expect(getByTestId('agent-task-toggle')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+
 		await fireEvent.click(getByTestId('agent-task-toggle'));
 
 		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
+		expect(getByTestId('agent-task-toggle')).toHaveTextContent('agents.builder.tasks.unpause');
+		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
+		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-task-toggle'));
+
+		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
+		expect(getByTestId('agent-task-toggle')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 	});
 
 	describe('schedule timezone', () => {
@@ -506,17 +513,43 @@ describe('AgentTaskModal', () => {
 		});
 	});
 
-	it('runs an existing task and shows a success toast', async () => {
-		runAgentTaskSpy.mockResolvedValue({ success: true });
+	it('opens Preview with the trimmed task objective', async () => {
+		const onPreview = vi.fn();
 		const { getByTestId } = renderModal({
-			task: makeTask(),
+			task: makeTask({ objective: '  Test these instructions  ' }),
 			taskState: { enabled: true },
+			isRunnable: true,
+			onPreview,
 		});
 
-		await fireEvent.click(getByTestId('agent-task-run'));
+		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		await waitFor(() => expect(runAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-9'));
-		expect(showMessageSpy).toHaveBeenCalled();
+		expect(onPreview).toHaveBeenCalledWith('Test these instructions');
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('keeps Preview disabled when the agent is not runnable', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({ task: makeTask(), isRunnable: false, onPreview });
+
+		expect(getByTestId('agent-task-preview')).toBeDisabled();
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).not.toHaveBeenCalled();
+	});
+
+	it('does not open Preview when the objective is invalid', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({
+			task: makeTask({ objective: '' }),
+			isRunnable: true,
+			onPreview,
+		});
+
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
 	});
 
 	it('deletes an existing task after confirmation', async () => {
@@ -533,21 +566,33 @@ describe('AgentTaskModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('keeps task actions in the header for existing tasks only', async () => {
+	it('shows the edit actions in the footer for existing tasks only', async () => {
 		const { getByTestId, rerender, queryByTestId } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
+			isRunnable: true,
 		});
 
-		expect(getByTestId('agent-task-toggle')).toBeTruthy();
-		expect(getByTestId('agent-task-run')).toBeTruthy();
+		expect(getByTestId('agent-task-delete')).toHaveTextContent('generic.delete');
+		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
+		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
+		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');
+		expect(queryByTestId('agent-task-run')).not.toBeInTheDocument();
 
 		await rerender({
 			modalName: MODAL_NAME,
-			data: { projectId: 'p1', agentId: 'a1', isPublished: true, onSaved: vi.fn() },
+			data: {
+				projectId: 'p1',
+				agentId: 'a1',
+				isPublished: true,
+				isRunnable: true,
+				onSaved: vi.fn(),
+			},
 		});
 
 		expect(queryByTestId('agent-task-toggle')).toBeNull();
-		expect(queryByTestId('agent-task-run')).toBeNull();
+		expect(queryByTestId('agent-task-delete')).toBeNull();
+		expect(getByTestId('agent-task-preview')).toBeInTheDocument();
+		expect(getByTestId('agent-task-save')).toBeInTheDocument();
 	});
 });
