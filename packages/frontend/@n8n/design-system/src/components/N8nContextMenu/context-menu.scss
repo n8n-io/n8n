@@ -4,6 +4,8 @@
 	@include popover.popover-surface;
 	@include popover.popover-placement-offsets;
 
+	display: flex;
+	flex-direction: column;
 	width: var(--context-menu--width, fit-content);
 	min-width: var(--spacing--4xl);
 	max-width: var(--context-menu--width, 24rem);

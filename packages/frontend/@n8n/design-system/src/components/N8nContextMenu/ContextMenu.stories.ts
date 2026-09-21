@@ -402,6 +402,14 @@ const overflowItems: Array<ContextMenuNode<string>> = [
 	},
 ];
 
+const heightConstrainedItems: Array<ContextMenuNode<string>> = teamUserNames.map(
+	(name): ContextMenuNode<string> => ({
+		type: 'item',
+		id: `item-${name.toLowerCase().replaceAll(' ', '-')}`,
+		label: name,
+	}),
+);
+
 function splitPersonName(fullName: string) {
 	const lastSpace = fullName.lastIndexOf(' ');
 	if (lastSpace === -1) {
@@ -1203,6 +1211,41 @@ export const ManyItems: Story = {
 	}),
 	args: {
 		items: overflowItems,
+	},
+};
+
+export const HeightConstrained: Story = {
+	name: 'Height Constrained',
+	render: (args) => ({
+		components: { ContextMenu },
+		setup() {
+			const panelStyle =
+				'.context-menu-height-constrained { max-height: var(--spacing--5xl) !important; }';
+			return { args, logSelect, panelStyle };
+		},
+		template: `
+			<div>
+				<component :is="'style'">{{ panelStyle }}</component>
+				<ContextMenu
+					:items="args.items"
+					:default-open="args.defaultOpen"
+					:modal="args.modal"
+					content-class="context-menu-height-constrained"
+					@select="logSelect"
+				>
+					<template #trigger>
+						<div class="context-menu-story-trigger">
+							Right-click here. Scroll to the last item.
+						</div>
+					</template>
+				</ContextMenu>
+			</div>
+		`,
+	}),
+	args: {
+		items: heightConstrainedItems,
+		defaultOpen: true,
+		modal: false,
 	},
 };
 
