@@ -28,7 +28,7 @@ const runtime = mockInstance(EngineV2Runtime);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 
 // Services the base `init()` reaches, as in worker.test.ts.
-mockInstance(ErrorReporter);
+const errorReporter = mockInstance(ErrorReporter);
 mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
@@ -44,9 +44,11 @@ describe('Engine', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// The package test script sets `DB_TYPE`, which the command refuses. Start
-		// from an env with no control plane database.
+		// from an env with no control plane database and no encryption key.
 		process.env = Object.fromEntries(
-			Object.entries(originalEnv).filter(([key]) => !key.startsWith('DB_')),
+			Object.entries(originalEnv).filter(
+				([key]) => !key.startsWith('DB_') && key !== 'N8N_ENCRYPTION_KEY',
+			),
 		);
 		engineConfig = mockInstance(EngineConfig, {
 			authSecret: 'a'.repeat(32),
@@ -91,6 +93,33 @@ describe('Engine', () => {
 			expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
 		});
 
+		it('refuses to boot with the control plane encryption key', async () => {
+			process.env.N8N_ENCRYPTION_KEY = 'secret';
+
+			await expect(createEngine().init()).rejects.toThrow('N8N_ENCRYPTION_KEY');
+			expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+		});
+
+		it('reports a refusal through the crash path, which the base init has not wired yet', async () => {
+			process.env.DB_POSTGRESDB_HOST = 'postgres';
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			vi.useFakeTimers();
+			try {
+				const engine = createEngine();
+				const error = await engine.init().catch((e: unknown) => e);
+
+				const caught = engine.catch(error as Error);
+				await vi.runAllTimersAsync();
+				await caught;
+
+				expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), { level: 'fatal' });
+				expect(exit).toHaveBeenCalledWith(1);
+			} finally {
+				vi.useRealTimers();
+				exit.mockRestore();
+			}
+		});
+
 		it('refuses to boot without the shared secret', async () => {
 			engineConfig.authSecret = '';
 
@@ -111,11 +140,11 @@ describe('Engine', () => {
 			expect(encryptionBootstrap.run).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts a task runner for them', async () => {
+		it('loads the nodes and starts no task runner', async () => {
 			await createEngine().init();
 
 			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).toHaveBeenCalled();
+			expect(taskRunnerModule.start).not.toHaveBeenCalled();
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {
@@ -142,6 +171,10 @@ describe('Engine', () => {
 			expect(runtime.shutdown).toHaveBeenCalled();
 			// @ts-expect-error - Accessing protected method for testing
 			expect(engine.exitSuccessFully).toHaveBeenCalled();
+			expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+				// @ts-expect-error - Accessing protected method for testing
+				vi.mocked(engine.exitSuccessFully).mock.invocationCallOrder[0],
+			);
 		});
 	});
 });

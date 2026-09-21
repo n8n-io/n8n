@@ -1,6 +1,7 @@
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -18,14 +19,19 @@ export class Engine extends BaseCommand {
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
 
-	override needsTaskRunner = true;
+	// No task runner yet, so the Code node fails with a clear error instead of
+	// waiting for a runner that never connects.
+	override needsTaskRunner = false;
 
 	override needsExpressionEngine = true;
 
 	private runtime?: EngineV2Runtime;
 
 	async init() {
-		assertNoControlPlaneDatabase(process.env);
+		// The guards below run before `super.init()` wires the reporter, and the
+		// crash path reports through it.
+		this.errorReporter = Container.get(ErrorReporter);
+		assertControlPlaneIsolated(process.env);
 		assertRemoteControlPlane(Container.get(EngineConfig));
 
 		await this.initCrashJournal();
@@ -66,15 +72,18 @@ export class Engine extends BaseCommand {
 }
 
 /**
- * A `DB_*` variable means the process was given the control plane database.
- * Refuse it here, at boot, so the isolation is a check and not a convention.
+ * A `DB_*` variable means the process was given the control plane database,
+ * and `N8N_ENCRYPTION_KEY` means it could read the credentials in it. Refuse
+ * both here, at boot, so the isolation is a check and not a convention.
  */
-function assertNoControlPlaneDatabase(env: NodeJS.ProcessEnv): void {
-	const dbEnv = Object.keys(env).filter((key) => key.startsWith('DB_'));
+function assertControlPlaneIsolated(env: NodeJS.ProcessEnv): void {
+	const leaked = Object.keys(env).filter(
+		(key) => key.startsWith('DB_') || key === 'N8N_ENCRYPTION_KEY',
+	);
 
-	if (dbEnv.length > 0) {
+	if (leaked.length > 0) {
 		throw new UserError(
-			`The engine process must not have control plane database access. Remove ${dbEnv.join(', ')} from its environment.`,
+			`The engine process must not have control plane database access. Remove ${leaked.join(', ')} from its environment.`,
 		);
 	}
 }
