@@ -1,8 +1,12 @@
-import { guidIdMode, idMode, listMode, makeRLC } from './rlc.builder';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const teamRLC = makeRLC({
+import { guidIdMode, idMode, listMode } from './rlc.modes';
+
+export const teamRLC: INodeProperties = {
 	displayName: 'Team',
 	name: 'teamId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
 	description:
 		'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
@@ -27,27 +31,33 @@ export const teamRLC = makeRLC({
 				},
 			],
 		},
-		guidIdMode('e.g. 61165b04-e4cc-4026-b43f-926b4e2a7182'),
+		guidIdMode('e.g. 61165b04-e4cc-4026-b43f-926b4e2a7182', 'Not a valid Microsoft Teams Team ID'),
 	],
-});
+};
 
-export const channelRLC = makeRLC({
+export const channelRLC: INodeProperties = {
 	displayName: 'Channel',
 	name: 'channelId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
 	description:
 		'Select the channel from the list, by URL, or by ID (the ID is the "threadId" in the URL)',
-	dependsOn: ['teamId.value'],
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
 	modes: [
 		listMode('getChannels', 'Select a Channel...'),
 		// validation missing because no documentation found how these unique ids look like.
 		idMode({ placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2' }),
 	],
-});
+};
 
-export const chatRLC = makeRLC({
+export const chatRLC: INodeProperties = {
 	displayName: 'Chat',
 	name: 'chatId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
 	description:
 		'Select the chat from the list, by URL, or by ID (find the chat ID after "conversations/" in the URL)',
@@ -60,62 +70,79 @@ export const chatRLC = makeRLC({
 			url: '=https://teams.microsoft.com/l/chat/{{encodeURIComponent($value)}}/0',
 		}),
 	],
-});
+};
 
-export const groupRLC = makeRLC({
+export const groupRLC: INodeProperties = {
 	displayName: 'Team',
 	name: 'groupId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
-	dependsOn: ['groupSource'],
+	typeOptions: {
+		loadOptionsDependsOn: ['groupSource'],
+	},
 	modes: [
 		listMode('getGroups', 'Select a Team...'),
-		guidIdMode('12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6'),
+		guidIdMode('12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6', 'Not a valid Microsoft Teams Team ID'),
 	],
-});
+};
 
-export const planRLC = makeRLC({
+export const planRLC: INodeProperties = {
 	displayName: 'Plan',
 	name: 'planId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
-	dependsOn: ['groupId.value'],
+	typeOptions: {
+		loadOptionsDependsOn: ['groupId.value'],
+	},
 	modes: [
 		listMode('getPlans', 'Select a Plan...'),
 		// validation missing because no documentation found how these unique ids look like.
 		idMode({ placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of' }),
 	],
 	description: 'The plan for the task to belong to',
-});
+};
 
-export const bucketRLC = makeRLC({
+export const bucketRLC: INodeProperties = {
 	displayName: 'Bucket',
 	name: 'bucketId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
-	dependsOn: ['planId.value'],
+	typeOptions: {
+		loadOptionsDependsOn: ['planId.value'],
+	},
 	modes: [
 		listMode('getBuckets', 'Select a Bucket...'),
 		// validation missing because no documentation found how these unique ids look like.
 		idMode({ placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of' }),
 	],
 	description: 'The bucket for the task to belong to',
-});
+};
 
-export const memberRLC = makeRLC({
+export const memberRLC: INodeProperties = {
 	displayName: 'Member',
 	name: 'memberId',
-	dependsOn: ['groupId.value'],
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	typeOptions: {
+		loadOptionsDependsOn: ['groupId.value'],
+	},
 	modes: [
 		listMode('getMembers', 'Select a Member...'),
-		guidIdMode('7e2f1174-e8ee-4859-b8b1-a8d1cc63d276'),
+		guidIdMode('7e2f1174-e8ee-4859-b8b1-a8d1cc63d276', 'Not a valid Microsoft Teams Team ID'),
 	],
-});
+};
 
-export const meetingRLC = makeRLC({
+export const meetingRLC: INodeProperties = {
 	displayName: 'Meeting',
 	name: 'meetingId',
+	type: 'resourceLocator',
+	default: { mode: 'id', value: '' },
 	required: true,
 	description: 'The online meeting, by its ID or by its join URL',
 	modes: [
-		// By ID first: the first mode is the default mode.
 		idMode({
 			placeholder: 'e.g. MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi...',
 			hint: 'The ID returned when the meeting was created, not the numeric meeting ID from the invite',
@@ -146,11 +173,13 @@ export const meetingRLC = makeRLC({
 			],
 		},
 	],
-});
+};
 
-export const userRLC = makeRLC({
+export const userRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
 	description:
 		'Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.',
@@ -174,19 +203,23 @@ export const userRLC = makeRLC({
 			],
 		}),
 	],
-});
+};
 
 /**
  * Team tag picker, scoped to the node's `teamId` and backed by `getTags`. Like `userRLC`, no mode
  * declares an `extractValue`: the row read that consumes it cannot pass `{ extractValue: true }`,
  * because a row-level `displayOptions` makes that read throw.
  */
-export const teamworkTagRLC = makeRLC({
+export const teamworkTagRLC: INodeProperties = {
 	displayName: 'Team Tag',
 	name: 'tagId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'Select a tag from the team, or enter its ID',
-	dependsOn: ['teamId.value'],
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
 	modes: [
 		listMode('getTags', 'e.g. Engineering'),
 		idMode({
@@ -211,18 +244,22 @@ export const teamworkTagRLC = makeRLC({
 			],
 		}),
 	],
-});
+};
 
-export const chatMemberRLC = makeRLC({
+export const chatMemberRLC: INodeProperties = {
 	displayName: 'Member',
 	name: 'membershipId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
 	required: true,
 	description:
 		'Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the ID field, not the "userId" field)',
-	dependsOn: ['chatId.value'],
+	typeOptions: {
+		loadOptionsDependsOn: ['chatId.value'],
+	},
 	modes: [
 		listMode('getChatMembers', 'Select a Member...'),
 		// validation missing because Microsoft documents no shape for membership ids.
 		idMode({ placeholder: 'e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...' }),
 	],
-});
+};

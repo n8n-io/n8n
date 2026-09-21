@@ -3,8 +3,9 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { bucketRLC, byIdUnderSp, groupRLC, memberRLC, planRLC } from '../../descriptions';
+import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
 import { microsoftApiRequest, SP_HIDE, validateTaskBodyIdsUnderSp } from '../../transport';
+import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	// OAuth2 pickers: list mode with group/plan dependency — hidden under SP.

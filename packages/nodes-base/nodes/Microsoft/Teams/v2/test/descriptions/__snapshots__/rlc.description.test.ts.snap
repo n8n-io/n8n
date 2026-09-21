@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Microsoft Teams v2 resource locators > emit the pinned INodeProperties 1`] = `
+exports[`Microsoft Teams v2 rlc.description > emits the pinned INodeProperties 1`] = `
 {
   "bucketRLC": {
     "default": {
@@ -448,7 +448,7 @@ exports[`Microsoft Teams v2 resource locators > emit the pinned INodeProperties 
 }
 `;
 
-exports[`Microsoft Teams v2 resource locators > emit the pinned Service Principal By-ID copies 1`] = `
+exports[`Microsoft Teams v2 rlc.description > emits the pinned Service Principal By-ID copies 1`] = `
 {
   "assignedTo": {
     "default": {
