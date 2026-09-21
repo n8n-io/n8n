@@ -5,6 +5,7 @@ import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types';
 import {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillLinkedFile,
 	type RuntimeSkillLinkedFiles,
@@ -15,8 +16,7 @@ import {
 	type RuntimeSkillContent,
 } from './types';
 
-const MAX_OUTPUT_BYTES = 72 * 1024;
-const TRUNCATION_FOOTER = '\n\n[... output truncated to 72 KB ...]';
+const TRUNCATION_FOOTER = `\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB ...]`;
 const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'references',
 	'templates',
@@ -315,6 +315,6 @@ function envelopeValue(value: string): string {
 function cap(content: string): string {
 	const redacted = scrubSecretsInText(content);
 	const bytes = Buffer.from(redacted, 'utf8');
-	if (bytes.byteLength <= MAX_OUTPUT_BYTES) return redacted;
-	return `${bytes.subarray(0, MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
+	if (bytes.byteLength <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return redacted;
+	return `${bytes.subarray(0, RUNTIME_SKILL_MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
 }

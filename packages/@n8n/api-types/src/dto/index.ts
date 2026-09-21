@@ -136,6 +136,8 @@ export {
 	UpdateCredentialPublicDto,
 	DeleteCredentialPublicDto,
 	TransferCredentialPublicDto,
+	CredentialTestPublicDto,
+	CredentialSchemaPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
@@ -265,6 +267,10 @@ export type { FolderPublic } from './folders/folder-public.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export {
+	InsightsSummaryPublicDto,
+	InsightsSummaryQueryPublicDto,
+} from './insights/insights-summary-public.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
@@ -526,15 +532,18 @@ export {
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export {
+	PromotionChangesDto,
 	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotableResourceType,
 	type PromoteRequest,
+	type PromotionChanges,
 } from './promotions/promotable-resource.dto';
 
 export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
@@ -572,15 +581,21 @@ export {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionApplyConfigPublicSchema,
+	promotionConfigCheckoutSchema,
 	promotionConfigSettingsSchema,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 	promotionDirectionSchema,
 	promotionGitApplySettingsSchema,
 	promotionGitPromoteSettingsSchema,
 	promotionGitSettingsSchemas,
+	promotionApplyConfigSummarySchema,
+	promotionPromoteConfigSummarySchema,
 	promotionPromoteConfigPublicSchema,
+	type PromotionConfigCheckout,
 	type PromotionConfigSettings,
 	type PromotionConnectionConfigsPublic,
+	type PromotionConnectionConfigsSummary,
 	type PromotionDirection,
 } from './promotions/promotion-config.dto';
 export {
@@ -599,12 +614,16 @@ export {
 	promotionConnectionProjectPublicSchema,
 	promotionConnectionPublicSchema,
 	promotionConnectionScopeSchema,
+	promotionConnectionSummarySchema,
 	promotionConnectionTargetSchema,
+	type PromotionConnectionSummary,
 	type PromotionConnectionScope,
 	type PromotionConnectionTarget,
 } from './promotions/promotion-connection.dto';
 export {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,

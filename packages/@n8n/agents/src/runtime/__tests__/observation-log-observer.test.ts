@@ -66,7 +66,7 @@ describe('observation-log observer defaults', () => {
 	});
 
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(8_000);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(50_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('Output the new observations only');
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(

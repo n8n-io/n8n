@@ -35,52 +35,25 @@ describe('getMcpInstructions', () => {
 	});
 
 	describe('node groups pointer', () => {
-		describe('when canvasGroupsEnabled is true', () => {
-			test('points the client to the groups reference', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-					canvasGroupsEnabled: true,
-				});
-
-				expect(instructions).toMatch(/group/i);
-				// Points at the on-demand groups section of the SDK reference.
-				expect(instructions).toContain('"groups"');
+		test('points the client to the groups reference', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				isN8nConnectAvailable: true,
 			});
 
-			test('stays intro-only when the builder is disabled', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: false,
-					isN8nConnectAvailable: false,
-					canvasGroupsEnabled: true,
-				});
-
-				expect(instructions).toContain('official MCP server for n8n');
-				expect(instructions).not.toContain('"groups"');
-			});
+			expect(instructions).toMatch(/group/i);
+			// Points at the on-demand groups section of the SDK reference.
+			expect(instructions).toContain('"groups"');
 		});
 
-		describe('when canvasGroupsEnabled is false', () => {
-			test('does not mention the groups reference', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-					canvasGroupsEnabled: false,
-				});
-
-				expect(instructions).not.toContain('"groups"');
-				expect(instructions).not.toContain('does not fail the whole update');
-				expect(instructions).not.toContain('skippedOperations');
+		test('stays intro-only when the builder is disabled', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: false,
+				isN8nConnectAvailable: false,
 			});
 
-			test('omits the groups pointer by default', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-				});
-
-				expect(instructions).not.toContain('"groups"');
-			});
+			expect(instructions).toContain('official MCP server for n8n');
+			expect(instructions).not.toContain('"groups"');
 		});
 	});
 
@@ -132,7 +105,6 @@ describe('getMcpInstructions', () => {
 			const instructions = getMcpInstructions({
 				isBuilderEnabled: true,
 				isN8nConnectAvailable: true,
-				canvasGroupsEnabled: true,
 				isAgentsEnabled: true,
 				isUserPreferencesEnabled: true,
 			});
@@ -146,5 +118,44 @@ describe('getMcpInstructions', () => {
 				getMcpInstructions({ isBuilderEnabled: false, isUserPreferencesEnabled: true }),
 			).toContain(HINT);
 		});
+	});
+});
+
+describe('instance context', () => {
+	it('names the resource and the tool when the surface is on', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: false,
+			isInstanceContextEnabled: true,
+		});
+
+		expect(instructions).toContain('n8n://instance/context');
+		expect(instructions).toContain('get_instance_context');
+	});
+
+	/** Every word here is paid for on every session, so an off surface costs nothing. */
+	it('says nothing about it when the surface is off', () => {
+		const instructions = getMcpInstructions({ isBuilderEnabled: false });
+
+		expect(instructions).not.toContain('n8n://instance/context');
+		expect(instructions).not.toContain('get_instance_context');
+	});
+
+	/**
+	 * A client may keep only the opening of these instructions — Claude Code truncates at 2048
+	 * characters — so a pointer below the cut never arrives and the surface goes undiscovered.
+	 * The full text is well past the budget, which is what makes the position matter.
+	 */
+	it('keeps the pointer inside the 2048 characters a client may truncate to', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: true,
+			isInstanceContextEnabled: true,
+		});
+
+		const start = instructions.indexOf('Start with the instance');
+		expect(start).toBeGreaterThan(-1);
+
+		const end = instructions.indexOf('\n\n', start);
+		expect(instructions.length).toBeGreaterThan(2048);
+		expect(end).toBeLessThan(2048);
 	});
 });

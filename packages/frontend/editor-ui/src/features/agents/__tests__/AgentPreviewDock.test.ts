@@ -1,52 +1,18 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { enableAutoUnmount, flushPromises, mount, shallowMount } from '@vue/test-utils';
-
-import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
+import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
 enableAutoUnmount(afterEach);
 
-const { confirm, deleteThread, showError, showMessage, useKeybindingsMock } = vi.hoisted(
-	function createMocks() {
-		return {
-			confirm: vi.fn(),
-			deleteThread: vi.fn(),
-			showError: vi.fn(),
-			showMessage: vi.fn(),
-			useKeybindingsMock: vi.fn(),
-		};
-	},
-);
+const { useKeybindingsMock } = vi.hoisted(function createMocks() {
+	return { useKeybindingsMock: vi.fn() };
+});
 
 vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
 	return { useKeybindings: useKeybindingsMock };
-});
-
-vi.mock('@/app/composables/useMessage', function mockUseMessage() {
-	return {
-		useMessage: function useMessage() {
-			return { confirm };
-		},
-	};
-});
-
-vi.mock('@n8n/composables/useToast', function mockUseToast() {
-	return {
-		useToast: function useToast() {
-			return { showMessage, showError };
-		},
-	};
-});
-
-vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
-	return {
-		useAgentSessionsStore: function useAgentSessionsStore() {
-			return { deleteThread };
-		},
-	};
 });
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
@@ -61,7 +27,20 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@n8n/design-system', () => ({
+vi.mock('../agentSessions.store', () => ({
+	useAgentSessionsStore: () => ({ loading: false }),
+}));
+
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
+		.useDropdownSearch,
+	N8nActionDropdown: {
+		name: 'N8nActionDropdown',
+		template:
+			'<div data-testid="action-dropdown" @click="!disabled && $emit(\'select\', items[0].id)"><slot name="activator" /></div>',
+		props: { items: { type: Array, default: () => [] }, disabled: Boolean },
+		emits: ['select'],
+	},
 	N8nButton: {
 		name: 'N8nButton',
 		template: '<button v-bind="$attrs" :data-variant="variant" :data-size="size"><slot /></button>',
@@ -69,8 +48,16 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
-		template: '<div><slot name="trigger" /></div>',
-		emits: ['select'],
+		template:
+			'<div><slot name="trigger" /><div v-for="item in items" :key="item.id" :data-testid="`session-row-${item.id}`" @click="!item.disabled && $emit(\'select\', item.id)"><slot name="item-label" :item="item" :ui="{ class: \'item-label\' }" /><slot name="item-trailing" :item="item" :ui="{ class: \'item-trailing\' }" /></div></div>',
+		props: {
+			items: { type: Array, default: () => [] },
+			width: String,
+			searchable: Boolean,
+			searchPlaceholder: String,
+			emptyText: String,
+		},
+		emits: ['select', 'search'],
 	},
 	N8nIcon: {
 		name: 'N8nIcon',
@@ -117,6 +104,7 @@ const AgentPreviewMoreMenuStub = {
 		'hasSession',
 		'isFullWidth',
 		'isDeletingSession',
+		'canDeleteSession',
 		'getConversationMarkdown',
 	],
 	emits: ['toggle-full-width', 'delete-session', 'export-session'],
@@ -129,6 +117,14 @@ function mountDock(
 		effectiveSessionId?: string;
 		beforeSend: () => Promise<void> | void;
 		isOpen: boolean;
+		isDeletingSession: boolean;
+		canDeleteSession: boolean;
+		sessionOptions: Array<{
+			id: string;
+			title: string;
+			disabled?: boolean;
+			updatedAt?: string;
+		}>;
 	}> = {},
 	attachTo?: HTMLElement,
 ) {
@@ -146,6 +142,8 @@ function mountDock(
 			localConfig: null,
 			connectedTriggers: [],
 			effectiveSessionId: 'thread-1',
+			isDeletingSession: false,
+			canDeleteSession: true,
 			...overrides,
 		},
 		global: {
@@ -160,8 +158,6 @@ function mountDock(
 describe('AgentPreviewDock', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
-		confirm.mockReset().mockResolvedValue(MODAL_CONFIRM);
-		deleteThread.mockReset().mockResolvedValue(undefined);
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
@@ -187,6 +183,67 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-more-btn',
 			'agent-preview-close-btn',
 		]);
+	});
+
+	it('filters session options and updates the empty message during search', async () => {
+		const wrapper = mountDock({
+			sessionOptions: [
+				{ id: 'first', title: 'First session', updatedAt: new Date().toISOString() },
+				{ id: 'second', title: 'Second session', updatedAt: new Date().toISOString() },
+			],
+		});
+		const dropdown = wrapper.getComponent({ name: 'N8nDropdownMenu' });
+
+		expect(dropdown.props('emptyText')).toBe('agents.builder.chat.sessionPicker.empty');
+		dropdown.vm.$emit('search', 'second');
+		await wrapper.vm.$nextTick();
+		expect(
+			dropdown.props('items').filter((item: { header?: boolean }) => !item.header),
+		).toHaveLength(1);
+		expect(dropdown.props('emptyText')).toBe('agents.builder.chat.sessionPicker.noMatch');
+	});
+
+	it('forwards row deletion unless deletion is pending and omits disabled row actions', async () => {
+		const wrapper = mountDock({
+			sessionOptions: [
+				{ id: 'thread-2', title: 'Second session' },
+				{ id: '__empty__', title: 'No sessions', disabled: true },
+			],
+		});
+
+		expect(wrapper.findAllComponents({ name: 'N8nActionDropdown' })).toHaveLength(1);
+		expect(
+			wrapper
+				.get('[data-testid="session-row-__empty__"]')
+				.find('[data-testid="action-dropdown"]')
+				.exists(),
+		).toBe(false);
+
+		await wrapper
+			.get('[data-testid="session-row-thread-2"] [aria-label="agentSessions.actions"]')
+			.trigger('click');
+
+		expect(wrapper.emitted('delete-session')).toEqual([['thread-2']]);
+		expect(wrapper.emitted('session-select')).toBeUndefined();
+
+		await wrapper.setProps({ isDeletingSession: true });
+		await wrapper
+			.get('[data-testid="session-row-thread-2"] [aria-label="agentSessions.actions"]')
+			.trigger('click');
+		expect(wrapper.emitted('delete-session')).toEqual([['thread-2']]);
+	});
+
+	it('hides and guards deletion for viewers', () => {
+		const wrapper = mountDock({
+			canDeleteSession: false,
+			sessionOptions: [
+				{ id: 'thread-2', title: 'Second session', updatedAt: new Date().toISOString() },
+			],
+		});
+
+		expect(wrapper.findComponent({ name: 'N8nActionDropdown' }).exists()).toBe(false);
+		wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
+		expect(wrapper.emitted('delete-session')).toBeUndefined();
 	});
 
 	it('renders accessible header actions and emits their events', async () => {
@@ -298,7 +355,7 @@ describe('AgentPreviewDock', () => {
 		});
 	});
 
-	it('passes the active session to the more menu', () => {
+	it('passes the active session to the more menu and forwards its deletion request', () => {
 		const wrapper = mountDock();
 		const moreMenu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
 
@@ -309,119 +366,10 @@ describe('AgentPreviewDock', () => {
 			hasSession: true,
 			isFullWidth: false,
 		});
+
+		moreMenu.vm.$emit('delete-session');
+		expect(wrapper.emitted('delete-session')).toEqual([['thread-1']]);
 	});
-
-	it('confirms deletion and starts a new session after success', async function deletesSession() {
-		const wrapper = mountDock();
-		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
-
-		menu.vm.$emit('delete-session');
-		await flushPromises();
-
-		expect(confirm).toHaveBeenCalledExactlyOnceWith(
-			'agentSessions.deleteConfirm.message',
-			'agentSessions.deleteConfirm.headline',
-			{
-				type: 'warning',
-				confirmButtonText: 'agentSessions.deleteConfirm.confirmButtonText',
-				cancelButtonText: '',
-			},
-		);
-		expect(deleteThread).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1', 'thread-1');
-		expect(showMessage).toHaveBeenCalledExactlyOnceWith({
-			title: 'agentSessions.showMessage.deleted',
-			type: 'success',
-		});
-		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('session-deleted')).toEqual([['thread-1']]);
-		expect(menu.props('isDeletingSession')).toBe(false);
-	});
-
-	it('keeps the session when deletion is cancelled', async function cancelsDeletion() {
-		confirm.mockResolvedValueOnce(MODAL_CANCEL);
-		const wrapper = mountDock();
-		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
-
-		menu.vm.$emit('delete-session');
-		await flushPromises();
-
-		expect(deleteThread).not.toHaveBeenCalled();
-		expect(showMessage).not.toHaveBeenCalled();
-		expect(showError).not.toHaveBeenCalled();
-		expect(wrapper.emitted('new-session')).toBeUndefined();
-		expect(wrapper.emitted('session-deleted')).toBeUndefined();
-		expect(menu.props('isDeletingSession')).toBe(false);
-	});
-
-	it('reports a deletion failure and keeps the session', async function reportsDeletionError() {
-		const error = new Error('Delete failed');
-		deleteThread.mockRejectedValueOnce(error);
-		const wrapper = mountDock();
-		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
-
-		menu.vm.$emit('delete-session');
-		await flushPromises();
-
-		expect(showError).toHaveBeenCalledExactlyOnceWith(error, 'agentSessions.showError.delete');
-		expect(showMessage).not.toHaveBeenCalled();
-		expect(wrapper.emitted('new-session')).toBeUndefined();
-		expect(wrapper.emitted('session-deleted')).toBeUndefined();
-		expect(menu.props('isDeletingSession')).toBe(false);
-	});
-
-	it('blocks repeated deletion while confirmation or deletion is pending', async function blocksRepeatedDeletion() {
-		const confirmation = Promise.withResolvers<string>();
-		const deletion = Promise.withResolvers<void>();
-		confirm.mockReturnValueOnce(confirmation.promise);
-		deleteThread.mockReturnValueOnce(deletion.promise);
-		const wrapper = mountDock();
-		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
-
-		menu.vm.$emit('delete-session');
-		menu.vm.$emit('delete-session');
-		await flushPromises();
-		expect(confirm).toHaveBeenCalledTimes(1);
-		expect(deleteThread).not.toHaveBeenCalled();
-		expect(menu.props('isDeletingSession')).toBe(true);
-
-		confirmation.resolve(MODAL_CONFIRM);
-		await flushPromises();
-		menu.vm.$emit('delete-session');
-		expect(confirm).toHaveBeenCalledTimes(1);
-		expect(deleteThread).toHaveBeenCalledTimes(1);
-
-		deletion.resolve();
-		await flushPromises();
-		expect(menu.props('isDeletingSession')).toBe(false);
-	});
-
-	it('does not replace a session selected while deletion is pending', async function preservesSelectedSession() {
-		const deletion = Promise.withResolvers<void>();
-		deleteThread.mockReturnValueOnce(deletion.promise);
-		const wrapper = mountDock();
-
-		wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
-		await flushPromises();
-		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
-		deletion.resolve();
-		await flushPromises();
-
-		expect(wrapper.emitted('new-session')).toBeUndefined();
-		expect(wrapper.emitted('session-deleted')).toEqual([['thread-1']]);
-	});
-
-	it.each([{ hasSession: false }, { effectiveSessionId: undefined }])(
-		'does not confirm deletion without a saved session: %j',
-		async function skipsDeletion(overrides) {
-			const wrapper = mountDock(overrides);
-
-			wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
-			await flushPromises();
-
-			expect(confirm).not.toHaveBeenCalled();
-			expect(deleteThread).not.toHaveBeenCalled();
-		},
-	);
 
 	it('creates a new session from the registered keyboard shortcut', () => {
 		const wrapper = mountDock();
