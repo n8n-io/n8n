@@ -268,5 +268,4 @@ packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam requi
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required
