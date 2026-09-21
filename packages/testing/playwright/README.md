@@ -217,10 +217,14 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 ### Engine 2.0 parity
 
 The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
-that runs engine 2.0 in the main process (`containerConfig.engine:
-'in-process'`, Postgres, single main). Under that stack every workflow the API
-helpers create gets `settings.engineType = 'v2'`, so a spec proves parity
-without changes.
+that runs engine 2.0 in its own container (`containerConfig.engine:
+'container'`, Postgres, single main). The main runs the `engine-v2` module in
+remote mode and dials the engine over the stack network. The engine container
+runs `n8n engine`, has no `DB_*` env and no encryption key, resolves
+credentials through the main's control plane server, and keeps its own
+`n8n_engine` database on the stack Postgres. Under that stack every workflow
+the API helpers create gets `settings.engineType = 'v2'`, so a spec proves
+parity without changes.
 
 `@db:reset` clears the control plane only, so data plane execution rows live
 on inside a worker. The engine database is emptied once, when the worker takes
