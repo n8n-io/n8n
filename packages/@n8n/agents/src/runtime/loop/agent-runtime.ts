@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
@@ -64,6 +65,7 @@ import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
+import { getProviderQuirks } from '../model/provider-quirks';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -945,6 +947,9 @@ export class AgentRuntime {
 				instructionProviderOptions,
 				combinedVolatileInstructions || undefined,
 				supportsSplitSystemMessages(this.config.model),
+				{
+					reasoningReplay: getProviderQuirks(getProviderPrefix(this.modelIdString)).reasoningReplay,
+				},
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.

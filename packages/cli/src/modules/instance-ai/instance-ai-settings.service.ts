@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 
+import { isMoonshotAiEndpoint } from '@n8n/ai-utilities/model-discovery';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	deriveInstanceAiSetupState,
@@ -1476,8 +1477,8 @@ export class InstanceAiSettingsService {
 		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
-		if (!provider) {
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (!credentialProvider) {
 			return null;
 		}
 
@@ -1485,6 +1486,11 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
+		// The OpenAI adapter discards Kimi reasoning. Use the Moonshot adapter to retain it.
+		const provider =
+			credentialProvider === 'openai' && isMoonshotAiEndpoint(baseUrl)
+				? 'moonshotai'
+				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);

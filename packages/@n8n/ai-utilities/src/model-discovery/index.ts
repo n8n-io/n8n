@@ -69,7 +69,7 @@ export { listGoogleModels, shouldIncludeGoogleModel } from './providers/google';
 export { listGroqModels } from './providers/groq';
 export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';
-export { listMoonshotAiModels } from './providers/moonshotai';
+export { isMoonshotAiEndpoint, listMoonshotAiModels } from './providers/moonshotai';
 export { listNvidiaModels } from './providers/nvidia';
 export {
 	listOpenAiModels,
