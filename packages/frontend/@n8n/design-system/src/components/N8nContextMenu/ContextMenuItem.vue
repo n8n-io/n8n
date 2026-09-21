@@ -12,6 +12,11 @@ import {
 import { computed, inject, ref, useCssModule } from 'vue';
 
 import {
+	COLLISION_PADDING_PX,
+	SUBMENU_ALIGN_OFFSET_PX,
+	SUBMENU_SIDE_OFFSET_PX,
+} from './ContextMenu.constants';
+import {
 	contextMenuStateKey,
 	type ContextMenuId,
 	type ContextMenuItemEmits,
@@ -44,15 +49,6 @@ const ICON_COLOR = {
 	destructive: '--icon-color--danger',
 	default: '--icon-color',
 } as const;
-
-/** Pixel value of `--spacing--4xs` / `--context-menu--padding`. Reka `alignOffset` is a number. */
-const ITEMS_PADDING_PX = 4;
-/** Shift the submenu up so its first row lines up with the trigger. */
-const SUBMENU_ALIGN_OFFSET_PX = -ITEMS_PADDING_PX;
-/** Matches the 1px inset outline (`--shadow--outline`). */
-const SUBMENU_SIDE_OFFSET_PX = 1;
-/** Pixel value of `--spacing--2xs`. Reka `collisionPadding` is a number. */
-const COLLISION_PADDING_PX = 8;
 
 const isChecked = computed(() => state?.selectedValues.value.includes(props.item.id) ?? false);
 

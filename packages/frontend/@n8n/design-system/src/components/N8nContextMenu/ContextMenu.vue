@@ -19,6 +19,7 @@ import {
 	watch,
 } from 'vue';
 
+import { COLLISION_PADDING_PX } from './ContextMenu.constants';
 import {
 	contextMenuStateKey,
 	type ContextMenuEmits,
@@ -49,9 +50,6 @@ const $style = useCssModule();
 const triggerClass = computed(() => attrs.class);
 const triggerAttrs = computed(() => reactiveOmit(attrs, ['class']));
 
-/** Pixel value of `--spacing--2xs`. Reka `collisionPadding` is a number. */
-const COLLISION_PADDING_PX = 8;
-
 const ORIGIN: [number, number] = [0, 0];
 
 const internalOpen = ref(props.open ?? props.defaultOpen);
@@ -61,7 +59,6 @@ const rekaHandleRef = ref<{ dismiss: () => void } | null>(null);
 
 const selectedValues = computed(() => props.selectedValues ?? internalSelected.value);
 
-/** Child of ContextMenuRoot so we can close Reka's own open state. */
 const ContextMenuRekaHandle = defineComponent({
 	name: 'ContextMenuRekaHandle',
 	setup(_, { expose }) {
@@ -86,7 +83,6 @@ function triggerOrigin(): [number, number] {
 	return [left, top];
 }
 
-/** Viewport point for a programmatic open. Right-click uses the pointer instead. */
 function resolvePosition(): [number, number] {
 	if (slots.trigger) {
 		const [x, y] = triggerOrigin();
