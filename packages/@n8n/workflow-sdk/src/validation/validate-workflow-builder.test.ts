@@ -3,6 +3,26 @@ import { getSchemaBaseDirs, setSchemaBaseDirs } from './node-parameter-schema/sc
 import { validateWorkflowBuilder } from './validate-workflow-builder';
 
 describe('validateWorkflowBuilder', () => {
+	it('preserves the parameter location of plugin errors', () => {
+		const wf = workflow('id', 'name').add(
+			node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'Request',
+					parameters: { contentType: 'json', jsonBody: '<soap:Envelope />' },
+				},
+			}),
+		);
+		const result = validateWorkflowBuilder(wf);
+		expect(result.graph.errors).toContainEqual(
+			expect.objectContaining({ code: 'INVALID_PARAMETER', parameterName: 'jsonBody' }),
+		);
+		expect(result.blocking).toContainEqual(
+			expect.objectContaining({ code: 'INVALID_PARAMETER', parameterPath: 'jsonBody' }),
+		);
+	});
+
 	it('does not reuse a prior call schema dirs when nodeDefinitionDirs is omitted', () => {
 		const previous = getSchemaBaseDirs();
 		setSchemaBaseDirs(['/tmp/stale-node-definitions']);
