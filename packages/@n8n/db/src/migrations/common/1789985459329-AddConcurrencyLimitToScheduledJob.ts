@@ -20,15 +20,20 @@ export class AddConcurrencyLimitToScheduledJob1789985459329 implements Reversibl
 	 * not rebuild a table whose `scheduled_task` rows would cascade away. The CHECK is
 	 * named the way the DSL names its own, so a later migration can find it.
 	 */
-	async up({ runQuery, escape, tablePrefix, isPostgres }: MigrationContext) {
+	async up({ runQuery, escape, tablePrefix, isPostgres, isSqlite }: MigrationContext) {
 		const tableName = escape.tableName(table);
 		const columnName = escape.columnName(column);
+
+		// SQLite keeps 1.5 as-is in a column declared `int`, so only there does the
+		// check need a term to keep the limit whole. Postgres folds the same term into
+		// a tautology, because its column type cannot hold a fractional value.
+		const whole = isSqlite ? ` AND CAST(${columnName} AS INTEGER) = ${columnName}` : '';
 
 		// A limit below one would hold every occurrence back forever.
 		await runQuery(
 			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} int ` +
-				`CONSTRAINT "CHK_${tablePrefix}${table}_${column}" ` +
-				`CHECK (${columnName} IS NULL OR (${columnName} >= 1 AND ${columnName} <= ${MAX_INT}))`,
+				`CONSTRAINT "CHK_${tablePrefix}${table}_${column}" CHECK (${columnName} IS NULL OR ` +
+				`(${columnName} >= 1 AND ${columnName} <= ${MAX_INT}${whole}))`,
 		);
 
 		if (isPostgres) {
