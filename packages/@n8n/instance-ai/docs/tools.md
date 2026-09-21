@@ -757,11 +757,22 @@ Get the output data of a specific node from an execution.
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
 
-**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to } }`.
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns? }`.
 One `outputs` entry per node output, in output order; a Filter reports `Kept` and
 `Discarded` separately. `name` follows the node's output pane labels, including
 renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
 extra output. `totalItems` and `returned` count across all outputs.
+
+A node records one run for each time it ran, and `totalRuns` reports how many
+when there was more than one. Which runs are read depends on the node:
+
+- A node in the **main graph** reports its **last** run. A node inside a loop
+  has one run for each iteration, so this is the run the caller usually means.
+- A **sub-node** — a model, a memory, a tool — reports **every** run, in call
+  order, because one run is one call its owner made. That is what makes this
+  action the answer to a step run the tool refuses. An item's label names the
+  call it came from, `node:Search Tickets[call 2][0][0]`, and `startIndex` and
+  `maxItems` page across the calls as one sequence.
 
 ### `executions(action="get-resolved-node-parameters")`
 

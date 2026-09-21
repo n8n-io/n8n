@@ -232,15 +232,24 @@ export interface NodeOutputBranch {
 export interface NodeOutputResult {
 	nodeName: string;
 	/**
-	 * One entry per output of the node's last run, in output order. Multi-output
-	 * nodes (Filter, IF, Switch) keep each output separate, so their items are
-	 * never merged into one list.
+	 * One entry per output, in output order. Multi-output nodes (Filter, IF,
+	 * Switch) keep each output separate, so their items are never merged into
+	 * one list.
+	 *
+	 * A node in the main graph reports its last run. A sub-node (a model, a
+	 * memory, a tool) reports every run, because one run is one call its owner
+	 * made, and an item's label names the call it came from.
 	 */
 	outputs: NodeOutputBranch[];
 	/** Item count across all outputs. */
 	totalItems: number;
 	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
+	/**
+	 * Runs the node recorded, when it recorded more than one. A sub-node's runs
+	 * are all read; a node in the main graph reports the last of them.
+	 */
+	totalRuns?: number;
 }
 
 export interface ResolvedExpressionFailure {

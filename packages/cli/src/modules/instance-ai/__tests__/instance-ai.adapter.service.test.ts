@@ -1285,6 +1285,106 @@ describe('extractNodeOutput', () => {
 		expect(result.outputs[0].items[0]).toContain('"response": "four"');
 	});
 
+	// A sub-node records one run for each call its owner made, and the refusals
+	// on a step run send the caller here to read them. Reading the last run only
+	// hid every earlier call.
+	it('reads every call a sub-node made, in call order', async () => {
+		const call = (response: string, executionIndex: number) =>
+			({
+				startTime: 1000,
+				executionTime: 5,
+				executionIndex,
+				executionStatus: 'success',
+				source: [],
+				data: { ai_tool: [[{ json: { response } }]] },
+			}) as ITaskData;
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Search Tickets': [call('first', 0), call('second', 1), call('third', 2)] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Search Tickets');
+
+		expect(result.totalItems).toBe(3);
+		expect(result.totalRuns).toBe(3);
+		expect(result.outputs[0].totalItems).toBe(3);
+		expect(String(result.outputs[0].items[0])).toContain('"first"');
+		expect(String(result.outputs[0].items[2])).toContain('"third"');
+	});
+
+	it('names the call an item came from when it read several', async () => {
+		const call = (executionIndex: number) =>
+			({
+				startTime: 1000,
+				executionTime: 5,
+				executionIndex,
+				executionStatus: 'success',
+				source: [],
+				data: { ai_tool: [[{ json: { n: executionIndex } }]] },
+			}) as ITaskData;
+		createMockExecutionRepository(
+			makeExecution({ status: 'success', runData: { Calculator: [call(0), call(1)] } }),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Calculator');
+
+		expect(String(result.outputs[0].items[0])).toContain('node:Calculator[call 1][0][0]');
+		expect(String(result.outputs[0].items[1])).toContain('node:Calculator[call 2][0][1]');
+	});
+
+	it('keeps a node in the main graph on its last run', async () => {
+		// A node inside a loop records one run for each iteration. Merging those
+		// would change what every existing caller gets.
+		const iteration = (value: string, executionIndex: number) =>
+			({
+				startTime: 1000,
+				executionTime: 5,
+				executionIndex,
+				executionStatus: 'success',
+				source: [],
+				data: { main: [[{ json: { value } }]] },
+			}) as ITaskData;
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Set Node': [iteration('early', 0), iteration('late', 1)] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Set Node');
+
+		expect(result.totalItems).toBe(1);
+		expect(String(result.outputs[0].items[0])).toContain('"late"');
+		// The caller still learns the node ran more than once.
+		expect(result.totalRuns).toBe(2);
+	});
+
+	it('pages across the calls of a sub-node', async () => {
+		const call = (executionIndex: number) =>
+			({
+				startTime: 1000,
+				executionTime: 5,
+				executionIndex,
+				executionStatus: 'success',
+				source: [],
+				data: { ai_tool: [[{ json: { n: executionIndex } }]] },
+			}) as ITaskData;
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { Calculator: [call(0), call(1), call(2), call(3)] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Calculator', { startIndex: 2, maxItems: 1 });
+
+		expect(result.returned).toEqual({ from: 2, to: 3 });
+		expect(result.outputs[0].items).toHaveLength(1);
+		expect(String(result.outputs[0].items[0])).toContain('"n": 2');
+	});
+
 	it('prefers the main output when a node has both', async () => {
 		createMockExecutionRepository(
 			makeExecution({

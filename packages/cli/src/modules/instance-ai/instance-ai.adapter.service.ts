@@ -58,6 +58,7 @@ import type {
 	ExecutionResult,
 	StepExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputBranch,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
@@ -4683,48 +4684,65 @@ export async function extractNodeOutput(
 	}
 
 	// A sub-node (a model, a memory, a tool) records its run under the connection
-	// type that carried it, never `main`. Read that instead, so the output of a
-	// node the agent can only run through its owner is still readable.
-	const nodeOutputs =
-		lastRun?.data?.main ??
-		Object.entries(lastRun?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1] ??
-		[];
+	// type that carried it, never `main`, and it records one run for each call
+	// its owner made. A step run on one is refused and the caller is sent here to
+	// read those calls, so all of them are read. A node in the main graph keeps
+	// to its last run: one run for each iteration of a loop is the common case
+	// there, and merging them would change what every caller already gets.
+	const readsEveryRun = lastRun?.data?.[NodeConnectionTypes.Main] === undefined;
+	const runsRead = readsEveryRun ? nodeRuns : [lastRun];
+	const outputsPerRun = runsRead.map(
+		(run) =>
+			run?.data?.[NodeConnectionTypes.Main] ??
+			Object.entries(run?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1] ??
+			[],
+	);
+	const outputCount = Math.max(0, ...outputsPerRun.map((runOutputs) => runOutputs.length));
 
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.
 	// Only the requested slice is materialized — avoids OOM on huge result sets.
+	// A label names the call when several were read, so two items that differ
+	// only by call are still told apart.
 	let index = 0;
 	let returnedCount = 0;
-	const outputs = nodeOutputs.map((output, outputIndex) => {
-		const items = output ?? [];
-		const firstInPage = Math.max(startIndex - index, 0);
+	const outputs: NodeOutputBranch[] = [];
+	for (let outputIndex = 0; outputIndex < outputCount; outputIndex++) {
 		const collected: unknown[] = [];
-		for (const item of items) {
-			if (index >= startIndex && returnedCount < maxItems) {
-				collected.push(item.json);
-				returnedCount++;
+		let itemsOnOutput = 0;
+
+		outputsPerRun.forEach((runOutputs, runIndex) => {
+			for (const item of runOutputs[outputIndex] ?? []) {
+				if (index >= startIndex && returnedCount < maxItems) {
+					const call = runsRead.length > 1 ? `[call ${runIndex + 1}]` : '';
+					collected.push(
+						wrapUntrustedData(
+							JSON.stringify(capItem(item.json), null, 2),
+							'execution-output',
+							`node:${nodeName}${call}[${outputIndex}][${itemsOnOutput}]`,
+						),
+					);
+					returnedCount++;
+				}
+				index++;
+				itemsOnOutput++;
 			}
-			index++;
-		}
-		return {
+		});
+
+		outputs.push({
 			index: outputIndex,
 			...(names[outputIndex] ? { name: names[outputIndex] } : {}),
-			totalItems: items.length,
-			items: collected.map((item, i) =>
-				wrapUntrustedData(
-					JSON.stringify(capItem(item), null, 2),
-					'execution-output',
-					`node:${nodeName}[${outputIndex}][${firstInPage + i}]`,
-				),
-			),
-		};
-	});
+			totalItems: itemsOnOutput,
+			items: collected,
+		});
+	}
 
 	return {
 		nodeName,
 		outputs,
 		totalItems: index,
 		returned: { from: startIndex, to: startIndex + returnedCount },
+		...(nodeRuns.length > 1 ? { totalRuns: nodeRuns.length } : {}),
 	};
 }
 
