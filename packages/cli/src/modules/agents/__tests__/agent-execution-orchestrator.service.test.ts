@@ -631,7 +631,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
 		const { service, executionService } = makeService();
-		executionService.canUsePreviewThread.mockResolvedValue(true);
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
@@ -692,7 +691,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends the MCP registry attribution on its own line when a tool of that server returned', async () => {
 		const { service, executionService } = makeService();
-		executionService.canUsePreviewThread.mockResolvedValue(true);
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
@@ -736,7 +734,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when the reply is reasoning only, with no text', async () => {
 		const { service, executionService } = makeService();
-		executionService.canUsePreviewThread.mockResolvedValue(true);
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
@@ -771,7 +768,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when no tool of that server returned a result', async () => {
 		const { service, executionService } = makeService();
-		executionService.canUsePreviewThread.mockResolvedValue(true);
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
@@ -812,7 +808,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('skips the attribution the model already echoed into its reply', async () => {
 		const { service, executionService } = makeService();
-		executionService.canUsePreviewThread.mockResolvedValue(true);
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
@@ -846,7 +841,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('attributes an approval-gated tool on the resumed segment, not on the suspended one', async () => {
 		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
-		executionService.canUsePreviewThread.mockResolvedValue(true);
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const suspended = makeRuntime(

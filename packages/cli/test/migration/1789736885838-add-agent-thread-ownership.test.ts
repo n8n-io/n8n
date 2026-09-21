@@ -1,6 +1,7 @@
 import {
 	createTestMigrationContext,
 	initDbUpToMigration,
+	runSingleMigration,
 	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
@@ -27,6 +28,28 @@ describe('Agent thread ownership migration', () => {
 		{ id: 'workflow', source: 'workflow', accessScope: 'project' },
 		{ id: 'task', taskId: 'task-1', accessScope: 'project' },
 		{
+			id: 'private-child',
+			source: 'subagent',
+			parentThreadId: 'memory',
+			parentAgentId: agentId,
+			ownerId,
+			accessScope: 'user',
+		},
+		{
+			id: 'project-child',
+			source: 'subagent',
+			parentThreadId: 'workflow',
+			parentAgentId: agentId,
+			accessScope: 'project',
+		},
+		{
+			id: 'invalid-child',
+			source: 'subagent',
+			parentThreadId: 'memory',
+			parentAgentId: randomUUID(),
+			accessScope: 'user',
+		},
+		{
 			id: 'mixed',
 			resource: `draft-chat:${ownerId}`,
 			source: 'slack',
@@ -41,21 +64,6 @@ describe('Agent thread ownership migration', () => {
 			return await fn(context);
 		} finally {
 			await context.queryRunner.release();
-		}
-	}
-
-	async function runOwnershipMigration() {
-		const allMigrations = [...dataSource.migrations];
-		const migration = allMigrations.find(
-			(candidate) => candidate.constructor.name === migrationName,
-		);
-		if (!migration) throw new Error(`Migration "${migrationName}" not found`);
-
-		dataSource.migrations.splice(0, dataSource.migrations.length, migration);
-		try {
-			await Container.get(DbConnection).migrate();
-		} finally {
-			dataSource.migrations.splice(0, dataSource.migrations.length, ...allMigrations);
 		}
 	}
 
@@ -77,8 +85,16 @@ describe('Agent thread ownership migration', () => {
 			);
 			for (const fixture of fixtures) {
 				await runQuery(
-					`INSERT INTO ${table('agent_execution_threads')} ("id", "agentId", "agentName", "projectId", "taskId", "createdAt", "updatedAt") VALUES (:id, :agentId, 'Agent', :projectId, :taskId, :now, :now)`,
-					{ id: fixture.id, agentId, projectId, taskId: fixture.taskId ?? null, now },
+					`INSERT INTO ${table('agent_execution_threads')} ("id", "agentId", "agentName", "projectId", "taskId", "parentThreadId", "parentAgentId", "createdAt", "updatedAt") VALUES (:id, :agentId, 'Agent', :projectId, :taskId, :parentThreadId, :parentAgentId, :now, :now)`,
+					{
+						id: fixture.id,
+						agentId,
+						projectId,
+						taskId: fixture.taskId ?? null,
+						parentThreadId: fixture.parentThreadId ?? null,
+						parentAgentId: fixture.parentAgentId ?? null,
+						now,
+					},
 				);
 				await runQuery(
 					`INSERT INTO ${table('agent_execution')} ("id", "threadId", "status", "source", "createdAt", "updatedAt") VALUES (:id, :threadId, 'success', :source, :now, :now)`,
@@ -101,8 +117,8 @@ describe('Agent thread ownership migration', () => {
 
 	afterAll(async () => await Container.get(DbConnection).close());
 
-	it('backfills direct ownership evidence and preserves execution rows', async () => {
-		await runOwnershipMigration();
+	it('backfills session access and preserves execution rows', async () => {
+		await runSingleMigration(migrationName);
 		dataSource = Container.get(DataSource);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			const threads = await runQuery<
@@ -139,7 +155,7 @@ describe('Agent thread ownership migration', () => {
 			).toHaveLength(fixtures.length);
 		});
 
-		await runOwnershipMigration();
+		await runSingleMigration(migrationName);
 		dataSource = Container.get(DataSource);
 		await withContext(async ({ escape, runQuery }) => {
 			await runQuery(`DELETE FROM ${escape.tableName('user')} WHERE "id" = :ownerId`, { ownerId });

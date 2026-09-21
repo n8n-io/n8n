@@ -29,6 +29,7 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 		);
 		await createIndex('agent_execution_threads', ['ownerId']);
 		await this.backfill(context);
+		await this.backfillInheritedAccess(context);
 	}
 
 	async down({
@@ -96,5 +97,29 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 			AND ${threads}.${c('ownerId')} IS NULL
 			AND NOT (${hasPreviewMemory})
 			AND ${threadId} LIKE ${legacyPrefix} || '%'`);
+	}
+
+	private async backfillInheritedAccess({ escape, runQuery }: MigrationContext) {
+		const c = escape.columnName;
+		const threads = escape.tableName('agent_execution_threads');
+		const parentMatches = `parent.${c('id')} = ${threads}.${c('parentThreadId')}
+			AND parent.${c('agentId')} = ${threads}.${c('parentAgentId')}
+			AND parent.${c('projectId')} = ${threads}.${c('projectId')}`;
+		const parentHasAccess = `(parent.${c('accessScope')} = 'project'
+			OR parent.${c('ownerId')} IS NOT NULL)`;
+
+		await runQuery(`UPDATE ${threads} SET
+			${c('ownerId')} = (
+				SELECT parent.${c('ownerId')} FROM ${threads} parent
+				WHERE ${parentMatches} AND ${parentHasAccess}
+			),
+			${c('accessScope')} = (
+				SELECT parent.${c('accessScope')} FROM ${threads} parent
+				WHERE ${parentMatches} AND ${parentHasAccess}
+			)
+			WHERE EXISTS (
+				SELECT 1 FROM ${threads} parent
+				WHERE ${parentMatches} AND ${parentHasAccess}
+			)`);
 	}
 }
