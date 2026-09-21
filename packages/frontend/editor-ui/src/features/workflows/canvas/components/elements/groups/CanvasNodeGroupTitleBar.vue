@@ -1064,4 +1064,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 .descriptionEmpty {
 	color: var(--text-color--disabled);
 }
+
+.wrapper.emptyGroup .descriptionEmpty {
+	color: var(--text-color--subtler);
+}
 </style>
