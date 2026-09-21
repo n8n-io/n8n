@@ -147,6 +147,11 @@ describe('credential type availability policy instance controller admin happy pa
 				{},
 			),
 		).toBeNull();
+
+		const afterDelete = await testServer
+			.authAgentFor(owner)
+			.get(`/credential-type-policies/policies/${policyId}`);
+		expect(afterDelete.statusCode).toBe(404);
 	});
 
 	test('GET /policies lists every credential-types document', async () => {
