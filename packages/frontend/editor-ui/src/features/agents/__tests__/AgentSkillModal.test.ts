@@ -12,6 +12,7 @@ import {
 
 import AgentSkillModal from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = { baseText: (key: string) => key };
@@ -27,17 +28,6 @@ const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage }),
 }));
-
-const ModalStub = defineComponent({
-	props: ['name', 'customClass', 'width'],
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot name="content" />
-			<slot name="footer" />
-		</div>
-	`,
-});
 
 const SkillViewerStub = defineComponent({
 	emits: ['import:skill', 'update:skill', 'update:valid'],
@@ -80,7 +70,7 @@ function renderModal({
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
 			stubs: {
-				Modal: ModalStub,
+				AgentModal: AgentModalTestStub,
 				AgentSkillViewer: SkillViewerStub,
 				N8nButton: {
 					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
@@ -119,11 +109,22 @@ describe('AgentSkillModal', () => {
 		uiStore.closeModal = vi.fn();
 	});
 
-	it('does not call createAgentSkill when the user cancels before saving', async () => {
-		const onConfirm = vi.fn();
-		const { getByText } = renderModal({ onConfirm });
+	it('uses the wider fit-content Agent modal width', () => {
+		const { container } = renderModal();
 
-		await fireEvent.click(getByText('agents.builder.skills.create.cancel'));
+		expect(container.querySelector('[data-testid="agent-skill-modal"]')).toHaveAttribute(
+			'data-size',
+			'fit',
+		);
+	});
+
+	it('does not call createAgentSkill when the user closes before saving', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({ onConfirm });
+
+		await fireEvent.click(
+			container.querySelector('[data-testid="dialog-close-button"]') as Element,
+		);
 
 		expect(apiCreateSpy).not.toHaveBeenCalled();
 		expect(onConfirm).not.toHaveBeenCalled();
@@ -148,11 +149,7 @@ describe('AgentSkillModal', () => {
 
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
-		expect(showMessage).toHaveBeenCalledWith({
-			title: 'agents.builder.skills.saveError',
-			message: 'agents.builder.skills.validation.descriptionRequired',
-			type: 'error',
-		});
+		expect(showMessage).not.toHaveBeenCalled();
 	});
 
 	it('explains why overlong instructions cannot be saved', async () => {
@@ -172,11 +169,7 @@ describe('AgentSkillModal', () => {
 
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
-		expect(showMessage).toHaveBeenCalledWith({
-			title: 'agents.builder.skills.saveError',
-			message: 'agents.builder.skills.validation.instructionsMaxLength',
-			type: 'error',
-		});
+		expect(showMessage).not.toHaveBeenCalled();
 	});
 
 	it('adds and removes references from the file navigation', async () => {

@@ -21,6 +21,8 @@ import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	showConnectAction?: boolean;
+	connectLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -85,15 +87,13 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
-const actionLabel = computed(() =>
-	props.item.communityPreview
-		? i18n.baseText('communityNodeDetails.install')
-		: i18n.baseText(
-				props.item.status === 'disconnected'
-					? 'tools.connection.action.reconnect'
-					: 'tools.connection.action.connect',
-			),
-);
+const actionLabel = computed(() => {
+	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
+	if (props.item.status === 'disconnected') {
+		return i18n.baseText('tools.connection.action.reconnect');
+	}
+	return props.connectLabel ?? i18n.baseText('tools.connection.action.connect');
+});
 
 const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
@@ -108,7 +108,10 @@ const isDisabled = computed(() => Boolean(props.item.disabled));
  * its detail view.
  */
 const hasDirectAction = computed(
-	() => Boolean(props.item.communityPreview) || props.item.kind === 'mcp-server',
+	() =>
+		props.showConnectAction ||
+		Boolean(props.item.communityPreview) ||
+		props.item.kind === 'mcp-server',
 );
 
 function handleRowClick() {

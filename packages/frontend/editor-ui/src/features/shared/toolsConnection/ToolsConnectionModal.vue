@@ -41,6 +41,12 @@ const props = withDefaults(
 		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
+		/** Render only the modal body when an owning feature supplies the dialog shell. */
+		embedded?: boolean;
+		showConnectActions?: boolean;
+		/** Keep the list scrollbar visible instead of revealing it on hover. */
+		persistentScrollbar?: boolean;
+		connectLabel?: (item: ToolConnectionItem) => string;
 	}>(),
 	{
 		open: false,
@@ -49,6 +55,9 @@ const props = withDefaults(
 		size: 'xlarge',
 		allowWorkflowCreation: false,
 		workflowCreationLoading: false,
+		embedded: false,
+		showConnectActions: false,
+		persistentScrollbar: false,
 	},
 );
 
@@ -69,6 +78,18 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const modalTitle = computed(() => props.title ?? i18n.baseText('tools.connection.title'));
+const containerComponent = computed(() => (props.embedded ? 'div' : N8nDialog));
+const containerProps = computed(() =>
+	props.embedded
+		? {}
+		: {
+				open: props.open,
+				size: props.size,
+				header: props.detailItem ? '' : modalTitle.value,
+				showCloseButton: !props.detailItem,
+				'aria-label': modalTitle.value,
+			},
+);
 const searchPlaceholder = computed(
 	() => props.searchPlaceholder ?? i18n.baseText('tools.connection.search.placeholder'),
 );
@@ -287,12 +308,10 @@ function handleOpenChange(value: boolean) {
 </script>
 
 <template>
-	<N8nDialog
-		:open="open"
-		:size="size"
-		:header="detailItem ? '' : modalTitle"
-		:show-close-button="!detailItem"
-		:aria-label="modalTitle"
+	<component
+		:is="containerComponent"
+		v-bind="containerProps"
+		:class="props.embedded && $style.embedded"
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
@@ -401,12 +420,14 @@ function handleOpenChange(value: boolean) {
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
-						:class="$style.scroller"
+						:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
 					>
 						<template #default="{ item: row }">
 							<ToolRow
 								v-if="'item' in row"
 								:item="row.item"
+								:show-connect-action="props.showConnectActions"
+								:connect-label="props.connectLabel?.(row.item)"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
 								@select-credential="
@@ -425,15 +446,22 @@ function handleOpenChange(value: boolean) {
 				</div>
 			</template>
 		</div>
-	</N8nDialog>
+	</component>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
+
 .body {
 	display: flex;
 	flex-direction: column;
 	height: 70vh;
-	max-height: 640px;
+	max-height: calc(var(--height--5xl) * 6);
+	min-height: 0;
+}
+
+.embedded {
+	height: 100%;
 	min-height: 0;
 }
 
@@ -509,6 +537,10 @@ function handleOpenChange(value: boolean) {
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+}
+
+.persistentScrollbar {
+	@include scrollbar-mixins.scroll-bar;
 }
 
 .empty {

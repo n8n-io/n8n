@@ -401,9 +401,7 @@ describe('AgentChannelModal', () => {
 			await wrapper.get('[data-testid="close-dialog"]').trigger('click');
 			expect(wrapper.emitted('update:open')).toBeUndefined();
 
-			expect(
-				wrapper.get('[data-testid="agent-channel-back"]').attributes('disabled'),
-			).toBeDefined();
+			expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
 
 			await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
 			expect(mocks.disconnect).not.toHaveBeenCalled();
@@ -587,21 +585,17 @@ describe('AgentChannelModal', () => {
 		});
 	});
 
-	it('uses the same managed removal confirmation from the list menu', async () => {
+	it('does not expose removal from the channel list', async () => {
 		statuses.value.example = 'connected';
 		connectedCredentials.value.example = 'credential-managed';
 		const wrapper = mountModal('list', true);
 		await flushPromises();
 
 		await wrapper.get('[data-testid="disconnect-channel"]').trigger('click');
-		expect(mocks.disconnect).not.toHaveBeenCalled();
-
-		await wrapper.get('[data-testid="confirm-delete-app"]').trigger('click');
 		await flushPromises();
 
-		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
-			deleteExternalResource: true,
-		});
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
 	});
 
 	it('disconnects managed credentials without confirmation when the agent is unpublished', async () => {

@@ -6,7 +6,6 @@ import {
 	N8nCallout,
 	N8nIcon,
 	N8nIconButton,
-	N8nHeading,
 	N8nInput,
 	N8nMarkdownEditor,
 	N8nScrollArea,
@@ -15,8 +14,8 @@ import {
 import { SUB_AGENT_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 export type AgentSubAgentOption = {
 	id: string;
@@ -51,6 +50,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const availableAgents = computed(() => ('agents' in props.data ? props.data.agents : []));
 const hasAgents = computed(() => availableAgents.value.length > 0);
@@ -78,6 +78,10 @@ const useWhenError = computed(() => {
 	});
 });
 const canConfirm = computed(() => !useWhenError.value);
+const currentStep = computed(() => (selectedAgent.value ? 'configure' : 'select'));
+const title = computed(
+	() => selectedAgent.value?.name ?? i18n.baseText('agents.builder.subAgents.modal.title'),
+);
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
@@ -86,6 +90,28 @@ function closeModal() {
 function onSelectAgent(agent: AgentSubAgentOption) {
 	selectedAgent.value = agent;
 	useWhen.value = '';
+}
+
+function onRowKeydown(event: KeyboardEvent, agent: AgentSubAgentOption) {
+	if (event.target !== event.currentTarget) return;
+	if (event.key === 'Enter' || event.key === ' ') {
+		event.preventDefault();
+		onSelectAgent(agent);
+		return;
+	}
+	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+
+	event.preventDefault();
+	const row = event.currentTarget;
+	if (!(row instanceof HTMLElement)) return;
+	const rows = Array.from(
+		row.parentElement?.querySelectorAll<HTMLElement>(
+			'[data-testid="agent-sub-agents-modal-row"]',
+		) ?? [],
+	);
+	const currentIndex = rows.indexOf(row);
+	const offset = event.key === 'ArrowDown' ? 1 : -1;
+	rows[(currentIndex + offset + rows.length) % rows.length]?.focus();
 }
 
 function onBack() {
@@ -112,205 +138,163 @@ function onConfirm() {
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
-		width="640px"
-		:custom-class="$style.modal"
+	<AgentModalMultiStep
+		:open="modalOpen"
+		:step="currentStep"
+		:title="title"
+		:show-back="Boolean(selectedAgent) && !isEditing"
+		:show-footer="Boolean(selectedAgent)"
 		data-testid="agent-sub-agents-modal"
+		@update:open="!$event && closeModal()"
+		@back="onBack"
 	>
-		<template #header>
-			<div :class="$style.header">
-				<N8nHeading tag="h2" size="large">
-					{{
-						selectedAgent
-							? selectedAgent.name
-							: i18n.baseText('agents.builder.subAgents.modal.title')
-					}}
-				</N8nHeading>
-				<N8nIconButton
-					v-if="selectedAgent && 'agentHref' in data && data.agentHref"
-					icon="external-link"
-					variant="ghost"
-					size="small"
-					:href="data.agentHref"
-					target="_blank"
-					rel="noopener noreferrer"
-					:title="i18n.baseText('agents.builder.subAgents.open')"
-					:aria-label="i18n.baseText('agents.builder.subAgents.open')"
-					data-test-id="agent-sub-agents-modal-open"
-				/>
-			</div>
+		<template #headerActions>
+			<N8nIconButton
+				v-if="selectedAgent && 'agentHref' in data && data.agentHref"
+				icon="external-link"
+				variant="ghost"
+				size="small"
+				:href="data.agentHref"
+				target="_blank"
+				rel="noopener noreferrer"
+				:title="i18n.baseText('agents.builder.subAgents.open')"
+				:aria-label="i18n.baseText('agents.builder.subAgents.open')"
+				data-testid="agent-sub-agents-modal-open"
+			/>
 		</template>
 
-		<template #content>
-			<div v-if="!selectedAgent" :class="$style.content">
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.modal.description') }}
-				</N8nText>
+		<div v-show="!selectedAgent" :class="$style.content">
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.builder.subAgents.modal.description') }}
+			</N8nText>
 
-				<N8nInput
-					v-if="hasAgents"
-					v-model="searchQuery"
-					:placeholder="i18n.baseText('agents.builder.subAgents.modal.search.placeholder')"
-					clearable
-					data-testid="agent-sub-agents-modal-search"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="16" />
-					</template>
-				</N8nInput>
+			<N8nInput
+				v-if="hasAgents"
+				v-model="searchQuery"
+				:placeholder="i18n.baseText('agents.builder.subAgents.modal.search.placeholder')"
+				clearable
+				data-testid="agent-sub-agents-modal-search"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" :size="16" />
+				</template>
+			</N8nInput>
 
-				<N8nScrollArea v-if="hasAgents && hasMatchingAgents" max-height="420px" type="auto">
-					<div :class="$style.rows">
-						<div
-							v-for="agent in filteredAgents"
-							:key="agent.id"
-							:class="$style.row"
-							data-testid="agent-sub-agents-modal-row"
-						>
-							<div :class="$style.iconWrapper">
-								<N8nIcon icon="bot" :size="24" :class="$style.itemIcon" />
-							</div>
+			<N8nScrollArea v-if="hasAgents && hasMatchingAgents" max-height="420px" type="auto">
+				<div :class="$style.rows">
+					<div
+						v-for="agent in filteredAgents"
+						:key="agent.id"
+						:class="$style.row"
+						tabindex="0"
+						data-testid="agent-sub-agents-modal-row"
+						@keydown="onRowKeydown($event, agent)"
+					>
+						<div :class="$style.iconWrapper">
+							<N8nIcon icon="bot" :size="24" :class="$style.itemIcon" />
+						</div>
 
-							<div :class="$style.rowBody">
-								<N8nText size="small" color="text-dark" :class="$style.name">
-									{{ agent.name }}
-								</N8nText>
-							</div>
+						<div :class="$style.rowBody">
+							<N8nText size="small" color="text-dark" :class="$style.name">
+								{{ agent.name }}
+							</N8nText>
+						</div>
 
-							<div :class="$style.actions">
-								<N8nButton
-									variant="subtle"
-									size="small"
-									data-testid="agent-sub-agents-modal-add"
-									@click="onSelectAgent(agent)"
-								>
-									{{ i18n.baseText('agents.builder.subAgents.modal.add') }}
-								</N8nButton>
-							</div>
+						<div :class="$style.actions">
+							<N8nButton
+								variant="subtle"
+								size="small"
+								data-testid="agent-sub-agents-modal-add"
+								@click="onSelectAgent(agent)"
+							>
+								{{ i18n.baseText('agents.builder.subAgents.modal.add') }}
+							</N8nButton>
 						</div>
 					</div>
-				</N8nScrollArea>
-
-				<N8nEmptyState
-					v-else-if="hasAgents && !hasMatchingAgents"
-					:icon="{ type: 'icon', value: 'bot' }"
-					:heading="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
-					:description="i18n.baseText('agents.builder.subAgents.modal.noResults.description')"
-					data-testid="agent-sub-agents-modal-no-results"
-				/>
-
-				<N8nEmptyState
-					v-else
-					:icon="{ type: 'icon', value: 'bot' }"
-					:heading="i18n.baseText('agents.builder.subAgents.modal.empty.title')"
-					:description="i18n.baseText('agents.builder.subAgents.modal.empty.description')"
-					data-testid="agent-sub-agents-modal-empty"
-				/>
-			</div>
-
-			<div v-else :class="[$style.content, $style.configureContent]">
-				<N8nCallout
-					v-if="invalidReasons.length > 0"
-					theme="danger"
-					data-testid="agent-sub-agents-modal-invalid-callout"
-				>
-					<div v-for="reason in invalidReasons" :key="reason">{{ reason }}</div>
-				</N8nCallout>
-				<div :class="$style.field">
-					<label :class="$style.label">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.builder.subAgents.useWhen.label') }}
-						</N8nText>
-					</label>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agents.builder.subAgents.useWhen.hint') }}
-					</N8nText>
-					<N8nMarkdownEditor
-						:class="$style.useWhenEditor"
-						:model-value="useWhen"
-						:placeholder="i18n.baseText('agents.builder.subAgents.useWhen.placeholder')"
-						show-toolbar="floating"
-						max-height="100%"
-						data-testid="agent-sub-agents-modal-use-when"
-						@update:model-value="useWhen = $event"
-					/>
-					<N8nText v-if="useWhenError" size="small" color="danger">
-						{{ useWhenError }}
-					</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{
-							i18n.baseText('agents.builder.subAgents.useWhen.characterCount', {
-								interpolate: {
-									count: String(useWhen.length),
-									max: String(SUB_AGENT_USE_WHEN_MAX_LENGTH),
-								},
-							})
-						}}
-					</N8nText>
 				</div>
-			</div>
-		</template>
+			</N8nScrollArea>
 
-		<template v-if="selectedAgent" #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					v-if="isEditing && data.onRemove"
-					variant="subtle"
-					data-testid="agent-sub-agents-modal-remove"
-					@click="onRemove"
-				>
-					{{ i18n.baseText('agents.builder.subAgents.modal.remove') }}
-				</N8nButton>
-				<N8nButton
-					v-else
-					variant="subtle"
-					data-testid="agent-sub-agents-modal-back"
-					@click="onBack"
-				>
-					{{ i18n.baseText('generic.back') }}
-				</N8nButton>
-				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
-					<N8nButton
-						variant="solid"
-						:disabled="!canConfirm"
-						data-testid="agent-sub-agents-modal-confirm"
-						@click="onConfirm"
-					>
-						{{ i18n.baseText(isEditing ? 'generic.save' : 'agents.builder.subAgents.modal.add') }}
-					</N8nButton>
-				</div>
+			<N8nEmptyState
+				v-else-if="hasAgents && !hasMatchingAgents"
+				:icon="{ type: 'icon', value: 'bot' }"
+				:heading="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
+				:description="i18n.baseText('agents.builder.subAgents.modal.noResults.description')"
+				data-testid="agent-sub-agents-modal-no-results"
+			/>
+
+			<N8nEmptyState
+				v-else
+				:icon="{ type: 'icon', value: 'bot' }"
+				:heading="i18n.baseText('agents.builder.subAgents.modal.empty.title')"
+				:description="i18n.baseText('agents.builder.subAgents.modal.empty.description')"
+				data-testid="agent-sub-agents-modal-empty"
+			/>
+		</div>
+
+		<div v-if="selectedAgent" :class="[$style.content, $style.configureContent]">
+			<N8nCallout
+				v-if="invalidReasons.length > 0"
+				theme="danger"
+				data-testid="agent-sub-agents-modal-invalid-callout"
+			>
+				<div v-for="reason in invalidReasons" :key="reason">{{ reason }}</div>
+			</N8nCallout>
+			<div :class="$style.field">
+				<label :class="$style.label">
+					<N8nText size="small" :bold="true">
+						{{ i18n.baseText('agents.builder.subAgents.useWhen.label') }}
+					</N8nText>
+				</label>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.builder.subAgents.useWhen.hint') }}
+				</N8nText>
+				<N8nMarkdownEditor
+					:class="$style.useWhenEditor"
+					:model-value="useWhen"
+					:placeholder="i18n.baseText('agents.builder.subAgents.useWhen.placeholder')"
+					show-toolbar="floating"
+					max-height="100%"
+					data-testid="agent-sub-agents-modal-use-when"
+					@update:model-value="useWhen = $event"
+				/>
+				<N8nText v-if="useWhenError" size="small" color="danger">
+					{{ useWhenError }}
+				</N8nText>
+				<N8nText size="xsmall" color="text-light">
+					{{
+						i18n.baseText('agents.builder.subAgents.useWhen.characterCount', {
+							interpolate: {
+								count: String(useWhen.length),
+								max: String(SUB_AGENT_USE_WHEN_MAX_LENGTH),
+							},
+						})
+					}}
+				</N8nText>
 			</div>
+		</div>
+
+		<template v-if="selectedAgent && isEditing && data.onRemove" #footerLeft>
+			<N8nButton variant="subtle" data-testid="agent-sub-agents-modal-remove" @click="onRemove">
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.subAgents.modal.remove') }}
+			</N8nButton>
 		</template>
-	</Modal>
+		<template v-if="selectedAgent" #footerActions>
+			<N8nButton variant="solid" data-testid="agent-sub-agents-modal-confirm" @click="onConfirm">
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
+		</template>
+	</AgentModalMultiStep>
 </template>
 
 <style module lang="scss">
-.modal {
-	:global(.modal-content) {
-		overflow: hidden;
-	}
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	margin: calc(-1 * var(--spacing--lg));
-	padding: var(--spacing--lg);
 }
 
 .configureContent {
-	min-height: 460px;
 	gap: var(--spacing--lg);
 }
 
@@ -330,7 +314,7 @@ function onConfirm() {
 
 .iconWrapper {
 	flex-shrink: 0;
-	width: 32px;
+	width: var(--spacing--xl);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -377,17 +361,6 @@ function onConfirm() {
 }
 
 .useWhenEditor {
-	height: 300px;
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
+	height: min(40dvh, calc(var(--height--5xl) * 3));
 }
 </style>

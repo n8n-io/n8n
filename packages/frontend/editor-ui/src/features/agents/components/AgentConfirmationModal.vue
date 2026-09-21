@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
+import { computed, ref } from 'vue';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
+import AgentModal from './modals/AgentModal.vue';
 
 export type AgentConfirmationModalData = {
 	title: string;
@@ -20,6 +20,7 @@ const props = defineProps<{
 }>();
 
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const submitting = ref(false);
 
 function closeModal() {
@@ -43,38 +44,37 @@ async function onConfirm() {
 	}
 }
 
-async function onBeforeClose() {
+async function onOpenChange(open: boolean) {
+	if (open) return;
 	const shouldClose = await props.data.onClose?.();
-	return shouldClose !== false;
+	if (shouldClose !== false) closeModal();
 }
 </script>
 
 <template>
-	<Modal width="500px" :name="props.modalName" :before-close="onBeforeClose">
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge">
-				{{ props.data.title }}
-			</N8nHeading>
+	<AgentModal
+		:open="modalOpen"
+		:title="props.data.title"
+		:busy="submitting"
+		size="large"
+		data-testid="agent-confirmation-modal"
+		@update:open="onOpenChange"
+	>
+		<div :class="$style.content">
+			<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
+			<N8nText size="medium">
+				{{ props.data.description }}
+			</N8nText>
+		</div>
+		<template #footerActions>
+			<N8nButton variant="subtle" size="medium" :disabled="submitting" @click="onCancel">
+				{{ props.data.cancelButtonText }}
+			</N8nButton>
+			<N8nButton variant="solid" size="medium" :loading="submitting" @click="onConfirm">
+				{{ props.data.confirmButtonText }}
+			</N8nButton>
 		</template>
-		<template #content>
-			<div :class="$style.content">
-				<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
-				<N8nText size="medium">
-					{{ props.data.description }}
-				</N8nText>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="subtle" size="medium" :disabled="submitting" @click="onCancel">
-					{{ props.data.cancelButtonText }}
-				</N8nButton>
-				<N8nButton variant="solid" size="medium" :loading="submitting" @click="onConfirm">
-					{{ props.data.confirmButtonText }}
-				</N8nButton>
-			</div>
-		</template>
-	</Modal>
+	</AgentModal>
 </template>
 
 <style module lang="scss">
@@ -88,12 +88,5 @@ async function onBeforeClose() {
 .icon {
 	flex-shrink: 0;
 	margin-top: var(--spacing--4xs);
-}
-
-.footer {
-	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>

@@ -7,6 +7,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -138,6 +139,17 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 
 const MODAL_NAME = 'AgentToolConfigModal';
 
+function getNativeTestId(id: string): HTMLElement {
+	const element = document.querySelector(`[data-testid="${id}"]`);
+	if (!(element instanceof HTMLElement)) throw new Error(`Missing data-testid: ${id}`);
+	return element;
+}
+
+function queryNativeTestId(id: string): HTMLElement | null {
+	const element = document.querySelector(`[data-testid="${id}"]`);
+	return element instanceof HTMLElement ? element : null;
+}
+
 function toolRef(
 	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
 ): Extract<AgentJsonToolRef, { type: 'node' }> {
@@ -158,6 +170,7 @@ function toolRef(
 function renderModal({
 	valid = false,
 	onConfirm = vi.fn(),
+	onRemove,
 	ref = toolRef(),
 	customTool,
 	projectId,
@@ -166,6 +179,7 @@ function renderModal({
 }: {
 	valid?: boolean;
 	onConfirm?: (updated: AgentJsonToolRef) => void;
+	onRemove?: () => void;
 	ref?: AgentJsonToolRef;
 	customTool?: CustomToolEntry;
 	projectId?: string;
@@ -175,6 +189,7 @@ function renderModal({
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
 			stubs: {
+				AgentModal: AgentModalTestStub,
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
 				FocusScope: {
 					template: '<div data-test-id="nested-credential-focus-scope"><slot /></div>',
@@ -205,6 +220,7 @@ function renderModal({
 				agentId,
 				validationIssues,
 				onConfirm,
+				onRemove,
 			},
 		},
 	});
@@ -258,24 +274,30 @@ describe('AgentToolConfigModal', () => {
 		expect(queryByTestId('agent-tool-config-permissions-tab')).toBeNull();
 	});
 
-	it('disables Save until the content emits valid=true', async () => {
-		const { getByTestId } = renderModal({ valid: false });
+	it('keeps Save available and does not confirm invalid content', async () => {
+		const onConfirm = vi.fn();
+		renderModal({ valid: false, onConfirm });
 		await nextTick();
-		const saveBtn = getByTestId('agent-tool-config-save') as HTMLButtonElement;
-		expect(saveBtn.disabled).toBe(true);
+		const saveBtn = getNativeTestId('agent-tool-config-save') as HTMLButtonElement;
+		expect(saveBtn.disabled).toBe(false);
+
+		await fireEvent.click(saveBtn);
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(getNativeTestId('agent-tool-config-validation-error')).toBeInTheDocument();
 	});
 
 	it('enables Save once valid and round-trips the node back into the toolRef on confirm', async () => {
 		const onConfirm = vi.fn();
 		const initial = toolRef();
-		const { getByTestId } = renderModal({ valid: true, onConfirm, ref: initial });
+		renderModal({ valid: true, onConfirm, ref: initial });
 
 		await waitFor(() => {
-			const saveBtn = getByTestId('agent-tool-config-save') as HTMLButtonElement;
+			const saveBtn = getNativeTestId('agent-tool-config-save') as HTMLButtonElement;
 			expect(saveBtn.disabled).toBe(false);
 		});
 
-		await fireEvent.click(getByTestId('agent-tool-config-save'));
+		await fireEvent.click(getNativeTestId('agent-tool-config-save'));
 
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [updated] = onConfirm.mock.calls[0];
@@ -311,7 +333,9 @@ describe('AgentToolConfigModal', () => {
 			'agents.builder.validation.issue.httpRequestUrlFromAi',
 		);
 		expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
-		expect(getByTestId('agent-tool-config-save')).toBeDisabled();
+		expect(getNativeTestId('agent-tool-config-save')).not.toBeDisabled();
+		await fireEvent.click(getNativeTestId('agent-tool-config-save'));
+		expect(getNativeTestId('agent-tool-config-validation-error')).toBeInTheDocument();
 	});
 
 	it('saves the approval requirement on node tool refs', async () => {
@@ -319,7 +343,7 @@ describe('AgentToolConfigModal', () => {
 		const { getByTestId } = renderModal({ valid: true, onConfirm, ref: toolRef() });
 
 		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
-		await fireEvent.click(getByTestId('agent-tool-config-save'));
+		await fireEvent.click(getNativeTestId('agent-tool-config-save'));
 
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [updated] = onConfirm.mock.calls[0];
@@ -338,14 +362,11 @@ describe('AgentToolConfigModal', () => {
 		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 	});
 
-	it('closes the modal on Cancel without calling onConfirm', async () => {
+	it('closes the modal from the header without calling onConfirm', async () => {
 		const onConfirm = vi.fn();
-		const { getAllByRole } = renderModal({ valid: true, onConfirm });
+		renderModal({ valid: true, onConfirm });
 
-		const buttons = getAllByRole('button');
-		const cancelBtn = buttons.find((b) => b.textContent?.includes('agents.toolConfig.cancel'));
-		expect(cancelBtn).toBeTruthy();
-		await fireEvent.click(cancelBtn!);
+		await fireEvent.click(getNativeTestId('dialog-close-button'));
 
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
@@ -375,7 +396,7 @@ describe('AgentToolConfigModal', () => {
 		expect(getByTestId('agent-custom-tool-viewer').textContent).toContain(customTool.code);
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
 		expect(queryByTestId('workflow-tool-config-content')).toBeNull();
-		expect(queryByTestId('agent-tool-config-save')).not.toBeNull();
+		expect(queryNativeTestId('agent-tool-config-save')).not.toBeNull();
 	});
 
 	it('saves the approval requirement on custom tool refs', async () => {
@@ -403,7 +424,7 @@ describe('AgentToolConfigModal', () => {
 		});
 
 		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
-		await fireEvent.click(getByTestId('agent-tool-config-save'));
+		await fireEvent.click(getNativeTestId('agent-tool-config-save'));
 
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [updated] = onConfirm.mock.calls[0];
@@ -428,9 +449,9 @@ describe('AgentToolConfigModal', () => {
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
 
 		await waitFor(() => {
-			expect(getByTestId('agent-tool-config-save')).not.toBeDisabled();
+			expect(getNativeTestId('agent-tool-config-save')).not.toBeDisabled();
 		});
-		await fireEvent.click(getByTestId('agent-tool-config-save'));
+		await fireEvent.click(getNativeTestId('agent-tool-config-save'));
 
 		expect(onConfirm).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -439,5 +460,25 @@ describe('AgentToolConfigModal', () => {
 				workflow: 'My Workflow',
 			}),
 		);
+	});
+
+	it('uses an explicit Remove workflow action', async () => {
+		const onRemove = vi.fn();
+		const { getByText } = renderModal({
+			onRemove,
+			ref: {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+				name: 'My Workflow Tool',
+				description: 'Does something',
+			},
+		});
+
+		expect(getByText('agents.builder.tools.workflow.remove')).toBeInTheDocument();
+		await fireEvent.click(getNativeTestId('agent-tool-config-remove'));
+
+		expect(onRemove).toHaveBeenCalledOnce();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 });

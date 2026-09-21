@@ -1,16 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@n8n/composables/useToast';
-import {
-	N8nButton,
-	N8nDialog,
-	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
-	N8nIcon,
-	N8nIconButton,
-	updatedIconSet,
-	type IconName,
-} from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
@@ -29,6 +19,7 @@ import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import AgentChannelListItem from './AgentChannelListItem.vue';
+import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 export type ChannelView = AgentChannelView;
 
@@ -217,7 +208,6 @@ const headerContentComponent = computed(() => {
 	}
 	return undefined;
 });
-const canClose = computed(() => !actionInFlight.value);
 function prepareChannelEdit(channelType: string | null) {
 	captureConnectedCredential(channelType);
 	if (!channelType) return;
@@ -240,27 +230,15 @@ const showFooterActions = computed(() => isEditMode.value && selectedChannelType
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
-const canSaveChannelConfig = computed(() => {
-	return (
-		selectedChannelType.value !== null &&
-		currentChannelCredentialId.value.length > 0 &&
-		!channelViewLoading.value &&
-		!channelViewRef.value?.validationError
-	);
-});
-
-function isIconName(icon: string): icon is IconName {
-	return icon in updatedIconSet;
-}
-
 const headerText = computed(() => {
 	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
 	if (channel && !isListMode) {
-		return channel;
+		return currentIntegration.value?.label ?? channel;
 	}
 	return i18n.baseText('agents.channels.modal.title');
 });
+const currentStep = computed(() => (currentView.value === 'list' ? 'list' : 'configure'));
 
 function isConnected(channelType: string): boolean {
 	return isIntegrationConnected(channelType);
@@ -310,10 +288,6 @@ function goBackToList() {
 	currentView.value = 'list';
 }
 
-function handleListDisconnect(channelType: string) {
-	requestDisconnect(channelType, connectedCredentials.value[channelType] ?? '', false);
-}
-
 /**
  * Close once a flow has finished its own work. Separate from `closeModal`
  * because a platform reports `connected` from inside its setup flow, while that
@@ -321,11 +295,6 @@ function handleListDisconnect(channelType: string) {
  */
 function completeAndClose() {
 	emit('update:open', false);
-}
-
-function closeModal() {
-	if (actionInFlight.value) return;
-	completeAndClose();
 }
 
 function handleModalOpenUpdate(isOpen: boolean) {
@@ -524,15 +493,28 @@ watch(
 </script>
 
 <template>
-	<N8nDialog
+	<AgentModalMultiStep
 		:open="open"
-		size="2xlarge"
+		:step="currentStep"
+		:title="headerText"
+		:show-back="currentView !== 'list'"
+		:show-footer="showFooterActions"
+		:busy="actionInFlight"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
-		:show-close-button="false"
 		@interact-outside="handleInteractOutside"
 		@update:open="handleModalOpenUpdate"
+		@back="goBackToList"
 	>
+		<template #headerActions>
+			<component
+				:is="headerContentComponent"
+				v-if="headerContentComponent"
+				:runtime="currentRuntime"
+				:disabled="headerContentDisabled"
+			/>
+		</template>
+
 		<FocusScope
 			v-if="credentialModalOpen"
 			as-child
@@ -542,155 +524,88 @@ watch(
 			<span hidden aria-hidden="true" />
 		</FocusScope>
 
-		<N8nDialogHeader :class="$style.customHeader">
-			<Transition name="channel-header-fade" mode="out-in">
-				<div v-if="currentView === 'list'" key="list" :class="$style.headerContent">
-					<div :class="$style.headerTitle">
-						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
-					</div>
-				</div>
-				<div v-else :key="currentView" :class="$style.headerContent">
-					<N8nIconButton
-						variant="ghost"
-						size="small"
-						icon-size="medium"
-						icon="arrow-left"
-						:disabled="actionInFlight"
-						:class="$style.backButton"
-						data-testid="agent-channel-back"
-						@click="goBackToList"
-					>
-						<template #icon>
-							<N8nIcon icon="arrow-left" size="small" />
-						</template>
-					</N8nIconButton>
-					<div :class="$style.headerTitle">
-						<N8nIcon
-							v-if="currentIntegration?.icon && isIconName(currentIntegration.icon)"
-							:icon="currentIntegration.icon"
-							size="large"
-						/>
-						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
-					</div>
-					<div :class="$style.headerActions">
-						<component
-							:is="headerContentComponent"
-							v-if="headerContentComponent"
-							:runtime="currentRuntime"
-							:disabled="headerContentDisabled"
-						/>
-					</div>
-				</div>
-			</Transition>
-			<N8nIconButton
-				variant="ghost"
-				size="small"
-				icon-size="medium"
-				icon="x"
-				:class="$style.closeButton"
-				aria-label="Close dialog"
-				data-test-id="dialog-close-button"
-				:disabled="!canClose"
-				@click="closeModal"
-			/>
-		</N8nDialogHeader>
-
 		<div data-testid="agent-channel-modal" :class="$style.container">
-			<Transition name="channel-view-fade" mode="out-in">
-				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
-					<ul :class="$style.channelList">
-						<AgentChannelListItem
-							v-for="integration in catalog"
-							:key="integration.type"
-							:integration="integration"
-							:configured="isConfigured(integration.type)"
-							:connected="isConnected(integration.type)"
-							:not-running="hasRuntimeError(integration.type)"
-							:runtime-error="runtimeErrors[integration.type]"
-							:loading="listLoading"
-							:connect-action="connectAction(integration.type)"
-							@setup="goToSetup"
-							@edit="goToEdit"
-							@disconnect="handleListDisconnect"
-						/>
-					</ul>
-				</div>
-
-				<div
-					v-else-if="currentIntegration"
-					:key="`${isSetupMode ? 'setup' : 'edit'}-${currentView}`"
-					:class="isSetupMode ? $style.setupView : $style.editView"
-				>
-					<component
-						:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
-						:key="viewSession"
-						ref="channelViewRef"
-						v-model="selectedCredentials[currentIntegration.type]"
-						:mode="isSetupMode ? 'setup' : 'edit'"
-						:integration="currentIntegration"
-						:credentials="getCredentials(currentIntegration.type)"
-						:credential-permissions="credentialPermissions"
-						:credentials-loading="credentialsLoading"
-						:loading="isLoading(currentIntegration.type)"
-						:connected="isConfigured(currentIntegration.type)"
-						:connected-description="integrationConnectedText(currentIntegration.type)"
-						:error-message="
-							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-						"
-						:error-is-conflict="errorIsConflict[currentIntegration.type]"
-						:saved-settings="integrationSettings[currentIntegration.type]"
-						:is-published="isPublished"
-						:agent-name="agentId"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:force-new-credential="false"
-						:simple-setup="simpleSetup"
-						:runtime="currentRuntime"
-						@create="createCredential"
-						@edit="editCredential"
-						@connect="saveChannelConfig"
-						@connected="handlePlatformConnected"
+			<div v-show="currentView === 'list'" key="list" :class="$style.listView">
+				<ul :class="$style.channelList">
+					<AgentChannelListItem
+						v-for="integration in catalog"
+						:key="integration.type"
+						:integration="integration"
+						:configured="isConfigured(integration.type)"
+						:connected="isConnected(integration.type)"
+						:not-running="hasRuntimeError(integration.type)"
+						:runtime-error="runtimeErrors[integration.type]"
+						:loading="listLoading"
+						:connect-action="connectAction(integration.type)"
+						@setup="goToSetup"
+						@edit="goToEdit"
 					/>
-				</div>
-			</Transition>
+				</ul>
+			</div>
+
+			<div
+				v-if="currentView !== 'list' && currentIntegration"
+				:key="`${isSetupMode ? 'setup' : 'edit'}-${currentView}`"
+				:class="isSetupMode ? $style.setupView : $style.editView"
+			>
+				<component
+					:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
+					:key="viewSession"
+					ref="channelViewRef"
+					v-model="selectedCredentials[currentIntegration.type]"
+					:mode="isSetupMode ? 'setup' : 'edit'"
+					:integration="currentIntegration"
+					:credentials="getCredentials(currentIntegration.type)"
+					:credential-permissions="credentialPermissions"
+					:credentials-loading="credentialsLoading"
+					:loading="isLoading(currentIntegration.type)"
+					:connected="isConfigured(currentIntegration.type)"
+					:connected-description="integrationConnectedText(currentIntegration.type)"
+					:error-message="
+						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+					"
+					:error-is-conflict="errorIsConflict[currentIntegration.type]"
+					:saved-settings="integrationSettings[currentIntegration.type]"
+					:is-published="isPublished"
+					:agent-name="agentId"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:force-new-credential="false"
+					:simple-setup="simpleSetup"
+					:runtime="currentRuntime"
+					@create="createCredential"
+					@edit="editCredential"
+					@connect="saveChannelConfig"
+					@connected="handlePlatformConnected"
+				/>
+			</div>
 		</div>
 
-		<Transition name="channel-footer-fade">
-			<N8nDialogFooter v-if="showFooterActions" :class="$style.customFooter">
-				<div :class="$style.footer">
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
-						:disabled="actionInFlight || !selectedChannelType"
-						data-testid="agent-channel-remove-channel"
-						@click="removeCurrentChannel"
-					>
-						{{ i18n.baseText('agents.channels.modal.removeChannel') }}
-					</N8nButton>
-					<div :class="$style.footerActions">
-						<N8nButton
-							variant="outline"
-							size="medium"
-							:disabled="actionInFlight"
-							@click="closeModal"
-						>
-							{{ i18n.baseText('generic.cancel') }}
-						</N8nButton>
-						<N8nButton
-							variant="solid"
-							size="medium"
-							:loading="actionInFlight"
-							:disabled="!canSaveChannelConfig || actionInFlight"
-							data-testid="agent-channel-save-channel-config"
-							@click="saveChannelConfig"
-						>
-							{{ i18n.baseText('generic.save') }}
-						</N8nButton>
-					</div>
-				</div>
-			</N8nDialogFooter>
-		</Transition>
+		<template v-if="showFooterActions" #footerLeft>
+			<N8nButton
+				variant="subtle"
+				size="medium"
+				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
+				:disabled="actionInFlight || !selectedChannelType"
+				data-testid="agent-channel-remove-channel"
+				@click="removeCurrentChannel"
+			>
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.channels.modal.removeChannel') }}
+			</N8nButton>
+		</template>
+		<template v-if="showFooterActions" #footerActions>
+			<N8nButton
+				variant="solid"
+				size="medium"
+				:loading="actionInFlight"
+				:disabled="actionInFlight"
+				data-testid="agent-channel-save-channel-config"
+				@click="saveChannelConfig"
+			>
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
+		</template>
 		<component
 			:is="disconnectConfirmationComponent"
 			v-if="pendingDisconnect && disconnectConfirmationComponent"
@@ -699,7 +614,7 @@ watch(
 			@cancel="pendingDisconnect = null"
 			@confirm="confirmDisconnect"
 		/>
-	</N8nDialog>
+	</AgentModalMultiStep>
 </template>
 
 <style lang="scss">
@@ -710,55 +625,10 @@ body:has([data-testid='agent-channel-modal'])
 </style>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/motion';
-
 .container {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	min-height: var(--height--5xl);
-	aspect-ratio: 4/3;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	margin-bottom: calc(var(--spacing--lg) * -1);
-	scrollbar-color: transparent transparent;
-}
-
-.customHeader {
-	flex-direction: row;
-	align-items: center;
-	gap: var(--spacing--md);
-	padding-inline: var(--spacing--lg);
-	padding-bottom: var(--spacing--md);
-	height: var(--height--2xl);
-	border-bottom: var(--border);
-	margin-inline: calc(var(--spacing--lg) * -1);
-}
-
-.headerContent {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--md);
-	flex: 1;
-	min-width: 0;
-}
-
-.headerTitle {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	text-transform: capitalize;
-}
-
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	margin-left: auto;
-}
-
-.closeButton {
-	flex-shrink: 0;
 }
 
 .listView {
@@ -778,55 +648,5 @@ body:has([data-testid='agent-channel-modal'])
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--md) 0;
-}
-
-.customFooter {
-	position: absolute;
-	inset-inline: 0;
-	bottom: 0;
-	padding: var(--spacing--md) var(--spacing--lg);
-	border-top: var(--border);
-	background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	width: 100%;
-	gap: var(--spacing--2xs);
-	height: var(--height--md);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-:global(.channel-view-fade-enter-active) {
-	--animation--fade-in--duration: var(--duration--snappy);
-	--animation--fade-in--translate: 0;
-	@include motion.fade-in;
-}
-
-:global(.channel-view-fade-leave-active) {
-	--animation--fade-out--duration: var(--duration--snappy);
-
-	@include motion.fade-out;
-}
-
-:global(.channel-header-fade-enter-active),
-:global(.channel-footer-fade-enter-active) {
-	--animation--fade-in--duration: var(--duration--snappy);
-	--animation--fade-in--translate: 0;
-
-	@include motion.fade-in;
-}
-
-:global(.channel-header-fade-leave-active),
-:global(.channel-footer-fade-leave-active) {
-	--animation--fade-out--duration: var(--duration--snappy);
-
-	@include motion.fade-out;
 }
 </style>
