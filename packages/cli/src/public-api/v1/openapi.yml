@@ -95,8 +95,6 @@ paths:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/test-runs:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
   /workflows/{id}/test-runs/{runId}/cancel:
