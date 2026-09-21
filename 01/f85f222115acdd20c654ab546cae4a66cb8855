@@ -1,0 +1,25 @@
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_d31e89b55c8393 86
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_d31e89b55c8393 529,533-538,544-545,551-553
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_32915d36ff0226 240
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_77655ca8fe3a59::t_78830e4d9f1434 64,121-123,146-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "01f85f222115acdd20c654ab546cae4a66cb8855",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
