@@ -455,6 +455,7 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown });
 				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
 				:side="placementParts.side"
 				:align="placementParts.align"
+				:reference="reference"
 				:style="contentContainerStyle"
 				@mouseenter="cancelHoverClose"
 				@mouseleave="triggerHoverLeave"

@@ -1,3 +1,4 @@
+import type { DropdownMenuContentProps } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
 import type { IconOrEmoji } from '../N8nIconPicker/types';
@@ -126,6 +127,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	contentTestId?: string;
 	/** Portal target element (e.g. pop-out window's document.body). When set, portals content to the specified element. Use with `modal: false` in cross-window contexts. */
 	portalTarget?: string | HTMLElement;
+	/** Element or virtual element used to position the menu instead of its trigger. */
+	reference?: DropdownMenuContentProps['reference'];
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
 	modal?: boolean;
 	/** Array of menu items to display */

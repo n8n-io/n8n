@@ -374,6 +374,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			getInputElement: () => HTMLTextAreaElement | undefined;
 		} | null>(null);
 		const dropdownRef = ref<DropdownMenuExposed | null>(null);
+		const composerRef = ref<HTMLElement | null>(null);
 		const menuOpen = ref(false);
 		const value = ref('');
 		const mentionTriggerIndex = ref<number | null>(null);
@@ -441,6 +442,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			args,
 			chatInputRef,
 			dropdownRef,
+			composerRef,
 			menuOpen,
 			value,
 			inputElement,
@@ -468,39 +470,42 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			<p style="margin-bottom: var(--spacing--2xs); color: var(--text-color--subtle);">
 				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
 			</p>
-			<N8nChatInput
-				ref="chatInputRef"
-				:model-value="value"
-				:placeholder="args.placeholder"
-				:max-length="args.maxLength"
-				@update:model-value="handleUpdateModelValue"
-				@submit="onSubmit"
-			>
-				<template #right-actions>
-					<N8nDropdownMenu
-						ref="dropdownRef"
-						:model-value="menuOpen"
-						:items="items"
-						:external-focus-target="inputElement"
-						placement="top-end"
-						searchable
-						search-mode="external"
-						@update:model-value="handleOpenChange"
-						@select="onSelect"
-					>
-						<template #trigger>
-							<N8nTooltip content="Open context menu" placement="top">
-								<N8nIconButton
-									icon="at-sign"
-									title="Open context menu"
-									variant="ghost"
-									size="medium"
-								/>
-							</N8nTooltip>
-						</template>
-					</N8nDropdownMenu>
-				</template>
-			</N8nChatInput>
+			<div ref="composerRef">
+				<N8nChatInput
+					ref="chatInputRef"
+					:model-value="value"
+					:placeholder="args.placeholder"
+					:max-length="args.maxLength"
+					@update:model-value="handleUpdateModelValue"
+					@submit="onSubmit"
+				>
+					<template #right-actions>
+						<N8nDropdownMenu
+							ref="dropdownRef"
+							:model-value="menuOpen"
+							:items="items"
+							:external-focus-target="inputElement"
+							:reference="composerRef"
+							placement="top-start"
+							searchable
+							search-mode="external"
+							@update:model-value="handleOpenChange"
+							@select="onSelect"
+						>
+							<template #trigger>
+								<N8nTooltip content="Open context menu" placement="top">
+									<N8nIconButton
+										icon="at-sign"
+										title="Open context menu"
+										variant="ghost"
+										size="medium"
+									/>
+								</N8nTooltip>
+							</template>
+						</N8nDropdownMenu>
+					</template>
+				</N8nChatInput>
+			</div>
 		</div>
 	`,
 });

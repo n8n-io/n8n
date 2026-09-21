@@ -557,6 +557,23 @@ describe('N8nDropdownMenu', () => {
 				prioritizePosition: false,
 			});
 		});
+
+		it('should position the menu relative to a custom reference', function () {
+			const reference = document.createElement('div');
+			const wrapper = shallowMount(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					teleported: false,
+					reference,
+				},
+				global: {
+					renderStubDefaultSlot: true,
+				},
+			});
+
+			expect(wrapper.findComponent(DropdownMenuContent).props('reference')).toBe(reference);
+		});
 	});
 
 	describe('placements', () => {
