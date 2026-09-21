@@ -118,8 +118,15 @@ export class WorkflowComposer {
 		await input.waitFor({ state: 'visible' });
 		await this.n8n.page.keyboard.press('ControlOrMeta+a');
 		await this.n8n.page.keyboard.press('Backspace');
+
+		const searchResponse = this.n8n.page.waitForResponse(
+			(response) =>
+				response.request().method() === 'GET' &&
+				new URL(response.url()).pathname.endsWith('/projects') &&
+				new URL(response.url()).searchParams.get('search') === projectNameOrEmail,
+		);
 		await this.n8n.page.keyboard.type(projectNameOrEmail, { delay: 50 });
-		await this.n8n.resourceMoveModal.waitForDebounce();
+		await searchResponse;
 
 		const projectOption = this.n8n.page
 			.getByTestId('project-sharing-info')
@@ -131,7 +138,21 @@ export class WorkflowComposer {
 
 	private async selectFolderInMoveModal(folderName: string): Promise<void> {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
+
+		const folderSearchResponse = this.n8n.page.waitForResponse((response) => {
+			if (response.request().method() !== 'GET') return false;
+			const url = new URL(response.url());
+			if (!url.pathname.endsWith('/folders')) return false;
+			const filterParam = url.searchParams.get('filter');
+			if (!filterParam) return false;
+			try {
+				return (JSON.parse(filterParam) as { name?: string }).name === folderName;
+			} catch {
+				return false;
+			}
+		});
 		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
+		await folderSearchResponse;
 
 		const folderOption = this.n8n.resourceMoveModal.getFolderOption(folderName);
 		await folderOption.waitFor({ state: 'visible' });
