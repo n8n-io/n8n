@@ -203,7 +203,7 @@ export class StepSettledHandler {
 	}
 
 	/**
-	 * Tells whomever started the execution that it is over.
+	 * Tells whoever started the execution that it is over.
 	 *
 	 * Only ever called where `finishExecution` won its CAS, so a run announces
 	 * its end exactly once however many workers raced for it.
