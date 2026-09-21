@@ -60,6 +60,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_scheduled_job_concurrencyLimit | CREATE INDEX "IDX_scheduled_job_concurrencyLimit" ON "scheduled_job" ("concurrencyLimit") WHERE "concurrencyLimit" IS NOT NULL |
 | IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON "scheduled_job" ("name")  |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON "scheduled_job" ("nextRunAt") WHERE "enabled" = true AND "nextRunAt" IS NOT NULL |
 | IDX_scheduled_job_ownerType_ownerId_ownerMemberId | CREATE INDEX "IDX_scheduled_job_ownerType_ownerId_ownerMemberId" ON "scheduled_job" ("ownerType", "ownerId", "ownerMemberId")  |

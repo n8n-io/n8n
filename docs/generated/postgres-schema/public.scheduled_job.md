@@ -62,6 +62,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_scheduled_job_concurrencyLimit | CREATE INDEX "IDX_scheduled_job_concurrencyLimit" ON public.scheduled_job USING btree ("concurrencyLimit") WHERE ("concurrencyLimit" IS NOT NULL) |
 | IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON public.scheduled_job USING btree ("nextRunAt") WHERE ((enabled = true) AND ("nextRunAt" IS NOT NULL)) |
 | IDX_scheduled_job_ownerType_ownerId_ownerMemberId | CREATE INDEX "IDX_scheduled_job_ownerType_ownerId_ownerMemberId" ON public.scheduled_job USING btree ("ownerType", "ownerId", "ownerMemberId") |

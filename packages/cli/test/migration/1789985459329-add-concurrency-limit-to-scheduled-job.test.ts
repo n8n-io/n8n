@@ -69,6 +69,22 @@ describe('AddConcurrencyLimitToScheduledJob Migration', () => {
 		return Number(count);
 	}
 
+	async function indexExists(context: TestMigrationContext, name: string): Promise<boolean> {
+		const rows = context.isSqlite
+			? await context.runQuery<unknown[]>(
+					"SELECT name FROM sqlite_master WHERE type = 'index' AND name = :name",
+					{ name },
+				)
+			: await context.runQuery<unknown[]>(
+					'SELECT indexname FROM pg_indexes WHERE indexname = :name',
+					{ name },
+				);
+		return rows.length === 1;
+	}
+
+	const limitIndexName = (context: TestMigrationContext) =>
+		`IDX_${context.tablePrefix}scheduled_job_concurrencyLimit`;
+
 	async function columnNames(context: TestMigrationContext, table: string): Promise<string[]> {
 		if (context.isSqlite) {
 			const rows = (await context.queryRunner.query(
@@ -103,6 +119,15 @@ describe('AddConcurrencyLimitToScheduledJob Migration', () => {
 			await context.queryRunner.release();
 		});
 
+		it('indexes the jobs that carry a limit', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const context = createTestMigrationContext(dataSource);
+
+			expect(await indexExists(context, limitIndexName(context))).toBe(true);
+
+			await context.queryRunner.release();
+		});
+
 		it('rejects a fractional limit on SQLite', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);
@@ -128,6 +153,7 @@ describe('AddConcurrencyLimitToScheduledJob Migration', () => {
 			await undoLastSingleMigration();
 
 			const context = createTestMigrationContext(dataSource);
+			expect(await indexExists(context, limitIndexName(context))).toBe(false);
 			expect(await columnNames(context, 'scheduled_job')).not.toContain('concurrencyLimit');
 			expect(await countRows(context, 'scheduled_job')).toBe(1);
 			expect(await countRows(context, 'scheduled_task')).toBe(1);

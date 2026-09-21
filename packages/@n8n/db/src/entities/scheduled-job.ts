@@ -32,6 +32,9 @@ export { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants
 // leftmost prefix, the third column covers the per-member provisioning diff.
 @Index(['ownerType', 'ownerId', 'ownerMemberId'])
 @Index(['name'], { unique: true })
+// The claim reads the set of limited jobs on every pass. Partial, so it stays as
+// small as that set.
+@Index(['concurrencyLimit'], { where: '"concurrencyLimit" IS NOT NULL' })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
