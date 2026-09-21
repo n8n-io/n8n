@@ -1,8 +1,8 @@
-/* eslint-disable n8n-nodes-base/node-param-default-missing */
-// The helpers below return resource-locator modes, not parameters. The rule exempts a mode
-// literal only when it sits under a `modes` key, so a helper return value needs this disable.
 import type { INodePropertyMode } from 'n8n-workflow';
 
+// `listMode` and `idMode` return resource-locator modes, not parameters. The rule exempts a
+// mode literal only when it sits under a `modes` key, so the two return values need this disable.
+/* eslint-disable n8n-nodes-base/node-param-default-missing */
 export const listMode = (searchListMethod: string, placeholder: string): INodePropertyMode => ({
 	displayName: 'From List',
 	name: 'list',
@@ -22,6 +22,7 @@ export const idMode = (
 	type: 'string',
 	...mode,
 });
+/* eslint-enable n8n-nodes-base/node-param-default-missing */
 
 // A v4 GUID: the shape of a team (group) ID and of a group member ID.
 const GUID_V4_REGEX = '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})';
