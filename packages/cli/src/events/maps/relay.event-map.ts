@@ -1204,6 +1204,8 @@ export type RelayEventMap = {
 		userId: string;
 		roleSlug: string;
 		scopes: string[];
+		/** Which surface created the role. Both reach the same service, so the caller names its own. */
+		source: 'ui' | 'public-api';
 	};
 
 	'custom-role-updated': {

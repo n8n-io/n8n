@@ -12,9 +12,9 @@ import {
 } from '../helpers';
 import type { DatabricksJobRun, DatabricksRunNowResponse } from '../interfaces';
 
+import { describeRunPage, getRunOutcome, getRunState, isRunFinished } from './runState';
+
 const POLL_INTERVAL_MS = 5000;
-// TERMINATED ends `status.state`; SKIPPED and INTERNAL_ERROR end the deprecated `state.life_cycle_state`
-const TERMINAL_RUN_STATES = new Set(['TERMINATED', 'SKIPPED', 'INTERNAL_ERROR']);
 
 function isNamedEntry(entry: unknown): entry is { name: string; value?: unknown } {
 	return (
@@ -32,26 +32,6 @@ function readJobParameters(context: IExecuteFunctions, i: number): Record<string
 	return Object.fromEntries(
 		entries.filter(isNamedEntry).map((entry) => [entry.name, String(entry.value ?? '')]),
 	);
-}
-
-function getRunState(run: DatabricksJobRun): string {
-	return run.status?.state ?? run.state?.life_cycle_state ?? '';
-}
-
-function getRunOutcome(run: DatabricksJobRun): { success: boolean; code: string; message: string } {
-	const details = run.status?.termination_details;
-	if (details) {
-		const code = details.code ?? details.type ?? 'UNKNOWN';
-		return { success: code === 'SUCCESS', code, message: details.message ?? '' };
-	}
-	const code = run.state?.result_state ?? getRunState(run);
-	return { success: code === 'SUCCESS', code, message: run.state?.state_message ?? '' };
-}
-
-function describeRunPage(run: DatabricksJobRun): string | undefined {
-	return run.run_page_url
-		? `Open the run page in Databricks for details: ${run.run_page_url}`
-		: undefined;
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -98,7 +78,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 
 	let run = await fetchRun();
-	while (!TERMINAL_RUN_STATES.has(getRunState(run))) {
+	while (!isRunFinished(run)) {
 		const remainingMs = deadline - Date.now();
 		if (remainingMs <= 0) {
 			throw new NodeOperationError(

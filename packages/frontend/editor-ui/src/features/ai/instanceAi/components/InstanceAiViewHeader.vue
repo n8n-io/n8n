@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nIcon, N8nPopover } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -12,24 +13,41 @@ import InstanceAiThreadList from './InstanceAiThreadList.vue';
 const props = withDefaults(
 	defineProps<{
 		showThreadHistoryLabel?: boolean;
+		/** Falls back to the route param when omitted (the full assistant page's own use). */
+		threadId?: string;
+		/** Passed through to `InstanceAiThreadList` — an embedding host scopes
+		 * and disables the shared history instead of routing through it. */
+		threadList?: {
+			filter?: (thread: InstanceAiThreadSummary) => boolean;
+			navigate?: boolean;
+			disabled?: boolean;
+		};
 	}>(),
 	{
 		showThreadHistoryLabel: false,
+		threadId: undefined,
+		threadList: undefined,
 	},
 );
+
+const emit = defineEmits<{
+	select: [threadId: string];
+	deleted: [wasActive: boolean];
+}>();
 
 const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
-const threadMenuOpen = ref(false);
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-// The active thread comes from the `:threadId` route param (INSTANCE_AI_THREAD_VIEW);
-// undefined on the empty/new-conversation view, in which case no per-thread total shows.
+// The active thread comes from the `threadId` prop, falling back to the
+// `:threadId` route param (INSTANCE_AI_THREAD_VIEW); undefined on the
+// empty/new-conversation view, in which case no per-thread total shows.
 const activeThreadId = computed(() => {
+	if (props.threadId) return props.threadId;
 	const id = route.params?.threadId;
 	return typeof id === 'string' ? id : undefined;
 });
@@ -37,46 +55,51 @@ const activeThreadId = computed(() => {
 const threadCreditsUsed = computed(() =>
 	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
 );
+
+function handleThreadSelect(threadId: string) {
+	emit('select', threadId);
+}
 </script>
 
 <template>
 	<div :class="$style.header">
-		<N8nPopover
-			v-model:open="threadMenuOpen"
-			side="bottom"
-			align="start"
-			:side-offset="4"
-			width="calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))"
-			:enable-scrolling="false"
-			:content-class="$style.threadHistoryPopover"
+		<InstanceAiThreadList
+			max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
+			:filter="threadList?.filter"
+			:navigate="threadList?.navigate"
+			:disabled="threadList?.disabled"
+			:active-thread-id="threadId"
+			@select="handleThreadSelect"
+			@deleted="emit('deleted', $event)"
 		>
 			<template #trigger>
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:class="[
-						$style.threadHistoryButton,
-						{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
-					]"
-					data-test-id="instance-ai-sidebar-toggle"
-					:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+				<N8nTooltip
+					as-child
+					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+					:disabled="props.showThreadHistoryLabel"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<template #icon>
-						<N8nIcon icon="history" size="large" />
-					</template>
-					<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
-						{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-					</span>
-				</N8nButton>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:class="[
+							$style.threadHistoryButton,
+							{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
+						]"
+						data-test-id="instance-ai-sidebar-toggle"
+						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+					>
+						<template #icon>
+							<N8nIcon icon="history" size="large" />
+						</template>
+						<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
+							{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+						</span>
+					</N8nButton>
+				</N8nTooltip>
 			</template>
-			<template #content>
-				<InstanceAiThreadList
-					max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
-					@close="threadMenuOpen = false"
-					@select="threadMenuOpen = false"
-				/>
-			</template>
-		</N8nPopover>
+		</InstanceAiThreadList>
 		<slot name="title" />
 		<div :class="$style.headerActions">
 			<CreditsSettingsDropdown
@@ -112,7 +135,7 @@ const threadCreditsUsed = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--color--background--light-2);
+	background-color: var(--background--surface);
 }
 
 .headerActions {
@@ -120,10 +143,6 @@ const threadCreditsUsed = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.threadHistoryPopover {
-	overflow: hidden;
 }
 
 .threadHistoryButton {

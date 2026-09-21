@@ -613,6 +613,38 @@ describe('ParameterInput.vue', () => {
 		);
 	});
 
+	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {
+		const { container, emitted } = renderComponent({
+			props: {
+				path: 'port',
+				parameter: createTestNodeProperties({
+					displayName: 'Port',
+					name: 'port',
+					type: 'number',
+				}),
+				modelValue: '1433',
+				isForCredential: true,
+			},
+		});
+		const input = container.querySelector('input');
+		expect(input).toBeInstanceOf(HTMLInputElement);
+		if (!(input instanceof HTMLInputElement)) {
+			throw new Error('Expected input element');
+		}
+
+		expect(input).toHaveValue('1433');
+		expect(emitted('update')).toBeUndefined();
+
+		await userEvent.clear(input);
+		await userEvent.type(input, '1434');
+		await userEvent.tab();
+
+		await waitFor(() => {
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1434 })]);
+		});
+		expect(emitted('textInput')).toBeUndefined();
+	});
+
 	describe('paste events', () => {
 		async function paste(input: HTMLInputElement, text: string) {
 			const expression = new DataTransfer();

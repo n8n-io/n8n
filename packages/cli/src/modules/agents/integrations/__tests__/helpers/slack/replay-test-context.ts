@@ -239,8 +239,8 @@ export async function createSlackReplayContext(
 		chat: chat as unknown as ChatInstance,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastPost: () => stub.apiCalls.filter((call) => call.method === 'chat.postMessage').at(-1),
 		shutdown: async () => {
 			try {

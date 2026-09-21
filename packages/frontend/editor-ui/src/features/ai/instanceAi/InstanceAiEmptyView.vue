@@ -18,9 +18,7 @@ import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
-	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
 } from '@/app/constants/experiments';
-import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -81,12 +79,6 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import {
-	useInstanceAiTemplateExamplesExperiment,
-	useInstanceAiTemplateExamplesStore,
-	TemplateExamplesCatalog,
-	TEMPLATE_PROMPT_SUFFIX,
-} from '@/experiments/instanceAiTemplateExamples';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -148,31 +140,6 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
-const {
-	isFeatureEnabled: isTemplateExamplesExperimentEnabled,
-	currentVariant: templateExamplesVariant,
-} = useInstanceAiTemplateExamplesExperiment();
-const templateExamplesStore = useInstanceAiTemplateExamplesStore();
-const showTemplateExamples = computed(
-	() => isTemplateExamplesExperimentEnabled.value && !templateExamplesStore.hasLoadFailed,
-);
-let hasTrackedTemplateExamplesExposure = false;
-watch(
-	showTemplateExamples,
-	(visible) => {
-		const variant = templateExamplesVariant.value;
-		if (!visible || hasTrackedTemplateExamplesExposure || typeof variant !== 'string') {
-			return;
-		}
-
-		telemetry.track(
-			INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT,
-			getExperimentTelemetryPayload(INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT, variant),
-		);
-		hasTrackedTemplateExamplesExposure = true;
-	},
-	{ immediate: true },
-);
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
@@ -214,7 +181,7 @@ const isTaxonomySegmentResolved = computed(
 			'taxonomy',
 );
 const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
-	if (showProactiveStarter.value || isSplitLayoutActive.value || showTemplateExamples.value) {
+	if (showProactiveStarter.value || isSplitLayoutActive.value) {
 		return false;
 	}
 
@@ -411,10 +378,6 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		return {};
 	}
 
-	if (showTemplateExamples.value) {
-		return {};
-	}
-
 	if (isTaxonomySuggestionsPending.value) {
 		return {
 			suggestions: [],
@@ -486,16 +449,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
 	};
 });
-// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
-const INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY =
-	'experiments.instanceAiTemplateExamples.emptyState.title' as BaseTextKey;
-const INSTANCE_AI_TEMPLATE_EXAMPLES_PLACEHOLDER_KEY =
-	'experiments.instanceAiTemplateExamples.input.placeholder' as BaseTextKey;
-
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
-	if (showTemplateExamples.value) {
-		return INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY;
-	}
 	if (
 		shouldShowTaxonomySuggestions.value ||
 		isTaxonomySuggestionsPending.value ||
@@ -528,20 +482,6 @@ watch(
 	},
 );
 
-// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
-const templatePreviewPrompt = ref<string | null>(null);
-
-function handleTemplateHoverPrompt(prompt: string) {
-	templatePreviewPrompt.value = prompt;
-}
-
-function handleTemplateHoverEnd() {
-	templatePreviewPrompt.value = null;
-}
-
-const inputPulsing = ref(false);
-const selectedTemplatePrompt = ref<string | null>(null);
-
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;
 	suggestionId: string;
@@ -549,19 +489,6 @@ type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	position: number;
 };
 
-function handleTemplateSelectPrompt(prompt: string) {
-	templatePreviewPrompt.value = null;
-	if (chatInputRef.value) {
-		chatInputRef.value.setPrefill({ text: prompt, prefillType: 'template_example' });
-		chatInputRef.value.focus();
-	}
-	selectedTemplatePrompt.value = prompt;
-	inputPulsing.value = true;
-	setTimeout(() => {
-		inputPulsing.value = false;
-	}, 250);
-}
-// EOF InstanceAiTemplateExamplesExperiment experiment cleanup
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
 const CANVAS_NATURAL_HEIGHT_PX = 420;
@@ -619,6 +546,7 @@ async function handleSubmit(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -629,13 +557,6 @@ async function handleSubmit(
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
-
-	// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
-	const isFromTemplate =
-		isTemplateExamplesExperimentEnabled.value &&
-		selectedTemplatePrompt.value !== null &&
-		message.startsWith(selectedTemplatePrompt.value);
-	const finalMessage = isFromTemplate ? message + TEMPLATE_PROMPT_SUFFIX : message;
 
 	const threadId = uuidv4();
 	isStartingThread.value = true;
@@ -661,10 +582,11 @@ async function handleSubmit(
 	// not an option: it reads its composer draft from localStorage once, synchronously, on
 	// mount, which always precedes this response. `sendMessage` has already surfaced the
 	// reason, so restore what was typed and stay put.
-	const sent = await thread.sendMessage(finalMessage, {
+	const sent = await thread.sendMessage(message, {
 		authorship,
 		attachments,
 		pushRef: rootStore.pushRef,
+		responseStartedAtEpochMs,
 	});
 	if (!sent) {
 		isStartingThread.value = false;
@@ -822,14 +744,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
-						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-						:contextual-suggestion="templatePreviewPrompt"
-						:placeholder-key="
-							showTemplateExamples ? INSTANCE_AI_TEMPLATE_EXAMPLES_PLACEHOLDER_KEY : undefined
-						"
-						:bold-placeholder="showTemplateExamples"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -842,14 +758,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
-				<!-- Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment -->
-				<TemplateExamplesCatalog
-					v-if="showTemplateExamples"
-					:class="$style.templateCatalog"
-					@hover-prompt="handleTemplateHoverPrompt"
-					@hover-end="handleTemplateHoverEnd"
-					@select-prompt="handleTemplateSelectPrompt"
-				/>
 				<Transition name="workflow-preview-fade">
 					<div
 						v-if="activeWorkflowPreview && hasSpaceForPreview"
@@ -917,29 +825,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.inputPulse {
-	animation: inputScaleUp 0.25s ease;
-}
-
-@keyframes inputScaleUp {
-	0% {
-		transform: scale(1);
-	}
-	50% {
-		transform: scale(1.02);
-	}
-	100% {
-		transform: scale(1);
-	}
-}
-
-.templateCatalog {
-	width: 100%;
-	max-width: 1014px;
-	min-width: 0;
-	margin-top: var(--spacing--m);
 }
 
 .workflowPreviewWrapper {

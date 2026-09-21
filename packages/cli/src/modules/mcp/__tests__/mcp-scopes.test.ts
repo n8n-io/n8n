@@ -12,7 +12,13 @@ import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	getAllowedToolNames,
+	INSTANCE_CONTEXT_TOOLS,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
@@ -24,6 +30,13 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
+import {
+	EMPTY_INSTANCE_CONTEXT_TEXT,
+	INSTANCE_CONTEXT_RESOURCE_URI,
+	NOTHING_EXPOSED_TEXT,
+} from '../tools/get-instance-context.tool';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -53,12 +66,28 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
-	canvasGroupsEnabled: false,
+	instanceContextEnabled: false,
 	// On by default so the drift guards below cover `get_user_preferences`. Its own
 	// registration tests set it explicitly either way.
 	aiPreferencesEnabled: true,
 	...overrides,
 });
+
+/** Reaches the resource's own read callback, which registration assertions never touch. */
+const readResourceText = async (server: unknown, uri: string): Promise<string> => {
+	const registered = (
+		server as {
+			_registeredResources: Record<string, { readCallback: () => Promise<unknown> }>;
+		}
+	)._registeredResources[uri];
+	const result = (await registered.readCallback()) as { contents: Array<{ text: string }> };
+	return result.contents[0].text;
+};
+
+const getRegisteredResourceUris = (server: unknown): Set<string> =>
+	new Set(
+		Object.keys((server as { _registeredResources: Record<string, unknown> })._registeredResources),
+	);
 
 const getRegisteredToolNames = (server: unknown): Set<string> =>
 	new Set(Object.keys((server as { _registeredTools: Record<string, unknown> })._registeredTools));
@@ -109,7 +138,12 @@ describe('McpService scope enforcement', () => {
 	// `list_workflow_tags` both read the role to check a scope.
 	const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-	const buildService = ({ builderEnabled = true, foldersLicensed = true } = {}) =>
+	const buildService = ({
+		builderEnabled = true,
+		foldersLicensed = true,
+		instanceAiActive = false,
+		activityLogEnabled = true,
+	} = {}) =>
 		new McpService(
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
@@ -127,6 +161,7 @@ describe('McpService scope enforcement', () => {
 					mcpBuilderEnabled: builderEnabled,
 				},
 				tags: { disabled: false },
+				activityLog: { enabled: activityLogEnabled },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
 			mockInstance(Telemetry),
@@ -158,7 +193,11 @@ describe('McpService scope enforcement', () => {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
 			mockInstance(McpPostSaveMetricsService),
-			mockInstance(ModuleRegistry),
+			mockInstance(ModuleRegistry, {
+				isActive: vi
+					.fn()
+					.mockImplementation((name: string) => instanceAiActive && name === 'instance-ai'),
+			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
@@ -181,11 +220,209 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts.
+		// drift guard lives in agent-tools.service.test.ts. Instance-context
+		// tools need the `instance-ai` module, inactive here for the same reason.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
-			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+			(name) =>
+				!registered.has(name) && !AGENT_TOOLS.has(name) && !INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
+	});
+
+	/**
+	 * The registration branch itself, which every other test here leaves dark. It resolves the
+	 * reader out of the container behind a dynamic import, so a wrong path or a missing binding
+	 * would otherwise only surface at runtime on a real instance.
+	 */
+	it('registers the instance-context tools when the flag and the module are both on', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).toContain(name);
+	});
+
+	it('registers none of them with the module active but the flag off', async () => {
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: false }),
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+	});
+
+	/**
+	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
+	 * activity tools off the instance when the AI assistant is disabled.
+	 */
+	it('keeps node usage but drops the activity tools when the module is inactive', async () => {
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: false }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		const registered = getRegisteredToolNames(server);
+		// Driven off the set so a fifth tool cannot be added without this case noticing.
+		const moduleBound = [...INSTANCE_CONTEXT_TOOLS].filter((name) => name !== 'get_node_usage');
+
+		expect(registered).toContain('get_node_usage');
+		for (const name of moduleBound) expect(registered).not.toContain(name);
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	/** They ride on `workflow:read`, so a grant without it must not reach them. */
+	it('withholds them from a grant that does not cover them', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+			undefined,
+			{ grantedScopes: ['execution:read'] },
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+	});
+
+	/** The resource is how a client that reads resources gets the opening context without asking. */
+	it('registers the instance-context resource alongside the tool', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		expect(getRegisteredResourceUris(server)).toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+		expect(getRegisteredToolNames(server)).toContain('get_instance_context');
+	});
+
+	it('registers no instance-context resource with the flag off', async () => {
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: false }),
+		);
+
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	/**
+	 * The read callback, not just the registration. It is not a pass-through — it maps an empty
+	 * read to its own text and emits its own telemetry — so the two paths can drift silently.
+	 */
+	it('serves the block through the resource, and the withheld text when nothing is exposed', async () => {
+		const instanceContext = mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		instanceContext.buildBlock.mockResolvedValue({
+			block: 'Workflows that already exist here: 2',
+			cursor: { activityMark: 1, activitySeen: [], runsThrough: '2026-09-16T00:00:00.000Z' },
+		});
+		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
+			'Workflows that already exist here: 2',
+		);
+
+		// Empty read plus an estate that exists: the client must not be told the instance is empty.
+		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
+		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
+			NOTHING_EXPOSED_TEXT,
+		);
+
+		instanceContext.hasWithheldWorkflows.mockResolvedValue(false);
+		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
+			EMPTY_INSTANCE_CONTEXT_TEXT,
+		);
+	});
+
+	/**
+	 * The resource carries the same instance data as the tool, so a grant that cannot call the
+	 * tool must not be able to read it instead. `registerResource` does no filtering of its own.
+	 */
+	it('withholds the resource from a grant that does not cover the tool', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+			undefined,
+			{ grantedScopes: ['execution:read'] },
+		);
+
+		expect(getRegisteredToolNames(server)).not.toContain('get_instance_context');
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	/**
+	 * The log is off by default, and a tool answering from a store nothing writes to reports an
+	 * empty feed — which an agent reads as "nothing has happened here".
+	 */
+	it('withholds the activity tools when the activity log is not being written', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({
+			instanceAiActive: true,
+			activityLogEnabled: false,
+		}).getServer(user, mcpFeatureFlags({ instanceContextEnabled: true }));
+
+		const registered = getRegisteredToolNames(server);
+		expect(registered).not.toContain('get_instance_activity');
+		expect(registered).not.toContain('expand_instance_activity');
+		// Node usage reads its own index, so the log has no bearing on it.
+		expect(registered).toContain('get_node_usage');
+	});
+
+	/**
+	 * The outer half of the credential gate, observed through `getServer` rather than restated:
+	 * a copy of `allowedToolNames?.has('list_credentials') ?? true` in a test would still pass if
+	 * the service stopped deriving it, read the wrong tool name, or hard-coded the value.
+	 */
+	it('derives the credential grant from the token, not from a hard-coded value', async () => {
+		const instanceContext = mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+		instanceContext.listPage.mockResolvedValue({ entries: [], hasMore: false });
+
+		const grantedScopeOf = async (grantedScopes: string[]) => {
+			const server = await buildService({ instanceAiActive: true }).getServer(
+				user,
+				mcpFeatureFlags({ instanceContextEnabled: true }),
+				undefined,
+				{ grantedScopes },
+			);
+			const tool = (
+				server as unknown as {
+					_registeredTools: Record<
+						string,
+						{ handler: (args: unknown, extra: unknown) => Promise<unknown> }
+					>;
+				}
+			)._registeredTools.get_instance_activity;
+
+			await tool.handler({}, {});
+			const call = instanceContext.listPage.mock.calls.at(-1)?.[0];
+			return (call?.scope as { credentialGranted: boolean }).credentialGranted;
+		};
+
+		expect(await grantedScopeOf(['workflow:read', 'credential:read'])).toBe(true);
+		expect(await grantedScopeOf(['workflow:read'])).toBe(false);
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
@@ -272,7 +509,11 @@ describe('McpService scope enforcement', () => {
 			grantedScopes: ['workflow:read'],
 		});
 
-		expect(getRegisteredToolNames(server)).toEqual(new Set(TOOLS_BY_SCOPE['workflow:read']));
+		// Instance-context tools ride on this scope but need their own flag and the `instance-ai`
+		// module, neither of which is on here.
+		expect(getRegisteredToolNames(server)).toEqual(
+			new Set(TOOLS_BY_SCOPE['workflow:read'].filter((name) => !INSTANCE_CONTEXT_TOOLS.has(name))),
+		);
 	});
 
 	it('filters builder tools out of a scope when the builder is disabled', async () => {
