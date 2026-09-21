@@ -1,8 +1,11 @@
 name: 'CI: Pull Request Review'
 
+# "CI: Owners Required Reviews" listens to this workflow's completion
+# (workflow_run) to re-evaluate fork PRs: a fork's review event runs without
+# secrets, a workflow_run does not. Keep the trigger on every review event.
 on:
   pull_request_review:
-    types: [submitted]
+    types: [submitted, dismissed]
 
 concurrency:
   group: ci-review-${{ github.event.pull_request.number }}

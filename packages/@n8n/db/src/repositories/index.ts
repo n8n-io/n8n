@@ -4,6 +4,7 @@ export {
 	activityResourceNameMaxLength,
 	type ActivityEventInput,
 	type ActivityFeedQuery,
+	type ActivityProjectScope,
 } from './activity-event.repository';
 export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
 export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
@@ -19,7 +20,11 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
+export {
+	CredentialsRepository,
+	CredentialIdConflictError,
+	type CredentialSharingRelation,
+} from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiWorkflowAttachmentSchema,
 	type InstanceAiAgentAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiNodesAttachment,
@@ -22,13 +23,13 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
-	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
 } from '../constants';
 import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
@@ -81,7 +82,8 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	if (credential.placeholderTitles?.length) {
 		return `${templatedValuesQuestion(credential)}${node}`;
 	}
-	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
+	const setupContext = credential.setupContext ? ` ${credential.setupContext}` : '';
+	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}${setupContext}`;
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
@@ -90,11 +92,16 @@ const pendingHandoffContextKey = (threadId: string) =>
 const pendingComposerDraftKey = (threadId: string) => `n8n-instance-ai-composer-draft:${threadId}`;
 const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
+const pendingWorkflowAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-workflow-attachment:${threadId}`;
+const pendingRedirectLandingKey = (threadId: string) =>
+	`n8n-instance-ai-redirect-landing:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
+	responseStartedAtEpochMs?: number;
 	/**
 	 * Required so a new hand-off cannot stash an opener that reports as
 	 * user-typed. Optional on the read path only, for stashes a previous
@@ -276,6 +283,56 @@ export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
+/**
+ * Stash a workflow the editor handed off without sending an opening turn. The
+ * destination view restores it so the canvas opens and the first real prompt
+ * carries the attachment.
+ */
+export function stashPendingWorkflowAttachment(
+	threadId: string,
+	attachment: InstanceAiWorkflowAttachment,
+): void {
+	localStorage.setItem(pendingWorkflowAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function getPendingWorkflowAttachment(
+	threadId: string,
+): InstanceAiWorkflowAttachment | null {
+	const raw = localStorage.getItem(pendingWorkflowAttachmentKey(threadId));
+	if (!raw) return null;
+	try {
+		const parsed = instanceAiWorkflowAttachmentSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
+}
+
+export function clearPendingWorkflowAttachment(threadId: string): void {
+	localStorage.removeItem(pendingWorkflowAttachmentKey(threadId));
+}
+
+/**
+ * One-shot marker for a workflow-list auto redirect. The destination view
+ * consumes it after hydration so the experiment can collapse the sidebar and
+ * show its callout once. Thread metadata source persists forever, so it cannot
+ * be the landing signal.
+ */
+export function stashPendingRedirectLanding(threadId: string): void {
+	localStorage.setItem(pendingRedirectLandingKey(threadId), '1');
+}
+
+export function consumePendingRedirectLanding(threadId: string): boolean {
+	const raw = localStorage.getItem(pendingRedirectLandingKey(threadId));
+	if (!raw) return false;
+	localStorage.removeItem(pendingRedirectLandingKey(threadId));
+	return true;
+}
+
+export function clearPendingRedirectLanding(threadId: string): void {
+	localStorage.removeItem(pendingRedirectLandingKey(threadId));
+}
+
 /** Drop a stashed opening message without sending it (e.g. its thread is gone). */
 export function clearPendingFirstMessage(threadId: string): void {
 	localStorage.removeItem(pendingFirstMessageKey(threadId));
@@ -313,6 +370,8 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
+	clearPendingWorkflowAttachment(threadId);
+	clearPendingRedirectLanding(threadId);
 	clearPendingFirstMessage(threadId);
 	clearPendingDraftAttachment(threadId);
 }
@@ -341,13 +400,40 @@ export async function provisionLaunchedThread(
 	payload: PendingFirstMessage,
 	launch: InstanceAiThreadLaunch,
 ): Promise<string | null> {
+	const pendingMessage = {
+		...payload,
+		responseStartedAtEpochMs: payload.responseStartedAtEpochMs ?? instanceAiResponseNow(),
+	};
 	const threadId = uuidv4();
 	try {
 		await useInstanceAiStore().syncThread(threadId, projectId, launch);
 	} catch {
 		return null;
 	}
-	stashPendingFirstMessage(threadId, payload);
+	stashPendingFirstMessage(threadId, pendingMessage);
+	return threadId;
+}
+
+/**
+ * Provision a thread bound to a workflow without sending an opening turn. The
+ * destination view restores the attachment so the canvas opens and the first
+ * real prompt carries it.
+ */
+export async function provisionWorkflowThread(
+	projectId: string,
+	attachment: InstanceAiWorkflowAttachment,
+	launch: InstanceAiThreadLaunch,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	} catch {
+		return null;
+	}
+	stashPendingWorkflowAttachment(threadId, attachment);
+	if (launch.source === 'workflow_list_auto') {
+		stashPendingRedirectLanding(threadId);
+	}
 	return threadId;
 }
 
@@ -358,8 +444,8 @@ export async function provisionLaunchedThread(
  * into the same write so binding a subject and recording where it opened from
  * (e.g. the agent-preview view) costs one round trip, not two.
  *
- * Shared by `InstanceAiChatPanel` (embed/) and `openAgentArtifactThread` below,
- * which used to run this in two separate steps.
+ * Shared by `InstanceAiChatPanel` (embed/), which used to run this in two
+ * separate steps.
  */
 export async function provisionSubjectThread(
 	subject: InstanceAiEmbedSubject,
@@ -453,62 +539,6 @@ export function useInstanceAiHandoff() {
 		);
 	}
 
-	async function openAgentArtifactThread(
-		attachment: InstanceAiAgentAttachment,
-		launch: InstanceAiThreadLaunch,
-		options?: {
-			context?: InstanceAiHandoffContext;
-			initialDraft?: PendingComposerDraft;
-		},
-	): Promise<boolean> {
-		if (!instanceAiReady.value) {
-			await routeToSetup();
-			return false;
-		}
-		if (handoffInFlight) return false;
-		handoffInFlight = true;
-		try {
-			let threadId: string;
-			try {
-				// Mints the thread, binds it to the agent, and stashes the attachment —
-				// the agent-preview view metadata rides along as extra metadata so this
-				// is one merged write, not two. Same primitive `InstanceAiChatPanel` uses.
-				threadId = await provisionSubjectThread(
-					attachment,
-					launch,
-					options?.context?.source === 'agent-preview'
-						? {
-								[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
-									agentId: options.context.agentId,
-									threadId: options.context.threadId,
-								},
-							}
-						: undefined,
-				);
-			} catch {
-				showOpenFailed();
-				return false;
-			}
-			if (options?.context) stashPendingHandoffContext(threadId, options.context);
-			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
-			try {
-				const failure = await router.push({
-					name: INSTANCE_AI_THREAD_VIEW,
-					params: { threadId },
-				});
-				if (failure) throw new Error('Navigation failed');
-			} catch {
-				clearPendingThreadHandoff(threadId);
-				await instanceAiStore.deleteThread(threadId);
-				showOpenFailed();
-				return false;
-			}
-			return true;
-		} finally {
-			handoffInFlight = false;
-		}
-	}
-
 	async function openThreadWithContext(
 		projectId: string,
 		context: InstanceAiHandoffContext,
@@ -568,6 +598,7 @@ export function useInstanceAiHandoff() {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;
+		const responseStartedAtEpochMs = instanceAiResponseNow();
 		try {
 			if (options?.newTab) {
 				// Open the tab now, inside the click gesture, so it isn't popup-blocked.
@@ -576,7 +607,7 @@ export function useInstanceAiHandoff() {
 				const tab = window.open('', '_blank');
 				const threadId = await provisionLaunchedThread(
 					projectId,
-					{ message, attachments, context: options?.context, authorship },
+					{ message, attachments, context: options?.context, authorship, responseStartedAtEpochMs },
 					launch,
 				);
 				if (!threadId) {
@@ -604,8 +635,48 @@ export function useInstanceAiHandoff() {
 				attachments,
 				pushRef: rootStore.pushRef,
 				handoffContext: options?.context,
+				responseStartedAtEpochMs,
 			});
 			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	/**
+	 * Open a thread bound to a workflow without sending an opening turn. The
+	 * canvas opens from the pending attachment; the first real prompt carries it.
+	 */
+	async function openWorkflowThread(
+		projectId: string,
+		attachment: InstanceAiWorkflowAttachment,
+		launch: InstanceAiThreadLaunch,
+		prepare?: (threadId: string) => void,
+	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = await provisionWorkflowThread(projectId, attachment, launch);
+			if (!threadId) {
+				showOpenFailed();
+				return false;
+			}
+			prepare?.(threadId);
+			try {
+				const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+				if (failure) throw new Error('Navigation failed');
+			} catch {
+				// Same as the agent path: a thread nobody reached must not linger.
+				clearPendingThreadHandoff(threadId);
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
+			return true;
 		} finally {
 			handoffInFlight = false;
 		}
@@ -638,13 +709,9 @@ export function useInstanceAiHandoff() {
 					id: workflow.id,
 					name: workflow.name || undefined,
 				};
-				// Empty message → the editor-context block just greets; the attachment
-				// opens the canvas preview via the thread view's firstAttachedArtifactId.
-				stashPendingFirstMessage(threadId, {
-					message: '',
-					attachments: [attachment],
-					authorship: { kind: 'prefill', prefillType: 'workflow_attachment_opener' },
-				});
+				// No opening turn — the attachment opens the canvas preview and rides
+				// the user's first real prompt.
+				stashPendingWorkflowAttachment(threadId, attachment);
 				if (workflow.snapshot) {
 					instanceAiStore
 						.getOrCreateRuntime(threadId, projectId)
@@ -657,5 +724,10 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread, openThreadWithContext, openAgentArtifactThread, openThreadForDraft };
+	return {
+		startThread,
+		openWorkflowThread,
+		openThreadWithContext,
+		openThreadForDraft,
+	};
 }

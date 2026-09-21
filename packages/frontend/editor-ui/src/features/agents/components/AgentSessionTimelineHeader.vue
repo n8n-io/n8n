@@ -5,7 +5,6 @@ import {
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
-	N8nToggle,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
@@ -20,30 +19,25 @@ interface SessionDropdownData {
 	active: boolean;
 }
 
-const props = withDefaults(
-	defineProps<{
-		breadcrumbItems: PathItem[];
-		sessionTitle: string;
-		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
-		showMetrics: boolean;
-		triggerSource: string | null;
-		triggerIcon: IconName;
-		triggerLabel: string;
-		totalTokens: number;
-		totalCost: number;
-		durationLabel: string;
-		showLangsmithExport: boolean;
-		langsmithExportLoading: boolean;
-		isPreviewOpen?: boolean;
-	}>(),
-	{ isPreviewOpen: false },
-);
+const props = defineProps<{
+	breadcrumbItems: PathItem[];
+	sessionTitle: string;
+	sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
+	showMetrics: boolean;
+	triggerSource: string | null;
+	triggerIcon: IconName;
+	triggerLabel: string;
+	totalTokens: number;
+	totalCost: number;
+	durationLabel: string;
+	showLangsmithExport: boolean;
+	langsmithExportLoading: boolean;
+}>();
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
-	'toggle-preview': [];
 	close: [];
 }>();
 
@@ -124,15 +118,6 @@ const i18n = useI18n();
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>
-			<N8nToggle
-				:model-value="props.isPreviewOpen"
-				variant="ghost"
-				size="medium"
-				icon="play"
-				:label="i18n.baseText('agents.builder.preview.button')"
-				data-testid="agent-session-timeline-preview-btn"
-				@click="emit('toggle-preview')"
-			/>
 			<N8nTooltip :content="i18n.baseText('generic.close')">
 				<N8nButton
 					variant="ghost"

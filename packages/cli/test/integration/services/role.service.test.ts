@@ -4,7 +4,7 @@ import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
 import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ALL_ROLES } from '@n8n/permissions';
+import { ALL_ROLES, MANDATORY_INSTANCE_SCOPES } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -899,6 +899,12 @@ describe('RoleService', () => {
 				licensed: expect.any(Boolean),
 			});
 
+			// Every instance role carries the mandatory options, whatever was sent.
+			// `findByList` does not order its rows, so compare sets, not sequences.
+			expect([...result.scopes].sort()).toEqual(
+				['user:read', 'role:read', ...MANDATORY_INSTANCE_SCOPES].sort(),
+			);
+
 			// Verify slug was generated with the global namespace
 			expect(result.slug).toMatch(/^global:test-global-role-[a-z0-9]{6}$/);
 
@@ -1098,6 +1104,9 @@ describe('RoleService', () => {
 				scopes: expect.arrayContaining(updateRoleDto.scopes as string[]),
 			});
 
+			// The update replaces the stored scopes, but the mandatory options survive.
+			expect([...result.scopes].sort()).toEqual(['user:read', ...MANDATORY_INSTANCE_SCOPES].sort());
+
 			const updatedRole = await roleRepository.findBySlug(existingRole.slug);
 			expect(updatedRole?.roleType).toBe('global');
 			expect(updatedRole?.displayName).toBe(updateRoleDto.displayName);
@@ -1164,15 +1173,16 @@ describe('RoleService', () => {
 			expect(result.displayName).toBe(updateRoleDto.displayName);
 		});
 
-		it('should update role with empty scopes array', async () => {
+		it('should clear the scopes of a project role with an empty scopes array', async () => {
 			//
 			// ARRANGE
 			//
 			const testScopes = await createTestScopes();
-			const existingRole = await createCustomRoleWithScopes([
-				testScopes.readScope,
-				testScopes.writeScope,
-			]);
+			// `resolveScopes` reads the role type off the slug, so it has to be namespaced.
+			const existingRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope],
+				{ slug: `project:empty-scopes-${Math.random().toString(36).substring(7)}` },
+			);
 
 			const updateRoleDto: UpdateRoleDto = {
 				scopes: [],
@@ -1191,6 +1201,38 @@ describe('RoleService', () => {
 			// ASSERT
 			//
 			expect(result.scopes).toEqual([]);
+		});
+
+		it('should keep the mandatory scopes on a global role updated with an empty scopes array', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const existingRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope],
+				{
+					slug: `global:empty-scopes-${Math.random().toString(36).substring(7)}`,
+					roleType: 'global',
+				},
+			);
+
+			const updateRoleDto: UpdateRoleDto = {
+				scopes: [],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newRole: updateRoleDto,
+				userId: 'test-user-id',
+			});
+
+			//
+			// ASSERT
+			//
+			expect([...result.scopes].sort()).toEqual([...MANDATORY_INSTANCE_SCOPES].sort());
 		});
 
 		it('should throw error when role does not exist', async () => {

@@ -2,9 +2,13 @@ import type {
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
+	PromotionCheckoutPublicDto,
 	PromotionConnectionPublicDto,
 	PromotionConnectionScope,
+	PromotionConnectionSummary,
 	PromotionDirection,
+	PromotePackageDto,
+	PromotePackageResultDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
@@ -22,6 +26,7 @@ export type PromotionProvider = PromotionProviderPublicDto;
 /** Omits the SSH public key. */
 export type PromotionProviderSummary = PromotionProviderListPublicDto['data'][number];
 export type PromotionConnection = PromotionConnectionPublicDto;
+export type { PromotionConnectionSummary };
 
 const promotionsApiRoot = '/promotions';
 
@@ -101,7 +106,7 @@ export const deletePromotionProvider = async (
 export const fetchPromotionConnections = async (
 	context: PublicApiContext,
 	filter: { scope?: PromotionConnectionScope; providerId?: string } = {},
-): Promise<PromotionConnection[]> =>
+): Promise<PromotionConnectionSummary[]> =>
 	await fetchAllPages(
 		async (cursor) =>
 			await request({
@@ -111,6 +116,17 @@ export const fetchPromotionConnections = async (
 				data: { ...filter, cursor },
 			}),
 	);
+
+/** Fetches live checkout state with the stored connection fields. */
+export const fetchPromotionConnection = async (
+	context: PublicApiContext,
+	id: string,
+): Promise<PromotionConnection> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${id}`,
+	});
 
 export const createPromotionConnection = async (
 	context: PublicApiContext,
@@ -170,3 +186,40 @@ export const deletePromotionConfig = async (
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/configs/${direction}`,
 	});
 };
+
+/** Clones one direction into local storage on the instance. Safe to repeat. */
+export const clonePromotionCheckout = async (
+	context: PublicApiContext,
+	connectionId: string,
+	direction: PromotionDirection,
+): Promise<PromotionCheckoutPublicDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/${direction}/clone`,
+	});
+
+/** Removes one direction's local checkout. Keeps the config and its credentials. */
+export const disconnectPromotionCheckout = async (
+	context: PublicApiContext,
+	connectionId: string,
+	direction: PromotionDirection,
+): Promise<PromotionCheckoutPublicDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/${direction}/disconnect`,
+	});
+
+/** Promotes the whole instance through its instance connection. */
+export const promotePackage = async (
+	context: PublicApiContext,
+	connectionId: string,
+	payload: PromotePackageDto,
+): Promise<PromotePackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/promote`,
+		data: payload,
+	});

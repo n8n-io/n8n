@@ -53,7 +53,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `workspace` | 8 |
 | `executions` | 8 |
 | `credentials` | 6 |
-| `nodes` | 6 |
+| `nodes` | 7 |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `task-control` | 3 |
@@ -535,14 +535,18 @@ workflow is configured correctly before suggesting the user run or publish it.
 ### `workflows(action="restore-version")` *(conditional — requires license)*
 
 Restore a workflow to a previous version (overwrites current draft). HITL
-approval required.
+approval required. This does not publish the restored draft. A production rollback
+must also use the publish action and its normal approval flow.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 | `versionId` | string | yes | Version to restore |
 
-**Returns**: `{ success: boolean }`
+**Returns on success**: `{ success: true, workflowId, publishState, publishStateNote }`.
+`publishState` contains `savedVersionId`, `activeVersionId`, and `live`
+(`unpublished`, `current`, or `stale`). The note states whether publication is still
+required. Denied and failed restores retain their existing error responses.
 
 ### `workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
 
@@ -828,13 +832,13 @@ Test whether a credential is valid and can connect to its service.
 
 ---
 
-## `nodes` (6 actions)
+## `nodes` (7 actions)
 
-The full domain surface has six actions. The orchestrator receives all six
+The full domain surface has seven actions. The orchestrator receives all seven
 actions in the current registry. The tool also defines a restricted
 `type-definition` and `explore-resources` surface, but the orchestrator registry
 does not currently select it. Specialized agents that resolve the full domain
-tool can also receive all six actions.
+tool can also receive all seven actions.
 
 ### `nodes(action="list")`
 
@@ -909,6 +913,70 @@ discriminator values like spreadsheet IDs, calendar names, etc.
 | `currentNodeParameters` | object | no | Parameters needed by dependent lookups |
 
 **Returns**: `{ results, paginationToken?, builderHint?, error? }`.
+
+### `nodes(action="execute")`
+
+Execute a single node standalone — real credentials, caller-supplied parameters
+and input items — and return its real output items. The node runs through the
+regular execution engine (an archived temporary workflow is created for the run
+and deleted afterwards), so queue-mode worker dispatch applies. Intended for
+learning a node's exact output shape before wiring downstream expressions, or
+testing one node in isolation.
+
+Before the approval prompt, `config` is validated against the generated
+workflow-sdk node schema (`validateNodeConfig`) - a malformed config returns
+field-level errors immediately. One exception: a missing discriminator (e.g.
+`resource`/`operation`) does not block — n8n falls back to the node's defaults
+at runtime, so the node can still run and cause side effects.
+
+**Approval mirrors `executions(action="run")`** — executing one node is
+equivalent to running a one-node workflow, so the same `runWorkflow` admin
+policy applies (`blocked` denies; `always_allow` skips the prompt — a
+standalone node request is always agent-authored, the analog of an AI-created
+workflow). A *scoped* `always_allow` — the checkpoint follow-up override, which
+names the workflow IDs it covers — does not skip the prompt: a standalone node
+run has no workflow ID to match. Under the default `require_approval`, the tool suspends with
+severity `warning`; "Always allow" persists a session grant scoped by node
+type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`) —
+the same split the generated node TS types use, so a future per-operation
+destructiveness policy plugs in without changing the key format. Later
+executions of the same operation skip the prompt for the session.
+
+A node that declares neither discriminator (HTTP Request, Set, Merge, Filter, …)
+is scoped by the first of `mode`, `url`, `query`, `command` or `action` it
+declares, and by node type alone when it declares none. "Always allow" is not
+offered when that value is long enough to push the key past the grant column
+width — one approved URL must not stand for every URL sharing its prefix.
+
+The request envelope mirrors a workflow-sdk node (`{ type, version, config }`),
+so the agent can pass a node it is building verbatim:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | yes | Full node type name, e.g. `n8n-nodes-base.slack` |
+| `version` | number | yes | Node type version |
+| `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
+| `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
+| `input` | array | no | Input items `{ json }` (defaults to one empty item) |
+| `timeoutMs` | number | no | Max execution time, capped at 60s |
+
+**Returns**: `{ status: 'success', output }` or
+`{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
+output is the serialized items inside an `<untrusted_data
+source="execution-output">` boundary, the same envelope the workflow-execution
+path puts on node output — the items come from whatever service the node
+called. Binary output is reduced to metadata (`fileName`, `mimeType`,
+`fileSize`). Output is size-capped (a `truncated` field reports shown vs total
+items).
+When `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is disabled, output items and
+upstream error details are suppressed, mirroring `executions(action="run")`.
+Wait states are not supported — a node that starts waiting (e.g. Wait,
+send-and-wait operations) returns an error.
+
+Limitations: the node really runs (side effects happen); expressions
+referencing other nodes cannot resolve; trigger/webhook-only nodes are
+rejected; credentials must be resolved references — the SDK's
+placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
