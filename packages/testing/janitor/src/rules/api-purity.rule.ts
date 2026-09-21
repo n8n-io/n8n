@@ -1,6 +1,6 @@
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
-import type { Project, SourceFile } from 'ts-morph';
+import { Node, type Project, type SourceFile } from 'ts-morph';
 
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
@@ -65,6 +65,11 @@ export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 
 				let match;
 				while ((match = regex.exec(content)) !== null) {
+					const matchedNode = file.getDescendantAtPos(match.index);
+					if (match[0].startsWith('fetch') && Node.isPropertyAccessExpression(matchedNode?.getParent())) {
+						continue;
+					}
+
 					// Get some context around the match for allowPattern checking
 					const contextStart = Math.max(0, match.index - 50);
 					const contextEnd = Math.min(content.length, match.index + match[0].length + 50);

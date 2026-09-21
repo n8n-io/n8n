@@ -259,28 +259,6 @@
 				"hash": "652001b1476b"
 			}
 		],
-		"tests/e2e/ai/assistant-credential-help.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 80,
-				"message": "Raw API call detected: fetch(",
-				"hash": "eb977c9c5bb7"
-			},
-			{
-				"rule": "api-purity",
-				"line": 122,
-				"message": "Raw API call detected: fetch(",
-				"hash": "eb977c9c5bb7"
-			}
-		],
-		"tests/e2e/app-config/nps-survey.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 51,
-				"message": "Raw API call detected: fetch(",
-				"hash": "39b87c0d6566"
-			}
-		],
 		"tests/e2e/capabilities/proxy-server.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -293,28 +271,6 @@
 				"line": 65,
 				"message": "Raw API call detected: fetch(",
 				"hash": "fa2bb9ca3bdb"
-			}
-		],
-		"tests/e2e/credentials/crud.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 299,
-				"message": "Raw API call detected: fetch(",
-				"hash": "34b1d021857e"
-			}
-		],
-		"tests/e2e/nodes/community-nodes.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 20,
-				"message": "Raw API call detected: fetch(",
-				"hash": "974d7953dd83"
-			},
-			{
-				"rule": "api-purity",
-				"line": 35,
-				"message": "Raw API call detected: fetch(",
-				"hash": "974d7953dd83"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
