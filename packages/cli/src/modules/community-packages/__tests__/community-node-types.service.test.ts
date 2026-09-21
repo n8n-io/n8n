@@ -972,9 +972,21 @@ describe('CommunityNodeTypesService', () => {
 
 			const isInstalled = await (service as any).createIsInstalled();
 
-			expect(isInstalled('package-1.node')).toBe(true);
-			expect(isInstalled('package-2.node')).toBe(true);
-			expect(isInstalled('package-3.node')).toBe(false);
+			expect(isInstalled({ packageName: 'package-1' })).toBe(true);
+			expect(isInstalled({ packageName: 'package-2' })).toBe(true);
+			expect(isInstalled({ packageName: 'package-3' })).toBe(false);
+		});
+
+		it('should match a package name containing a dot', async () => {
+			// Splitting the node type on its first dot would look up
+			// 'n8n-nodes-chatwoot' and report the installed package as missing.
+			communityPackagesServiceMock.getAllInstalledPackages = vi
+				.fn()
+				.mockResolvedValue([{ packageName: 'n8n-nodes-chatwoot.io' }]);
+
+			const isInstalled = await (service as any).createIsInstalled();
+
+			expect(isInstalled({ packageName: 'n8n-nodes-chatwoot.io' })).toBe(true);
 		});
 
 		it('should handle empty package list', async () => {
@@ -982,7 +994,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const isInstalled = await (service as any).createIsInstalled();
 
-			expect(isInstalled('package-1.node')).toBe(false);
+			expect(isInstalled({ packageName: 'package-1' })).toBe(false);
 		});
 
 		it('should handle null package list', async () => {
@@ -990,7 +1002,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const isInstalled = await (service as any).createIsInstalled();
 
-			expect(isInstalled('package-1.node')).toBe(false);
+			expect(isInstalled({ packageName: 'package-1' })).toBe(false);
 		});
 	});
 });
