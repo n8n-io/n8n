@@ -2,11 +2,10 @@ import {
 	CreatedTestRunPublicDto,
 	ListTestRunsQueryPublicDto,
 	TestRunListPublicDto,
-	TestRunSummaryPublicDto,
 	workflowIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import type { AuthenticatedRequest, TestRun } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -30,6 +29,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { toTestRunSummaryDto } from '@/public-api/v1/handlers/evaluations/evaluations.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -37,35 +37,6 @@ import {
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const tags = ['Evaluation'];
-
-// The list omits `testCaseExecutions` and the single-run summary carries the count, so both
-// repository shapes fit this `Pick` without loading the full entity.
-type TestRunSummarySource = Pick<
-	TestRun,
-	| 'id'
-	| 'status'
-	| 'runAt'
-	| 'completedAt'
-	| 'metrics'
-	| 'errorCode'
-	| 'errorDetails'
-	| 'createdAt'
-	| 'updatedAt'
-> & { finalResult: TestRun['finalResult']; testCaseCount: number };
-
-const toTestRunSummaryPublicDto = (run: TestRunSummarySource): TestRunSummaryPublicDto => ({
-	id: run.id,
-	status: run.status,
-	runAt: run.runAt?.toISOString() ?? null,
-	completedAt: run.completedAt?.toISOString() ?? null,
-	metrics: run.metrics ?? null,
-	errorCode: run.errorCode ?? null,
-	errorDetails: run.errorDetails ?? null,
-	finalResult: run.finalResult ?? null,
-	testCaseCount: run.testCaseCount,
-	createdAt: run.createdAt.toISOString(),
-	updatedAt: run.updatedAt.toISOString(),
-});
 
 @PublicApiController('/workflows/:workflowId/test-runs')
 export class EvaluationsPublicController {
@@ -101,7 +72,7 @@ export class EvaluationsPublicController {
 		);
 
 		return {
-			data: testRuns.map(toTestRunSummaryPublicDto),
+			data: testRuns.map(toTestRunSummaryDto),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
 	}
