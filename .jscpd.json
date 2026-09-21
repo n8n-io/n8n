@@ -1,0 +1,12 @@
+{
+  "reporters": ["json", "html"],
+  "gitignore": true,
+  "ignore": [
+    "**/__snapshots__/**",
+    "**/*.snap",
+    "**/fixtures/**",
+    "**/locales/**",
+    "**/i18n/**",
+    "**/*.generated.*"
+  ]
+}
