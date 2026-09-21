@@ -6261,7 +6261,10 @@ describe('createExecutionAdapter runStep()', () => {
 					tool: { name: '' },
 				});
 			} finally {
-				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
+				// Assigning `undefined` stores the string "undefined", which leaves the
+				// variable set for every later test in this file.
+				if (previous === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+				else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
 			}
 		});
 	});
