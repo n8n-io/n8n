@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue
+  s_f0db97e87be686::t_eb901a8bf34ece 19,48
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_f0db97e87be686::t_621cd7ea66331d 349,352-358,363-364
+  s_f0db97e87be686::t_eb901a8bf34ece 347-348,350-351,359-362,365
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_f0db97e87be686::t_eb901a8bf34ece 675-676
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef196ad7a4dca5b465da3ed959c91750e1b821b3",
+  "prompts": {},
+  "sessions": {
+    "s_f0db97e87be686": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "536eefbb-4485-4caa-88d9-a6f9ff917471",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

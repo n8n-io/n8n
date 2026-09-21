@@ -1,0 +1,34 @@
+packages/@n8n/api-types/src/index.ts
+  h_44f8d1c0f2f8c4 503
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  h_44f8d1c0f2f8c4 47,413,441-480
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  h_44f8d1c0f2f8c4 2075,2102,2143-2153
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  h_44f8d1c0f2f8c4 193
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  h_44f8d1c0f2f8c4 897,901,925-949
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  h_44f8d1c0f2f8c4 575,590
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  h_44f8d1c0f2f8c4 2279-2332
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  h_44f8d1c0f2f8c4 8,1739
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_44f8d1c0f2f8c4 5595,5632
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  h_44f8d1c0f2f8c4 635-643,648-655
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  h_44f8d1c0f2f8c4 200-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d8fd8e1e95964f372efbe9b5ba8486b9804636a6",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
