@@ -6,3 +6,4 @@ export {
 	useNodeTypeRestriction,
 } from './composables/useNodeTypeRestriction';
 export { default as ContactInstanceAdminModal } from './components/ContactInstanceAdminModal.vue';
+export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
