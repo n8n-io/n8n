@@ -185,7 +185,13 @@ class ReturnsEngineRequest extends Node {
 	}
 }
 
-/** Pauses like the Wait node's `putToWait`: asks to wait, then passes the input through. */
+/**
+ * Drives the executor's wait tests. The real Wait node needs its webhook-mode
+ * parameters and evaluates `$execution.resumeUrl` before it pauses; this one
+ * only does what the executor reacts to: `putExecutionToWait` with the date in
+ * `waitTill`, then a return value. The return value is marked so a test can
+ * tell it from the input.
+ */
 class WaitsUntil implements INodeType {
 	description = {
 		displayName: 'Waits Until',
@@ -201,7 +207,7 @@ class WaitsUntil implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		await this.putExecutionToWait(new Date(this.getNodeParameter('waitTill', 0) as string));
-		return [this.getInputData()];
+		return [this.getInputData().map((item) => ({ json: { ...item.json, returned: true } }))];
 	}
 }
 

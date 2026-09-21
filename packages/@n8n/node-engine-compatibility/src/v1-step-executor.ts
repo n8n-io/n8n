@@ -5,6 +5,7 @@ import type {
 	StepExecutionResult,
 	StepSlots,
 } from '@n8n/engine';
+import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import { Expression, isIndefiniteWait, isNodeClassInstance, UnexpectedError } from 'n8n-workflow';
@@ -36,9 +37,10 @@ import {
 
 /**
  * A v1 node asks to pause through `putExecutionToWait(date)`, which only sets
- * `waitTill` on the run data. A finite date becomes a deadline declaration; the
- * node's return value is what the step emits when the deadline fires, because
- * the engine never runs the node again.
+ * `waitTill` on the run data. A finite date becomes a deadline declaration.
+ * v1 resumes a timed wait by disabling the node and running it again, and a
+ * disabled node passes its first input through, so that input, not the value
+ * the node returned before pausing, is what the step emits at the deadline.
  *
  * A sentinel (`WAIT_INDEFINITELY`, `WAIT_FOR_SUB_EXECUTION`) means the node
  * expects a resume request, which nothing can deliver yet: the data plane has
@@ -46,13 +48,14 @@ import {
  * the call stays a no-op and the step completes with the node's outputs, as
  * it does today.
  */
-function toStepResult(waitTill: Date | undefined, outputs: StepSlots): StepExecutionResult {
+function toStepResult(context: ExecuteContext, outputs: StepSlots): StepExecutionResult {
+	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined || isIndefiniteWait(waitTill)) return { outputs };
 
 	return {
 		wait: {
 			resumeAt: waitTill.toISOString(),
-			outputsAtDeadline: outputs,
+			outputsAtDeadline: toStepOutputs([context.getInputData()]),
 			acceptsResumeRequest: false,
 		},
 	};
@@ -99,7 +102,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context.runExecutionData.waitTill, toStepOutputs(nodeResult));
+			return toStepResult(context, toStepOutputs(nodeResult));
 		});
 	}
 

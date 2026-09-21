@@ -346,15 +346,17 @@ describe('V1StepExecutor', () => {
 	});
 
 	describe('a node that puts the execution to wait', () => {
-		const passthrough = items({ keep: 'me' });
+		const input = items({ keep: 'me' });
+		const returned = items({ keep: 'me', returned: true });
 
-		it('declares a deadline wait that emits the pass-through at the deadline', async () => {
+		// v1 passes the node's input through when a timed wait resumes.
+		it('declares a deadline wait that emits the input at the deadline', async () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
-			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', passthrough));
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			expect(result).toEqual({
 				wait: {
 					resumeAt: '2026-10-01T12:00:00.000Z',
-					outputsAtDeadline: passthrough,
+					outputsAtDeadline: input,
 					acceptsResumeRequest: false,
 				},
 			});
@@ -365,10 +367,10 @@ describe('V1StepExecutor', () => {
 		it.each([
 			['WAIT_INDEFINITELY', WAIT_INDEFINITELY],
 			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION],
-		])('completes with the pass-through for the %s sentinel', async (_, sentinel) => {
+		])('completes with what the node returned for the %s sentinel', async (_, sentinel) => {
 			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
-			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', passthrough));
-			expect(result).toEqual({ outputs: passthrough });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			expect(result).toEqual({ outputs: returned });
 		});
 	});
 
