@@ -499,6 +499,56 @@ describe('GET /ai-preferences', () => {
 	});
 });
 
+describe('GET /ai-preferences?ids=', () => {
+	test('returns only the named rows, in prompt order', async () => {
+		const first = await seed({
+			content: 'first',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+		});
+		await seed({ content: 'second', userId: member.id, createdAt: new Date('2026-02-01') });
+		const third = await seed({
+			content: 'third',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+		});
+
+		const response = await memberAgent
+			.get('/ai-preferences')
+			.query({ ids: `${third.id},${first.id}` });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response)).toEqual(['first', 'third']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		const theirs = await seed({ content: 'Someone else', userId: outsider.id });
+		const mine = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.get('/ai-preferences')
+			.query({ ids: `${theirs.id},${mine.id}` });
+
+		expect(contentsOf(response)).toEqual(['Mine']);
+	});
+
+	test('answers an unknown id with an empty page', async () => {
+		await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ ids: 'missing' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(0);
+	});
+
+	test('refuses an empty ids filter', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids: ' , ' });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /ai-preferences/count', () => {
 	test('returns the size of the list the caller would see, without rows', async () => {
 		await seed({ content: 'Instance' });

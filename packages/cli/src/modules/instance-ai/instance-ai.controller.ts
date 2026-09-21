@@ -978,8 +978,19 @@ export class InstanceAiController {
 		// already covered by these historical messages (prevents duplicates).
 		// Read from the log, so the cursor is valid across restarts and across
 		// mains sharing the database.
-		const nextEventId = await this.eventLog.getNextEventId(threadId);
-		return { ...result, nextEventId };
+		//
+		// The applied-preferences payload rides along because the messages
+		// endpoint is what opens a thread: without it a reopened thread could
+		// only claim "none applied" until its next turn.
+		const [nextEventId, appliedPreferences] = await Promise.all([
+			this.eventLog.getNextEventId(threadId),
+			this.eventLog.getLastAppliedPreferences(threadId),
+		]);
+		return {
+			...result,
+			nextEventId,
+			...(appliedPreferences ? { appliedPreferences } : {}),
+		};
 	}
 
 	@Get('/threads/:threadId/status')

@@ -29,6 +29,7 @@ import {
 	type TaskList,
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
+	type AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -447,6 +448,13 @@ export function createThreadRuntime(
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
+	/**
+	 * What the latest turn reported as applied, from the durable fact on restore and from
+	 * the live event after that. `null` means no turn has reported yet, which differs from
+	 * a turn that reported an empty list. The frontend never derives this list itself: a
+	 * menu that disagrees with what the assistant received is worse than no menu.
+	 */
+	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -1088,6 +1096,9 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
+			if (parsed.data.type === 'preferences-applied') {
+				appliedPreferences.value = parsed.data.payload;
+			}
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
 				if (ids && ids.length > 0) {
@@ -1275,6 +1286,7 @@ export function createThreadRuntime(
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
+		appliedPreferences.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -1314,6 +1326,11 @@ export function createThreadRuntime(
 			try {
 				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
 				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
+				// A live event that arrived while the request was in flight is newer than
+				// the persisted fact, so it wins.
+				if (result.appliedPreferences && appliedPreferences.value === null) {
+					appliedPreferences.value = result.appliedPreferences;
+				}
 				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
 				if (messages.value.length > 0) return 'skipped';
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
@@ -1742,6 +1759,7 @@ export function createThreadRuntime(
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,
+		appliedPreferences,
 		debugEvents,
 		resolvedConfirmationIds,
 		sessionAlwaysAllowKeys,

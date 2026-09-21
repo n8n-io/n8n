@@ -261,6 +261,12 @@ export class DurableEventLog {
 		return await this.repo.getLastPreferencesInjectionRunId(threadId);
 	}
 
+	/** What the thread's latest turn reported as applied (see repository). */
+	async getLastAppliedPreferences(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getLastAppliedPreferences(threadId);
+	}
+
 	/**
 	 * The thread's still-open streamed segments, read from the coalesce buffers.
 	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous

@@ -41,6 +41,52 @@ describe('AiPreferenceRepository', () => {
 		});
 	});
 
+	describe('findPageVisible', () => {
+		it('narrows every visibility branch to the requested ids', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: ['p-1'],
+				allUsers: false,
+				skip: 0,
+				take: 2,
+				ids: ['a', 'b'],
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(AiPreference, {
+				where: [
+					{ userId: IsNull(), projectId: IsNull(), id: In(['a', 'b']) },
+					{ userId: 'user-1', id: In(['a', 'b']) },
+					{ projectId: In(['p-1']), id: In(['a', 'b']) },
+				],
+				relations: { project: true, user: true },
+				order: { createdAt: 'ASC', id: 'ASC' },
+				skip: 0,
+				take: 2,
+			});
+		});
+
+		it('leaves the visibility branches alone when no ids are given', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: [],
+				allUsers: false,
+				skip: 0,
+				take: 10,
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({
+					where: [{ userId: IsNull(), projectId: IsNull() }, { userId: 'user-1' }],
+				}),
+			);
+		});
+	});
+
 	/**
 	 * Counts the target of a write, not what the caller may see: the cap belongs to the
 	 * scope, so an admin writing into somebody else's scope fills the same bucket.
