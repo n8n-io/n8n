@@ -32,6 +32,7 @@ import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError'
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { registerEagerModals } from '@/app/modals.manifest';
 import { registerComponentSlots } from '@/app/componentSlots.manifest';
+import { registerShellCapabilities } from '@/app/capabilities.manifest';
 import { registerUpgradeRedirectGuard } from '@/app/upgradeRedirectGuard.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
@@ -56,6 +57,9 @@ registerEagerModals();
 
 // Shell-hosted components modules render — see componentSlots.manifest.ts
 registerComponentSlots();
+
+// Shell actions modules call — see capabilities.manifest.ts
+registerShellCapabilities();
 
 // The upgrade-CTA guard modules rely on — see upgradeRedirectGuard.manifest.ts
 registerUpgradeRedirectGuard();
