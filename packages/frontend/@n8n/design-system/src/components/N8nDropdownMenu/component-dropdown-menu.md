@@ -301,14 +301,23 @@ Use external mode when a text control outside the menu owns the query. Pass each
 
 ```vue
 <script setup lang="ts">
-import type { DropdownMenuExposed } from '@n8n/design-system'
+import type { DropdownMenuExposed, DropdownMenuItemProps } from '@n8n/design-system'
+import { ref } from 'vue'
 
 const dropdown = ref<DropdownMenuExposed>()
 const textarea = ref<HTMLTextAreaElement>()
 const isOpen = ref(false)
+const items = ref<Array<DropdownMenuItemProps<string>>>([
+  { id: 'workflow-1', label: 'Customer orders' },
+  { id: 'workflow-2', label: 'Payment reminders' }
+])
 
 const handleKeydown = (event: KeyboardEvent) => {
   dropdown.value?.handleExternalKeydown(event)
+}
+
+const handleSelect = (itemId: string) => {
+  console.log('Selected:', itemId)
 }
 </script>
 

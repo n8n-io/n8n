@@ -114,7 +114,8 @@ const fixedContentProps = {
 	prioritizePosition: false,
 };
 
-const focusExternalTarget = () => {
+const focusExternalTarget = (allowClosed = false) => {
+	if (!allowClosed && !internalOpen.value) return;
 	if (!isExternalSearchMode.value || !props.externalFocusTarget?.isConnected) return;
 	props.externalFocusTarget.focus({ preventScroll: true });
 };
@@ -156,7 +157,7 @@ const activateExternalNavigation = (controller: DropdownMenuExternalNavigationCo
 provide(DropdownMenuExternalNavigationKey, {
 	register: registerExternalNavigation,
 	activate: activateExternalNavigation,
-	focusTarget: focusExternalTarget,
+	focusTarget: () => focusExternalTarget(),
 	syncActiveDescendant: syncExternalActiveDescendant,
 });
 
@@ -282,7 +283,7 @@ const closeMenu = (restoreExternalFocus: boolean) => {
 	openSubMenuIndex.value = -1;
 
 	if (restoreExternalFocus && isExternalSearchMode.value) {
-		void nextTick(focusExternalTarget);
+		void nextTick(() => focusExternalTarget(true));
 	}
 };
 

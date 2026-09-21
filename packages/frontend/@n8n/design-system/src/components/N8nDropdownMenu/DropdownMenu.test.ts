@@ -992,6 +992,37 @@ describe('N8nDropdownMenu', () => {
 			expect(document.activeElement).not.toBe(textarea);
 		});
 
+		it('should not restore textarea focus from a pending frame after Tab', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			const pendingFrames: FrameRequestCallback[] = [];
+			const requestAnimationFrame = vi
+				.spyOn(window, 'requestAnimationFrame')
+				.mockImplementation((frameHandler) => {
+					pendingFrames.push(frameHandler);
+					return pendingFrames.length;
+				});
+
+			try {
+				const firstItem = document.querySelector('[role="menuitem"]')!;
+				await fireEvent.pointerMove(firstItem);
+				expect(pendingFrames).not.toHaveLength(0);
+
+				await userEvent.tab();
+				await waitFor(() =>
+					expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument(),
+				);
+				expect(document.activeElement).not.toBe(textarea);
+
+				for (const frameHandler of pendingFrames) frameHandler(performance.now());
+				expect(document.activeElement).not.toBe(textarea);
+			} finally {
+				requestAnimationFrame.mockRestore();
+			}
+		});
+
 		it('should ignore keys during IME composition', async () => {
 			const wrapper = renderExternalDropdown();
 			const textarea = wrapper.getByRole('textbox');
