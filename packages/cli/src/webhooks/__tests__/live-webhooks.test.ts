@@ -409,9 +409,12 @@ describe('LiveWebhooks', () => {
 			// stub that would silently swallow the subscription this fix depends on.
 			const emitter = new EventEmitter();
 			const response = mock<Response>();
-			response.on = emitter.on.bind(emitter) as unknown as Response['on'];
-			response.once = emitter.once.bind(emitter) as unknown as Response['once'];
-			response.emit = emitter.emit.bind(emitter) as unknown as Response['emit'];
+			// `Object.assign`, because the auto-mock types these as mock functions.
+			Object.assign(response, {
+				on: emitter.on.bind(emitter),
+				once: emitter.once.bind(emitter),
+				emit: emitter.emit.bind(emitter),
+			});
 			// Explicit: the auto-mock returns a truthy stub for these, which would
 			// read as "response already over" and release before the test begins.
 			Object.defineProperty(response, 'writableEnded', { value: false, configurable: true });
@@ -439,6 +442,86 @@ describe('LiveWebhooks', () => {
 			await new Promise((resolve) => setImmediate(resolve));
 
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('releases the isolate and stops when the client disconnects mid-acquisition', async () => {
+			/**
+			 * `close` fires once. A client that leaves while the isolate is being
+			 * acquired emits it before the isolate exists, so the subscription has
+			 * to be installed first and the acquisition has to notice afterwards.
+			 *
+			 * Releasing is only half the answer: the bridge belongs to this
+			 * workflow, so executing after it would evaluate expressions with no
+			 * bridge and fail with `No bridge acquired`. There is nobody left to
+			 * serve, so the handler stops instead.
+			 */
+			const webhookNode: INode = {
+				id: 'webhook-node',
+				name: NODE_NAME,
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+			};
+
+			const activeVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
+				nodes: [webhookNode],
+				connections: {},
+			});
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: activeVersion.versionId,
+				nodes: [webhookNode],
+				connections: {},
+				staticData: {},
+				activeVersion,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const request = setupExecuteWebhookMocks(workflowEntity);
+
+			// Held open so the disconnect lands in the middle of the acquisition.
+			let finishAcquire = () => {};
+			const acquireIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+				.mockImplementation(
+					async () =>
+						await new Promise<boolean>((resolve) => (finishAcquire = () => resolve(true))),
+				);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+
+			const emitter = new EventEmitter();
+			const response = mock<Response>();
+			// `Object.assign`, because the auto-mock types these as mock functions.
+			Object.assign(response, {
+				on: emitter.on.bind(emitter),
+				once: emitter.once.bind(emitter),
+				emit: emitter.emit.bind(emitter),
+			});
+
+			const handled = liveWebhooks.executeWebhook(request, response);
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// Guard: the acquisition must be in flight, otherwise this test would
+			// pass trivially against any implementation.
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+
+			response.emit('close');
+			finishAcquire();
+
+			expect(await handled).toEqual({ noWebhookResponse: true });
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			expect(WebhookHelpers.executeWebhook).not.toHaveBeenCalled();
+
+			acquireIsolate.mockRestore();
+			releaseIsolate.mockRestore();
 		});
 	});
 

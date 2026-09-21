@@ -968,9 +968,12 @@ describe('WaitingWebhooks', () => {
 			// silently swallow the subscription this fix depends on.
 			const emitter = new EventEmitter();
 			const res = mock<express.Response>();
-			res.on = emitter.on.bind(emitter) as unknown as express.Response['on'];
-			res.once = emitter.once.bind(emitter) as unknown as express.Response['once'];
-			res.emit = emitter.emit.bind(emitter) as unknown as express.Response['emit'];
+			// `Object.assign`, because the auto-mock types these as mock functions.
+			Object.assign(res, {
+				on: emitter.on.bind(emitter),
+				once: emitter.once.bind(emitter),
+				emit: emitter.emit.bind(emitter),
+			});
 			// Explicit: the auto-mock returns a truthy stub for these, which would
 			// read as "response already over" and release before the test begins.
 			Object.defineProperty(res, 'writableEnded', { value: false, configurable: true });
@@ -998,6 +1001,131 @@ describe('WaitingWebhooks', () => {
 			await new Promise((resolve) => setImmediate(resolve));
 
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('releases the isolate and stops when the client disconnects mid-acquisition', async () => {
+			/**
+			 * `close` fires once. A client that leaves while the isolate is being
+			 * acquired emits it before the isolate exists, so the subscription has
+			 * to be installed first and the acquisition has to notice afterwards.
+			 *
+			 * Releasing is only half the answer: the bridge belongs to this
+			 * workflow, so executing after it would evaluate expressions with no
+			 * bridge and fail with `No bridge acquired`. There is nobody left to
+			 * serve, so the handler stops instead.
+			 */
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'Form';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.form',
+									typeVersion: 1,
+									parameters: {},
+									id: 'node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{ startTime: 123, executionTime: 456, executionIndex: 0, source: [] },
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-id',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+				},
+			});
+			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const releaseIsolate = vi.fn().mockResolvedValue(undefined);
+			// Held open so the disconnect lands in the middle of the acquisition.
+			let finishAcquire = () => {};
+			const acquireIsolate = vi
+				.fn()
+				.mockImplementation(
+					async () => await new Promise<void>((resolve) => (finishAcquire = resolve)),
+				);
+			const createWorkflow = WaitingWebhooks.prototype[
+				'createWorkflow' as keyof WaitingWebhooks
+			] as unknown as (this: WaitingWebhooks, wf: IWorkflowBase) => Workflow;
+			vi.spyOn(
+				waitingWebhooks as unknown as { createWorkflow: (wf: IWorkflowBase) => Workflow },
+				'createWorkflow',
+			).mockImplementation((workflowData: IWorkflowBase) => {
+				const workflow = createWorkflow.call(waitingWebhooks, workflowData);
+				Object.assign(workflow.expression, { acquireIsolate, releaseIsolate });
+				return workflow;
+			});
+
+			const executeWebhookSpy = vi
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(async () => await new Promise<never>(() => {}));
+
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: undefined },
+				method: 'POST',
+				originalUrl: `/form-waiting/${executionId}`,
+			});
+
+			const emitter = new EventEmitter();
+			const res = mock<express.Response>();
+			// `Object.assign`, because the auto-mock types these as mock functions.
+			Object.assign(res, {
+				on: emitter.on.bind(emitter),
+				once: emitter.once.bind(emitter),
+				emit: emitter.emit.bind(emitter),
+			});
+
+			const handled = waitingWebhooks.executeWebhook(mockReq, res);
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// Guard: the acquisition must be in flight, otherwise this test would
+			// pass trivially against any implementation.
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+
+			res.emit('close');
+			finishAcquire();
+
+			expect(await handled).toEqual({ noWebhookResponse: true });
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			expect(executeWebhookSpy).not.toHaveBeenCalled();
 		});
 
 		it('should preserve inputOverride for nodes that have it', async () => {

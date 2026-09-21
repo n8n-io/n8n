@@ -16,7 +16,7 @@ import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
-import { releaseIsolateOnResponse } from '@/webhooks/release-isolate-on-response';
+import { acquireIsolateForResponse } from '@/webhooks/acquire-isolate-for-response';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -141,13 +141,19 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const startNode = workflow.getNode(webhook.node);
 
-		if (this.webhookPhaseNeedsIsolate(startNode)) {
-			await workflow.expression.acquireIsolate();
-		}
-
 		// Form webhooks respond without invoking the completion callback, so the
 		// promise below never settles and the `finally` alone never runs.
-		const releaseIsolate = releaseIsolateOnResponse(workflow, response);
+		const { release: releaseIsolate, responseEnded } = await acquireIsolateForResponse(
+			workflow,
+			response,
+			{ acquire: this.webhookPhaseNeedsIsolate(startNode) },
+		);
+
+		// The client disconnected while the isolate was being acquired. It has
+		// already been released and there is nobody left to serve, so stop rather
+		// than run an execution whose expressions have no bridge.
+		if (responseEnded) return { noWebhookResponse: true };
+
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, startNode as INode, additionalData)
