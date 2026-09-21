@@ -28,6 +28,7 @@ describe('Agent thread ownership migration', () => {
 		{ id: 'workflow', source: 'workflow', accessScope: 'project' },
 		{ id: 'task', taskId: 'task-1', accessScope: 'project' },
 		{ id: 'task-source', source: 'task', accessScope: 'project' },
+		{ id: 'preview-source', taskId: 'task-2', source: 'mcp', accessScope: 'user' },
 		{
 			id: 'private-child',
 			source: 'subagent',

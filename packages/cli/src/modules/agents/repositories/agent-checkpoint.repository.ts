@@ -1,4 +1,3 @@
-import { escapeLike, LIKE_ESCAPE_CLAUSE } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
@@ -26,12 +25,7 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 	}
 
 	async findRetainedByThreadId(threadId: string): Promise<AgentCheckpoint[]> {
-		// ponytail: Scan retained JSON until checkpoints have an indexed thread column.
-		return await this.createQueryBuilder('checkpoint')
-			.where(`checkpoint.state LIKE :threadId ${LIKE_ESCAPE_CLAUSE}`, {
-				threadId: `%${escapeLike(JSON.stringify(threadId))}%`,
-			})
-			.getMany();
+		return await this.find({ where: { threadId } });
 	}
 
 	async findForSandboxReconciliation(agentId: string): Promise<AgentCheckpoint[]> {
