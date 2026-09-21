@@ -1,17 +1,34 @@
-# Agent modal pattern
+# Agent design language
 
-## Canonical components
+This document is the source of truth for Agent-only interface patterns in this
+module. It starts with modal patterns. Add other reusable Agent patterns as the
+interface develops.
+
+## Scope
+
+- Keep Agent-specific components and behavior in this module.
+- Use Design System components and CSS variables.
+- Do not add or change a global Design System primitive for an Agent-only need.
+- Put all user-facing text in i18n.
+- Test responsive layouts at 375 by 667 pixels and in light and dark themes.
+
+## Modal patterns
+
+### Canonical components
 
 Use these components:
 
-- `packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue`
-- `packages/frontend/editor-ui/src/features/agents/components/modals/AgentModalMultiStep.vue`
+- `components/modals/AgentModal.vue`
+- `components/modals/AgentModalMultiStep.vue`
 
 `AgentModal` owns the dialog shell. It owns the title, Back, Close, body scroll,
 and footer layout. `AgentModalMultiStep` adds stable step layout and a subtle
 step transition. The feature component owns its data and step history.
 
-## Layout contract
+Do not migrate `AgentMemoryPanel.vue` into this pattern. Memory needs separate
+design work.
+
+### Layout contract
 
 | Area | Rule |
 | --- | --- |
@@ -22,10 +39,16 @@ step transition. The feature component owns its data and step history.
 | Footer | Do not add a divider. Put Remove on the left and Save on the right. |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary. |
 
-Use CSS variables for all sizes, spacing, colors, and motion. Use Design System
-components. Do not add a new global dialog primitive.
+Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
+global dialog primitive.
 
-## Title contract
+Use `fit` for Skills. Use a 52rem content width. Keep it narrower than `full`.
+Use `full` only when the user explicitly asks for the extra workspace.
+
+Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
+when the body or nested content can scroll.
+
+### Title contract
 
 Use the configured local name for schedules, skills, node tools, MCP servers,
 workflow tools, and vector stores. Give new items a valid default name. Show the
@@ -38,7 +61,7 @@ Keep the title read-only for external entities. Channels use the integration
 label. Sub-agents use the selected Agent name. Custom tools stay read-only
 because their reference schema has no local name.
 
-## Action contract
+### Action contract
 
 Normal configuration has no Cancel button. Close, Escape, and outside click
 discard changes. Back discards the current step and returns to the preserved
@@ -53,14 +76,14 @@ Existing removable items use a subtle bottom-left button with `trash-2`. Use an
 explicit label for the asset. Examples include `Remove schedule`, `Remove MCP`,
 and `Remove workflow`. New items and picker rows do not show Remove.
 
-## Status contract
+### Status contract
 
-Use the same status treatment in Agent picker rows. Show a 14px success check
-before `Connected`. Use muted `2xs` text and `3xs` spacing. Show the check
-whenever the user-visible status is `Connected`. Keep warning and failure
-indicators distinct.
+Use the same status treatment in Agent picker rows. Show a success check before
+`Connected`. Use muted `2xs` text and `3xs` spacing. Show the check whenever the
+user-visible status is `Connected`. Keep warning and failure indicators
+distinct.
 
-## Multi-step contract
+### Multi-step contract
 
 Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
 Workflows, and Vector stores.
@@ -73,7 +96,7 @@ asset label.
 Show Back for an add flow after the user leaves the picker. Do not show Back for
 a direct pill edit. Save and Close exit the complete flow.
 
-## Exceptions
+### Exceptions
 
 | Case | Exception |
 | --- | --- |
@@ -84,7 +107,7 @@ a direct pill edit. Save and Close exit the complete flow.
 | Channel platform setup | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal. |
 | Memory | Do not migrate Memory into this pattern in this change. |
 
-## Review checklist
+### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.
 - Confirm the title has no asset icon.
@@ -98,3 +121,9 @@ a direct pill edit. Save and Close exit the complete flow.
 - Confirm success closes silently.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
+
+## Extend this document
+
+Add a section when an Agent-specific pattern applies to two or more Agent
+surfaces. Keep implementation details with the owning pattern. Do not duplicate
+global Design System guidance.
