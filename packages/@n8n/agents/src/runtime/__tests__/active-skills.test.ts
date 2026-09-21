@@ -1,3 +1,4 @@
+import { isLlmMessage } from '../../sdk/message';
 import { createRuntimeSkillSource, filterRuntimeSkillSource } from '../../skills/registry';
 import type { RuntimeSkillSource } from '../../skills/types';
 import { InMemoryMemory } from '../memory/memory-store';
@@ -202,7 +203,10 @@ describe('active skills', () => {
 		// A repeat load must not move the anchor.
 		await active.load('builder', { toolCallId: 'inspect-2' });
 
-		const [assistant] = list.messages().filter((message) => message.role === 'assistant');
+		const assistant = list
+			.messages()
+			.find((message) => isLlmMessage(message) && message.role === 'assistant');
+		if (!assistant || !isLlmMessage(assistant)) throw new Error('Expected an assistant message');
 		expect(assistant.content[0]).toMatchObject({ activatedSkillIds: ['builder'] });
 
 		const inSystem = active.modelMessages(list.forLlm('').messages, list);
