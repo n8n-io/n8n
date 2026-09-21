@@ -261,9 +261,12 @@ export class DurableEventLog {
 		return await this.repo.getLastPreferencesInjectionRunId(threadId);
 	}
 
-	/** What the thread's latest turn reported as applied (see repository). */
+	/**
+	 * What the thread's latest turn reported as applied (see repository). No flush: the
+	 * caller reads the SSE cursor first, so a fact still queued here replays over SSE,
+	 * and a flush would cut an open text segment in two on every thread open.
+	 */
 	async getLastAppliedPreferences(threadId: string) {
-		await this.flush(threadId);
 		return await this.repo.getLastAppliedPreferences(threadId);
 	}
 

@@ -9,6 +9,7 @@ import {
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -1330,9 +1331,11 @@ export function createThreadRuntime(
 				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
 				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
 				// A live event that arrived while the request was in flight is newer than
-				// the persisted fact, so it wins.
+				// the persisted fact, so it wins. Parsed like the SSE path parses its frames,
+				// so a row an older build wrote cannot reach readers unvalidated.
 				if (result.appliedPreferences && appliedPreferences.value === null) {
-					appliedPreferences.value = result.appliedPreferences;
+					const restored = aiPreferencesAppliedPayloadSchema.safeParse(result.appliedPreferences);
+					if (restored.success) appliedPreferences.value = restored.data;
 				}
 				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
 				if (messages.value.length > 0) return 'skipped';

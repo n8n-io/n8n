@@ -548,8 +548,8 @@ describe('GET /ai-preferences?ids=', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('refuses an empty ids filter', async () => {
-		const response = await memberAgent.get('/ai-preferences').query({ ids: ' , ' });
+	test.each([' , ', ''])('refuses an empty ids filter (%j)', async (ids) => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids });
 
 		expect(response.statusCode).toBe(400);
 	});

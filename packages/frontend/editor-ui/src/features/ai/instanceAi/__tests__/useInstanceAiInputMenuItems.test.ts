@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -340,8 +341,6 @@ describe('useInstanceAiInputMenuItems', () => {
 	});
 
 	describe('applied preferences', () => {
-		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
-
 		function setApplied(threadId: string, preferences: unknown[] | null) {
 			instanceAiStore.runtimes.set(threadId, {
 				appliedPreferences:
@@ -394,7 +393,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			]);
 
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
-			await flush();
+			await flushPromises();
 
 			expect(contextStore.fetchPreferencesByIds).toHaveBeenCalledWith([
 				'inst-1',
@@ -406,7 +405,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(children.map(({ id, label, header }) => ({ id, label, header }))).toEqual([
 				{
 					id: 'preferences-group-instance',
-					label: 'instanceAi.inputMenu.preferences.scope.instance',
+					label: 'settings.context.preferences.scope.instance',
 					header: true,
 				},
 				{ id: 'preference-inst-1', label: 'Name nodes clearly', header: undefined },
@@ -439,7 +438,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
 
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
-			await flush();
+			await flushPromises();
 
 			const item = findItem(menuItems.value, 'preference-user-1');
 			expect(item?.label).toBe('instanceAi.inputMenu.preferences.unavailable');
@@ -456,7 +455,7 @@ describe('useInstanceAiInputMenuItems', () => {
 				vi.fn(),
 				() => 'thread-1',
 			);
-			await flush();
+			await flushPromises();
 
 			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
 			await refreshAppliedPreferences();
@@ -473,7 +472,7 @@ describe('useInstanceAiInputMenuItems', () => {
 				vi.fn(),
 				() => 'thread-1',
 			);
-			await flush();
+			await flushPromises();
 			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('old');
 
 			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'new' }]);

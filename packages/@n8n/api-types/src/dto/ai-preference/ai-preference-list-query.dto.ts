@@ -28,13 +28,14 @@ export class AiPreferenceListQueryDto extends Z.class({
 		.string()
 		.max(AI_PREFERENCES_MAX_IDS_FILTER * (UUID_LENGTH + 1))
 		.optional()
+		// `ids=` and `ids= , ` both name zero ids, so both reach the `min(1)` refusal.
 		.transform((value) =>
-			value
-				? value
+			value === undefined
+				? undefined
+				: value
 						.split(',')
 						.map((id) => id.trim())
-						.filter(Boolean)
-				: undefined,
+						.filter(Boolean),
 		)
 		.pipe(
 			z

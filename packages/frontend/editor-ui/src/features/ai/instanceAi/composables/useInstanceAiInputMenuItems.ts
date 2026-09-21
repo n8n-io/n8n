@@ -163,6 +163,7 @@ export function useInstanceAiInputMenuItems(
 	const isLoadingPreferenceTexts = ref(false);
 	const didPreferenceLookupFail = ref(false);
 	let latestTextsRead = 0;
+	let inFlightIdsKey: string | undefined;
 
 	/** Resolves the text behind each applied id. Safe to call again: the newest read wins. */
 	async function refreshAppliedPreferences() {
@@ -171,13 +172,21 @@ export function useInstanceAiInputMenuItems(
 			// Also retires a read still in flight for the previous list, so it cannot
 			// land later and repopulate the menu with another thread's text.
 			++latestTextsRead;
+			inFlightIdsKey = undefined;
 			preferenceTextById.value = new Map();
 			didPreferenceLookupFail.value = false;
 			isLoadingPreferenceTexts.value = false;
 			return;
 		}
+		// One read per list at a time: opening the menu right after a thread opened must
+		// not throw away the read the thread open already started.
+		const idsKey = ids.join('\n');
+		if (inFlightIdsKey === idsKey) return;
 		const read = ++latestTextsRead;
-		isLoadingPreferenceTexts.value = true;
+		inFlightIdsKey = idsKey;
+		// Skeletons only while nothing is known yet. With texts in hand this is a
+		// background refresh, and the list stays usable meanwhile.
+		isLoadingPreferenceTexts.value = ids.some((id) => !preferenceTextById.value.has(id));
 		try {
 			const rows = await contextStore.fetchPreferencesByIds(ids);
 			if (read !== latestTextsRead) return;
@@ -188,7 +197,10 @@ export function useInstanceAiInputMenuItems(
 			// resolved stay, the rest read as unavailable rather than as removed.
 			if (read === latestTextsRead) didPreferenceLookupFail.value = true;
 		} finally {
-			if (read === latestTextsRead) isLoadingPreferenceTexts.value = false;
+			if (read === latestTextsRead) {
+				isLoadingPreferenceTexts.value = false;
+				inFlightIdsKey = undefined;
+			}
 		}
 	}
 
@@ -209,13 +221,14 @@ export function useInstanceAiInputMenuItems(
 
 	function preferenceGroupLabel(preference: AppliedPreference): string {
 		switch (preference.scope) {
+			// The settings page names the same scopes; one string each keeps them aligned.
 			case 'instance':
-				return i18n.baseText('instanceAi.inputMenu.preferences.scope.instance');
+				return i18n.baseText('settings.context.preferences.scope.instance');
 			case 'user':
 				return i18n.baseText('instanceAi.inputMenu.preferences.scope.user');
 			case 'project':
 				return (
-					preference.projectName ?? i18n.baseText('instanceAi.inputMenu.preferences.scope.project')
+					preference.projectName ?? i18n.baseText('settings.context.preferences.scope.project')
 				);
 		}
 	}

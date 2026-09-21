@@ -122,8 +122,8 @@ The payload names rows by id and scope, not by text. The plus menu reads the lat
 payload from `GET /rest/instance-ai/threads/:threadId/messages`, which carries it as
 `appliedPreferences`, and from the live event after that. It then resolves the display text
 with `GET /rest/ai-preferences?ids=`, which narrows the same visibility rules to the named
-rows and never widens them. A row that no longer resolves is shown as removed rather than
-dropped, so the list the user sees stays the list the turn carried.
+rows and never widens them. The menu keeps a row the lookup does not return and marks it
+as removed, so the list the user sees stays the list the turn carried.
 
 See
 [the streaming protocol](../../../@n8n/instance-ai/docs/streaming-protocol.md#preferences-applied)
