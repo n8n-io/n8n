@@ -6,7 +6,12 @@ import type {
 	INodeType,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Expression, ExpressionError } from 'n8n-workflow';
+import {
+	Expression,
+	ExpressionError,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -337,6 +342,33 @@ describe('V1StepExecutor', () => {
 				stepRequest(graph, 'b', items({})),
 			);
 			expect(result.outputs).toEqual([[{ json: { message: 'ran-before' } }]]);
+		});
+	});
+
+	describe('a node that puts the execution to wait', () => {
+		const passthrough = items({ keep: 'me' });
+
+		it('declares a deadline wait that emits the pass-through at the deadline', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', passthrough));
+			expect(result).toEqual({
+				wait: {
+					resumeAt: '2026-10-01T12:00:00.000Z',
+					outputsAtDeadline: passthrough,
+					acceptsResumeRequest: false,
+				},
+			});
+		});
+
+		// Nothing can deliver a resume request yet, and a year-3000 deadline would
+		// strand the execution, so a sentinel keeps today's no-op behaviour.
+		it.each([
+			['WAIT_INDEFINITELY', WAIT_INDEFINITELY],
+			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION],
+		])('completes with the pass-through for the %s sentinel', async (_, sentinel) => {
+			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', passthrough));
+			expect(result).toEqual({ outputs: passthrough });
 		});
 	});
 

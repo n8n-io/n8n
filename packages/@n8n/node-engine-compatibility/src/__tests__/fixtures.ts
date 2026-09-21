@@ -185,6 +185,26 @@ class ReturnsEngineRequest extends Node {
 	}
 }
 
+/** Pauses like the Wait node's `putToWait`: asks to wait, then passes the input through. */
+class WaitsUntil implements INodeType {
+	description = {
+		displayName: 'Waits Until',
+		name: 'waitsUntil',
+		group: ['transform'],
+		version: 1,
+		description: 'Puts the execution to wait until a date',
+		defaults: { name: 'Waits Until' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' }],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.putExecutionToWait(new Date(this.getNodeParameter('waitTill', 0) as string));
+		return [this.getInputData()];
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
@@ -195,6 +215,7 @@ const registry = new Map<string, INodeType>([
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
+	['test.waitsUntil', new WaitsUntil()],
 ]);
 
 export const testNodeTypes: INodeTypes = {
