@@ -646,6 +646,12 @@ input, and `reuseExecutionId` replays the Agent's ancestors. A chain run on a
 tool runs every node above the Agent, so supply `reuseExecutionId` or
 `mockInput` when one of those nodes writes.
 
+The engine runs the tool through a virtual node the workflow does not contain,
+`PartialExecutionToolExecutor`. The result never carries that name: the run is
+reported under the node the caller named, in the output data, the executed
+names, the last node, and a node error. The tool's own record is the one kept,
+because the executor re-serializes the result as a single string.
+
 `ranThroughNodeNames` names the nodes that can run the tool, not the one that
 ran it. A tool that hangs off several agents lists them all: the engine picks
 one and reports no choice, so any single name here would be a guess. The plan

@@ -49,6 +49,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import type { PolicyCleared } from '@n8n/decorators';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
@@ -163,6 +164,7 @@ function makeExecution(
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
 		workflowNodes?: WorkflowNode[];
+		lastNodeExecuted?: string;
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -181,6 +183,7 @@ function makeExecution(
 				runData,
 				pinData: overrides.pinData,
 				error: overrides.error,
+				lastNodeExecuted: overrides.lastNodeExecuted,
 			},
 		} as unknown as IRunExecutionData,
 	};
@@ -5862,6 +5865,102 @@ describe('createExecutionAdapter runStep()', () => {
 				'holds several tools, and a step run cannot pick one of them',
 			);
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		// The engine records a tool's run under `ai_tool`, and the node that
+		// carries the run — `PartialExecutionToolExecutor` — is not in the
+		// workflow. Reported as-is, the result hid the tool and named a node the
+		// user cannot open.
+		describe('the result of a tool step run', () => {
+			/** An execution shaped the way the engine leaves a tool step run. */
+			const toolRunExecution = () =>
+				makeExecution({
+					status: 'success',
+					lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME,
+					runData: {
+						Trigger: [makeTaskData([{ ok: true }])],
+						// The tool keeps its items, under the connection that carried them.
+						Calculator: [
+							{
+								startTime: 1,
+								executionTime: 1,
+								executionIndex: 2,
+								executionStatus: 'success',
+								source: [],
+								data: { ai_tool: [[{ json: { response: 4 } }]] },
+							} as unknown as ITaskData,
+						],
+						// The executor re-serializes the same result as one string.
+						[TOOL_EXECUTOR_NODE_NAME]: [makeTaskData([{ json: '4' } as unknown as IDataObject])],
+					},
+				});
+
+			it("reports the tool's own output under the tool's name", async () => {
+				const { result } = await runStepOn(
+					agentWorkflow,
+					'Calculator',
+					{ mockInput: [{}] },
+					{ execution: toolRunExecution(), allowSendingParameterValues: true },
+				);
+
+				expect(result.data).toHaveProperty('Calculator');
+				expect(String(result.data?.Calculator)).toContain('"response": 4');
+			});
+
+			it('never names the virtual node the workflow does not contain', async () => {
+				const { result } = await runStepOn(
+					agentWorkflow,
+					'Calculator',
+					{ mockInput: [{}] },
+					{ execution: toolRunExecution(), allowSendingParameterValues: true },
+				);
+
+				expect(result.data).not.toHaveProperty(TOOL_EXECUTOR_NODE_NAME);
+				expect(result.executedNodeNames).not.toContain(TOOL_EXECUTOR_NODE_NAME);
+				expect(result.lastNodeExecuted).toBe('Calculator');
+			});
+
+			it('reports an error on the virtual node against the tool', async () => {
+				const failed = makeExecution({
+					status: 'error',
+					lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME,
+					workflowNodes: agentWorkflow.nodes as WorkflowNode[],
+					runData: {
+						[TOOL_EXECUTOR_NODE_NAME]: [
+							{
+								startTime: 1,
+								executionTime: 1,
+								executionIndex: 1,
+								executionStatus: 'error',
+								source: [],
+								error: { message: 'tool blew up' },
+							} as unknown as ITaskData,
+						],
+					},
+				});
+				const { result } = await runStepOn(
+					agentWorkflow,
+					'Calculator',
+					{ mockInput: [{}] },
+					{ execution: failed },
+				);
+
+				expect(result.nodeErrors?.map((nodeError) => nodeError.nodeName)).toEqual(['Calculator']);
+			});
+
+			it('leaves a run on a node in the main graph alone', async () => {
+				const { result } = await runStepOn(chainWorkflow, 'Send', undefined, {
+					allowSendingParameterValues: true,
+					execution: makeExecution({
+						status: 'success',
+						lastNodeExecuted: 'Send',
+						runData: { Send: [makeTaskData([{ sent: true }])] },
+					}),
+				});
+
+				expect(result.lastNodeExecuted).toBe('Send');
+				expect(result.data).toHaveProperty('Send');
+			});
 		});
 
 		it('refuses a node the MCP registry added, whose type carries the server slug', async () => {

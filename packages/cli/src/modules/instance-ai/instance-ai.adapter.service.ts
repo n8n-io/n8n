@@ -21,7 +21,7 @@ import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -2368,6 +2368,9 @@ export class InstanceAiAdapterService {
 						executionId,
 						allowSendingParameterValues,
 						nodeTypes,
+						// A tool ran through the virtual Tool Executor. Report the run
+						// under the node the caller named, which is the one they can open.
+						plan.rootNodeNames ? nodeName : undefined,
 					);
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
@@ -4351,6 +4354,51 @@ export async function extractExecutionResult(
 	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
 }
 
+/** Output branches of a run that a non-main connection carried. */
+function nonMainOutputs(lastRun: ITaskData | undefined) {
+	return Object.entries(lastRun?.data ?? {}).find(
+		([type]) => type !== NodeConnectionTypes.Main,
+	)?.[1];
+}
+
+/** Whether this is the virtual node the engine runs a tool through. */
+const isToolExecutor = (nodeName: string | undefined) => nodeName === TOOL_EXECUTOR_NODE_NAME;
+
+/** Reports the node the caller asked for in place of the virtual one. */
+function renameToolExecutor(nodeName: string | undefined, subNodeTarget?: string) {
+	return subNodeTarget && isToolExecutor(nodeName) ? subNodeTarget : nodeName;
+}
+
+/**
+ * Folds the virtual Tool Executor's run into the node the step run targeted.
+ *
+ * `rewireGraph` runs a tool through a node the workflow does not contain, and
+ * that node's name reaches the result in four places — the output data, the
+ * executed names, the last node, and a node error. None of them can be looked
+ * up or opened, because the workflow has no such node.
+ *
+ * The tool's own run is the better record: the Tool Executor re-serializes the
+ * result as one string, while the tool keeps its items. So the executor's run
+ * only stands in when the tool recorded none of its own.
+ */
+function foldToolExecutorRun(
+	runData: IRunData | undefined,
+	subNodeTarget?: string,
+): IRunData | undefined {
+	if (!runData || !subNodeTarget || !runData[TOOL_EXECUTOR_NODE_NAME]) return runData;
+
+	const folded: IRunData = {};
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (isToolExecutor(nodeName)) {
+			folded[subNodeTarget] ??= nodeRuns;
+			continue;
+		}
+		folded[nodeName] = nodeRuns;
+	}
+
+	return folded;
+}
+
 /**
  * The execution result the agent sees, plus the error string telemetry may use.
  * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
@@ -4363,6 +4411,11 @@ export async function extractExecutionOutcome(
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
+	/**
+	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
+	 * the result has to be told which node the caller actually asked for.
+	 */
+	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4389,7 +4442,7 @@ export async function extractExecutionOutcome(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const runData = execution.data?.resultData?.runData;
+	const runData = foldToolExecutorRun(execution.data?.resultData?.runData, subNodeTarget);
 	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData && runData) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
@@ -4397,8 +4450,15 @@ export async function extractExecutionOutcome(
 		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (!lastRun?.data?.main) continue;
-				const branches = lastRun.data.main.map((items) => (items ?? []).map((item) => item.json));
+				// A sub-node records its run under the connection type that carried it,
+				// never `main`. Only the step run's own target is read that way: every
+				// other sub-node (a model, a memory) would otherwise put its whole
+				// exchange into the result of every ordinary run.
+				const outputs =
+					lastRun?.data?.[NodeConnectionTypes.Main] ??
+					(nodeName === subNodeTarget ? nonMainOutputs(lastRun) : undefined);
+				if (!outputs) continue;
+				const branches = outputs.map((items) => (items ?? []).map((item) => item.json));
 				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
 				if (totalItems === 0) continue;
 				if (branches.length === 1) {
@@ -4437,7 +4497,10 @@ export async function extractExecutionOutcome(
 					: undefined,
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			lastNodeExecuted: renameToolExecutor(
+				execution.data?.resultData?.lastNodeExecuted,
+				subNodeTarget,
+			),
 			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
