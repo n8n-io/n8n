@@ -1,5 +1,5 @@
 import type { ByteStore } from '@n8n/blob-storage';
-import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
@@ -203,11 +203,10 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		// a throw would abandon every later batch.
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
-				this.errorReporter.warn(
-					new OperationalError(`Could not delete binary data dir ${prefixes[index]}`, {
-						cause: result.reason,
-					}),
-				);
+				const reason: unknown = result.reason;
+				this.errorReporter.warn(reason instanceof Error ? reason : new Error(String(reason)), {
+					extra: { prefix: prefixes[index] },
+				});
 			}
 		});
 	}

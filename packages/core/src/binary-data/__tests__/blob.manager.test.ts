@@ -202,11 +202,9 @@ describe('deletion', () => {
 			`workflows/${workflowId}/executions/1000/binary_data`,
 		);
 		expect(errorReporter.warn).toHaveBeenCalledTimes(1);
-		const reported = vi.mocked(errorReporter.warn).mock.calls[0][0] as Error;
-		expect(reported.message).toContain(
-			`workflows/${workflowId}/executions/${executionId}/binary_data`,
-		);
-		expect(reported.cause).toBe(failure);
+		expect(errorReporter.warn).toHaveBeenCalledWith(failure, {
+			extra: { prefix: `workflows/${workflowId}/executions/${executionId}/binary_data` },
+		});
 	});
 
 	it('deleteMany resolves and warns for each prefix when every one fails', async () => {
