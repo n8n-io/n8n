@@ -13,8 +13,9 @@ Before you change code:
 1. Read `packages/frontend/editor-ui/src/features/agents/AGENTS.md`.
 2. Read `packages/frontend/editor-ui/src/features/agents/agents-design-language.md`
    completely.
-3. Use `n8n:ui-design` for visual implementation rules.
-4. Use `n8n:content-design` when you add or change UI text.
+3. Use [ui-design](../ui-design/SKILL.md) for visual implementation rules.
+4. Use [content-design](../content-design/SKILL.md) when you add or change UI
+   text.
 
 Keep Agent-specific components in the Agent feature. Do not change the Design
 System unless the user explicitly asks for this change.
