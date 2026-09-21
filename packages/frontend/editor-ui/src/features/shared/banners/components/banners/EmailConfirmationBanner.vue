@@ -33,7 +33,7 @@ async function onConfirmEmailClick() {
 </script>
 
 <template>
-	<BaseBanner name="EMAIL_CONFIRMATION" theme="warning">
+	<BaseBanner name="EMAIL_CONFIRMATION" variant="warning">
 		<template #mainContent>
 			<span>
 				{{ locale.baseText('banners.confirmEmail.message.1') }}

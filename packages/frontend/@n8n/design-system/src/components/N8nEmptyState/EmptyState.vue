@@ -3,7 +3,7 @@ import EmptyStateIconCards from './EmptyStateIconCards.vue';
 import type { EmptyStateIconCards as EmptyStateIconCardsIcon } from './types';
 import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
-import N8nCallout, { type CalloutTheme } from '../N8nCallout';
+import N8nCallout, { type CalloutVariant } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
@@ -20,13 +20,13 @@ interface EmptyStateProps {
 	buttonIcon?: IconName;
 	description?: string;
 	calloutText?: string;
-	calloutTheme?: CalloutTheme;
+	calloutVariant?: CalloutVariant;
 	calloutIcon?: IconName;
 }
 
 defineOptions({ name: 'N8nEmptyState' });
 withDefaults(defineProps<EmptyStateProps>(), {
-	calloutTheme: 'info',
+	calloutVariant: 'info',
 	buttonIcon: undefined,
 });
 </script>
@@ -86,7 +86,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 		</div>
 		<N8nCallout
 			v-if="calloutText"
-			:theme="calloutTheme"
+			:variant="calloutVariant"
 			:icon="calloutIcon"
 			:class="$style.callout"
 		>

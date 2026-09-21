@@ -78,7 +78,7 @@ useEventListener(window, 'focus', reprobeExtension);
 		</div>
 
 		<template v-if="!isBrowserSupported">
-			<N8nCallout theme="warning" data-test-id="browser-use-unsupported-browser">
+			<N8nCallout variant="warning" data-test-id="browser-use-unsupported-browser">
 				{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
 			</N8nCallout>
 			<div v-if="!props.embedded" :class="$style.footer">

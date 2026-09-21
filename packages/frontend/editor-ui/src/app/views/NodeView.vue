@@ -2149,7 +2149,7 @@ onBeforeUnmount(() => {
 
 			<N8nCallout
 				v-if="isReadOnlyEnvironment"
-				theme="warning"
+				variant="warning"
 				icon="lock"
 				:class="$style.readOnlyEnvironmentNotification"
 			>

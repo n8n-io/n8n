@@ -574,7 +574,7 @@ watch(
 					</template>
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
-						theme="info"
+						variant="info"
 						icon="wand-sparkles"
 						slim
 						:class="$style.changeRequestNote"

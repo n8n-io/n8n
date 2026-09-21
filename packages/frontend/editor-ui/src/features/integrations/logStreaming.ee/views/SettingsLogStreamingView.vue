@@ -189,7 +189,7 @@ async function onEdit(destinationId?: string) {
 		</div>
 		<template v-if="isLicensed">
 			<div class="mb-l">
-				<N8nInfoTip theme="info" type="note">
+				<N8nInfoTip variant="info" type="note">
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</N8nInfoTip>
 			</div>
@@ -235,7 +235,7 @@ async function onEdit(destinationId?: string) {
 		</template>
 		<template v-else>
 			<div v-if="i18n.baseText('settings.log-streaming.infoText')" class="mb-l">
-				<N8nInfoTip theme="info" type="note">
+				<N8nInfoTip variant="info" type="note">
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</N8nInfoTip>
 			</div>

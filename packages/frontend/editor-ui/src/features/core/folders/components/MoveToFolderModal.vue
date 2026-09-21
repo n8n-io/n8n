@@ -527,7 +527,7 @@ onMounted(async () => {
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
 				:class="$style.credentialsCallout"
-				theme="warning"
+				variant="warning"
 				data-test-id="move-modal-used-credentials-warning"
 			>
 				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}

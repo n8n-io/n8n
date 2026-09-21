@@ -101,7 +101,7 @@ defineExpose({
 		>
 			<template v-if="slots.header || showUsabilityNotice" #header>
 				<slot name="header" />
-				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+				<N8nInfoTip v-if="showUsabilityNotice" variant="warning" type="tooltip">
 					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
 				</N8nInfoTip>
 			</template>

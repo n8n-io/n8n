@@ -82,7 +82,7 @@ const getEmptyStateButtonText = computed(() => {
 const actionBoxConfig = computed(() => {
 	return {
 		calloutText: '',
-		calloutTheme: undefined,
+		calloutVariant: undefined,
 		hideButton: false,
 	};
 });
@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
 				:button-text="getEmptyStateButtonText"
 				:button-disabled="!settingsStore.isUnverifiedPackagesEnabled"
 				:callout-text="actionBoxConfig.calloutText"
-				:callout-theme="actionBoxConfig.calloutTheme"
+				:callout-variant="actionBoxConfig.calloutVariant"
 				@click:button="onClickEmptyStateButton"
 			/>
 		</div>

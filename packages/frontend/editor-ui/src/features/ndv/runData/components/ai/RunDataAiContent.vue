@@ -109,7 +109,7 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 								},
 							})
 						}}
-						<N8nInfoTip type="tooltip" theme="info-light" tooltip-placement="right">
+						<N8nInfoTip type="tooltip" variant="info-light" tooltip-placement="right">
 							<ConsumedTokensDetails :consumed-tokens="consumedTokensSum" />
 						</N8nInfoTip>
 					</li>

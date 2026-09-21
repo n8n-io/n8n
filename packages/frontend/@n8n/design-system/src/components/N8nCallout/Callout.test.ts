@@ -4,10 +4,10 @@ import N8nCallout from './Callout.vue';
 
 describe('components', () => {
 	describe('N8nCallout', () => {
-		it('should render info theme correctly', () => {
+		it('should render info variant correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'info',
+					variant: 'info',
 				},
 				global: {
 					stubs: ['N8nIcon', 'N8nText'],
@@ -18,10 +18,10 @@ describe('components', () => {
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
-		it('should render success theme correctly', () => {
+		it('should render success variant correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'success',
+					variant: 'success',
 				},
 				global: {
 					stubs: ['N8nIcon', 'N8nText'],
@@ -32,10 +32,10 @@ describe('components', () => {
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
-		it('should render warning theme correctly', () => {
+		it('should render warning variant correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'warning',
+					variant: 'warning',
 				},
 				global: {
 					stubs: ['N8nIcon', 'N8nText'],
@@ -46,10 +46,10 @@ describe('components', () => {
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
-		it('should render danger theme correctly', () => {
+		it('should render danger variant correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'danger',
+					variant: 'danger',
 				},
 				global: {
 					stubs: ['N8nIcon', 'N8nText'],
@@ -60,10 +60,10 @@ describe('components', () => {
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
-		it('should render secondary theme correctly', () => {
+		it('should render secondary variant correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'secondary',
+					variant: 'secondary',
 				},
 				global: {
 					stubs: ['N8nIcon', 'N8nText'],
@@ -74,10 +74,10 @@ describe('components', () => {
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
-		it('should render custom theme correctly', () => {
+		it('should render custom variant correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'custom',
+					variant: 'custom',
 					icon: 'git-branch',
 				},
 				global: {
@@ -92,7 +92,7 @@ describe('components', () => {
 		it('should wrap icon in a tooltip when iconTooltip is provided', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'custom',
+					variant: 'custom',
 					icon: 'info',
 					iconTooltip: 'Useful explanation',
 				},
@@ -118,7 +118,7 @@ describe('components', () => {
 		it('should not render a tooltip when iconTooltip is not provided', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'info',
+					variant: 'info',
 				},
 				global: {
 					stubs: ['N8nIcon', 'N8nText', 'N8nTooltip'],
@@ -132,7 +132,7 @@ describe('components', () => {
 		it('should render additional slots correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
-					theme: 'custom',
+					variant: 'custom',
 					icon: 'git-branch',
 				},
 				global: {

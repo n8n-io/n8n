@@ -151,7 +151,7 @@ const onConfirmProvisioningSetting = () => {
 			class="mb-s"
 			data-test-id="provisioning-project-rules-deletion-warning"
 		>
-			<N8nCallout theme="danger">
+			<N8nCallout variant="danger">
 				<N8nText color="text-base" size="small" :bold="true">{{
 					locale.baseText('settings.provisioningConfirmDialog.projectRulesDeletion.warning')
 				}}</N8nText>

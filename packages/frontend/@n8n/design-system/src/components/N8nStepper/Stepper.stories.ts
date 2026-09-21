@@ -82,7 +82,7 @@ const Template: StoryFn<Args> = (args, { argTypes }) => ({
 						<n8n-callout
 							v-if="installDetails[step.id].command"
 							style="margin-top: var(--spacing--sm);"
-							theme="secondary"
+							variant="secondary"
 							icon="terminal"
 						>
 							<code>{{ installDetails[step.id].command }}</code>

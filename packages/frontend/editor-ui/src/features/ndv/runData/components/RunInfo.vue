@@ -35,7 +35,7 @@ const runMetadata = computed(() => {
 <template>
 	<N8nInfoTip
 		v-if="hasStaleData"
-		theme="warning-light"
+		variant="warning-light"
 		type="tooltip"
 		tooltip-placement="right"
 		data-test-id="node-run-info-stale"
@@ -54,13 +54,13 @@ const runMetadata = computed(() => {
 		<N8nInfoTip
 			v-if="taskData?.executionStatus !== 'canceled'"
 			type="note"
-			:theme="theme"
+			:variant="theme"
 			:data-test-id="`node-run-status-${theme}`"
 			size="large"
 		/>
 		<N8nInfoTip
 			type="tooltip"
-			theme="info"
+			variant="info"
 			:data-test-id="`node-run-info`"
 			tooltip-placement="right"
 		>

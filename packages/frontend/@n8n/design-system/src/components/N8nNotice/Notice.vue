@@ -7,7 +7,7 @@ import { uid } from '../../utils';
 
 interface NoticeProps {
 	id?: string;
-	theme?: 'success' | 'warning' | 'danger' | 'info';
+	variant?: 'success' | 'warning' | 'danger' | 'info';
 	content?: string;
 	fullContent?: string;
 	compact?: boolean;
@@ -15,7 +15,7 @@ interface NoticeProps {
 
 const props = withDefaults(defineProps<NoticeProps>(), {
 	id: () => uid('notice'),
-	theme: 'warning',
+	variant: 'warning',
 	content: '',
 	fullContent: '',
 	compact: true,
@@ -27,7 +27,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const classes = computed(() => ['notice', $style.notice, $style[props.theme]]);
+const classes = computed(() => ['notice', $style.notice, $style[props.variant]]);
 const canTruncate = computed(() => props.fullContent !== undefined);
 
 const showFullContent = ref(false);

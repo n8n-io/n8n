@@ -13,7 +13,7 @@ function onUpgradePlanClick() {
 </script>
 
 <template>
-	<BaseBanner custom-icon="info" theme="warning" name="TRIAL_OVER">
+	<BaseBanner custom-icon="info" variant="warning" name="TRIAL_OVER">
 		<template #mainContent>
 			<span>{{ locale.baseText('banners.trialOver.message') }}</span>
 		</template>

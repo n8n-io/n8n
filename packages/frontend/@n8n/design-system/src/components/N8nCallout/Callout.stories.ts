@@ -7,7 +7,7 @@ const meta = {
 	title: 'Core/Callout',
 	component: N8nCallout,
 	argTypes: {
-		theme: {
+		variant: {
 			control: 'select',
 			options: ['info', 'secondary', 'success', 'warning', 'danger', 'custom'],
 		},
@@ -43,7 +43,7 @@ export const Default: Story = {
 		`,
 	}),
 	args: {
-		theme: 'success',
+		variant: 'success',
 		default: 'This is a default callout.',
 	},
 };
@@ -53,17 +53,17 @@ export const Variants: Story = {
 		components: { N8nCallout },
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--xs);">
-				<N8nCallout theme="info">This is an info callout.</N8nCallout>
-				<N8nCallout theme="secondary">This is a secondary callout.</N8nCallout>
-				<N8nCallout theme="success">This is a success callout.</N8nCallout>
-				<N8nCallout theme="warning">This is a warning callout.</N8nCallout>
-				<N8nCallout theme="danger">This is a danger callout.</N8nCallout>
-				<N8nCallout theme="custom" icon="git-branch">This is a custom callout.</N8nCallout>
+				<N8nCallout variant="info">This is an info callout.</N8nCallout>
+				<N8nCallout variant="secondary">This is a secondary callout.</N8nCallout>
+				<N8nCallout variant="success">This is a success callout.</N8nCallout>
+				<N8nCallout variant="warning">This is a warning callout.</N8nCallout>
+				<N8nCallout variant="danger">This is a danger callout.</N8nCallout>
+				<N8nCallout variant="custom" icon="git-branch">This is a custom callout.</N8nCallout>
 			</div>
 		`,
 	}),
 	args: {
-		theme: 'info',
+		variant: 'info',
 	},
 };
 
@@ -83,7 +83,7 @@ export const Custom: Story = {
 		`,
 	}),
 	args: {
-		theme: 'custom',
+		variant: 'custom',
 		icon: 'git-branch',
 		default: 'This is a custom callout.',
 	},

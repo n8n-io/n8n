@@ -1533,7 +1533,7 @@ defineExpose({ enterEditMode });
 				!editMode.enabled &&
 				!isProductionExecutionPreview
 			"
-			theme="secondary"
+			variant="secondary"
 			icon="pin"
 			:class="$style.pinnedDataCallout"
 			data-test-id="ndv-pinned-data-callout"
@@ -1567,7 +1567,7 @@ defineExpose({ enterEditMode });
 
 		<N8nCallout
 			v-if="isAiSimulatedOutput && !editMode.enabled"
-			theme="warning"
+			variant="warning"
 			icon="triangle-alert"
 			:class="$style.pinnedDataCallout"
 			data-test-id="ndv-ai-simulated-data-callout"
@@ -1734,7 +1734,7 @@ defineExpose({ enterEditMode });
 
 		<div v-show="!binaryDataDisplayVisible" :class="$style.hints" data-test-id="run-data-hints">
 			<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
-				<N8nCallout theme="info" data-test-id="run-data-callout">
+				<N8nCallout variant="info" data-test-id="run-data-callout">
 					<slot name="callout-message">
 						<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
 					</slot>

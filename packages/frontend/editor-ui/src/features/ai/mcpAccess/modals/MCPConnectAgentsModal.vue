@@ -89,7 +89,7 @@ onBeforeUnmount(() => {
 			<div :class="$style.content">
 				<N8nNotice
 					data-test-id="mcp-connect-agents-info-notice"
-					theme="info"
+					variant="info"
 					:content="i18n.baseText('settings.mcp.connectAgents.notice')"
 					:class="$style.notice"
 				/>

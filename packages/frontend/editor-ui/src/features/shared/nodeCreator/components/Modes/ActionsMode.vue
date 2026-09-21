@@ -292,7 +292,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 					<template v-if="hasNoTriggerActions" #empty>
 						<N8nCallout
 							v-if="hasNoTriggerActions"
-							theme="info"
+							variant="info"
 							iconless
 							slim
 							data-test-id="actions-panel-no-triggers-callout"
@@ -328,7 +328,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 				>
 					<N8nCallout
 						v-if="!usersStore.userActivated && isTriggerRootView"
-						theme="info"
+						variant="info"
 						iconless
 						slim
 						data-test-id="actions-panel-activation-callout"
@@ -337,7 +337,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 					</N8nCallout>
 					<!-- Empty state -->
 					<template #empty>
-						<N8nInfoTip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
+						<N8nInfoTip v-if="!search" variant="info" type="note" :class="$style.actionsEmpty">
 							<span
 								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {

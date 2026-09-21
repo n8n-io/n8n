@@ -260,7 +260,7 @@ async function onUpgradeClick() {
 						</N8nText>
 					</div>
 				</div>
-				<N8nCallout theme="warning">
+				<N8nCallout variant="warning">
 					<span :class="$style.calloutTitle">
 						{{ i18n.baseText('experiments.trialIntroModal.callout.title') }}
 					</span>

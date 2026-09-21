@@ -201,7 +201,7 @@ const actorName = computed(() =>
 <template>
 	<N8nCallout
 		v-if="closedCallout"
-		theme="secondary"
+		variant="secondary"
 		:class="$style.closedCallout"
 		data-test-id="workflow-review-activity-closed"
 	>

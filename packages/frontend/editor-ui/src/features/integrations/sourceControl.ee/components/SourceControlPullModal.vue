@@ -655,7 +655,7 @@ onMounted(() => {
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
 				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
-			<N8nCallout v-if="hasDataTableConflicts" theme="warning" class="mb-xs">
+			<N8nCallout v-if="hasDataTableConflicts" variant="warning" class="mb-xs">
 				<div :class="$style.warningContent">
 					<div>{{ dataTableWarningMessage }}</div>
 					<ul :class="$style.dataTableList">

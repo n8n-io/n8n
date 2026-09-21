@@ -593,7 +593,7 @@ const onDragEnd = (el: HTMLElement) => {
 							@click.stop
 						>
 							<N8nCallout
-								:theme="item.theme || 'info'"
+								:variant="item.theme || 'info'"
 								:slim="true"
 								:round-corners="true"
 								:iconless="false"

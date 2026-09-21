@@ -285,7 +285,7 @@ defineExpose({ selectProvider });
 
 		<N8nNotice
 			v-if="hasPartialFailure"
-			theme="warning"
+			variant="warning"
 			data-test-id="promotion-connection-partial-save"
 		>
 			{{ i18n.baseText('settings.promotions.connection.partialSave.title') }}

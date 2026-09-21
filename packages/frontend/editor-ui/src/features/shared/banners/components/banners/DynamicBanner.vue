@@ -16,7 +16,7 @@ const props = defineProps<Props>();
 <template>
 	<BaseBanner
 		:name="props.name"
-		:theme="props.theme"
+		:variant="props.theme"
 		:dismissible="props.isDismissible"
 		:dismiss-permanently="props.dismissPermanently ?? false"
 	>

@@ -157,7 +157,7 @@ const tabOptions = computed(() => [
 					</template>
 					<template v-if="showApprovedAndPublished" #footer>
 						<N8nCallout
-							theme="success"
+							variant="success"
 							:class="$style.closedCallout"
 							data-test-id="workflow-review-closed-callout"
 						>
@@ -183,7 +183,7 @@ const tabOptions = computed(() => [
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
 				<N8nCallout
 					v-if="!detail"
-					theme="warning"
+					variant="warning"
 					:class="$style.callout"
 					data-test-id="workflow-review-changes-unavailable"
 				>
@@ -201,7 +201,7 @@ const tabOptions = computed(() => [
 				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
 				<N8nCallout
 					v-else
-					theme="warning"
+					variant="warning"
 					:class="$style.callout"
 					data-test-id="workflow-review-changes-workflow-unavailable"
 				>

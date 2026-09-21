@@ -51,7 +51,7 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',
 	},
 	N8nCallout: {
-		props: ['theme'],
+		props: ['variant'],
 		template: '<div v-bind="$attrs"><slot /></div>',
 	},
 	N8nButton: {

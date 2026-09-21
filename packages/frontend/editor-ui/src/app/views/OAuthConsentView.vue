@@ -227,7 +227,7 @@ onMounted(async () => {
 					{{ i18n.baseText('oauth.consentView.error.heading') }}
 				</N8nHeading>
 				<N8nNotice
-					theme="danger"
+					variant="danger"
 					:data-test-id="'consent-error-notice'"
 					:content="errorMessage ?? ''"
 				></N8nNotice>
@@ -324,7 +324,7 @@ onMounted(async () => {
 				     skip both — their redirect URI is the form itself. -->
 				<div v-if="!error && trustRequired" :class="$style.divided">
 					<N8nCallout
-						theme="secondary"
+						variant="secondary"
 						:iconless="true"
 						:class="$style['redirect-note']"
 						data-test-id="consent-redirect-warning"

@@ -304,7 +304,11 @@ async function onDelete() {
 			data-test-id="promotion-provider-form-step"
 			@submit.prevent="submit"
 		>
-			<N8nNotice v-if="isEdit && isInUse" theme="warning" data-test-id="promotion-provider-in-use">
+			<N8nNotice
+				v-if="isEdit && isInUse"
+				variant="warning"
+				data-test-id="promotion-provider-in-use"
+			>
 				{{ i18n.baseText('settings.promotions.provider.inUse.warning') }}
 				{{
 					i18n.baseText('settings.promotions.provider.inUse.connections', {

@@ -2258,7 +2258,7 @@ const onNameSubmit = async (name: string) => {
 		<template #callout>
 			<N8nCallout
 				v-if="showAIStarterCollectionCallout"
-				theme="secondary"
+				variant="secondary"
 				icon="gift"
 				:class="$style['easy-ai-workflow-callout']"
 			>
@@ -2296,7 +2296,7 @@ const onNameSubmit = async (name: string) => {
 			</SuggestedWorkflows>
 			<N8nCallout
 				v-if="showReadyToRunWorkflowsCallout"
-				theme="secondary"
+				variant="secondary"
 				icon="bolt-filled"
 				:class="$style['easy-ai-workflow-callout']"
 			>

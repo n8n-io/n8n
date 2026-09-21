@@ -183,7 +183,7 @@ function onSeePlans() {
 							</N8nText>
 						</li>
 					</ul>
-					<N8nCallout v-else theme="warning" iconless>
+					<N8nCallout v-else variant="warning" iconless>
 						{{ locale.baseText('evaluations.setupWizard.limitReached') }}
 					</N8nCallout>
 					<div :class="$style.actionButton">

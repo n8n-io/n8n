@@ -431,7 +431,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <template>
-	<N8nCallout v-if="isManaged" theme="warning" icon="triangle-alert">
+	<N8nCallout v-if="isManaged" variant="warning" icon="triangle-alert">
 		{{ i18n.baseText('freeAi.credits.credentials.edit') }}
 	</N8nCallout>
 	<div v-else>
@@ -476,7 +476,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						canWrite
 					"
 					:class="$style.docsCallout"
-					theme="custom"
+					variant="custom"
 					iconless
 				>
 					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}

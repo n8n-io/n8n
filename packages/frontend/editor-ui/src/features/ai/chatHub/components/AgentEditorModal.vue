@@ -631,7 +631,7 @@ watch(documentVisibility, (visibility) => {
 						/>
 						<N8nCallout
 							v-if="!canUploadFiles"
-							theme="info"
+							variant="info"
 							icon="info"
 							:class="$style.vectorStoreCallout"
 						>

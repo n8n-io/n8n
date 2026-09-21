@@ -340,7 +340,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</ul>
 					</template>
 					<template v-else-if="item.kind === 'execution-error'">
-						<N8nCallout theme="danger" data-test-id="execution-error-callout">
+						<N8nCallout variant="danger" data-test-id="execution-error-callout">
 							{{ executionErrorMessage(item, i18n) }}
 						</N8nCallout>
 					</template>
@@ -366,7 +366,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<template v-else-if="item.kind === 'workflow'">
 						<N8nCallout
 							v-if="isFailed"
-							theme="danger"
+							variant="danger"
 							data-test-id="workflow-error-callout"
 							:class="$style.errorCallout"
 						>
@@ -413,7 +413,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<template v-else-if="item.kind === 'tool'">
 						<N8nCallout
 							v-if="isFailed"
-							theme="danger"
+							variant="danger"
 							data-test-id="tool-error-callout"
 							:class="$style.errorCallout"
 						>
@@ -437,7 +437,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
-						<N8nCallout v-if="errorMessage" theme="danger" data-test-id="node-error-callout">
+						<N8nCallout v-if="errorMessage" variant="danger" data-test-id="node-error-callout">
 							{{ errorMessage }}
 						</N8nCallout>
 						<ToolIoView

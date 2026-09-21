@@ -8,7 +8,7 @@ import { type IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 import type { Placement } from '../N8nTooltip/Tooltip.types';
 
-const THEME = ['info', 'info-light', 'warning', 'warning-light', 'danger', 'success'] as const;
+const VARIANT = ['info', 'info-light', 'warning', 'warning-light', 'danger', 'success'] as const;
 const TYPE = ['note', 'tooltip'] as const;
 
 const ICON_MAP: { [name: string]: IconName } = {
@@ -36,7 +36,7 @@ const COLOR_MAP: Record<keyof IconMap, IconColor> = {
 type IconMap = typeof ICON_MAP;
 
 interface InfoTipProps {
-	theme?: (typeof THEME)[number];
+	variant?: (typeof VARIANT)[number];
 	type?: (typeof TYPE)[number];
 	bold?: boolean;
 	tooltipPlacement?: Placement;
@@ -46,7 +46,7 @@ interface InfoTipProps {
 
 defineOptions({ name: 'N8nInfoTip' });
 const props = withDefaults(defineProps<InfoTipProps>(), {
-	theme: 'info',
+	variant: 'info',
 	type: 'note',
 	bold: true,
 	tooltipPlacement: 'top',
@@ -56,8 +56,8 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 
 const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 	return {
-		icon: ICON_MAP[props.theme],
-		color: COLOR_MAP[props.theme],
+		icon: ICON_MAP[props.variant],
+		color: COLOR_MAP[props.variant],
 	} as const;
 });
 </script>
@@ -67,7 +67,7 @@ const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 		:class="{
 			'n8n-info-tip': true,
 			[$style.infoTip]: true,
-			[$style[theme]]: true,
+			[$style[variant]]: true,
 			[$style[type]]: true,
 			[$style.bold]: bold,
 		}"

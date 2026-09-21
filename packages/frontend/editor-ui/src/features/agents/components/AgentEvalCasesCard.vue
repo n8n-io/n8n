@@ -280,7 +280,7 @@ async function onRegenerate() {
 
 		<N8nCallout
 			v-if="!source"
-			theme="info"
+			variant="info"
 			:class="$style.notice"
 			data-testid="agent-evals-cases-unmapped"
 		>
@@ -289,7 +289,7 @@ async function onRegenerate() {
 
 		<N8nCallout
 			v-if="loadFailed"
-			theme="danger"
+			variant="danger"
 			:class="$style.notice"
 			data-testid="agent-evals-cases-load-failed"
 		>
@@ -309,7 +309,7 @@ async function onRegenerate() {
 
 		<N8nCallout
 			v-if="hiddenCaseCount > 0"
-			theme="warning"
+			variant="warning"
 			:class="$style.notice"
 			data-testid="agent-evals-cases-truncated"
 		>

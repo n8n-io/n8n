@@ -240,7 +240,7 @@ const openCommunityRegisterModal = () => {
 				</span>
 			</N8nHeading>
 
-			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" theme="warning">
+			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" variant="warning">
 				<I18nT keypath="settings.usageAndPlan.callOut" scope="global">
 					<template #link>
 						<N8nButton

@@ -535,7 +535,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
+		<N8nCallout v-if="fatalError" variant="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
@@ -561,7 +561,7 @@ onBeforeUnmount(() => {
 			:key="`${warning.code ?? 'mcp'}-${index}`"
 			:class="$style.warningBanner"
 		>
-			<N8nCallout theme="warning" slim :data-test-id="`agent-chat-warning-${index}`">
+			<N8nCallout variant="warning" slim :data-test-id="`agent-chat-warning-${index}`">
 				<div :class="$style.warningBannerBody">
 					<span :class="$style.warningBannerTitle">
 						{{ locale.baseText('agents.chat.warning.mcp.title') }}

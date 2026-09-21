@@ -335,7 +335,7 @@ defineExpose({
 			>
 				<slot name="leading" />
 				<!-- Warning banner when character limit is reached -->
-				<N8nCallout v-if="showWarningBanner" slim icon="info" theme="warning">
+				<N8nCallout v-if="showWarningBanner" slim icon="info" variant="warning">
 					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 				</N8nCallout>
 

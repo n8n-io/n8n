@@ -212,7 +212,7 @@ function onConfirm() {
 			<div v-else :class="[$style.content, $style.configureContent]">
 				<N8nCallout
 					v-if="invalidReasons.length > 0"
-					theme="danger"
+					variant="danger"
 					data-testid="agent-sub-agents-modal-invalid-callout"
 				>
 					<div v-for="reason in invalidReasons" :key="reason">{{ reason }}</div>

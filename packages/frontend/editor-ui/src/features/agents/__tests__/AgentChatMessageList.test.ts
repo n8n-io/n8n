@@ -47,7 +47,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nCallout: {
 		template:
 			'<div v-bind="$attrs"><slot /><slot name="actions" /><slot name="trailingContent" /></div>',
-		props: ['theme', 'icon', 'iconless', 'slim'],
+		props: ['variant', 'icon', 'iconless', 'slim'],
 	},
 	N8nButton: {
 		template:

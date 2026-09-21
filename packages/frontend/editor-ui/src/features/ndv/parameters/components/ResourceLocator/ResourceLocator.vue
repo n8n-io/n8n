@@ -1120,7 +1120,7 @@ function removeOverride() {
 						</N8nText>
 						<N8nNotice
 							v-if="currentResponse.errorDetails.description"
-							theme="warning"
+							variant="warning"
 							:class="$style.errorDescription"
 						>
 							{{ currentResponse.errorDetails.description }}

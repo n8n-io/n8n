@@ -1031,7 +1031,7 @@ onMounted(async () => {
 						usersStore.currentUser.role !== ROLE.Owner && usersStore.currentUser.role !== ROLE.Admin
 					"
 				>
-					<N8nCallout v-if="!projectAdminCalloutDismissed" theme="secondary" class="mt-s">
+					<N8nCallout v-if="!projectAdminCalloutDismissed" variant="secondary" class="mt-s">
 						{{ i18n.baseText('settings.sourceControl.modals.push.projectAdmin.callout') }}
 						<template #trailingContent>
 							<N8nIcon

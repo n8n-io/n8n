@@ -91,7 +91,7 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nCallout: {
 		name: 'N8nCallout',
-		props: ['theme', 'slim', 'icon'],
+		props: ['variant', 'slim', 'icon'],
 		template: '<div v-bind="$attrs" data-testid="n8n-callout"><slot /></div>',
 	},
 	N8nIconButton: {

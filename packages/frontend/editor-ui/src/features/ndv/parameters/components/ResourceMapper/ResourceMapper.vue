@@ -715,7 +715,7 @@ defineExpose({
 		>
 			<span v-n8n-html="state.emptyFieldsNotice"></span>
 		</N8nNotice>
-		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
+		<N8nCallout v-else-if="state.hasStaleFields" variant="info" :iconless="true">
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton

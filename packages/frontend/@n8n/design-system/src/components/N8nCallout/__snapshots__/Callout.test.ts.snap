@@ -12,7 +12,7 @@ exports[`components > N8nCallout > should render additional slots correctly 1`] 
 </div>"
 `;
 
-exports[`components > N8nCallout > should render custom theme correctly 1`] = `
+exports[`components > N8nCallout > should render custom variant correctly 1`] = `
 "<div class="n8n-callout callout custom round" role="alert">
   <div class="messageSection">
     <div class="icon">
@@ -23,7 +23,7 @@ exports[`components > N8nCallout > should render custom theme correctly 1`] = `
 </div>"
 `;
 
-exports[`components > N8nCallout > should render danger theme correctly 1`] = `
+exports[`components > N8nCallout > should render danger variant correctly 1`] = `
 "<div class="n8n-callout callout danger round" role="alert">
   <div class="messageSection">
     <div class="icon">
@@ -34,7 +34,7 @@ exports[`components > N8nCallout > should render danger theme correctly 1`] = `
 </div>"
 `;
 
-exports[`components > N8nCallout > should render info theme correctly 1`] = `
+exports[`components > N8nCallout > should render info variant correctly 1`] = `
 "<div class="n8n-callout callout info round" role="alert">
   <div class="messageSection">
     <div class="icon">
@@ -45,7 +45,7 @@ exports[`components > N8nCallout > should render info theme correctly 1`] = `
 </div>"
 `;
 
-exports[`components > N8nCallout > should render secondary theme correctly 1`] = `
+exports[`components > N8nCallout > should render secondary variant correctly 1`] = `
 "<div class="n8n-callout callout secondary round" role="alert">
   <div class="messageSection">
     <div class="icon">
@@ -56,7 +56,7 @@ exports[`components > N8nCallout > should render secondary theme correctly 1`] =
 </div>"
 `;
 
-exports[`components > N8nCallout > should render success theme correctly 1`] = `
+exports[`components > N8nCallout > should render success variant correctly 1`] = `
 "<div class="n8n-callout callout success round" role="alert">
   <div class="messageSection">
     <div class="icon">
@@ -67,7 +67,7 @@ exports[`components > N8nCallout > should render success theme correctly 1`] = `
 </div>"
 `;
 
-exports[`components > N8nCallout > should render warning theme correctly 1`] = `
+exports[`components > N8nCallout > should render warning variant correctly 1`] = `
 "<div class="n8n-callout callout warning round" role="alert">
   <div class="messageSection">
     <div class="icon">

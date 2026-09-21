@@ -4,7 +4,7 @@ import { i18n as locale } from '@n8n/i18n';
 </script>
 
 <template>
-	<BaseBanner name="WORKFLOW_AUTO_DEACTIVATED" theme="warning" custom-icon="info">
+	<BaseBanner name="WORKFLOW_AUTO_DEACTIVATED" variant="warning" custom-icon="info">
 		<template #mainContent>
 			<span>
 				{{ locale.baseText('banners.workflowAutoDeactivated.message') }}

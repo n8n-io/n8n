@@ -818,7 +818,7 @@ watch(
 					:icon="(item.parameter.typeOptions?.calloutAction?.icon as IconName) || 'info'"
 					icon-size="large"
 					:class="['parameter-item', item.parameter.typeOptions?.containerClass ?? '']"
-					theme="secondary"
+					variant="secondary"
 				>
 					<N8nText size="small">
 						<N8nText
@@ -1050,7 +1050,7 @@ watch(
 
 			<N8nNotice
 				v-if="index === aiGatewayUnsupportedNoticeIndex"
-				theme="warning"
+				variant="warning"
 				:class="$style.unsupportedActionNotice"
 				data-test-id="ai-gateway-unsupported-action-notice"
 			>

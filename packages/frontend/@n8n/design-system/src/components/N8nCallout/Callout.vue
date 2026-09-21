@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize, CalloutTheme } from '../../types';
+import type { IconSize, CalloutVariant } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
@@ -15,7 +15,7 @@ const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
 };
 
 interface CalloutProps {
-	theme: CalloutTheme;
+	variant: CalloutVariant;
 	icon?: IconName;
 	iconTooltip?: string;
 	iconSize?: IconSize;
@@ -36,21 +36,21 @@ const $style = useCssModule();
 const classes = computed(() => [
 	'n8n-callout',
 	$style.callout,
-	$style[props.theme],
+	$style[props.variant],
 	props.slim ? $style.slim : '',
 	props.roundCorners ? $style.round : '',
 	props.onlyBottomBorder ? $style.onlyBottomBorder : '',
 ]);
 
 const getIcon = computed(
-	() => props.icon ?? CALLOUT_DEFAULT_ICONS?.[props.theme] ?? CALLOUT_DEFAULT_ICONS.info,
+	() => props.icon ?? CALLOUT_DEFAULT_ICONS?.[props.variant] ?? CALLOUT_DEFAULT_ICONS.info,
 );
 
 const getIconSize = computed<IconSize>(() => {
 	if (props.iconSize) {
 		return props.iconSize;
 	}
-	if (props.theme === 'secondary') {
+	if (props.variant === 'secondary') {
 		return 'medium';
 	}
 	return 'large';

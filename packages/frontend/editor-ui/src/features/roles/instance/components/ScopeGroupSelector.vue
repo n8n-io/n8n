@@ -119,7 +119,7 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 				</template>
 				<N8nCallout
 					v-if="!readonly && getEscalationWarningKey(group.resource, modelValue)"
-					theme="warning"
+					variant="warning"
 					:class="$style.warning"
 					:data-test-id="`scope-escalation-warning-${group.resource}`"
 				>

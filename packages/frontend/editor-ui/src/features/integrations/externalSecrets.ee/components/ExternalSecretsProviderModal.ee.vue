@@ -214,7 +214,7 @@ async function onConnectionStateChange() {
 				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<N8nCallout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
-						theme="success"
+						variant="success"
 					>
 						{{
 							i18n.baseText(
@@ -248,7 +248,7 @@ async function onConnectionStateChange() {
 							</N8nLink>
 						</span>
 					</N8nCallout>
-					<N8nCallout v-else-if="connectionState === 'error'" theme="danger">
+					<N8nCallout v-else-if="connectionState === 'error'" variant="danger">
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.testConnection.error${

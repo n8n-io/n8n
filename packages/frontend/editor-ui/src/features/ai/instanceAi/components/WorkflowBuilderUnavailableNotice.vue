@@ -17,7 +17,7 @@ const descriptionKey = computed<BaseTextKey>(() =>
 <template>
 	<N8nCallout
 		:class="$style.notice"
-		theme="warning"
+		variant="warning"
 		data-test-id="instance-ai-workflow-builder-unavailable"
 	>
 		<span :class="$style.copy">

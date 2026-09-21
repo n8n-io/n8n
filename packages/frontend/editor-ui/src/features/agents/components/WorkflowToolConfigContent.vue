@@ -376,7 +376,7 @@ defineExpose({
 			</N8nText>
 		</div>
 
-		<N8nCallout theme="warning" data-test-id="agent-workflow-tool-target-notice">
+		<N8nCallout variant="warning" data-test-id="agent-workflow-tool-target-notice">
 			{{
 				i18n.baseText('agents.toolConfig.workflow.target.notice', {
 					interpolate: { trigger: triggerLabel },

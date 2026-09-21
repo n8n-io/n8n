@@ -15,7 +15,7 @@ const countsLabel = computed(() => props.mismatch.counts.join(', '));
 </script>
 
 <template>
-	<N8nCallout theme="warning" icon="triangle-alert" data-test-id="compare-dataset-mismatch">
+	<N8nCallout variant="warning" icon="triangle-alert" data-test-id="compare-dataset-mismatch">
 		{{
 			i18n.baseText('evaluation.compare.datasetMismatch', {
 				interpolate: { counts: countsLabel },

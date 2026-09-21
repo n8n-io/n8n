@@ -146,7 +146,7 @@ function close() {
 
 					<!-- Migrate and publish are two separate steps; make that explicit so users
 						 don't assume migrating changes the live version. -->
-					<N8nCallout theme="info">
+					<N8nCallout variant="info">
 						<div>
 							{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.stepMigrate') }}
 						</div>
@@ -158,7 +158,7 @@ function close() {
 
 				<!-- Success -->
 				<template v-else-if="phase === 'success' && result">
-					<N8nCallout theme="success" icon="circle-check">
+					<N8nCallout variant="success" icon="circle-check">
 						{{
 							i18n.baseText('settings.migrationReport.detail.migrate.modal.successBody', {
 								interpolate: { name: workflow.name },
@@ -170,7 +170,7 @@ function close() {
 					</N8nCallout>
 
 					<!-- Behaviour changes the user should review -->
-					<N8nCallout v-if="warnings.length" theme="warning">
+					<N8nCallout v-if="warnings.length" variant="warning">
 						<div :class="$style.reviewTitle">
 							{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.reviewTitle') }}
 						</div>
@@ -195,7 +195,7 @@ function close() {
 
 				<!-- Error -->
 				<template v-else-if="phase === 'error' && error">
-					<N8nCallout theme="danger" icon="status-error">
+					<N8nCallout variant="danger" icon="status-error">
 						{{ error.message }}
 						<template v-if="error.node">
 							<br />

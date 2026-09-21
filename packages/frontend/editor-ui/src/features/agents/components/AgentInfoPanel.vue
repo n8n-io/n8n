@@ -401,7 +401,7 @@ function onInstructionsInput(value: string) {
 					/>
 					<N8nCallout
 						v-if="defaultModelHint && !props.disabled"
-						theme="info"
+						variant="info"
 						slim
 						:class="$style.defaultHint"
 						data-testid="agent-default-model-hint"

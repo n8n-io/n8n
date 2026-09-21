@@ -67,7 +67,7 @@ function openWorkflowSettings() {
 
 <template>
 	<div :class="$style.component">
-		<N8nNotice v-if="isLegacyBinaryMode && isV2Enabled" :class="$style.info" theme="info">
+		<N8nNotice v-if="isLegacyBinaryMode && isV2Enabled" :class="$style.info" variant="info">
 			{{ i18n.baseText('runData.legacyBinaryMode') }}
 			<N8nLink size="small" @click="openWorkflowSettings">settings</N8nLink>.
 		</N8nNotice>

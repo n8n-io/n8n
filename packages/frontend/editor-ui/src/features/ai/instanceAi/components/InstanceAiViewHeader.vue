@@ -69,7 +69,7 @@ const threadCreditsUsed = computed(() =>
 	<!-- eslint-disable-next-line vue/no-multiple-template-root -->
 	<N8nCallout
 		v-if="isReadOnlyEnvironment"
-		theme="warning"
+		variant="warning"
 		icon="lock"
 		:class="$style.readOnlyBanner"
 	>

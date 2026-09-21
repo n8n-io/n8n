@@ -76,7 +76,7 @@ const errorTooltip = computed(() =>
 				<slot v-else />
 				<N8nCallout
 					v-if="props.error !== undefined && !props.hideErrorCallout"
-					theme="danger"
+					variant="danger"
 					:class="$style.errorCallout"
 				>
 					{{ props.error }}

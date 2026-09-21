@@ -120,7 +120,7 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</p>
-		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
+		<N8nCallout v-if="ssoStore.ssoManagedByEnv" variant="warning" class="mb-m">
 			{{
 				isRulesMappingInN8n
 					? i18n.baseText('settings.sso.settings.envConfigBannerWithRules')

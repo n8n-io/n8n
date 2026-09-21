@@ -1196,7 +1196,7 @@ onBeforeUnmount(() => {
 					<ElRow v-if="workflowSettings.callerPolicy === 'any'">
 						<ElCol :span="24">
 							<N8nNotice
-								theme="warning"
+								variant="warning"
 								:content="i18n.baseText('workflowSettings.callerPolicy.any.deprecationNotice')"
 								data-test-id="workflow-caller-policy-any-deprecation"
 							/>

@@ -291,7 +291,7 @@ onMounted(async () => {
 
 				<N8nCallout
 					v-if="keyExistsInSameScope"
-					theme="danger"
+					variant="danger"
 					data-test-id="variable-modal-key-exists-error"
 				>
 					{{ i18n.baseText('variables.modal.error.keyExistsInProject') }}
@@ -299,7 +299,7 @@ onMounted(async () => {
 
 				<N8nCallout
 					v-else-if="globalVariableExistsWarning"
-					theme="warning"
+					variant="warning"
 					data-test-id="variable-modal-global-exists-warning"
 				>
 					{{ i18n.baseText('variables.modal.warning.globalKeyExists') }}
