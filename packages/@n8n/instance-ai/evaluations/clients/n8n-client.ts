@@ -23,7 +23,7 @@ import type {
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedFolder,
 	InstanceAiEvalSeedWorkflow,
-	InstanceAiWorkflowAttachment,
+	InstanceAiResourceAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
@@ -340,12 +340,12 @@ export class N8nClient {
 	 *
 	 * `attachments` are resource references the agent resolves with its tools — the
 	 *  same channel the editor uses when a user opens the assistant with a workflow
-	 * in front of them, so the agent is handed it by id instead of hunting by name.
+	 *  or Agent in front of them. The assistant receives the resource by id.
 	 */
 	async sendMessage(
 		threadId: string,
 		message: string,
-		attachments?: InstanceAiWorkflowAttachment[],
+		attachments?: InstanceAiResourceAttachment[],
 		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
@@ -820,10 +820,11 @@ export class N8nClient {
 		name: string,
 		type: string,
 		data: Record<string, unknown>,
+		description?: string | null,
 	): Promise<{ id: string }> {
 		const result = (await this.fetch('/rest/credentials', {
 			method: 'POST',
-			body: { name, type, data },
+			body: { name, type, data, ...(description !== undefined ? { description } : {}) },
 		})) as { data: { id: string } };
 		return { id: result.data.id };
 	}

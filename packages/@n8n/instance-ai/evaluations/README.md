@@ -800,6 +800,18 @@ Declared credentials are created for real (placeholder token; set the matching `
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
+Each declared credential can also have a `description`. The loader applies the
+shared credential description schema. It trims the text, enforces the length
+limit, and converts blank text to `null`. The seeder stores the description as
+credential metadata, outside the secret `data` object. Omit the field to test
+credential choice without descriptions.
+
+The current LangTracer case-write schema accepts only `type`, `name`, and
+`valid` on a credential. The push refuses a case with a description before it
+writes anything. Keep these cases on disk until LangTracer stores descriptions.
+The existing `blank` field also needs server support. The export check catches
+a server that drops it after a write.
+
 ### `requiresMemoryCompaction` — grade the window after observational memory compacts
 
 ```json
@@ -1005,11 +1017,10 @@ user names (CONTEXT-86: `workflows(action="list")` takes `folderPath` or `folder
   declare no `parentFolderId`. `unsupportedPushReason` refuses such a case, so keep it on
   disk (`--source disk`) until `n8n-io/lang-tracer` carries both.
 
-#### Handing the agent the workflow (`attach`)
+#### Handing the assistant a seeded resource (`attach`)
 
-When a real user opens the assistant with a workflow in front of them — "why is this
-failing?" — the editor sends that workflow as a resource reference and the agent
-resolves it by **id**, never by name. Declare it on the opening turn:
+When a real user opens the assistant with a workflow or Agent in front of them, the
+editor sends that resource by id. Declare the resource on the opening turn:
 
 ```json
 "conversation": [
@@ -1017,15 +1028,29 @@ resolves it by **id**, never by name. Declare it on the opening turn:
 ]
 ```
 
-The id is the one the seed declares; the harness substitutes the per-run remapped id,
-so the attachment always points at the workflow that actually exists. Only the opening
-turn may carry it, and it must name a workflow the inline seed declares — both are
-refused at case load rather than silently ignored.
+```json
+"conversation": [
+  { "role": "user", "text": "find and fix why this Agent cannot use Notion", "attach": { "agent": "AgentMcpRepairSeed01" } }
+]
+```
 
-Omit it when the user refers to the workflow in words instead ("the batch image
-workflow") — finding it is then part of what the case tests. Getting this backwards
-makes a case harder than reality: the agent has to guess from prose that deliberately
-names nothing, and a clarification the real user never saw scores as a failure.
+Use the id that the inline seed declares. The harness substitutes the per-run remapped
+id. A workflow id must exist in `seed.workflows`. An Agent id must exist in
+`seed.agents`. Only the opening user turn can carry an attachment. The schema rejects
+an invalid attachment before the run starts.
+
+An Agent attachment supplies identity only. It does not copy the Agent configuration into
+the orchestrator prompt. To inspect or change the attached Agent, the assistant must pass
+the remapped id to `build-agent`. Agent Builder then reads the current configuration. An
+Agent-content case must use process and outcome expectations that verify this delegation
+and the resulting repair. The attachment checks only that the eval reproduces the editor
+handoff.
+
+Only workflow attachments can set `source` to `setup-panel-execute`. This value sends
+the setup panel handoff context with the workflow.
+
+Omit `attach` when finding the resource is part of the test. For example, omit it when
+the user says "the batch image workflow" and the assistant must find that workflow.
 
 > **Pushing an `attach` case needs lang-tracer [#119](https://github.com/n8n-io/lang-tracer/pull/119) deployed.**
 > Carrying `attach` through import and case-write is that PR's job; a deployment
@@ -1037,6 +1062,11 @@ names nothing, and a clarification the real user never saw scores as a failure.
 > predating [#113](https://github.com/n8n-io/lang-tracer/pull/113). Until the
 > server is upgraded, keep such a case on disk (`--source disk`).
 > Round-trip coverage: `langtracer-to-exported.test.ts`.
+
+> **Agent attachments also need LangTracer to accept `attach.agent`.**
+> A LangTracer version that only accepts `attach.workflow` returns HTTP 400 when
+> an Agent attachment is pushed. Keep the Agent case on disk until that schema is
+> deployed. The push read-back check then confirms that the Agent reference survived.
 
 #### How restore works (all paths)
 

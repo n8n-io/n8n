@@ -70,6 +70,7 @@ export function applyEngineEnv(
 	const modules = (env.N8N_ENABLED_MODULES ?? '').split(',').filter(Boolean);
 	if (!modules.includes(ENGINE_MODULE)) modules.push(ENGINE_MODULE);
 	env.N8N_ENABLED_MODULES = modules.join(',');
+	if (env.N8N_ENGINE_DATABASE_URL) return;
 
 	const user = encodeURIComponent(env.DB_POSTGRESDB_USER);
 	const password = encodeURIComponent(env.DB_POSTGRESDB_PASSWORD);

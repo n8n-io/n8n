@@ -24,17 +24,30 @@ export function attachedWorkflowNote(label: string | undefined): string {
 	return label ? `[attached workflow: ${label}]` : '';
 }
 
-/** The name a seed declares for an attached workflow id. The authored-conversation
- *  path has only the id, and the seed is where that id gets its name; falls back
- *  to the id when the seed can't resolve it, so the hand-off stays visible. */
-function attachedWorkflowLabel(
+/** Render an out-of-band Agent attachment for a transcript or prompt. */
+export function attachedAgentNote(label: string | undefined): string {
+	return label ? `[attached agent: ${label}]` : '';
+}
+
+/** Resolve an authored attachment id to the resource name declared by the seed. */
+function attachedResourceNote(
 	turn: ConversationTurn | undefined,
 	seed: CaseSeed | undefined,
-): string | undefined {
-	const id = turn?.attach?.workflow;
-	if (id === undefined) return undefined;
-	const declared = seed?.mode === 'inline' ? seed.workflows.find((w) => w.id === id) : undefined;
-	return declared?.name ?? id;
+): string {
+	const attachment = turn?.attach;
+	if (attachment === undefined) return '';
+	if ('workflow' in attachment) {
+		const declared =
+			seed?.mode === 'inline'
+				? seed.workflows.find((workflow) => workflow.id === attachment.workflow)
+				: undefined;
+		return attachedWorkflowNote(declared?.name ?? attachment.workflow);
+	}
+	const declared =
+		seed?.mode === 'inline'
+			? seed.agents.find((agent) => agent.id === attachment.agent)
+			: undefined;
+	return attachedAgentNote(declared?.config.name ?? attachment.agent);
 }
 
 /**
@@ -54,7 +67,7 @@ export function caseDisplayPrompt(
 	if (liveTurn) return liveTurn;
 	const { seed } = testCase;
 	if (seed?.mode === 'replay') return `[seeded] thread ${seed.threadId.slice(0, 8)}`;
-	return attachedWorkflowNote(attachedWorkflowLabel(testCase.conversation?.[0], seed));
+	return attachedResourceNote(testCase.conversation?.[0], seed);
 }
 
 /**
@@ -90,9 +103,7 @@ export function conversationUserTurnsAsText(
 		.filter((t) => t.role === 'user')
 		// Name an attachment, so a text-less hand-off isn't filtered out below and
 		// handed to the prompt-aware checks as an empty prompt.
-		.map((t) =>
-			[attachedWorkflowNote(attachedWorkflowLabel(t, seed)), t.text].filter(Boolean).join(' '),
-		)
+		.map((t) => [attachedResourceNote(t, seed), t.text].filter(Boolean).join(' '))
 		.filter((text) => text.length > 0);
 
 	if (turns.length === 0) return '';

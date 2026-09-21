@@ -212,6 +212,7 @@ export function measureSteadyPhases(
 
 export const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
 export const QUEUE_JOBS_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed';
+export type CompletionCounterReader = () => Promise<number>;
 
 /**
  * Returns the completion metric for the current Playwright project.
@@ -257,6 +258,7 @@ export async function waitForThroughput(
 		 * per-stage measurements so a ramp test can identify the breaking point.
 		 */
 		stageBoundaries?: number[];
+		counterReader?: CompletionCounterReader;
 	},
 ): Promise<ThroughputResult> {
 	const {
@@ -269,6 +271,7 @@ export async function waitForThroughput(
 		stallThresholdMs = 60_000,
 		publishEndAt,
 		stageBoundaries,
+		counterReader,
 	} = options;
 
 	const samples: ThroughputSample[] = [];
@@ -282,17 +285,20 @@ export async function waitForThroughput(
 		const remaining = deadline - Date.now();
 		await new Promise((resolve) => setTimeout(resolve, Math.min(pollIntervalMs, remaining)));
 
-		let results;
+		let current: number;
 		try {
-			results = await metrics.query(`sum(last_over_time(${metricQuery}[5m]))`);
+			if (counterReader) {
+				current = await counterReader();
+			} else {
+				const results = await metrics.query(`sum(last_over_time(${metricQuery}[5m]))`);
+				current = results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
+			}
 		} catch (error) {
 			console.log(
 				`[THROUGHPUT] Query error: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			continue;
 		}
-
-		const current = results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
 
 		// Monotonic guard: counters should never decrease.
 		// If VictoriaMetrics returns a stale/missing value, skip this sample.
@@ -346,7 +352,9 @@ export async function waitForThroughput(
 export async function getBaselineCounter(
 	metrics: MetricsHelper,
 	metricQuery: string = WORKFLOW_SUCCESS_QUERY,
+	counterReader?: CompletionCounterReader,
 ): Promise<number> {
+	if (counterReader) return await counterReader();
 	try {
 		const results = await metrics.query(`sum(last_over_time(${metricQuery}[5m]))`);
 		return results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
