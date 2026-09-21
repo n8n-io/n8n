@@ -749,7 +749,7 @@ export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSc
 
 /** Test URL card: the assistant armed a trigger's test URL and waits for one request. */
 export const testListenerCardSchema = z.object({
-	workflowId: z.string(),
+	workflowId: z.string().min(1),
 	triggers: z
 		.array(
 			z.object({

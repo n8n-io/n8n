@@ -1086,6 +1086,30 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				expect.anything(),
 			);
 		});
+
+		it('settles the card as not cancelled when the test webhook is deleted', () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			renderComponent({ props: { kind: 'inline' } });
+
+			capturedPushListener?.({ type: 'testWebhookDeleted', data: { workflowId: 'wf-1' } });
+
+			// No execution id: the tool reads received vs timed out from durable state.
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: true });
+		});
+
+		it('keeps the card and records no input when confirmAction fails', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-sent'));
+
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-test-listener')).toBeVisible();
+		});
 	});
 
 	describe('questions confirmation', () => {

@@ -714,6 +714,16 @@ describe('mapAgentChunkToEvent', () => {
 	it.each([
 		['without triggers', { workflowId: 'wf-1' }],
 		[
+			'with an empty workflowId',
+			{
+				workflowId: '',
+				triggers: [
+					{ nodeName: 'Webhook', url: 'http://localhost:5678/webhook-test/abc', method: 'POST' },
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
 			'with an empty triggers list',
 			{ workflowId: 'wf-1', triggers: [], deadlineAt: '2026-01-01T00:10:00.000Z' },
 		],

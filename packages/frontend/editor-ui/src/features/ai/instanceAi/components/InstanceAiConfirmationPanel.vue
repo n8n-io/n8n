@@ -446,43 +446,54 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
-function settleTestListener(
+async function settleTestListener(
 	conf: InstanceAiConfirmation,
 	outcome: { approved: boolean; executionId?: string; fromPush?: boolean },
 ) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
-	const { approved, executionId } = outcome;
-	// A push event settles the card without a user choice, so it records no input.
-	if (!outcome.fromPush) {
-		trackInputCompleted(
-			conf,
-			[
-				{
-					label: conf.message,
-					options: ['sent', 'cancel'],
-					option_chosen: approved ? 'sent' : 'cancel',
-				},
-			],
-			[],
-		);
+	if (inFlightConfirmations.has(conf.requestId)) return;
+	inFlightConfirmations.add(conf.requestId);
+	try {
+		const { approved, executionId } = outcome;
+		// Await the POST first: a failed request keeps the card visible so the user can
+		// retry or cancel while the tool waits. `confirmAction` shows a toast on failure.
+		const ok = await thread.confirmAction(conf.requestId, {
+			kind: 'approval',
+			approved,
+			...(executionId ? { userInput: executionId } : {}),
+		});
+		if (!ok) return;
+		// A push event settles the card without a user choice, so it records no input.
+		if (!outcome.fromPush) {
+			trackInputCompleted(
+				conf,
+				[
+					{
+						label: conf.message,
+						options: ['sent', 'cancel'],
+						option_chosen: approved ? 'sent' : 'cancel',
+					},
+				],
+				[],
+			);
+		}
+		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	} finally {
+		inFlightConfirmations.delete(conf.requestId);
 	}
-	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
-	void thread.confirmAction(conf.requestId, {
-		kind: 'approval',
-		approved,
-		...(executionId ? { userInput: executionId } : {}),
-	});
 }
 
 // The backend pushes `testWebhookReceived` / `testWebhookDeleted` for the armed
-// workflow. Settle the card from them so the assistant reads the outcome
-// without a click; the tool derives received / timed out from durable state.
+// workflow. Settle the card from them so the assistant reads the outcome without
+// a click. `approved: true` only means "not cancelled by the user": the tool reads
+// received / timed out from durable state (executions, registration), so a
+// deletion push at the deadline still resolves as timed out.
 const removePushListener = usePushConnectionStore().addEventListener((event) => {
 	if (event.type !== 'testWebhookReceived' && event.type !== 'testWebhookDeleted') return;
 	for (const item of thread.pendingConfirmations) {
 		const conf = item.toolCall.confirmation;
 		if (conf?.testListener?.workflowId !== event.data.workflowId) continue;
-		settleTestListener(conf, {
+		void settleTestListener(conf, {
 			approved: true,
 			executionId: event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
 			fromPush: true,
