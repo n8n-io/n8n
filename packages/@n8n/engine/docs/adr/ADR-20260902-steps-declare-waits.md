@@ -84,8 +84,7 @@ deadline, or accept a resume request, or do both.
 
 The detailed design, §3.3, sketches a `WaitStepConfig` with an `until` of four
 kinds, an optional `action`, and a `timeout`. This ADR keeps the intent and
-needs fewer parts. The mapping matters, because the doc is what the team
-reviewed.
+needs fewer parts.
 
 - **`duration` and `timestamp` both become a deadline.** The shim resolves a
   duration to an absolute instant, because v1 gives it a `Date` and not a
@@ -100,17 +99,22 @@ reviewed.
   payload.
 - **`action` is not needed.** In the doc, the engine performs the action, so the
   engine needs a vocabulary of actions to perform. Decision 1 runs the node's
-  own code instead, and that code already sends the message. The doc calls the
-  `WaitAction` set the largest open question in the design. This decision
-  removes the question. It does not answer it.
+  own code instead, and that code already sends whatever the wait is for: a
+  Slack approval, an email, or a form. The doc calls the `WaitAction` set the
+  largest open question in the design. This decision removes the question. It
+  does not answer it. The answer to that question is deferred until we
+  implement a native wait step.
 - **`timeout` becomes a deadline with a resume request.** A declaration can
   carry both, and then the first of the two ends the wait. One behaviour does
   change: the doc makes a timeout fail the step, and this ADR emits the
-  captured outputs instead. Engine v1 continues past an expired wait limit, so
-  a failure would be a new behaviour, not a preserved one.
+  captured outputs instead. Engine v1 continues past an expired wait limit, and
+  the node offers no setting that fails instead: its parameter reads "Whether to
+  limit the time this node should wait for a user response before execution
+  resumes". A failure would be a new behaviour, not a preserved one.
 
-The `wait` step type in the graph stays unused. A wait now enters through the
-step result contract, so no node needs to convert to a different step type.
+The graph's step types include `wait`, and nothing builds one. A wait enters
+through the step result contract instead, so the converter never turns a node
+into a different step type.
 
 ## Alternatives Considered
 
