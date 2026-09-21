@@ -73,7 +73,7 @@ const showManagedOption = computed(
 );
 
 const isManagedSelected = computed(
-	() => props.managedOption != null && props.selectedCredentialId === props.managedOption.value,
+	() => !!props.managedOption && props.selectedCredentialId === props.managedOption.value,
 );
 
 // Leading icon shown in the collapsed trigger for the current selection —
