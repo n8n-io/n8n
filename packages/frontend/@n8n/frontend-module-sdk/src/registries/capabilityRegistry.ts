@@ -37,14 +37,19 @@ export function tryUse<T>(token: CapabilityToken<T>): T | undefined {
  * neither — call it from a handler or a guard, never at module scope.
  */
 export function use<T>(token: CapabilityToken<T>): T {
-	const implementation = tryUse(token) ?? token.fallback;
-	if (implementation === undefined) {
-		throw new Error(
-			`Capability "${token.key}" has no provider. Call capabilityRegistry.provide() at app bootstrap.`,
-		);
+	// Presence decides, not the value: a provider is free to supply `null` or
+	// `undefined` when `T` allows it, and must still win over the fallback.
+	if (has(token)) {
+		return providers.get(token) as T;
 	}
 
-	return implementation;
+	if ('fallback' in token) {
+		return token.fallback as T;
+	}
+
+	throw new Error(
+		`Capability "${token.key}" has no provider. Call capabilityRegistry.provide() at app bootstrap.`,
+	);
 }
 
 export function has(token: CapabilityToken<unknown>): boolean {

@@ -35,6 +35,15 @@ describe('capabilityRegistry', () => {
 		expect(capabilityRegistry.use(greeterWithFallback)('ada')).toBe('fallback');
 	});
 
+	it('prefers a provided nullish implementation over the fallback', () => {
+		const nullableGreeter = declareCapability<Greeter | null>('test-nullable-greeter', {
+			fallback: goodbye,
+		});
+		capabilityRegistry.provide(nullableGreeter, null);
+
+		expect(capabilityRegistry.use(nullableGreeter)).toBeNull();
+	});
+
 	it('prefers a provided implementation over the fallback', () => {
 		capabilityRegistry.provide(greeterWithFallback, hello);
 

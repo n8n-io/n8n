@@ -20,5 +20,7 @@ export function declareCapability<T>(
 	key: string,
 	options: { fallback?: T } = {},
 ): CapabilityToken<T> {
-	return { key, fallback: options.fallback };
+	// Only carry the property when the caller declared one: `use()` reads presence,
+	// so an always-present `fallback: undefined` would suppress its throw.
+	return 'fallback' in options ? { key, fallback: options.fallback } : { key };
 }
