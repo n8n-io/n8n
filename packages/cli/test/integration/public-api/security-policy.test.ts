@@ -11,6 +11,7 @@ import { In } from '@n8n/typeorm';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { CacheService } from '@/services/cache/cache.service';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -64,6 +65,28 @@ describe('Security policy in Public API', () => {
 				sharedPersonalCredentialsCount: 0,
 				redactionEnforcement: { floor: 'off' },
 			});
+		});
+
+		it('does not return fields outside the public response schema', async () => {
+			testServer.license.enable('feat:personalSpacePolicy');
+			const settingsWithInternalField = {
+				personalSpacePublishing: true,
+				personalSpaceSharing: true,
+				publishedPersonalWorkflowsCount: 0,
+				sharedPersonalWorkflowsCount: 0,
+				sharedPersonalCredentialsCount: 0,
+				redactionEnforcement: { floor: 'off' as const, internal: true },
+				internal: true,
+			};
+			vi.spyOn(Container.get(SecuritySettingsService), 'getSecuritySettings').mockResolvedValueOnce(
+				settingsWithInternalField,
+			);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/security-policy');
+
+			expect(response.status).toBe(200);
+			expect(response.body).not.toHaveProperty('internal');
+			expect(response.body.redactionEnforcement).toEqual({ floor: 'off' });
 		});
 
 		it('still allows reads when the policy is env-managed', async () => {
@@ -181,6 +204,17 @@ describe('Security policy in Public API', () => {
 					personalSpaceSharing: true,
 					redactionEnforcement: 'nope',
 				});
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects an unknown request body field with 400', async () => {
+			testServer.license.enable('feat:personalSpacePolicy');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/security-policy')
+				.send({ ...fullPolicy, unknown: true });
 
 			expect(response.status).toBe(400);
 		});
