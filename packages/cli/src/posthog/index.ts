@@ -28,6 +28,9 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+/** Cache empty results briefly so callers do not retry each request. */
+const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000;
+
 const SESSION_ID_MAX_LENGTH = 1000;
 
 function sanitizeSessionId(value: string | undefined): string | undefined {
@@ -49,6 +52,9 @@ export class PostHogClient {
 	private postHog?: PostHog;
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
+
+	/** Callers with the same cache key share one active evaluation. */
+	private readonly inFlightEvaluations = new Map<string, Promise<FeatureFlagData>>();
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -171,19 +177,40 @@ export class PostHogClient {
 			return cached;
 		}
 
-		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
-			personProperties: {
-				created_at_timestamp: user.createdAt.getTime().toString(),
-				instance_id: instanceId,
-				version_cli: N8N_VERSION,
-			},
-			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
-		});
-		const data = this.resolveFeatureFlagData(evaluatedFlags);
+		const inFlight = this.inFlightEvaluations.get(fullId);
+		if (inFlight) return await inFlight;
 
-		if (Object.keys(data.featureFlags).length > 0) {
-			this.flagsCache.set(fullId, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+		const evaluation = this.evaluateAndRemember(this.postHog, fullId, user).finally(() =>
+			this.inFlightEvaluations.delete(fullId),
+		);
+		this.inFlightEvaluations.set(fullId, evaluation);
+		return await evaluation;
+	}
+
+	private async evaluateAndRemember(
+		postHog: PostHog,
+		cacheKey: string,
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlagData> {
+		const { instanceId } = this.instanceSettings;
+		let data: FeatureFlagData;
+		try {
+			const evaluatedFlags = await postHog.evaluateFlags(cacheKey, {
+				personProperties: {
+					created_at_timestamp: user.createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
+				},
+				...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+			});
+			data = this.resolveFeatureFlagData(evaluatedFlags);
+		} catch {
+			data = { featureFlags: {}, featureFlagPayloads: {} };
 		}
+
+		const ttl =
+			Object.keys(data.featureFlags).length > 0 ? FLAGS_CACHE_TTL_MS : EMPTY_FLAGS_CACHE_TTL_MS;
+		this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + ttl });
 
 		return data;
 	}
