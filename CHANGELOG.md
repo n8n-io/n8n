@@ -1,3 +1,11 @@
+## [2.39.10](https://github.com/n8n-io/n8n/compare/n8n@2.39.9...n8n@2.39.10) (2026-09-21)
+
+
+### Bug Fixes
+
+* Limit declarative routing during base URL ownership checks ([#39146](https://github.com/n8n-io/n8n/issues/39146)) ([164b3f3](https://github.com/n8n-io/n8n/commit/164b3f3d8ea08ba5111d2e04cbe17921bc395fff))
+
+
 ## [2.39.9](https://github.com/n8n-io/n8n/compare/n8n@2.39.8...n8n@2.39.9) (2026-09-21)
 
 
