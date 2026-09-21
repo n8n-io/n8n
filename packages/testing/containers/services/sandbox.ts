@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmodSync, mkdtempSync } from 'node:fs';
+import { chmodSync, mkdtempSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -8,7 +8,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult } from './types';
+import type { Service, ServiceResult, StartContext } from './types';
 
 const API_HOSTNAME = 'sandbox-api';
 const RUNNER_HOSTNAME = 'sandbox-runner-1';
@@ -112,9 +112,15 @@ async function waitForSandboxApiReady(apiContainer: StartedTestContainer): Promi
 	throw new Error(`Sandbox service did not become ready: ${lastError}`);
 }
 
-async function generateMtlsCerts(network: StartedNetwork, projectName: string): Promise<string> {
+async function generateMtlsCerts(
+	network: StartedNetwork,
+	projectName: string,
+	ctx?: StartContext,
+): Promise<string> {
 	const tlsDir = mkdtempSync(join(tmpdir(), `${projectName}-sandbox-tls-`));
+	ctx?.registerPath?.(tlsDir);
 	chmodSync(tlsDir, 0o755);
+	const { uid: hostUid, gid: hostGid } = statSync(tlsDir);
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
@@ -127,8 +133,8 @@ async function generateMtlsCerts(network: StartedNetwork, projectName: string): 
 				'-c',
 				[
 					'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable',
-					'chown -R sandbox-api:sandbox-api /tls/api',
 					'chmod -R a+rX /tls',
+					`chown -R ${hostUid}:${hostGid} /tls`,
 					`echo ${CERT_GEN_SENTINEL}`,
 				].join(' && '),
 			])
@@ -291,8 +297,13 @@ export const sandbox: Service<SandboxResult> = {
 		};
 	},
 
-	async start(network: StartedNetwork, projectName: string): Promise<SandboxResult> {
-		const tlsDir = await generateMtlsCerts(network, projectName);
+	async start(
+		network: StartedNetwork,
+		projectName: string,
+		_options?: unknown,
+		ctx?: StartContext,
+	): Promise<SandboxResult> {
+		const tlsDir = await generateMtlsCerts(network, projectName, ctx);
 		const { consumer: apiConsumer, throwWithLogs: throwApiLogs } = createSilentLogConsumer();
 		const { consumer: runnerConsumer, throwWithLogs: throwRunnerLogs } = createSilentLogConsumer();
 
@@ -327,6 +338,7 @@ export const sandbox: Service<SandboxResult> = {
 				.withLogConsumer(apiConsumer)
 				.withReuse()
 				.start();
+			ctx?.registerContainer?.(apiContainer);
 		} catch (error: unknown) {
 			return throwApiLogs(error);
 		}
@@ -373,6 +385,7 @@ export const sandbox: Service<SandboxResult> = {
 				.withLogConsumer(runnerConsumer)
 				.withReuse()
 				.start();
+			ctx?.registerContainer?.(runnerContainer);
 		} catch (error: unknown) {
 			return throwRunnerLogs(error);
 		}

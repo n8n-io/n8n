@@ -3,7 +3,8 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -16,7 +17,6 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -27,6 +27,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -34,11 +35,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import {
-	AiPreferenceService,
-	renderAiPreferencesBlock,
-	type ApplicableAiPreferences,
-} from '@/services/ai-preference.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -54,7 +51,13 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import {
+	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
@@ -79,10 +82,24 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import {
+	createGetInstanceContextTool,
+	GET_INSTANCE_CONTEXT_TOOL_NAME,
+	instanceContextText,
+	INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+	INSTANCE_CONTEXT_RESOURCE_URI,
+	readInstanceContext,
+} from './tools/get-instance-context.tool';
+import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
+import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import {
+	createExpandInstanceActivityTool,
+	createGetInstanceActivityTool,
+} from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -125,18 +142,13 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
-/** Per-user resolution of every PostHog-gated MCP feature. */
+/** User experience gates and the shared instance activity gate. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/** Canvas node-group support in the workflow-builder tools. */
-	canvasGroupsEnabled: boolean;
-	/** Saved AI preferences in the server instructions. */
+	/** Enables context tools, the context resource, and the context instructions. */
+	instanceContextEnabled: boolean;
+	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
-};
-
-export type McpServerBuildOptions = {
-	/** True for `initialize` and `server/discover`, the requests that read the instructions. */
-	isConnectionHandshake?: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -222,6 +234,7 @@ export class McpService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
+		private readonly executionListService: ExecutionListService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
 		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
@@ -233,45 +246,29 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
 		private readonly aiPreferenceService: AiPreferenceService,
 	) {}
 
-	/**
-	 * Resolves every PostHog-gated MCP feature for a user with a single flags
-	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog.
-	 */
+	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
-		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
-		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
-		// surfacing as `unassigned`).
-		const flags = await this.postHogClient.getFeatureFlags(user);
+		const [userFlags, instanceFlag] = await Promise.allSettled([
+			this.postHogClient.getFeatureFlags(user),
+			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+		]);
+		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === true,
+			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
+			// Multivariate flag: only the `variant` arm enables the feature.
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
-	}
-
-	/** Best-effort: a failed read costs the preferences, not the MCP request. */
-	private async readAiPreferencesBlock(user: User): Promise<string | undefined> {
-		let preferences: ApplicableAiPreferences;
-		try {
-			preferences = await this.aiPreferenceService.getApplicableAcrossProjects(user);
-		} catch (error) {
-			this.logger.warn('Failed to read the AI preferences for the MCP server instructions', {
-				userId: user.id,
-				error: ensureError(error).message,
-			});
-			return undefined;
-		}
-		return renderAiPreferencesBlock(preferences);
 	}
 
 	private resolveMcpApps(envOverride: boolean, flags: FeatureFlags): McpAppsResolution {
@@ -421,15 +418,7 @@ export class McpService {
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
-		options: McpServerBuildOptions = {},
 	) {
-		// Only the handshake response carries the instructions, so the per-user
-		// block is read only there and not on every tool call. The read starts
-		// first so it overlaps the other lookups below; it never rejects.
-		const aiPreferences =
-			featureFlags.aiPreferencesEnabled && options.isConnectionHandshake
-				? this.readAiPreferencesBlock(user)
-				: undefined;
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
 		);
@@ -450,6 +439,14 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
+		// Same rationale again: a grant that cannot reach the instance-context tools is not told
+		// to start by calling them, and does not get the resource that carries the same data.
+		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
+		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
+		// other tool. No RBAC check: a user's own preferences need no scope.
+		const userPreferencesInstructionsEnabled =
+			featureFlags.aiPreferencesEnabled &&
+			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -457,11 +454,14 @@ export class McpService {
 			},
 			{
 				instructions: getMcpInstructions({
+					isInstanceContextEnabled:
+						featureFlags.instanceContextEnabled &&
+						this.moduleRegistry.isActive('instance-ai') &&
+						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
-					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
-					aiPreferences: await aiPreferences,
+					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
 				}),
 			},
 		);
@@ -502,9 +502,12 @@ export class McpService {
 		);
 		registerIfAllowed(getExecutionTool);
 
+		// TODO(CAT-4510): the search lists engine 2.0 executions, but
+		// `get_workflow_execution` above still reads only the control plane, so an
+		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
-			this.executionService,
+			this.executionListService,
 			this.workflowFinderService,
 			this.telemetry,
 		);
@@ -610,6 +613,99 @@ export class McpService {
 			registerIfAllowed(listTagsTool);
 		}
 
+		if (featureFlags.instanceContextEnabled) {
+			// Whether the *token* carries `credential:read`. It narrows a token rather than proving a
+			// permission, so the reader treats it as one half of the credential gate and resolves the
+			// caller's real access for the other half.
+			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
+			// Same shape, for the run leg: it ships run counts and the id of the last failure, and
+			// every other execution read here sits behind `execution:read`.
+			const executionGranted = allowedToolNames?.has('get_workflow_execution') ?? true;
+
+			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
+			// only when that module is active — an instance with the surface off never builds it.
+			if (this.moduleRegistry.isActive('instance-ai')) {
+				const { InstanceContextService } = await import(
+					'@/modules/instance-ai/instance-context.service.js'
+				);
+				const instanceContext = Container.get(InstanceContextService);
+
+				registerIfAllowed(
+					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+						executionGranted,
+					}),
+				);
+				registerIfAllowed(
+					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+						executionGranted,
+					}),
+				);
+
+				// The opening context, offered three ways because an MCP client has no turn to have
+				// it injected into: a resource for clients that read resources, a tool for the rest,
+				// and a line in the server instructions naming both.
+				//
+				// The resource carries the same instance data as the tool, so it follows the same
+				// scope gate — `registerResource` does no filtering of its own, and the resources
+				// that predate this one are static documents that needed none. Mirrors
+				// `McpAgentToolsService`, which gates its reference resource on its reference tool.
+				if (contextToolsAllowed) {
+					registerResource({
+						name: 'instance-context',
+						uri: INSTANCE_CONTEXT_RESOURCE_URI,
+						config: {
+							description: INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+							mimeType: 'text/plain',
+							// Per-user data: never cache it across callers. The SDK defaults to this
+							// today, so this states the requirement rather than changing behaviour.
+							cacheHint: { ttlMs: 0, cacheScope: 'private' },
+						},
+						read: async () => {
+							// The tool beside this emits `USER_CALLED_MCP_TOOL_EVENT`; without the same
+							// event here the resource is invisible, and it is the path the instructions
+							// send resource-reading clients to first. Same event with the surface on it
+							// beats a second event name.
+							const read = await readInstanceContext(user, instanceContext, {
+								executionGranted,
+							});
+							this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, {
+								user_id: user.id,
+								tool_name: GET_INSTANCE_CONTEXT_TOOL_NAME,
+								parameters: { surface: 'resource' },
+								results: { success: true, data: { outcome: read.kind } },
+							});
+
+							return {
+								contents: [
+									{
+										uri: INSTANCE_CONTEXT_RESOURCE_URI,
+										mimeType: 'text/plain',
+										text: instanceContextText(read),
+									},
+								],
+							};
+						},
+					});
+				}
+				registerIfAllowed(
+					createGetInstanceContextTool(user, instanceContext, this.telemetry, {
+						executionGranted,
+					}),
+				);
+			}
+
+			// Node usage reads the dependency index, which is not part of any module and is always
+			// available, so it is not gated on `instance-ai` the way the activity tools are.
+			const { WorkflowDependencyQueryService } = await import(
+				'@/modules/workflow-index/workflow-dependency-query.service.js'
+			);
+			registerIfAllowed(
+				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+			);
+		}
+
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
 
@@ -644,6 +740,14 @@ export class McpService {
 
 		const getDataTableRowsTool = createGetDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(getDataTableRowsTool);
+
+		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
+		// workflows, so a caller without the builder still has changes to apply them to.
+		if (featureFlags.aiPreferencesEnabled) {
+			registerIfAllowed(
+				createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry),
+			);
+		}
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
@@ -700,9 +804,7 @@ export class McpService {
 		);
 		registerIfAllowed(getNodeTypesTool);
 
-		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
 		registerIfAllowed(bestPracticesTool);
 
 		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
@@ -712,9 +814,7 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -731,7 +831,8 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -834,7 +935,8 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 		registerIfAllowed(updateTool);
 
@@ -861,9 +963,7 @@ export class McpService {
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(undefined, {
-							includeGroups: featureFlags.canvasGroupsEnabled,
-						}),
+						text: getSdkReferenceContent(),
 					},
 				],
 			}),
@@ -871,9 +971,7 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
 		registerIfAllowed(sdkRefTool);
 	}
 

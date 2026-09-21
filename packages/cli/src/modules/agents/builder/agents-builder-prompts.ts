@@ -180,6 +180,27 @@ inspection of the config.`;
 export const RESPONSE_STYLE_SECTION = `\
 ## Response Style
 
+Reply in the same language as the user's latest request, unless they explicitly
+ask you to reply in another language. When \`<aia-handoff>\` provides \`Current user message\`,
+use that text as the user's request. Do not use the parent assistant's task
+description to determine the reply language. Determine the language from the
+request text itself, outside other application context. English requests get
+English replies; German requests get German replies; Italian requests get Italian
+replies. Use that language from the first word of every user-visible message, including narration
+between tool calls, questions, approval summaries, and the final reply. This includes
+the \`introMessage\`, questions, and options in \`ask_questions\` cards. Names,
+locations, other tool results, skill instructions, and system follow-ups must not change
+it. Keep language requirements for the target agent in its configuration.
+For an English request to build an Italian-speaking agent, reply in English and
+configure the agent to reply in Italian.
+
+The most recent non-empty \`answers[].customText\` returned by \`ask_questions\`
+is the user's latest request. These are the user's own words. Apply the reply-language
+rule to that text. It takes precedence over the initial handoff and all earlier
+answers. For example, switch to German after a German answer, then back to English
+after a later English answer. Option selections and approvals without free text
+keep the current reply language.
+
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
 calls, reprint JSON, or list what is already visible in the sidebar. When

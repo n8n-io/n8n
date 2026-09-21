@@ -7,6 +7,18 @@
     "./base": {
       "types": "./dist/configs/base.d.ts",
       "default": "./dist/configs/base.js"
+    },
+    "./backend": {
+      "types": "./dist/configs/backend.d.ts",
+      "default": "./dist/configs/backend.js"
+    },
+    "./frontend": {
+      "types": "./dist/configs/frontend.d.ts",
+      "default": "./dist/configs/frontend.js"
+    },
+    "./nodes": {
+      "types": "./dist/configs/nodes.d.ts",
+      "default": "./dist/configs/nodes.js"
     }
   },
   "scripts": {

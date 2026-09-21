@@ -9,7 +9,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
@@ -74,6 +76,39 @@ describe('AgentBackgroundJobRepository', () => {
 			...overrides,
 		});
 	}
+
+	it('returns only group fields for the selected agent and thread', async () => {
+		const id = uuid();
+		const createdAt = new Date('2026-09-01T10:00:00Z');
+		const settledAt = new Date('2026-09-01T10:01:00Z');
+		await insertJob({
+			id,
+			parentThreadId: 'thread-1',
+			createdAt,
+			settledAt,
+			result: 'Stored result',
+			error: 'Stored error',
+		});
+		const otherAgent = agentRepository.create(
+			await agentRepository.findOneByOrFail({ id: agentId }),
+		);
+		otherAgent.id = uuid();
+		await agentRepository.save(otherAgent);
+		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentAgentId: otherAgent.id });
+		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
+
+		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
+		expect(jobs).toHaveLength(1);
+		expect({ ...jobs[0] }).toEqual({
+			id,
+			kind: 'subagent',
+			title: 'Research',
+			status: 'completed',
+			createdAt,
+			settledAt,
+			notifiedAt: null,
+		});
+	});
 
 	it('returns unconsumed settled rows of one thread, oldest settlement first', async () => {
 		const olderId = uuid();
@@ -200,21 +235,6 @@ describe('AgentBackgroundJobRepository', () => {
 				mailConsumed();
 				return affected;
 			});
-			const wakeService = new AgentWakeService(
-				repository,
-				executionRepository,
-				agentRepository,
-				userRepository,
-				checkpointStorage,
-				mock<ChatIntegrationRegistry>(),
-				orchestrator,
-				lockService,
-				publisher,
-				mock<InstanceSettings>({ isWorker: false }),
-				agentsConfig,
-				logger,
-			);
-			Container.set(AgentWakeService, wakeService);
 			const jobService = new AgentBackgroundJobService(
 				repository,
 				executionRepository,
@@ -222,7 +242,23 @@ describe('AgentBackgroundJobRepository', () => {
 				publisher,
 				logger,
 				agentsConfig,
+				mock<AgentExecutionUpdateBroadcaster>(),
 			);
+			const wakeService = new AgentWakeService(
+				repository,
+				new AgentConversationStateService(executionRepository, checkpointStorage),
+				agentRepository,
+				userRepository,
+				mock<ChatIntegrationRegistry>(),
+				orchestrator,
+				lockService,
+				publisher,
+				mock<InstanceSettings>({ isWorker: false }),
+				agentsConfig,
+				logger,
+				jobService,
+			);
+			Container.set(AgentWakeService, wakeService);
 
 			await jobService.settle(jobId, { status: 'completed', result: 'Done' });
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);

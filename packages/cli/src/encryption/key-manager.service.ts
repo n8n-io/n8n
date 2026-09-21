@@ -116,7 +116,9 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return cached;
 		}
 
-		const key = await this.deploymentKeyRepository.findOne({ where: { id } });
+		const key = await this.deploymentKeyRepository.findOne({
+			where: { id, type: 'data_encryption' },
+		});
 		if (!key) return null;
 		const keyInfo: KeyInfo = {
 			id: key.id,
@@ -134,6 +136,12 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 */
 	private recoverLegacyDek(keyInfo: DeploymentKey): string | null {
 		const { value } = keyInfo;
+		// Older seed: the DEK stored as the instance key verbatim, unwrapped. Checked
+		// first so a value equal to the instance key is recovered whatever its shape.
+		if (value === this.instanceSettings.encryptionKey) {
+			return value;
+		}
+
 		// 2.18.x: raw key material, used directly. Re-wrap as-is, no decrypt needed.
 		if (RAW_DEK_PATTERN.test(value)) {
 			return value;
@@ -159,7 +167,17 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return recovered;
 		}
 
-		// Already GCM-wrapped or an unknown format: leave untouched.
+		// A value that already unwraps is current-format and needs no repair. Warn
+		// about anything else. A silent skip leaves every no-prefix read failing
+		// with a message that blames the instance key.
+		try {
+			this.cipher.decryptDEKWithInstanceKey(value);
+		} catch (error) {
+			this.logger.warn(
+				`DEK ${keyInfo.id} is in an unrecognized format. n8n cannot re-wrap it with this instance key, so reads of data without a key-id prefix will fail.`,
+				{ error },
+			);
+		}
 		return null;
 	}
 
@@ -367,9 +385,12 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 		this.activeKeyMemo = undefined;
 	}
 
-	/** Transitions key to 'inactive'. Usage count guard to be added in T13. */
+	/**
+	 * Transitions key to 'inactive'. Never deletes: DeploymentKeyRepository's
+	 * delete/remove/softDelete/softRemove/clear all throw, so a deactivated
+	 * key's value stays intact and readable for any ciphertext still using it.
+	 */
 	async markInactive(id: string): Promise<void> {
-		// TODO: T13 will add usage check — throw ConflictError if usage count > 0
 		await this.deploymentKeyRepository.update(id, { status: 'inactive' });
 		// The active key may be gone now: force the next write to re-read the store.
 		this.activeKeyMemo = undefined;

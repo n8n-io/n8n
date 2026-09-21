@@ -164,6 +164,16 @@ export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unpr
 export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
 
 /**
+ * Where a verified change actually runs. Verification always executes the
+ * draft, so a fix to a published workflow stays out of production until the
+ * workflow is published again. `live-stale` is the state that must never be
+ * reported as a working live workflow — see INS-1311.
+ */
+export const verificationLiveStateSchema = z.enum(['unpublished', 'live-current', 'live-stale']);
+
+export type VerificationLiveState = z.infer<typeof verificationLiveStateSchema>;
+
+/**
  * The deterministic verdict from verification evidence. Backend-only: it shapes
  * the tool result the model reads and gates the publish offer. It is
  * deliberately not sent to the client — see INS-1308.
@@ -188,6 +198,16 @@ export const verificationClaimSchema = z.object({
 	pendingTriggers: z.array(z.string()).optional(),
 	publishReady: z.boolean(),
 	liveTestRecommended: z.boolean(),
+	/**
+	 * Publish state when the run happened. Optional: absent when the lookup
+	 * failed and on claims stored before INS-1311. Unknown never means stale.
+	 */
+	liveState: verificationLiveStateSchema.optional(),
+	/**
+	 * Draft version the run executed. Names the version a retest applies to,
+	 * and the version a publish would make live.
+	 */
+	verifiedVersionId: z.string().optional(),
 });
 
 export type VerificationClaim = z.infer<typeof verificationClaimSchema>;

@@ -80,8 +80,9 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_RUNNERS_MODE',
 			message:
-				'The `internal` mode is deprecated and will be removed in a future version. Run task runners as a separate process and set this variable to `external`.',
-			checkValue: (value?: string) => value === 'internal',
+				'Internal task runner mode is deprecated and will be removed in a future version. For isolation and scaling, run the task runner launcher as a separate process, set this variable to `external` and share `N8N_RUNNERS_AUTH_TOKEN` with the launcher. See https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-task-runners',
+			// Unset means the default, which is still `internal`, so most instances are affected without knowing it.
+			checkValue: (value?: string) => (value ?? this.globalConfig.taskRunners.mode) === 'internal',
 		},
 		{
 			envVar: 'N8N_SSRF_PROTECTION_ENABLED',

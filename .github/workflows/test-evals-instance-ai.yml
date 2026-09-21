@@ -450,7 +450,7 @@ jobs:
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
-              -e N8N_ENABLED_MODULES=instance-ai \
+              -e N8N_ENABLED_MODULES=instance-ai,agents \
               -e N8N_AI_ENABLED=true \
               -e INSTANCE_AI_BRAVE_SEARCH_API_KEY="$INSTANCE_AI_BRAVE_SEARCH_API_KEY" \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$MODEL_API_KEY" \
@@ -606,12 +606,14 @@ jobs:
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           echo "Lanes: $LANES | eval concurrency: $EVAL_CONCURRENCY"
           ARGS=(--base-url "$BASE_URLS" --concurrency "$EVAL_CONCURRENCY" --verbose --iterations "${ITERATIONS:-3}")
+          CANONICAL_SUITE=$(pnpm exec tsx evaluations/cli/resolve-langtracer-suite.ts "${SUITE:-baseline}")
           # LangTracer is the only CI case source (no disk fallback by design).
-          ARGS+=(--source langtracer --suite "${SUITE:-baseline}")
-          # Pin the LangSmith cohort: langtracer mode otherwise derives a
-          # suite-scoped dataset/baseline prefix, which would fork the KPI
-          # history and orphan the baseline comparison.
-          ARGS+=(--dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline-)
+          ARGS+=(--source langtracer --suite "$CANONICAL_SUITE")
+          # Preserve the existing workflow KPI cohort. Other suites use the
+          # CLI's suite-scoped cohort so their results stay isolated.
+          if [ "$CANONICAL_SUITE" = "baseline" ]; then
+            ARGS+=(--dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline-)
+          fi
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
@@ -763,7 +765,7 @@ jobs:
 
           # Find and update existing eval comment, or create new one
           COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-            --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval")) | .id' | tail -1)
+            --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval") or startswith("### Instance AI Agent Eval")) | .id' | tail -1)
 
           if [ -n "$COMMENT_ID" ]; then
             gh api "repos/$REPO/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/eval-comment.md

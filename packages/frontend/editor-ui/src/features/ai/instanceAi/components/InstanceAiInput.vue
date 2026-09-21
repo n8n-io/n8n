@@ -16,8 +16,15 @@ import {
 } from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
+import {
+	USER_TYPED_MESSAGE,
+	type InstanceAiMessageAuthorship,
+	type InstanceAiPrefillType,
+	type InstanceAiPrefillTypeReported,
+} from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
@@ -35,6 +42,8 @@ type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
 	telemetryPayload?: ITelemetryTrackProperties;
+	/** Required so a new catalog cannot emit suggestions that report as user-typed. */
+	prefillType: InstanceAiPrefillType;
 };
 type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 	originalPrompt: string;
@@ -46,6 +55,12 @@ type SuggestionsCyclePayload = {
 	telemetryPayload?: ITelemetryTrackProperties;
 };
 type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
+type ActivePrefill = {
+	/** The text as the pre-fill wrote it, so an edit can be detected. */
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+};
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
@@ -55,7 +70,7 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
-		isPlanEditMode?: boolean;
+		isAwaitingPlanReview?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -80,7 +95,7 @@ const props = withDefaults(
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
-		isPlanEditMode: false,
+		isAwaitingPlanReview: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -94,9 +109,18 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
+	// `restoreDraft` puts the cleared draft back when the send fails. It returns
+	// false when the user has already typed something newer, so the caller can
+	// tell whether the draft was recovered. It also restores the pre-fill the
+	// draft came from, so a retry stays attributed to the surface that wrote it.
+	submit: [
+		message: string,
+		attachments: InstanceAiAttachment[] | undefined,
+		restoreDraft: () => boolean,
+		authorship: InstanceAiMessageAuthorship,
+		responseStartedAtEpochMs: number,
+	];
 	stop: [];
-	'cancel-plan-edit': [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -116,6 +140,12 @@ const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
+/**
+ * What pre-filled the composer, so the submit can report who wrote the text.
+ * Separate from `selectedSuggestionDraft`, which is scoped to the suggestion
+ * experiment; this also covers template examples and hand-off drafts.
+ */
+const activePrefill = ref<ActivePrefill | null>(null);
 
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const typedPreview = ref('');
@@ -169,6 +199,20 @@ function setTextIfEmpty(text: string) {
 	if (!inputText.value.trim()) inputText.value = text;
 }
 
+/**
+ * Put n8n-authored text in the composer. Pre-fills must come through here
+ * rather than `setText` so the submit can attribute them; `setText` and
+ * friends stay for restoring a draft the user wrote.
+ */
+function setPrefill(prefill: {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+}) {
+	inputText.value = prefill.text;
+	activePrefill.value = { ...prefill };
+}
+
 function clearTextIfMatches(text: string) {
 	if (inputText.value === text) inputText.value = '';
 }
@@ -181,6 +225,7 @@ defineExpose({
 	focus,
 	appendText,
 	setText,
+	setPrefill,
 	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
@@ -189,8 +234,10 @@ defineExpose({
 	submitSuggestion,
 });
 
+// A run suspended on a plan review is parked, not working: the user is meant to
+// type into it. Only a real in-flight submission blocks the composer then.
 const isBusy = computed(() =>
-	props.isPlanEditMode ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+	props.isAwaitingPlanReview ? props.isSubmitting : props.isStreaming || props.isSubmitting,
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
@@ -209,11 +256,16 @@ watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
-const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
+const canSubmit = computed(() =>
+	canSubmitMessage(
+		inputText.value.trim(),
+		attachedFiles.value.length + attachedResources.value.length,
+	),
+);
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
-		!props.isPlanEditMode &&
+		!props.isAwaitingPlanReview &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -234,8 +286,8 @@ const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	if (props.isPlanEditMode) {
-		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
+	if (props.isAwaitingPlanReview) {
+		return i18n.baseText('instanceAi.input.planReviewPlaceholder');
 	}
 	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
 	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
@@ -279,56 +331,127 @@ watch(
 watch(inputText, (text) => {
 	if (text.length === 0) {
 		selectedSuggestionDraft.value = null;
+		activePrefill.value = null;
 	}
 });
 
-watch(
-	() => props.isPlanEditMode,
-	(isPlanEditMode, wasPlanEditMode) => {
-		if (isPlanEditMode || wasPlanEditMode) {
-			previewPrompt.value = null;
-			resetDraftComposer();
-		}
-	},
-);
-
 function emitSubmittedMessage(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs: number,
 ) {
 	previewPrompt.value = null;
-	if (restoreDraft) {
-		emit('submit', message, attachments, restoreDraft);
-		return;
-	}
-	emit('submit', message, attachments);
+	emit('submit', message, attachments, restoreDraft, authorship, responseStartedAtEpochMs);
 }
 
-function resetDraftComposer() {
+/**
+ * The composer is the only place that knows whether the text came from a
+ * pre-fill, so it resolves authorship for every send that leaves it.
+ */
+function resolveAuthorship(
+	message: string,
+	prefill: ActivePrefill | null,
+): InstanceAiMessageAuthorship {
+	if (!prefill) return USER_TYPED_MESSAGE;
+	return {
+		kind: 'prefill',
+		prefillType: prefill.prefillType,
+		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		promptModified: message !== prefill.text.trim(),
+	};
+}
+
+function resetDraftComposer({ keepAttachments = false } = {}) {
 	inputText.value = '';
+	if (keepAttachments) return;
 	attachedFiles.value = [];
 	attachedResources.value = [];
 }
 
+/** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
+	if (isBusy.value || isGatedBySetup.value) return false;
+	// Plan feedback travels as a plain string, so an attachment cannot carry it.
+	if (props.isAwaitingPlanReview) return message.length > 0;
+	return message.length > 0 || attachmentCount > 0;
 }
 
+/**
+ * Put failed plan feedback back. Only the text was submitted, so this cannot use
+ * `isDirty()` as its guard: staged attachments keep that true even when the text
+ * box is empty, which would block every restore.
+ */
+function restorePlanFeedbackDraft(message: string) {
+	if (hasNonWhitespaceDraftText.value) return false;
+	inputText.value = message;
+	return true;
+}
+
+/**
+ * Puts a submitted draft back after a refused send. Returns false when the user
+ * has already typed something newer, so the caller knows the draft is gone.
+ *
+ * The pre-fill snapshot is restored with the text -- always after it, since an
+ * empty assignment clears the pre-fill -- so retrying stays attributed to the
+ * surface that wrote the draft rather than reporting as user-typed.
+ */
 function restoreSubmittedDraft(
 	message: string,
 	files: File[],
 	resources: InstanceAiResourceAttachment[],
+	prefill: ActivePrefill | null,
 ) {
-	if (isDirty()) return false;
+	const restorePrefill = () => {
+		activePrefill.value = prefill ? { ...prefill } : null;
+	};
+	if (isDirty()) {
+		// Dirty only because something was attached after the send: the text slot is
+		// still free, so give the draft back and leave the new attachments alone.
+		if (inputText.value.trim()) return false;
+		inputText.value = message;
+		restorePrefill();
+		return true;
+	}
 	inputText.value = message;
+	restorePrefill();
 	attachedFiles.value = [...files];
 	attachedResources.value = [...resources];
 	return true;
 }
 
-function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
+/**
+ * `prefill` is the snapshot its caller took when it read the message, not live
+ * state: `handleSubmit` awaits file conversion in between, and the composer can
+ * be edited during that await.
+ */
+function submitComposerMessage(
+	message: string,
+	attachments: InstanceAiAttachment[] | undefined,
+	prefill: ActivePrefill | null,
+	responseStartedAtEpochMs = instanceAiResponseNow(),
+) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
+		return;
+	}
+
+	// Plan feedback is resumed as a plain string. Send the text alone and leave
+	// anything staged in place, so it stays visible for a later real message
+	// instead of being dropped on a send that could never carry it. A suggestion
+	// draft can reach here, but feedback on a plan is not a suggestion submission.
+	if (props.isAwaitingPlanReview) {
+		// Feedback on a plan is the user's own answer, so it reports as typed even
+		// when a pre-filled draft is what reached here -- the same reason this path
+		// skips the suggestion-submitted event below.
+		emitSubmittedMessage(
+			message,
+			undefined,
+			() => restorePlanFeedbackDraft(message),
+			USER_TYPED_MESSAGE,
+			responseStartedAtEpochMs,
+		);
+		resetDraftComposer({ keepAttachments: true });
 		return;
 	}
 
@@ -339,9 +462,9 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	emitSubmittedMessage(
 		message,
 		attachments,
-		submittedFiles.length > 0 || submittedResources.length > 0
-			? () => restoreSubmittedDraft(message, submittedFiles, submittedResources)
-			: undefined,
+		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
+		resolveAuthorship(message, prefill),
+		responseStartedAtEpochMs,
 	);
 	resetDraftComposer();
 }
@@ -352,12 +475,29 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 function submitSuggestion(payload: SuggestionSelectionPayload) {
 	const prompt = getSuggestionPrompt(payload);
 	selectedSuggestionDraft.value = { ...payload, originalPrompt: prompt };
-	submitComposerMessage(prompt);
+	// Passed by argument, not staged in `activePrefill`: the composer is already
+	// empty on this path, so `resetDraftComposer` leaves `inputText` unchanged and
+	// the watcher never clears it -- a later typed message would inherit it.
+	submitComposerMessage(prompt, undefined, {
+		text: prompt,
+		prefillType: payload.prefillType,
+		prefillId: payload.suggestionId,
+	});
 }
 
 async function handleSubmit() {
 	const text = inputText.value.trim();
+	// Read with the text: the file conversion below awaits, and an edit during it
+	// would otherwise pair this message with the next pre-fill's authorship.
+	const prefill = activePrefill.value;
 	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
+		return;
+	}
+	const responseStartedAtEpochMs = instanceAiResponseNow();
+
+	// Plan feedback carries no attachments, so skip encoding the staged files.
+	if (props.isAwaitingPlanReview) {
+		submitComposerMessage(text, undefined, null, responseStartedAtEpochMs);
 		return;
 	}
 
@@ -371,7 +511,12 @@ async function handleSubmit() {
 		: [];
 	const attachments = [...fileAttachments, ...attachedResources.value];
 
-	submitComposerMessage(text, attachments.length ? attachments : undefined);
+	submitComposerMessage(
+		text,
+		attachments.length ? attachments : undefined,
+		prefill,
+		responseStartedAtEpochMs,
+	);
 }
 
 function removeResource(index: number) {
@@ -407,7 +552,8 @@ function handleStop() {
 
 function handleTabAutocomplete() {
 	if (!inputText.value && props.contextualSuggestion) {
-		inputText.value = props.contextualSuggestion;
+		// n8n wrote this follow-up, so accepting it is a pre-fill like any other.
+		setPrefill({ text: props.contextualSuggestion, prefillType: 'contextual_followup' });
 	}
 }
 
@@ -504,6 +650,11 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 		...payload,
 		originalPrompt: prompt,
 	};
+	activePrefill.value = {
+		text: prompt,
+		prefillType: payload.prefillType,
+		prefillId: payload.suggestionId,
+	};
 	inputText.value = prompt;
 
 	await nextTick();
@@ -527,9 +678,9 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
-			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
+			:class="$style.inputWrapper"
 			:placeholder="placeholder"
-			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
+			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
@@ -537,7 +688,7 @@ const resizable = computed(() => {
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
-			:show-attach="!props.isPlanEditMode"
+			:show-attach="!props.isAwaitingPlanReview"
 			:show-attach-button="false"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@submit="handleSubmit"
@@ -547,37 +698,7 @@ const resizable = computed(() => {
 		>
 			<template #attachments>
 				<div
-					v-if="props.isPlanEditMode"
-					:class="$style.contextChip"
-					data-test-id="instance-ai-plan-edit-context"
-				>
-					<N8nTag
-						:text="i18n.baseText('instanceAi.planReview.askForEdits')"
-						:clickable="false"
-						size="lg"
-					>
-						<template #tag>
-							<span :class="$style.contextChipContent">
-								<N8nIcon icon="corner-down-right" size="small" />
-								<span :class="$style.contextChipText">{{
-									i18n.baseText('instanceAi.planReview.askForEdits')
-								}}</span>
-								<N8nIconButton
-									icon="x"
-									size="xsmall"
-									variant="ghost"
-									:class="$style.contextChipClose"
-									:title="i18n.baseText('generic.close')"
-									:aria-label="i18n.baseText('generic.close')"
-									data-test-id="instance-ai-plan-edit-cancel"
-									@click.stop="emit('cancel-plan-edit')"
-								/>
-							</span>
-						</template>
-					</N8nTag>
-				</div>
-				<div
-					v-else-if="props.contextChip"
+					v-if="props.contextChip"
 					:class="$style.contextChip"
 					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
 				>
@@ -605,10 +726,7 @@ const resizable = computed(() => {
 						</template>
 					</N8nTag>
 				</div>
-				<div
-					v-if="!props.isPlanEditMode && attachedResources.length > 0"
-					:class="$style.attachments"
-				>
+				<div v-if="attachedResources.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(attachment, index) in attachedResources"
 						:key="`res-${index}`"
@@ -618,7 +736,7 @@ const resizable = computed(() => {
 						@update:attachment="attachedResources[index] = $event"
 					/>
 				</div>
-				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
+				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
 						:key="index"
@@ -628,7 +746,7 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template v-if="!props.isPlanEditMode" #footer-start>
+			<template v-if="!props.isAwaitingPlanReview" #footer-start>
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					@attach-files="chatInputRef?.openFilePicker()"
@@ -708,10 +826,6 @@ const resizable = computed(() => {
 .contextChipClose {
 	flex: 0 0 auto;
 	margin-right: calc(var(--spacing--2xs) * -1);
-}
-
-.planEditInput {
-	gap: var(--spacing--2xs);
 }
 
 :global(.suggestions-fade-enter-active) {

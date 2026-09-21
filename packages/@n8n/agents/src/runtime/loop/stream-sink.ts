@@ -11,6 +11,7 @@ import type {
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
@@ -195,6 +196,10 @@ export class StreamSink implements RunOutputSink<void> {
 			try {
 				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
 			} catch (error) {
+				if (isAttachmentValidationError(error)) {
+					if (!attemptState.streamedContent) await ctx.onInputRejected?.(error);
+					throw error;
+				}
 				// A stalled or empty stream before any content is invisible to the user
 				// (and to the host's persistence) — re-issue the request instead of
 				// failing the run for what is usually a dead connection at request time.
@@ -280,6 +285,7 @@ export class StreamSink implements RunOutputSink<void> {
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
 		for await (const chunk of chunkStream) {
+			if (chunk.type === 'error' && isAttachmentValidationError(chunk.error)) throw chunk.error;
 			// The rejected result promises surface this error after the stream
 			// closes. Forwarding it here would mark a successful retry as failed.
 			// Runs before the `streamedContent` check below so a skipped chunk
@@ -374,6 +380,7 @@ export class StreamSink implements RunOutputSink<void> {
 				toolName: r.toolName,
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
+				...(r.mcpServerName !== undefined ? { mcpServerName: r.mcpServerName } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });

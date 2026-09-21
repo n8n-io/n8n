@@ -33,22 +33,28 @@ export interface CallerContext {
  * at birth: the step was considered and decided against (no live input), so it
  * never runs.
  */
-export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled';
+export const STEP_STATUSES = [
+	'queued',
+	'running',
+	'completed',
+	'failed',
+	'skipped',
+	'cancelled',
+] as const;
+
+export type StepStatus = (typeof STEP_STATUSES)[number];
 
 /**
  * A settled step has reached a terminal state: its status and outputs are
  * immutable, and it will never produce more data. Planning decisions are made
  * over settled predecessors only, so they hold no matter when they're computed.
  */
-export const SETTLED_STEP_STATUSES: readonly StepStatus[] = [
-	'completed',
-	'failed',
-	'skipped',
-	'cancelled',
-];
+export const SETTLED_STEP_STATUSES = ['completed', 'failed', 'skipped', 'cancelled'] as const;
 
-export function isSettledStatus(status: StepStatus): boolean {
-	return SETTLED_STEP_STATUSES.includes(status);
+export type SettledStepStatus = (typeof SETTLED_STEP_STATUSES)[number];
+
+export function isSettledStatus(status: StepStatus): status is SettledStepStatus {
+	return (SETTLED_STEP_STATUSES as readonly StepStatus[]).includes(status);
 }
 
 /**

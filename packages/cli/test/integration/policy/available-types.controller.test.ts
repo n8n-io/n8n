@@ -11,6 +11,7 @@ import type { Project, User } from '@n8n/db';
 import { NodeTypes } from '@/node-types';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
+import { clearPolicyCache } from './shared/policy-cache';
 
 const nodeTypes = mockInstance(NodeTypes);
 
@@ -85,6 +86,7 @@ afterEach(async () => {
 		'TypeAvailabilityPolicyScope',
 		'TypeAvailabilityPolicy',
 	]);
+	await clearPolicyCache();
 });
 
 /**

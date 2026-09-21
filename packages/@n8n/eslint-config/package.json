@@ -20,6 +20,10 @@
       "types": "./dist/configs/nodes.d.js",
       "default": "./dist/configs/nodes.js"
     },
+    "./functional-guardrails": {
+      "types": "./dist/configs/functional-guardrails.d.js",
+      "default": "./dist/configs/functional-guardrails.js"
+    },
     "./plugin": {
       "types": "./dist/plugin.d.ts",
       "default": "./dist/plugin.js"
@@ -43,7 +47,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
-    "@types/eslint": "^9.6.1",
     "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",

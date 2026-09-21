@@ -198,6 +198,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		],
 	},
 	{
+		id: 'nodes',
+		labelKey: 'settings.n8nAgent.permissions.group.nodes',
+		keys: ['executeNode'],
+	},
+	{
 		id: 'folders',
 		labelKey: 'settings.n8nAgent.permissions.group.folders',
 		keys: ['createFolder', 'deleteFolder'],
@@ -899,7 +904,7 @@ function openAiUsageSettings() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: 0 0 var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .permissionRow {

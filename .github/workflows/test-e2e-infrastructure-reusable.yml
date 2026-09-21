@@ -26,13 +26,14 @@ jobs:
             shards: '[{"shard":1,"images":""}]'
           - lane: webhook
             grep: '@bench:webhook'
-            # 2 shards — webhook lane grew from 6 to 9 spec files with the
-            # dedicated-proc topology (DEVP-200). Single shard pushed wall time
-            # past 40 min; two shards halves that. Bump to 3 if specs grow further.
-            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
+            # Three shards keep the runtime comparison profiles from extending
+            # this lane beyond the existing 25-minute target.
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""}]'
           - lane: kafka
             grep: '@bench:kafka'
-            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
+            # The v2 profiles add two isolated stacks. Keep lane wall time near
+            # the existing 22-minute target instead of serializing both profiles.
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""}]'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
@@ -96,7 +97,7 @@ jobs:
     name: Notify Cats on failure
     runs-on: ubuntu-latest
     needs: [prepare-docker, benchmark, sizing-matrix]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
     permissions:
       contents: read
     steps:

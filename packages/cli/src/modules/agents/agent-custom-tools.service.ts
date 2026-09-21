@@ -75,7 +75,10 @@ export class AgentCustomToolsService {
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 		if (options.recordTelemetry !== false) {
 			this.modificationTelemetry.record({
 				agent: saved,
@@ -128,7 +131,10 @@ export class AgentCustomToolsService {
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: context.modifiedBy },
+			context.pushRef,
+		);
 		this.modificationTelemetry.record({
 			agent: saved,
 			projectId,

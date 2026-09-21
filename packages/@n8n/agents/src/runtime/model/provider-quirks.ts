@@ -183,7 +183,8 @@ export function getProviderQuirks(providerId: string): ProviderQuirks {
 }
 
 /**
- * Default completion-token cap for reasoning-heavy Kimi K3 models.
+ * Default completion-token cap for reasoning-heavy models whose providers
+ * otherwise apply a much lower fallback.
  * Context windows are often 131072 shared input+output; requesting the full
  * window as max_tokens overflows once any prompt tokens are present.
  */
@@ -195,7 +196,8 @@ export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
-	if (modelId.toLowerCase().includes('kimi-k3')) {
+	const normalizedModelId = modelId.toLowerCase();
+	if (normalizedModelId.includes('kimi-k3') || normalizedModelId.startsWith('minimax/')) {
 		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;

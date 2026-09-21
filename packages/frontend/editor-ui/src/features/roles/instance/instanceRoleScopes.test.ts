@@ -8,6 +8,7 @@ import {
 	getEscalationWarningKey,
 	isOptionImplied,
 	isOptionMandatory,
+	mandatoryOptionTooltipKey,
 	resolveOptionState,
 	toggleOptionInGroup,
 	withMandatoryInstanceScopes,
@@ -80,7 +81,8 @@ describe('instanceRoleScopes config', () => {
 
 		it('exposes the configured option labels per resource', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.apiKey)).toEqual(['Manage own', 'Manage all']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['View', 'Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.variable)).toEqual(['View', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual([
@@ -136,7 +138,7 @@ describe('isOptionImplied', () => {
 		expect(isOptionImplied(manageOwn, apiKeyGroup.options, allScopes)).toBe(true);
 	});
 
-	it('returns false for options in groups with no superseding relationships', () => {
+	it('returns false for a superseding option, even with its own scopes fully present', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
 		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
 		expect(
@@ -152,6 +154,14 @@ describe('isOptionImplied', () => {
 
 	it('returns false when the superseding option is present but "Manage own" is checked via own scopes only', () => {
 		expect(isOptionImplied(manageOwn, apiKeyGroup.options, ownScopes)).toBe(false);
+	});
+
+	it('renders variable "View" as implied under a fully-checked variable "Manage"', () => {
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const view = variableGroup.options.find((o) => o.key === 'View')!;
+		const manage = variableGroup.options.find((o) => o.key === 'Manage')!;
+		expect(isOptionImplied(view, variableGroup.options, [...manage.scopes])).toBe(true);
+		expect(isOptionImplied(view, variableGroup.options, [...view.scopes])).toBe(false);
 	});
 });
 
@@ -191,10 +201,15 @@ describe('resolveOptionState', () => {
 		expect(resolveOptionState(manageAll, apiKeyGroup.options, partialOwn)).toBe('indeterminate');
 	});
 
-	it('does not affect unrelated groups', () => {
+	it('applies the same View/Manage arithmetic to tags', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
 		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+		// 1 of View's 2 scopes — View isn't fully checked, so this stays a genuine partial.
 		expect(resolveOptionState(tagManage, tagGroup.options, ['tag:read'])).toBe('indeterminate');
+		// View fully checked: "Manage" would read 2/5, but both scopes are View's.
+		expect(resolveOptionState(tagManage, tagGroup.options, ['tag:read', 'tag:list'])).toBe(
+			'unchecked',
+		);
 		expect(
 			resolveOptionState(tagManage, tagGroup.options, [
 				'tag:read',
@@ -290,6 +305,28 @@ describe('toggleOptionInGroup', () => {
 	});
 
 	it('removes the whole scope set when the option has no subordinate', () => {
+		const insightsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'insights')!;
+		const insightsView = insightsGroup.options.find((o) => o.key === 'View')!;
+		const result = toggleOptionInGroup(
+			['user:read', ...insightsView.scopes],
+			insightsView,
+			insightsGroup.options,
+		);
+		expect(result).toEqual(['user:read']);
+	});
+
+	it('downgrades to "View" when unchecking variable "Manage"', () => {
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const manageVariables = variableGroup.options.find((o) => o.key === 'Manage')!;
+		const result = toggleOptionInGroup(
+			['user:list', ...manageVariables.scopes],
+			manageVariables,
+			variableGroup.options,
+		);
+		expect(result).toEqual(['user:list', 'variable:list', 'variable:read']);
+	});
+
+	it('downgrades to "View" when unchecking tag "Manage", keeping the mandatory scopes', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
 		const manageTags = tagGroup.options.find((o) => o.key === 'Manage')!;
 		const result = toggleOptionInGroup(
@@ -297,7 +334,7 @@ describe('toggleOptionInGroup', () => {
 			manageTags,
 			tagGroup.options,
 		);
-		expect(result).toEqual(['user:read']);
+		expect(result).toEqual(['user:read', 'tag:read', 'tag:list']);
 	});
 
 	it('does not mutate the input array', () => {
@@ -359,30 +396,66 @@ describe('mandatory instance options', () => {
 	const userView = userGroup.options.find((o) => o.key === 'View')!;
 	const userManage = userGroup.options.find((o) => o.key === 'Manage')!;
 
-	it('flags "Users: View" as mandatory and every other option as not', () => {
+	const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
+	const tagView = tagGroup.options.find((o) => o.key === 'View')!;
+	const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+
+	const MANDATORY = [
+		['user', 'View'],
+		['tag', 'View'],
+	] as const;
+
+	it('flags "Users: View" and "Tags: View" as mandatory and every other option as not', () => {
 		expect(isOptionMandatory('user', userView)).toBe(true);
+		expect(isOptionMandatory('tag', tagView)).toBe(true);
 		expect(isOptionMandatory('user', userManage)).toBe(false);
+		expect(isOptionMandatory('tag', tagManage)).toBe(false);
 
 		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
 			for (const option of group.options) {
-				if (group.resource === 'user' && option.key === 'View') continue;
+				if (MANDATORY.some(([r, k]) => r === group.resource && k === option.key)) continue;
 				expect(isOptionMandatory(group.resource, option)).toBe(false);
 			}
 		}
 	});
 
-	it('withMandatoryInstanceScopes adds "Users: View" scopes to an empty list', () => {
-		expect(new Set(withMandatoryInstanceScopes([]))).toEqual(new Set(userView.scopes));
+	it('resolves every mandatory entry to a real option in its group (typo guard)', () => {
+		for (const [resource, key] of MANDATORY) {
+			const group = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === resource);
+			expect(group?.options.some((o) => o.key === key)).toBe(true);
+		}
+	});
+
+	it('gives a mandatory option its override tooltip, or its own description as fallback', () => {
+		expect(mandatoryOptionTooltipKey('user', userView)).toBe('instanceRoles.option.mandatory');
+		expect(mandatoryOptionTooltipKey('tag', tagView)).toBe('instanceRoles.description.tag.view');
+	});
+
+	it('returns no mandatory tooltip key for an optional option', () => {
+		expect(mandatoryOptionTooltipKey('user', userManage)).toBeUndefined();
+		expect(mandatoryOptionTooltipKey('tag', tagManage)).toBeUndefined();
+	});
+
+	it("withMandatoryInstanceScopes adds every mandatory option's scopes to an empty list", () => {
+		expect(withMandatoryInstanceScopes([])).toEqual(['user:list', 'tag:read', 'tag:list']);
 	});
 
 	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
 		const withDuplicate = withMandatoryInstanceScopes(['user:list', 'tag:read']);
 		expect(withDuplicate.filter((s) => s === 'user:list')).toHaveLength(1);
+		expect(withDuplicate.filter((s) => s === 'tag:read')).toHaveLength(1);
 		expect(withDuplicate).toEqual(expect.arrayContaining(['user:list', 'tag:read']));
 	});
 
 	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {
-		const result = withMandatoryInstanceScopes(['tag:read', 'tag:list']);
-		expect(result).toEqual(expect.arrayContaining(['tag:read', 'tag:list', ...userView.scopes]));
+		const result = withMandatoryInstanceScopes(['insights:read', 'insights:list']);
+		expect(result).toEqual(
+			expect.arrayContaining([
+				'insights:read',
+				'insights:list',
+				...userView.scopes,
+				...tagView.scopes,
+			]),
+		);
 	});
 });

@@ -70,7 +70,7 @@ export class WorkflowFinderService {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-	): Promise<{ versionId: string; updatedAt: Date } | null> {
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: Date } | null> {
 		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
 		const sw = await this.sharedWorkflowRepository.findOne({
 			where: { workflowId, ...where },
@@ -78,11 +78,15 @@ export class WorkflowFinderService {
 			select: {
 				workflowId: true,
 				projectId: true,
-				workflow: { id: true, versionId: true, updatedAt: true },
+				workflow: { id: true, versionId: true, activeVersionId: true, updatedAt: true },
 			},
 		});
 		if (!sw?.workflow) return null;
-		return { versionId: sw.workflow.versionId, updatedAt: sw.workflow.updatedAt };
+		return {
+			versionId: sw.workflow.versionId,
+			activeVersionId: sw.workflow.activeVersionId,
+			updatedAt: sw.workflow.updatedAt,
+		};
 	}
 
 	private async buildSingleWorkflowReadWhere(

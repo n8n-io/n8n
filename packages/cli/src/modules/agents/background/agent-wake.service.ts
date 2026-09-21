@@ -9,11 +9,13 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentConversationStateService } from '../agent-conversation-state.service';
 import {
 	AgentExecutionOrchestratorService,
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -21,9 +23,7 @@ import {
 } from './background-job-messages';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
-import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
@@ -50,10 +50,9 @@ export class AgentWakeService {
 
 	constructor(
 		private readonly jobRepository: AgentBackgroundJobRepository,
-		private readonly executionRepository: AgentExecutionRepository,
+		private readonly conversationState: AgentConversationStateService,
 		private readonly agentRepository: AgentRepository,
 		private readonly userRepository: UserRepository,
-		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly lockService: LockService,
@@ -61,6 +60,7 @@ export class AgentWakeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -165,14 +165,11 @@ export class AgentWakeService {
 			return;
 		}
 
-		// Execution records keep their suspended status after a resume.
-		// Check the checkpoint store to determine whether the thread is still suspended.
-		if (
-			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			((await this.executionRepository.hasSuspendedRun(threadId)) &&
-				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
-					null)
-		) {
+		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
+			first.parentAgentId,
+			threadId,
+		);
+		if (running || suspendedCheckpoint !== null) {
 			return;
 		}
 
@@ -205,6 +202,11 @@ export class AgentWakeService {
 					agentId: agent.id,
 					projectId: agent.projectId,
 					message: formatWakeMessage(jobs),
+					backgroundJobSignal: {
+						tasks: jobs.flatMap(({ id, title, kind, status }) =>
+							status === 'running' ? [] : [{ id, title, kind, status }],
+						),
+					},
 					memory: { threadId, resourceId: first.parentResourceId },
 					identity,
 					abortSignal: signal,
@@ -214,7 +216,7 @@ export class AgentWakeService {
 			}
 
 			if (signal.aborted) return;
-			await this.jobRepository.markMailConsumed(
+			await this.backgroundJobService.markMailConsumed(
 				threadId,
 				jobs.map((job) => job.id),
 			);

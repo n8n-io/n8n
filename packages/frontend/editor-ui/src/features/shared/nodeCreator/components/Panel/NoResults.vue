@@ -1,19 +1,34 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink } from '@n8n/design-system';
 import { REGULAR_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/app/constants';
 import type { NodeFilterType } from '@/Interface';
 
-defineProps<{
-	query: string;
-	rootView?: NodeFilterType;
-}>();
+const props = withDefaults(
+	defineProps<{
+		query: string;
+		rootView?: NodeFilterType;
+		suggestHttpRequest?: boolean;
+		suggestWebhook?: boolean;
+	}>(),
+	{ rootView: undefined, suggestHttpRequest: true, suggestWebhook: true },
+);
 
 const emit = defineEmits<{
 	addHttpNode: [];
 	addWebhookNode: [];
 }>();
 const i18n = useI18n();
+
+const showWebhook = computed(
+	() => props.suggestWebhook && props.rootView === TRIGGER_NODE_CREATOR_VIEW,
+);
+const showHttpRequest = computed(
+	() =>
+		props.suggestHttpRequest &&
+		(props.rootView === REGULAR_NODE_CREATOR_VIEW || props.rootView === TRIGGER_NODE_CREATOR_VIEW),
+);
 </script>
 
 <template>
@@ -25,18 +40,23 @@ const i18n = useI18n();
 				})
 			}}
 		</p>
-		<p
-			v-if="rootView === REGULAR_NODE_CREATOR_VIEW || rootView === TRIGGER_NODE_CREATOR_VIEW"
-			:class="$style.action"
-		>
+		<p v-if="showWebhook || showHttpRequest" :class="$style.action">
 			{{ i18n.baseText('nodeCreator.noResults.connectUsingSuggestedNode') }}
-			<template v-if="rootView === TRIGGER_NODE_CREATOR_VIEW">
+			<template v-if="showWebhook">
 				<N8nLink size="small" theme="text" underline @click="emit('addWebhookNode')">
 					{{ i18n.baseText('nodeCreator.noResults.webhook') }}
 				</N8nLink>
-				{{ `${i18n.baseText('nodeCreator.noResults.or')} ` }}
+				<template v-if="showHttpRequest">{{
+					` ${i18n.baseText('nodeCreator.noResults.or')} `
+				}}</template>
 			</template>
-			<N8nLink size="small" theme="text" underline @click="emit('addHttpNode')">
+			<N8nLink
+				v-if="showHttpRequest"
+				size="small"
+				theme="text"
+				underline
+				@click="emit('addHttpNode')"
+			>
 				{{ i18n.baseText('nodeCreator.noResults.httpRequest') }}
 			</N8nLink>
 			{{ i18n.baseText('nodeCreator.noResults.node') }}
