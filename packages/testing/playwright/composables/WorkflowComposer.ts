@@ -119,11 +119,17 @@ export class WorkflowComposer {
 		await this.n8n.page.keyboard.press('ControlOrMeta+a');
 		await this.n8n.page.keyboard.press('Backspace');
 
+		// Only an account with global project:list searches the server (GET /projects); a
+		// member without it filters its already-fetched project list locally, with no
+		// matching response to wait for. Bound the wait so that misuse fails fast instead
+		// of hanging until the test timeout — every caller today authenticates as an owner
+		// or admin, both of which have project:list.
 		const searchResponse = this.n8n.page.waitForResponse(
 			(response) =>
 				response.request().method() === 'GET' &&
 				new URL(response.url()).pathname.endsWith('/projects') &&
 				new URL(response.url()).searchParams.get('search') === projectNameOrEmail,
+			{ timeout: 20_000 },
 		);
 		await this.n8n.page.keyboard.type(projectNameOrEmail, { delay: 50 });
 		await searchResponse;
@@ -139,18 +145,21 @@ export class WorkflowComposer {
 	private async selectFolderInMoveModal(folderName: string): Promise<void> {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
 
-		const folderSearchResponse = this.n8n.page.waitForResponse((response) => {
-			if (response.request().method() !== 'GET') return false;
-			const url = new URL(response.url());
-			if (!url.pathname.endsWith('/folders')) return false;
-			const filterParam = url.searchParams.get('filter');
-			if (!filterParam) return false;
-			try {
-				return (JSON.parse(filterParam) as { name?: string }).name === folderName;
-			} catch {
-				return false;
-			}
-		});
+		const folderSearchResponse = this.n8n.page.waitForResponse(
+			(response) => {
+				if (response.request().method() !== 'GET') return false;
+				const url = new URL(response.url());
+				if (!url.pathname.endsWith('/folders')) return false;
+				const filterParam = url.searchParams.get('filter');
+				if (!filterParam) return false;
+				try {
+					return (JSON.parse(filterParam) as { name?: string }).name === folderName;
+				} catch {
+					return false;
+				}
+			},
+			{ timeout: 20_000 },
+		);
 		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
 		await folderSearchResponse;
 
