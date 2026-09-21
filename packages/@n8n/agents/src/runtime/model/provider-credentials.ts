@@ -66,8 +66,21 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 * separately. Only used by the classic branch.
 			 */
 			deploymentName: z.string().optional(),
+			/**
+			 * Entra OAuth2 fields. The model factory mints a Bearer token from these
+			 * via `@n8n/client-oauth2` (client-credentials), mirroring the LangChain
+			 * Azure node. Mutually exclusive with `apiKey`.
+			 */
+			oauthClientId: z.string().optional(),
+			oauthClientSecret: z.string().optional(),
+			oauthAccessTokenUrl: z.string().optional(),
+			oauthScope: z.string().optional(),
+			oauthAuthentication: z.enum(['body', 'header']).optional(),
+			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),
 		})
 		.superRefine((data, ctx) => {
+			const hasApiKey = !!data.apiKey?.trim();
+			const hasEntra = !!data.oauthTokenData?.access_token;
 			if (data.endpointType === 'foundry') {
 				if (!data.baseURL?.trim()) {
 					ctx.addIssue({
@@ -76,14 +89,35 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 						message: 'baseURL is required',
 					});
 				}
-				return;
+			} else {
+				// Classic is the default when endpointType is omitted (legacy credentials).
+				if (!data.resourceName?.trim()) {
+					ctx.addIssue({
+						code: 'custom',
+						path: ['resourceName'],
+						message: 'Azure resourceName is required',
+					});
+				}
 			}
-			// Classic is the default when endpointType is omitted (legacy credentials).
-			if (!data.resourceName?.trim()) {
+			if (!hasApiKey && !hasEntra) {
 				ctx.addIssue({
 					code: 'custom',
-					path: ['resourceName'],
-					message: 'Azure resourceName is required',
+					path: ['apiKey'],
+					message: 'apiKey or Entra OAuth2 is required',
+				});
+			}
+			if (hasApiKey && hasEntra) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['apiKey'],
+					message: 'Use only one of apiKey or Entra OAuth2',
+				});
+			}
+			if (hasEntra && !data.oauthClientId?.trim()) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['oauthClientId'],
+					message: 'clientId is required for Entra OAuth2',
 				});
 			}
 		}),

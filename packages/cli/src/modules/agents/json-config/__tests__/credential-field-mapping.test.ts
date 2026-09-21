@@ -28,4 +28,74 @@ describe('mapCredentialForProvider', () => {
 
 		expect(mapCredentialForProvider('not-a-provider', raw)).toEqual(raw);
 	});
+
+	describe('azure-openai', () => {
+		it('maps an apiKey credential to apiKey + endpoint fields', () => {
+			expect(
+				mapCredentialForProvider('azure-openai', {
+					apiKey: 'az-key',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpoint: 'https://my-resource.openai.azure.com',
+					endpointType: 'classic',
+				}),
+			).toEqual({
+				apiKey: 'az-key',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				baseURL: 'https://my-resource.openai.azure.com',
+				endpointType: 'classic',
+			});
+		});
+
+		it('maps an Entra credential to OAuth fields and omits apiKey', () => {
+			expect(
+				mapCredentialForProvider('azure-openai', {
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpoint: 'https://my-resource.openai.azure.com',
+					endpointType: 'classic',
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+					scope: 'https://cognitiveservices.azure.com/.default',
+					authentication: 'body',
+					oauthTokenData: { access_token: 'stored-token' },
+				}),
+			).toEqual({
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				baseURL: 'https://my-resource.openai.azure.com',
+				endpointType: 'classic',
+				oauthClientId: 'client-id',
+				oauthClientSecret: 'client-secret',
+				oauthAccessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+				oauthScope: 'https://cognitiveservices.azure.com/.default',
+				oauthAuthentication: 'body',
+				oauthTokenData: { access_token: 'stored-token' },
+			});
+		});
+
+		it('maps a Foundry Entra credential through foundryEndpoint', () => {
+			expect(
+				mapCredentialForProvider('azure-openai', {
+					apiVersion: '2024-02-01',
+					endpointType: 'foundry',
+					foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+					oauthTokenData: { access_token: 'stored-token' },
+				}),
+			).toEqual({
+				apiVersion: '2024-02-01',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				endpointType: 'foundry',
+				oauthClientId: 'client-id',
+				oauthClientSecret: 'client-secret',
+				oauthAccessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+				oauthTokenData: { access_token: 'stored-token' },
+			});
+		});
+	});
 });
