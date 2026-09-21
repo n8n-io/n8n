@@ -58,7 +58,7 @@ function onClick() {
 		<N8nToggle
 			v-if="props.iconOnly"
 			:model-value="props.isPreviewOpen"
-			variant="ghost"
+			variant="subtle"
 			size="medium"
 			icon="flask-conical"
 			:label="label"

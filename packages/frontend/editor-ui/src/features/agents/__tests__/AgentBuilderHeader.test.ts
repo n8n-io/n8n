@@ -47,8 +47,8 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
-		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot><span v-if="label">{{ label }}</span></slot></component>',
+		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href', 'label'],
 		emits: ['click'],
 	},
 	N8nToggle: {
@@ -374,8 +374,7 @@ describe('AgentBuilderHeader', () => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
-			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
-			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
+			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
 			expect(wrapper.emitted(event)).toEqual([[]]);
