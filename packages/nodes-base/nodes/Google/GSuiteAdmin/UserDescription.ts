@@ -184,9 +184,10 @@ const secondaryEmailsField: INodeProperties = {
 					name: 'type',
 					type: 'options',
 					options: [
+						{ name: 'Custom', value: 'custom' },
 						{ name: 'Home', value: 'home' },
-						{ name: 'Work', value: 'work' },
 						{ name: 'Other', value: 'other' },
+						{ name: 'Work', value: 'work' },
 					],
 					default: 'work',
 					description: 'The type of the email account',
@@ -514,18 +515,20 @@ export const userExtraFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{ name: 'Domain Only', value: 'domain_only' },
-							{ name: 'Other', value: 'other' },
 							{ name: 'School', value: 'school' },
+							{ name: 'Unknown', value: 'unknown' },
 							{ name: 'Work', value: 'work' },
 						],
 						default: 'work',
 					},
 					{
+						// The API has no `custom` value for organization types, so this field
+						// is set on its own instead of being gated behind Type.
 						displayName: 'Custom Type',
 						name: 'customType',
 						type: 'string',
 						default: '',
-						description: 'A free-form type',
+						description: 'A free-form organization type. Set this instead of Type.',
 					},
 					{
 						displayName: 'Department',
