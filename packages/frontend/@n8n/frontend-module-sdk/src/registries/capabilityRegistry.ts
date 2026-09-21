@@ -7,16 +7,19 @@ import type { CapabilityToken } from '../types/capability';
  * Not reactive, unlike `componentRegistry`: a capability is an action a module
  * calls from a handler or a guard, so nothing renders off it. A capability whose
  * value changes should carry a `Ref` and stay one provider.
+ *
+ * Keyed by the token itself, not by `token.key`: two tokens that pick the same
+ * string then get their own slot instead of one reading the other's value.
  */
-const providers = new Map<string, unknown>();
+const providers = new Map<CapabilityToken<unknown>, unknown>();
 
 export function provide<T>(token: CapabilityToken<T>, implementation: T): void {
-	if (providers.has(token.key) && providers.get(token.key) !== implementation) {
+	if (providers.has(token) && providers.get(token) !== implementation) {
 		console.warn(`Capability "${token.key}" is already provided. Skipping.`);
 		return;
 	}
 
-	providers.set(token.key, implementation);
+	providers.set(token, implementation);
 }
 
 /**
@@ -24,9 +27,9 @@ export function provide<T>(token: CapabilityToken<T>, implementation: T): void {
  * token's `fallback` on purpose: this is the presence check.
  */
 export function tryUse<T>(token: CapabilityToken<T>): T | undefined {
-	// The one cast here. A token is the only way to write its key, so whatever is
-	// stored under it came from a `provide()` call with the same `T`.
-	return providers.get(token.key) as T | undefined;
+	// The one cast here. The token is the slot and `provide()` is the only writer,
+	// so whatever is stored under it came from a `provide()` call with the same `T`.
+	return providers.get(token) as T | undefined;
 }
 
 /**
@@ -45,11 +48,11 @@ export function use<T>(token: CapabilityToken<T>): T {
 }
 
 export function has(token: CapabilityToken<unknown>): boolean {
-	return providers.has(token.key);
+	return providers.has(token);
 }
 
 export function unprovide(token: CapabilityToken<unknown>): void {
-	providers.delete(token.key);
+	providers.delete(token);
 }
 
 /** Test isolation only. */

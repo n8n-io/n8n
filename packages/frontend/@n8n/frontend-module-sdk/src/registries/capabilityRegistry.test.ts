@@ -65,6 +65,14 @@ describe('capabilityRegistry', () => {
 		expect(warn).toHaveBeenCalledWith('Capability "test-greeter" is already provided. Skipping.');
 	});
 
+	it('gives two tokens that share a key string their own slot', () => {
+		const sameKey = declareCapability<() => number>('test-greeter');
+		capabilityRegistry.provide(greeter, hello);
+
+		expect(capabilityRegistry.tryUse(sameKey)).toBeUndefined();
+		expect(capabilityRegistry.use(greeter)).toBe(hello);
+	});
+
 	it('frees the slot on unprovide', () => {
 		capabilityRegistry.provide(greeter, hello);
 		capabilityRegistry.unprovide(greeter);

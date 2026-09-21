@@ -3,6 +3,7 @@
  * one, and the token is the only way to read or write its slot in the registry.
  */
 export interface CapabilityToken<T> {
+	/** Labels the capability in registry warnings and errors. */
 	readonly key: string;
 	/** Returned by `use()` when nothing is provided. Absent means `use()` throws. */
 	readonly fallback?: T;

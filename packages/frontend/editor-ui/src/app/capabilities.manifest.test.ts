@@ -9,10 +9,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 describe('registerShellCapabilities', () => {
 	beforeEach(() => {
-		capabilityRegistry.clear();
 		setActivePinia(createTestingPinia());
 	});
 
+	// Only here, never in `beforeEach`: the first test must read the registry as the
+	// import of the manifest left it, so a `provide()` at its module scope fails it.
 	afterEach(() => {
 		capabilityRegistry.clear();
 	});
