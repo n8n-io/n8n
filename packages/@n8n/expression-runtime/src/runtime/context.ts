@@ -11,7 +11,7 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
-import { TRANSFER_SANITISED_KEY, TRANSFER_UNUSABLE_KEY } from './transfer';
+import { TRANSFER_MAX_DEPTH, TRANSFER_SANITISED_KEY, TRANSFER_UNUSABLE_KEY } from './transfer';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -93,21 +93,24 @@ function isTransferredCopy(value: unknown): value is TransferredCopy {
 	return typeof value.copy === 'function';
 }
 
-const MAX_REVIVE_DEPTH = 128;
-
 interface UnusableMarker {
 	[TRANSFER_UNUSABLE_KEY]: true;
 	message: string;
 }
 
-function isUnusableMarker(value: unknown): value is UnusableMarker {
+/** A marker holds its flag and one payload key, so user data of a wider shape stays data. */
+function isFramed(value: unknown, key: string): value is Record<string, unknown> {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		(value as UnusableMarker)[TRANSFER_UNUSABLE_KEY] === true &&
-		typeof (value as UnusableMarker).message === 'string' &&
+		key in value &&
+		(value as Record<string, unknown>)[key] === true &&
 		Object.keys(value).length === 2
 	);
+}
+
+function isUnusableMarker(value: unknown): value is UnusableMarker {
+	return isFramed(value, TRANSFER_UNUSABLE_KEY) && typeof value.message === 'string';
 }
 
 interface SanitisedEnvelope {
@@ -116,13 +119,7 @@ interface SanitisedEnvelope {
 }
 
 function isSanitisedEnvelope(value: unknown): value is SanitisedEnvelope {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		(value as SanitisedEnvelope)[TRANSFER_SANITISED_KEY] === true &&
-		'value' in value &&
-		Object.keys(value).length === 2
-	);
+	return isFramed(value, TRANSFER_SANITISED_KEY) && 'value' in value;
 }
 
 function defineUnusable(owner: object, key: string, message: string): void {
@@ -136,7 +133,7 @@ function defineUnusable(owner: object, key: string, message: string): void {
 }
 
 function reviveUnusable(value: unknown, depth: number): void {
-	if (value === null || typeof value !== 'object' || depth >= MAX_REVIVE_DEPTH) return;
+	if (value === null || typeof value !== 'object' || depth >= TRANSFER_MAX_DEPTH) return;
 	for (const key of Object.keys(value)) {
 		const member = (value as Record<string, unknown>)[key];
 		if (isUnusableMarker(member)) {

@@ -49,33 +49,28 @@ const vmTransferProbe: TransferProbe = (value) => {
 	return true;
 };
 
+/** The sentinel reduced to the fields a copy always takes. */
+function strippedSentinel(sentinel: ErrorSentinel): ErrorSentinel {
+	return {
+		__isError: true,
+		name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
+		message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
+		extra: {},
+	};
+}
+
 /** For `callHost`, whose guest side unwraps a copy. Drops the extra fields when they do not copy. */
 function copySentinel(sentinel: ErrorSentinel): ivm.ExternalCopy<unknown> {
 	try {
 		return new (getIvm().ExternalCopy)(sentinel);
 	} catch {
-		return new (getIvm().ExternalCopy)({
-			__isError: true,
-			name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
-			message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
-			extra: {},
-		} satisfies ErrorSentinel);
+		return new (getIvm().ExternalCopy)(strippedSentinel(sentinel));
 	}
 }
 
 /** For the lazy callbacks, whose guest side reads the value as it stands. */
 function transferableSentinel(sentinel: ErrorSentinel): ErrorSentinel {
-	try {
-		new (getIvm().ExternalCopy)(sentinel).release();
-		return sentinel;
-	} catch {
-		return {
-			__isError: true,
-			name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
-			message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
-			extra: {},
-		};
-	}
+	return vmTransferProbe(sentinel) ? sentinel : strippedSentinel(sentinel);
 }
 
 // Captured at module load so values rendered into generated code stay stable

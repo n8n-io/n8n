@@ -31,6 +31,9 @@ export const TRANSFER_UNUSABLE_KEY = '__n8nUnusableValue';
 /** Marks a result whose refused members were replaced by unusable markers. */
 export const TRANSFER_SANITISED_KEY = '__n8nSanitisedItem';
 
+/** Depth cap for the host walk that writes unusable markers and the guest walk that reads them. */
+export const TRANSFER_MAX_DEPTH = 128;
+
 /**
  * Keys that make an object look like our framing.
  *

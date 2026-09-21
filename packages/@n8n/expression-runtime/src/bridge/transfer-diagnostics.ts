@@ -1,12 +1,15 @@
 import { types } from 'node:util';
 
-import { TRANSFER_SANITISED_KEY, TRANSFER_UNUSABLE_KEY } from '../runtime/transfer';
+import {
+	TRANSFER_MAX_DEPTH,
+	TRANSFER_SANITISED_KEY,
+	TRANSFER_UNUSABLE_KEY,
+} from '../runtime/transfer';
+import type { BridgeMessage } from './bridge-messages';
 import type { WorkflowData } from '../types';
 import { ExpressionError } from '../types';
 
 export type TransferProbe = (value: unknown) => boolean;
-
-const MAX_RECURSION_DEPTH = 128;
 
 export const MAX_DIAGNOSTIC_MS = 250;
 
@@ -179,7 +182,7 @@ function walk(
 	if (value === null || typeof value !== 'object') return { path, descriptor: describe(value) };
 	if (types.isProxy(value)) return { path, descriptor: 'a proxy' };
 	if (state.seen.has(value)) return { path, descriptor: 'a circular reference' };
-	if (depth >= MAX_RECURSION_DEPTH) {
+	if (depth >= TRANSFER_MAX_DEPTH) {
 		state.exhausted = true;
 		return undefined;
 	}
@@ -200,9 +203,7 @@ function walk(
 		if (state.exhausted) return undefined;
 		if (accepted) continue;
 		if (!('value' in member.descriptor)) return { path: member.path, descriptor: 'a getter' };
-		const deeper = walk(member.descriptor.value, member.path, depth + 1, state);
-		if (state.exhausted) return undefined;
-		return deeper;
+		return walk(member.descriptor.value, member.path, depth + 1, state);
 	}
 	return { path, descriptor: describe(value) };
 }
@@ -236,7 +237,7 @@ function buildError(
 }
 
 /** Host calls whose result is item data, so a refusal of it reads as an item read. */
-const ITEM_CALL_TYPES = new Set([
+const ITEM_CALL_TYPES = new Set<string>([
 	'getNodeFirst',
 	'getNodeLast',
 	'getNodeAll',
@@ -248,12 +249,12 @@ const ITEM_CALL_TYPES = new Set([
 	'getNodeItemMatching',
 	'getNodeItem',
 	'getPairedItem',
-]);
+] satisfies Array<BridgeMessage['type']>);
 
 const CALL_SUBJECTS: Record<string, string> = {
 	fromAi: 'the value $fromAI gave back',
 	evaluateExpression: 'the value $evaluateExpression gave back',
-};
+} satisfies Partial<Record<BridgeMessage['type'], string>>;
 
 interface CallSubject {
 	text: string;
@@ -350,23 +351,18 @@ function sanitiseMembers(
 	const members = ownMembers(value, path);
 	if (members === undefined) return marker(state, path, describe(value));
 
+	// An array rebuilds by index, which keeps the length and the holes; a structured clone
+	// drops the non-index keys of an array too.
+	const indexed = Array.isArray(value) ? new Array<unknown>(value.length) : undefined;
 	const copy: Record<string, unknown> = {};
 	for (const member of members) {
-		if (!('value' in member.descriptor)) {
-			copy[member.key] = marker(state, member.path, 'a getter');
-			continue;
-		}
-		copy[member.key] = sanitiseValue(state, member.descriptor.value, member.path, depth + 1);
+		const sanitised = !('value' in member.descriptor)
+			? marker(state, member.path, 'a getter')
+			: sanitiseValue(state, member.descriptor.value, member.path, depth + 1);
+		if (indexed === undefined) copy[member.key] = sanitised;
+		else if (ARRAY_INDEX.test(member.key)) indexed[Number(member.key)] = sanitised;
 	}
-	if (!Array.isArray(value)) return copy;
-
-	// Assigning by index keeps the length and the holes; a structured clone drops the
-	// non-index keys of an array too.
-	const indexed = new Array<unknown>(value.length);
-	for (const key of Object.keys(copy)) {
-		if (ARRAY_INDEX.test(key)) indexed[Number(key)] = copy[key];
-	}
-	return indexed;
+	return indexed ?? copy;
 }
 
 function sanitiseValue(state: SanitiseState, value: unknown, path: string, depth: number): unknown {
@@ -376,7 +372,7 @@ function sanitiseValue(state: SanitiseState, value: unknown, path: string, depth
 		if (state.probe(value)) return value;
 	} catch {}
 	if (value === null || typeof value !== 'object') return marker(state, path, describe(value));
-	if (depth >= MAX_RECURSION_DEPTH) return marker(state, path, 'the search for it stopped early');
+	if (depth >= TRANSFER_MAX_DEPTH) return marker(state, path, 'the search for it stopped early');
 	// A proxy rebuilds from its keys; anything else with a kind of its own (a Map, a promise)
 	// would rebuild into the wrong thing, so it stays refused.
 	const kind = describe(value);

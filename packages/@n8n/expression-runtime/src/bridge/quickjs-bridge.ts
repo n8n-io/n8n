@@ -553,8 +553,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Install the interrupt handler once. It reads the live deadline stack, so
 		// nested execute() calls share one budget: the earliest deadline wins.
-		// Math.min() of an empty stack is Infinity, so an idle runtime never fires.
-		this.runtime.setInterruptHandler(() => Date.now() > Math.min(...this.deadlines));
+		this.runtime.setInterruptHandler(() => Date.now() > this.earliestDeadline());
 
 		// Set up 'global' / 'globalThis' self-reference
 		const globalHandle = this.vm.global;
@@ -1200,7 +1199,12 @@ export class QuickJsBridge implements RuntimeBridge {
 	// The interrupt handler reads the wall clock, so time spent here counts against the
 	// expression's own deadline. Take half of what is left, at most.
 	private diagnosticBudget(): number {
-		return diagnosticBudgetMs(Math.min(...this.deadlines) - Date.now());
+		return diagnosticBudgetMs(this.earliestDeadline() - Date.now());
+	}
+
+	/** Infinity with no expression in flight, so an idle runtime never interrupts. */
+	private earliestDeadline(): number {
+		return Math.min(...this.deadlines);
 	}
 
 	private transferFailureHandle(
