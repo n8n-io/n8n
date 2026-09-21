@@ -42,7 +42,7 @@ const executionScopes = [
  *
  * Compatible with SQLite and PostgreSQL.
  */
-export class AddExecutionScopesToCustomRoles1789407043661 implements IrreversibleMigration {
+export class AddExecutionScopesToCustomRoles1789995003141 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		await this.ensureScopes(ctx);
 		await this.grantToCustomProjectRoles(

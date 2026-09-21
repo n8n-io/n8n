@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddExecutionScopesToCustomRoles1789407043661';
+const MIGRATION_NAME = 'AddExecutionScopesToCustomRoles1789995003141';
 
 const EXECUTION_READ = 'execution:read';
 const EXECUTION_LIST = 'execution:list';
