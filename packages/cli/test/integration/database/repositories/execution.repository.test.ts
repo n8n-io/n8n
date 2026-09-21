@@ -187,7 +187,10 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('markAsCrashed', () => {
-		const createExecution = async (status: ExecutionStatus, extra: { waitTill?: Date } = {}) => {
+		const createExecution = async (
+			status: ExecutionStatus,
+			extra: { waitTill?: Date; tracingContext?: { traceparent: string } } = {},
+		) => {
 			const workflow = await createWorkflow();
 			const startedAt = new Date();
 			const { identifiers } = await Container.get(ExecutionRepository).insert({
@@ -304,6 +307,18 @@ describe('ExecutionRepository', () => {
 					stoppedAt: expect.any(Date),
 				},
 			]);
+		});
+
+		it('should report the trace context stored on the execution', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const tracingContext = {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			};
+			const { id: runningId } = await createExecution('running', { tracingContext });
+
+			const crashed = await executionRepo.markAsCrashed([runningId]);
+
+			expect(crashed).toEqual([expect.objectContaining({ id: runningId, tracingContext })]);
 		});
 	});
 

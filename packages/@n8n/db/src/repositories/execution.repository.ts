@@ -79,6 +79,7 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
+	tracingContext?: { traceparent: string; tracestate?: string };
 };
 
 export interface UpdateExecutionConditions {
@@ -456,6 +457,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 					workflowId: true,
 					mode: true,
 					startedAt: true,
+					// TypeORM types a JSON column's select as a nested select, but any truthy
+					// value here selects the whole column.
+					tracingContext: { traceparent: true, tracestate: true },
 					workflow: { id: true, name: true },
 				},
 				relations: { workflow: true },
@@ -464,13 +468,14 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				withDeleted: true,
 			});
 
-			return rows.map(({ id, workflowId, mode, startedAt, workflow }) => ({
+			return rows.map(({ id, workflowId, mode, startedAt, tracingContext, workflow }) => ({
 				id,
 				workflowId,
 				workflowName: workflow?.name,
 				mode,
 				startedAt,
 				stoppedAt,
+				tracingContext: tracingContext ?? undefined,
 			}));
 		});
 	}

@@ -21,7 +21,10 @@ export class ExecutionCrashService {
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
-	async markAsCrashed(executionIds: string | string[], detector: CrashDetector) {
+	async markAsCrashed(
+		executionIds: string | string[],
+		detector: CrashDetector,
+	): Promise<CrashedExecution[]> {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
 			this.count(batch);
 			this.announce(batch, detector);
@@ -32,13 +35,16 @@ export class ExecutionCrashService {
 	 * Claim and announce without counting, for a caller that runs `workflowExecuteAfter`
 	 * for the same executions, which counts them itself.
 	 */
-	async markAsCrashedWithoutCounting(executionIds: string | string[], detector: CrashDetector) {
+	async markAsCrashedWithoutCounting(
+		executionIds: string | string[],
+		detector: CrashDetector,
+	): Promise<CrashedExecution[]> {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) =>
 			this.announce(batch, detector),
 		);
 	}
 
-	async markWorkflowExecutionsAsCrashed(workflowId: string) {
+	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const crashed = await this.executionRepository.markWorkflowExecutionsAsCrashed(workflowId);
 
 		this.count(crashed);
@@ -54,7 +60,15 @@ export class ExecutionCrashService {
 	}
 
 	private announce(executions: CrashedExecution[], detector: CrashDetector) {
-		for (const { id, workflowId, workflowName, mode, startedAt, stoppedAt } of executions) {
+		for (const {
+			id,
+			workflowId,
+			workflowName,
+			mode,
+			startedAt,
+			stoppedAt,
+			tracingContext,
+		} of executions) {
 			this.eventService.emit('execution-crashed', {
 				executionId: id,
 				workflowId,
@@ -64,6 +78,7 @@ export class ExecutionCrashService {
 				stoppedAt,
 				detector,
 				hostId: this.instanceSettings.hostId,
+				tracingContext,
 			});
 		}
 	}

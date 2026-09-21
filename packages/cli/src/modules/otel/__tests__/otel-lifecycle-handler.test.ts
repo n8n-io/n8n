@@ -662,7 +662,7 @@ describe('OtelLifecycleHandler', () => {
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
 
-		const storedTracingContext: TracingContext = {
+		const eventTracingContext: TracingContext = {
 			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
 		};
 
@@ -697,8 +697,6 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
-			tracer.hasWorkflowSpan.mockReturnValue(false);
-			traceContextService.get.mockResolvedValue(storedTracingContext);
 		});
 
 		it('should handle the `execution-crashed` event once initialised', async () => {
@@ -713,9 +711,7 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should end a tracked span before any lookup, so the after hook cannot close it first', async () => {
-			tracer.hasWorkflowSpan.mockReturnValue(true);
-
+		it('should end the crashed workflow span when the event carries no trace context', async () => {
 			await makeHandler().onExecutionCrashed(makeEvent());
 
 			expect(traceContextService.get).not.toHaveBeenCalled();
@@ -740,10 +736,10 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.endCrashedWorkflow).not.toHaveBeenCalled();
 		});
 
-		it('should load the trace context and end the crashed workflow span', async () => {
-			await makeHandler().onExecutionCrashed(makeEvent());
+		it('should end the crashed workflow span with the trace context on the event', async () => {
+			await makeHandler().onExecutionCrashed(makeEvent({ tracingContext: eventTracingContext }));
 
-			expect(traceContextService.get).toHaveBeenCalledWith('exec-1');
+			expect(traceContextService.get).not.toHaveBeenCalled();
 			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith({
 				executionId: 'exec-1',
 				workflowId: 'wf-1',
@@ -752,7 +748,7 @@ describe('OtelLifecycleHandler', () => {
 				detector: 'queue-recovery',
 				startedAt,
 				stoppedAt,
-				tracingContext: storedTracingContext,
+				tracingContext: eventTracingContext,
 			});
 		});
 	});

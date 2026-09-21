@@ -247,10 +247,6 @@ export class ExecutionLevelTracer {
 	 * disconnected trace. Undefined when neither span is active (e.g. otel
 	 * disabled, or the execution/node isn't tracked here).
 	 */
-	hasWorkflowSpan(executionId: string): boolean {
-		return this.activeWorkflowSpans.has(executionId);
-	}
-
 	getActiveContext(executionId: string, nodeName?: string): Context | undefined {
 		const span = this.findMostSpecificSpan(executionId, nodeName);
 		return span ? trace.setSpan(context.active(), span) : undefined;

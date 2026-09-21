@@ -43,6 +43,7 @@ describe('ExecutionCrashService', () => {
 			mode,
 			startedAt: rowStartedAt,
 			stoppedAt: rowStoppedAt,
+			tracingContext,
 		}: CrashedExecution,
 		detector: string,
 	) => [
@@ -56,6 +57,7 @@ describe('ExecutionCrashService', () => {
 			stoppedAt: rowStoppedAt,
 			detector,
 			hostId: 'main-1',
+			tracingContext,
 		},
 	];
 
@@ -84,8 +86,10 @@ describe('ExecutionCrashService', () => {
 		expect(emitted()).toEqual([['executionsCrashed', { executions: [first, second] }]]);
 	});
 
-	test('announces each execution it transitioned with the detector and host', async () => {
-		const first = crashedExecution('1');
+	test('announces each execution it transitioned with the detector, host and trace context', async () => {
+		const first = crashedExecution('1', {
+			tracingContext: { traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01' },
+		});
 		const second = crashedExecution('2', { mode: 'manual', startedAt: null });
 		transitions([first, second]);
 

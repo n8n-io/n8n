@@ -251,13 +251,14 @@ describe('ExecutionRepository', () => {
 
 	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
 
-	const crashableRow = (id: string) =>
+	const crashableRow = (id: string, overrides: Partial<ExecutionEntity> = {}) =>
 		Object.assign(new ExecutionEntity(), {
 			id,
 			workflowId: `workflow-${id}`,
 			mode: 'trigger',
 			startedAt: crashedStartedAt,
 			workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
+			...overrides,
 		});
 
 	const executionIdsOfLength = (length: number) =>
@@ -283,7 +284,7 @@ describe('ExecutionRepository', () => {
 
 		test('should crash only in-progress rows and clear their `waitTill`', async () => {
 			const executionIds = ['1', '2'];
-			entityManager.find.mockResolvedValue(executionIds.map(crashableRow));
+			entityManager.find.mockResolvedValue(executionIds.map((id) => crashableRow(id)));
 
 			await executionRepository.markAsCrashed(executionIds);
 
@@ -323,6 +324,24 @@ describe('ExecutionRepository', () => {
 				where: { id: In(['1']), status: 'crashed', stoppedAt: updateValues.stoppedAt },
 				withDeleted: true,
 			});
+		});
+
+		test('should read back and report the trace context of each execution', async () => {
+			const tracingContext = {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			};
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', { tracingContext }),
+				crashableRow('2', { tracingContext: null }),
+			]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			const findOptions = entityManager.find.mock.calls[0][1];
+
+			expect(findOptions).toMatchObject({ select: { tracingContext: { traceparent: true } } });
+			expect(crashed[0].tracingContext).toEqual(tracingContext);
+			expect(crashed[1].tracingContext).toBeUndefined();
 		});
 
 		test('should collapse duplicated ids before batching', async () => {

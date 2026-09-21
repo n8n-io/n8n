@@ -655,6 +655,7 @@ export type RelayEventMap = {
 		stoppedAt: Date;
 		detector: CrashDetector;
 		hostId: string;
+		tracingContext?: { traceparent: string; tracestate?: string };
 	};
 
 	'execution-deleted': {

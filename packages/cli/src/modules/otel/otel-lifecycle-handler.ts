@@ -176,9 +176,6 @@ export class OtelLifecycleHandler {
 
 	async onExecutionCrashed(event: RelayEventMap['execution-crashed']): Promise<void> {
 		if (!this.shouldTrace({ type: 'executionCrashed', mode: event.mode })) return;
-		const tracingContext = this.tracer.hasWorkflowSpan(event.executionId)
-			? undefined
-			: await this.traceContextService.get(event.executionId);
 		this.tracer.endCrashedWorkflow({
 			executionId: event.executionId,
 			workflowId: event.workflowId,
@@ -187,7 +184,7 @@ export class OtelLifecycleHandler {
 			detector: event.detector,
 			startedAt: event.startedAt,
 			stoppedAt: event.stoppedAt,
-			tracingContext,
+			tracingContext: event.tracingContext,
 		});
 	}
 

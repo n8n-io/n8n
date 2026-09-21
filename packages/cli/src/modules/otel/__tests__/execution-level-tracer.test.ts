@@ -331,8 +331,6 @@ describe('ExecutionLevelTracer', () => {
 				node: { id: 'n1', name: 'Node1', type: 'n8n-nodes-base.set', typeVersion: 1 },
 			});
 
-			expect(tracer.hasWorkflowSpan('exec-crashed')).toBe(true);
-
 			tracer.endCrashedWorkflow({
 				executionId: 'exec-crashed',
 				workflowId: 'wf-1',
@@ -341,8 +339,6 @@ describe('ExecutionLevelTracer', () => {
 				detector: 'stall',
 				stoppedAt: new Date(),
 			});
-
-			expect(tracer.hasWorkflowSpan('exec-crashed')).toBe(false);
 
 			const spans = otel.getFinishedSpans();
 			expect(spans).toHaveLength(2);
