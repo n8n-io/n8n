@@ -631,7 +631,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary("Promote a selection of a project's workflows")
 	@ApiDescription(
-		"Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live workflows are exported, and archived or deleted ids leave the branch. An id from another project rejects the whole request before any write. Send an optional commitMessage to describe the commit; a default is used when omitted. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.",
+		"Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows are exported, so an archived id stays on the branch as archived; only an id whose workflow no longer exists leaves the branch. An id from another project rejects the whole request before any write. Send an optional commitMessage to describe the commit; a default is used when omitted. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)

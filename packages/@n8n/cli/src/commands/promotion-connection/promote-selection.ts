@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionConnectionPromoteSelection extends BaseCommand {
 	static override description =
-		"Read a chosen set of a project's workflows now and push their current state to the instance connection's Promote branch. Archived or deleted ids leave the branch. Requires the Promote direction to be cloned first.";
+		"Read a chosen set of a project's workflows now and push their current state to the instance connection's Promote branch. Archived workflows stay on the branch as archived; only an id whose workflow no longer exists leaves the branch. Requires the Promote direction to be cloned first.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-connection promote-selection proj-abc -w wf-1 -w wf-2',
