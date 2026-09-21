@@ -614,6 +614,43 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		it('pushes the selection to a new branch when branching is enabled', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+			const invalidateDescriptor = vi.spyOn(workingDirectory, 'invalidateDescriptor');
+			const files = {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			};
+			await writeExportTree(packageFolder, files);
+			mockExport(files);
+
+			const result = await service.promoteSelection(
+				'conn1',
+				actor,
+				{ commitMessage: 'm', canExportVariableValues: true },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+			);
+
+			const targetBranchName = result.git.branchName;
+			expect(targetBranchName).toMatch(
+				/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+			);
+			expect(gitService.validateBranchName).toHaveBeenCalledWith(targetBranchName);
+			expect(gitService.prepareCheckoutForPromotion).toHaveBeenCalledWith(
+				expect.objectContaining({ branchName: 'staging', configId: CONFIG_ID }),
+			);
+			expect(invalidateDescriptor).toHaveBeenCalledWith(CONFIG_ID);
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({ targetBranchName, branchName: 'staging', force: false }),
+			);
+		});
+
 		it('refuses a selection when the branch has no package', async () => {
 			await mkdir(repositoryFolder, { recursive: true });
 

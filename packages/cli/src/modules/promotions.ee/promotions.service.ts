@@ -62,6 +62,7 @@ import {
 import type {
 	BranchPackage,
 	PromotionCacheDescriptor,
+	PromotionGitCredentials,
 	PromotionOperationInput,
 } from './promotions.types';
 import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
@@ -163,20 +164,8 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
-		const targetBranchName = input.config.settings.createBranchOnPromotion
-			? buildPromotionBranchName(new Date())
-			: undefined;
 		const credentials = await this.credentialsFor(input);
-		if (targetBranchName) {
-			await this.gitService.validateBranchName(targetBranchName);
-			await this.gitService.prepareCheckoutForPromotion({
-				remoteUrl: repositoryUrl(input),
-				credentials,
-				paths: this.workingDirectory.paths(input.configId),
-				branchName,
-				configId: input.configId,
-			});
-		}
+		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 
@@ -273,6 +262,11 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		const credentials = await this.credentialsFor(input);
+		// A branched config resets the checkout to the latest base here, so the
+		// selection applies on top of it and pushes to a fresh promotion branch.
+		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
+
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 		if (!(await this.hasExportedPackage(packageFolder))) {
@@ -320,14 +314,22 @@ export class PromotionsService {
 				branch,
 			);
 
+			if (targetBranchName) {
+				// The commit moves the local base branch. Remove trust before it moves, and
+				// restore trust only after the base branch is back on its own commit.
+				await this.workingDirectory.invalidateDescriptor(input.configId);
+			}
+
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
-				credentials: await this.credentialsFor(input),
+				credentials,
 				paths: this.workingDirectory.paths(input.configId),
 				branchName,
+				targetBranchName,
 				configId: input.configId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
+				// A promotion branch must be new, so force never applies.
 				force: false,
 				stagePathspec: PACKAGE_SUBFOLDER,
 				rollbackOnFailure: true,
@@ -339,7 +341,7 @@ export class PromotionsService {
 				connectionId: input.connectionId,
 				configId: input.configId,
 				counts,
-				git: { commitSha, branchName },
+				git: { commitSha, branchName: targetBranchName ?? branchName },
 			};
 		} catch (error) {
 			if (backedUp) {
@@ -579,6 +581,32 @@ export class PromotionsService {
 				});
 			},
 		};
+	}
+
+	/**
+	 * Resolves the branch one promotion pushes to, honoring the resolved config.
+	 * When the config creates a branch per promotion, this validates the new name
+	 * and resets the checkout to the latest base, so the promotion builds on it.
+	 * Otherwise the push targets the base branch and there is nothing to prepare.
+	 */
+	private async prepareTargetBranch(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+	): Promise<string | undefined> {
+		if (input.config.direction !== 'promote' || !input.config.settings.createBranchOnPromotion) {
+			return undefined;
+		}
+		const targetBranchName = buildPromotionBranchName(new Date());
+		await this.gitService.validateBranchName(targetBranchName);
+		await this.gitService.prepareCheckoutForPromotion({
+			remoteUrl: repositoryUrl(input),
+			credentials,
+			paths: this.workingDirectory.paths(input.configId),
+			branchName,
+			configId: input.configId,
+		});
+		return targetBranchName;
 	}
 
 	/**

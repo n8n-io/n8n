@@ -984,6 +984,53 @@ describe('Promote a selection', () => {
 		expect(result.counts.workflows).toBe(1);
 	});
 
+	it('pushes a branched selection to a new branch and leaves the base untouched', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(
+			remote.bareDir,
+			{ apply: 'main', promote: 'main' },
+			true,
+		);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		// A full promote seeds a branch. Merge it into the base, so a later selection
+		// has a package to build on.
+		const full = await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+			force: true,
+		});
+		await remote.git.fetch('origin', full.git.branchName);
+		await remote.git.merge(['FETCH_HEAD']);
+		await remote.git.push('origin', 'main');
+		const baseCommit = (await remote.git.revparse(['main'])).trim();
+
+		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
+		const result = await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Add w3' },
+			{ projectId: project.id, workflowIds: [w3.id], deletedWorkflowIds: [] },
+		);
+
+		const remoteGit = simpleGit(remote.bareDir);
+		expect(result.git.branchName).toMatch(
+			/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+		);
+		// The selection lands on the new branch, off the current base.
+		expect((await remoteGit.revparse([result.git.branchName])).trim()).toBe(result.git.commitSha);
+		expect((await remoteGit.revparse([`${result.git.branchName}^`])).trim()).toBe(baseCommit);
+		// The base branch stays where it was.
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(baseCommit);
+
+		const { dir } = await inspectBranch(remote.bareDir, result.git.branchName);
+		const workflowIds = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
+		expect(workflowIds).toContain(w3.id);
+		for (const w of workflows) expect(workflowIds).toContain(w.id);
+		expect(result.counts.workflows).toBe(1);
+	});
+
 	it('updates only the selected workflow, leaving others untouched', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
