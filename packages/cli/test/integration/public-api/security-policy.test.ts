@@ -51,7 +51,23 @@ describe('Security policy in Public API', () => {
 	});
 
 	describe('GET /settings/security-policy', () => {
-		it('returns the current policy when licensed, without fields outside the public response schema', async () => {
+		it('returns the current policy when licensed', async () => {
+			testServer.license.enable('feat:personalSpacePolicy');
+
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/security-policy');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toStrictEqual({
+				personalSpacePublishing: true,
+				personalSpaceSharing: true,
+				publishedPersonalWorkflowsCount: 0,
+				sharedPersonalWorkflowsCount: 0,
+				sharedPersonalCredentialsCount: 0,
+				redactionEnforcement: { floor: 'off' },
+			});
+		});
+
+		it('does not return fields outside the public response schema', async () => {
 			testServer.license.enable('feat:personalSpacePolicy');
 			const settingsWithInternalField = {
 				personalSpacePublishing: true,
