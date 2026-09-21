@@ -46,8 +46,8 @@ describe('registerShellCapabilities', () => {
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith(payload);
 	});
 
-	// `initializeAuthenticatedFeatures` re-runs after a logout and a new login, so a
-	// second registration must not warn.
+	// Dev HMR re-evaluates the manifest, so a second registration must not warn. The
+	// module-level opener object keeps the identity stable across the replay.
 	it('stays silent when it is called again', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		registerShellCapabilities();

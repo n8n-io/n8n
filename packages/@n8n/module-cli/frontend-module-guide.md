@@ -412,11 +412,14 @@ Declare one only when all three rows hold. If one row fails, use the surface nam
 | The target is shell-core state with no path down to an L2 package | Import the L2 package |
 | No contribution surface fits (modals, commands, resources, push handlers) | Use that surface |
 
-Three files hold one capability:
+Four files hold one capability:
 
 ```ts
 // packages/frontend/@n8n/frontend-module-sdk/src/capabilities/myThing.ts
 export const myThing = declareCapability<(id: string) => void>('my-thing');
+
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+export { myThing } from './myThing';
 
 // packages/frontend/editor-ui/src/app/capabilities.manifest.ts
 capabilityRegistry.provide(capabilities.myThing, (id) => useMyShellStore().touch(id));
