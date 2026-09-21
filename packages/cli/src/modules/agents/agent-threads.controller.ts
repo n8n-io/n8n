@@ -1,4 +1,4 @@
-import { ListAgentSessionsQueryDto } from '@n8n/api-types';
+import { ListAgentSessionsQueryDto, type AgentSessionPreviewAccess } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -7,6 +7,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { canContinueThreadInPreview } from './utils/agent-thread-access';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentThreadsController {
@@ -55,7 +56,11 @@ export class AgentThreadsController {
 			owner: _owner,
 			...thread
 		} = result.thread;
-		return { ...result, thread };
+		const source = result.executions.find((execution) => execution.source !== null)?.source;
+		const access: AgentSessionPreviewAccess = {
+			canContinueInPreview: canContinueThreadInPreview(result.thread, req.user.id, source),
+		};
+		return { ...result, thread: { ...thread, ...access } };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

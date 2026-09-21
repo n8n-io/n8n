@@ -7,6 +7,7 @@ import { N8nEmptyState } from '@n8n/design-system';
 import type * as AgentBuilderSessionModule from '@/features/agents/composables/useAgentBuilderSession';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
+import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import {
 	AGENT_BUILDER_VIEW,
@@ -16,8 +17,20 @@ import {
 
 interface SessionThread {
 	id: string;
+	projectId: string;
+	agentId: string;
+	canContinueInPreview: boolean;
 	updatedAt: string;
+	title?: string;
 }
+
+const privateThread = (id: string): SessionThread => ({
+	id,
+	projectId: 'p1',
+	agentId: 'a1',
+	canContinueInPreview: true,
+	updatedAt: '2026-01-01T00:00:00.000Z',
+});
 
 const routeParams = reactive({ projectId: 'p1', agentId: 'a1', threadId: 'thread-a' });
 const routerPush = vi.fn();
@@ -59,7 +72,11 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('@/features/agents/agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
+		get previewThreads() {
+			return sessionThreads.filter((thread) => thread.canContinueInPreview);
+		},
 		fetchThreads: vi.fn().mockResolvedValue(undefined),
+		upsertThread: vi.fn(),
 	}),
 }));
 
@@ -106,16 +123,28 @@ function emitExecutionUpdate(threadId: string) {
 	for (const listener of [...pushListeners]) listener(event);
 }
 
+async function renderPrivateTimeline() {
+	const wrapper = shallowMount(AgentSessionTimelineView);
+	await flushPromises();
+	wrapper.findComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+		thread: privateThread('thread-a'),
+		executions: [],
+	});
+	await nextTick();
+	return wrapper;
+}
+
 describe('AgentSessionTimelineView', () => {
 	beforeEach(() => {
+		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		agentPermissions.canUpdate.value = true;
 		deleteSession.mockClear();
 		routeParams.threadId = 'thread-a';
 		sessionThreads.splice(
 			0,
 			sessionThreads.length,
-			{ id: 'thread-a', updatedAt: '2026-01-01T00:00:00.000Z' },
-			{ id: 'thread-c', updatedAt: '2026-01-03T00:00:00.000Z' },
+			privateThread('thread-a'),
+			privateThread('thread-c'),
 		);
 		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
 			'thread-b' as unknown as ReturnType<typeof globalThis.crypto.randomUUID>,
@@ -124,8 +153,7 @@ describe('AgentSessionTimelineView', () => {
 
 	it('uses update permission for preview session deletion', async () => {
 		agentPermissions.canUpdate.value = false;
-		const wrapper = shallowMount(AgentSessionTimelineView);
-		await flushPromises();
+		const wrapper = await renderPrivateTimeline();
 
 		expect(wrapper.findComponent(AgentPreviewDock).props('canDeleteSession')).toBe(false);
 	});
@@ -136,8 +164,7 @@ describe('AgentSessionTimelineView', () => {
 	])(
 		'deletes a $kind preview session and redirects when needed',
 		async ({ sessionId, shouldRedirect }) => {
-			const wrapper = shallowMount(AgentSessionTimelineView);
-			await flushPromises();
+			const wrapper = await renderPrivateTimeline();
 
 			wrapper.findComponent(AgentPreviewDock).vm.$emit('delete-session', sessionId);
 			await flushPromises();
@@ -163,8 +190,7 @@ describe('AgentSessionTimelineView', () => {
 	});
 
 	it('replaces the stale thread with an empty state when a new preview session starts', async () => {
-		const wrapper = shallowMount(AgentSessionTimelineView);
-		await flushPromises();
+		const wrapper = await renderPrivateTimeline();
 
 		expect(wrapper.findComponent(AgentSessionTimelinePanel).exists()).toBe(true);
 		expect(wrapper.findComponent(N8nEmptyState).exists()).toBe(false);
@@ -180,8 +206,7 @@ describe('AgentSessionTimelineView', () => {
 	});
 
 	it('re-binds to the new session once the backend records its first turn', async () => {
-		const wrapper = shallowMount(AgentSessionTimelineView);
-		await flushPromises();
+		const wrapper = await renderPrivateTimeline();
 		await wrapper.findComponent(AgentPreviewDock).vm.$emit('new-session');
 		await nextTick();
 
@@ -206,31 +231,29 @@ describe('AgentSessionTimelineView', () => {
 		sessionThreads.splice(0, sessionThreads.length);
 		await nextTick();
 
-		const dock = wrapper.findComponent(AgentPreviewDock);
 		const panel = wrapper.findComponent(AgentSessionTimelinePanel);
-		expect(dock.props('hasSession')).toBe(false);
+		expect(wrapper.findComponent(AgentPreviewDock).exists()).toBe(false);
 
 		// A loaded thread that is not the live session must not stand in for it.
 		await panel.vm.$emit('loaded', {
-			thread: { id: 'thread-z', title: 'Other', updatedAt: '2026-01-01T00:00:00.000Z' },
+			thread: { ...privateThread('thread-z'), title: 'Other' },
 			executions: [],
 		});
 		await nextTick();
-		expect(dock.props('hasSession')).toBe(false);
-		expect(dock.props('sessionTitle')).not.toBe('Other');
+		expect(wrapper.findComponent(AgentPreviewDock).exists()).toBe(false);
 
 		await panel.vm.$emit('loaded', {
-			thread: { id: 'thread-a', title: 'Digimon villains', updatedAt: '2026-01-01T00:00:00.000Z' },
+			thread: { ...privateThread('thread-a'), title: 'Digimon villains' },
 			executions: [],
 		});
 		await nextTick();
+		const dock = wrapper.findComponent(AgentPreviewDock);
 		expect(dock.props('hasSession')).toBe(true);
 		expect(dock.props('sessionTitle')).toBe('Digimon villains');
 	});
 
 	it('keeps the timeline when the preview switches to an existing session', async () => {
-		const wrapper = shallowMount(AgentSessionTimelineView);
-		await flushPromises();
+		const wrapper = await renderPrivateTimeline();
 
 		await wrapper.findComponent(AgentPreviewDock).vm.$emit('session-select', 'thread-c');
 		await nextTick();
@@ -240,5 +263,20 @@ describe('AgentSessionTimelineView', () => {
 		expect(wrapper.findComponent(AgentSessionTimelinePanel).exists()).toBe(true);
 		expect(wrapper.findComponent(N8nEmptyState).exists()).toBe(false);
 		expect(routerReplace).not.toHaveBeenCalled();
+	});
+
+	it('keeps an ineligible timeline read-only with a saved open dock', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		await flushPromises();
+		wrapper.findComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: { ...privateThread('thread-a'), canContinueInPreview: false },
+			executions: [],
+		});
+		await nextTick();
+
+		expect(wrapper.findComponent(AgentSessionTimelinePanel).exists()).toBe(true);
+		expect(wrapper.findComponent(AgentPreviewDock).exists()).toBe(false);
+		expect(wrapper.findComponent(AgentSessionTimelineHeader).props('showPreview')).toBe(false);
 	});
 });

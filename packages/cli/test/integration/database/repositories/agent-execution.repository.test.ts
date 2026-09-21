@@ -817,7 +817,9 @@ describe('AgentExecutionRepository', () => {
 		expect(first.threads.map(({ id }) => id)).toEqual([thread.id]);
 		expect(first.threads[0]).not.toHaveProperty('ownerId');
 		expect(first.threads[0]).not.toHaveProperty('accessScope');
+		expect(first.threads[0].canContinueInPreview).toBe(true);
 		expect(second.threads.map(({ id }) => id)).toEqual([shared.id]);
+		expect(second.threads[0].canContinueInPreview).toBe(false);
 		expect(second.nextCursor).toBeNull();
 		expect(
 			(await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id))?.executions,
@@ -848,6 +850,9 @@ describe('AgentExecutionRepository', () => {
 			{ parentThreadId: thread.id, parentAgentId: agentId },
 		);
 		expect(child.thread).toMatchObject(access);
+		expect(
+			await executionService.canUsePreviewThread(child.thread.id, projectId, agentId, owner.id),
+		).toBe(false);
 		const sharedChild = await threadRepo.findOrCreate(
 			uuid(),
 			agentId,
@@ -857,6 +862,58 @@ describe('AgentExecutionRepository', () => {
 			{ parentThreadId: shared.id, parentAgentId: agentId },
 		);
 		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });
+	});
+
+	it('finds the latest private root behind newer shared and sub-agent sessions', async () => {
+		const owner = await createMember();
+		const { executionService } = recordingServices();
+		const privateThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			updatedAt: new Date('2026-01-01T00:00:00Z'),
+		});
+		for (let index = 0; index < 20; index++) {
+			await createThread({ sessionNumber: index + 2, updatedAt: new Date('2026-01-02T00:00:00Z') });
+		}
+		const child = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 22,
+			parentThreadId: privateThread.id,
+			parentAgentId: agentId,
+		});
+		const legacyChild = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 23,
+		});
+		await createExecution({ threadId: legacyChild.id, source: ' Sub-Agent ' });
+		const ordinaryThread = await createThread({
+			id: `test-${agentId}`,
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 24,
+			updatedAt: new Date('2025-12-01T00:00:00Z'),
+		});
+
+		const history = await executionService.getThreads(projectId, agentId, owner.id, 20);
+		expect(history.threads.map(({ id }) => id)).not.toContain(privateThread.id);
+		const preview = await executionService.getThreads(projectId, agentId, owner.id, 20, undefined, {
+			previewOnly: true,
+		});
+		expect(preview.threads).toEqual([
+			expect.objectContaining({ id: privateThread.id, canContinueInPreview: true }),
+			expect.objectContaining({ id: ordinaryThread.id, canContinueInPreview: true }),
+		]);
+		expect(preview.nextCursor).toBeNull();
+		for (const thread of [child, legacyChild]) {
+			expect(
+				await executionService.canUsePreviewThread(thread.id, projectId, agentId, owner.id),
+			).toBe(false);
+			expect(
+				await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id),
+			).not.toBeNull();
+		}
 	});
 
 	it.each(['custom', 'legacy'])('uses persisted ownership for a %s preview ID', async (format) => {

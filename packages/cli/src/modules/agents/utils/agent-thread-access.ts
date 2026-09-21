@@ -13,3 +13,16 @@ export function threadBelongsTo(
 			(thread.accessScope === 'user' && thread.ownerId !== null && thread.ownerId === userId))
 	);
 }
+
+export function canContinueThreadInPreview(
+	thread: AgentExecutionThread,
+	userId: string,
+	source?: string | null,
+): boolean {
+	return (
+		thread.accessScope === 'user' &&
+		thread.ownerId === userId &&
+		thread.parentThreadId === null &&
+		!['subagent', 'sub-agent'].includes(source?.trim().toLowerCase() ?? '')
+	);
+}

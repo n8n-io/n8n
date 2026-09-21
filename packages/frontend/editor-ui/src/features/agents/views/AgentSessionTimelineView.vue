@@ -194,6 +194,12 @@ const totalTokens = computed(() => {
 });
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const canPreviewSession = computed(
+	() =>
+		currentSessionIsEphemeral.value ||
+		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
+);
+const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
@@ -217,6 +223,7 @@ const dockHasSession = computed(
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
+	if (detail?.thread.canContinueInPreview) sessionsStore.upsertThread(detail.thread);
 }
 
 let previewLoadRequestId = 0;
@@ -331,6 +338,7 @@ async function onDeletePreviewSession(sessionId: string) {
 }
 
 function togglePreview() {
+	if (!canPreviewSession.value) return;
 	isPreviewOpen.value = !isPreviewOpen.value;
 }
 
@@ -355,13 +363,16 @@ function viewPreviewTrace() {
 			:duration-label="durationLabel"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
+			:show-preview="canPreviewSession"
+			:is-preview-open="previewVisible"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 
-		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
+		<div :class="[$style.content, { [$style.previewOpen]: previewVisible }]">
 			<AgentSessionTimelinePanel
 				v-if="!isPreviewSessionStale"
 				:project-id="projectId"
@@ -378,7 +389,8 @@ function viewPreviewTrace() {
 			</div>
 
 			<AgentPreviewDock
-				:is-open="isPreviewOpen"
+				v-if="canPreviewSession"
+				:is-open="previewVisible"
 				:session-title="dockSessionTitle"
 				:session-options="sessionMenu"
 				:has-session="dockHasSession"

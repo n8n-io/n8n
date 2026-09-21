@@ -164,6 +164,21 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		if (cursor) {
 			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
 		}
+		this.applyListFilters(query, filters);
+		const threads = await query.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+
+		return {
+			threads,
+			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
+		};
+	}
+
+	private applyListFilters(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		filters: AgentSessionQueryFilters,
+	) {
 		if (filters.updatedAfter) {
 			query.andWhere('thread.updatedAt >= :updatedAfter', {
 				updatedAfter: filters.updatedAfter,
@@ -175,34 +190,37 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			});
 		}
 		if (filters.status) {
-			const latestStatus = this.latestExecutionStatusSubquery(query);
-			const failureExists = this.failureExistsSubquery(query);
-			if (filters.status === 'succeeded') {
-				query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
-			} else if (filters.status === 'error') {
-				query.andWhere(
-					`((${latestStatus}) = 'error' OR ` +
-						`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
-				);
-			} else {
-				query.andWhere(`(${latestStatus}) = :sessionStatus`, {
-					sessionStatus: filters.status,
-				});
-			}
+			this.applyStatusFilter(query, filters.status);
 		}
 		if (filters.origin) {
 			this.applyOriginFilter(query, filters.origin);
 		}
+		if (filters.previewOnly) this.applyPreviewFilter(query);
+	}
 
-		const threads = await query.getMany();
+	private applyStatusFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		status: NonNullable<AgentSessionQueryFilters['status']>,
+	) {
+		const latestStatus = this.latestExecutionStatusSubquery(query);
+		const failureExists = this.failureExistsSubquery(query);
+		if (status === 'succeeded') {
+			query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
+		} else if (status === 'error') {
+			query.andWhere(
+				`((${latestStatus}) = 'error' OR ` +
+					`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
+			);
+		} else {
+			query.andWhere(`(${latestStatus}) = :sessionStatus`, { sessionStatus: status });
+		}
+	}
 
-		const hasMore = threads.length > limit;
-		if (hasMore) threads.pop();
-
-		return {
-			threads,
-			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
-		};
+	private applyPreviewFilter(query: SelectQueryBuilder<AgentExecutionThread>) {
+		query
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL')
+			.andWhere(`${this.normalizedFirstSource(query)} NOT IN ('subagent', 'sub-agent')`);
 	}
 
 	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
@@ -227,10 +245,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.getQuery();
 	}
 
-	private applyOriginFilter(
-		query: SelectQueryBuilder<AgentExecutionThread>,
-		origin: AgentSessionOrigin,
-	): void {
+	private normalizedFirstSource(query: SelectQueryBuilder<AgentExecutionThread>): string {
 		const firstSource = query
 			.subQuery()
 			.select('sourceExecution.source')
@@ -241,7 +256,14 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.addOrderBy('sourceExecution.id', 'ASC')
 			.limit(1)
 			.getQuery();
-		const normalizedSource = `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+		return `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+	}
+
+	private applyOriginFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		origin: AgentSessionOrigin,
+	): void {
+		const normalizedSource = this.normalizedFirstSource(query);
 		const isSubAgent =
 			'(thread."parentThreadId" IS NOT NULL OR ' +
 			`${normalizedSource} IN ('subagent', 'sub-agent'))`;

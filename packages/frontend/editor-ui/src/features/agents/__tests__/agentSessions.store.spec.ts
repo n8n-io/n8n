@@ -3,17 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	defaultAgentSessionFilters,
+	type listThreads as listThreadsApi,
 	type AgentExecutionThread,
 	type AgentSessionFilters,
 	type ThreadsPage,
 } from '../composables/useAgentThreadsApi';
 import { useAgentSessionsStore } from '../agentSessions.store';
 
-const { listThreads } = vi.hoisted(() => ({ listThreads: vi.fn() }));
+const { listThreads, listPreviewThreads } = vi.hoisted(() => ({
+	listThreads: vi.fn(),
+	listPreviewThreads: vi.fn(),
+}));
 
 vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
 	...(await importOriginal()),
-	listThreads,
+	listThreads: (...args: Parameters<typeof listThreadsApi>) =>
+		args[3].previewOnly ? listPreviewThreads(...args) : listThreads(...args),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -23,6 +28,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 function thread(id: string): AgentExecutionThread {
 	return {
 		id,
+		canContinueInPreview: true,
 		agentId: 'agent-1',
 		agentName: 'Agent',
 		parentThreadId: null,
@@ -58,6 +64,7 @@ describe('useAgentSessionsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		listPreviewThreads.mockReset().mockResolvedValue(page([], null));
 	});
 
 	it('clears the current page while replacing it with filtered results', async () => {
@@ -76,6 +83,44 @@ describe('useAgentSessionsStore', () => {
 
 		expect(store.threads.map(({ id }) => id)).toEqual(['failed-session']);
 		expect(store.nextCursor).toBe('failed-cursor');
+	});
+
+	it('loads Preview independently of history filters', async () => {
+		listThreads.mockResolvedValueOnce({
+			threads: [{ ...thread('shared'), canContinueInPreview: false }],
+			nextCursor: null,
+		});
+		listPreviewThreads.mockResolvedValueOnce(page(['private'], null));
+		const store = useAgentSessionsStore();
+		await store.setFilters('project-1', 'agent-1', errorFilters);
+		expect(store.threads.map(({ id }) => id)).toEqual(['shared']);
+		expect(store.previewThreads.map(({ id }) => id)).toEqual(['private']);
+		expect(listPreviewThreads).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'project-1', 'agent-1', {
+			limit: 20,
+			previewOnly: true,
+		});
+	});
+
+	it('ignores a Preview response after switching agents or resetting the store', async () => {
+		const older = Promise.withResolvers<ThreadsPage>();
+		const resetResponse = Promise.withResolvers<ThreadsPage>();
+		listThreads.mockResolvedValue(page([], null));
+		listPreviewThreads
+			.mockReturnValueOnce(older.promise)
+			.mockResolvedValueOnce(page(['newer'], null));
+		const store = useAgentSessionsStore();
+		const first = store.fetchThreads('project-1', 'agent-1');
+		await store.fetchThreads('project-1', 'agent-2');
+		older.resolve(page(['older'], null));
+		await first;
+		expect(store.previewThreads.map(({ id }) => id)).toEqual(['newer']);
+		listPreviewThreads.mockReturnValueOnce(resetResponse.promise);
+		const pending = store.fetchThreads('project-1', 'agent-2');
+		store.reset();
+		resetResponse.resolve(page(['stale'], null));
+		await pending;
+		expect(store.previewThreads).toEqual([]);
+		expect(store.previewLoading).toBe(false);
 	});
 
 	it('retains the active filter across refresh and pagination without changing it for overrides', async () => {

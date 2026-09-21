@@ -1,5 +1,6 @@
 import type {
 	AgentMessageAuthor,
+	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
@@ -29,7 +30,7 @@ import { AgentExecutionLogStore } from './execution-log/agent-execution-log-stor
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { threadBelongsTo } from './utils/agent-thread-access';
+import { canContinueThreadInPreview, threadBelongsTo } from './utils/agent-thread-access';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
@@ -90,9 +91,10 @@ export interface ThreadDetail {
 
 export interface ThreadListItem
 	extends Omit<
-		AgentExecutionThread,
-		'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
-	> {
+			AgentExecutionThread,
+			'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
+		>,
+		AgentSessionPreviewAccess {
 	firstMessage: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
@@ -591,11 +593,15 @@ export class AgentExecutionService {
 			filters,
 		);
 
-		if (page.threads.length === 0) {
-			return { threads: [], nextCursor: page.nextCursor };
-		}
+		return { ...page, threads: await this.toThreadListItems(page.threads, userId) };
+	}
 
-		const threadIds = page.threads.map((t) => t.id);
+	private async toThreadListItems(
+		threads: AgentExecutionThread[],
+		userId: string,
+	): Promise<ThreadListItem[]> {
+		if (threads.length === 0) return [];
+		const threadIds = threads.map((t) => t.id);
 		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
@@ -603,18 +609,18 @@ export class AgentExecutionService {
 			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
 		]);
 
-		return {
-			...page,
-			threads: page.threads.map(
-				({ ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t }) => ({
-					...t,
-					firstMessage: messageMap.get(t.id) ?? null,
-					source: sourceMap.get(t.id) ?? null,
-					failureSummary: failureSummaryMap.get(t.id) ?? null,
-					status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
-				}),
-			),
-		};
+		return threads.map((thread) => {
+			const { ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t } = thread;
+			const source = sourceMap.get(t.id) ?? null;
+			return {
+				...t,
+				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
+				firstMessage: messageMap.get(t.id) ?? null,
+				source,
+				failureSummary: failureSummaryMap.get(t.id) ?? null,
+				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
+			};
+		});
 	}
 
 	/**
@@ -696,7 +702,9 @@ export class AgentExecutionService {
 	): Promise<boolean> {
 		const thread = await this.findThreadById(threadId);
 		if (thread) {
-			return thread.accessScope === 'user' && threadBelongsTo(thread, projectId, agentId, userId);
+			if (!threadBelongsTo(thread, projectId, agentId, userId)) return false;
+			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
 		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
