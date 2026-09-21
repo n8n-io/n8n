@@ -52,5 +52,5 @@ export const promoteRequestSchema = z.object({
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;
 
-/** Request body for the internal, project-scoped selective promote endpoint. */
+/** Request body for the project-scoped selective promote endpoint. */
 export class PromoteSelectionRequestDto extends Z.class(promoteRequestSchema.shape) {}

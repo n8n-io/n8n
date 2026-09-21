@@ -1,8 +1,8 @@
-operationId: promotePackage
+operationId: promoteProjectSelection
 tags:
   - Promotions
-summary: Promote all team projects
-description: Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.
+summary: Promote a selection of a project's workflows
+description: Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live workflows are exported, and archived or deleted ids leave the branch. An id from another project rejects the whole request before any write. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.
 x-required-scope: gitConnection:push
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -11,8 +11,8 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the promotion connection.
-    name: promotionConnectionId
+    description: The ID of the project.
+    name: projectId
     in: path
 requestBody:
   required: true
@@ -21,15 +21,15 @@ requestBody:
       schema:
         type: object
         properties:
-          commitMessage:
-            type: string
-            minLength: 1
-            maxLength: 1000
-          force:
-            type: boolean
+          workflowIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 36
+            minItems: 1
         required:
-          - commitMessage
-        additionalProperties: false
+          - workflowIds
 responses:
   '200':
     description: Operation successful.

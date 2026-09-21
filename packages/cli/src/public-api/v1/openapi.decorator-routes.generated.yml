@@ -159,6 +159,9 @@ paths:
   /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  /promotions/projects/{projectId}/promote:
+    post:
+      $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

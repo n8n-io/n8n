@@ -9,6 +9,7 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionRequestDto,
 	PromotionApplyConfigPublicDto,
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
@@ -620,6 +621,34 @@ export class PromotionsPublicController {
 			parsedDirection,
 			query,
 		);
+	}
+
+	// -- Selective promote ---------------------------------------------------
+
+	@Post('/projects/:projectId/promote')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:push')
+	@GlobalScope('gitConnection:push')
+	@ApiSummary("Promote a selection of a project's workflows")
+	@ApiDescription(
+		"Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live workflows are exported, and archived or deleted ids leave the branch. An id from another project rejects the whole request before any write. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotePackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async promoteProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: PromoteSelectionRequestDto,
+	): Promise<PromotePackageResultDto> {
+		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
+			...input,
+			// Variable values only travel when the key may list them.
+			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
+		});
 	}
 
 	// -- Module access -------------------------------------------------------
