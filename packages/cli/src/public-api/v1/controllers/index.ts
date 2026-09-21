@@ -6,6 +6,7 @@
 import './credentials.public.controller';
 import './executions.public.controller';
 import './folders.public.controller';
+import './insights.public.controller';
 import './node-type-policies.public.controller';
 import './projects.public.controller';
 import './promotions.public.controller';

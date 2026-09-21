@@ -275,6 +275,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await Container.get(RoleCacheService).invalidateCache();
 			this.logger.debug('Auth roles service init complete');
 
+			// The role sync above and data migrations write role scopes straight to the
+			// database, outside RoleService. In queue mode the role cache lives in Redis
+			// and survives a restart, so rebuild it once the sync has committed and
+			// before this main serves requests.
+			await Container.get(RoleCacheService).refreshCache();
+			this.logger.debug('Role cache refreshed');
+
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
 		}

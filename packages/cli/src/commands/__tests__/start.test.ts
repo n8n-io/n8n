@@ -41,6 +41,7 @@ authRolesService.init.mockResolvedValue(undefined);
 
 const roleCacheService = mockInstance(RoleCacheService);
 roleCacheService.invalidateCache.mockResolvedValue(undefined);
+roleCacheService.refreshCache.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
@@ -200,6 +201,11 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 			expect(pollJobProvider.init).toHaveBeenCalledTimes(1);
+			// The role cache is rebuilt after the role sync committed, never before it.
+			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
+			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
+				authRolesService.init.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should invalidate the role cache after the auth roles sync', async () => {
@@ -248,6 +254,7 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).not.toHaveBeenCalled();
+			expect(roleCacheService.refreshCache).not.toHaveBeenCalled();
 			expect(roleCacheService.invalidateCache).not.toHaveBeenCalled();
 		});
 

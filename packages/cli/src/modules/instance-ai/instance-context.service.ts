@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	ActivityEventRepository,
@@ -75,38 +74,10 @@ const inventorySize = 8;
 /** How much of one resource's own history an expand returns. A resource cannot need more. */
 const resourceHistoryLimit = 20;
 
-/**
- * How far below the high-water mark a delta re-reads.
- *
- * Ids are an ordering key, not a completeness watermark: Postgres allocates a sequence value
- * outside the surrounding transaction, so two writers can commit id 101 before id 100, and a
- * cursor that asks for "everything above the highest id seen" skips 100 for good. The entries most
- * worth surfacing are deletions, written by whichever request happens to be committing.
- *
- * So a delta re-reads this far below the mark and drops what it has already shown.
- *
- * What this does and does not promise. The read below is newest-first and capped, so when more
- * rows sit above the floor than the cap, the ones dropped are the lowest — and the mark then
- * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
- * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
- * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
- * could be displayed", not "every straggler is recovered". What makes even that much true is
- * `entryFetchLimit` staying above `windowSize`, which is why that one is derived rather than set.
- */
-const activityLagIds = 200;
+/** Shown ids retained to de-duplicate the late-commit lag band. */
+const seenIdsCap = 200;
 
-/**
- * Ids remembered inside the band, so a delta does not show one twice. Deliberately the band's own
- * width: the band spans that many ids, so a smaller cap would forget an id still inside it and
- * show it again, and a larger one would store ids the floor already excludes.
- */
-const seenIdsCap = activityLagIds;
-
-/**
- * Rows one delta reads. Derived from `windowSize` rather than set by hand: staying above it is
- * what bounds what a truncated read can lose — see the note on `activityLagIds` — and the multiple
- * leaves room for the age filter to discard rows and still fill a window.
- */
+/** Extra rows let age filtering still fill the visible window. */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
 /**
@@ -146,7 +117,7 @@ export type InstanceContextScope =
  * A scope after the caller's access has actually been resolved. Separate from the requested scope
  * so nothing downstream can mistake "what was asked for" for "what was allowed".
  */
-type ResolvedScope =
+type ResolvedScope = { allowedCategories: ActivityEventCategory[] } & (
 	| { surface: 'conversation'; projectIds: string[] }
 	| {
 			surface: 'mcp';
@@ -155,7 +126,8 @@ type ResolvedScope =
 			credentialProjectIds: ActivityProjectScope;
 			/** Whether the run leg may be read at all. */
 			runsVisible: boolean;
-	  };
+	  }
+);
 
 export type ActivityPage = {
 	entries: InstanceAiActivityEntry[];
@@ -171,10 +143,16 @@ export type ActivityPage = {
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
 
 export type InstanceContextCursor = {
-	/** Highest activity entry id shown. */
+	/** Highest activity entry id read. */
 	activityMark: number;
-	/** Entry ids already shown that still sit inside the lag band. */
+	/** Highest entry id a turn cut. Nothing at or below it is offered again. */
+	activityFloor: number;
+	/** Categories allowed when this cursor was created. */
+	activityCategories: ActivityEventCategory[];
+	/** Entry ids already shown, including ids below the current floor. */
 	activitySeen: number[];
+	/** The deduplication limit excludes forgotten ids, even after a scope change. */
+	activitySeenFloor?: number;
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
 };
@@ -189,15 +167,22 @@ export function readInstanceContextCursor(
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
 	if (!isRecord(value)) return null;
 
-	const { activityMark, activitySeen, runsThrough } = value;
+	const { activityMark, activityFloor, activityCategories, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
+	if (typeof activityFloor !== 'number' || !Number.isFinite(activityFloor)) return null;
+	if (!Array.isArray(activityCategories)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
 	return {
 		activityMark,
+		activityFloor,
+		activityCategories: activityCategories.filter(isKnownCategory),
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
+		...(typeof value.activitySeenFloor === 'number' && Number.isFinite(value.activitySeenFloor)
+			? { activitySeenFloor: value.activitySeenFloor }
+			: {}),
 		runsThrough,
 	};
 }
@@ -236,7 +221,6 @@ export type InstanceContextBlock = {
 export class InstanceContextService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -244,10 +228,6 @@ export class InstanceContextService {
 		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-	}
-
-	get enabled(): boolean {
-		return this.globalConfig.instanceAi.instanceContextEnabled;
 	}
 
 	/**
@@ -272,16 +252,15 @@ export class InstanceContextService {
 		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
 		 */
 		isMachineFollowUp?: boolean;
+		/** Instance gate result shared with the activity tool for this turn. */
+		enabled: boolean;
 		now?: Date;
 	}): Promise<InstanceContextBlock | null> {
-		// The flag gates Instance AI's own block. The MCP surface has its own flag, checked where
-		// its tools are registered, so it does not answer to this one.
-		if (input.scope.surface === 'conversation' && !this.enabled) return null;
+		if (!input.enabled) return null;
 		if (input.isMachineFollowUp) return null;
 
 		try {
 			const now = input.now ?? new Date();
-			const isUpdate = input.cursor !== null;
 
 			const resolved = await this.resolveScope(input.user, input.scope);
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
@@ -294,11 +273,14 @@ export class InstanceContextService {
 			// a total counting workflows the caller cannot see.
 			const mcpVisibleOnly = resolved.surface === 'mcp';
 
+			const cursor = input.cursor;
+			const isUpdate = cursor !== null;
+
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ projectIds, cursor: input.cursor, now, scope: resolved }),
+				this.readEntries({ cursor, now, scope: resolved }),
 				resolved.surface === 'mcp' && !resolved.runsVisible
 					? Promise.resolve([])
-					: this.readRuns({ projectIds, cursor: input.cursor, now, mcpVisibleOnly }),
+					: this.readRuns({ projectIds, cursor, now, mcpVisibleOnly }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
 				isUpdate
@@ -325,7 +307,10 @@ export class InstanceContextService {
 				}),
 				cursor: {
 					activityMark: entries.mark,
+					activityFloor: entries.floor,
+					activityCategories: resolved.allowedCategories,
 					activitySeen: entries.seen,
+					activitySeenFloor: entries.seenFloor,
 					runsThrough: now.toISOString(),
 				},
 			};
@@ -395,7 +380,8 @@ export class InstanceContextService {
 		const rows = await this.activityEventRepository.findFeed({
 			limit: fetchLimit,
 			projectIds: resolved.projectIds,
-			...(category !== undefined ? { category } : {}),
+			allowedCategories: resolved.allowedCategories,
+			...(category !== undefined ? { filterCategory: category } : {}),
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 		});
@@ -450,7 +436,11 @@ export class InstanceContextService {
 		if (resolved === null) return null;
 
 		const projectIds = resolved.projectIds;
-		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
+		const row = await this.activityEventRepository.findEntry({
+			id: input.id,
+			projectIds,
+			allowedCategories: resolved.allowedCategories,
+		});
 		if (!row) return null;
 
 		if (resolved.surface === 'mcp') {
@@ -493,42 +483,57 @@ export class InstanceContextService {
 	 * shown: they have been accounted for, and re-reading them next turn would only cost tokens.
 	 */
 	private async readEntries(input: {
-		projectIds: ActivityProjectScope;
+		scope: ResolvedScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
-		scope: ResolvedScope;
-	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
-		const cursor = input.cursor;
-
-		// Withheld workflows are dropped after the read on this surface, so the read has to start
-		// wider or a window whose newest rows are all withheld comes back empty while visible
-		// entries sit just below it. On an instance that predates `availableInMCP` that is the
-		// common case, not the corner one.
+	}): Promise<{
+		rows: ActivityEvent[];
+		mark: number;
+		floor: number;
+		seen: number[];
+		seenFloor: number;
+		truncated: boolean;
+	}> {
 		const fetchLimit =
 			input.scope.surface === 'mcp' ? entryFetchLimit * withheldFetchMultiplier : entryFetchLimit;
 
 		// Newest first, and on a delta only what arrived above the mark.
 		const arrivals = await this.activityEventRepository.findFeed({
 			limit: fetchLimit,
-			projectIds: input.projectIds,
-			...(cursor ? { afterId: cursor.activityMark } : {}),
+			projectIds: input.scope.projectIds,
+			allowedCategories: input.scope.allowedCategories,
+			...(input.cursor ? { afterId: input.cursor.activityMark } : {}),
 		});
 
-		// The band below the mark is read separately, not folded into the query above. One capped
-		// read cannot cover both: arrivals are unbounded and come back first, so a busy turn would
-		// fill the page and push the band out — losing exactly the late commit the band exists for.
-		// Alone it is bounded by its own width, since it spans that many ids at most.
+		// Read the lag band separately so new arrivals cannot push late commits out of the page.
+		const cursor = input.cursor;
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
-					limit: activityLagIds,
-					projectIds: input.projectIds,
-					afterId: Math.max(0, cursor.activityMark - activityLagIds),
+					limit: seenIdsCap,
+					projectIds: input.scope.projectIds,
+					allowedCategories: input.scope.allowedCategories,
+					afterId: Math.max(cursor.activityFloor, cursor.activitySeenFloor ?? 0),
 					beforeId: cursor.activityMark,
 				})
 			: [];
 
-		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
-		const read = [...arrivals, ...band];
+		// New permissions expose older rows only in the newly allowed categories.
+		const addedCategories = input.scope.allowedCategories.filter(
+			(category) => cursor && !cursor.activityCategories.includes(category),
+		);
+		const reopened =
+			cursor && addedCategories.length > 0
+				? await this.activityEventRepository.findFeed({
+						limit: seenIdsCap,
+						projectIds: input.scope.projectIds,
+						allowedCategories: addedCategories,
+						afterId: cursor.activitySeenFloor ?? 0,
+						beforeId: cursor.activityFloor + 1,
+					})
+				: [];
+
+		// The three ranges do not overlap and remain ordered from newest to oldest.
+		const read = [...arrivals, ...band, ...reopened];
 
 		// Entries are individual rows rather than an aggregate, so the same post-read filter the
 		// `list` tool uses applies here. The mark below still advances past what was filtered:
@@ -554,18 +559,20 @@ export class InstanceContextService {
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// What was shown, not what was read: an entry the window cut is still unseen, and the band
-		// gives it another turn to appear rather than burying it under a mark it never reached.
-		// Only ids inside the band need remembering — below it, the floor already excludes them.
-		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.filter((id) => id > mark - activityLagIds)
-			.sort((a, b) => b - a)
-			.slice(0, seenIdsCap);
+		// Keep the old floor unless this turn cuts the window.
+		const cut = fresh[windowSize];
+		const floor = Math.max(cursor?.activityFloor ?? 0, cut?.id ?? 0);
+
+		// Keep shown ids across scope changes so reopened rows do not repeat.
+		const seen = [...alreadyShown, ...shown.map((row) => row.id)].sort((a, b) => b - a);
+		const seenFloor = Math.max(cursor?.activitySeenFloor ?? 0, seen[seenIdsCap] ?? 0);
 
 		return {
 			rows: shown,
 			mark,
-			seen,
+			floor,
+			seen: seen.filter((id) => id > seenFloor).slice(0, seenIdsCap),
+			seenFloor,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
 			truncated: fresh.length > windowSize || arrivals.length === fetchLimit,
@@ -636,7 +643,12 @@ export class InstanceContextService {
 			if (!allowed) return null;
 
 			if (scope.surface === 'conversation') {
-				return { surface: 'conversation', projectIds: [projectId] };
+				const credentials = await userHasScopes(user, ['credential:read'], false, { projectId });
+				return {
+					surface: 'conversation',
+					projectIds: [projectId],
+					allowedCategories: credentials ? ['workflow', 'credential'] : ['workflow'],
+				};
 			}
 
 			// The personal project is credential-readable by its owner without a project role, so
@@ -652,6 +664,8 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: [projectId],
 				credentialProjectIds,
+				allowedCategories:
+					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -673,6 +687,8 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: 'all-projects',
 				credentialProjectIds,
+				allowedCategories:
+					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -695,6 +711,8 @@ export class InstanceContextService {
 			surface: 'mcp',
 			projectIds,
 			credentialProjectIds,
+			allowedCategories:
+				credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
 			runsVisible: scope.executionGranted,
 		};
 	}
@@ -808,6 +826,7 @@ function resolveCategory(
 	scope: ResolvedScope,
 ): ActivityEventCategory | undefined | null {
 	const category = isKnownCategory(requested) ? requested : undefined;
+	if (category !== undefined && !scope.allowedCategories.includes(category)) return null;
 	if (scope.surface !== 'mcp') return category;
 
 	const seesSomeCredentials =

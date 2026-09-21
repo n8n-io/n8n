@@ -31,7 +31,6 @@ import { useI18n } from '@n8n/i18n';
 import { N8nEmptyState } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -51,16 +50,13 @@ const { config: localConfig, fetchConfig } = useAgentConfig();
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
-const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
-	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
-});
 
 // Populated by the timeline panel's `loaded` event so the header can render its
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
 const agent = ref<AgentResource | null>(null);
-const isPreviewOpen = useStorage(previewOpenStorageKey, false);
+const isPreviewOpen = ref(false);
 const previewInitialized = ref(false);
 const { canUpdate } = useAgentPermissions(projectId);
 const canDeleteSession = computed(() => canUpdate.value);
@@ -359,11 +355,9 @@ function viewPreviewTrace() {
 			:duration-label="durationLabel"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
-			:is-preview-open="isPreviewOpen"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
-			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 

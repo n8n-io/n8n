@@ -248,7 +248,12 @@ describe('buildWorkflow declared credentials', () => {
 		expect(build.success).toBe(true);
 		// A blank credential models one the user saved without filling anything in,
 		// so it is seeded with no data and must never resolve a test as passing.
-		expect(createCredential).toHaveBeenCalledWith(expect.any(String), 'httpHeaderAuth', {});
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'httpHeaderAuth',
+			{},
+			undefined,
+		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
 			expect.any(String),
 			['cred-blank'],

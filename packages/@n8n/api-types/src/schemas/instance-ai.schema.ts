@@ -2072,6 +2072,7 @@ const instanceAiPermissionsSchema = z.object({
 	fetchUrl: instanceAiPermissionModeSchema,
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
+	executeNode: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
 });
 
@@ -2098,6 +2099,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	fetchUrl: 'require_approval',
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
+	executeNode: 'require_approval',
 	executeMcpTool: 'require_approval',
 };
 
@@ -2136,6 +2138,17 @@ export function applyBranchReadOnlyOverrides(
 		}
 	}
 	return overridden;
+}
+
+export function resolveInstanceAiPermissions(
+	persisted: Partial<InstanceAiPermissions>,
+): InstanceAiPermissions {
+	const resolved = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...persisted };
+	// Only a saved block carries over; inheriting always_allow would widen the grant.
+	if (persisted.executeNode === undefined && persisted.runWorkflow === 'blocked') {
+		resolved.executeNode = 'blocked';
+	}
+	return resolved;
 }
 
 // ---------------------------------------------------------------------------
@@ -2555,6 +2568,9 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/** Instance rollout gate for shared activity recording and retrieval. */
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
