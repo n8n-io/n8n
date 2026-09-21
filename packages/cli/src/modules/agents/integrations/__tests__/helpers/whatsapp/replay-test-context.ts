@@ -113,13 +113,29 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
 }
 
 /**
+ * A fixed number of leading sends fail with the given Meta error before the
+ * stub starts succeeding — for exercising `withWhatsAppRateLimitBackoff`'s
+ * retry loop. `count: Infinity` fails every send, for the exhausted-retries
+ * case.
+ */
+export interface WhatsAppFailureSequence {
+	count: number;
+	status?: number;
+	code?: number;
+}
+
+/**
  * Answer the Meta Graph API for the real `@chat-adapter/whatsapp` adapter.
  * Every outbound send (text, interactive, reaction, template) POSTs to the
  * same `/{phoneNumberId}/messages` endpoint, so the response only needs a
  * message ID — the adapter doesn't branch on the response shape otherwise.
  */
-function installWhatsAppApiStub(failedTypes: string[] = []) {
+function installWhatsAppApiStub(
+	failedTypes: string[] = [],
+	failureSequence?: WhatsAppFailureSequence,
+) {
 	let nextMessageId = 1000;
+	let failuresLeft = failureSequence?.count ?? 0;
 	return installFetchStub({
 		match: /graph\.facebook\.com/,
 		onRequest: ({ url, body }) => {
@@ -131,6 +147,16 @@ function installWhatsAppApiStub(failedTypes: string[] = []) {
 					apiCall: { method, body },
 					responseBody: { error: { message: 'Test failure', code: 131047 } },
 					status: 400,
+				};
+			}
+			if (failuresLeft > 0) {
+				failuresLeft--;
+				return {
+					apiCall: { method, body },
+					responseBody: {
+						error: { message: 'Test rate limit', code: failureSequence?.code ?? 130429 },
+					},
+					status: failureSequence?.status ?? 400,
 				};
 			}
 			const to = typeof body.to === 'string' ? body.to : '';
@@ -153,9 +179,10 @@ export async function createWhatsAppReplayContext(
 		stream?: StreamChunk[];
 		integration?: AgentIntegrationConfig;
 		failedApiTypes?: string[];
+		failureSequence?: WhatsAppFailureSequence;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
-	const stub = installWhatsAppApiStub(options.failedApiTypes);
+	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
 
 	const integrationImpl = createWhatsAppIntegration();
 	const integration: AgentIntegrationConfig = options.integration ?? {

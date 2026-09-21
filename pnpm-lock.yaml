@@ -230,6 +230,9 @@ catalogs:
     '@chat-adapter/linear':
       specifier: 4.37.0
       version: 4.37.0
+    '@chat-adapter/shared':
+      specifier: 4.37.0
+      version: 4.37.0
     '@chat-adapter/slack':
       specifier: 4.37.0
       version: 4.37.0
@@ -4288,6 +4291,9 @@ importers:
       '@chat-adapter/linear':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/shared':
+        specifier: 'catalog:'
+        version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/slack':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
@@ -29110,7 +29116,7 @@ snapshots:
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
-      pg: 8.21.0(pg-native@3.8.0)
+      pg: 8.21.0
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -41568,9 +41574,14 @@ snapshots:
       libpq: 1.11.0
       pg-types: 2.2.0
 
-  pg-pool@3.14.0(pg@8.21.0):
+  pg-pool@3.14.0(pg@8.21.0(pg-native@3.8.0)):
     dependencies:
       pg: 8.21.0(pg-native@3.8.0)
+
+  pg-pool@3.14.0(pg@8.21.0):
+    dependencies:
+      pg: 8.21.0
+    optional: true
 
   pg-promise@11.9.1(pg-native@3.8.0):
     dependencies:
@@ -41596,10 +41607,21 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.21.0(pg-native@3.8.0):
+  pg@8.21.0:
     dependencies:
       pg-connection-string: 2.14.0
       pg-pool: 3.14.0(pg@8.21.0)
+      pg-protocol: 1.15.0
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.4.0
+    optional: true
+
+  pg@8.21.0(pg-native@3.8.0):
+    dependencies:
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.21.0(pg-native@3.8.0))
       pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5

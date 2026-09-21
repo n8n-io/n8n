@@ -48,4 +48,8 @@ export async function loadWhatsAppAdapter() {
 	return await esmImport<typeof import('@chat-adapter/whatsapp')>('@chat-adapter/whatsapp');
 }
 
+export async function loadChatAdapterShared() {
+	return await esmImport<typeof import('@chat-adapter/shared')>('@chat-adapter/shared');
+}
+
 /* eslint-enable @typescript-eslint/consistent-type-imports */
