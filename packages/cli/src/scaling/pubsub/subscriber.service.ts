@@ -15,6 +15,8 @@ import {
 	COMMAND_PUBSUB_CHANNEL,
 	WORKER_RESPONSE_PUBSUB_CHANNEL,
 	MCP_RELAY_PUBSUB_CHANNEL,
+	SUBSCRIBER_LIVENESS_INTERVAL_MS,
+	SUBSCRIBER_LIVENESS_TIMEOUT_MS,
 } from '../constants';
 
 /**
@@ -45,6 +47,12 @@ export class Subscriber {
 
 	private readonly debouncedHandlers = new Map<string, ReturnType<typeof debounce>>();
 
+	private readonly channels = new Set<string>();
+
+	private lostConnection = false;
+
+	private livenessTimer?: NodeJS.Timeout;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -65,6 +73,24 @@ export class Subscriber {
 		this.mcpRelayChannel = `${prefix}:${MCP_RELAY_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
+
+		// ioredis replays SUBSCRIBE on reconnect without awaiting it, so a failed replay leaves
+		// the connection ready with zero subscriptions. Re-issue our own on every recovery.
+		this.client.on('close', () => {
+			this.lostConnection = true;
+		});
+		this.client.on('ready', () => {
+			if (!this.lostConnection) return;
+			this.lostConnection = false;
+			void this.resubscribe();
+		});
+
+		// A cluster client pings a random node, not the dedicated subscriber connection.
+		if (this.globalConfig.queue.bull.redis.clusterNodes === '') {
+			this.livenessTimer = setInterval(async () => {
+				await this.checkLiveness();
+			}, SUBSCRIBER_LIVENESS_INTERVAL_MS).unref();
+		}
 
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
 			this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
@@ -145,11 +171,13 @@ export class Subscriber {
 
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
+		clearInterval(this.livenessTimer);
 		for (const handler of this.debouncedHandlers.values()) handler.cancel();
 		this.client.disconnect();
 	}
 
 	async subscribe(channel: string) {
+		this.channels.add(channel);
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
 				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
@@ -158,6 +186,38 @@ export class Subscriber {
 
 			this.logger.debug(`Subscribed to channel ${channel}`);
 		});
+	}
+
+	private async resubscribe() {
+		if (this.channels.size === 0) return;
+		try {
+			for (const channel of this.channels) await this.subscribe(channel);
+			this.logger.info('Resubscribed to pubsub channels after Redis reconnect', {
+				channels: [...this.channels],
+			});
+		} catch (error) {
+			this.lostConnection = true;
+			this.logger.error('Failed to resubscribe to pubsub channels after Redis reconnect', {
+				error,
+			});
+		}
+	}
+
+	/**
+	 * A subscriber connection is idle by nature, so a half-open socket (peer gone, no RST
+	 * received) is never detected by ioredis. PING is allowed in subscriber mode; a missing
+	 * PONG drops the socket so ioredis reconnects and `resubscribe` runs.
+	 */
+	private async checkLiveness() {
+		const timeout = new Promise<never>((_, reject) => {
+			setTimeout(() => reject(new Error('PONG timeout')), SUBSCRIBER_LIVENESS_TIMEOUT_MS).unref();
+		});
+		try {
+			await Promise.race([this.client.ping(), timeout]);
+		} catch (error) {
+			this.logger.warn('Pubsub subscriber connection is unresponsive, reconnecting', { error });
+			this.client.disconnect(true);
+		}
 	}
 
 	private eventNameFrom(msg: PubSub.Command | PubSub.WorkerResponse) {

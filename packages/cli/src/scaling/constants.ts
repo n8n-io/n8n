@@ -11,6 +11,12 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 /** Pubsub channel for MCP relay messages between main instances in multi-main queue mode. */
 export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
 
+/** How often to PING the pubsub subscriber connection. Short enough to keep idle NAT/IPVS flows alive. */
+export const SUBSCRIBER_LIVENESS_INTERVAL_MS = 30_000;
+
+/** How long to wait for PONG before dropping the subscriber connection so ioredis reconnects. */
+export const SUBSCRIBER_LIVENESS_TIMEOUT_MS = 10_000;
+
 /**
  * Max allowed size in bytes of a message relayed over the pubsub channel. Events
  * exceeding this are skipped (or trimmed) rather than bloating the channel.
