@@ -1,10 +1,14 @@
-export const AGENTS_LIST_VIEW = 'AgentsListView';
-export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
-export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
-export const AGENT_VIEW = 'AgentView';
-export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
-export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
-export const PROJECT_AGENTS = 'ProjectAgents';
+// The agent route names moved to `@n8n/frontend-constants/agents` so a module outside
+// the shell can link to an agent route. Re-exported here for existing importers.
+export {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	PROJECT_AGENTS,
+} from '@n8n/frontend-constants/agents';
 
 export const AGENTS_MODULE_NAME = 'agents';
 

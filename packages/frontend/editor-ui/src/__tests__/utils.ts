@@ -2,13 +2,15 @@ import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { AuthenticationMethod } from '@n8n/api-types';
-import { defaultSettings } from '@n8n/frontend-test-utils';
+import { defaultSettings, getTooltip } from '@n8n/frontend-test-utils';
 
-// `mockedStore`, `retry`, `waitAllPromises` and `useEmitters` now live in
+// `mockedStore`, `retry`, `waitAllPromises`, `useEmitters` and `getTooltip` now live in
 // `@n8n/frontend-test-utils`, so a module package can reach them. They are re-exported rather
 // than codemodded away: `mockedStore` alone has 200+ importers here, and this file stays for the
 // helpers below it that are bound to the shell (`ISettingsState`) or to editor-ui's own DOM.
+// `getTooltip` is also imported above, because `withinTooltip` below calls it.
 export {
+	getTooltip,
 	mockedStore,
 	retry,
 	useEmitters,
@@ -72,21 +74,6 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
 	expect(selectedItem).toBeInTheDocument();
 	return selectedItem?.querySelector('p')?.textContent?.trim();
-};
-
-/**
- * Helper to get the visible tooltip content container.
- * Queries the tooltip by its CSS class which is applied by N8nTooltip component.
- * This is the semantic approach since .n8n-tooltip is the design system class.
- *
- * Usage: const tooltip = getTooltip(); expect(tooltip).toHaveTextContent('...');
- */
-export const getTooltip = () => {
-	const tooltip = document.querySelector('.n8n-tooltip');
-	if (!tooltip) {
-		throw new Error('Unable to find tooltip with class .n8n-tooltip');
-	}
-	return tooltip as HTMLElement;
 };
 
 /**
