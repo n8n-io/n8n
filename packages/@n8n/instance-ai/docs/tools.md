@@ -741,9 +741,12 @@ List credentials accessible to the current user. Never exposes secrets.
 | `limit` | number | no | Page size. Default 50 and maximum 200 |
 | `offset` | number | no | Number of credentials to skip. Default 0 |
 
-**Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
-A Gateway credits managed entry can have `id: null` and
-`__aiGatewayManaged: true`.
+**Returns**: `{ credentials: [{ id, name, type, description }], total, hasMore, hint? }`.
+Descriptions have a 256-character preview limit, including the truncation marker.
+An unset description returns `null`. Read the descriptions when several credentials
+share one type. Use `get` to read the full text if the preview does not resolve the choice.
+A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
+`__aiGatewayManaged: true`, and `description: null`.
 
 ### `credentials(action="get")`
 
@@ -753,8 +756,9 @@ Get credential metadata. Never returns decrypted secrets.
 |-------|------|----------|-------------|
 | `credentialId` | string | yes | Credential ID |
 
-**Returns**: credential metadata from the credential service. It never contains
-decrypted secret values.
+**Returns**: `{ id, name, type, description, nodesWithAccess? }`.
+The description contains the full stored text, or `null` when unset.
+The response never contains credential secret data.
 
 ### `credentials(action="delete")`
 

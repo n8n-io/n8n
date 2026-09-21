@@ -2443,7 +2443,14 @@ export class InstanceAiAdapterService {
 						projectId: boundProjectId,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
-					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+							description: c.description,
+						}),
+					);
 				}
 
 				// Unbound runs (temporary-workflow archiving, the only caller without a
@@ -2465,6 +2472,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
+							description: c.description,
 						}),
 					);
 				}
@@ -2481,6 +2489,7 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
+						description: c.description,
 					}),
 				);
 			},
@@ -2491,6 +2500,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
+					description: credential.description,
 				} satisfies CredentialDetail;
 			},
 
