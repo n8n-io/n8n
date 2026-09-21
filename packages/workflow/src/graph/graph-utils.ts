@@ -192,6 +192,44 @@ export function buildAdjacencyList(
 	return result;
 }
 
+/** Reports the members that take main input from outside, beyond the one a strict group allows. */
+function collectInputBoundaryErrors(
+	inputNodes: Set<string>,
+	rootNodes: Set<string>,
+	rootInputNodes: Set<string>,
+): ExtractableErrorResult[] {
+	const errors: ExtractableErrorResult[] = [];
+
+	for (const inputNode of difference(inputNodes, rootNodes).values()) {
+		errors.push({ errorCode: 'Input Edge To Non-Root Node', node: inputNode });
+	}
+
+	if (rootInputNodes.size > 1) {
+		errors.push({ errorCode: 'Multiple Input Nodes', nodes: rootInputNodes });
+	}
+
+	return errors;
+}
+
+/** Reports the members that send main output outside, beyond the one a strict group allows. */
+function collectOutputBoundaryErrors(
+	outputNodes: Set<string>,
+	leafNodes: Set<string>,
+	leafOutputNodes: Set<string>,
+): ExtractableErrorResult[] {
+	const errors: ExtractableErrorResult[] = [];
+
+	for (const outputNode of difference(outputNodes, leafNodes).values()) {
+		errors.push({ errorCode: 'Output Edge From Non-Leaf Node', node: outputNode });
+	}
+
+	if (leafOutputNodes.size > 1) {
+		errors.push({ errorCode: 'Multiple Output Nodes', nodes: leafOutputNodes });
+	}
+
+	return errors;
+}
+
 /**
  * A subgraph is considered extractable if the following properties hold:
  * - 0-1 input nodes from outside the subgraph, to a root node
@@ -202,6 +240,7 @@ export function buildAdjacencyList(
  * and the output node are selected, since this would otherwise create extra
  * input or output nodes.
  *
+ * @param [options={}] `relaxBoundaryRules` When TRUE, accepts several entry or exit nodes.
  * @returns An object containing optional start and end nodeIds
  *            indicating which nodes have outside connections, OR
  *          An array of errors if the selection is not valid.
@@ -209,6 +248,7 @@ export function buildAdjacencyList(
 export function parseExtractableSubgraphSelection(
 	graphIds: Set<string>,
 	adjacencyList: IConnectionAdjacencyList,
+	options: { relaxBoundaryRules?: boolean } = {},
 ): ExtractableSubgraphData | ExtractableErrorResult[] {
 	const errors: ExtractableErrorResult[] = [];
 
@@ -220,18 +260,10 @@ export function parseExtractableSubgraphSelection(
 
 	// this enables supporting cases where we have one input and a loop back to it from within the selection
 	if (rootNodes.size === 0 && inputNodes.size === 1) rootNodes = inputNodes;
-	for (const inputNode of difference(inputNodes, rootNodes).values()) {
-		errors.push({
-			errorCode: 'Input Edge To Non-Root Node',
-			node: inputNode,
-		});
-	}
 	const rootInputNodes = intersection(rootNodes, inputNodes);
-	if (rootInputNodes.size > 1) {
-		errors.push({
-			errorCode: 'Multiple Input Nodes',
-			nodes: rootInputNodes,
-		});
+
+	if (!options.relaxBoundaryRules) {
+		errors.push(...collectInputBoundaryErrors(inputNodes, rootNodes, rootInputNodes));
 	}
 
 	// 0-1 Output nodes
@@ -243,30 +275,24 @@ export function parseExtractableSubgraphSelection(
 	// Note that this is fairly theoretical, as return semantics in this case are not well-defined.
 	if (leafNodes.size === 0 && outputNodes.size === 1) leafNodes = outputNodes;
 
-	for (const outputNode of difference(outputNodes, leafNodes).values()) {
-		errors.push({
-			errorCode: 'Output Edge From Non-Leaf Node',
-			node: outputNode,
-		});
-	}
-
 	const leafOutputNodes = intersection(leafNodes, outputNodes);
-	if (leafOutputNodes.size > 1) {
-		errors.push({
-			errorCode: 'Multiple Output Nodes',
-			nodes: leafOutputNodes,
-		});
+
+	if (!options.relaxBoundaryRules) {
+		errors.push(...collectOutputBoundaryErrors(outputNodes, leafNodes, leafOutputNodes));
 	}
 
 	const start = rootInputNodes.values().next().value;
 	const end = leafOutputNodes.values().next().value;
 
-	if (start && end && !hasPath(start, end, adjacencyList)) {
-		errors.push({
-			errorCode: 'No Continuous Path From Root To Leaf In Selection',
-			start,
-			end,
-		});
+	// When we are relaxing the boundary rules, we dont need this check
+	if (!options.relaxBoundaryRules) {
+		if (start && end && !hasPath(start, end, adjacencyList)) {
+			errors.push({
+				errorCode: 'No Continuous Path From Root To Leaf In Selection',
+				start,
+				end,
+			});
+		}
 	}
 
 	return errors.length > 0 ? errors : { start, end };

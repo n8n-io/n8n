@@ -623,7 +623,10 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 
 	const adjacencyList = buildAdjacencyList(connectionsBySourceNode);
 	const selectedNodeNames = new Set(nodes.map((node) => node.name));
-	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList);
+	// A relaxed group may have several entry and exit nodes
+	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList, {
+		relaxBoundaryRules: relaxNodeGroupRules,
+	});
 
 	if (Array.isArray(selection)) {
 		return { valid: false, reason: 'invalid-subgraph', errors: selection };

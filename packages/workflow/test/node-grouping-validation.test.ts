@@ -113,6 +113,49 @@ function makeTriggeredGraph() {
 	return graph;
 }
 
+const mainTo = (node: string) => [{ node, type: NodeConnectionTypes.Main, index: 0 }];
+
+/**
+ * Outside -> A and Outside -> B, both joining at C. Selecting A, B and C gives a
+ * group with two entry nodes.
+ */
+function makeTwoEntryGraph() {
+	const nodes = [
+		makeNode({ id: 'a', name: 'A' }),
+		makeNode({ id: 'b', name: 'B' }),
+		makeNode({ id: 'c', name: 'C' }),
+	];
+
+	const connections: IConnections = {
+		OutsideOne: { main: [mainTo('A')] },
+		OutsideTwo: { main: [mainTo('B')] },
+		A: { main: [mainTo('C')] },
+		B: { main: [mainTo('C')] },
+	};
+
+	return { nodes, connections };
+}
+
+/**
+ * A -> B and A -> C, with B and C each leaving the selection. Selecting A, B and
+ * C gives a group with two exit nodes.
+ */
+function makeTwoExitGraph() {
+	const nodes = [
+		makeNode({ id: 'a', name: 'A' }),
+		makeNode({ id: 'b', name: 'B' }),
+		makeNode({ id: 'c', name: 'C' }),
+	];
+
+	const connections: IConnections = {
+		A: { main: [[...mainTo('B'), ...mainTo('C')]] },
+		B: { main: [mainTo('OutsideOne')] },
+		C: { main: [mainTo('OutsideTwo')] },
+	};
+
+	return { nodes, connections };
+}
+
 describe('node grouping validation', () => {
 	it('returns valid for a connected non-trigger selection', () => {
 		const graph = makeLinearGraph();
@@ -176,16 +219,48 @@ describe('node grouping validation', () => {
 		).toBe(true);
 	});
 
-	it('returns trigger-selected when the selection contains a trigger', () => {
-		const graph = makeTriggeredGraph();
+	// The rules the flexible groups rollout lifts. This whole block goes when the
+	// flag becomes permanent; the sibling block below stays.
+	describe('with relaxNodeGroupRules off', () => {
+		it('returns trigger-selected when the selection contains a trigger', () => {
+			const graph = makeTriggeredGraph();
 
-		const result = validateGrouping({
-			nodes: [graph.nodes[0], graph.nodes[1]],
-			connectionsBySourceNode: graph.connections,
-			nodeTypes: triggerNodeTypes,
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: triggerNodeTypes,
+			});
+
+			expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
 		});
 
-		expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
+		it('returns invalid-subgraph when two different nodes take input from outside', () => {
+			const graph = makeTwoEntryGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('returns invalid-subgraph when two different nodes send output outside', () => {
+			const graph = makeTwoExitGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
 	});
 
 	describe('with relaxNodeGroupRules on', () => {
@@ -227,6 +302,45 @@ describe('node grouping validation', () => {
 			expect(result.valid).toBe(false);
 			if (!result.valid) {
 				expect(result.reason).toBe('non-main-boundary');
+			}
+		});
+
+		it('accepts a group whose members take input from outside at two different nodes', () => {
+			const graph = makeTwoEntryGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				relaxNodeGroupRules: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('accepts a group whose members send output outside from two different nodes', () => {
+			const graph = makeTwoExitGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				relaxNodeGroupRules: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects two islands with no path between them', () => {
+			const nodes = [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })];
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: {},
+				relaxNodeGroupRules: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
 			}
 		});
 	});
