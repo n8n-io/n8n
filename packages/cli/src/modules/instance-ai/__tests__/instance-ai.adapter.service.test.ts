@@ -5669,7 +5669,24 @@ describe('createExecutionAdapter runStep()', () => {
 		// Falling back to a chain run would call `Fetch` for real, which is the
 		// opposite of what asking for replayed input means.
 		await expect(runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' })).rejects.toThrow(
-			'holds no data for any node above "Send"',
+			'does not cover every node above "Send"',
+		);
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('refuses to run the chain when the reused execution covers only part of the path', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			// The execution reached the trigger but stopped before `Fetch`, so a
+			// replay would run `Fetch` for real.
+			execution: makeExecution({
+				status: 'success',
+				runData: { Trigger: [makeTaskData([{}])] },
+			}),
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' })).rejects.toThrow(
+			'(Fetch)',
 		);
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 	});

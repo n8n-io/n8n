@@ -124,6 +124,48 @@ function directParents(
 	return edges;
 }
 
+/** One outbound edge of a node, after disabled nodes are skipped. */
+interface ChildEdge {
+	node: INode;
+	/** Output of this node that feeds the edge. */
+	outputIndex: number;
+}
+
+/**
+ * Direct main-connection children of `nodeName`, the mirror of
+ * `directParents`. A disabled node is transparent here too: the engine joins
+ * its parents to its children, and the joined edge keeps the *parent's* output
+ * index.
+ */
+function directChildren(
+	connections: IConnections,
+	nodesByName: Map<string, INode>,
+	nodeName: string,
+	outputIndex?: number,
+	seen: Set<string> = new Set(),
+): ChildEdge[] {
+	if (seen.has(nodeName)) return [];
+	seen.add(nodeName);
+
+	const outputs = connections[nodeName]?.[NodeConnectionTypes.Main] ?? [];
+	const edges: ChildEdge[] = [];
+
+	for (const [index, output] of outputs.entries()) {
+		for (const connection of output ?? []) {
+			const child = nodesByName.get(connection.node);
+			if (!child) continue;
+			const carriedBy = outputIndex ?? index;
+			if (child.disabled) {
+				edges.push(...directChildren(connections, nodesByName, child.name, carriedBy, seen));
+				continue;
+			}
+			edges.push({ node: child, outputIndex: carriedBy });
+		}
+	}
+
+	return edges;
+}
+
 /**
  * Nodes this one feeds through a non-main connection — a sub-node's link to the
  * node that runs it (`ai_tool` to an Agent, `ai_embedding` to a Vector Store).
@@ -291,6 +333,89 @@ export function collectAncestorNames(
 }
 
 /**
+ * Whether an earlier run left items on one output of a node. Mirrors the
+ * engine's `getIncomingDataFromAnyRun`: any run of the node counts, and an
+ * empty output does not. The engine follows only the outputs that carried
+ * items, so an untaken IF branch never runs on a replay.
+ */
+function outputCarriedItems(runData: IRunData, nodeName: string, outputIndex: number): boolean {
+	return (runData[nodeName] ?? []).some(
+		(task) => (task.data?.[NodeConnectionTypes.Main]?.[outputIndex] ?? []).length > 0,
+	);
+}
+
+/**
+ * The nodes above the target that a replay of `runData` would still execute
+ * for real.
+ *
+ * Having run data for *some* ancestor is not enough. The engine walks down
+ * from the trigger and makes the first node with no run data a start node, so
+ * a gap anywhere on the path puts that node and everything after it back in
+ * the run. A gap at the trigger is the worst case: the whole chain runs again.
+ *
+ * This walk answers the same question the engine asks, with the same two
+ * rules: a node with run data or pin data is clean, and only an output that
+ * carried items leads anywhere. It therefore accepts the replays the engine
+ * can honour — an untaken branch above the target needs no data, and a second
+ * trigger the earlier run never fired needs none either, because the engine
+ * prefers the trigger that has run data.
+ */
+export function findUncoveredAncestors(args: {
+	nodes: INode[];
+	connections: IConnections;
+	targetName: string;
+	rootNames: string[];
+	runData: IRunData;
+	pinnedNodeNames?: string[];
+}): string[] {
+	const { nodes, connections, targetName, rootNames, runData } = args;
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+	const connectionsByDestination = mapConnectionsByDestination(connections);
+	const pinned = new Set(args.pinnedNodeNames ?? []);
+
+	const ancestors = new Set(collectAncestorNames(nodes, connections, targetName, rootNames));
+	if (ancestors.size === 0) return [];
+
+	const isClean = (name: string) => runData[name] !== undefined || pinned.has(name);
+
+	// A run starts at a trigger. When the one the engine would pick has no data
+	// of its own it re-runs, and takes every node under it along.
+	const sources = [...ancestors].filter(
+		(name) => directParents(connectionsByDestination, nodesByName, name).length === 0,
+	);
+	const startPoints = sources.filter(isClean);
+	if (startPoints.length === 0) return [...ancestors];
+
+	const uncovered = new Set<string>();
+	const seen = new Set<string>(startPoints);
+	const queue = [...startPoints];
+	const stopAt = new Set([...rootNames, targetName]);
+
+	while (queue.length > 0) {
+		const current = queue.shift() as string;
+
+		for (const edge of directChildren(connections, nodesByName, current)) {
+			const child = edge.node.name;
+			// The root runs by design — it is the node the target runs through — and
+			// a node off the path to the target is not part of the run at all.
+			if (stopAt.has(child) || !ancestors.has(child)) continue;
+			// A pinned node feeds every output, so the engine always walks on.
+			if (!pinned.has(current) && !outputCarriedItems(runData, current, edge.outputIndex)) continue;
+
+			if (!isClean(child)) {
+				uncovered.add(child);
+				continue;
+			}
+			if (seen.has(child)) continue;
+			seen.add(child);
+			queue.push(child);
+		}
+	}
+
+	return [...uncovered];
+}
+
+/**
  * Chooses the run data for a step run.
  *
  * - `mockItems` given → mock the path (mode `mocked`).
@@ -312,6 +437,8 @@ export function planStepRun(args: {
 	targetName: string;
 	mockItems?: INodeExecutionData[];
 	priorRunData?: IRunData;
+	/** Nodes the workflow pins. A pinned node is clean, so a replay may skip it. */
+	pinnedNodeNames?: string[];
 }): StepRunPlan & { inputMode: StepRunInputMode } {
 	const { nodes, connections, targetName, mockItems, priorRunData } = args;
 
@@ -348,11 +475,23 @@ export function planStepRun(args: {
 
 	const ancestors = collectAncestorNames(nodes, connections, targetName, rootNames);
 
+	// Nodes the replay leaves for the engine to run for real. Empty means the
+	// reused execution covers every node the run would otherwise execute.
+	let uncovered: string[] = [];
+
 	if (priorRunData !== undefined) {
 		const ancestorNames = new Set(ancestors);
 		const reusedNodeNames = Object.keys(priorRunData).filter((name) => ancestorNames.has(name));
+		uncovered = findUncoveredAncestors({
+			nodes,
+			connections,
+			targetName,
+			rootNames,
+			runData: priorRunData,
+			pinnedNodeNames: args.pinnedNodeNames,
+		});
 
-		if (reusedNodeNames.length > 0) {
+		if (reusedNodeNames.length > 0 && uncovered.length === 0) {
 			return {
 				inputMode: 'reused-execution',
 				runData: priorRunData,
@@ -381,7 +520,14 @@ export function planStepRun(args: {
 		reusedNodeNames: [],
 		...throughRoots,
 		...(requested !== undefined && ancestors.length > 0
-			? { unhonoredInput: { requested, upstreamNodeNames: ancestors } }
+			? {
+					unhonoredInput: {
+						requested,
+						// Name the nodes that would really run, which for a replay is the
+						// part of the ancestry the reused execution does not cover.
+						upstreamNodeNames: uncovered.length > 0 ? uncovered : ancestors,
+					},
+				}
 			: {}),
 	};
 }

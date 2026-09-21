@@ -64,6 +64,17 @@ function itemsOn(runData: IRunData, nodeName: string, outputIndex = 0) {
 	return runData[nodeName]?.[0]?.data?.[NodeConnectionTypes.Main]?.[outputIndex];
 }
 
+/** Task data with one entry for each output, for a branching node. */
+function taskDataOnOutputs(outputs: Array<Array<{ json: Record<string, never> }>>): ITaskData {
+	return {
+		startTime: 0,
+		executionTime: 0,
+		executionIndex: 0,
+		source: [],
+		data: { [NodeConnectionTypes.Main]: outputs },
+	};
+}
+
 function taskData(items: Array<{ json: Record<string, never> }>): ITaskData {
 	return {
 		startTime: 0,
@@ -259,6 +270,102 @@ describe('planStepRun', () => {
 		expect(plan.runData).toBeUndefined();
 		expect(plan.unhonoredInput?.requested).toBe('reused-execution');
 		expect(plan.unhonoredInput?.upstreamNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+	});
+
+	// Run data for *some* ancestor is not enough. The engine walks down from the
+	// trigger and re-runs the first node that has none, plus everything after
+	// it, so a gap anywhere on the path is a node that runs for real.
+	describe('partial coverage of the path', () => {
+		it('refuses a replay that stops above the target', () => {
+			const priorRunData: IRunData = { Trigger: [taskData([{ json: {} }])] };
+
+			const plan = planStepRun({ nodes, connections, targetName: 'Target', priorRunData });
+
+			expect(plan.inputMode).toBe('chain');
+			expect(plan.unhonoredInput?.requested).toBe('reused-execution');
+			// Only Fetch is missing. Trigger is covered, so it stays out of the message.
+			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
+		});
+
+		it('refuses a replay that misses the trigger, which restarts the whole chain', () => {
+			const priorRunData: IRunData = { Fetch: [taskData([{ json: {} }])] };
+
+			const plan = planStepRun({ nodes, connections, targetName: 'Target', priorRunData });
+
+			expect(plan.inputMode).toBe('chain');
+			expect(plan.unhonoredInput?.upstreamNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+		});
+
+		it('accepts a replay that skips a branch the earlier run never took', () => {
+			// Kept and Discarded both reach the target. The earlier run sent every
+			// item down output 0, so the engine never walks into Discarded.
+			const branching = [
+				node('Trigger'),
+				node('IF'),
+				node('Kept'),
+				node('Discarded'),
+				node('Target'),
+			];
+			const branchConnections = connect(
+				['Trigger', 'IF'],
+				['IF:0', 'Kept'],
+				['IF:1', 'Discarded'],
+				['Kept', 'Target'],
+				['Discarded', 'Target'],
+			);
+			const priorRunData: IRunData = {
+				Trigger: [taskData([{ json: {} }])],
+				IF: [taskDataOnOutputs([[{ json: {} }], []])],
+				Kept: [taskData([{ json: {} }])],
+			};
+
+			const plan = planStepRun({
+				nodes: branching,
+				connections: branchConnections,
+				targetName: 'Target',
+				priorRunData,
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+		});
+
+		it('accepts a replay that skips a trigger which never fired', () => {
+			// The engine prefers the trigger that has run data, so the other one is
+			// not part of the run.
+			const twoTriggers = [node('Trigger'), node('Schedule'), node('Fetch'), node('Target')];
+			const triggerConnections = connect(
+				['Trigger', 'Fetch'],
+				['Schedule', 'Fetch'],
+				['Fetch', 'Target'],
+			);
+			const priorRunData: IRunData = {
+				Trigger: [taskData([{ json: {} }])],
+				Fetch: [taskData([{ json: {} }])],
+			};
+
+			const plan = planStepRun({
+				nodes: twoTriggers,
+				connections: triggerConnections,
+				targetName: 'Target',
+				priorRunData,
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+		});
+
+		it('counts a pinned node as covered, because it never executes', () => {
+			const priorRunData: IRunData = { Fetch: [taskData([{ json: {} }])] };
+
+			const plan = planStepRun({
+				nodes,
+				connections,
+				targetName: 'Target',
+				priorRunData,
+				pinnedNodeNames: ['Trigger'],
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+		});
 	});
 
 	it('refuses the run when the reused execution stored no run data at all', () => {
@@ -487,6 +594,23 @@ describe('the plan against the engine rules', () => {
 
 	it('starts at the trigger without run data, which is the chain run to avoid', () => {
 		expect(startNodesFor({})).toEqual(['Trigger']);
+	});
+
+	// Proof that refusing a partly covered replay is not over-caution: fed to the
+	// engine, that run data starts at a real node, and "Create Ticket" writes.
+	it('refuses a replay whose gap would run a real node', () => {
+		const priorRunData: IRunData = { Trigger: [taskData([{ json: {} }])] };
+
+		const plan = planStepRun({
+			nodes,
+			connections,
+			targetName: 'Calculator',
+			priorRunData,
+		});
+
+		expect(plan.inputMode).toBe('chain');
+		expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Create Ticket']);
+		expect(startNodesFor(priorRunData)).toEqual(['Create Ticket']);
 	});
 
 	// The Agent is rarely the last node. `rewireGraph` used to walk every

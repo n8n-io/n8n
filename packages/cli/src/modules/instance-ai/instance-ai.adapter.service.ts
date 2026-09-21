@@ -2146,6 +2146,7 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
+					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
 				});
 
 				// The caller asked to keep the nodes above the target out of the run and
@@ -2156,7 +2157,7 @@ export class InstanceAiAdapterService {
 					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
 					const cause =
 						plan.unhonoredInput.requested === 'reused-execution'
-							? `Execution ${options?.reuseExecutionId} holds no data for any node above "${nodeName}"`
+							? `Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}"`
 							: `There is no way to supply input to "${nodeName}" without running the nodes above it`;
 					throw new UserError(
 						`${cause}, so the run would execute them for real (${upstream}). ` +
