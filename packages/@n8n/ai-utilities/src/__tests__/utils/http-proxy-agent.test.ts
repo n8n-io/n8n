@@ -1,27 +1,42 @@
+import { passthroughEgressFilter } from '@n8n/backend-network/egress';
+import { buildDispatcher, dispatchedFetch } from '@n8n/backend-network/transport';
 import { lookup as dnsLookup } from 'node:dns';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
-import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { MockedFunction } from 'vitest';
 
-import { getNodeProxyAgent, getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
+import {
+	getNodeProxyAgent,
+	getProxyAgent,
+	proxyFetch,
+	type EgressFilter,
+} from 'src/utils/http-proxy-agent';
 
-// Mock the dependencies
-vi.mock('undici', () => ({
-	Agent: vi.fn(function (options) {
-		return { type: 'Agent', options };
-	}),
-	ProxyAgent: vi.fn(function (options) {
-		return { type: 'ProxyAgent', options };
-	}),
-	fetch: vi.fn(),
+vi.mock('@n8n/backend-network/transport', () => ({
+	buildDispatcher: vi.fn((proxy: unknown, ssrf: unknown, options: unknown) => ({
+		type: 'Dispatcher',
+		proxy,
+		ssrf,
+		options,
+	})),
+	dispatchedFetch: vi.fn(),
 }));
 
-const DEFAULT_AGENT_OPTIONS = {
-	headersTimeout: 3600000,
-	bodyTimeout: 3600000,
-	connect: { lookup: dnsLookup },
+const mockBuildDispatcher = buildDispatcher as unknown as MockedFunction<typeof buildDispatcher>;
+const mockDispatchedFetch = dispatchedFetch as unknown as MockedFunction<typeof dispatchedFetch>;
+
+const makeEgressFilter = (): EgressFilter => ({
+	validateUrl: vi.fn(async () => ({ ok: true as const })),
+	validateConnectionHost: vi.fn(() => ({ ok: true as const })),
+	createSecureLookup: vi.fn(() => vi.fn()),
+});
+
+// The real "no policy configured" singleton — detected by object identity.
+const passthroughFilter: EgressFilter = passthroughEgressFilter;
+
+const DEFAULT_BUILD_OPTIONS = {
+	timeouts: { headersTimeout: 3600000, bodyTimeout: 3600000 },
 };
 
 describe('getProxyAgent', () => {
@@ -56,286 +71,228 @@ describe('getProxyAgent', () => {
 	});
 
 	describe('default behavior (no timeout options)', () => {
-		it('should return an Agent with the default lookup when no proxy environment variables are set and no timeout options', () => {
-			const agent = getProxyAgent();
+		it('should return a direct dispatcher when no proxy environment variables are set and no timeout options', () => {
+			const agent = getProxyAgent(undefined, undefined, passthroughFilter);
 
-			expect(agent).toEqual({ type: 'Agent', options: DEFAULT_AGENT_OPTIONS });
-			expect(ProxyAgent).not.toHaveBeenCalled();
+			expect(agent).toEqual({
+				type: 'Dispatcher',
+				proxy: false,
+				ssrf: 'disabled',
+				options: DEFAULT_BUILD_OPTIONS,
+			});
 		});
 
-		it('should return an Agent when no proxy is configured for target URL and no timeout options', () => {
-			const agent = getProxyAgent('https://api.openai.com/v1');
+		it('should return a direct dispatcher when no proxy is configured for target URL and no timeout options', () => {
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
-			expect(agent).toEqual({ type: 'Agent', options: DEFAULT_AGENT_OPTIONS });
-			expect(ProxyAgent).not.toHaveBeenCalled();
+			expect(agent).toEqual(expect.objectContaining({ type: 'Dispatcher', proxy: false }));
 		});
 
-		it('should reuse a single Agent across calls when no proxy, timeout options nor custom lookup are given', () => {
-			const first = getProxyAgent('https://api.openai.com/v1');
-			const second = getProxyAgent('https://api.anthropic.com/v1');
+		it('should reuse a single dispatcher across calls when no proxy, timeout options nor egress filter are given', () => {
+			const first = getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
+			const second = getProxyAgent('https://api.anthropic.com/v1', undefined, passthroughFilter);
 
 			expect(second).toBe(first);
 		});
 
-		it('should build a fresh Agent when timeout options or a custom lookup are given', () => {
-			const shared = getProxyAgent('https://api.openai.com/v1');
+		it('should keep the shared dispatcher for the passthrough egress filter', () => {
+			const shared = getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
-			expect(getProxyAgent('https://api.openai.com/v1', {})).not.toBe(shared);
-			expect(getProxyAgent('https://api.openai.com/v1', undefined, vi.fn())).not.toBe(shared);
+			expect(getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter)).toBe(shared);
 		});
 
-		it('should create ProxyAgent with default timeouts when HTTPS_PROXY is set', () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+		it('should keep enforcement for a non-passthrough policy whose lookup is the system dns lookup', () => {
+			const filter = makeEgressFilter();
+			vi.mocked(filter.createSecureLookup).mockReturnValue(dnsLookup);
 
-			const agent = getProxyAgent();
+			getProxyAgent('https://api.example.com', undefined, filter);
 
-			expect(ProxyAgent).toHaveBeenCalledWith({
-				uri: proxyUrl,
-				headersTimeout: 3600000,
-				bodyTimeout: 3600000,
-			});
-			expect(agent).toEqual({
-				type: 'ProxyAgent',
-				options: { uri: proxyUrl, headersTimeout: 3600000, bodyTimeout: 3600000 },
-			});
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, filter, expect.anything());
 		});
 
-		it('should create ProxyAgent when https_proxy is set', () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.https_proxy = proxyUrl;
+		it('should build a fresh dispatcher when timeout options or an egress filter are given', () => {
+			const shared = getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
-			getProxyAgent();
-
-			expect(ProxyAgent).toHaveBeenCalledWith({
-				uri: proxyUrl,
-				headersTimeout: 3600000,
-				bodyTimeout: 3600000,
-			});
-		});
-
-		it('should respect priority order of proxy environment variables', () => {
-			// Set multiple proxy environment variables
-			process.env.HTTP_PROXY = 'http://http-proxy.example.com:8080';
-			process.env.http_proxy = 'http://http-proxy-lowercase.example.com:8080';
-			process.env.HTTPS_PROXY = 'https://https-proxy.example.com:8080';
-			process.env.https_proxy = 'https://https-proxy-lowercase.example.com:8080';
-
-			getProxyAgent();
-
-			// Should use https_proxy as it has highest priority now
-			expect(ProxyAgent).toHaveBeenCalledWith(
-				expect.objectContaining({
-					uri: 'https://https-proxy-lowercase.example.com:8080',
-				}),
+			expect(getProxyAgent('https://api.openai.com/v1', {}, passthroughFilter)).not.toBe(shared);
+			expect(getProxyAgent('https://api.openai.com/v1', undefined, makeEgressFilter())).not.toBe(
+				shared,
 			);
+		});
+
+		it('should build an env-proxied dispatcher with default timeouts when HTTPS_PROXY is set', () => {
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
+
+			const agent = getProxyAgent(undefined, undefined, passthroughFilter);
+
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', DEFAULT_BUILD_OPTIONS);
+			expect(agent).toEqual(expect.objectContaining({ type: 'Dispatcher', proxy: 'env' }));
+		});
+
+		it('should build an env-proxied dispatcher when https_proxy is set', () => {
+			process.env.https_proxy = 'https://proxy.example.com:8080';
+
+			getProxyAgent(undefined, undefined, passthroughFilter);
+
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', expect.anything());
 		});
 	});
 
 	describe('target URL provided', () => {
-		it('should create ProxyAgent for HTTPS URL when HTTPS_PROXY is set', () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+		it('should build an env-proxied dispatcher for HTTPS URL when HTTPS_PROXY is set', () => {
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
 
-			getProxyAgent('https://api.openai.com/v1');
+			getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', expect.anything());
 		});
 
-		it('should create ProxyAgent for HTTP URL when HTTP_PROXY is set', () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTP_PROXY = proxyUrl;
+		it('should build an env-proxied dispatcher for HTTP URL when HTTP_PROXY is set', () => {
+			process.env.HTTP_PROXY = 'http://proxy.example.com:8080';
 
-			getProxyAgent('http://api.example.com');
+			getProxyAgent('http://api.example.com', undefined, passthroughFilter);
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-		});
-
-		it('should use HTTPS_PROXY for HTTPS URLs even when HTTP_PROXY is set', () => {
-			const httpProxy = 'http://http-proxy.example.com:8080';
-			const httpsProxy = 'https://https-proxy.example.com:8443';
-			process.env.HTTP_PROXY = httpProxy;
-			process.env.HTTPS_PROXY = httpsProxy;
-
-			getProxyAgent('https://api.openai.com/v1');
-
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: httpsProxy }));
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', expect.anything());
 		});
 
 		it('should respect NO_PROXY for localhost', () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTP_PROXY = proxyUrl;
+			process.env.HTTP_PROXY = 'http://proxy.example.com:8080';
 			process.env.NO_PROXY = 'localhost,127.0.0.1';
 
-			const agent = getProxyAgent('http://localhost:3000');
+			const agent = getProxyAgent('http://localhost:3000', undefined, passthroughFilter);
 
-			expect(agent).toEqual({ type: 'Agent', options: DEFAULT_AGENT_OPTIONS });
-			expect(ProxyAgent).not.toHaveBeenCalled();
+			expect(agent).toEqual(expect.objectContaining({ type: 'Dispatcher', proxy: false }));
 		});
 
 		it('should respect NO_PROXY wildcard patterns', () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+			process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
 			process.env.NO_PROXY = '*.internal.company.com,localhost';
 
-			const agent = getProxyAgent('https://api.internal.company.com');
+			const agent = getProxyAgent('https://api.internal.company.com', undefined, passthroughFilter);
 
-			expect(agent).toEqual({ type: 'Agent', options: DEFAULT_AGENT_OPTIONS });
-			expect(ProxyAgent).not.toHaveBeenCalled();
+			expect(agent).toEqual(expect.objectContaining({ type: 'Dispatcher', proxy: false }));
 		});
 
 		it('should use proxy for URLs not in NO_PROXY', () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+			process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
 			process.env.NO_PROXY = 'localhost,127.0.0.1';
 
-			getProxyAgent('https://api.openai.com/v1');
+			getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', expect.anything());
 		});
 
 		it('should handle mixed case environment variables', () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.https_proxy = proxyUrl;
+			process.env.https_proxy = 'http://proxy.example.com:8080';
 			process.env.no_proxy = 'localhost';
 
-			getProxyAgent('https://api.openai.com/v1');
+			getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', expect.anything());
 		});
 	});
 
 	describe('timeout options', () => {
-		it('should pass custom timeout options to ProxyAgent when proxy is set', () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+		it('should pass custom timeout options when a proxy is set', () => {
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
 
-			getProxyAgent('https://api.openai.com/v1', {
-				headersTimeout: 120000,
-				bodyTimeout: 180000,
-			});
+			getProxyAgent(
+				'https://api.openai.com/v1',
+				{
+					headersTimeout: 120000,
+					bodyTimeout: 180000,
+				},
+				passthroughFilter,
+			);
 
-			expect(ProxyAgent).toHaveBeenCalledWith({
-				uri: proxyUrl,
-				headersTimeout: 120000,
-				bodyTimeout: 180000,
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', {
+				timeouts: { headersTimeout: 120000, bodyTimeout: 180000 },
 			});
 		});
 
-		it('should create Agent with timeout options when no proxy is configured', () => {
-			const agent = getProxyAgent('https://api.openai.com/v1', {
-				headersTimeout: 120000,
-				bodyTimeout: 180000,
-			});
+		it('should build a direct dispatcher with timeout options when no proxy is configured', () => {
+			const agent = getProxyAgent(
+				'https://api.openai.com/v1',
+				{
+					headersTimeout: 120000,
+					bodyTimeout: 180000,
+				},
+				passthroughFilter,
+			);
 
-			expect(Agent).toHaveBeenCalledWith({
-				headersTimeout: 120000,
-				bodyTimeout: 180000,
-				connect: { lookup: dnsLookup },
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, 'disabled', {
+				timeouts: { headersTimeout: 120000, bodyTimeout: 180000 },
 			});
-			expect(agent).toEqual({
-				type: 'Agent',
-				options: { headersTimeout: 120000, bodyTimeout: 180000, connect: { lookup: dnsLookup } },
-			});
+			expect(agent).toEqual(expect.objectContaining({ type: 'Dispatcher', proxy: false }));
 		});
 
 		it('should use default timeouts when empty timeout options object is passed', () => {
-			getProxyAgent('https://api.openai.com/v1', {});
+			getProxyAgent('https://api.openai.com/v1', {}, passthroughFilter);
 
-			expect(Agent).toHaveBeenCalledWith(DEFAULT_AGENT_OPTIONS);
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, 'disabled', DEFAULT_BUILD_OPTIONS);
 		});
 
 		it('should include connectTimeout when provided', () => {
-			getProxyAgent('https://api.openai.com/v1', {
-				headersTimeout: 60000,
-				bodyTimeout: 60000,
-				connectTimeout: 30000,
-			});
+			getProxyAgent(
+				'https://api.openai.com/v1',
+				{
+					headersTimeout: 60000,
+					bodyTimeout: 60000,
+					connectTimeout: 30000,
+				},
+				passthroughFilter,
+			);
 
-			expect(Agent).toHaveBeenCalledWith({
-				headersTimeout: 60000,
-				bodyTimeout: 60000,
-				connectTimeout: 30000,
-				connect: { lookup: dnsLookup },
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, 'disabled', {
+				timeouts: { headersTimeout: 60000, bodyTimeout: 60000, connectTimeout: 30000 },
 			});
 		});
 
-		it('should respect custom timeout from environment variable', () => {
-			process.env.N8N_AI_TIMEOUT_MAX = '300000';
-
-			// Need to re-import to pick up env vars (or mock module)
-			// For this test, we just verify the default timeout parsing
-			// The actual behavior is tested by integration tests
-
-			// Empty options should use env var defaults
-			getProxyAgent('https://api.openai.com/v1', {});
-
-			// Since we can't easily re-import, we verify the mock was called with defaults
-			expect(Agent).toHaveBeenCalled();
-		});
-
-		it('should build a fresh Agent when N8N_AI_TIMEOUT_MAX is set, even without a proxy or explicit timeout options', () => {
-			const shared = getProxyAgent('https://api.openai.com/v1');
+		it('should build a fresh dispatcher when N8N_AI_TIMEOUT_MAX is set, even without a proxy or explicit timeout options', () => {
+			const shared = getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 			process.env.N8N_AI_TIMEOUT_MAX = '120000';
 
-			const agent = getProxyAgent('https://api.openai.com/v1');
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, passthroughFilter);
 
 			// DEFAULT_TIMEOUT was captured from the env at module load time (before this test set it),
 			// so the value here reflects that capture, not '120000' — the module-reset test below
 			// covers the env value actually being picked up end to end.
-			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
+			expect(agent).toEqual(expect.objectContaining({ type: 'Dispatcher' }));
 			expect(agent).not.toBe(shared);
-			expect(ProxyAgent).not.toHaveBeenCalled();
 		});
 
 		it('should honor N8N_AI_TIMEOUT_MAX when there is no proxy and the caller passes no timeout options at all', async () => {
 			vi.resetModules();
 			process.env.N8N_AI_TIMEOUT_MAX = '120000';
 
-			const undici = await import('undici');
+			const transport = await import('@n8n/backend-network/transport');
+			const egress = await import('@n8n/backend-network/egress');
 			const { getProxyAgent: freshGetProxyAgent } = await import('../../utils/http-proxy-agent.js');
 
-			const agent = freshGetProxyAgent('https://api.openai.com/v1');
+			freshGetProxyAgent('https://api.openai.com/v1', undefined, egress.passthroughEgressFilter);
 
-			expect(undici.Agent).toHaveBeenCalledWith({
-				headersTimeout: 120000,
-				bodyTimeout: 120000,
-				connect: { lookup: dnsLookup },
-			});
-			expect(agent).toEqual({
-				type: 'Agent',
-				options: {
-					headersTimeout: 120000,
-					bodyTimeout: 120000,
-					connect: { lookup: dnsLookup },
-				},
+			expect(transport.buildDispatcher).toHaveBeenCalledWith(false, 'disabled', {
+				timeouts: { headersTimeout: 120000, bodyTimeout: 120000 },
 			});
 		});
 	});
 
-	describe('secure lookup', () => {
-		it('should build an Agent with the lookup on connect when no proxy is configured', () => {
-			const lookup = vi.fn();
+	describe('egress filter', () => {
+		it('should build the dispatcher with the filter when no proxy is configured', () => {
+			const egressFilter = makeEgressFilter();
 
-			const agent = getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, egressFilter);
 
-			expect(Agent).toHaveBeenCalledWith(expect.objectContaining({ connect: { lookup } }));
-			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
-			expect(ProxyAgent).not.toHaveBeenCalled();
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, egressFilter, DEFAULT_BUILD_OPTIONS);
+			expect(agent).toEqual(expect.objectContaining({ ssrf: egressFilter }));
 		});
 
-		it('should not attach the lookup to a ProxyAgent when a proxy is configured', () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
-			const lookup = vi.fn();
+		it('should build the dispatcher with the filter when a proxy is configured', () => {
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
+			const egressFilter = makeEgressFilter();
 
-			getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+			getProxyAgent('https://api.openai.com/v1', undefined, egressFilter);
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(ProxyAgent).not.toHaveBeenCalledWith(
-				expect.objectContaining({ connect: expect.anything() }),
-			);
-			expect(Agent).not.toHaveBeenCalled();
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', egressFilter, DEFAULT_BUILD_OPTIONS);
 		});
 	});
 });
@@ -343,7 +300,6 @@ describe('getProxyAgent', () => {
 describe('proxyFetch', () => {
 	// Store original environment variables
 	const originalEnv = { ...process.env };
-	const mockFetch = undiciFetch as unknown as MockedFunction<typeof fetch>;
 
 	// Reset environment variables and mocks before each test
 	beforeEach(() => {
@@ -357,7 +313,7 @@ describe('proxyFetch', () => {
 		delete process.env.no_proxy;
 
 		// Setup default fetch mock response
-		mockFetch.mockResolvedValue(
+		mockDispatchedFetch.mockResolvedValue(
 			new Response('{}', {
 				status: 200,
 				statusText: 'OK',
@@ -372,44 +328,53 @@ describe('proxyFetch', () => {
 	});
 
 	describe('with no proxy configured', () => {
-		it('should call fetch with an Agent dispatcher when no proxy is set and no timeout options', async () => {
+		it('should fetch with a direct dispatcher when no proxy is set and no timeout options', async () => {
 			const url = 'https://api.openai.com/v1';
-			await proxyFetch({ input: url, lookup: dnsLookup });
+			await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				dispatcher: expect.objectContaining({ type: 'Agent' }),
-			});
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'Dispatcher', proxy: false }),
+				url,
+				undefined,
+			);
 		});
 
 		it('should reuse the same dispatcher across plain calls', async () => {
-			await proxyFetch({ input: 'https://api.openai.com/v1', lookup: dnsLookup });
-			await proxyFetch({ input: 'https://api.anthropic.com/v1', lookup: dnsLookup });
+			await proxyFetch({ input: 'https://api.openai.com/v1', egressFilter: passthroughFilter });
+			await proxyFetch({ input: 'https://api.anthropic.com/v1', egressFilter: passthroughFilter });
 
-			const [[, first], [, second]] = mockFetch.mock.calls as unknown as Array<
-				[unknown, { dispatcher: unknown }]
-			>;
-			expect(second.dispatcher).toBe(first.dispatcher);
+			const [[first], [second]] = mockDispatchedFetch.mock.calls;
+			expect(second).toBe(first);
 		});
 
-		it('should build the dispatcher with the supplied lookup', async () => {
-			const lookup = vi.fn();
-			await proxyFetch({ input: 'https://api.openai.com/v1', lookup });
+		it('should build the dispatcher with the supplied egress filter', async () => {
+			const egressFilter = makeEgressFilter();
+			await proxyFetch({ input: 'https://api.openai.com/v1', egressFilter });
 
-			expect(Agent).toHaveBeenCalledWith(expect.objectContaining({ connect: { lookup } }));
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, egressFilter, expect.anything());
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ ssrf: egressFilter }),
+				'https://api.openai.com/v1',
+				undefined,
+			);
 		});
 
-		it('should call fetch with Agent dispatcher when timeout options are provided', async () => {
+		it('should fetch with a dispatcher when timeout options are provided', async () => {
 			const url = 'https://api.openai.com/v1';
 			await proxyFetch({
 				input: url,
 				timeoutOptions: { headersTimeout: 60000 },
-				lookup: dnsLookup,
+				egressFilter: passthroughFilter,
 			});
 
-			expect(Agent).toHaveBeenCalled();
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				dispatcher: expect.objectContaining({ type: 'Agent' }),
+			expect(mockBuildDispatcher).toHaveBeenCalledWith(false, 'disabled', {
+				timeouts: { headersTimeout: 60000, bodyTimeout: 3600000 },
 			});
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'Dispatcher' }),
+				url,
+				undefined,
+			);
 		});
 
 		it('should pass through RequestInit options', async () => {
@@ -420,41 +385,55 @@ describe('proxyFetch', () => {
 				body: JSON.stringify({ test: 'data' }),
 			};
 
-			await proxyFetch({ input: url, init, lookup: dnsLookup });
+			await proxyFetch({ input: url, init, egressFilter: passthroughFilter });
 
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				...init,
-				dispatcher: expect.objectContaining({ type: 'Agent' }),
-			});
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(expect.anything(), url, init);
 		});
 
 		it('should handle URL objects', async () => {
 			const url = new URL('https://api.openai.com/v1');
-			await proxyFetch({ input: url, lookup: dnsLookup });
+			await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
-			expect(mockFetch).toHaveBeenCalledWith(url.href, {
-				dispatcher: expect.objectContaining({ type: 'Agent' }),
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(expect.anything(), url, undefined);
+		});
+
+		it('should handle Request objects', async () => {
+			const request = new Request('https://api.openai.com/v1', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ test: 'data' }),
 			});
+			await proxyFetch({ input: request, egressFilter: passthroughFilter });
+
+			// A Request is decomposed into url + init: the package's undici fetch does
+			// not recognize a Request built by another undici.
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.anything(),
+				'https://api.openai.com/v1',
+				expect.objectContaining({
+					method: 'POST',
+					headers: [['content-type', 'application/json']],
+				}),
+			);
 		});
 	});
 
 	describe('with proxy configured', () => {
-		it('should call fetch with ProxyAgent dispatcher when proxy is set', async () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+		it('should fetch with an env-proxied dispatcher when proxy is set', async () => {
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
 
 			const url = 'https://api.openai.com/v1';
-			await proxyFetch({ input: url, lookup: dnsLookup });
+			await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
-			});
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'Dispatcher', proxy: 'env' }),
+				url,
+				undefined,
+			);
 		});
 
 		it('should pass through RequestInit options with proxy', async () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
 
 			const url = 'https://api.openai.com/v1';
 			const init: RequestInit = {
@@ -462,72 +441,41 @@ describe('proxyFetch', () => {
 				headers: { Authorization: 'Bearer token123' },
 			};
 
-			await proxyFetch({ input: url, init, lookup: dnsLookup });
+			await proxyFetch({ input: url, init, egressFilter: passthroughFilter });
 
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				...init,
-				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
-			});
-		});
-
-		it('should handle URL objects with proxy', async () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTP_PROXY = proxyUrl;
-
-			const url = new URL('http://api.example.com/data');
-			await proxyFetch({ input: url, lookup: dnsLookup });
-
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(mockFetch).toHaveBeenCalledWith(url.href, {
-				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
-			});
-		});
-
-		it('should handle Request objects with proxy', async () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
-
-			const request = new Request('https://api.openai.com/v1');
-			await proxyFetch({ input: request, lookup: dnsLookup });
-
-			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(mockFetch).toHaveBeenCalledWith(
-				request.url,
-				expect.objectContaining({ dispatcher: expect.objectContaining({ type: 'ProxyAgent' }) }),
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'Dispatcher', proxy: 'env' }),
+				url,
+				init,
 			);
 		});
 
 		it('should respect NO_PROXY environment variable', async () => {
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+			process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
 			process.env.NO_PROXY = 'localhost,127.0.0.1';
 
 			const url = 'https://localhost:3000/api';
-			await proxyFetch({ input: url, lookup: dnsLookup });
+			await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
-			// Should not create ProxyAgent for localhost
-			expect(ProxyAgent).not.toHaveBeenCalled();
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				dispatcher: expect.objectContaining({ type: 'Agent' }),
-			});
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'Dispatcher', proxy: false }),
+				url,
+				undefined,
+			);
 		});
 
-		it('should pass timeout options to ProxyAgent when proxy is configured', async () => {
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
+		it('should pass timeout options to the dispatcher when proxy is configured', async () => {
+			process.env.HTTPS_PROXY = 'https://proxy.example.com:8080';
 
 			const url = 'https://api.openai.com/v1';
 			await proxyFetch({
 				input: url,
 				timeoutOptions: { headersTimeout: 300000, bodyTimeout: 300000 },
-				lookup: dnsLookup,
+				egressFilter: passthroughFilter,
 			});
 
-			expect(ProxyAgent).toHaveBeenCalledWith({
-				uri: proxyUrl,
-				headersTimeout: 300000,
-				bodyTimeout: 300000,
+			expect(mockBuildDispatcher).toHaveBeenCalledWith('env', 'disabled', {
+				timeouts: { headersTimeout: 300000, bodyTimeout: 300000 },
 			});
 		});
 	});
@@ -538,21 +486,23 @@ describe('proxyFetch', () => {
 				status: 200,
 				statusText: 'OK',
 			});
-			mockFetch.mockResolvedValueOnce(expectedResponse);
+			mockDispatchedFetch.mockResolvedValueOnce(expectedResponse);
 
 			const url = 'https://api.openai.com/v1';
-			const result = await proxyFetch({ input: url, lookup: dnsLookup });
+			const result = await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
 			expect(result).toBe(expectedResponse);
 		});
 
 		it('should propagate fetch errors', async () => {
 			const error = new Error('Network error');
-			mockFetch.mockRejectedValueOnce(error);
+			mockDispatchedFetch.mockRejectedValueOnce(error);
 
 			const url = 'https://api.openai.com/v1';
 
-			await expect(proxyFetch({ input: url, lookup: dnsLookup })).rejects.toThrow('Network error');
+			await expect(proxyFetch({ input: url, egressFilter: passthroughFilter })).rejects.toThrow(
+				'Network error',
+			);
 		});
 
 		it('should return error responses without throwing', async () => {
@@ -560,10 +510,10 @@ describe('proxyFetch', () => {
 				status: 404,
 				statusText: 'Not Found',
 			});
-			mockFetch.mockResolvedValueOnce(errorResponse);
+			mockDispatchedFetch.mockResolvedValueOnce(errorResponse);
 
 			const url = 'https://api.openai.com/v1';
-			const result = await proxyFetch({ input: url, lookup: dnsLookup });
+			const result = await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
 			expect(result).toBe(errorResponse);
 		});
@@ -628,7 +578,9 @@ describe('proxyFetch with the real undici', () => {
 			async () => (await import('undici')).Request as unknown as typeof Request,
 		],
 	])('should send a Request built with %s', async (_, loadRequestClass) => {
-		vi.doUnmock('undici');
+		// The dispatcher and the fetch bound to it are mocked for the rest of this
+		// file, so the real transport has to come back for these two.
+		vi.doUnmock('@n8n/backend-network/transport');
 		vi.resetModules();
 		const { proxyFetch: realProxyFetch } = await import('../../utils/http-proxy-agent.js');
 		const RequestClass = await loadRequestClass();
@@ -655,7 +607,7 @@ describe('proxyFetch with the real undici', () => {
 				headers: { 'content-type': 'application/json' },
 				body: '{"model":"mistral-small"}',
 			});
-			const response = await realProxyFetch({ input: request, lookup: dnsLookup });
+			const response = await realProxyFetch({ input: request, egressFilter: passthroughFilter });
 
 			expect(await response.text()).toBe('ok');
 			expect(received).toEqual({

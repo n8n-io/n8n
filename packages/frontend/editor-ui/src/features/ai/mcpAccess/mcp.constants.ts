@@ -14,7 +14,7 @@ export const MCP_SCOPE_GROUPS: ScopeGroupDefinition[] = [
 	{ key: 'credentials', resources: ['credential'] },
 	{ key: 'dataTables', resources: ['dataTable'] },
 	{ key: 'projectsAndFolders', resources: ['project'] },
-	{ key: 'aiPreferences', resources: ['aiPreference'] },
+	{ key: 'preferences', resources: ['aiPreference'] },
 ];
 
 /** Icons per scope resource prefix, shown in the client details modal. */

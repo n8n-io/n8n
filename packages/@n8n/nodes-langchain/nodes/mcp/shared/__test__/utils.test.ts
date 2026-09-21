@@ -38,6 +38,7 @@ const MockedClient = Client as MockedClass<typeof Client>;
 
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 	createSecureLookup: vi.fn(),
 	validateRedirectSync: vi.fn(),
 });
@@ -921,6 +922,7 @@ describe('utils', () => {
 				const egressFilter: NodeEgressFilter = {
 					validateUrl: vi.fn().mockResolvedValue(createResultError(new Error('Egress blocked'))),
 					validateRedirectSync: vi.fn(),
+					validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 				};
 
@@ -955,6 +957,7 @@ describe('utils', () => {
 				const egressFilter: NodeEgressFilter = {
 					validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 					validateRedirectSync: vi.fn(),
+					validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 				};
 

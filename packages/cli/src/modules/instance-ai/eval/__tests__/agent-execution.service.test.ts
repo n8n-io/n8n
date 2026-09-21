@@ -13,6 +13,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
@@ -279,6 +280,14 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
 		expect(call[7]).toBe('Gt4H3q6RzhJe9cTxQm6be0AdIZQlifuy3w9OPSykmYo');
+
+		// The provider carries the agent id so managed Gateway eval traffic is tagged.
+		expect(createAgentCredentialProvider).toHaveBeenCalledWith(
+			expect.anything(),
+			'proj-1',
+			user,
+			'agent-1',
+		);
 	});
 
 	it('attributes MCP calls when the server name requires normalization', async () => {

@@ -1,5 +1,9 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { ContentImportTransport, PolicedWorkflow } from '@n8n/decorators';
+import type {
+	ContentImportTransport,
+	CredentialDecryptContext,
+	PolicedWorkflow,
+} from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,6 +17,14 @@ import type {
 const SLACK = 'n8n-nodes-base.slack';
 const GMAIL = 'n8n-nodes-base.gmail';
 const SET = 'n8n-nodes-base.set';
+const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
+
+const slackCredentialFor = (nodeType: string | null): CredentialDecryptContext => ({
+	credentialType: 'slackApi',
+	credentialId: 'cred-1',
+	consumer: nodeType === null ? null : { nodeType },
+	projectId: 'project-1',
+});
 
 const node = (type: string, name = type, disabled = false): INode =>
 	({ id: name, name, type, typeVersion: 1, position: [0, 0], parameters: {}, disabled }) as INode;
@@ -193,6 +205,51 @@ describe('NodeTypePolicyCheck', () => {
 		});
 	});
 
+	describe('onCredentialDecrypt', () => {
+		it('vetoes the decryption when the node asking is a denied type', async () => {
+			const result = await check.onCredentialDecrypt(slackCredentialFor(SLACK));
+
+			expect(result.violations[0]).toStrictEqual({
+				kind: 'node-type-unavailable',
+				checkId: 'node-type-availability',
+				message: `Node type "${SLACK}" is blocked by an instance policy`,
+				subject: SLACK,
+				subjectType: 'nodeType',
+				scope: 'instance',
+				matchedRuleId: 'rule-7',
+			});
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith('node-types', 'project-1', [
+				SLACK,
+			]);
+		});
+
+		it('hands the same credential to a node whose type is available', async () => {
+			const result = await check.onCredentialDecrypt(slackCredentialFor(HTTP_REQUEST));
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith('node-types', 'project-1', [
+				HTTP_REQUEST,
+			]);
+		});
+
+		it('reports nothing when no node is asking, and never reads the policy', async () => {
+			const result = await check.onCredentialDecrypt(slackCredentialFor(null));
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('evaluates instance-only when the execution has no project', async () => {
+			const result = await check.onCredentialDecrypt({
+				...slackCredentialFor(SLACK),
+				projectId: null,
+			});
+
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith('node-types', null, [SLACK]);
+			expect(result.violations).toHaveLength(1);
+		});
+	});
+
 	describe('scope resolution', () => {
 		it('evaluates instance-only when no project applies', async () => {
 			const result = await check.onWorkflowStart({
@@ -264,6 +321,15 @@ describe('NodeTypePolicyCheck', () => {
 				workflow: workflow([node(SLACK)]),
 				projectId: 'project-1',
 			});
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('reports nothing on a credential decrypt without a license', async () => {
+			licenseState.isLicensed.mockReturnValue(false);
+
+			const result = await check.onCredentialDecrypt(slackCredentialFor(SLACK));
 
 			expect(result.violations).toEqual([]);
 			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();

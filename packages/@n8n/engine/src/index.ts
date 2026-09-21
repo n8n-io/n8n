@@ -16,6 +16,11 @@ export {
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
 export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
+export type {
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
+	ExecutionListItem,
+} from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
 export {
@@ -28,6 +33,19 @@ export type {
 	LifecycleEvent,
 	LifecycleEventBatch,
 } from './lifecycle-events';
+
+export {
+	ExecutionResponseChannel,
+	executionResponseSchema,
+	InMemoryResponseTransport,
+	noopResponseTransport,
+} from './response-channel';
+export type {
+	EndedMessage,
+	ExecutionResponse,
+	ResponseTransport,
+	Unsubscribe,
+} from './response-channel';
 
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';

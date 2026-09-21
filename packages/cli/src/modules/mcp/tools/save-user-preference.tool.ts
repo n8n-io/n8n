@@ -128,10 +128,14 @@ export const createSaveUserPreferenceTool = (
 		const persist = async (confirmationPath: 'elicitation' | 'model-mediated') => {
 			logger.info('[CONTEXT-142] persisting preference', { confirmationPath });
 			try {
-				const preference = await aiPreferenceService.create(user, {
-					content,
-					scope: 'user',
-				});
+				const preference = await aiPreferenceService.create(
+					user,
+					{
+						content,
+						scope: 'user',
+					},
+					'mcp',
+				);
 				telemetryPayload.results = {
 					success: true,
 					data: { saved: true, id: preference.id, confirmationPath },

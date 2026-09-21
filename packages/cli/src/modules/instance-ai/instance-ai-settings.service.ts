@@ -5,6 +5,7 @@ import {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	resolveInstanceAiPermissions,
 } from '@n8n/api-types';
 import type {
 	CreateCredentialDto,
@@ -1735,10 +1736,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.permissions) {
-			this.permissions = {
-				...DEFAULT_INSTANCE_AI_PERMISSIONS,
-				...persisted.permissions,
-			};
+			this.permissions = resolveInstanceAiPermissions(persisted.permissions);
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.mcpAccessEnabled !== undefined)

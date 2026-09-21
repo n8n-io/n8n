@@ -24,12 +24,12 @@ import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../spec/requirements.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
 	serializedDataTable,
 	serializedWorkflowWithDataTable,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { buildWorkflowReferencingDataTables } from './utils/test-builders';
 import { streamToBuffer } from './utils/tar-support';
@@ -73,10 +73,10 @@ async function importPackage(params: ImportParams) {
 async function buildDataTablePackage(
 	tables: SerializedDataTable[],
 	options: {
-		workflows?: SerializedWorkflow[];
+		workflows?: PackageWorkflow[];
 		requirements?: PackageDataTableRequirement[];
 	} = {},
-): Promise<{ packageBuffer: Buffer; workflows: SerializedWorkflow[] }> {
+): Promise<{ packageBuffer: Buffer; workflows: PackageWorkflow[] }> {
 	const workflows =
 		options.workflows ??
 		tables.map((table, index) =>

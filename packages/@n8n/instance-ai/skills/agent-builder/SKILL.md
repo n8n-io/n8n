@@ -66,6 +66,12 @@ as possible. Include only:
   current request.
 - Prerequisite workflows or data tables you created for this Agent.
 
+The host appends an <aia-handoff> block with the current user text and pending
+ask-user answers that have not yet reached Agent Builder. Treat those as the
+user's decisions for this build call, not as implementation you invented.
+Still copy user-stated model, channel, and credential choices into message; do not omit
+them because the host also injected them.
+
 Never infer, invent, expand, recommend, or prescribe implementation details the
 user did not request, and never present your assumptions as user requirements.
 In particular, do not choose or tell the builder which model, instructions,
