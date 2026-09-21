@@ -2,6 +2,9 @@ export const RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION = 1 as const;
 
 export const RUNTIME_SKILL_FILE_NAME = 'SKILL.md';
 
+/** Maximum UTF-8 bytes of instruction or linked-file content before truncation. */
+export const RUNTIME_SKILL_MAX_OUTPUT_BYTES = 72 * 1024;
+
 export const SKILL_LOAD_TOOL_NAME = 'load_skill';
 
 export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
@@ -59,6 +62,7 @@ export interface RuntimeSkillMcpServerDependency {
 }
 
 export interface RuntimeSkillDependenciesContract {
+	/** Activate matching deferred tools while the skill is active. Tools must be registered on the agent. */
 	tools?: string[];
 	secrets?: string[];
 	mcpServers?: RuntimeSkillMcpServerDependency[];

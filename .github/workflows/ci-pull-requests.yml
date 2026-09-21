@@ -39,6 +39,7 @@ jobs:
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
+      currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -78,8 +79,7 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
-              !scripts/preview.mjs
-              !scripts/preview-serve.mjs
+              !scripts/codespace-preview/**
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -95,8 +95,7 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
-              !scripts/preview.mjs
-              !scripts/preview-serve.mjs
+              !scripts/codespace-preview/**
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -134,9 +133,7 @@ jobs:
               OWNERS
               scripts/*.test.mjs
               scripts/codespace-env.mjs
-              scripts/preview.mjs
-              scripts/preview*
-              scripts/serve-ready.mjs
+              scripts/codespace-preview/**
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
@@ -363,6 +360,7 @@ jobs:
       workers: '1'
       pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
       artifact-prefix: e2e
+      currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
     secrets: inherit
 
   # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes

@@ -220,8 +220,7 @@ watch(
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
-// Anchors to the active canvas tab's workflow; on a hydrated thread with no
-// tab state yet, the latest workflow artifact wins (insertion order).
+// Early setup announcements can arrive before the first workflow artifact.
 const setupPanelWorkflowId = computed(() => {
 	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
 	const active = preview.activeWorkflowId.value;
@@ -230,13 +229,14 @@ const setupPanelWorkflowId = computed(() => {
 	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow') latest = entry.id;
 	}
-	return latest;
+	return latest ?? thread.latestSetupWorkflowId;
 });
 const setupPanelProjectId = computed(() =>
 	setupPanelWorkflowId.value
 		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
 		: undefined,
 );
+const setupOverlapHeight = ref(0);
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
@@ -699,6 +699,10 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 		dismissedContextKeys: [...dismissedKeys],
 	});
 }
+
+function handleNewThreadClick() {
+	void router.push({ name: INSTANCE_AI_VIEW });
+}
 </script>
 
 <template>
@@ -724,9 +728,15 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
-				<InstanceAiViewHeader>
+				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
 					<template #title>
-						<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+						<N8nHeading
+							v-if="currentThreadTitle"
+							tag="h2"
+							bold
+							size="small"
+							:class="$style.headerTitle"
+						>
 							{{ currentThreadTitle }}
 						</N8nHeading>
 						<N8nText
@@ -739,6 +749,21 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 						</N8nText>
 					</template>
 					<template #actions>
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.thread.new')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<N8nIconButton
+								icon="message-circle-plus"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								:aria-label="i18n.baseText('instanceAi.thread.new')"
+								data-test-id="instance-ai-embed-new-thread"
+								@click="handleNewThreadClick"
+							/>
+						</N8nTooltip>
 						<N8nIconButton
 							v-if="isDebugEnabled"
 							icon="bug"
@@ -809,6 +834,7 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 			>
 				<InstanceAiConversation
 					ref="conversation"
+					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
@@ -817,6 +843,7 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 							v-if="setupPanelWorkflowId"
 							:workflow-id="setupPanelWorkflowId"
 							:project-id="setupPanelProjectId"
+							@update:overlap-height="setupOverlapHeight = $event"
 						/>
 					</template>
 					<template #inline-offers>

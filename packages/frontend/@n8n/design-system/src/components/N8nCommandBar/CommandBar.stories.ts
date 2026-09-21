@@ -41,6 +41,14 @@ const sampleItems = [
 		section: 'Actions',
 		handler: () => console.log('Duplicating workflow'),
 	},
+	{
+		id: 'publish-workflow',
+		title: 'Publish workflow (no permission)',
+		icon: { html: '🔒' },
+		section: 'Actions',
+		disabled: true,
+		handler: () => console.log('Never runs: the item is disabled'),
+	},
 
 	// Navigation section
 	{

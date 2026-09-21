@@ -69,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
@@ -89,6 +90,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { PostHogClient } from '@/posthog';
 
 import { InstanceAiMcpRegistryService } from '../mcp';
+import type { InstanceContextService } from '../instance-context.service';
 
 import {
 	extractExecutionResult,
@@ -98,6 +100,7 @@ import {
 	resolveDataTableByIdOrName,
 	resolveMetricProviders,
 	truncateNodeOutput,
+	redactExecuteNodeResult,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
@@ -646,6 +649,82 @@ describe('formatExecutionError', () => {
 			expect(result).not.toContain('sensitive upstream payload');
 			expect(result).toContain('instance AI privacy setting');
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// redactExecuteNodeResult
+// ---------------------------------------------------------------------------
+
+describe('redactExecuteNodeResult', () => {
+	const successResult = (items: Array<{ json: Record<string, unknown> }>) =>
+		({ status: 'success', output: [items] }) as Parameters<typeof redactExecuteNodeResult>[0];
+
+	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
+		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
+
+		expect(result.status).toBe('success');
+		if (result.status !== 'success') return;
+		expect(result.output).toContain('<untrusted_data source="execution-output">');
+		expect(result.output).toContain('"id": 1');
+		expect(result.output.trimEnd().endsWith('</untrusted_data>')).toBe(true);
+	});
+
+	it('caps oversized output and reports shown vs total items', () => {
+		const items = Array.from({ length: 100 }, (_, i) => ({
+			json: { id: i, payload: 'x'.repeat(80) },
+		}));
+
+		const result = redactExecuteNodeResult(successResult(items), true);
+
+		expect(result.status).toBe('success');
+		if (result.status !== 'success') return;
+		expect(result.truncated).toEqual(
+			expect.objectContaining({ totalItems: 100, shownItems: expect.any(Number) }),
+		);
+		const shown = result.truncated?.shownItems ?? 0;
+		expect(shown).toBeLessThan(100);
+		expect(result.output.match(/"payload"/g)).toHaveLength(shown);
+	});
+
+	it('suppresses output items when sending values is disabled', () => {
+		const result = redactExecuteNodeResult(successResult([{ json: { secret: 'x' } }]), false);
+
+		expect(result).toEqual({
+			status: 'success',
+			output: '',
+			outputSuppressed: expect.stringContaining('privacy setting'),
+		});
+	});
+
+	it('suppresses upstream error details when sending values is disabled', () => {
+		const result = redactExecuteNodeResult(
+			{
+				status: 'error',
+				error: { message: 'boom', description: 'api key leaked', nodeErrorType: 'NodeApiError' },
+			},
+			false,
+		);
+
+		expect(result).toEqual({
+			status: 'error',
+			error: {
+				message: 'boom',
+				description: expect.stringContaining('suppressed'),
+				nodeErrorType: 'NodeApiError',
+			},
+		});
+	});
+
+	it('caps an oversized error description when sending values is allowed', () => {
+		const result = redactExecuteNodeResult(
+			{ status: 'error', error: { message: 'boom', description: 'y'.repeat(10_000) } },
+			true,
+		);
+
+		expect(result.status).toBe('error');
+		if (result.status !== 'error') return;
+		expect(result.error.description?.length).toBeLessThanOrEqual(4_001);
 	});
 });
 
@@ -1516,6 +1595,7 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -1527,6 +1607,7 @@ function createNodeAdapterServiceForTests(
 		loadNodesAndCredentials?: Record<string, unknown>;
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
+		executeNodeService?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1598,6 +1679,15 @@ function createNodeAdapterServiceForTests(
 			typeof InstanceAiAdapterService
 		>[35],
 		nodeCatalogService,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		options?.executeNodeService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[43],
 	);
 
 	(
@@ -1613,11 +1703,56 @@ function createNodeAdapterServiceForTests(
 
 	return {
 		service,
+		mockUser,
 		nodeService: context.nodeService,
 		credentialService: context.credentialService,
 		nodeCatalogService,
 	};
 }
+
+describe('executeNodeService adapter', () => {
+	const executeRequest = {
+		type: 'n8n-nodes-base.set',
+		version: 3,
+		config: { parameters: {} },
+	};
+
+	beforeEach(() => {
+		mockedUserHasScopes.mockReset();
+	});
+
+	it('runs the node in the bound project after asserting execute scope there', async () => {
+		mockedUserHasScopes.mockResolvedValue(true);
+		const executeNodeService = {
+			run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
+		};
+		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+
+		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
+		await context.executeNodeService?.execute(executeRequest);
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['workflow:execute'], false, {
+			projectId: 'team-project-1',
+		});
+		expect(executeNodeService.run).toHaveBeenCalledWith(
+			mockUser,
+			expect.objectContaining({ projectId: 'team-project-1' }),
+		);
+	});
+
+	it('does not run when the user lacks execute scope in the bound project', async () => {
+		mockedUserHasScopes.mockResolvedValue(false);
+		const executeNodeService = { run: vi.fn() };
+		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+
+		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
+
+		await expect(context.executeNodeService?.execute(executeRequest)).rejects.toThrow(
+			'required permissions',
+		);
+		expect(executeNodeService.run).not.toHaveBeenCalled();
+	});
+});
 
 function createNodeAdapterForTests(
 	nodes: Array<Record<string, unknown>>,
@@ -5186,6 +5321,7 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		instanceContext?: InstanceContextService;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5235,10 +5371,23 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	args[42] = overrides?.instanceContext;
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
 }
+
+describe('createContext activity gate', () => {
+	const user = mock<User>({ id: 'user-1' });
+	const instanceContext = mock<InstanceContextService>();
+
+	it.each([true, false, undefined])('uses the shared instance gate: %s', (enabled) => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { instanceContext });
+		const context = service.createContext(user, { instanceContextEnabled: enabled });
+
+		expect(context.activityService !== undefined).toBe(enabled === true);
+	});
+});
 
 describe('createExecutionAdapter runStep()', () => {
 	beforeEach(() => {
@@ -5862,12 +6011,19 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 
 describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+	const secondUser = mock<User>({ id: 'user-2', createdAt: new Date() });
+	const getFeatureFlagForInstance = vi.fn();
 
 	/** Route `Container.get` by token: PostHog for the flags, ModuleRegistry for the MCP precondition. */
-	function stubContainer(flags: Record<string, string | boolean>, mcpModuleActive = true) {
+	function stubContainer(
+		flags: Record<string, string | boolean>,
+		mcpModuleActive = true,
+		instanceFlag = false,
+	) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
+		getFeatureFlagForInstance.mockReset().mockResolvedValue(instanceFlag);
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-			if (token === PostHogClient) return { getFeatureFlags };
+			if (token === PostHogClient) return { getFeatureFlags, getFeatureFlagForInstance };
 			return { isActive: (name: string) => mcpModuleActive && name === 'mcp-registry' };
 		});
 		return getFeatureFlags;
@@ -5889,7 +6045,7 @@ describe('resolveExperimentGates', () => {
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
-	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
+	it('resolves per-user gates with one user flag fetch', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5900,9 +6056,61 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
+			instanceContextEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
+	});
+
+	it.each([true, false])(
+		'returns instance activity %s for users with different user flags',
+		async (instanceFlag) => {
+			const getFeatureFlags = stubContainer({}, true, instanceFlag);
+			getFeatureFlags
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+				})
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+				});
+			const adapter = createAdapter();
+
+			const [first, second] = await Promise.all([
+				adapter.resolveExperimentGates(user),
+				adapter.resolveExperimentGates(secondUser),
+			]);
+
+			expect(first.instanceContextEnabled).toBe(instanceFlag);
+			expect(second.instanceContextEnabled).toBe(instanceFlag);
+			expect(first.nodeUsageEnabled).toBe(true);
+			expect(second.nodeUsageEnabled).toBe(false);
+			expect(getFeatureFlagForInstance.mock.calls).toEqual([
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+			]);
+		},
+	);
+
+	it('keeps instance activity off when its evaluation fails', async () => {
+		stubContainer(allEnabled, true, true);
+		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
+			nodeUsageEnabled: true,
+		});
+	});
+
+	it('keeps the instance answer when user flag evaluation fails', async () => {
+		const getFeatureFlags = stubContainer(allEnabled, true, true);
+		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: true,
+			nodeUsageEnabled: false,
+		});
 	});
 
 	it('is off for flags on the control variant', async () => {
@@ -5924,6 +6132,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -5959,6 +6168,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -5974,6 +6184,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -6343,10 +6554,17 @@ describe('createContext — builder delegate wiring', () => {
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
 			mockUser,
 			'proj-1',
-			expect.anything(),
+			expect.any(Function),
 			expect.anything(),
 			{ useEvalModelCatalog: true },
 		);
+		// The third argument is a provider factory, not a pre-built provider: it
+		// is called per turn with the concrete target agent id so Gateway spend
+		// carries the right id even when the agent is created mid-build.
+		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
+			agentId: string,
+		) => AgentsCredentialProvider;
+		expect(providerFor('agent-42')).toBeInstanceOf(AgentsCredentialProvider);
 	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {

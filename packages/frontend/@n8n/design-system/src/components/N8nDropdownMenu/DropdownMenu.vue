@@ -69,6 +69,7 @@ provide(
 const internalOpen = ref(props.defaultOpen ?? false);
 
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+const searchableContentRef = ref<{ highlightFirstItem: () => void } | null>(null);
 let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Track open sub-menu index for non-searchable menus. Searchable menus own this in
@@ -96,6 +97,13 @@ const contentContainerStyle = computed(() => {
 		...maxHeightStyle,
 	};
 });
+
+const fixedContentProps = {
+	/** Keep equal space between the trigger and the menu. */
+	sideOffset: 4,
+	/** Let Reka UI move the menu instead of overlapping the trigger. */
+	prioritizePosition: false,
+};
 
 const handleOpenChange = (open: boolean) => {
 	internalOpen.value = open;
@@ -186,6 +194,10 @@ const close = () => {
 	openSubMenuIndex.value = -1;
 };
 
+const highlightFirstItem = () => {
+	searchableContentRef.value?.highlightFirstItem();
+};
+
 watch(
 	() => props.modelValue,
 	(newValue) => {
@@ -237,7 +249,7 @@ watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
 	});
 });
 
-defineExpose({ open, close });
+defineExpose({ open, close, highlightFirstItem });
 </script>
 
 <!-- TODO DS-580: Let consumers bind trigger props/listeners directly in the slot so their
@@ -276,16 +288,14 @@ defineExpose({ open, close });
 			v-bind="portalTarget ? { to: portalTarget } : {}"
 		>
 			<DropdownMenuContent
-				v-bind="id ? { id } : {}"
 				ref="contentRef"
+				v-bind="{ ...fixedContentProps, ...(id ? { id } : {}) }"
+				data-menu-content
 				:data-test-id="contentTestId"
 				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
-				data-menu-content
 				:side="placementParts.side"
 				:align="placementParts.align"
-				:side-offset="5"
 				:style="contentContainerStyle"
-				:prioritize-position="true"
 				@mouseenter="cancelHoverClose"
 				@mouseleave="triggerHoverLeave"
 			>
@@ -293,6 +303,7 @@ defineExpose({ open, close });
 				<template v-else>
 					<DropdownMenuSearchableContent
 						v-if="searchable"
+						ref="searchableContentRef"
 						:open="internalOpen"
 						:items="items"
 						:search-placeholder="searchPlaceholder"

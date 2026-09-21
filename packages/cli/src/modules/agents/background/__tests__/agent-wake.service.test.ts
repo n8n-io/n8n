@@ -9,6 +9,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
@@ -79,7 +80,6 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 	jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([makeJob()]);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
-	executionRepository.hasSuspendedRun.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
@@ -90,10 +90,9 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 	const service = new AgentWakeService(
 		jobRepository,
-		executionRepository,
+		new AgentConversationStateService(executionRepository, checkpointStorage),
 		agentRepository,
 		userRepository,
-		checkpointStorage,
 		integrationRegistry,
 		orchestrator,
 		lockService,
@@ -391,27 +390,39 @@ describe('AgentWakeService', () => {
 		expect(running.orchestrator.executeForWake).not.toHaveBeenCalled();
 
 		const suspended = setup();
-		suspended.executionRepository.hasSuspendedRun.mockResolvedValue(true);
 		suspended.checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
 		await suspended.service.attemptWake('thread-1');
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
+		expect(suspended.jobRepository.markMailConsumed).not.toHaveBeenCalled();
 	});
 
-	it('checks checkpoints only for threads with a recorded suspension', async () => {
-		const never = setup();
-		await never.service.attemptWake('thread-1');
-		expect(never.checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
-		expect(never.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
-
-		// A resumed run keeps its suspended status. Only an active checkpoint blocks the wake.
+	it('allows a wake after the suspension ends', async () => {
 		const resumed = setup();
-		resumed.executionRepository.hasSuspendedRun.mockResolvedValue(true);
+		resumed.checkpointStorage.findSuspendedForThread.mockResolvedValueOnce({} as never);
+		await resumed.service.attemptWake('thread-1');
+		expect(resumed.orchestrator.executeForWake).not.toHaveBeenCalled();
+
 		await resumed.service.attemptWake('thread-1');
 		expect(resumed.checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',
 		);
 		expect(resumed.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['running', 'suspension'])('does not wake when the %s lookup fails', async (lookup) => {
+		const { service, executionRepository, checkpointStorage, orchestrator, jobRepository } =
+			setup();
+		const query =
+			lookup === 'running'
+				? executionRepository.existsRunningByThread
+				: checkpointStorage.findSuspendedForThread;
+		query.mockRejectedValue(new Error('Database unavailable'));
+
+		await service.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 	});
 
 	it('does not mark results as delivered after the wake loses its lease', async () => {
