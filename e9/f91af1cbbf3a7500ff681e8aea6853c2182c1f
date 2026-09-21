@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_1cc3b657c77322::t_9ec505f01f5563 708-712
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_1cc3b657c77322::t_9ec505f01f5563 215
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/synthetic-integration.test.ts
+  s_1cc3b657c77322::t_e72467f4808b6b 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e9f91af1cbbf3a7500ff681e8aea6853c2182c1f",
+  "prompts": {},
+  "sessions": {
+    "s_1cc3b657c77322": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ab29-e690-7123-ac11-e9092792aaf4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
