@@ -1,26 +1,15 @@
-import { GlobalConfig } from '@n8n/config';
-import { Container, Service } from '@n8n/di';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
-import type {
-	EnvProviderState,
-	ICredentialsHelper,
-	IExecuteData,
-	IExecuteFunctions,
-	INode,
-	INodeExecutionData,
-	INodeParameters,
-	IRunExecutionData,
-	ITaskDataConnections,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
+import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { UrlService } from '@/services/url.service';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
+
+const RUNNER_UNAVAILABLE_REASON = 'Task runners are not supported on Engine 2.0 yet';
 
 /** A capability the data plane does not have yet. The step that reaches it fails and says why. */
 function unimplemented(feature: string) {
@@ -28,6 +17,20 @@ function unimplemented(feature: string) {
 		throw new UnimplementedError(`${feature} is not supported on Engine 2.0 yet`);
 	};
 }
+
+/**
+ * `$vars` that fails on first read. Variables live in the control plane
+ * database, and an empty object would turn `$vars.x` into a silent `undefined`
+ * inside a request or a parameter.
+ */
+const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
+	{},
+	{
+		get() {
+			throw new UnimplementedError('Variables ($vars) are not supported on Engine 2.0 yet');
+		},
+	},
+);
 
 /**
  * Builds the v1 `additionalData` for a step that runs on the engine 2.0 data
@@ -42,6 +45,8 @@ export class EngineAdditionalDataBuilder {
 		private readonly globalConfig: GlobalConfig,
 		private readonly eventService: EventService,
 		private readonly externalSecretsProxy: ExternalSecretsProxy,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	build(
@@ -53,11 +58,10 @@ export class EngineAdditionalDataBuilder {
 		const { endpoints } = this.globalConfig;
 		const { eventService } = this;
 
-		return {
+		const additionalData: IWorkflowExecuteAdditionalData = {
 			currentNodeExecutionIndex: 0,
 			credentialsHelper,
-			// The task runner keys its tasks by execution id, so it needs the engine's
-			// id to cancel them. `$execution.id` also reads it.
+			// `$execution.id` reads the engine's id.
 			executionId: context.executionId,
 			workflowId: context.workflowId,
 			userId: context.userId,
@@ -72,9 +76,7 @@ export class EngineAdditionalDataBuilder {
 			webhookTestBaseUrl: testWebhookBase + endpoints.webhookTest,
 			mcpBaseUrl: webhookBase + endpoints.mcp,
 			mcpTestBaseUrl: testWebhookBase + endpoints.mcpTest,
-			// Variables live in the control plane database. Empty until the control
-			// plane serves them, so `$vars.x` reads `undefined` instead of failing.
-			variables: {},
+			variables: unimplementedVariables,
 			externalSecretsProxy: this.externalSecretsProxy,
 			logAiEvent: (eventName, payload) => {
 				eventService.emit(eventName, payload);
@@ -82,45 +84,11 @@ export class EngineAdditionalDataBuilder {
 			logHitlResponse: (payload) => {
 				eventService.emit('hitl-response-actioned', payload);
 			},
-			async startRunnerTask(
-				additionalData: IWorkflowExecuteAdditionalData,
-				jobType: string,
-				settings: unknown,
-				executeFunctions: IExecuteFunctions,
-				inputData: ITaskDataConnections,
-				node: INode,
-				workflow: Workflow,
-				runExecutionData: IRunExecutionData,
-				runIndex: number,
-				itemIndex: number,
-				activeNodeName: string,
-				connectionInputData: INodeExecutionData[],
-				siblingParameters: INodeParameters,
-				mode: WorkflowExecuteMode,
-				envProviderState: EnvProviderState,
-				executeData?: IExecuteData,
-			) {
-				// Resolved per call: the task runner module binds the requester after
-				// this builder is constructed.
-				return await Container.get(TaskRequester).startTask(
-					additionalData,
-					jobType,
-					settings,
-					executeFunctions,
-					inputData,
-					node,
-					workflow,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					siblingParameters,
-					mode,
-					envProviderState,
-					executeData,
-				);
-			},
+			// The data plane runs no task runner, so the Code node has nowhere to send
+			// work. Python asks first and gets a clear "unavailable"; JavaScript reaches
+			// `startRunnerTask` and fails there.
+			getRunnerStatus: () => ({ available: false, reason: RUNNER_UNAVAILABLE_REASON }),
+			startRunnerTask: unimplemented('Task runners (Code node)'),
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),
@@ -132,5 +100,11 @@ export class EngineAdditionalDataBuilder {
 				);
 			},
 		};
+
+		if (this.ssrfProtectionConfig.enabled) {
+			additionalData.ssrfBridge = this.ssrfProtectionService;
+		}
+
+		return additionalData;
 	}
 }

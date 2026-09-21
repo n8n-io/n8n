@@ -1,5 +1,5 @@
-import type { GlobalConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
+import type { SsrfProtectionService } from '@n8n/backend-network';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
 import type { ExternalSecretsProxy } from 'n8n-core';
 import type { ICredentialsHelper } from 'n8n-workflow';
@@ -7,7 +7,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { UrlService } from '@/services/url.service';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
 
@@ -33,6 +32,7 @@ describe('EngineAdditionalDataBuilder', () => {
 	const eventService = mock<EventService>();
 	const externalSecretsProxy = mock<ExternalSecretsProxy>();
 	const credentialsHelper = mock<ICredentialsHelper>();
+	const ssrfProtectionService = mock<SsrfProtectionService>();
 
 	const context = {
 		executionId: 'exec-1',
@@ -42,12 +42,14 @@ describe('EngineAdditionalDataBuilder', () => {
 		projectId: 'project-1',
 	};
 
-	const build = () =>
+	const build = ({ ssrfEnabled = false } = {}) =>
 		new EngineAdditionalDataBuilder(
 			urlService,
 			globalConfig,
 			eventService,
 			externalSecretsProxy,
+			mock<SsrfProtectionConfig>({ enabled: ssrfEnabled }),
+			ssrfProtectionService,
 		).build(context, credentialsHelper);
 
 	beforeEach(() => {
@@ -87,8 +89,16 @@ describe('EngineAdditionalDataBuilder', () => {
 		expect(build().externalSecretsProxy).toBe(externalSecretsProxy);
 	});
 
-	it('has no variables until the control plane serves them', () => {
-		expect(build().variables).toEqual({});
+	it('fails on the first $vars read instead of resolving undefined', () => {
+		expect(() => build().variables.someName).toThrow(UnimplementedError);
+	});
+
+	it('attaches the SSRF bridge when protection is enabled', () => {
+		expect(build({ ssrfEnabled: true }).ssrfBridge).toBe(ssrfProtectionService);
+	});
+
+	it('attaches no SSRF bridge when protection is disabled', () => {
+		expect(build().ssrfBridge).toBeUndefined();
 	});
 
 	it('forwards AI events to the event service', () => {
@@ -105,32 +115,40 @@ describe('EngineAdditionalDataBuilder', () => {
 		);
 	});
 
-	it('runs runner tasks through the task requester of this process', async () => {
-		const taskRequester = mock<TaskRequester>();
-		taskRequester.startTask.mockResolvedValue({ ok: true, result: 'done' });
-		Container.set(TaskRequester, taskRequester);
-		const data = build();
+	describe('task runners', () => {
+		it('reports every runner as unavailable, so the Code node fails before it waits', () => {
+			expect(build().getRunnerStatus?.('python')).toEqual({
+				available: false,
+				reason: expect.stringContaining('not supported'),
+			});
+		});
 
-		const result = await data.startRunnerTask(
-			data,
-			'javascript',
-			{},
-			mock(),
-			{ main: [] },
-			mock(),
-			mock(),
-			mock(),
-			0,
-			0,
-			'Code',
-			[],
-			{},
-			'manual',
-			mock(),
-		);
+		it('rejects a runner task and names the feature', async () => {
+			const data = build();
 
-		expect(result).toEqual({ ok: true, result: 'done' });
-		expect(taskRequester.startTask).toHaveBeenCalledOnce();
+			const error = await data
+				.startRunnerTask(
+					data,
+					'javascript',
+					{},
+					mock(),
+					{ main: [] },
+					mock(),
+					mock(),
+					mock(),
+					0,
+					0,
+					'Code',
+					[],
+					{},
+					'manual',
+					mock(),
+				)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UnimplementedError);
+			expect((error as Error).message).toContain('Task runners');
+		});
 	});
 
 	describe('control plane capabilities', () => {
