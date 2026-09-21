@@ -88,6 +88,25 @@ function reasoningEffortQuirk(
 	};
 }
 
+const OPENROUTER_REASONING_EFFORTS = ['xhigh', 'high', 'medium', 'low', 'minimal', 'none'] as const;
+
+type OpenRouterReasoningEffort = (typeof OPENROUTER_REASONING_EFFORTS)[number];
+
+function isOpenRouterReasoningEffort(value: string): value is OpenRouterReasoningEffort {
+	return (OPENROUTER_REASONING_EFFORTS as readonly string[]).includes(value);
+}
+
+/** OpenRouter's chat API takes `reasoning.effort`, not OpenAI `reasoningEffort`. */
+function openrouterThinkingToProviderOptions(
+	thinking: ThinkingConfig,
+): Record<string, Record<string, unknown>> {
+	const cfg = thinking as OpenAIThinkingConfig;
+	const rawEffort = cfg.reasoningEffort ?? 'low';
+	const effort = rawEffort === 'max' ? 'xhigh' : rawEffort;
+	if (!isOpenRouterReasoningEffort(effort)) return {};
+	return { openrouter: { reasoning: { effort } } };
+}
+
 /**
  * Declarative registry of provider-specific behavior the AI SDK doesn't
  * normalize away. Each entry documents why the quirk exists and its upstream
@@ -176,6 +195,9 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
 	moonshotai: reasoningEffortQuirk('moonshotai'),
+	openrouter: {
+		thinkingToProviderOptions: openrouterThinkingToProviderOptions,
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
@@ -197,7 +219,13 @@ export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
 	const normalizedModelId = modelId.toLowerCase();
-	if (normalizedModelId.includes('kimi-k3') || normalizedModelId.startsWith('minimax/')) {
+	// MiMo-V2.x advertises 131072 completion / 1M context. Keep the shared
+	// agent cap so a single turn does not consume the full completion budget.
+	if (
+		normalizedModelId.includes('kimi-k3') ||
+		normalizedModelId.startsWith('minimax/') ||
+		normalizedModelId.includes('mimo-v2')
+	) {
 		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;

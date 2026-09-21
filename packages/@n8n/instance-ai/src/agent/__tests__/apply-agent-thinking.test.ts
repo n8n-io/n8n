@@ -142,10 +142,34 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
-	it('skips OpenRouter models (thinking unsupported)', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
-		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	it('enables low reasoning effort for OpenRouter models', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'openrouter/xiaomi/mimo-v2.6-pro-ultraspeed');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+				reasoningEffort: 'low',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
+	it('prefers N8N_INSTANCE_AI_REASONING_EFFORT for OpenRouter models', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'high';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'openrouter/xiaomi/mimo-v2.6-pro-ultraspeed');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+				reasoningEffort: 'high',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
 	});
 
 	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {

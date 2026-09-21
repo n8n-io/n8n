@@ -220,6 +220,39 @@ describe('thinkingToProviderOptions', () => {
 			moonshotai: { reasoningEffort: 'low' },
 		});
 	});
+
+	it('openrouter: maps reasoningEffort to reasoning.effort', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'low' },
+				'openrouter/xiaomi/mimo-v2.6-pro-ultraspeed',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'low' } },
+		});
+	});
+
+	it('openrouter: defaults reasoning.effort to low when unset', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{},
+				'openrouter/xiaomi/mimo-v2.6-pro-ultraspeed',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'low' } },
+		});
+	});
+
+	it('openrouter: maps max effort to xhigh', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'max' },
+				'openrouter/xiaomi/mimo-v2.6-pro-ultraspeed',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'xhigh' } },
+		});
+	});
 });
 
 describe('resolveDefaultMaxOutputTokens', () => {
@@ -238,6 +271,14 @@ describe('resolveDefaultMaxOutputTokens', () => {
 			expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
 		},
 	);
+
+	it.each([
+		'custom/xiaomi/mimo-v2.6-pro-ultraspeed',
+		'openrouter/xiaomi/mimo-v2.6-pro-ultraspeed',
+		'anthropic/mimo-v2.6-pro-ultraspeed',
+	] as const)('raises the output cap for Xiaomi MiMo V2: %s', (modelId) => {
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
+	});
 
 	it('leaves unrelated models unset', () => {
 		expect(resolveDefaultMaxOutputTokens('custom/deepseek-ai/DeepSeek-V4-Pro')).toBeUndefined();

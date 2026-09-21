@@ -41,6 +41,13 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 		return;
 	}
 
+	if (provider === 'openrouter') {
+		const resolvedModelId = resolveModelIdString(modelId) ?? '';
+		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
+		agent.thinking('openrouter', { reasoningEffort: reasoningEffort ?? 'low' });
+		return;
+	}
+
 	if (provider === 'openai') {
 		agent.thinking('openai', {
 			reasoningEffort: isGpt56Model(modelId) ? 'medium' : 'high',
