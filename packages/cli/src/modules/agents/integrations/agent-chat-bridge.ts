@@ -45,7 +45,11 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
-import type { ReplyExpectation, IntegrationMessageContext } from './integration-tools';
+import type {
+	IntegrationMessageContext,
+	IntegrationPlatformMessageContext,
+	ReplyExpectation,
+} from './integration-tools';
 import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
@@ -64,6 +68,16 @@ const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
 function toMessageAuthor(author: Author): AgentMessageAuthor {
 	const name = (author.userName || author.fullName || author.userId).replace(/[\[\]\r\n]/g, '');
 	return { id: author.userId, name: name || author.userId };
+}
+
+function formatPlatformMessageContext(context: IntegrationPlatformMessageContext): string {
+	return [
+		'Telegram metadata for this message follows.',
+		'<telegram_message_context>',
+		JSON.stringify(context),
+		'</telegram_message_context>',
+		'Use these values when a tool needs Telegram identifiers.',
+	].join('\n');
 }
 
 interface SessionGenerationState {
@@ -670,6 +684,9 @@ export class AgentChatBridge {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
 				...bridgeExecutionContext.platformAgentContext,
+				...(bridgeExecutionContext.platformMessage
+					? { platformMessage: bridgeExecutionContext.platformMessage }
+					: {}),
 				subject,
 				replyExpectation,
 			});
@@ -681,9 +698,19 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
-			const modelMessage = bridgeExecutionContext.historyContext
-				? `${bridgeExecutionContext.historyContext}\n\n${labelledText}`
-				: labelledText;
+			const modelContext: string[] = [];
+			if (bridgeExecutionContext.historyContext) {
+				modelContext.push(bridgeExecutionContext.historyContext);
+			}
+			if (bridgeExecutionContext.platformMessage) {
+				modelContext.push(formatPlatformMessageContext(bridgeExecutionContext.platformMessage));
+			}
+			modelContext.push(
+				bridgeExecutionContext.platformMessage
+					? `The actual user message follows.\n${labelledText}`
+					: labelledText,
+			);
+			const modelMessage = modelContext.join('\n\n');
 			const stream = this.agentService.executeForChatPublished({
 				messageContext,
 				contextConversation: { threadId: threadId.id, resourceId: message.author.userId },
