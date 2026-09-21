@@ -107,6 +107,26 @@ describe('diskCaseToLangTracerCreate', () => {
 });
 
 describe('unsupportedPushReason', () => {
+	it.each([null, 'Production reports'])(
+		'refuses description %s until the case-write API preserves it',
+		(description) => {
+			const input = diskCase({ credentials: [{ type: 'httpHeaderAuth', description }] });
+			expect(unsupportedPushReason(input)).toContain('description');
+			const body = diskCaseToLangTracerCreate(input, 'description-case', {
+				suiteId: 8,
+				setKind: 'regression',
+				synthetic: true,
+			});
+			expect(body.credentials).toEqual(input.credentials);
+		},
+	);
+
+	it('allows credentials without descriptions', () => {
+		expect(
+			unsupportedPushReason(diskCase({ credentials: [{ type: 'httpHeaderAuth' }] })),
+		).toBeNull();
+	});
+
 	it('refuses a case whose prompt version would be lost', () => {
 		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
 			'promptVersion',
