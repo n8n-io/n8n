@@ -964,7 +964,6 @@ export class AgentRuntime {
 						: undefined,
 			};
 			let turn = await sink.callModel(modelCallContext);
-			delete modelCallContext.onInputRejected;
 
 			// Some providers occasionally return a `stop` turn with no output at
 			// all mid-task, which would silently end the run with work half-done.
