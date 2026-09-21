@@ -290,61 +290,67 @@ describe('VectorStoreMongoDBAtlas', () => {
 	});
 
 	describe('ExtendedMongoDBAtlasVectorSearch', () => {
-		it('uses open-source DocumentDB vector search without an Atlas index name', async () => {
-			const toArray = vi.fn().mockResolvedValue([
-				{
-					text: 'Matched document',
-					category: 'support',
-					score: 0.91,
-				},
-			]);
-			const aggregate = vi.fn(() => ({ toArray }));
-			const collection = {
-				aggregate,
-				db: { client: { appendMetadata: vi.fn() } },
-			};
-			const client = {} as MongoClient;
-			const embeddings = mock<EmbeddingsInterface>();
-			const vectorStore = new ExtendedMongoDBAtlasVectorSearch(
-				embeddings,
-				{
-					collection: collection as never,
-					indexName: 'atlas-index',
-					textKey: 'text',
-					embeddingKey: 'embedding',
-				},
-				client,
-				{ category: 'support' },
-				[{ $match: { active: true } }],
-				'openSource',
-			);
-
-			const results = await vectorStore.similaritySearchVectorWithScore([1, 0.25], 3);
-
-			expect(aggregate).toHaveBeenCalledWith([
-				{
-					$vectorSearch: {
-						queryVector: [1.000000000000001, 0.25],
-						path: 'embedding',
-						limit: 3,
-						numCandidates: 30,
-						filter: { category: 'support' },
+		it.each([
+			{ k: 3, expectedNumCandidates: 30 },
+			{ k: 101, expectedNumCandidates: 1000 },
+		])(
+			'uses open-source DocumentDB vector search with $expectedNumCandidates candidates for k=$k',
+			async ({ k, expectedNumCandidates }) => {
+				const toArray = vi.fn().mockResolvedValue([
+					{
+						text: 'Matched document',
+						category: 'support',
+						score: 0.91,
 					},
-				},
-				{ $set: { score: { $meta: 'vectorSearchScore' } } },
-				{ $project: { embedding: 0 } },
-				{ $match: { active: true } },
-			]);
-			expect(results).toEqual([
-				[
-					expect.objectContaining({
-						pageContent: 'Matched document',
-						metadata: { category: 'support' },
-					}),
-					0.91,
-				],
-			]);
-		});
+				]);
+				const aggregate = vi.fn(() => ({ toArray }));
+				const collection = {
+					aggregate,
+					db: { client: { appendMetadata: vi.fn() } },
+				};
+				const client = {} as MongoClient;
+				const embeddings = mock<EmbeddingsInterface>();
+				const vectorStore = new ExtendedMongoDBAtlasVectorSearch(
+					embeddings,
+					{
+						collection: collection as never,
+						indexName: 'atlas-index',
+						textKey: 'text',
+						embeddingKey: 'embedding',
+					},
+					client,
+					{ category: 'support' },
+					[{ $match: { active: true } }],
+					'openSource',
+				);
+
+				const results = await vectorStore.similaritySearchVectorWithScore([1, 0.25], k);
+
+				expect(aggregate).toHaveBeenCalledWith([
+					{
+						$vectorSearch: {
+							queryVector: [1.000000000000001, 0.25],
+							path: 'embedding',
+							limit: k,
+							numCandidates: expectedNumCandidates,
+							filter: { category: 'support' },
+						},
+					},
+					{ $set: { score: { $meta: 'vectorSearchScore' } } },
+					{ $project: { embedding: 0 } },
+					{ $match: { active: true } },
+				]);
+				expect(results).toEqual([
+					[
+						expect.objectContaining({
+							pageContent: 'Matched document',
+							metadata: { category: 'support' },
+						}),
+						0.91,
+					],
+				]);
+			},
+		);
 
 		it('uses Azure DocumentDB cosmos search and search scores', async () => {
 			const toArray = vi.fn().mockResolvedValue([

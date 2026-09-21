@@ -359,7 +359,7 @@ export class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 					queryVector,
 					path: this.embeddingFieldName,
 					limit: k,
-					numCandidates: 10 * k,
+					numCandidates: Math.min(10 * k, 1000),
 				};
 				if (Object.keys(this.preFilter).length > 0) {
 					vectorSearch.filter = this.preFilter;
