@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { createRefreshingAuthFetch, getProxyAgent, logWrapper } from '@n8n/ai-utilities';
+import {
+	createRefreshingAuthFetch,
+	getProxyAgent,
+	logWrapper,
+	makeN8nLlmFailedAttemptHandler,
+} from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
@@ -19,6 +24,7 @@ const mockedLogWrapper = vi.mocked(logWrapper);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const mockedGetDatabricksTokenProvider = vi.mocked(getDatabricksTokenProvider);
 const mockedCreateRefreshingAuthFetch = vi.mocked(createRefreshingAuthFetch);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 
 const mockTokenProvider = {
 	getToken: vi.fn(async () => 'test-token'),
@@ -67,6 +73,7 @@ describe('EmbeddingsDatabricks', () => {
 			return undefined;
 		});
 
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockTokenProvider.refreshAfterRejection.mockResolvedValue(null);
 		mockedGetProxyAgent.mockReturnValue({} as never);
 		mockedGetDatabricksTokenProvider.mockReturnValue(mockTokenProvider);
@@ -181,10 +188,10 @@ describe('EmbeddingsDatabricks', () => {
 
 			await node.supplyData.call(ctx, 0);
 
-			const { onFailedAttempt } = MockedOpenAIEmbeddings.mock.calls[0][0] ?? {};
-			expect(() =>
-				onFailedAttempt?.(Object.assign(new Error('429 x'), { status: 429, attemptNumber: 1 })),
-			).toThrow('Databricks rate limit reached for system.ai.gte-large-en');
+			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
+			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
+				'Databricks rate limit reached for system.ai.gte-large-en',
+			);
 		});
 
 		it('should reject non-https hosts', async () => {
@@ -245,6 +252,15 @@ describe('EmbeddingsDatabricks', () => {
 					description: undefined,
 				},
 			]);
+		});
+
+		it('should not let the bearer follow a cross-origin redirect', async () => {
+			setupSearchContext(modelServicesResponse);
+
+			await node.methods.listSearch.searchModels.call(mockContext);
+
+			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
+			expect(requestOptions.sendCredentialsOnCrossOriginRedirect).toBe(false);
 		});
 
 		it('should throw when the workspace has no model services', async () => {

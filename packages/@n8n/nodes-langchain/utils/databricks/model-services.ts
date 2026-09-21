@@ -76,6 +76,8 @@ export function makeModelSearch(capability: ModelCapability) {
 						qs: { view: 'FULL', parent, page_token: pageToken },
 						headers: { Accept: 'application/json', 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 						json: true,
+						// The bearer must not follow a redirect off the workspace host
+						sendCredentialsOnCrossOriginRedirect: false,
 					},
 				);
 				services = services.concat(page.model_services ?? []);

@@ -1,5 +1,9 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { getConnectionHintNoticeField, logWrapper } from '@n8n/ai-utilities';
+import {
+	getConnectionHintNoticeField,
+	logWrapper,
+	makeN8nLlmFailedAttemptHandler,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -162,9 +166,10 @@ export class EmbeddingsDatabricks implements INodeType {
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-			// The embeddings client has no tracing callback, so the Databricks handler
-			// runs on its own rather than wrapped in makeN8nLlmFailedAttemptHandler
-			onFailedAttempt: makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus, modelName),
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(
+				this,
+				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus, modelName),
+			),
 		});
 
 		return {
