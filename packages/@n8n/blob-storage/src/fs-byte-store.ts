@@ -86,7 +86,7 @@ export class FsByteStore implements ByteStore {
 
 	async deletePrefix(prefix: string) {
 		const dir = this.getAbsolutePath(prefix);
-		await fs.rm(dir, { recursive: true, force: true });
+		await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 });
 		await this.removeEmptyAncestors(path.dirname(dir));
 	}
 
