@@ -7,4 +7,6 @@ export {
 	type ExpiredLeaseRef,
 	type ExpiredLeaseRow,
 	type ReaperHooks,
+	type RetireMissedResult,
+	type RetiredOccurrence,
 } from './reap';

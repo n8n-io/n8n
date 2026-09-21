@@ -69,6 +69,8 @@ export type {
 	ClaimedRef,
 	HostedClaimedRef,
 	DeleteFinishedTasksOptions,
+	RetireMissedResult,
+	RetiredOccurrence,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
 export {

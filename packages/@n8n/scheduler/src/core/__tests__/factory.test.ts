@@ -49,7 +49,7 @@ const makeTracer = () => {
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
 	taskStore.markDispatched.mockResolvedValue(1);
-	taskStore.retireMissedPending.mockResolvedValue(0);
+	taskStore.retireMissedPending.mockResolvedValue({ retired: 0, heldByConcurrencyLimit: [] });
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
@@ -1248,6 +1248,18 @@ describe('createScheduler reap', () => {
 			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
+	});
+
+	it('hands the host the occurrences a concurrency limit held back', async () => {
+		const onHeldByConcurrencyLimit = vi.fn();
+		const { scheduler, taskStore } = makeScheduler({ onHeldByConcurrencyLimit });
+		const held = [{ id: '7', jobId: 3, taskType: 'system:pruning' }];
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		taskStore.retireMissedPending.mockResolvedValue({ retired: 1, heldByConcurrencyLimit: held });
+
+		await scheduler.reap();
+
+		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
 	});
 });
 

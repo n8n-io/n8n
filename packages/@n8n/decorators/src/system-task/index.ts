@@ -1,4 +1,5 @@
 export {
+	DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT,
 	SystemTask,
 	resolveSystemTaskRunOptions,
 	resolveSystemTaskSchedule,

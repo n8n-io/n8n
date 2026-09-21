@@ -24,6 +24,7 @@ it('should let an idempotent task retry and run late', () => {
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
 		maxAttempts: 3,
+		concurrencyLimit: 1,
 	});
 });
 
@@ -34,12 +35,14 @@ it('should keep a non-idempotent task to a single attempt and drop missed occurr
 		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 		misfireGraceSeconds: 60,
 		maxAttempts: 1,
+		concurrencyLimit: 1,
 	});
 });
 
 it.each([
 	['misfirePolicy', { misfirePolicy: ScheduledJobMisfirePolicy.Skip }],
 	['misfireGraceSeconds', { misfireGraceSeconds: 5 }],
+	['concurrencyLimit', { concurrencyLimit: 4 }],
 ] as const)('should let a task override %s', (field, override) => {
 	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override }));
 
@@ -55,6 +58,10 @@ it.each([
 	{ misfireGraceSeconds: -1 },
 	{ misfireGraceSeconds: 0.5 },
 	{ misfireGraceSeconds: 86_400_000_000 },
+	{ concurrencyLimit: 0 },
+	{ concurrencyLimit: -1 },
+	{ concurrencyLimit: 1.5 },
+	{ concurrencyLimit: 2_147_483_648 },
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
 		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
@@ -70,6 +77,7 @@ it('should keep the defaults for the fields a task does not override', () => {
 		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 		misfireGraceSeconds: 5,
 		maxAttempts: 1,
+		concurrencyLimit: 1,
 	});
 });
 
@@ -79,4 +87,12 @@ it('should refuse to retry non-idempotent work that asked for more attempts', ()
 	);
 
 	expect(options.maxAttempts).toBe(1);
+});
+
+it('should let a task permit overlap', () => {
+	const options = resolveSystemTaskRunOptions(
+		taskWith({ effects: 'idempotent', concurrencyLimit: null }),
+	);
+
+	expect(options.concurrencyLimit).toBeNull();
 });

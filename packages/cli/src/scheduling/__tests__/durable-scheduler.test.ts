@@ -15,6 +15,7 @@ import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-t
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import type { SystemTaskOverlapReporter } from '../system-tasks/system-task-overlap-reporter';
 import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
@@ -56,6 +57,7 @@ describe('DurableScheduler', () => {
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
 		const agentOwner = mock<AgentScheduledJobOwner>();
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
+		const overlapReporter = mock<SystemTaskOverlapReporter>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -92,8 +94,19 @@ describe('DurableScheduler', () => {
 			workflowOwner,
 			agentOwner,
 			systemTaskOwner,
+			overlapReporter,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner, agentOwner, systemTaskOwner };
+		return {
+			scheduler,
+			inner,
+			logger,
+			tracing,
+			tasks,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			overlapReporter,
+		};
 	}
 
 	describe('composition', () => {
