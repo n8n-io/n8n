@@ -536,10 +536,16 @@ describe('GET /ai-preferences?ids=', () => {
 	test('answers an unknown id with an empty page', async () => {
 		await seed({ content: 'Mine', userId: member.id });
 
-		const response = await memberAgent.get('/ai-preferences').query({ ids: 'missing' });
+		const response = await memberAgent.get('/ai-preferences').query({ ids: crypto.randomUUID() });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.count).toBe(0);
+	});
+
+	test('refuses an id that is not a UUID', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids: 'missing' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('refuses an empty ids filter', async () => {

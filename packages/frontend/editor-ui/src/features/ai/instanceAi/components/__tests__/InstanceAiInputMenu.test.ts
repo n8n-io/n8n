@@ -93,8 +93,10 @@ describe('InstanceAiInputMenu', () => {
 		const { getByRole } = renderComponent();
 
 		await fireEvent.click(getByRole('button', { name: /Add .*files/ }));
-
 		expect(refreshAppliedPreferences).toHaveBeenCalledOnce();
+
+		await fireEvent.click(getByRole('button', { name: /Add .*files/ }));
+		expect(refreshAppliedPreferences).toHaveBeenCalledTimes(2);
 	});
 
 	it('hands its thread to the menu items', () => {

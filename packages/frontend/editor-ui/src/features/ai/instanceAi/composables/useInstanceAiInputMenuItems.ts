@@ -164,7 +164,11 @@ export function useInstanceAiInputMenuItems(
 	async function refreshAppliedPreferences() {
 		const ids = appliedPreferenceIds.value;
 		if (!isPreferencesAvailable.value || ids.length === 0) {
+			// Also retires a read still in flight for the previous list, so it cannot
+			// land later and repopulate the menu with another thread's text.
+			++latestTextsRead;
 			preferenceTextById.value = new Map();
+			isLoadingPreferenceTexts.value = false;
 			return;
 		}
 		const read = ++latestTextsRead;

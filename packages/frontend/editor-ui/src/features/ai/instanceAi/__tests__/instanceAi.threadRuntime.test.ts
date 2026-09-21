@@ -395,6 +395,29 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('an older preferences-applied frame does not overwrite a newer one', () => {
+		const runtime = activeRuntime(registry);
+		const frame = (id: string, seq: string) =>
+			makeSSEEvent(
+				{
+					type: 'preferences-applied',
+					runId: `run-${id}`,
+					agentId: 'agent-root',
+					payload: {
+						preferences: [{ id, scope: 'user' }],
+						renderedLength: 1,
+						injectedThisTurn: true,
+					},
+				},
+				seq,
+			);
+
+		capturedOnMessage!(frame('newer', '20'));
+		capturedOnMessage!(frame('older', '10'));
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['newer']);
+	});
+
 	test('the applied payload survives thread restore (GET /messages)', async () => {
 		mockFetchThreadMessages.mockResolvedValueOnce({
 			threadId: 'thread-restore',

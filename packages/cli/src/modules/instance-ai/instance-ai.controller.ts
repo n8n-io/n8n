@@ -982,10 +982,13 @@ export class InstanceAiController {
 		// The applied-preferences payload rides along because the messages
 		// endpoint is what opens a thread: without it a reopened thread could
 		// only claim "none applied" until its next turn.
-		const [nextEventId, appliedPreferences] = await Promise.all([
-			this.eventLog.getNextEventId(threadId),
-			this.eventLog.getLastAppliedPreferences(threadId),
-		]);
+		//
+		// Cursor first, payload second, on purpose. A turn that commits its
+		// `preferences-applied` fact between the two reads then lands in the
+		// payload AND replays over SSE (a harmless repeat). The other order
+		// would move the cursor past a fact the payload never saw.
+		const nextEventId = await this.eventLog.getNextEventId(threadId);
+		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
 		return {
 			...result,
 			nextEventId,

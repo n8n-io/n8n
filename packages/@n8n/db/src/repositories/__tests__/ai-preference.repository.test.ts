@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { In, IsNull } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 
 import { AiPreference } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -65,6 +65,30 @@ describe('AiPreferenceRepository', () => {
 				skip: 0,
 				take: 2,
 			});
+		});
+
+		it('narrows the admin and all-projects branches the same way', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'admin-1',
+				projectIds: 'all',
+				allUsers: true,
+				skip: 0,
+				take: 2,
+				ids: ['a'],
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({
+					where: [
+						{ userId: IsNull(), projectId: IsNull(), id: In(['a']) },
+						{ userId: Not(IsNull()), id: In(['a']) },
+						{ projectId: Not(IsNull()), id: In(['a']) },
+					],
+				}),
+			);
 		});
 
 		it('leaves the visibility branches alone when no ids are given', async () => {
