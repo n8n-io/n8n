@@ -425,7 +425,8 @@ export class PromotionsService {
 		const deleted: string[] = [];
 		for (const id of workflowIds) {
 			const ownerProject = ownerProjects.get(id);
-			// Gone since the list was fetched: promote it as a deletion. Last write wins.
+			// Gone from the instance: promote it as a deletion. It must exist on the
+			// branch, or assertDeletionsOnBranch rejects the request.
 			if (!ownerProject) {
 				deleted.push(id);
 				continue;
