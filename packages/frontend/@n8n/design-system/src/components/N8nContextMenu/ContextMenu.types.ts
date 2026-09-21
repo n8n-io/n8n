@@ -55,7 +55,6 @@ export type ContextMenuRadioGroup<T extends ContextMenuId = ContextMenuId> =
 		children: Array<ContextMenuRadio<T>>;
 	};
 
-/** Entries in `items` and in group/submenu `children`. Radio is not a node; nest it in `radio-group`. */
 export type ContextMenuNode<T extends ContextMenuId = ContextMenuId> =
 	| ContextMenuItem<T>
 	| ContextMenuCheckbox<T>
@@ -63,7 +62,6 @@ export type ContextMenuNode<T extends ContextMenuId = ContextMenuId> =
 	| ContextMenuSubmenu<T>
 	| ContextMenuRadioGroup<T>;
 
-/** A row `N8nContextMenuItem` can render, including radio (which is not a node). */
 export type ContextMenuLeaf<T extends ContextMenuId = ContextMenuId> =
 	| ContextMenuItem<T>
 	| ContextMenuRadio<T>
