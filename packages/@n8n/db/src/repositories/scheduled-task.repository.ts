@@ -123,6 +123,7 @@ export type ScheduledTaskMetricSnapshot = {
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private readonly isPostgres: boolean;
 	private readonly tableName: string;
+	private readonly jobTableName: string;
 	// Quoted here so the reaper update below doesn't have to quote these
 	// camelCase columns itself for Postgres (SQLite accepts the same
 	// double-quoted identifier).
@@ -135,6 +136,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		super(ScheduledTask, dataSource.manager);
 		this.isPostgres = config.type === 'postgresdb';
 		this.tableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_task`);
+		this.jobTableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_job`);
 		this.leaseExpiresAtColumn = this.manager.connection.driver.escape('leaseExpiresAt');
 		this.dispatchedAtColumn = this.manager.connection.driver.escape('dispatchedAt');
 		this.runAtColumn = this.manager.connection.driver.escape('runAt');
@@ -284,13 +286,77 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 *
 	 * Rows past their deadline are left alone (see {@link claimableSql}).
 	 *
-	 * Concurrent claimers never take the same row: Postgres skips locked rows
-	 * (`FOR UPDATE SKIP LOCKED`); SQLite serialises via the sqlite-pooled driver's
-	 * `BEGIN IMMEDIATE`, which reserves the write lock upfront.
+	 * A job's `concurrencyLimit` caps how many of its occurrences run at once.
+	 * The claim takes at most `concurrencyLimit` minus the job's `running` rows,
+	 * earliest `runAt` first, and leaves the rest `pending` for a later pass
+	 * (see {@link allowedByConcurrencyLimitSql}). The cap applies before
+	 * `batchSize`, so a held-back job never crowds out other jobs. A job with a
+	 * `null` limit has no cap.
+	 *
+	 * Limited jobs select a prefix of their `pending` rows before the claim applies
+	 * the deadline filter, so an expired row can hold a slot until the reaper
+	 * retires it.
+	 *
+	 * Postgres also locks each selected job and checks its row version. A claim
+	 * skips jobs changed since its snapshot, then writes a new job row version.
+	 * This prevents concurrent claims from using the same available capacity.
+	 *
+	 * Two claimers never take the same row. Postgres skips locked rows
+	 * (`FOR UPDATE SKIP LOCKED`). SQLite runs one writer at a time
+	 * (`BEGIN IMMEDIATE` in the sqlite-pooled driver).
+	 *
+	 * The limit bounds claims, not executions. A reclaimed occurrence can still
+	 * be running on its previous owner. That is the at-least-once contract.
 	 */
 	async claimDueTasks(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		if (opts.taskTypes.length === 0) return [];
 		return this.isPostgres ? await this.claimWithPostgres(opts) : await this.claimWithSqlite(opts);
+	}
+
+	private claimCandidateSql(alias: string, taskTypesSql: string, dueBeforeSql: string): string {
+		return `${alias}"status" = '${ScheduledTaskStatus.Pending}'
+			AND ${alias}"taskType" ${taskTypesSql}
+			AND ${alias}"runAt" <= ${dueBeforeSql}
+			AND ${this.claimableSql(alias)}`;
+	}
+
+	private limitedJobIdsSql(): string {
+		return `SELECT "id" FROM ${this.jobTableName} WHERE "concurrencyLimit" IS NOT NULL`;
+	}
+
+	private withinConcurrencyLimitSql(alias: string): string {
+		return `(${alias}"jobId" NOT IN (${this.limitedJobIdsSql()})
+			OR ${alias}"id" IN (${this.allowedByConcurrencyLimitSql()}))`;
+	}
+
+	private allowedByConcurrencyLimitSql(): string {
+		return `
+			SELECT ranked."id"
+			FROM (
+				SELECT
+					c."id",
+					c."status",
+					ROW_NUMBER() OVER (
+						PARTITION BY c."jobId"
+						ORDER BY
+							CASE WHEN c."status" = '${ScheduledTaskStatus.Pending}' THEN 0 ELSE 1 END,
+							c."runAt",
+							c."id"
+					) AS "slot",
+					cj."concurrencyLimit" - SUM(
+						CASE WHEN c."status" = '${ScheduledTaskStatus.Running}' THEN 1 ELSE 0 END
+					) OVER (PARTITION BY c."jobId") AS "freeSlots"
+				FROM ${this.tableName} c
+				JOIN ${this.jobTableName} cj ON cj."id" = c."jobId"
+				WHERE cj."concurrencyLimit" IS NOT NULL
+					AND c."status" IN (
+						'${ScheduledTaskStatus.Pending}',
+						'${ScheduledTaskStatus.Running}'
+					)
+			) ranked
+			WHERE ranked."status" = '${ScheduledTaskStatus.Pending}'
+				AND ranked."slot" <= ranked."freeSlots"
+		`;
 	}
 
 	/**
@@ -308,22 +374,46 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
+		const taskTypesSql = '= ANY($3)';
+		const dueBeforeSql = "now() + ($4 || ' milliseconds')::interval";
+
+		// A row lock alone cannot refresh the statement's running count, so the guard
+		// compares the job's `xmin` instead. Once `FOR NO KEY UPDATE` holds the lock,
+		// Postgres re-evaluates the qualifier against the latest row version, so a job
+		// updated since this snapshot fails the comparison. `claimed_jobs` then writes
+		// a new version without changing job data, which is what the next claim sees.
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
 		// ... RETURNING, so destructure the rows out of the tuple.
 		const [rows]: [ScheduledTask[], number] = await this.query(
-			`UPDATE ${this.tableName}
+			`WITH candidates AS MATERIALIZED (
+			   SELECT t."id", t."jobId", j."concurrencyLimit"
+			     FROM ${this.tableName} t
+			     JOIN ${this.jobTableName} j ON j."id" = t."jobId"
+			    WHERE ${this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql)}
+			      AND ${this.withinConcurrencyLimitSql('t.')}
+			      AND (j."concurrencyLimit" IS NULL OR EXISTS (
+			        SELECT 1 FROM ${this.jobTableName} guard
+			         WHERE guard."id" = j."id" AND guard.xmin = j.xmin
+			         FOR NO KEY UPDATE OF guard SKIP LOCKED
+			      ))
+			    ORDER BY t."runAt"
+			    LIMIT $5
+			    FOR UPDATE OF t SKIP LOCKED
+			 ), claimed_jobs AS (
+			   UPDATE ${this.jobTableName} j
+			      SET "concurrencyLimit" = j."concurrencyLimit"
+			    WHERE j."id" IN (
+			      SELECT "jobId" FROM candidates WHERE "concurrencyLimit" IS NOT NULL
+			    )
+			   RETURNING j."id"
+			 )
+			 UPDATE ${this.tableName}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
 			       "leaseExpiresAt" = now() + ($2 || ' milliseconds')::interval,
 			       "leaseEpoch" = "leaseEpoch" + 1
 			 WHERE "id" IN (
-			   SELECT t."id" FROM ${this.tableName} t
-			    WHERE t."status" = '${ScheduledTaskStatus.Pending}'
-			      AND t."taskType" = ANY($3)
-			      AND t."runAt" <= now() + ($4 || ' milliseconds')::interval
-			      AND ${this.claimableSql('t.')}
-			    ORDER BY t."runAt"
-			    LIMIT $5
-			    FOR UPDATE SKIP LOCKED)
+			   SELECT "id" FROM candidates
+			    WHERE "concurrencyLimit" IS NULL OR "jobId" IN (SELECT "id" FROM claimed_jobs))
 			 RETURNING *`,
 			[opts.host, String(opts.leaseMs), opts.taskTypes, String(opts.lookaheadMs), opts.batchSize],
 		);
@@ -336,18 +426,15 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// so concurrent claimers serialise here rather than both reading the same
 		// pending rows. Two statements (select then update) because SQLite can't
 		// return the updated rows from an UPDATE.
+		const taskTypesSql = 'IN (:...taskTypes)';
+		const dueBeforeSql = "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)";
+		const params = { taskTypes: opts.taskTypes, lookahead: `+${opts.lookaheadMs / 1000} seconds` };
+
 		return await this.manager.transaction(async (tx) => {
 			const candidates = await tx
 				.createQueryBuilder(ScheduledTask, 't')
-				.where('t.status = :pending', { pending: ScheduledTaskStatus.Pending })
-				.andWhere('t.taskType IN (:...taskTypes)', { taskTypes: opts.taskTypes })
-				// Reach `lookaheadMs` past now so a task due before the next poll is claimed
-				// early and fired precisely by the timer. STRFTIME takes the offset as whole
-				// seconds.
-				.andWhere("t.runAt <= STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)", {
-					lookahead: `+${opts.lookaheadMs / 1000} seconds`,
-				})
-				.andWhere(this.claimableSql('t.'))
+				.where(this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql), params)
+				.andWhere(this.withinConcurrencyLimitSql('t.'))
 				.orderBy('t.runAt', 'ASC')
 				.limit(opts.batchSize)
 				.getMany();
@@ -512,8 +599,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * oldest-age reference are consistent regardless of any instance clock skew.
 	 *
 	 * `due` and the oldest age count only what the claim would actually take, so a
-	 * backlog the reaper has yet to retire doesn't read as work the scheduler is behind
-	 * on. `pending` stays the whole backlog, retirable rows included.
+	 * backlog the reaper has yet to retire doesn't read as work the scheduler is behind on.
+	 *
+	 * A row its job's `concurrencyLimit` holds back still counts as due: it is
+	 * work waiting on the job, not on the scheduler. `pending` stays the whole backlog,
+	 * retirable rows included.
 	 *
 	 * The caller runs this behind a short scrape cache.
 	 */

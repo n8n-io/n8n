@@ -53,6 +53,9 @@ const READ_ITERS = envInt('N8N_SCHEDULER_QUERY_ITERS', 50);
 // enough to skew later iterations.
 const WRITE_ITERS = envInt('N8N_SCHEDULER_QUERY_WRITE_ITERS', 25);
 const BATCH = envInt('N8N_SCHEDULER_QUERY_BATCH', 100);
+// One seeded job in this many carries a concurrencyLimit, with a due occurrence and,
+// for every other one, a running occurrence that fills its single slot.
+const LIMITED_JOB_EVERY = envInt('N8N_SCHEDULER_QUERY_LIMITED_JOB_EVERY', 10);
 const WRITE_BATCH = envInt('N8N_SCHEDULER_QUERY_WRITE_BATCH', 10_000);
 
 // `insertMany` chunks its insert and `name IN (...)` read-back internally (dialect-aware,
@@ -166,9 +169,51 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 				enabled,
 				nextRunAt: enabled ? (due ? secondsAgo(60) : secondsFromNow(3600)) : null,
 				maxAttempts: 1,
+				concurrencyLimit: i % LIMITED_JOB_EVERY === 0 ? 1 : null,
 			});
 		}
 		await bulkInsert(ScheduledJob, rows);
+	}
+
+	/** Give every limited job a due occurrence, and every other limited job a running one that fills its slot. */
+	async function seedLimitedTasks(): Promise<{ limitedJobs: number; busyJobs: number }> {
+		const limitedJobs = await dataSource
+			.createQueryBuilder(ScheduledJob, 'j')
+			.select('j.id')
+			.where('j.concurrencyLimit IS NOT NULL')
+			.orderBy('j.id', 'ASC')
+			.getMany();
+		const rows: Array<QueryDeepPartialEntity<ScheduledTask>> = [];
+		let busyJobs = 0;
+		for (const [i, job] of limitedJobs.entries()) {
+			const due = secondsAgo(60 + i);
+			rows.push({
+				jobId: job.id,
+				taskType: TASK_TYPE,
+				payload: {},
+				scheduledFor: due,
+				runAt: due,
+				status: 'pending',
+				maxAttempts: 1,
+			});
+			if (i % 2 === 0) {
+				busyJobs += 1;
+				const started = secondsAgo(3600 + i);
+				rows.push({
+					jobId: job.id,
+					taskType: TASK_TYPE,
+					payload: {},
+					scheduledFor: started,
+					runAt: started,
+					status: 'running',
+					claimedBy: 'seed',
+					leaseExpiresAt: secondsFromNow(60),
+					maxAttempts: 1,
+				});
+			}
+		}
+		await bulkInsert(ScheduledTask, rows);
+		return { limitedJobs: limitedJobs.length, busyJobs };
 	}
 
 	beforeAll(async () => {
@@ -194,9 +239,14 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 		);
 		await seedTasks(anchorJob.id);
 		await seedJobs();
+		const limited = await seedLimitedTasks();
+		// Fresh planner statistics, so the plans below are the ones a live instance
+		// gets after autovacuum has seen the corpus, not default-estimate plans.
+		await dataSource.query('ANALYZE');
 		report('corpus seeded', {
-			'scheduled_task rows': commas(TASK_ROWS),
+			'scheduled_task rows': commas(TASK_ROWS + limited.limitedJobs + limited.busyJobs),
 			'scheduled_job rows': commas(JOB_ROWS),
+			'limited jobs (due / of which busy)': `${commas(limited.limitedJobs)} / ${commas(limited.busyJobs)}`,
 		});
 	}, TEST_TIMEOUT_MS);
 
@@ -305,7 +355,21 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			);
 
 			// ScheduledTaskRepository.claimDueTasks — the claim's candidate select
-			// (pending + due, ordered by runAt). Backed by the partial index on runAt.
+			// (pending + due, ordered by runAt, minus the rows of limited jobs). Backed
+			// by the partial index on runAt plus the partial index on limited jobs.
+			const claimCandidateSelect = dataSource
+				.createQueryBuilder(ScheduledTask, 't')
+				.where('t.status = :s', { s: 'pending' })
+				.andWhere('t.taskType IN (:...tt)', { tt: [TASK_TYPE] })
+				.andWhere('t.runAt <= :now', { now: dueParam })
+				.andWhere(
+					't.jobId NOT IN (SELECT "id" FROM ' +
+						dataSource.getRepository(ScheduledJob).metadata.tableName +
+						' WHERE "concurrencyLimit" IS NOT NULL)',
+				)
+				.orderBy('t.runAt', 'ASC')
+				.limit(BATCH)
+				.getQueryAndParameters();
 			await profileRead(
 				'ScheduledTask.claimDueTasks (candidate select)',
 				async () =>
@@ -316,22 +380,37 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 						leaseMs: 60_000,
 						batchSize: BATCH,
 					}),
-				dataSource
-					.createQueryBuilder(ScheduledTask, 't')
-					.where('t.status = :s', { s: 'pending' })
-					.andWhere('t.taskType IN (:...tt)', { tt: [TASK_TYPE] })
-					.andWhere('t.runAt <= :now', { now: dueParam })
-					.orderBy('t.runAt', 'ASC')
-					.limit(BATCH)
-					.getQueryAndParameters()[0],
-				dataSource
-					.createQueryBuilder(ScheduledTask, 't')
-					.where('t.status = :s', { s: 'pending' })
-					.andWhere('t.taskType IN (:...tt)', { tt: [TASK_TYPE] })
-					.andWhere('t.runAt <= :now', { now: dueParam })
-					.orderBy('t.runAt', 'ASC')
-					.limit(BATCH)
-					.getQueryAndParameters()[1],
+				claimCandidateSelect[0],
+				claimCandidateSelect[1],
+			);
+
+			// The other half of the claim's candidate select: the slot ranking that
+			// decides which of a limited job's pending rows may be claimed. It reads
+			// every pending and running row of every limited job, so its cost tracks
+			// the limited backlog rather than the batch. Kept in step by hand with
+			// `ScheduledTaskRepository.allowedByConcurrencyLimitSql`.
+			const jobTable = dataSource.getMetadata(ScheduledJob).tablePath;
+			const limitedSlotSelect = `SELECT ranked."id"
+				FROM (
+					SELECT c."id", c."status",
+						ROW_NUMBER() OVER (
+							PARTITION BY c."jobId"
+							ORDER BY CASE WHEN c."status" = 'pending' THEN 0 ELSE 1 END, c."runAt", c."id"
+						) AS "slot",
+						cj."concurrencyLimit" - SUM(
+							CASE WHEN c."status" = 'running' THEN 1 ELSE 0 END
+						) OVER (PARTITION BY c."jobId") AS "freeSlots"
+					FROM ${taskTable} c
+					JOIN ${jobTable} cj ON cj."id" = c."jobId"
+					WHERE cj."concurrencyLimit" IS NOT NULL
+						AND c."status" IN ('pending', 'running')
+				) ranked
+				WHERE ranked."status" = 'pending' AND ranked."slot" <= ranked."freeSlots"`;
+			await profileRead(
+				'ScheduledTask.claimDueTasks (limited-job slot ranking)',
+				async () => await dataSource.query(limitedSlotSelect),
+				limitedSlotSelect,
+				[],
 			);
 
 			// ScheduledTaskRepository.findExpiredLeases — reaper sweep. Backed by the
