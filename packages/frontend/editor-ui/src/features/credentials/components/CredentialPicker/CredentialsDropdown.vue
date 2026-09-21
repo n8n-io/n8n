@@ -194,7 +194,7 @@ const onCreateNewCredential = async () => {
 			</template>
 		</N8nSelect>
 		<div
-			v-if="isManagedSelected && managedOption?.pill"
+			v-if="isManagedSelected && managedOption?.pill && !filter"
 			data-test-id="credential-balance-indicator"
 			:class="$style.balanceIndicator"
 		>
@@ -217,8 +217,10 @@ const onCreateNewCredential = async () => {
 	);
 
 	position: relative;
+	flex: 1;
 	display: grid;
 	grid-template-areas: 'control';
+	width: 100%;
 
 	> :global(.n8n-select),
 	.balanceIndicator {

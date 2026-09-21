@@ -16,6 +16,7 @@ const openNewCredentialMock = vi.hoisted(() => vi.fn());
 const aiGatewayState = vi.hoisted(() => ({
 	isEnabled: false,
 	servedTypes: new Set<string>(),
+	balance: undefined as number | undefined,
 }));
 
 type MockProject = { id: string; scopes: string[] };
@@ -63,7 +64,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: () => ({
 		isEnabled: { value: aiGatewayState.isEnabled },
-		balance: { value: undefined },
+		balance: { value: aiGatewayState.balance },
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		canServeCredentialType: (type: string) => aiGatewayState.servedTypes.has(type),
@@ -203,6 +204,7 @@ describe('AgentWebSearchSection', () => {
 		projectsStoreState.myProjects = [];
 		aiGatewayState.isEnabled = false;
 		aiGatewayState.servedTypes = new Set();
+		aiGatewayState.balance = undefined;
 	});
 
 	function getManagedOption(wrapper: ReturnType<typeof mount>) {
@@ -220,6 +222,41 @@ describe('AgentWebSearchSection', () => {
 		const wrapper = mountWithFallbackPicker();
 
 		expect(getManagedOption(wrapper)?.value).toBe(AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('offers no n8n Connect option while the gateway is disabled', () => {
+		aiGatewayState.isEnabled = false;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)).toBeNull();
+	});
+
+	it('shows a positive balance pill on the n8n Connect option', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+		aiGatewayState.balance = 4.92;
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)?.pill).toEqual({
+			text: 'aiGateway.wallet.balanceRemaining',
+			type: 'default',
+		});
+	});
+
+	it('shows a depleted balance pill when credits are exhausted', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+		aiGatewayState.balance = 0;
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)?.pill).toEqual({
+			text: 'aiGateway.wallet.noCredits',
+			type: 'danger',
+		});
 	});
 
 	it('hides the n8n Connect option for SearXNG, which the gateway does not serve', () => {

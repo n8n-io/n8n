@@ -32,6 +32,7 @@ import type {
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
 import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { UserError } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
@@ -367,7 +368,7 @@ function buildFallbackWebSearchTool(
 
 			// SearXNG is self-hosted, so it has no gateway-served managed path.
 			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
-				throw new Error('Gateway credits web search is only available for Brave Search.');
+				throw new UserError('Gateway credits web search is only available for Brave Search.');
 			}
 			const credential = await credentialProvider.resolve(credentialId);
 			if (typeof credential.apiUrl !== 'string') {
