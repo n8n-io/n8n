@@ -155,6 +155,16 @@ export class ScheduledJob extends WithTimestamps {
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
 
+	/**
+	 * How many of this job's occurrences may run at the same time. `null` means no
+	 * limit.
+	 *
+	 * At least 1: a lower ceiling would hold every occurrence back until its misfire
+	 * deadline passed, so the job would never run.
+	 */
+	@Column({ type: 'int', nullable: true })
+	concurrencyLimit: number | null;
+
 	/** What happens to an occurrence overdue by more than {@link misfireGraceSeconds}. */
 	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })
 	misfirePolicy: ScheduledJobMisfirePolicy;

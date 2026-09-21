@@ -111,7 +111,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 23 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 24 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -1396,6 +1396,7 @@ erDiagram
   varchar_128_ scopeSlug FK
 }
 "public.scheduled_job" {
+  integer concurrencyLimit
   timestamp_3__with_time_zone createdAt
   varchar_255_ cronExpression
   boolean enabled

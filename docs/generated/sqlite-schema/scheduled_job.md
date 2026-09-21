@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "recurrenceUnit" varchar(16), "recurrenceSize" int, "misfirePolicy" varchar(16) NOT NULL DEFAULT ('coalesce'), "misfireGraceSeconds" int NOT NULL DEFAULT (60), "ownerType" varchar(32) NOT NULL, "ownerId" varchar(255) NOT NULL, "ownerMemberId" varchar(36), "orphanedAt" datetime(3), CONSTRAINT "CHK_scheduled_job_misfireGraceSeconds" CHECK ((((("misfireGraceSeconds" > 0))))), CONSTRAINT "CHK_scheduled_job_recurrence_unit" CHECK (((((("recurrenceUnit" IN ('hours', 'days', 'weeks', 'months'))))))), CONSTRAINT "CHK_scheduled_job_recurrence_size" CHECK (((((("recurrenceSize" >= 2)))))), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK (((((("kind" <> 'cron' OR "cronExpression" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK (((((("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK (((((("kind" <> 'one_off' OR "fireAt" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_kind" CHECK ((((("kind" IN ('cron', 'interval', 'one_off', 'recurring_cron')))))), CONSTRAINT "CHK_scheduled_job_recurring_cron" CHECK ((((("kind" <> 'recurring_cron' OR ("cronExpression" IS NOT NULL AND "recurrenceUnit" IS NOT NULL AND "recurrenceSize" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_misfirePolicy" CHECK (((("misfirePolicy" IN ('coalesce', 'skip', 'coalesce_owner'))))))
+CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "recurrenceUnit" varchar(16), "recurrenceSize" int, "misfirePolicy" varchar(16) NOT NULL DEFAULT ('coalesce'), "misfireGraceSeconds" int NOT NULL DEFAULT (60), "ownerType" varchar(32) NOT NULL, "ownerId" varchar(255) NOT NULL, "ownerMemberId" varchar(36), "orphanedAt" datetime(3), "concurrencyLimit" int CONSTRAINT "CHK_scheduled_job_concurrencyLimit" CHECK ("concurrencyLimit" IS NULL OR ("concurrencyLimit" >= 1 AND "concurrencyLimit" <= 2147483647)), CONSTRAINT "CHK_scheduled_job_misfireGraceSeconds" CHECK ((((("misfireGraceSeconds" > 0))))), CONSTRAINT "CHK_scheduled_job_recurrence_unit" CHECK (((((("recurrenceUnit" IN ('hours', 'days', 'weeks', 'months'))))))), CONSTRAINT "CHK_scheduled_job_recurrence_size" CHECK (((((("recurrenceSize" >= 2)))))), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK (((((("kind" <> 'cron' OR "cronExpression" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK (((((("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK (((((("kind" <> 'one_off' OR "fireAt" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_kind" CHECK ((((("kind" IN ('cron', 'interval', 'one_off', 'recurring_cron')))))), CONSTRAINT "CHK_scheduled_job_recurring_cron" CHECK ((((("kind" <> 'recurring_cron' OR ("cronExpression" IS NOT NULL AND "recurrenceUnit" IS NOT NULL AND "recurrenceSize" IS NOT NULL)))))), CONSTRAINT "CHK_scheduled_job_misfirePolicy" CHECK (((("misfirePolicy" IN ('coalesce', 'skip', 'coalesce_owner'))))))
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| concurrencyLimit | INT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | cronExpression | varchar(255) |  | true |  |  |  |
 | enabled | boolean | true | false |  |  |  |
@@ -43,6 +44,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("concurrencyLimit" IS NULL OR ("concurrencyLimit" >= 1 AND "concurrencyLimit" <= 2147483647)) |
 | - | CHECK | CHECK ((((("misfireGraceSeconds" > 0))))) |
 | - | CHECK | CHECK (((((("recurrenceUnit" IN ('hours', 'days', 'weeks', 'months'))))))) |
 | - | CHECK | CHECK (((((("recurrenceSize" >= 2)))))) |
@@ -70,6 +72,7 @@ erDiagram
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "scheduled_job" {
+  INT concurrencyLimit
   datetime_3_ createdAt
   varchar_255_ cronExpression
   boolean enabled
