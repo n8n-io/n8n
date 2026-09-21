@@ -12,8 +12,16 @@ import { randomUUID } from 'node:crypto';
 
 import { indexColumnsInOrder } from './shared/index-columns';
 
+vi.hoisted(() => {
+	const { GlobalConfig } = require('@n8n/config') as typeof import('@n8n/config');
+	const { Container } = require('@n8n/di') as typeof import('@n8n/di');
+	const { database } = Container.get(GlobalConfig);
+	// PostgreSQL truncates long index names. Set the prefix before migration helpers capture it.
+	if (database.type === 'postgresdb') database.tablePrefix = 'test_long_prefix_';
+});
+
 const MIGRATION_NAME = 'AddThreadIdToAgentCheckpoints1789717191125';
-const INDEX_NAME = 'agent_checkpoints_agentId_threadId_expired_updatedAt';
+const INDEX_NAME = 'agent_checkpoints_thread';
 const originalColumns = ['runId', 'agentId', 'state', 'expired', 'createdAt', 'updatedAt'];
 const checkpoints = [
 	...Array.from({ length: 101 }, (_, index) => ({

@@ -102,6 +102,14 @@ describe('useSettingsItems', () => {
 			expect(ids).not.toContain('settings-mcp');
 			expect(ids.at(-1)).toBe('settings-context');
 		});
+
+		it('carries the preview label', () => {
+			const item = useSettingsItems().settingsItems.value.find(
+				({ id }) => id === 'settings-context',
+			);
+
+			expect(item?.preview).toBe(true);
+		});
 	});
 
 	describe('Environments v2', () => {

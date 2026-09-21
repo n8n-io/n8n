@@ -254,6 +254,9 @@ describe('emit-instance-ai', () => {
 			// Validation
 			'connectRequiredSubnodeInputs',
 			'describeAddedSubnodeConnection',
+			'containsExpression',
+			'isSensitiveHeader',
+			'isCredentialFieldName',
 			'validateNodeConfig',
 			'validateWorkflow',
 			'getSchemaBaseDirs',
