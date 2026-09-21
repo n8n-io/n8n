@@ -78,23 +78,25 @@ test('fetches data', async () => {
 		expect(violations[0].message).toContain('fetch');
 	});
 
-	test('allows route.fetch() calls and detects other member fetch calls', ({
+	test('allows Playwright route forwarding and detects other fetch calls', ({
 		project,
 		createFile,
 	}) => {
 		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`test('forwards a request', async ({ page }) => {
-	await page.route('**/api/**', async (route) => await route.fetch());
+	await page.route('**/api/**', async (r) => await r.fetch());
+	await route.fetch('/api/workflows');
 	await client.fetch('/api/workflows');
+	await fetch('/api/workflows');
 });`,
 		);
 
 		const violations = rule.analyzeProject(project, [file]);
 
-		expect(violations).toHaveLength(1);
-		expect(violations[0].message).toContain('fetch');
-		expect(violations[0].line).toBe(3);
+		expect(violations).toHaveLength(3);
+		expect(violations.map(({ line }) => line)).toEqual([3, 4, 5]);
+		expect(violations.every(({ message }) => message.includes('fetch'))).toBe(true);
 	});
 
 	test('detects multiple raw API calls', ({ project, createFile }) => {

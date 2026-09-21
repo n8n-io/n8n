@@ -1,6 +1,6 @@
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
-import { Node, type Project, type SourceFile } from 'ts-morph';
+import { Node, type Project, type PropertyAccessExpression, type SourceFile } from 'ts-morph';
 
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
@@ -70,7 +70,7 @@ export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 					if (
 						match[0].startsWith('fetch') &&
 						Node.isPropertyAccessExpression(propertyAccess) &&
-						propertyAccess.getExpression().getText() === 'route'
+						this.isPlaywrightRouteFetch(propertyAccess)
 					) {
 						continue;
 					}
@@ -109,6 +109,38 @@ export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 		}
 
 		return violations;
+	}
+
+	private isPlaywrightRouteFetch(propertyAccess: PropertyAccessExpression): boolean {
+		const receiver = propertyAccess.getExpression();
+		if (!Node.isIdentifier(receiver)) return false;
+
+		const routeParameter = receiver
+			.getSymbol()
+			?.getDeclarations()
+			.find((declaration) => Node.isParameterDeclaration(declaration));
+		const routeHandler = routeParameter?.getParent();
+		if (
+			!routeHandler ||
+			(!Node.isArrowFunction(routeHandler) && !Node.isFunctionExpression(routeHandler))
+		) {
+			return false;
+		}
+
+		const routeCall = routeHandler.getParent();
+		if (!Node.isCallExpression(routeCall)) return false;
+
+		const routeMethod = routeCall.getExpression();
+		if (!Node.isPropertyAccessExpression(routeMethod) || routeMethod.getName() !== 'route') {
+			return false;
+		}
+
+		const routeTarget = routeMethod.getExpression();
+		const routeTargetName = Node.isPropertyAccessExpression(routeTarget)
+			? routeTarget.getName()
+			: routeTarget.getText();
+
+		return routeTargetName === 'page' || routeTargetName === 'context';
 	}
 
 	/**
