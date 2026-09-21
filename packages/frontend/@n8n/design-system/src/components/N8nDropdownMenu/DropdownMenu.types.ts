@@ -14,6 +14,30 @@ export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> 
 	'DropdownMenuSubMaxHeight',
 );
 
+export interface DropdownMenuExternalNavigationController {
+	/** Handles a key for one visible menu level. */
+	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+	/** Highlights the first enabled item in this menu level. */
+	highlightFirstItem: () => void;
+	/** Returns the DOM ID of this menu level's highlighted item. */
+	getActiveDescendantId: () => string | undefined;
+}
+
+export interface DropdownMenuExternalNavigationContext {
+	/** Registers a visible menu level and returns its cleanup function. */
+	register: (controller: DropdownMenuExternalNavigationController) => () => void;
+	/** Makes a visible menu level the external keyboard target. */
+	activate: (controller: DropdownMenuExternalNavigationController) => void;
+	/** Restores focus to the external text control. */
+	focusTarget: () => void;
+	/** Synchronizes the external text control's active descendant. */
+	syncActiveDescendant: () => void;
+}
+
+/** Injection key for coordinating virtual focus across external-search submenus. */
+export const DropdownMenuExternalNavigationKey: InjectionKey<DropdownMenuExternalNavigationContext> =
+	Symbol('DropdownMenuExternalNavigation');
+
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
 export type DropdownMenuPlacement =
@@ -34,6 +58,21 @@ export type DropdownMenuSide = 'top' | 'bottom' | 'left' | 'right';
 export type DropdownMenuAlign = 'start' | 'end' | 'center';
 
 export type DropdownMenuTrigger = 'click' | 'hover';
+
+/** Selects whether the menu or an external text control owns search focus. */
+export type DropdownMenuSearchMode = 'internal' | 'external';
+
+/** Methods exposed by N8nDropdownMenu. */
+export interface DropdownMenuExposed {
+	/** Opens the menu. */
+	open: () => void;
+	/** Closes the menu. */
+	close: () => void;
+	/** Highlights the first enabled item in a searchable menu. */
+	highlightFirstItem: () => void;
+	/** Handles menu navigation from an external text control. */
+	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+}
 
 export type DropdownMenuItemProps<T = string, D = never> = {
 	/** Unique identifier for the item */
@@ -66,6 +105,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	loadingItemCount?: number;
 	/** Enable search functionality for this item's children */
 	searchable?: boolean;
+	/** Allow selecting an item that also opens a sub-menu. */
+	selectable?: boolean;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Whether this item is currently highlighted via keyboard navigation */
@@ -119,6 +160,10 @@ export interface DropdownMenuProps<T = string, D = never> {
 	dataTestId?: string;
 	/** Enable search functionality */
 	searchable?: boolean;
+	/** Select whether search focus stays inside the menu or in an external text control. */
+	searchMode?: DropdownMenuSearchMode;
+	/** Text control that owns focus when searchMode is external. */
+	externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */
