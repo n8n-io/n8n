@@ -24,6 +24,7 @@ import {
 	N8nInputNumber,
 	N8nLink,
 	N8nIconButton,
+	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -236,6 +237,16 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
+/**
+ * Whether the policy was `any` when the dialog opened. An instance that lost the Sharing
+ * feature (downgrade, lapsed license) can still carry the deprecated value, so the field
+ * has to stay reachable for them to leave it. Latched on open rather than read live, so
+ * the field does not disappear mid-edit once another policy is picked.
+ */
+const openedWithDeprecatedCallerPolicy = ref(false);
+const isCallerPolicyVisible = computed(
+	() => isSharingEnabled.value || openedWithDeprecatedCallerPolicy.value,
+);
 const workflowOwnerName = computed(() => {
 	const fallback = i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject');
 
@@ -497,6 +508,10 @@ const loadWorkflowCallerPolicyOptions = async () => {
 		{
 			key: 'workflowsFromAList',
 			value: i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromAList'),
+		},
+		{
+			key: 'any',
+			value: i18n.baseText('workflowSettings.callerPolicy.options.any'),
 		},
 	];
 };
@@ -948,19 +963,15 @@ onMounted(async () => {
 	if (workflowSettingsData.saveManualExecutions === undefined) {
 		workflowSettingsData.saveManualExecutions = 'DEFAULT';
 	}
-	// A stored policy outside the supported options, e.g. the removed `any`, denies every
-	// caller at runtime. Show the instance default so saving persists a supported policy.
-	const validCallerPolicies: string[] = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
-	if (
-		workflowSettingsData.callerPolicy === undefined ||
-		!validCallerPolicies.includes(workflowSettingsData.callerPolicy)
-	) {
+	if (workflowSettingsData.callerPolicy === undefined) {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
 	if (nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)) {
 		workflowSettingsData.callerPolicy = 'none';
 	}
+	// After the exclusion override, so a policy forced to `none` never counts as deprecated.
+	openedWithDeprecatedCallerPolicy.value = workflowSettingsData.callerPolicy === 'any';
 	if (workflowSettingsData.executionTimeout === undefined) {
 		workflowSettingsData.executionTimeout = rootStore.executionTimeout;
 	}
@@ -1219,8 +1230,8 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<template v-if="isSharingEnabled">
-					<ElRow data-test-id="workflow-caller-policy">
+				<div v-if="isCallerPolicyVisible" data-test-id="workflow-caller-policy">
+					<ElRow>
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
@@ -1252,6 +1263,15 @@ onBeforeUnmount(() => {
 								>
 								</N8nOption>
 							</N8nSelect>
+						</ElCol>
+					</ElRow>
+					<ElRow v-if="workflowSettings.callerPolicy === 'any'">
+						<ElCol :span="24">
+							<N8nNotice
+								theme="warning"
+								:content="i18n.baseText('workflowSettings.callerPolicy.any.deprecationNotice')"
+								data-test-id="workflow-caller-policy-any-deprecation"
+							/>
 						</ElCol>
 					</ElRow>
 					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">

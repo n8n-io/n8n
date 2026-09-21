@@ -134,7 +134,7 @@ export const defaultSettings: FrontendSettings = {
 	dataTables: {
 		maxSize: 0,
 	},
-	workflowCallerPolicyDefaultOption: 'workflowsFromSameOwner',
+	workflowCallerPolicyDefaultOption: 'any',
 	excludeNodes: [],
 	workflowsAutosaveDisabled: false,
 	workflowsGroupsWithTriggersEnabled: false,
