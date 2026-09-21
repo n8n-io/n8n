@@ -148,4 +148,66 @@ describe('credential type availability policy instance controller admin happy pa
 			),
 		).toBeNull();
 	});
+
+	test('GET /policies lists every credential-types document', async () => {
+		await testServer
+			.authAgentFor(owner)
+			.post('/credential-type-policies/policies')
+			.send({ rules: [] });
+
+		const listed = await testServer.authAgentFor(owner).get('/credential-type-policies/policies');
+
+		expect(listed.statusCode).toBe(200);
+		expect(listed.body.data).toHaveLength(1);
+	});
+
+	test('PATCH /policies/:policyId persists new rules and bumps the version', async () => {
+		const created = await testServer
+			.authAgentFor(owner)
+			.post('/credential-type-policies/policies')
+			.send({ rules: [] });
+		const policyId: string = created.body.data.policy.id;
+
+		const updated = await testServer
+			.authAgentFor(owner)
+			.patch(`/credential-type-policies/policies/${policyId}`)
+			.send({
+				rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'slackApi' } }],
+				version: 1,
+			});
+
+		expect(updated.statusCode).toBe(200);
+		expect(updated.body.data.policy.version).toBe(2);
+		expect(updated.body.data.policy.rules).toEqual([
+			{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'slackApi' } },
+		]);
+	});
+
+	test('PUT /scopes/:scopeId/attachments persists and fires an audit event', async () => {
+		const instancePut = await testServer
+			.authAgentFor(owner)
+			.put('/credential-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		const scopeId = instancePut.body.data.scopeId;
+
+		const created = await testServer
+			.authAgentFor(owner)
+			.post('/credential-type-policies/policies')
+			.send({ rules: [] });
+		const policyId: string = created.body.data.policy.id;
+
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(`/credential-type-policies/scopes/${scopeId}/attachments`)
+			.send({ attachments: [{ policyId, priority: 0, isFloor: false }] });
+
+		expect(response.statusCode).toBe(200);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'node-type-policy-attachments-updated',
+			expect.objectContaining({ updatedBy: owner.id, kind: 'credential-types', scopeId }),
+		);
+	});
 });
