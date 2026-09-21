@@ -50,7 +50,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should test manual workflow', async ({ n8n }) => {
+		test('should test manual workflow @engine:v2', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
