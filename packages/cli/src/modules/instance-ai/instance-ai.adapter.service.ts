@@ -4696,7 +4696,16 @@ export async function extractNodeOutput(
 	// read those calls, so all of them are read. A node in the main graph keeps
 	// to its last run: one run for each iteration of a loop is the common case
 	// there, and merging them would change what every caller already gets.
-	const readsEveryRun = lastRun?.data?.[NodeConnectionTypes.Main] === undefined;
+	//
+	// The test is a non-main output on *some* run, not the absence of a main one
+	// on the last. A failed run carries no data at all — `createTaskData` sets
+	// none and only a rewired tool has it filled on the error path — so "no main
+	// output" also describes a node that failed on the last iteration of a loop.
+	// Reading every run of it would answer a question about the failed run with
+	// the output of earlier ones. A sub-node that failed on its last call is the
+	// mirror case: the calls that did return are the answer, and they are only
+	// reachable by looking past the last run.
+	const readsEveryRun = nodeRuns.some((run) => nonMainOutputs(run) !== undefined);
 	const runsRead = readsEveryRun ? nodeRuns : [lastRun];
 	const outputsPerRun = runsRead.map(
 		(run) =>

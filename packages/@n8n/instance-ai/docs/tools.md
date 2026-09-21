@@ -776,6 +776,10 @@ when there was more than one. Which runs are read depends on the node:
   call it came from, `node:Search Tickets[call 2][0][0]`, and `startIndex` and
   `maxItems` page across the calls as one sequence.
 
+A run that failed records no items, so `totalRuns` can count more runs than the
+items account for. Read the error of that run from `action="get"`, which
+reports it under `nodeErrors`.
+
 ### `executions(action="get-resolved-node-parameters")`
 
 Replay expression resolution for a node's parameters against a past execution.

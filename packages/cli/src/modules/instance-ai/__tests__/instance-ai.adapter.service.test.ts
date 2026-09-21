@@ -1361,6 +1361,80 @@ describe('extractNodeOutput', () => {
 		expect(result.totalRuns).toBe(2);
 	});
 
+	// A failed run records no data at all: `createTaskData` never sets it, and
+	// only a rewired tool gets it filled on the error path. So "no main output"
+	// does not mean "is a sub-node" — a node that failed on the last iteration
+	// of a loop looks the same, and merging its earlier iterations would report
+	// stale output for the run the caller is asking about.
+	it('keeps a failed node in the main graph on its last run', async () => {
+		const iteration = (value: string, executionIndex: number) =>
+			({
+				startTime: 1000,
+				executionTime: 5,
+				executionIndex,
+				executionStatus: 'success',
+				source: [],
+				data: { main: [[{ json: { value } }]] },
+			}) as ITaskData;
+		const failed = {
+			startTime: 1000,
+			executionTime: 5,
+			executionIndex: 2,
+			executionStatus: 'error',
+			source: [],
+			error: { message: 'boom' },
+		} as unknown as ITaskData;
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'error',
+				runData: { 'Set Node': [iteration('early', 0), iteration('late', 1), failed] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Set Node');
+
+		expect(result.totalItems).toBe(0);
+		expect(result.outputs).toEqual([]);
+		// The caller still learns the node ran three times.
+		expect(result.totalRuns).toBe(3);
+	});
+
+	// A sub-node call that throws records no data either, so the last run cannot
+	// be the only thing consulted: the calls that did return are the answer to
+	// "what did this tool do before it failed".
+	it('still reads the earlier calls when a sub-node fails on its last', async () => {
+		const call = (response: string, executionIndex: number) =>
+			({
+				startTime: 1000,
+				executionTime: 5,
+				executionIndex,
+				executionStatus: 'success',
+				source: [],
+				data: { ai_tool: [[{ json: { response } }]] },
+			}) as ITaskData;
+		const failed = {
+			startTime: 1000,
+			executionTime: 5,
+			executionIndex: 2,
+			executionStatus: 'error',
+			source: [],
+			error: { message: 'rate limited' },
+		} as unknown as ITaskData;
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'error',
+				runData: { 'Search Tickets': [call('first', 0), call('second', 1), failed] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Search Tickets');
+
+		expect(result.totalItems).toBe(2);
+		expect(result.totalRuns).toBe(3);
+		expect(String(result.outputs[0].items[0])).toContain('"first"');
+		expect(String(result.outputs[0].items[1])).toContain('"second"');
+	});
+
 	it('pages across the calls of a sub-node', async () => {
 		const call = (executionIndex: number) =>
 			({
