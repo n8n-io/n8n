@@ -23,6 +23,7 @@ import type {
 	OperationContext,
 	CredentialSharingRelation,
 } from '@n8n/db';
+import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import {
@@ -992,17 +993,8 @@ export class CredentialsService {
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
-		// Gate the save on policy before persisting. The stored type comes from the database, so a
-		// check can grandfather an edit that keeps its type and still refuse a switch to a blocked one.
-		const stored = await this.credentialsRepository.findOneBy({ id: credentialId });
-		if (!stored) return null;
-		const owningProject =
-			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
-		const cleared = await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: credentialId, type: newCredentialData.type ?? stored.type },
-			storedCredential: { id: credentialId, type: stored.type },
-			projectId: owningProject?.id ?? null,
-		});
+		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type);
+		if (cleared === null) return null;
 
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
 			await this.credentialsRepository.updateContent(credentialId, newCredentialData, ctx);
@@ -1226,6 +1218,28 @@ export class CredentialsService {
 			ownerId: user.id,
 		});
 		return result;
+	}
+
+	/**
+	 * Gates an update on policy before persisting. The stored type comes from the database, so a
+	 * check can grandfather an edit that keeps its type and still refuse a switch to a blocked one.
+	 *
+	 * @returns `null` when there is no such credential, which the caller reports as not found.
+	 */
+	private async enforceCredentialUpdate(
+		credentialId: string,
+		newType: string | undefined,
+	): Promise<PolicyCleared<'credentialSave'> | null> {
+		const stored = await this.credentialsRepository.findOneBy({ id: credentialId });
+		if (!stored) return null;
+		const owningProject =
+			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+
+		return await this.policyEnforcementService.enforceCredentialSave({
+			credential: { id: credentialId, type: newType ?? stored.type },
+			storedCredential: { id: credentialId, type: stored.type },
+			projectId: owningProject?.id ?? null,
+		});
 	}
 
 	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
