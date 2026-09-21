@@ -17,11 +17,15 @@ import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import {
 	apiKeyScopesSatisfy,
 	findBodyArg,
+	isDtoArg,
 	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
-import { formatValidationError } from '@/public-api/public-api-validation-error';
+import {
+	formatValidationError,
+	unknownQueryParameterMessage,
+} from '@/public-api/public-api-validation-error';
 import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -41,6 +45,13 @@ function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params
 function routePath(prefix: string, req: Request): string {
 	const path = (prefix === '/' ? '' : prefix) + req.path;
 	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
+function assertNoQueryParameters(req: Request) {
+	const [unknownKey] = Object.keys(req.query);
+	if (unknownKey !== undefined) {
+		throw new BadRequestError(unknownQueryParameterMessage(unknownKey));
+	}
 }
 
 @Service()
@@ -83,9 +94,11 @@ export class PublicApiControllerRegistry {
 			const bodyArg = findBodyArg(resolvedArgs);
 			const bodyDto = bodyArg?.dto;
 			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
+			const hasQueryDto = resolvedArgs.some((arg) => isDtoArg(arg, 'query'));
 
 			const handler = async (req: Request, res: Response) => {
 				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+				if (!hasQueryDto) assertNoQueryParameters(req);
 
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
@@ -94,7 +107,9 @@ export class PublicApiControllerRegistry {
 							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
 						);
 					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
+						// The legacy validator rejects unknown query keys; a lenient query DTO would strip them.
+						const schema = arg.type === 'query' ? arg.dto.schema.strict() : arg.dto;
+						const output = schema.safeParse(req[arg.type]);
 						if (output.success) {
 							args.push(output.data);
 						} else {
