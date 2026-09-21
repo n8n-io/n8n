@@ -20,11 +20,11 @@ import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
+import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
-import { AgentExecutionService } from '../agent-execution.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
@@ -50,7 +50,6 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
-import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -284,19 +283,12 @@ export class AgentChatBridge {
 				yield* agentService.resumeForChat(config);
 			},
 			async findOpenSuspension({ agentId: aid, threadId }) {
-				// Checkpoints carry no thread index, so the authoritative lookup parses
-				// every active checkpoint of the agent. Gate it behind a counted query
-				// on the thread's own runs: a thread that never parked one cannot have
-				// an open checkpoint, and that is the common case for inbound traffic.
-				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
-					return null;
-				}
-				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
+				const { suspendedCheckpoint } = await Container.get(AgentConversationStateService).inspect(
 					aid,
 					threadId,
 				);
-				if (!checkpoint) return null;
-				const suspended = Object.values(checkpoint.pendingToolCalls ?? {}).find(
+				if (!suspendedCheckpoint) return null;
+				const suspended = Object.values(suspendedCheckpoint.pendingToolCalls ?? {}).find(
 					(toolCall) => toolCall.suspended,
 				);
 				return suspended ? { suspendPayload: suspended.suspendPayload } : null;

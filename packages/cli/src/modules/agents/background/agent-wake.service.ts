@@ -9,6 +9,7 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentConversationStateService } from '../agent-conversation-state.service';
 import {
 	AgentExecutionOrchestratorService,
 	type ExecuteForWakeConfig,
@@ -22,9 +23,7 @@ import {
 } from './background-job-messages';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
-import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
@@ -51,10 +50,9 @@ export class AgentWakeService {
 
 	constructor(
 		private readonly jobRepository: AgentBackgroundJobRepository,
-		private readonly executionRepository: AgentExecutionRepository,
+		private readonly conversationState: AgentConversationStateService,
 		private readonly agentRepository: AgentRepository,
 		private readonly userRepository: UserRepository,
-		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly lockService: LockService,
@@ -167,14 +165,11 @@ export class AgentWakeService {
 			return;
 		}
 
-		// Execution records keep their suspended status after a resume.
-		// Check the checkpoint store to determine whether the thread is still suspended.
-		if (
-			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			((await this.executionRepository.hasSuspendedRun(threadId)) &&
-				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
-					null)
-		) {
+		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
+			first.parentAgentId,
+			threadId,
+		);
+		if (running || suspendedCheckpoint !== null) {
 			return;
 		}
 

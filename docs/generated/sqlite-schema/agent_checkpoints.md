@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "agentId" varchar(255), "state" text, "expired" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_5e31c210f896d539964bf99fe32" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "agentId" varchar(255), "state" text, "expired" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "threadId" TEXT, CONSTRAINT "FK_5e31c210f896d539964bf99fe32" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -20,6 +20,7 @@ CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "ag
 | expired | boolean | false | false |  |  |  |
 | runId | varchar(255) |  | false |  |  |  |
 | state | TEXT |  | true |  |  |  |
+| threadId | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -35,6 +36,7 @@ CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "ag
 | Name | Definition |
 | ---- | ---------- |
 | IDX_5e31c210f896d539964bf99fe3 | CREATE INDEX "IDX_5e31c210f896d539964bf99fe3" ON "agent_checkpoints" ("agentId")  |
+| IDX_agent_checkpoints_agentId_threadId_expired_updatedAt | CREATE INDEX "IDX_agent_checkpoints_agentId_threadId_expired_updatedAt" ON "agent_checkpoints" ("agentId", "threadId", "expired", "updatedAt")  |
 | sqlite_autoindex_agent_checkpoints_1 | PRIMARY KEY (runId) |
 
 ## Relations
@@ -50,6 +52,7 @@ erDiagram
   boolean expired
   varchar_255_ runId PK
   TEXT state
+  TEXT threadId
   datetime_3_ updatedAt
 }
 "agents" {
