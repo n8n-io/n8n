@@ -142,6 +142,11 @@ export class EngineV2Runtime {
 		// id to cancel them. `$execution.id` also reads it.
 		additionalData.executionId = context.executionId;
 
+		// `putExecutionToWait` calls this hook, and the v1 one marks the execution
+		// waiting in `ActiveExecutions`, where a data-plane run is never registered.
+		// The engine records a wait from the step's declaration instead.
+		delete additionalData.setExecutionStatus;
+
 		additionalData.credentialsHelper = new RemoteCredentialsHelper(
 			this.credentialsClient,
 			this.credentialsHelper,
