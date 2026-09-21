@@ -1,6 +1,11 @@
 import { UserError } from 'n8n-workflow';
 
-import { isOpenAiCustomEndpoint, listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
+import {
+	isMoonshotAiEndpoint,
+	isOpenAiCustomEndpoint,
+	listModelsForProvider,
+	MODEL_DISCOVERY_PROVIDERS,
+} from '../index';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -23,6 +28,22 @@ function calledHeaders(fetchFn: unknown): Record<string, string> {
 }
 
 describe('model-discovery', () => {
+	describe('isMoonshotAiEndpoint', () => {
+		it.each([
+			['https://api.kimi.ai/coding/v1', true],
+			['https://api.kimi.com/coding/v1/', true],
+			['https://api.moonshot.ai/v1', true],
+			['https://api.moonshot.cn/v1', true],
+			['https://api.openai.com/v1', false],
+			['https://api.kimi.ai.example.com/v1', false],
+			['https://proxy.example.com/api.kimi.ai/v1', false],
+			['not-a-valid-url', false],
+			['', false],
+		] as const)('recognizes %s as a Moonshot endpoint: %s', (baseURL, expected) => {
+			expect(isMoonshotAiEndpoint(baseURL)).toBe(expected);
+		});
+	});
+
 	describe('anthropic', () => {
 		it('lists models from /v1/models with x-api-key auth, newest first', async () => {
 			const fetch = mockFetch({

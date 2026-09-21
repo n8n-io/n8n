@@ -183,6 +183,7 @@ export class RuntimeContextBuilder {
 							),
 					}
 				: undefined,
+			{ reasoningReplay: getProviderQuirks(getProviderPrefix(this.modelId)).reasoningReplay },
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({

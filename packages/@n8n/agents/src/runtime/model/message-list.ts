@@ -1,7 +1,7 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { ModelMessage, SystemModelMessage } from 'ai';
 
-import { toAiMessages } from './messages';
+import { toAiMessages, type MessageConversionOptions } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
 import type {
@@ -375,9 +375,11 @@ export class AgentMessageList {
 			/** Resolved from the conversation messages, which can hold caller breakpoints. */
 			cacheOptions?: (messages: ModelMessage[]) => ProviderOptions | undefined;
 		},
+		messageOptions?: MessageConversionOptions,
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
+			messageOptions,
 		);
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.

@@ -18,6 +18,8 @@ export interface ProviderQuirks {
 	providerOptionsNamespace?: string;
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
 	reasoningReplayKeys?: string[];
+	/** Whether reasoning text can be replayed without provider metadata. */
+	reasoningReplay?: 'metadata' | 'text';
 	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
 	mergesAdjacentAssistantMessages?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
@@ -175,7 +177,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
-	moonshotai: reasoningEffortQuirk('moonshotai'),
+	moonshotai: {
+		...reasoningEffortQuirk('moonshotai'),
+		// Kimi requires the original reasoning text on later turns and tool continuations.
+		reasoningReplay: 'text',
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
