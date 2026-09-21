@@ -533,8 +533,9 @@ describe('sub-node targets', () => {
 			mockItems: toExecutionItems([{ id: 1 }]),
 		});
 
-		// Nothing above it to keep from running, so the engine's own "connect it
-		// to an Agent" error is the right outcome.
+		// Nothing above it to keep from running, so the plan has nothing to say.
+		// The run is refused a step later, where the node types are known and the
+		// message can name the missing Agent — see the adapter tests.
 		expect(plan.inputMode).toBe('chain');
 		expect(plan.unhonoredInput).toBeUndefined();
 	});

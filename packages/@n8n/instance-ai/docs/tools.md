@@ -705,6 +705,8 @@ whose result would mislead:
 - a tool that declares `$fromAI` arguments with no `toolArguments`;
 - a node that holds several tools;
 - a sub-node that is not a tool;
+- a tool no node is connected to run — the engine has no node to stand in for,
+  so the run would start and then die;
 - `toolArguments` on a node in the main graph.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the

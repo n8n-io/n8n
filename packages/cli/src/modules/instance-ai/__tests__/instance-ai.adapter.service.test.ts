@@ -6063,6 +6063,49 @@ describe('createExecutionAdapter runStep()', () => {
 			});
 		});
 
+		// A tool whose output goes nowhere has no node to run it. The plan reads
+		// as a chain run, which the engine would start and then kill with an error
+		// about a graph the caller never asked about.
+		describe('a tool nothing runs', () => {
+			/** The same graph with the tool's connection to the Agent removed. */
+			const orphanToolWorkflow = {
+				...agentWorkflow,
+				connections: {
+					Trigger: agentWorkflow.connections.Trigger,
+					'Create Ticket': agentWorkflow.connections['Create Ticket'],
+				},
+			};
+
+			it('refuses the run instead of starting one that cannot work', async () => {
+				const harness = createRunAdapterForTests(orphanToolWorkflow, {
+					execution: makeExecution({ status: 'success' }),
+				});
+				const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+				await expect(runStep('wf-1', 'Calculator', { mockInput: [{}] })).rejects.toThrow(
+					'no node is connected to run it',
+				);
+				expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('does not claim the tool runs in the main graph', async () => {
+				const harness = createRunAdapterForTests(orphanToolWorkflow, {
+					execution: makeExecution({ status: 'success' }),
+				});
+				const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+				// The old message said `toolArguments` applies only to a tool node and
+				// that this one runs in the main graph. Both are wrong about a tool.
+				const failure = await runStep('wf-1', 'Calculator', {
+					toolArguments: { input: '2 + 2' },
+				}).catch((error: Error) => error);
+
+				expect(failure).toBeInstanceOf(Error);
+				expect((failure as Error).message).not.toContain('runs in the main graph');
+				expect((failure as Error).message).toContain('connect it to an Agent');
+			});
+		});
+
 		it('refuses a node the MCP registry added, whose type carries the server slug', async () => {
 			// The registry saves a server as `@n8n/mcp-registry.<slug>` and routes
 			// every one of them to one hidden runtime class, so the type on the

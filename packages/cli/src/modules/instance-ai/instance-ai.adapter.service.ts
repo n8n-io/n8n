@@ -2205,6 +2205,16 @@ export class InstanceAiAdapterService {
 					}
 
 					agentRequest = buildToolAgentRequest({ target, toolArguments: options?.toolArguments });
+				} else if (isToolNode(nodeTypes, target)) {
+					// A tool runs only through the node that owns it, and nothing owns
+					// this one: its tool output goes nowhere. `rewireGraph` then finds no
+					// node to stand in for, so the run would start, cost an execution and
+					// die on an error about a graph the caller never asked about.
+					throw new UserError(
+						`Node "${nodeName}" is a tool, and no node is connected to run it. ` +
+							'A tool runs only through the node that owns it, so connect it to an Agent ' +
+							'and run the step again.',
+					);
 				} else if (options?.toolArguments !== undefined) {
 					throw new UserError(
 						`toolArguments applies only to a tool node. "${nodeName}" runs in the main graph, ` +
