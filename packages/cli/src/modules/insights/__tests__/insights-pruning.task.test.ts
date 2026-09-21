@@ -16,8 +16,7 @@ describe('InsightsPruningTask', () => {
 			intervalSeconds: insightsConfig.pruneCheckIntervalHours * 3600,
 		});
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
-		expect(task.retryDelaySeconds).toBe(1);
+		expect(task.durable).toBe(true);
 	});
 
 	it('should prune insights on run', async () => {

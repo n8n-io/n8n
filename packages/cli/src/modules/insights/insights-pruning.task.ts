@@ -20,9 +20,7 @@ export class InsightsPruningTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
-
-	readonly retryDelaySeconds = 1;
+	readonly durable = true;
 
 	constructor(
 		private readonly insightsConfig: InsightsConfig,

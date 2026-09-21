@@ -13,6 +13,7 @@ import {
 	createCompactedInsightsEvent,
 	createMetadata,
 } from '../database/entities/__tests__/db-utils';
+import { InsightsByPeriod } from '../database/entities/insights-by-period';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
@@ -95,6 +96,40 @@ describe('InsightsPruningService', () => {
 
 		// ASSERT
 		expect(await insightsByPeriodRepository.count()).toBe(1);
+	});
+
+	test('overlapping prune runs delete each old row once and keep newer rows', async () => {
+		// ARRANGE
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+		const { metaId } = await createMetadata(workflow);
+		const now = DateTime.utc();
+		const row = (periodStart: DateTime) => {
+			const event = new InsightsByPeriod();
+			event.metaId = metaId;
+			event.type = 'success';
+			event.value = 1;
+			event.periodUnit = 'hour';
+			event.periodStart = periodStart.startOf('hour').toJSDate();
+			return event;
+		};
+		const old = Array.from({ length: 500 }, (_, hour) =>
+			row(now.minus({ days: insightsConfig.maxAgeDays + 1, hours: hour })),
+		);
+		const fresh = Array.from({ length: 24 }, (_, hour) =>
+			row(now.minus({ days: insightsConfig.maxAgeDays - 1, hours: hour })),
+		);
+		await insightsByPeriodRepository.save([...old, ...fresh]);
+
+		// ACT
+		const runs = Array.from(
+			{ length: 4 },
+			async () => await insightsPruningService.pruneInsights(),
+		);
+
+		// ASSERT
+		await expect(Promise.all(runs)).resolves.toHaveLength(4);
+		await expect(insightsByPeriodRepository.count()).resolves.toBe(fresh.length);
 	});
 
 	test.each<{ config: number; result: number }>([
