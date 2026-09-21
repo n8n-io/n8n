@@ -252,6 +252,9 @@ describe('emit-instance-ai', () => {
 			'hasProperty',
 			'isPlainObject',
 			// Validation
+			'containsExpression',
+			'isSensitiveHeader',
+			'isCredentialFieldName',
 			'validateNodeConfig',
 			'validateWorkflow',
 			'getSchemaBaseDirs',

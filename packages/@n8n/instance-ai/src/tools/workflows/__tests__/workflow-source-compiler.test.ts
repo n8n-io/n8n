@@ -125,7 +125,11 @@ describe('compileWorkflowSource', () => {
 		if (!result.success) return;
 		expect(result.warnings).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ code: 'HARDCODED_CREDENTIALS', nodeName: 'Fetch record' }),
+				expect.objectContaining({
+					code: 'HARDCODED_CREDENTIALS',
+					nodeName: 'Fetch record',
+					parameterPath: 'headerParameters.parameters[apikey]',
+				}),
 				expect.objectContaining({ code: 'SWITCH_NO_OUTPUT_CONNECTIONS', nodeName: 'Spare route' }),
 			]),
 		);

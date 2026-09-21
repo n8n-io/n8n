@@ -14,7 +14,12 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	containsExpression,
+	isSensitiveHeader,
+	isCredentialFieldName,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
 import { isDeepStrictEqual } from 'node:util';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
@@ -138,14 +143,46 @@ export function computeChangedNodeNames(
 	return changed;
 }
 
-/**
- * Keep selected findings informational on saved nodes this build did not change.
- * This lets scoped edits preserve existing configuration and parked nodes.
- * Parameter findings require unchanged type, version, parameters, and wiring.
- * Credential, model, and routing findings also require unchanged credentials and
- * disabled state, so enabling a node or changing its auth restores validation.
- * An already-connected Switch can change inputs if it still has no outputs.
- */
+function httpAuthentication(node: NodeJSON, parameterPath: string): unknown[] | undefined {
+	const params = node.parameters ?? {};
+	const options = isRecord(params.options) ? params.options : {};
+	const header = parameterPath.startsWith('headerParameters.parameters[');
+	const group = header ? 'headerParameters' : 'queryParameters';
+	const prefix = `${group}.parameters[`;
+	if (!parameterPath.startsWith(prefix) || !parameterPath.endsWith(']')) return undefined;
+	const name = parameterPath.slice(prefix.length, -1);
+	if (!(header ? isSensitiveHeader(name) : isCredentialFieldName(name))) return undefined;
+	const collection = params[group];
+	if (!isRecord(collection) || !Array.isArray(collection.parameters)) return undefined;
+	const values: unknown[] = [];
+	for (const entry of collection.parameters) {
+		if (!isRecord(entry) || typeof entry.name !== 'string') continue;
+		if (header ? entry.name.toLowerCase() === name.toLowerCase() : entry.name === name) {
+			values.push(entry.value);
+		}
+	}
+	if (values.length === 0) return undefined;
+	return [
+		...['url', 'requestUrl', 'authentication', 'genericAuthType', 'nodeCredentialType'].map(
+			(key) => params[key],
+		),
+		values,
+		params[header ? 'sendHeaders' : 'sendQuery'],
+		params[header ? 'specifyHeaders' : 'specifyQuery'],
+		params[header ? 'jsonHeaders' : 'jsonQuery'],
+		...[
+			'redirect',
+			'sendCredentialsOnCrossOriginRedirect',
+			'proxy',
+			'pagination',
+			'allowUnauthorizedCerts',
+			'lowercaseHeaders',
+		].map((key) => options[key]),
+		node.credentials ?? {},
+	];
+}
+
+/** Compare the cause of auth and missing-output findings, not unrelated node edits. */
 export function downgradeUnchangedNodeBlockers(
 	warnings: ValidationWarning[],
 	workflow: WorkflowJSON,
@@ -156,58 +193,58 @@ export function downgradeUnchangedNodeBlockers(
 	const findCounterpart = counterpartFinder(savedWorkflow);
 	const builtSignatures = connectionSignatures(workflow);
 	const savedSignatures = connectionSignatures(savedWorkflow);
-	const unchangedParameterNames = new Set<string>();
-	const fullyUnchangedNames = new Set<string>();
-	const existingTerminalSwitchNames = new Set<string>();
-	for (const node of workflow.nodes ?? []) {
-		if (!node.name) continue;
-		const saved = findCounterpart(node);
-		if (
-			saved &&
-			!(node.id && saved.id && node.id !== saved.id) &&
-			parametersUnchanged(node, saved)
-		) {
-			const sameWiring = connectionsUnchanged(node, saved, builtSignatures, savedSignatures);
-			if (sameWiring) unchangedParameterNames.add(node.name);
-			if (
-				isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) &&
-				(node.disabled ?? false) === (saved.disabled ?? false)
-			) {
-				if (sameWiring) fullyUnchangedNames.add(node.name);
-				const before = savedSignatures.get(nodeKey(saved)) ?? [];
-				const after = builtSignatures.get(nodeKey(node)) ?? [];
-				if (
-					node.type === 'n8n-nodes-base.switch' &&
-					before.some((edge) => edge.startsWith('in main[')) &&
-					after.some((edge) => edge.startsWith('in main[')) &&
-					!before.some((edge) => edge.startsWith('out ')) &&
-					!after.some((edge) => edge.startsWith('out '))
-				) {
-					existingTerminalSwitchNames.add(node.name);
-				}
-			}
-		}
-	}
-	if (unchangedParameterNames.size === 0 && existingTerminalSwitchNames.size === 0) return warnings;
+	const nodesByName = new Map((workflow.nodes ?? []).map((node) => [node.name, node]));
 
 	return warnings.map((warning) => {
 		if (warning.severity === 'informational') return warning;
 		if (!warning.nodeName) return warning;
+		const node = nodesByName.get(warning.nodeName);
+		const saved = node && findCounterpart(node);
+		if (
+			!node ||
+			!saved ||
+			(node.id && saved.id && node.id !== saved.id) ||
+			node.type !== saved.type ||
+			(node.typeVersion ?? 1) !== (saved.typeVersion ?? 1)
+		)
+			return warning;
 
-		if (warning.code === 'INVALID_PARAMETER') {
-			if (!unchangedParameterNames.has(warning.nodeName)) return warning;
+		if (warning.code === 'HARDCODED_CREDENTIALS') {
+			const url = node.parameters?.url ?? node.parameters?.requestUrl;
+			const before = warning.parameterPath && httpAuthentication(saved, warning.parameterPath);
+			const after = warning.parameterPath && httpAuthentication(node, warning.parameterPath);
+			// ponytail: expression URLs stay blocking; comparing them needs execution data.
+			if (
+				node.type !== 'n8n-nodes-base.httpRequest' ||
+				(node.disabled ?? false) !== (saved.disabled ?? false) ||
+				typeof url !== 'string' ||
+				containsExpression(url) ||
+				!before ||
+				!after ||
+				!isDeepStrictEqual(before, after)
+			)
+				return warning;
 		} else if (warning.code === 'SWITCH_NO_OUTPUT_CONNECTIONS') {
 			if (
-				!fullyUnchangedNames.has(warning.nodeName) &&
-				!existingTerminalSwitchNames.has(warning.nodeName)
-			) {
+				node.type !== 'n8n-nodes-base.switch' ||
+				saved.disabled === true ||
+				node.disabled === true ||
+				(savedSignatures.get(nodeKey(saved)) ?? []).some((edge) => edge.startsWith('out main[')) ||
+				(builtSignatures.get(nodeKey(node)) ?? []).some((edge) => edge.startsWith('out main['))
+			)
 				return warning;
-			}
-		} else if (
-			warning.code === 'chat_model_validation' ||
-			warning.code === 'HARDCODED_CREDENTIALS'
-		) {
-			if (!fullyUnchangedNames.has(warning.nodeName)) return warning;
+		} else if (warning.code === 'INVALID_PARAMETER' || warning.code === 'chat_model_validation') {
+			if (
+				!parametersUnchanged(node, saved) ||
+				!connectionsUnchanged(node, saved, builtSignatures, savedSignatures)
+			)
+				return warning;
+			if (
+				warning.code === 'chat_model_validation' &&
+				(!isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) ||
+					(node.disabled ?? false) !== (saved.disabled ?? false))
+			)
+				return warning;
 		} else {
 			return warning;
 		}

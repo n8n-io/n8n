@@ -418,11 +418,18 @@ For edits, only `INVALID_PARAMETER`, `chat_model_validation`,
 informational. Missing saved state or a finding without a node name keeps the
 finding blocking. Other codes keep their original severity.
 
-Literal HTTP authentication requires unchanged parameters, wiring, credentials,
-and disabled state. A saved Switch with unchanged configuration and no outputs
-can receive input through a different node if it already had an input connection.
-New Switches, re-enabled Switches, newly connected parked Switches, and removed
-output branches remain blocking. The sandbox CLI has no saved-workflow baseline,
+For `HARDCODED_CREDENTIALS`, compare the saved authentication values, credential
+selection, and destination settings. The URL must be fixed and unchanged.
+Wiring, timeout, response formatting, and non-auth headers or query fields do not
+introduce a new hardcoded value. Changed auth, destination settings, or enabled
+state still block. Expression URLs stay blocking because their destination
+depends on execution data.
+
+For `SWITCH_NO_OUTPUT_CONNECTIONS`, check whether the same enabled Switch already
+had no main outputs. Changes to its inputs or rules leave that finding
+informational, including connecting an existing parked Switch. New or re-enabled
+Switches and removal of existing output branches remain blocking. These checks
+do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
 so `build-workflow` makes the final decision. Preserve unrelated nodes and report
 any remaining blocker instead of expanding the edit.
 

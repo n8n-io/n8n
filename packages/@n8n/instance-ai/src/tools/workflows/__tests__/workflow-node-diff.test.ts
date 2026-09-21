@@ -223,6 +223,8 @@ describe('downgradeUnchangedNodeBlockers', () => {
 		const nodeName = 'Send a message';
 		const finding: ValidationWarning = {
 			code,
+			parameterPath:
+				code === 'HARDCODED_CREDENTIALS' ? 'headerParameters.parameters[apikey]' : undefined,
 			nodeName,
 			message: 'Existing node requires configuration.',
 			severity: 'warning',
@@ -252,13 +254,8 @@ describe('downgradeUnchangedNodeBlockers', () => {
 
 		it.each([
 			['identity', { id: 'new-node' }],
-			['parameters', { parameters: { options: { timeout: 2000 } } }],
 			['type', { type: 'n8n-nodes-base.noOp' }],
 			['typeVersion', { typeVersion: 1 }],
-			[
-				'credentials',
-				{ credentials: { httpHeaderAuth: { id: 'header-2', name: 'Other header' } } },
-			],
 		])('keeps the finding blocking when %s changes', (_field, overrides) => {
 			const saved = makeWorkflow([node]);
 			const built = makeWorkflow([{ ...node, ...overrides }]);
@@ -273,17 +270,19 @@ describe('downgradeUnchangedNodeBlockers', () => {
 			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
 		});
 
-		it('keeps the finding blocking when an incoming connection is added', () => {
+		it('preserves an existing finding when an incoming connection is added', () => {
 			const nodes = [makeComposeNode(), node];
 			const saved = makeWorkflow(nodes);
 			const built = makeWorkflow(nodes, {
 				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
 			});
 
-			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				expect.objectContaining({ code, severity: 'informational' }),
+			]);
 		});
 
-		it('keeps the finding blocking when an outgoing connection is removed', () => {
+		it('only treats a removed output as a new Switch finding', () => {
 			const nodes = [
 				makeComposeNode(),
 				node,
@@ -297,10 +296,15 @@ describe('downgradeUnchangedNodeBlockers', () => {
 				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
 			});
 
-			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+			const result = downgradeUnchangedNodeBlockers([finding], built, saved);
+			expect(result).toEqual(
+				code === 'SWITCH_NO_OUTPUT_CONNECTIONS'
+					? [finding]
+					: [expect.objectContaining({ code, severity: 'informational' })],
+			);
 		});
 
-		it('only preserves the Switch output finding when a node is inserted upstream', () => {
+		it('preserves the finding when a node is inserted upstream', () => {
 			const saved = makeWorkflow([makeComposeNode(), node], {
 				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
 			});
@@ -312,11 +316,7 @@ describe('downgradeUnchangedNodeBlockers', () => {
 				},
 			);
 			const result = downgradeUnchangedNodeBlockers([finding], built, saved);
-			if (code === 'SWITCH_NO_OUTPUT_CONNECTIONS') {
-				expect(result).toEqual([expect.objectContaining({ code, severity: 'informational' })]);
-			} else {
-				expect(result).toEqual([finding]);
-			}
+			expect(result).toEqual([expect.objectContaining({ code, severity: 'informational' })]);
 		});
 
 		it('handles an upstream rename without node IDs', () => {
@@ -328,11 +328,7 @@ describe('downgradeUnchangedNodeBlockers', () => {
 				{ Renamed: { main: [[{ node: nodeName, type: 'main', index: 0 }]] } },
 			);
 			const result = downgradeUnchangedNodeBlockers([finding], built, saved);
-			if (code === 'SWITCH_NO_OUTPUT_CONNECTIONS') {
-				expect(result).toEqual([expect.objectContaining({ code, severity: 'informational' })]);
-			} else {
-				expect(result).toEqual([finding]);
-			}
+			expect(result).toEqual([expect.objectContaining({ code, severity: 'informational' })]);
 		});
 
 		it('keeps the finding blocking for a new node or a missing baseline', () => {
@@ -374,6 +370,166 @@ describe('downgradeUnchangedNodeBlockers', () => {
 				unnamedFinding,
 			]);
 		});
+	});
+
+	describe('HTTP authentication changes', () => {
+		const parameters = {
+			url: 'https://example.test/records',
+			sendHeaders: true,
+			headerParameters: { parameters: [{ name: 'Authorization', value: 'example-value' }] },
+			queryParameters: { parameters: [{ name: 'api_key', value: 'example-key' }] },
+		};
+		const node = makeNode({ type: 'n8n-nodes-base.httpRequest', parameters });
+		const finding = {
+			...blocker(node.name, 'HARDCODED_CREDENTIALS'),
+			parameterPath: 'headerParameters.parameters[Authorization]',
+		};
+		const classify = (updated: NodeJSON, original = node) =>
+			downgradeUnchangedNodeBlockers([finding], makeWorkflow([updated]), makeWorkflow([original]));
+
+		it.each([
+			{ options: { timeout: 2000 } },
+			{ options: { response: { response: { responseFormat: 'text' } } } },
+			{
+				headerParameters: {
+					parameters: [
+						...parameters.headerParameters.parameters,
+						{ name: 'Accept', value: 'application/json' },
+					],
+				},
+			},
+			{
+				queryParameters: {
+					parameters: [...parameters.queryParameters.parameters, { name: 'page', value: '2' }],
+				},
+			},
+		])('preserves auth when unrelated request fields change: %j', (updated) => {
+			expect(classify({ ...node, parameters: { ...parameters, ...updated } })).toEqual([
+				expect.objectContaining({ code: finding.code, severity: 'informational' }),
+			]);
+		});
+
+		it.each([
+			{ url: 'https://other.example.test/records' },
+			{ headerParameters: { parameters: [{ name: 'Authorization', value: 'changed' }] } },
+			{ authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth' },
+			{ options: { proxy: 'http://proxy.example.test' } },
+			{ options: { sendCredentialsOnCrossOriginRedirect: true } },
+			{ options: { pagination: { pagination: { paginationMode: 'responseContainsNextURL' } } } },
+		])('keeps changed auth or destination settings blocking: %j', (updated) => {
+			expect(classify({ ...node, parameters: { ...parameters, ...updated } })).toEqual([finding]);
+		});
+
+		it.each([
+			{
+				parameterPath: 'headerParameters.parameters[apikey]',
+				updated: {
+					headerParameters: {
+						parameters: [
+							...parameters.headerParameters.parameters,
+							{ name: 'apikey', value: 'added' },
+						],
+					},
+				},
+			},
+			{
+				parameterPath: 'queryParameters.parameters[api_key]',
+				updated: { queryParameters: { parameters: [{ name: 'api_key', value: 'changed' }] } },
+			},
+		])(
+			'keeps only the new or changed credential finding blocking: $parameterPath',
+			({ parameterPath, updated }) => {
+				const changedFinding = { ...finding, parameterPath };
+				const result = downgradeUnchangedNodeBlockers(
+					[finding, changedFinding],
+					makeWorkflow([{ ...node, parameters: { ...parameters, ...updated } }]),
+					makeWorkflow([node]),
+				);
+				expect(result).toEqual([
+					expect.objectContaining({
+						parameterPath: finding.parameterPath,
+						severity: 'informational',
+					}),
+					changedFinding,
+				]);
+			},
+		);
+
+		it('allows enabling non-auth query fields for the first time', () => {
+			const original = { ...node, parameters: { ...parameters, queryParameters: undefined } };
+			const updated = {
+				...original,
+				parameters: {
+					...original.parameters,
+					sendQuery: true,
+					queryParameters: { parameters: [{ name: 'page', value: '2' }] },
+				},
+			};
+			expect(classify(updated, original)).toEqual([
+				expect.objectContaining({ severity: 'informational' }),
+			]);
+		});
+
+		it.each([undefined, 'options.timeout', 'headerParameters.parameters[Accept]'])(
+			'does not exempt a finding without an auth parameter location: %s',
+			(parameterPath) => {
+				const original = {
+					...node,
+					parameters: {
+						...parameters,
+						headerParameters: {
+							parameters: [
+								...parameters.headerParameters.parameters,
+								{ name: 'Accept', value: 'application/json' },
+							],
+						},
+					},
+				};
+				const unknown = { ...finding, parameterPath };
+				expect(
+					downgradeUnchangedNodeBlockers(
+						[unknown],
+						makeWorkflow([original]),
+						makeWorkflow([original]),
+					),
+				).toEqual([unknown]);
+			},
+		);
+
+		it('keeps changes to the selected credential blocking', () => {
+			expect(
+				classify({ ...node, credentials: { httpHeaderAuth: { id: 'new', name: 'New' } } }),
+			).toEqual([finding]);
+		});
+
+		it('keeps expression URLs blocking even when their text is unchanged', () => {
+			const dynamic = { ...node, parameters: { ...parameters, url: '={{ $json.url }}' } };
+			expect(classify(dynamic, dynamic)).toEqual([finding]);
+		});
+
+		it('allows adding a downstream node without changing authentication', () => {
+			const saved = makeWorkflow([node]);
+			const built = makeWorkflow([node, makeComposeNode()], {
+				'Send a message': { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+			});
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				expect.objectContaining({ code: finding.code, severity: 'informational' }),
+			]);
+		});
+	});
+
+	it('keeps an existing missing-output finding when Switch rules change', () => {
+		const node = makeNode({ type: 'n8n-nodes-base.switch', parameters: { mode: 'rules' } });
+		const built = makeWorkflow([{ ...node, parameters: { mode: 'expression', output: 0 } }]);
+		expect(
+			downgradeUnchangedNodeBlockers(
+				[blocker(node.name, 'SWITCH_NO_OUTPUT_CONNECTIONS')],
+				built,
+				makeWorkflow([node]),
+			),
+		).toEqual([
+			expect.objectContaining({ code: 'SWITCH_NO_OUTPUT_CONNECTIONS', severity: 'informational' }),
+		]);
 	});
 
 	it('downgrades chat_model_validation on unchanged nodes and keeps it on changed nodes', () => {

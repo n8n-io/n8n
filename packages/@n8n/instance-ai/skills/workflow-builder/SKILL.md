@@ -236,8 +236,9 @@ follow its build → publish → assign steps.
    fix every `error` row. For edits, fix errors introduced by your change.
    Preserve unrelated existing nodes and code even if the CLI reports errors
    on them. The CLI has no saved-workflow baseline; call `build-workflow` to
-   decide which findings still block. It can downgrade selected findings on
-   unchanged nodes. If the save remains blocked, report the blocker without
+   decide which findings still block. It can keep existing authentication and
+   missing-output findings informational when their cause is unchanged.
+   If the save remains blocked, report the blocker without
    expanding scope. CLI warning rows do not block saves; resolve or consciously dismiss
    them within the requested scope. A clean validate run does not guarantee
    `build-workflow` will succeed (no full node-type registry in the sandbox CLI),
