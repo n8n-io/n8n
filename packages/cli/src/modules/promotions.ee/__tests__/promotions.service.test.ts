@@ -1009,6 +1009,18 @@ describe('PromotionsService', () => {
 			expect(promoteSelection).not.toHaveBeenCalled();
 		});
 
+		it('rejects a selection with duplicate workflow ids', async () => {
+			const promoteSelection = vi.spyOn(service, 'promoteSelection');
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w1'],
+					canExportVariableValues: false,
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(promoteSelection).not.toHaveBeenCalled();
+		});
+
 		it('rejects when the instance has no promotion connection', async () => {
 			connectionRepository.findInstanceConnection.mockResolvedValue(null);
 
