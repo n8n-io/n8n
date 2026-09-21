@@ -1,12 +1,15 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
+import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { CacheService } from '@/services/cache/cache.service';
 
+import { CREDENTIAL_TYPES_KIND } from '../constants';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
 import type { TypeAvailabilityPolicyScopeRepository } from '../database/repositories/type-availability-policy-scope.repository';
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
@@ -20,6 +23,22 @@ import {
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
+
+/**
+ * A loader that has loaded `packageName`, with no nodes or credentials unless overridden.
+ *
+ * Built via `Object.assign` on an empty mock, not a `mock<NodeLoader>({...})` partial: the
+ * mock's deep-partial typing does not converge on `NodeLoader['types']`'s node/credential
+ * description unions (same pitfall noted for `INodeType` in test/integration/shared/utils).
+ */
+function makeLoader(packageName: string, overrides: Partial<NodeLoader> = {}): NodeLoader {
+	const loader = mock<NodeLoader>();
+	return Object.assign(loader, {
+		packageName,
+		known: { nodes: {}, credentials: {} },
+		...overrides,
+	});
+}
 
 const RULE: PolicyRule = {
 	id: 'r1',
@@ -65,6 +84,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	const transactionRunner = mock<TransactionRunner>();
 	const eventService = mock<EventService>();
 	const cacheService = mock<CacheService>();
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -73,6 +93,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		transactionRunner,
 		eventService,
 		cacheService,
+		loadNodesAndCredentials,
 		mockLogger(),
 	);
 
@@ -88,6 +109,8 @@ describe('TypeAvailabilityPolicyService', () => {
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
 		// The real repository always answers with an array; an unstubbed mock answers undefined.
 		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
+		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
+		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
 	});
 
 	describe('getEffectivePolicy', () => {
@@ -277,6 +300,30 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
 			expect(policyRepository.createPolicy).toHaveBeenCalled();
 		});
+
+		it('rejects a package rule naming a package that is not installed', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+		});
+
+		it('accepts a package rule naming an installed package', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-base' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).resolves.toBeDefined();
+		});
 	});
 
 	describe('updatePolicyDocument', () => {
@@ -284,6 +331,21 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
 			scopeRepository.lockScopesByIds.mockResolvedValue([]);
 			scopeRepository.containsProjectScope.mockResolvedValue(false);
+		});
+
+		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+			};
+
+			await expect(
+				service.updatePolicyDocument(KIND, 'policy-1', [rule], 1, 'user-1'),
+			).rejects.toThrow(
+				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('rejects a delegate rule when the document is attached to a project scope, before reading it', async () => {
@@ -622,6 +684,27 @@ describe('TypeAvailabilityPolicyService', () => {
 		beforeEach(() => {
 			// By default a scope's document is attached to that scope alone.
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+		});
+
+		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+			};
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [rule], defaultAction: 'allow' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(
+				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('throws ConflictError when the scope has several attached documents, and writes nothing', async () => {
@@ -1036,6 +1119,77 @@ describe('TypeAvailabilityPolicyService', () => {
 				action: 'deny',
 				scope: 'instance',
 				matchedRuleId: 'instance-deny',
+				optInAvailable: false,
+			});
+		});
+
+		it('matches a credential type against a package rule via the loader that loaded it', async () => {
+			const CREDENTIAL_TYPE = 'slackApi';
+			loadNodesAndCredentials.loaders = {
+				'n8n-nodes-base': makeLoader('n8n-nodes-base', {
+					known: {
+						nodes: {},
+						credentials: {
+							[CREDENTIAL_TYPE]: { className: 'SlackApi', sourcePath: 'SlackApi.credentials.js' },
+						},
+					},
+				}),
+			};
+			const packageDenyRule: PolicyRule = {
+				id: 'deny-package',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-base' },
+			};
+			const instanceScope = makeScope({
+				kind: CREDENTIAL_TYPES_KIND,
+				projectId: null,
+				defaultAction: 'allow',
+				version: 1,
+			});
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				projectId === null ? instanceScope : null,
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules: [packageDenyRule], priority: 0, isFloor: false },
+			]);
+
+			const result = await service.evaluateComposedType(
+				CREDENTIAL_TYPES_KIND,
+				PROJECT_ID,
+				CREDENTIAL_TYPE,
+			);
+
+			expect(result).toEqual({
+				action: 'deny',
+				scope: 'instance',
+				matchedRuleId: 'deny-package',
+				optInAvailable: false,
+			});
+		});
+
+		it('never matches a credential type against a package rule under the node-types dot-split convention', async () => {
+			const CREDENTIAL_TYPE = 'slackApi';
+			const packageDenyRule: PolicyRule = {
+				id: 'deny-package',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-base' },
+			};
+			const instanceScope = makeScope({ projectId: null, defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				projectId === null ? instanceScope : null,
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules: [packageDenyRule], priority: 0, isFloor: false },
+			]);
+
+			// Evaluated under `node-types`, a bare credential type name has no dot to split on,
+			// so the package selector cannot match it: nothing denies.
+			const result = await service.evaluateComposedType(KIND, PROJECT_ID, CREDENTIAL_TYPE);
+
+			expect(result).toEqual({
+				action: 'allow',
+				scope: 'instance',
+				matchedRuleId: null,
 				optInAvailable: false,
 			});
 		});
