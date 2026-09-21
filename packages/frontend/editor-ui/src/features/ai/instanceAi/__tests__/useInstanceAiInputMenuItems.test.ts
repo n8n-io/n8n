@@ -433,7 +433,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(findItem(menuItems.value, 'preference-user-2')?.data?.preference).toBe('applied');
 		});
 
-		it('keeps the list when the text lookup fails', async () => {
+		it('keeps the list when the text lookup fails, and does not call the rows removed', async () => {
 			featureFlags.preferences = true;
 			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
 			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
@@ -441,10 +441,27 @@ describe('useInstanceAiInputMenuItems', () => {
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
 			await flush();
 
-			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe(
-				'instanceAi.inputMenu.preferences.removed',
-			);
+			const item = findItem(menuItems.value, 'preference-user-1');
+			expect(item?.label).toBe('instanceAi.inputMenu.preferences.unavailable');
+			expect(item?.data?.preference).toBe('unavailable');
 			expect(findItem(menuItems.value, 'preferences')?.loading).toBe(false);
+		});
+
+		it('keeps texts it already resolved when a later lookup fails', async () => {
+			featureFlags.preferences = true;
+			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
+			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'known' }]);
+
+			const { menuItems, refreshAppliedPreferences } = useInstanceAiInputMenuItems(
+				vi.fn(),
+				() => 'thread-1',
+			);
+			await flush();
+
+			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
+			await refreshAppliedPreferences();
+
+			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('known');
 		});
 
 		it('re-reads the texts on demand, so an edit in settings shows up', async () => {

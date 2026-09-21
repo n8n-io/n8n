@@ -26,8 +26,11 @@ type InputMenuItemData = {
 	status?: ToolConnectionStatus;
 	toolIcon?: ToolIconSource;
 	action?: () => void | Promise<void>;
-	/** A preference row the turn applied; `removed` when the row no longer resolves. */
-	preference?: 'applied' | 'removed';
+	/**
+	 * A preference row the turn applied. `removed` when the lookup answered without the
+	 * row, `unavailable` when the lookup itself failed, so the two never read the same.
+	 */
+	preference?: 'applied' | 'removed' | 'unavailable';
 };
 
 export type InputMenuItem = DropdownMenuItemProps<string, InputMenuItemData>;
@@ -158,6 +161,7 @@ export function useInstanceAiInputMenuItems(
 	);
 	const preferenceTextById = ref(new Map<string, string>());
 	const isLoadingPreferenceTexts = ref(false);
+	const didPreferenceLookupFail = ref(false);
 	let latestTextsRead = 0;
 
 	/** Resolves the text behind each applied id. Safe to call again: the newest read wins. */
@@ -168,6 +172,7 @@ export function useInstanceAiInputMenuItems(
 			// land later and repopulate the menu with another thread's text.
 			++latestTextsRead;
 			preferenceTextById.value = new Map();
+			didPreferenceLookupFail.value = false;
 			isLoadingPreferenceTexts.value = false;
 			return;
 		}
@@ -177,9 +182,11 @@ export function useInstanceAiInputMenuItems(
 			const rows = await contextStore.fetchPreferencesByIds(ids);
 			if (read !== latestTextsRead) return;
 			preferenceTextById.value = new Map(rows.map((row) => [row.id, row.content]));
+			didPreferenceLookupFail.value = false;
 		} catch {
-			// The ids still render, as removed rows. A failed lookup must not hide the list.
-			if (read === latestTextsRead) preferenceTextById.value = new Map();
+			// The list still renders: the ids are what the turn carried. Texts already
+			// resolved stay, the rest read as unavailable rather than as removed.
+			if (read === latestTextsRead) didPreferenceLookupFail.value = true;
 		} finally {
 			if (read === latestTextsRead) isLoadingPreferenceTexts.value = false;
 		}
@@ -239,11 +246,12 @@ export function useInstanceAiInputMenuItems(
 				});
 			}
 			const text = preferenceTextById.value.get(preference.id);
+			const missing = didPreferenceLookupFail.value ? 'unavailable' : 'removed';
 			items.push({
 				id: `preference-${preference.id}`,
-				label: text ?? i18n.baseText('instanceAi.inputMenu.preferences.removed'),
+				label: text ?? i18n.baseText(`instanceAi.inputMenu.preferences.${missing}`),
 				keepOpen: true,
-				data: { preference: text === undefined ? 'removed' : 'applied' },
+				data: { preference: text === undefined ? missing : 'applied' },
 			});
 		}
 		return items;

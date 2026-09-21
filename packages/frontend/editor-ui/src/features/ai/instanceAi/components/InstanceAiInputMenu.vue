@@ -121,7 +121,9 @@ function handleUpdateDropdownModelValue(open: boolean) {
 				<N8nText
 					size="medium"
 					:color="
-						item.disabled || item.data?.preference === 'removed' ? 'text-xlight' : 'text-dark'
+						item.disabled || (item.data?.preference && item.data.preference !== 'applied')
+							? 'text-xlight'
+							: 'text-dark'
 					"
 					:class="[
 						ui.class,
