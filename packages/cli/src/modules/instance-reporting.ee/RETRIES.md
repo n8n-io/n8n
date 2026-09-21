@@ -43,7 +43,7 @@ Scope: no `pending` row exists for today, but one or more calendar days have no
 - `InstanceReportingService.missedDays()` walks back from yesterday to the day
   after the last delivered day. It stops at `MAX_BACKFILL_DAYS` (30) because
   `insights` buckets a longer range by week, which cannot fill a daily point.
-  Older days are dropped and logged.
+  Older days are dropped.
 - The next report creates one new row. It carries one `daily` point for every
   missed day and one `cumulative` point. The cumulative point is a fresh
   lifetime total, not one per missed day.
