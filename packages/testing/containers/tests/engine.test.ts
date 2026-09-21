@@ -26,7 +26,7 @@ describe('applyEngineEnv', () => {
 	test('leaves the env untouched when no engine mode is set', () => {
 		const env = { ...postgresEnv };
 
-		applyEngineEnv(env, { engine: undefined, isQueueMode: false, projectName });
+		applyEngineEnv(env, { engine: undefined, mains: 1, isQueueMode: false, projectName });
 
 		expect(env).toEqual(postgresEnv);
 	});
@@ -35,7 +35,7 @@ describe('applyEngineEnv', () => {
 		test('enables the engine-v2 module', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
 
 			expect(env.N8N_ENABLED_MODULES).toBe('engine-v2');
 		});
@@ -43,7 +43,7 @@ describe('applyEngineEnv', () => {
 		test('keeps modules the caller already enabled', () => {
 			const env = { ...postgresEnv, N8N_ENABLED_MODULES: 'insights,engine-v2' };
 
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
 
 			expect(env.N8N_ENABLED_MODULES).toBe('insights,engine-v2');
 		});
@@ -51,7 +51,7 @@ describe('applyEngineEnv', () => {
 		test('points the data plane at its own database on the stack Postgres', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
 
 			expect(env.N8N_ENGINE_DATABASE_URL).toBe(
 				`postgres://n8n_user:test_password@postgres:5432/${ENGINE_DATABASE}`,
@@ -61,7 +61,7 @@ describe('applyEngineEnv', () => {
 		test('keeps an explicit data plane database URL', () => {
 			const env = { ...postgresEnv, N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db' };
 
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
 
 			expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
 		});
@@ -69,7 +69,7 @@ describe('applyEngineEnv', () => {
 		test('leaves the mode unset so the module hosts the data plane', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
 
 			expect(env.N8N_ENGINE_MODE).toBeUndefined();
 		});
@@ -83,7 +83,7 @@ describe('applyEngineEnv', () => {
 				...postgresEnv,
 				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',
 			};
-			applyEngineEnv(env, { engine: 'container', isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, projectName });
 			return env;
 		};
 
@@ -98,8 +98,18 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv().N8N_ENGINE_BASE_URL).toBe('http://proj-n8n-engine:3000');
 		});
 
-		test('opens the control plane server to the engine container', () => {
-			expect(containerEnv().N8N_ENGINE_CONTROL_PLANE_HOST).toBe('0.0.0.0');
+		test('opens the control plane server to the engine container on the stack port', () => {
+			expect(containerEnv()).toMatchObject({
+				N8N_ENGINE_CONTROL_PLANE_HOST: '0.0.0.0',
+				N8N_ENGINE_CONTROL_PLANE_PORT: '3001',
+			});
+		});
+
+		test('keeps the control plane port the engine dials, whatever the caller set', () => {
+			const env: Record<string, string> = { ...postgresEnv, N8N_ENGINE_CONTROL_PLANE_PORT: '4001' };
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, projectName });
+
+			expect(env.N8N_ENGINE_CONTROL_PLANE_PORT).toBe('3001');
 		});
 
 		test('shares the secret both planes verify against', () => {
@@ -117,7 +127,7 @@ describe('applyEngineEnv', () => {
 		// The connection-env error also says "Postgres", so match what only this
 		// error says. Otherwise the test passes when the guard is gone.
 		expect(() =>
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName }),
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName }),
 		).toThrow(/set `postgres: true`/);
 	});
 
@@ -126,7 +136,7 @@ describe('applyEngineEnv', () => {
 		const env: Record<string, string> = { DB_TYPE: 'postgresdb' };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'in-process', isQueueMode: false, projectName }),
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName }),
 		).toThrow(
 			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_HOST, DB_POSTGRESDB_PORT/,
 		);
@@ -136,8 +146,16 @@ describe('applyEngineEnv', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'container', isQueueMode: true, projectName }),
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, projectName }),
 		).toThrow(/queue mode/);
+	});
+
+	test('rejects a stack without a main, since the engine would be started as one', () => {
+		const env = { ...postgresEnv };
+
+		expect(() =>
+			applyEngineEnv(env, { engine: 'container', mains: 0, isQueueMode: false, projectName }),
+		).toThrow(/exactly one main/);
 	});
 });
 
@@ -183,8 +201,10 @@ describe('engineContainerEnv', () => {
 		);
 	});
 
-	test('runs its own task runner, since the external one is bound to the main', () => {
-		expect(engineContainerEnv(postgresEnv, { projectName }).N8N_RUNNERS_MODE).toBe('internal');
+	test('serves on the port the main dials and the stack probes, whatever the caller set', () => {
+		const env = engineContainerEnv({ ...postgresEnv, N8N_ENGINE_PORT: '4000' }, { projectName });
+
+		expect(env.N8N_ENGINE_PORT).toBe('3000');
 	});
 
 	test('rejects an env that is missing Postgres connection values', () => {
@@ -199,7 +219,7 @@ describe('assertEngineSupported', () => {
 	// that do not run engine 2.0 starting at all.
 	test('accepts any stack that does not run engine 2.0', () => {
 		expect(() =>
-			assertEngineSupported({ engine: undefined, isQueueMode: true, usePostgres: false }),
+			assertEngineSupported({ engine: undefined, mains: 0, isQueueMode: true, usePostgres: false }),
 		).not.toThrow();
 	});
 });
