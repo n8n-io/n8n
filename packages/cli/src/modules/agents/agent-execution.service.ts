@@ -12,7 +12,6 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Telemetry } from '@/telemetry';
 
 import {
@@ -630,9 +629,7 @@ export class AgentExecutionService {
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread) return null;
-		if (!threadBelongsTo(thread, projectId, agentId, userId)) {
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
+		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateTimelines(agentId, threadId, executions);

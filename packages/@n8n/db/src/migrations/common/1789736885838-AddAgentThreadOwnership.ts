@@ -28,6 +28,7 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 			'SET NULL',
 		);
 		await createIndex('agent_execution_threads', ['ownerId']);
+		await createIndex('agent_checkpoints', ['threadId']);
 		await this.backfill(context);
 		await this.backfillInheritedAccess(context);
 	}
@@ -42,6 +43,7 @@ export class AddAgentThreadOwnership1789736885838 implements ReversibleMigration
 			'FK_agent_execution_threads_owner',
 		);
 		await dropIndex('agent_execution_threads', ['ownerId']);
+		await dropIndex('agent_checkpoints', ['threadId']);
 		await dropEnumCheck('agent_execution_threads', 'accessScope', { recreatesOnSqlite: true });
 		await dropColumns('agent_execution_threads', ['ownerId', 'accessScope'], {
 			recreatesOnSqlite: true,

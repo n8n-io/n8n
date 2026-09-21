@@ -312,6 +312,43 @@ describe('AgentChatController chat message history', () => {
 		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
 		expect(agentsBuilderService.findOpenCheckpointForThread).not.toHaveBeenCalled();
 	});
+
+	it('accepts only shared checkpoints for a project-scoped thread', async () => {
+		const { controller, agentsService, agentsBuilderService, agentExecutionService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue(null);
+		agentExecutionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				accessScope: 'project',
+				ownerId: null,
+			}),
+		);
+		const request = {
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		};
+		const checkpoint = mock<SerializableAgentState>({
+			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+			messageList: { messages: [] },
+			pendingToolCalls: {},
+		});
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(checkpoint);
+
+		await expect(controller.getChatMessages(request as never)).resolves.toEqual({
+			messages: [],
+			openSuspensions: [],
+		});
+
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+			...checkpoint,
+			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+		});
+		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
+	});
+
 	it('returns conversation history envelope from the execution orchestrator', async () => {
 		const { controller, agentsService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);

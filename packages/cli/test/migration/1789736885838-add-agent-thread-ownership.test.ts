@@ -143,6 +143,12 @@ describe('Agent thread ownership migration', () => {
 			expect(table?.foreignKeys.filter((key) => key.columnNames.includes('ownerId'))).toHaveLength(
 				1,
 			);
+			const checkpointTable = await queryRunner.getTable(`${tablePrefix}agent_checkpoints`);
+			expect(
+				checkpointTable?.indices.some(
+					(index) => index.columnNames.length === 1 && index.columnNames[0] === 'threadId',
+				),
+			).toBe(true);
 		});
 
 		await undoLastSingleMigration();
@@ -155,6 +161,12 @@ describe('Agent thread ownership migration', () => {
 			expect(
 				await runQuery(`SELECT "threadId" FROM ${escape.tableName('agent_execution')}`),
 			).toHaveLength(fixtures.length);
+			const checkpointTable = await queryRunner.getTable(`${tablePrefix}agent_checkpoints`);
+			expect(
+				checkpointTable?.indices.some(
+					(index) => index.columnNames.length === 1 && index.columnNames[0] === 'threadId',
+				),
+			).toBe(false);
 		});
 
 		await runSingleMigration(migrationName);

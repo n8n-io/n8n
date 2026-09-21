@@ -1084,6 +1084,38 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it.each(['chat', 'wake'] as const)(
+		'rejects an inaccessible draft %s before runtime acquisition',
+		async (operation) => {
+			const { service, executionService, runtimeCacheService } = makeService();
+			executionService.canUsePreviewThread.mockResolvedValue(false);
+			const result =
+				operation === 'chat'
+					? collect(
+							service.executeForChat({
+								agentId,
+								projectId,
+								message: 'hello',
+								user,
+								memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+							}),
+						)
+					: service.executeForWake({
+							backgroundJobSignal,
+							agentId,
+							projectId,
+							message: 'Wake',
+							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+							identity: { type: 'draft', user, principalHash: userPrincipalHash },
+							abortSignal: new AbortController().signal,
+						});
+
+			await expect(result).rejects.toThrow('Session not found');
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		},
+	);
+
 	it('adds full tool configuration to preview approval payloads only', async () => {
 		const { service, runtimeCacheService } = makeService();
 		const approvalChunk: StreamChunk = {
@@ -2102,6 +2134,38 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+	});
+
+	it('rejects a private thread on the project checkpoint path', async () => {
+		const { service, checkpointStorage, executionService, runtimeCacheService } = makeService();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				persistence: { threadId: 'thread-1', resourceId: 'task:task-1' },
+			},
+		} as never);
+		executionService.findThreadById.mockResolvedValue({
+			projectId,
+			agentId,
+			accessScope: 'user',
+			ownerId: userId,
+		} as never);
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { approved: true },
+					usePublishedVersion: true,
+					integrationType: 'task',
+				}),
+			),
+		).rejects.toThrow('does not belong to this chat');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 	});
 
 	it.each([false, true])(

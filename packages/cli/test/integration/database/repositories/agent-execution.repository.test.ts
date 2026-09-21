@@ -819,7 +819,7 @@ describe('AgentExecutionRepository', () => {
 		).toHaveLength(1);
 		await expect(
 			executionService.getThreadDetail(thread.id, projectId, agentId, other.id),
-		).rejects.toThrow('not found');
+		).resolves.toBeNull();
 		expect(await executionService.deleteThread(projectId, agentId, thread.id, other.id)).toBe(
 			false,
 		);
