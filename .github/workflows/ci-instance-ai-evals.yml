@@ -1,9 +1,14 @@
 name: 'Instance AI Evals: PR Gate'
-run-name: "${{ github.event_name == 'workflow_dispatch' && format('Instance AI Evals: PR #{0} (tier={1})', inputs.pr, inputs.tier || 'auto') || '' }}"
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Instance AI Evals: PR #{0} (tier={1})', inputs.pr, inputs.tier || 'pr') || '' }}"
 
 # The PR gate for Instance AI workflow and Agent evals. Auto-runs on PR open/reopen/ready
 # (non-draft, non-fork, path-filtered); manual dispatch re-runs a specific PR
 # and posts results back. Pushes don't re-trigger (no `synchronize`).
+#
+# Every run uses the `pr` tier: a hand-picked set of stable cases. A PR that
+# touches the Agent Builder sub-agent runs the `pr`-tagged cases of the
+# LangTracer `agents` suite; every other PR runs the `pr`-tagged cases of
+# `baseline`. Full suites belong to the nightly LangTracer runs, never here.
 #
 # This workflow is deliberately NOT the experimentation surface. For baselines,
 # model experiments, or arbitrary branch runs, dispatch test-evals-instance-ai.yml
@@ -28,7 +33,7 @@ on:
         description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back. For branch/experiment runs use "Instance AI Evals: Experiments" instead.'
         required: true
       tier:
-        description: 'Test-case dataset for the re-run. Empty = `agents` for Agent Builder changes or `pr` otherwise.'
+        description: 'Test-case dataset for the re-run. Empty = `pr`.'
         required: false
         default: ''
 
@@ -116,14 +121,13 @@ jobs:
             exit 1
           fi
 
+          # Agent Builder sub-agent paths pick the `agents` suite. The rest of the
+          # agents module (runtime, channels, sessions) is not exercised by the
+          # builder cases, so it stays on `baseline`.
           changed_files=$(gh api --paginate "repos/$REPO/pulls/$pr_number/files" --jq '.[].filename')
           suite=baseline
-          if grep -q '^packages/cli/src/modules/agents/' <<< "$changed_files"; then
+          if grep -qE '^(packages/cli/src/modules/agents/(builder|json-config|adapters)/|packages/cli/src/modules/agents/instance-ai-builder-delegate\.adapter\.ts$|packages/@n8n/instance-ai/skills/agent-builder/)' <<< "$changed_files"; then
             suite=agents
-            if [ -n "$INPUT_TIER" ] && [ "$INPUT_TIER" != "agents" ]; then
-              echo "::notice::Agent Builder changes always run the agents tier. Ignoring tier '$INPUT_TIER'."
-            fi
-            tier=agents
           fi
           {
             echo "branch=$branch"
