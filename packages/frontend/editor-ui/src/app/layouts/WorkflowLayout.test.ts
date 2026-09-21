@@ -71,7 +71,7 @@ const defaultStubs = {
 	AppHeader: {
 		props: ['forceFullHeader'],
 		template:
-			'<div data-test-id="app-header" :data-force-full-header="forceFullHeader">App Header</div>',
+			'<div data-test-id="app-header" :data-force-full-header="forceFullHeader">App Header<div data-test-id="workflow-breadcrumbs">My workflow</div><button data-test-id="publish-actions">Publish</button><nav data-test-id="editor-navigation">Editor Executions Evaluations</nav></div>',
 	},
 	AppSidebar: {
 		template: '<div data-test-id="app-sidebar">App Sidebar</div>',
@@ -176,29 +176,60 @@ describe('WorkflowLayout', () => {
 		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});
 
-	it('should preserve the full editor header on an OEM prototype', () => {
+	it('should place the API-305 warning directly before the canvas without editor chrome', () => {
 		mockRoute.params.ticket = 'API-305';
 		mockRoute.meta.oemPrototype = true;
 		useSettingsStore().settings.canvasOnly = true;
 
 		const { getByTestId, getByText, queryByTestId } = renderComponent();
 
+		const prototypeHeader = getByTestId('oem-prototype-header');
 		const topBar = getByTestId('oem-prototype-top-bar');
 		const warning = getByTestId('oem-prototype-warning');
-		const appHeader = getByTestId('app-header');
+		const canvasArea = getByTestId('oem-prototype-canvas-area');
 
 		expect(topBar.compareDocumentPosition(warning)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-		expect(warning.compareDocumentPosition(appHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-		expect(appHeader).toHaveAttribute('data-force-full-header');
+		expect(prototypeHeader.lastElementChild).toBe(warning);
+		expect(warning.compareDocumentPosition(canvasArea)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(queryByTestId('app-header')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-breadcrumbs')).not.toBeInTheDocument();
+		expect(queryByTestId('publish-actions')).not.toBeInTheDocument();
+		expect(queryByTestId('editor-navigation')).not.toBeInTheDocument();
 		expect(queryByTestId('app-sidebar')).not.toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should omit editor chrome on the API-317 canvas-only prototype', () => {
+		mockRoute.params.ticket = 'API-317';
+		mockRoute.meta.oemPrototype = true;
+		useSettingsStore().settings.canvasOnly = true;
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(getByTestId('oem-prototype-top-bar')).toBeInTheDocument();
+		expect(getByTestId('oem-prototype-canvas-area')).toBeInTheDocument();
+		expect(queryByTestId('oem-prototype-warning')).not.toBeInTheDocument();
+		expect(queryByTestId('app-header')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-breadcrumbs')).not.toBeInTheDocument();
+		expect(queryByTestId('publish-actions')).not.toBeInTheDocument();
+		expect(queryByTestId('editor-navigation')).not.toBeInTheDocument();
+	});
+
+	it('should keep the editor header on a non-canvas-only OEM prototype', () => {
+		mockRoute.params.ticket = 'API-317';
+		mockRoute.meta.oemPrototype = true;
+		useSettingsStore().settings.canvasOnly = false;
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('app-header')).toBeInTheDocument();
 	});
 
 	it('should wrap AppHeader in Suspense', () => {
 		const { getByTestId } = renderComponent();
 		const appHeader = getByTestId('app-header');
 		expect(appHeader).toBeInTheDocument();
-		expect(appHeader.textContent).toBe('App Header');
+		expect(appHeader).toHaveTextContent('App Header');
 	});
 
 	it('should wrap AppSidebar in Suspense', () => {

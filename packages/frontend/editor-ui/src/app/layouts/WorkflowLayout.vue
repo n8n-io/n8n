@@ -94,10 +94,14 @@ onBeforeUnmount(() => {
 <template>
 	<BaseLayout>
 		<template #header>
-			<div v-if="isOemPrototype" :class="$style.prototypeHeader">
+			<div
+				v-if="isOemPrototype"
+				:class="$style.prototypeHeader"
+				data-test-id="oem-prototype-header"
+			>
 				<OemPrototypeTopBar />
 				<OemPrototypeWarning v-if="oemPrototypeTicket === 'API-305'" />
-				<AppHeader force-full-header />
+				<AppHeader v-if="!isCanvasOnly" />
 			</div>
 			<AppHeader v-else />
 		</template>
@@ -110,7 +114,7 @@ onBeforeUnmount(() => {
 		Exclude the onboarding route: it renders a redirect-only view that never provides a
 		document store and must mount so its onMounted redirect can fire. -->
 		<div v-if="isOemPrototype" :class="$style.prototype">
-			<div :class="$style.prototypeCanvas">
+			<div :class="$style.prototypeCanvas" data-test-id="oem-prototype-canvas-area">
 				<LoadingView v-if="isLoading || (!currentWorkflowDocumentStore && !isOnboardingRoute)" />
 				<RouterView v-else />
 			</div>
