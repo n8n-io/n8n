@@ -40,7 +40,6 @@ const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
 
 const roleCacheService = mockInstance(RoleCacheService);
-roleCacheService.invalidateCache.mockResolvedValue(undefined);
 roleCacheService.refreshCache.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
@@ -208,17 +207,6 @@ describe('Start - AuthRolesService initialization', () => {
 			);
 		});
 
-		it('should invalidate the role cache after the auth roles sync', async () => {
-			setupInstanceSettings('main', false, false);
-
-			await start.init();
-
-			expect(roleCacheService.invalidateCache).toHaveBeenCalledTimes(1);
-			expect(authRolesService.init.mock.invocationCallOrder[0]).toBeLessThan(
-				roleCacheService.invalidateCache.mock.invocationCallOrder[0],
-			);
-		});
-
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
 			setupInstanceSettings('main', true, true);
 			// @ts-expect-error - Accessing protected property for testing
@@ -255,7 +243,6 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(authRolesService.init).not.toHaveBeenCalled();
 			expect(roleCacheService.refreshCache).not.toHaveBeenCalled();
-			expect(roleCacheService.invalidateCache).not.toHaveBeenCalled();
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader (advisory lock serializes)', async () => {
