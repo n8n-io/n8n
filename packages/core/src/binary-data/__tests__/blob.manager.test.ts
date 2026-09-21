@@ -201,11 +201,11 @@ describe('deletion', () => {
 		expect(prefixStore.deletePrefix).toHaveBeenLastCalledWith(
 			`workflows/${workflowId}/executions/1000/binary_data`,
 		);
-		expect(errorReporter.warn).toHaveBeenCalledWith('Could not delete binary data dir', {
-			extra: {
-				prefix: `workflows/${workflowId}/executions/${executionId}/binary_data`,
-				error: failure,
-			},
-		});
+		expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+		const reported = vi.mocked(errorReporter.warn).mock.calls[0][0] as Error;
+		expect(reported.message).toContain(
+			`workflows/${workflowId}/executions/${executionId}/binary_data`,
+		);
+		expect(reported.cause).toBe(failure);
 	});
 });

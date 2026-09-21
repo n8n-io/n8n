@@ -1,5 +1,5 @@
 import type { ByteStore } from '@n8n/blob-storage';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
@@ -199,13 +199,15 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 			prefixes.map(async (prefix) => await deletePrefix(prefix)),
 		);
 
-		// One unremovable dir must not abort the rest of the deletion, which would
-		// leave the other prefixes on disk with their execution rows already gone.
+		// Report an unremovable dir instead of throwing: callers delete in batches, and
+		// a throw would abandon every later batch.
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
-				this.errorReporter.warn('Could not delete binary data dir', {
-					extra: { prefix: prefixes[index], error: result.reason },
-				});
+				this.errorReporter.warn(
+					new OperationalError(`Could not delete binary data dir ${prefixes[index]}`, {
+						cause: result.reason,
+					}),
+				);
 			}
 		});
 	}
