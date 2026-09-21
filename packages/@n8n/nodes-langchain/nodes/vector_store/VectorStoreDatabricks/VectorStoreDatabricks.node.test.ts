@@ -60,7 +60,7 @@ const indexInfo = {
 	name: 'cat.sch.idx',
 	primaryKey: 'id',
 	indexType: 'DELTA_SYNC' as const,
-	embeddingSourceColumn: 'text',
+	embedding: { kind: 'managed' as const, sourceColumn: 'text' },
 	schemaColumns: ['id', 'text', 'source'],
 };
 
@@ -404,7 +404,7 @@ describe('VectorStoreDatabricks', () => {
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DELTA_SYNC',
-				embeddingSourceColumn: 'text',
+				embedding: { kind: 'managed', sourceColumn: 'text' },
 				schemaColumns: ['id', 'text', 'source'],
 			});
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
@@ -431,7 +431,7 @@ describe('VectorStoreDatabricks', () => {
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DIRECT_ACCESS',
-				vectorColumn: 'embedding',
+				embedding: { kind: 'self', vectorColumn: 'embedding' },
 				schemaColumns: ['id', 'text', 'embedding'],
 			});
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
@@ -447,7 +447,7 @@ describe('VectorStoreDatabricks', () => {
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DELTA_SYNC',
-				vectorColumn: 'embedding',
+				embedding: { kind: 'self', vectorColumn: 'embedding' },
 			});
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
 

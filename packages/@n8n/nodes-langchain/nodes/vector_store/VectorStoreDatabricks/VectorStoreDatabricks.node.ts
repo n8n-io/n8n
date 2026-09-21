@@ -279,9 +279,11 @@ async function getIndexColumns(this: ILoadOptionsFunctions): Promise<INodeProper
 
 	const { fetch, host } = await databricksFetch(this);
 	const info = await DatabricksVectorStore.describeIndex(fetch, host, indexName);
-	const source = info.embeddingSourceColumn;
+	const { embedding } = info;
+	const source = embedding.kind === 'managed' ? embedding.sourceColumn : undefined;
+	const vector = embedding.kind === 'self' ? embedding.vectorColumn : undefined;
 	const columns = (info.schemaColumns ?? [])
-		.filter((column) => column !== source && column !== info.vectorColumn)
+		.filter((column) => column !== source && column !== vector)
 		.map((column) => ({ name: column, value: column }));
 	return source
 		? [{ name: source, value: source, description: 'Embedding source column' }, ...columns]
