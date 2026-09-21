@@ -36,10 +36,16 @@ export type MicrosoftGraphCredentialType<TDefault extends string> =
 	| 'microsoftOAuth2Api'
 	| typeof SERVICE_PRINCIPAL_AUTH;
 
+/**
+ * Both `endpoint` (Graph path tail) and `match` must hit, so a permission Graph echoes
+ * under "Roles on the request" for another endpoint keeps the generic copy.
+ */
 export interface MicrosoftGraphForbiddenHint {
+	endpoint: string;
 	match: string;
 	message: string;
 	description: string;
+	delegated?: { message: string; description: string };
 }
 
 function wrappedGraphText(error: unknown): string {
@@ -174,8 +180,8 @@ export function rewriteNotFound(
  * Known SharePoint v2 deltas to fold in via factory config (not per-node forks)
  * when it adopts the kernel: injectable static messages (UserTargetMessages
  * pattern in nodes/Microsoft/GenericFunctions.ts), operation-keyed 403 permission
- * naming on both auth branches (`forbiddenHints` is text-keyed and app-only, so it
- * does not cover it), the non-403 safe-message allowlist, per-page headers and a
+ * naming (`forbiddenHints` keys on the Graph endpoint tail plus text, not on the node
+ * operation), the non-403 safe-message allowlist, per-page headers and a
  * negative-limit guard on `microsoftApiRequestAllItems`.
  */
 export function createMicrosoftGraphTransport<TDefault extends string>(config: {
@@ -188,6 +194,12 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 		// Fail at module load so a misconfigured facade can never ship.
 		throw new UnexpectedError(
 			'createMicrosoftGraphTransport: defaultCredentialType must be a delegated OAuth2 credential, not the Service Principal credential',
+		);
+	}
+
+	function findForbiddenHint(resource: string, graphText: string) {
+		return forbiddenHints.find(
+			(hint) => resource.endsWith(hint.endpoint) && graphText.includes(hint.match),
 		);
 	}
 
@@ -318,9 +330,8 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 				// `requestWithAuthentication` wraps the underlying request error in a
 				// `NodeApiError`, which exposes the HTTP status on `httpCode` (a string) — NOT
 				// on `statusCode` / `error.error.statusCode`. Read `httpCode` first; fall back
-				// to `statusCode` for the rare raw-error case. The Graph body/code is not
-				// reliably accessible on the wrapped error, so key the NotFound rewrite off the
-				// numeric 404 rather than the Graph `code`.
+				// to `statusCode` for the rare raw-error case. The Graph text survives on
+				// `description` / `messages` (see `wrappedGraphText`); only the 403 hints read it.
 				const rawCode = error?.httpCode ?? error?.statusCode;
 				const httpCode: number | undefined =
 					rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
@@ -339,8 +350,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					message =
 						'This operation requires a metered Microsoft Teams API to be enabled on the tenant.';
 				} else if (httpCode === 403) {
-					const graphText = wrappedGraphText(error);
-					const hint = forbiddenHints.find((candidate) => graphText.includes(candidate.match));
+					const hint = findForbiddenHint(resource, wrappedGraphText(error));
 					message =
 						hint?.message ??
 						'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
@@ -376,6 +386,13 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					const nodeResource = nodeResourceName.call(this);
 					if (nodeResource) {
 						errorOptions.message = `${nodeResource} not found`;
+					}
+				} else if (httpCode === 403) {
+					const hint = findForbiddenHint(resource, String(error.message ?? ''));
+					if (hint) {
+						const copy = hint.delegated ?? hint;
+						errorOptions.message = copy.message;
+						errorOptions.description = copy.description;
 					}
 				}
 			}

@@ -130,11 +130,10 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 	it.each([
 		'https://example.com/l/chat/0/0',
 		'http://teams.microsoft.com/l/chat/0/0',
-		'https://teams.microsoft.com/chat/0/0',
 		'https://teams.microsoft.com.evil.example/l/chat/0/0',
 		'msteams://l/chat/0/0',
 		'not a url',
-	])('rejects a link that is not a Teams deep link (%s) before any request', async (topicLink) => {
+	])('rejects a link that is not a Teams link (%s) before any request', async (topicLink) => {
 		await expect(run({ topicLink })).rejects.toThrow(
 			'The Topic Link must be a Microsoft Teams link',
 		);
@@ -144,11 +143,13 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 	it.each([
 		'https://teams.microsoft.com/l/chat/0/0?users=a@b.com',
 		'https://TEAMS.MICROSOFT.COM/l/team/x',
+		'https://teams.microsoft.com/meet/9385287521937?p=Zg8SUJqhrJ4gO3ZT1v',
+		'https://teams.microsoft.com/_#/conversations/19:abc@thread.tacv2?ctx=channel',
 		'https://teams.cloud.microsoft/l/chat/0/0',
 		'https://gov.teams.microsoft.us/l/chat/0/0',
 		'https://dod.teams.microsoft.us/l/chat/0/0',
 		'https://teams.microsoftonline.cn/l/chat/0/0',
-	])('accepts the Teams deep link %s', async (topicLink) => {
+	])('accepts the Teams link %s', async (topicLink) => {
 		await run({ topicLink });
 
 		expect(request).toHaveBeenCalledTimes(1);

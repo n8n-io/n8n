@@ -44,14 +44,6 @@ export {
 	microsoftApiRequestAllItems,
 };
 
-export {
-	ACTIVITY_NOTIFICATION_SETUP_URL,
-	ACTIVITY_PERMISSION_FORBIDDEN_APP_ONLY,
-	ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED,
-	ACTIVITY_PERMISSION_MATCH,
-	COMPANION_APP_FORBIDDEN,
-} from './forbiddenHints';
-
 /**
  * App-only Microsoft Graph has no `/me`, so the joined-teams listing is fetched
  * from the org-wide `/v1.0/teams` endpoint under the Service Principal credential

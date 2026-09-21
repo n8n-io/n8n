@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as send from './send.operation';
-import { ACTIVITY_NOTIFICATION_SETUP_URL } from '../../transport';
+import { ACTIVITY_NOTIFICATION_SETUP_URL } from '../../transport/forbiddenHints';
 
 export { send };
 

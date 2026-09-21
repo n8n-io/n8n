@@ -2,7 +2,8 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { versionDescription } from '../../v2/actions/versionDescription';
-import { ACTIVITY_NOTIFICATION_SETUP_URL, SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
+import { SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
+import { ACTIVITY_NOTIFICATION_SETUP_URL } from '../../v2/transport/forbiddenHints';
 
 const actionProps = versionDescription.properties;
 const triggerProps = new MicrosoftTeamsTrigger().description.properties;

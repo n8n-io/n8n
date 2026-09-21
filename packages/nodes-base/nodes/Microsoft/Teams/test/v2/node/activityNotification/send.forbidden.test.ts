@@ -12,7 +12,15 @@ const companionAppMissing = (recipient: string) => ({
 	},
 });
 
-const permissionMissing = {
+const scopeMissing = {
+	error: {
+		code: 'Forbidden',
+		message:
+			"Missing scope permissions on the request. API requires one of 'TeamsActivity.Send'. Scopes on the request 'Chat.ReadWrite, ChannelMessage.Send, User.Read, offline_access'.",
+	},
+};
+
+const roleMissing = {
 	error: {
 		code: 'Forbidden',
 		message:
@@ -25,11 +33,11 @@ describe('Test MicrosoftTeamsV2, activityNotification => send (Graph 403 causes)
 		.post(path('aaaaaaaa-0000-0000-0000-000000000001'))
 		.reply(403, companionAppMissing('aaaaaaaa-0000-0000-0000-000000000001'))
 		.post(path('aaaaaaaa-0000-0000-0000-000000000002'))
-		.reply(403, permissionMissing)
+		.reply(403, scopeMissing)
 		.post(path('aaaaaaaa-0000-0000-0000-000000000003'))
 		.reply(403, companionAppMissing('aaaaaaaa-0000-0000-0000-000000000003'))
 		.post(path('aaaaaaaa-0000-0000-0000-000000000004'))
-		.reply(403, permissionMissing);
+		.reply(403, roleMissing);
 
 	new NodeTestHarness().setupTests({
 		credentials,

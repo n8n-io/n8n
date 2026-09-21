@@ -2,9 +2,10 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { chainId, recipientPath, requiredText, rewriteSendError, topicLink } from './shared';
+import { chainId, RECIPIENT_NOT_FOUND, recipientPath, topicLink } from './shared';
 import { userRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import { requiredText } from '../../helpers/parameters';
+import { microsoftApiRequest, rewriteNotFound } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -50,7 +51,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		placeholder: 'e.g. https://teams.microsoft.com/l/chat/0/0?users=someone@contoso.com',
 		description:
-			'The Microsoft Teams link that opens when the user selects the notification. It must be an https link on a Microsoft Teams domain with a path that starts with /l/, for example a chat, channel, or meeting deep link. Microsoft Graph rejects links to n8n or to other websites.',
+			'The Microsoft Teams link that opens when the user selects the notification. It must be an https link on a Microsoft Teams domain, for example a chat, channel, message, or meeting link. Microsoft Graph rejects links to n8n or to other websites.',
 	},
 	{
 		displayName: 'Options',
@@ -103,6 +104,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		await microsoftApiRequest.call(this, 'POST', endpoint, body);
 		return { success: true };
 	} catch (error) {
-		throw rewriteSendError.call(this, error, i);
+		throw rewriteNotFound.call(
+			this,
+			error,
+			RECIPIENT_NOT_FOUND.message,
+			RECIPIENT_NOT_FOUND.description,
+		);
 	}
 }

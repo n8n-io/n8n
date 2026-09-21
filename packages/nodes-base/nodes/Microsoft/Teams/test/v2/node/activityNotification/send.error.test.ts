@@ -11,18 +11,24 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { createExecuteContext, setParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
+import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../../../../v2/transport';
 import {
-	ACTIVITY_PERMISSION_FORBIDDEN_APP_ONLY,
-	ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED,
+	ACTIVITY_PERMISSION_FORBIDDEN,
 	COMPANION_APP_FORBIDDEN,
-	SERVICE_PRINCIPAL_AUTH,
-} from '../../../../v2/transport';
+} from '../../../../v2/transport/forbiddenHints';
 
 const RECIPIENT = '11111111-2222-3333-4444-555555555555';
 const LEAK = 'request-id: 99999999-8888-7777-6666-555555555555; token=secret';
 const COMPANION_TEXT = `Application with AAD App Id '22222222-2222-2222-2222-222222222222' is not authorized to generate custom text notifications about '/users/${RECIPIENT}/teamwork/sendActivityNotification' to the recipient. Ensure that the expected Teams app is installed in the target scope (user, team, or chat).`;
-const PERMISSION_TEXT =
+const SCOPE_PERMISSION_TEXT =
+	"Missing scope permissions on the request. API requires one of 'TeamsActivity.Send'. Scopes on the request 'Chat.ReadWrite, ChannelMessage.Send, User.Read, offline_access'.";
+const ROLE_PERMISSION_TEXT =
 	"Missing role permissions on the request. API requires one of 'TeamsActivity.Send, TeamsActivity.Send.User'. Roles on the request ''. Resource specific consent grants on the request ''.";
+const CHANNELS_ROLE_TEXT =
+	"Missing role permissions on the request. API requires one of 'Channel.ReadBasic.All, ChannelSettings.Read.All, ChannelSettings.ReadWrite.All'. Roles on the request 'TeamsActivity.Send, User.Read.All'. Resource specific consent grants on the request ''.";
+const CHANNELS_SCOPE_TEXT =
+	"Missing scope permissions on the request. API requires one of 'Channel.ReadBasic.All, ChannelSettings.Read.All, ChannelSettings.ReadWrite.All'. Scopes on the request 'TeamsActivity.Send, User.Read, offline_access'.";
+const CHANNELS_PATH = '/v1.0/teams/11111111-2222-3333-4444-555555555555/channels';
 const OTHER_TEXT = 'Insufficient privileges to complete the operation.';
 const GENERIC_APP_ONLY_403 =
 	'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
@@ -105,14 +111,27 @@ describe('Microsoft Teams V2 - activityNotification:send error surfacing', () =>
 			});
 
 			it('maps the missing-permission 403 to the reconnect message', async () => {
-				requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', PERMISSION_TEXT));
+				requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', SCOPE_PERMISSION_TEXT));
 
 				const error = await executeAndCatch();
 
 				expect(error).toBeInstanceOf(NodeApiError);
-				expect(error.message).toBe(ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED.message);
-				expect(error.description).toBe(ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED.description);
-				expect(error.messages.join(' ')).toContain(PERMISSION_TEXT);
+				expect((error as NodeApiError).httpCode).toBe('403');
+				expect(error.message).toBe(ACTIVITY_PERMISSION_FORBIDDEN.delegated.message);
+				expect(error.description).toBe(ACTIVITY_PERMISSION_FORBIDDEN.delegated.description);
+				expect(error.messages.join(' ')).toContain(SCOPE_PERMISSION_TEXT);
+				expect(error.context.itemIndex).toBe(0);
+			});
+
+			it('keeps the Graph text when another endpoint names TeamsActivity.Send in its 403', async () => {
+				requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', CHANNELS_SCOPE_TEXT));
+
+				const error = (await microsoftApiRequest
+					.call(ctx, 'GET', CHANNELS_PATH)
+					.catch((e: unknown) => e)) as NodeApiError;
+
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.message).toBe(CHANNELS_SCOPE_TEXT);
 			});
 
 			it('keeps any other 403 text unchanged', async () => {
@@ -197,12 +216,24 @@ describe('Microsoft Teams V2 - activityNotification:send error surfacing', () =>
 		});
 
 		it('maps the missing-permission 403 to the application-permission message', async () => {
-			requestWithAuthentication.mockRejectedValue(wrapped(403, 'Forbidden', PERMISSION_TEXT));
+			requestWithAuthentication.mockRejectedValue(wrapped(403, 'Forbidden', ROLE_PERMISSION_TEXT));
 
 			const error = await executeAndCatch();
 
-			expect(error.message).toBe(ACTIVITY_PERMISSION_FORBIDDEN_APP_ONLY.message);
-			expect(error.description).toBe(ACTIVITY_PERMISSION_FORBIDDEN_APP_ONLY.description);
+			expect(error.message).toBe(ACTIVITY_PERMISSION_FORBIDDEN.message);
+			expect(error.description).toBe(ACTIVITY_PERMISSION_FORBIDDEN.description);
+			expect(error.context.itemIndex).toBe(0);
+		});
+
+		it('keeps the generic app-only 403 when another endpoint lists TeamsActivity.Send among the granted roles', async () => {
+			requestWithAuthentication.mockRejectedValue(wrapped(403, 'Forbidden', CHANNELS_ROLE_TEXT));
+
+			const error = (await microsoftApiRequest
+				.call(ctx, 'GET', CHANNELS_PATH)
+				.catch((e: unknown) => e)) as NodeApiError;
+
+			expect(error.message).toBe(GENERIC_APP_ONLY_403);
+			expect(error.description).toBeUndefined();
 		});
 
 		it('keeps the generic app-only 403 message for any other text', async () => {
