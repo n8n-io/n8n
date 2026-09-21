@@ -67,15 +67,6 @@ The `$evaluateExpression()` helper was removed from the Code node. A Code node t
 ### When is action necessary?
 
 If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
-
-### What changed?
-
-The "Any workflow" caller policy (`any`) was removed. Calls to a sub-workflow that still stores this value fail until you select a supported policy in the workflow settings. If you set `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION=any`, n8n logs a warning and uses the default value (`workflowsFromSameOwner`). The public API rejects `any` as a value for `settings.callerPolicy`.
-
-### When is action necessary?
-
-If any of your workflows store the "Any workflow" caller policy. Open the workflow settings and select a supported policy, or list the allowed callers with the `workflowsFromAList` policy. The migration report on version 2 lists every affected workflow.
-
 # 2.0.0
 
 ### What changed?

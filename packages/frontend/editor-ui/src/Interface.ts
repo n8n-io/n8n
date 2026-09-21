@@ -458,6 +458,8 @@ export interface IUserPermissions {
 	};
 }
 
+export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
+
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
 	timezone?: string;
