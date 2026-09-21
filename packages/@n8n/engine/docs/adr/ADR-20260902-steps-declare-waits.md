@@ -154,10 +154,15 @@ into a different step type.
   a contract for node authors. A later and separate decision can make it one.
 - The graph does not mark a step as a wait. The engine learns about a wait only
   when the step runs. Therefore the engine cannot make start-time checks that
-  need this knowledge. For example, it cannot refuse a wait in lightweight mode
-  without a hint from the converter.
+  need this knowledge. For example, it cannot refuse a wait in a mode that
+  cannot hold one, such as a lightweight mode that keeps the step state in
+  memory. To refuse one, the converter must mark the step, and what that mark
+  looks like is a later decision. Nothing needs it until a mode that cannot
+  hold a wait exists.
 - A waiting step does not settle. The completion count must treat the step as
-  expected but not yet settled.
+  expected but not yet settled, or the execution finishes while a step still
+  owes an outcome. The planning rules read the same status, so a waiting step
+  counted as settled would also let the steps behind it run.
 - The step row holds the resume payload. The payload gets the same size
   handling as the step outputs.
 - A resolve request can arrive before the engine records the suspension. The
@@ -165,9 +170,9 @@ into a different step type.
 - A time wait under 65 seconds does not reach the engine. The Wait node sleeps
   in the process for those waits and then returns normally. The shim runs that
   node code unchanged, so the engine never sees a declaration. Node-level
-  waiting stays node behaviour. The floor applies to the `timeInterval` and
-  `specificTime` modes only. A `webhook` wait and a `form` wait return earlier
-  in the node, and no floor applies to them.
+  waiting stays node behaviour. That 65-second minimum is the floor, and it
+  applies to the `timeInterval` and `specificTime` modes only. A `webhook` wait
+  and a `form` wait return earlier in the node, and no floor applies to them.
 - A wait with a `limitWaitTime` can fire up to one sweep interval after its
   limit. That parameter has no minimum. The limit can therefore fall due before
   the next pass of the sweep, and the sweep finds it on that pass. Every other
@@ -185,8 +190,10 @@ into a different step type.
   executions list and its filters continue to work. An execution with one
   waiting branch and one running branch reports `running`.
 - A wait can outlive the control-plane state that it started with. A user can
-  move the workflow, unshare a credential, or remove access. The resume path
-  reads no control-plane state, so it cannot detect these changes. Whether a
+  move the workflow, unshare a credential, or remove access. The unshared
+  credential matters once a resumed step can use one, which is CAT-2880. The
+  resume path reads no control-plane state, so it cannot detect these changes.
+  Whether a
   resume must fail for these reasons is a product decision. To apply that
   decision, the engine needs a cross-plane check. This design has no such
   check.
@@ -194,12 +201,14 @@ into a different step type.
   execution looks the same as a finished one. If the engine prunes a paused
   execution, it destroys a workflow run.
 - The `specificTime` mode of the Wait node resolves its target time in the
-  timezone of the workflow. The shim does not receive that timezone, so the mode
-  resolves the time in the default timezone. This does not affect durations. The
-  execution row now holds a workflow snapshot
-  (ADR-20260904-store-the-workflow-with-the-execution), so the data is in the
-  data plane. The gap closes when the executor request carries the settings from
-  that snapshot.
+  timezone of the workflow. The node converts it and hands over an absolute
+  instant, so nothing in the data plane converts a time. The shim does not give
+  the node the workflow's timezone, so the node falls back to the default one,
+  and the instant it produces is wrong by that offset. Durations are not
+  affected. The execution row now holds a workflow snapshot
+  (ADR-20260904-store-the-workflow-with-the-execution), so the timezone is
+  already in the data plane. The gap closes when the executor request carries
+  the settings from that snapshot.
 
 ## Links
 
