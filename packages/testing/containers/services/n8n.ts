@@ -83,6 +83,11 @@ export interface N8NInstancesOptions {
 	userEnvironment?: Record<string, string>;
 	usePostgres: boolean;
 	engine?: EngineMode;
+	/**
+	 * In `container` engine mode, do not start an engine: one from an earlier
+	 * call is still running. `replaceN8N` sets this when it swaps the main.
+	 */
+	reuseEngine?: boolean;
 	baseUrl?: string;
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -154,7 +159,7 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	const engineEnvironment =
 		engine === 'container' ? engineContainerEnv(env, { projectName }) : undefined;
 
-	applyEngineEnv(env, { engine, isQueueMode, projectName });
+	applyEngineEnv(env, { engine, mains, isQueueMode, projectName });
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -385,6 +390,7 @@ export async function createN8NInstances(
 		user,
 		startupTimeoutMs,
 		engine,
+		reuseEngine = false,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -484,7 +490,7 @@ export async function createN8NInstances(
 				instanceNumber: i + 1,
 			}),
 		),
-		...(engine === 'container'
+		...(engine === 'container' && !reuseEngine
 			? [
 					{
 						name: engineHostname(projectName),
