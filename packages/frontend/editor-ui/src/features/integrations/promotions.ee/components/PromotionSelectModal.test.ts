@@ -5,6 +5,7 @@ import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, Response, type Request } from 'miragejs';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
@@ -326,7 +327,7 @@ describe('PromotionSelectModal', () => {
 			expect(applyPackage).not.toHaveBeenCalled();
 		});
 
-		it('should apply the branch, report the counts and refetch the changes', async () => {
+		it('should apply the branch, report the counts and close the modal', async () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
@@ -345,7 +346,11 @@ describe('PromotionSelectModal', () => {
 					}),
 				),
 			);
-			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+			await waitFor(() =>
+				expect(useUIStore().closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY),
+			);
+			// A closed modal has no list to refresh.
+			expect(applyChanges).toHaveBeenCalledTimes(1);
 		});
 
 		it('should warn instead of reporting counts when apply pauses on bindings', async () => {
@@ -368,6 +373,7 @@ describe('PromotionSelectModal', () => {
 			);
 			expect(showMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+			expect(useUIStore().closeModal).not.toHaveBeenCalled();
 		});
 
 		it('should show the error and still refetch the changes when apply fails', async () => {

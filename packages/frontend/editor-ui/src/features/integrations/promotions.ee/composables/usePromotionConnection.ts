@@ -1,8 +1,11 @@
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchPromotionConnections, type PromotionConnection } from '../promotionsSettings.api';
+import {
+	fetchPromotionConnections,
+	type PromotionConnectionSummary,
+} from '../promotionsSettings.api';
 
-let instanceConnection: Promise<PromotionConnection | null> | undefined;
+let instanceConnection: Promise<PromotionConnectionSummary | null> | undefined;
 
 export function invalidatePromotionConnection() {
 	instanceConnection = undefined;
@@ -11,7 +14,7 @@ export function invalidatePromotionConnection() {
 /** The instance connection and which directions it has, so callers only ask for those. */
 export function usePromotionConnection() {
 	const rootStore = useRootStore();
-	const connection = ref<PromotionConnection | null>(null);
+	const connection = ref<PromotionConnectionSummary | null>(null);
 
 	async function load() {
 		instanceConnection ??= fetchPromotionConnections(rootStore.publicApiContext, {

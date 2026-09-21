@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -22,20 +22,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { PROMOTION_SELECT_MODAL_KEY } from '@/features/integrations/promotions.ee/promotions.constants';
-import { usePromotionConnection } from '@/features/integrations/promotions.ee/composables/usePromotionConnection';
-import { usePromotionChangeCount } from '@/features/integrations/promotions.ee/composables/usePromotionChangeCount';
+import PromotionBanners from '@/features/integrations/promotions.ee/components/PromotionBanners.vue';
 
-import {
-	N8nButton,
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
@@ -53,39 +42,10 @@ const telemetry = useTelemetry();
 const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
-const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 
 const currentProjectId = computed(() => projectsStore.currentProject?.id);
 
 const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
-
-// Each banner needs the direction configured on the instance connection, so a
-// source never asks for incoming changes and a destination never asks for outgoing ones.
-const {
-	connection: promotionConnection,
-	hasPromoteConfig,
-	hasApplyConfig,
-	load: loadPromotionConnection,
-} = usePromotionConnection();
-const gitConnectionPermissions = computed(
-	() => getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection,
-);
-// Reading the instance connection needs the list scope on top of the direction scope.
-const canPreviewChanges = computed(
-	() =>
-		isTeamProject.value &&
-		isPromotionsEnabled.value &&
-		!!projectPermissions.value.export &&
-		!!gitConnectionPermissions.value.list &&
-		(!!gitConnectionPermissions.value.push || !!gitConnectionPermissions.value.pull),
-);
-const showPromoteBanner = computed(
-	() => canPreviewChanges.value && hasPromoteConfig.value && !!gitConnectionPermissions.value.push,
-);
-// Incoming changes: what applying the branch would change on this instance.
-const showIncomingBanner = computed(
-	() => canPreviewChanges.value && hasApplyConfig.value && !!gitConnectionPermissions.value.pull,
-);
 
 const isProjectFavorited = computed(() =>
 	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
@@ -176,21 +136,21 @@ const showFolders = computed(() => {
 	);
 });
 
-const customProjectTabs = computed((): Array<TabOptions<string>> => {
-	// Determine the type of tab based on the current project page
-	let tabType: 'shared' | 'overview' | 'project';
+const pageType = computed(() => {
 	if (projectPages.isSharedSubPage) {
-		tabType = 'shared';
+		return 'shared';
 	} else if (projectPages.isOverviewSubPage) {
-		tabType = 'overview';
+		return 'overview';
 	} else {
-		tabType = 'project';
+		return 'project';
 	}
+});
+
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
-	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
-		settingsStore.isModuleActive,
-	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	const moduleTabs = uiStore.moduleTabs[pageType.value];
+	const activeModules = Object.keys(moduleTabs).filter(settingsStore.isModuleActive);
+	return activeModules.flatMap((module) => moduleTabs[module]);
 });
 
 const ACTION_TYPES = {
@@ -430,16 +390,6 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 } as const;
 
-const pageType = computed(() => {
-	if (projectPages.isSharedSubPage) {
-		return 'shared';
-	} else if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else {
-		return 'project';
-	}
-});
-
 const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
@@ -502,67 +452,6 @@ const projectDescriptionTruncated = computed(() => {
 	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
-
-watch(
-	canPreviewChanges,
-	async (canPreview) => {
-		if (canPreview) await loadPromotionConnection();
-	},
-	{ immediate: true },
-);
-const { count: promotableChangeCount } = usePromotionChangeCount(
-	currentProjectId,
-	'promote',
-	showPromoteBanner,
-);
-const { count: incomingChangeCount } = usePromotionChangeCount(
-	currentProjectId,
-	'apply',
-	showIncomingBanner,
-);
-
-const promotionBannerText = computed(() => {
-	if (promotableChangeCount.value === 1) {
-		return i18n.baseText('promotions.banner.singleChangeAvailable');
-	}
-	return i18n.baseText('promotions.banner.changesAvailable', {
-		interpolate: { count: String(promotableChangeCount.value) },
-	});
-});
-
-const incomingBannerText = computed(() => {
-	if (incomingChangeCount.value === 1) {
-		return i18n.baseText('promotions.banner.incoming.singleChangeAvailable');
-	}
-	return i18n.baseText('promotions.banner.incoming.changesAvailable', {
-		interpolate: { count: String(incomingChangeCount.value) },
-	});
-});
-
-function onOpenPromotionModal() {
-	if (!currentProjectId.value) return;
-	uiStore.openModalWithData({
-		name: PROMOTION_SELECT_MODAL_KEY,
-		data: { projectId: currentProjectId.value },
-	});
-}
-
-function onOpenIncomingModal() {
-	const applyConfig = promotionConnection.value?.configs.apply;
-	if (!currentProjectId.value || !promotionConnection.value || !applyConfig) return;
-	uiStore.openModalWithData({
-		name: PROMOTION_SELECT_MODAL_KEY,
-		data: {
-			projectId: currentProjectId.value,
-			direction: 'apply',
-			apply: {
-				connectionId: promotionConnection.value.id,
-				configId: applyConfig.id,
-				branchName: applyConfig.settings.branchName,
-			},
-		},
-	});
-}
 
 const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
@@ -645,36 +534,7 @@ const onSelect = (action: string, source: CreateSource) => {
 				:additional-tabs="customProjectTabs"
 			/>
 		</div>
-		<div
-			v-if="showPromoteBanner && promotableChangeCount > 0"
-			:class="$style.promotionBanner"
-			data-test-id="promotion-banner"
-		>
-			<N8nIcon icon="upload" size="small" />
-			<N8nText size="small">
-				{{ promotionBannerText }}
-			</N8nText>
-			<N8nLink size="small" data-test-id="promotion-banner-link" @click="onOpenPromotionModal">
-				{{ i18n.baseText('promotions.banner.viewChanges') }}
-			</N8nLink>
-		</div>
-		<div
-			v-if="showIncomingBanner && incomingChangeCount > 0"
-			:class="$style.promotionBanner"
-			data-test-id="promotion-incoming-banner"
-		>
-			<N8nIcon icon="download" size="small" />
-			<N8nText size="small">
-				{{ incomingBannerText }}
-			</N8nText>
-			<N8nLink
-				size="small"
-				data-test-id="promotion-incoming-banner-link"
-				@click="onOpenIncomingModal"
-			>
-				{{ i18n.baseText('promotions.banner.viewChanges') }}
-			</N8nLink>
-		</div>
+		<PromotionBanners />
 	</div>
 </template>
 
@@ -695,17 +555,6 @@ const onSelect = (action: string, source: CreateSource) => {
 
 .actions {
 	padding: var(--spacing--2xs) 0 var(--spacing--xs);
-}
-
-.promotionBanner {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	background-color: var(--background--hover);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
-	margin-bottom: var(--spacing--xs);
 }
 
 .projectDescriptionWrapper {

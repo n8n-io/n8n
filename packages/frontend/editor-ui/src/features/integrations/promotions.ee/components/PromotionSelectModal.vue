@@ -143,35 +143,36 @@ async function onApplyAll() {
 			apply.connectionId,
 			expectedSource && { expectedSource },
 		);
-		if (result.status !== 'applied') {
-			// Apply pauses on unresolved bindings or a moved source. The binding screen comes with LIGO-1058.
+		if (result.status === 'applied') {
+			const { counts } = result;
 			toast.showMessage({
-				title: i18n.baseText('promotions.modal.incoming.paused.title'),
-				message: i18n.baseText(`promotions.modal.incoming.paused.${result.status}`),
-				type: 'warning',
+				title: i18n.baseText('promotions.modal.incoming.applied.title'),
+				message: i18n.baseText('promotions.modal.incoming.applied.message', {
+					interpolate: {
+						created: String(counts.workflows.created),
+						updated: String(counts.workflows.updated),
+						archived: String(counts.workflows.archived),
+						deleted: String(counts.workflows.deleted),
+					},
+				}),
+				type: 'success',
 			});
+			onClose();
 			return;
 		}
-		const { counts } = result;
+		// Apply pauses on unresolved bindings or a moved source. The binding screen comes with LIGO-1058.
 		toast.showMessage({
-			title: i18n.baseText('promotions.modal.incoming.applied.title'),
-			message: i18n.baseText('promotions.modal.incoming.applied.message', {
-				interpolate: {
-					created: String(counts.workflows.created),
-					updated: String(counts.workflows.updated),
-					archived: String(counts.workflows.archived),
-					deleted: String(counts.workflows.deleted),
-				},
-			}),
-			type: 'success',
+			title: i18n.baseText('promotions.modal.incoming.paused.title'),
+			message: i18n.baseText(`promotions.modal.incoming.paused.${result.status}`),
+			type: 'warning',
 		});
 	} catch (applyError) {
 		toast.showError(applyError, i18n.baseText('promotions.modal.incoming.applyError'));
 	} finally {
-		// The list must show what apply did, whether it finished or stopped halfway.
 		isApplying.value = false;
-		await fetchChanges();
 	}
+	// The modal stays open after a paused or failed apply, so the list must show what is left.
+	await fetchChanges();
 }
 
 onMounted(async () => {

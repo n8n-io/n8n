@@ -11,12 +11,15 @@ export function usePromotionChangeCount(
 ) {
 	const rootStore = useRootStore();
 	const count = ref(0);
+	/** True when the last check failed, so the banner can say so instead of hiding. */
+	const failed = ref(false);
 
 	async function fetchCount() {
 		// Capture the project this request is for, so a slow response for a project the
 		// user already navigated away from cannot overwrite the current count.
 		const requestedProjectId = projectId.value;
 		count.value = 0;
+		failed.value = false;
 		if (!enabled.value || !requestedProjectId) {
 			return;
 		}
@@ -29,13 +32,12 @@ export function usePromotionChangeCount(
 			if (projectId.value !== requestedProjectId) return;
 			count.value = changes.length;
 		} catch {
-			// A configured direction that is not cloned yet answers 400: no banner.
 			if (projectId.value !== requestedProjectId) return;
-			count.value = 0;
+			failed.value = true;
 		}
 	}
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { count };
+	return { count, failed };
 }

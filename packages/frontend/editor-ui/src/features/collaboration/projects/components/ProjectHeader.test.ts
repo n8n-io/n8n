@@ -17,8 +17,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
-import { createServer } from 'miragejs';
-import { invalidatePromotionConnection } from '@/features/integrations/promotions.ee/composables/usePromotionConnection';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -111,121 +109,10 @@ describe('ProjectHeader', () => {
 			overview: {},
 			project: {},
 		};
-
-		// The header caches the instance connection for the page; tests must not share it.
-		invalidatePromotionConnection();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	it('shows live promotion changes only with export and push access', async () => {
-		const server = createServer({ environment: 'test' });
-		server.get('/api/v1/promotions/connections', () => ({
-			data: [{ id: 'connection-1', scope: 'instance', configs: { promote: { id: 'config-1' } } }],
-			nextCursor: null,
-		}));
-		server.get('/rest/promotions/project-1/changes/promote', () => ({
-			data: {
-				commitSha: 'a'.repeat(40),
-				changes: [
-					{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' },
-				],
-			},
-		}));
-		try {
-			settingsStore.isModuleActive.mockReturnValue(true);
-			settingsStore.settings = {
-				...settingsStore.settings,
-				envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
-			};
-			projectsStore.currentProject = createTestProject({
-				id: 'project-1',
-				scopes: ['project:export'],
-			});
-			usersStore.currentUser = mock<IUser>({
-				globalScopes: ['gitConnection:list', 'gitConnection:push'],
-			});
-			const { findByTestId, queryByTestId } = renderComponent();
-
-			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
-			await userEvent.click(await findByTestId('promotion-banner-link'));
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: 'promotionSelect',
-				data: { projectId: 'project-1' },
-			});
-
-			projectsStore.currentProject.scopes = [];
-			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
-			projectsStore.currentProject.scopes = ['project:export'];
-			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
-			usersStore.currentUser = mock<IUser>({ globalScopes: [] });
-			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
-		} finally {
-			server.shutdown();
-		}
-	});
-
-	it('shows incoming changes only with pull access and an apply configuration', async () => {
-		const server = createServer({ environment: 'test' });
-		const promoteChanges = vi.fn(() => ({ data: { commitSha: 'a'.repeat(40), changes: [] } }));
-		server.get('/api/v1/promotions/connections', () => ({
-			data: [
-				{
-					id: 'connection-1',
-					scope: 'instance',
-					configs: { apply: { id: 'config-1', settings: { branchName: 'main' } } },
-				},
-			],
-			nextCursor: null,
-		}));
-		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
-		server.get('/rest/promotions/project-1/changes/apply', () => ({
-			data: {
-				commitSha: 'a'.repeat(40),
-				changes: [{ id: 'workflow-1', name: 'Incoming workflow', type: 'workflow', status: 'new' }],
-			},
-		}));
-		try {
-			settingsStore.isModuleActive.mockReturnValue(true);
-			settingsStore.settings = {
-				...settingsStore.settings,
-				envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
-			};
-			projectsStore.currentProject = createTestProject({
-				id: 'project-1',
-				scopes: ['project:export'],
-			});
-			usersStore.currentUser = mock<IUser>({
-				globalScopes: ['gitConnection:list', 'gitConnection:pull'],
-			});
-			const { findByTestId, queryByTestId } = renderComponent();
-
-			expect(await findByTestId('promotion-incoming-banner')).toHaveTextContent(
-				'1 incoming change',
-			);
-			expect(queryByTestId('promotion-banner')).not.toBeInTheDocument();
-			// A destination without a promote configuration never asks for outgoing changes.
-			expect(promoteChanges).not.toHaveBeenCalled();
-
-			await userEvent.click(await findByTestId('promotion-incoming-banner-link'));
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: 'promotionSelect',
-				data: {
-					projectId: 'project-1',
-					direction: 'apply',
-					apply: { connectionId: 'connection-1', configId: 'config-1', branchName: 'main' },
-				},
-			});
-
-			usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
-			await waitFor(() =>
-				expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument(),
-			);
-		} finally {
-			server.shutdown();
-		}
 	});
 
 	it('should not render title icon on overview page', async () => {
