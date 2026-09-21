@@ -8245,6 +8245,7 @@
 	"agents.builder.subAgents.modal.noResults.description": "Try another search term.",
 	"agents.builder.subAgents.modal.cancel": "Cancel",
 	"agents.builder.subAgents.modal.add": "Add sub-agent",
+	"agents.builder.subAgents.modal.addAriaLabel": "Add {name} as a sub-agent",
 	"agents.builder.subAgents.modal.remove": "Remove sub-agent",
 	"agents.builder.memory.recallModel.label": "Memory model",
 	"agents.builder.memory.recallModel.hint": "Choose the model that creates, reviews, and retrieves memories. Uses the agent model by default.",

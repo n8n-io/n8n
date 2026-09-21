@@ -19,6 +19,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.modal.noResults.title': 'No matching agents',
 				'agents.builder.subAgents.modal.noResults.description': 'Try another search term.',
 				'agents.builder.subAgents.modal.add': 'Add sub-agent',
+				'agents.builder.subAgents.modal.addAriaLabel': `Add ${options?.interpolate?.name ?? ''} as a sub-agent`,
 				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
 				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
 				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
@@ -100,6 +101,7 @@ describe('AgentSubAgentsModal', () => {
 		const addButtons = wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]');
 		expect(addButtons).toHaveLength(2);
 		expect(addButtons[0].text()).toBe('Add sub-agent');
+		expect(addButtons[1].attributes('aria-label')).toBe('Add Research Agent as a sub-agent');
 
 		await addButtons[1].trigger('click');
 

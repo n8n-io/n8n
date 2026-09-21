@@ -495,7 +495,12 @@ onMounted(() => {
 					data-test-id="agent-vector-stores-modal-credential"
 					@create="onCreateStoreCredential"
 				/>
-				<N8nText v-if="submitted && !credential" size="small" color="danger">
+				<N8nText
+					v-if="submitted && !credential"
+					size="small"
+					color="danger"
+					data-testid="agent-vector-stores-modal-credential-required"
+				>
 					{{
 						i18n.baseText('agents.builder.vectorStores.modal.credential.required' as BaseTextKey)
 					}}

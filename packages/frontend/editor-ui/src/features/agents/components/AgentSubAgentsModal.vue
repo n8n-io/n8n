@@ -12,7 +12,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { SUB_AGENT_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -182,6 +182,11 @@ function onConfirm() {
 							<N8nButton
 								variant="subtle"
 								size="small"
+								:aria-label="
+									i18n.baseText('agents.builder.subAgents.modal.addAriaLabel' as BaseTextKey, {
+										interpolate: { name: agent.name },
+									})
+								"
 								data-testid="agent-sub-agents-modal-add"
 								@click="onSelectAgent(agent)"
 							>
