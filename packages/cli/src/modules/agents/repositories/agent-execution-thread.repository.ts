@@ -295,8 +295,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			projectId,
 			threadId,
 		);
-		const checkpoints = await this.findSessionCheckpoints(manager, agentId, threadId);
-		if (checkpoints.length > 0) await manager.remove(AgentCheckpoint, checkpoints);
+		const checkpointRunIds = await this.findSessionCheckpointRunIds(manager, agentId, threadId);
+		if (checkpointRunIds.length > 0) await manager.delete(AgentCheckpoint, checkpointRunIds);
 		if (attachments.length > 0) {
 			await manager.delete(
 				AgentChatAttachment,
@@ -310,27 +310,33 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		};
 	}
 
-	private async findSessionCheckpoints(
+	private async findSessionCheckpointRunIds(
 		manager: EntityManager,
 		agentId: string,
 		threadId: string,
-	): Promise<AgentCheckpoint[]> {
-		const parents = await manager.findBy(AgentCheckpoint, { agentId, threadId });
+	): Promise<string[]> {
+		const parents = await manager.find(AgentCheckpoint, {
+			select: ['runId', 'agentId', 'state'],
+			where: { agentId, threadId },
+		});
 		const checkpoints = parents.map((row) => ({ row, agentId }));
 		const visited = new Set(checkpoints.map(({ row }) => checkpointKey(agentId, row.runId)));
+		let currentLevel = checkpoints;
 
-		for (let index = 0; index < checkpoints.length; index++) {
-			const { row, agentId: ownerAgentId } = checkpoints[index];
-			for (const child of parseChildCheckpoints(row.state, ownerAgentId)) {
-				const key = checkpointKey(child.agentId, child.runId);
-				if (visited.has(key)) continue;
-				visited.add(key);
-				const childRow = await manager.findOneBy(AgentCheckpoint, child);
-				if (childRow) checkpoints.push({ row: childRow, agentId: child.agentId });
-			}
+		while (currentLevel.length > 0) {
+			const children = collectUnvisitedChildCheckpoints(currentLevel, visited);
+			if (children.length === 0) break;
+			const childRows = await manager.find(AgentCheckpoint, {
+				select: ['runId', 'agentId', 'state'],
+				where: children,
+			});
+			currentLevel = childRows.flatMap((row) =>
+				row.agentId ? [{ row, agentId: row.agentId }] : [],
+			);
+			checkpoints.push(...currentLevel);
 		}
 
-		return checkpoints.map(({ row }) => row);
+		return checkpoints.map(({ row }) => row.runId);
 	}
 
 	private async findExternalRefs(
@@ -363,6 +369,22 @@ function parseChildCheckpoints(
 	} catch {
 		return [];
 	}
+}
+
+function collectUnvisitedChildCheckpoints(
+	checkpoints: Array<{ row: AgentCheckpoint; agentId: string }>,
+	visited: Set<string>,
+): DelegatedChildCheckpoint[] {
+	const children: DelegatedChildCheckpoint[] = [];
+	for (const { row, agentId } of checkpoints) {
+		for (const child of parseChildCheckpoints(row.state, agentId)) {
+			const key = checkpointKey(child.agentId, child.runId);
+			if (visited.has(key)) continue;
+			visited.add(key);
+			children.push(child);
+		}
+	}
+	return children;
 }
 
 function checkpointKey(agentId: string, runId: string): string {
