@@ -44,6 +44,14 @@ const resolveInputs = (workflow, callerInputs = {}) => {
 	return resolved;
 };
 
+const resolveCallerInputs = (job, needs = {}) =>
+	Object.fromEntries(
+		Object.entries(job.with ?? {}).map(([name, value]) => {
+			const output = String(value).match(/^\$\{\{\s*needs\.([\w-]+)\.outputs\.([\w-]+)\s*\}\}$/);
+			return [name, output ? (needs[output[1]]?.[output[2]] ?? '') : value];
+		}),
+	);
+
 /**
  * Evaluates the subset of the GitHub Actions expression syntax that the step
  * conditions below use: the status functions, `&&`/`||`, and `==`/`!=` against
@@ -196,5 +204,59 @@ describe('test-e2e-reusable.yml', () => {
 				assert.equal(evaluateStepCondition(a11yUpload.if, { inputs, jobStatus: 'failure' }), true);
 			}
 		});
+	});
+});
+
+describe('test-e2e-reusable.yml callers', () => {
+	const reusableWorkflow = workflowFile('test-e2e-reusable.yml');
+	const shardUpload = stepNamed(reusableWorkflow, 'test', 'Upload Shard Artifacts');
+
+	describe('PR E2E caller', () => {
+		const workflow = workflowFile('ci-pull-requests.yml');
+		const caller = workflow.jobs.e2e;
+
+		it('passes whether the Currents record key secret is available', () => {
+			assert.equal(
+				workflow.jobs['install-and-build'].outputs.currents_record_key,
+				"${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}",
+			);
+			assert.equal(
+				caller.with['currents-record-key'],
+				'${{ needs.install-and-build.outputs.currents_record_key }}',
+			);
+		});
+
+		it('runs the shard upload for fork PRs without the record key', () => {
+			const callerInputs = resolveCallerInputs(caller);
+			const inputs = resolveInputs(reusableWorkflow, callerInputs);
+
+			assert.equal(callerInputs['currents-record-key'], '');
+			assert.equal(evaluateStepCondition(shardUpload.if, { inputs }), true);
+		});
+
+		it('skips the shard upload for internal PRs with the record key', () => {
+			const callerInputs = resolveCallerInputs(caller, {
+				'install-and-build': { currents_record_key: 'present' },
+			});
+			const inputs = resolveInputs(reusableWorkflow, callerInputs);
+
+			assert.equal(callerInputs['currents-record-key'], 'present');
+			assert.equal(evaluateStepCondition(shardUpload.if, { inputs }), false);
+		});
+	});
+
+	it('leaves coverage and performance shard uploads enabled', () => {
+		const callers = [
+			workflowFile('test-e2e-coverage-nightly.yml').jobs.e2e,
+			workflowFile('test-e2e-performance-reusable.yml').jobs['build-and-test-performance'],
+		];
+
+		for (const caller of callers) {
+			const callerInputs = resolveCallerInputs(caller);
+			const inputs = resolveInputs(reusableWorkflow, callerInputs);
+
+			assert.equal(callerInputs['currents-record-key'] ?? '', '');
+			assert.equal(evaluateStepCondition(shardUpload.if, { inputs }), true);
+		}
 	});
 });
