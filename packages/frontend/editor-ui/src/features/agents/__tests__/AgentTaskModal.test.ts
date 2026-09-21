@@ -420,14 +420,18 @@ describe('AgentTaskModal', () => {
 			).toBeInTheDocument();
 		}
 
-		it('does not preview the next execution for a new task', () => {
+		it('previews the next execution after a new task schedule changes', async () => {
 			setBrowserTimezone('Asia/Tokyo');
 
-			const { queryByText } = renderModal();
+			const { getByTestId, getByText, queryByText } = renderModal();
 
 			expect(
 				queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/),
 			).not.toBeInTheDocument();
+
+			await fireEvent.update(getByTestId('agent-task-frequency'), 'weekly');
+
+			expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 		});
 
 		it("previews an existing task in the task's own timezone", () => {

@@ -76,6 +76,7 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const task = computed(() => props.data.task ?? null);
 const isEditing = computed(() => Boolean(task.value));
+const scheduleTouched = ref(isEditing.value);
 // Editing a task on a published agent only changes the live schedule on the
 // next publish (see AgentTaskService), so warn before the edit silently no-ops.
 const showRepublishHint = computed(() => isEditing.value && props.data.isPublished);
@@ -187,7 +188,10 @@ const frequencyOptions = computed<Array<{ label: string; value: FrequencyOption 
 
 function onFrequencyChange(value: unknown) {
 	const match = frequencyOptions.value.find((option) => option.value === value);
-	if (match) frequency.value = match.value;
+	if (match) {
+		frequency.value = match.value;
+		scheduleTouched.value = true;
+	}
 }
 
 const dayOfWeekOptions = computed(() =>
@@ -205,6 +209,7 @@ const selectedTime = computed({
 	set: (value: number) => {
 		hour.value = Math.floor(value / 60);
 		minute.value = value % 60;
+		scheduleTouched.value = true;
 	},
 });
 
@@ -223,6 +228,17 @@ const timeOptions = computed(() => {
 function onMinuteInput(value: string) {
 	const parsed = Number(value);
 	minute.value = Number.isFinite(parsed) ? Math.min(59, Math.max(0, Math.trunc(parsed))) : 0;
+	scheduleTouched.value = true;
+}
+
+function onDayOfWeekChange(value: unknown) {
+	dayOfWeek.value = Number(value);
+	scheduleTouched.value = true;
+}
+
+function onDayOfMonthChange(value: unknown) {
+	dayOfMonth.value = Number(value);
+	scheduleTouched.value = true;
 }
 
 /**
@@ -249,7 +265,7 @@ onMounted(async () => {
 });
 
 const nextOccurrenceText = computed(() => {
-	if (!isEditing.value) return '';
+	if (!scheduleTouched.value) return '';
 	const next = getNextScheduleOccurrence(cronExpression.value, timezone.value);
 	if (!next) return '';
 	return formatScheduleDateTime(next, timezone.value);
@@ -292,11 +308,13 @@ function onNameInput(value: Validatable) {
 
 function onCronInput(value: Validatable) {
 	customCron.value = typeof value === 'string' ? value : '';
+	scheduleTouched.value = true;
 }
 
 function onTimezoneChange(value: unknown) {
 	timezone.value = String(value);
 	followsInstanceTimezone.value = false;
+	scheduleTouched.value = true;
 }
 
 function closeModal() {
@@ -519,7 +537,7 @@ async function onSave() {
 								:model-value="dayOfWeek"
 								:class="$style.daySelect"
 								data-testid="agent-task-day-of-week"
-								@update:model-value="dayOfWeek = Number($event)"
+								@update:model-value="onDayOfWeekChange"
 							>
 								<N8nOption
 									v-for="day in dayOfWeekOptions"
@@ -538,7 +556,7 @@ async function onSave() {
 								:model-value="dayOfMonth"
 								:class="$style.daySelect"
 								data-testid="agent-task-day-of-month"
-								@update:model-value="dayOfMonth = Number($event)"
+								@update:model-value="onDayOfMonthChange"
 							>
 								<N8nOption
 									v-for="day in dayOfMonthOptions"
@@ -617,7 +635,7 @@ async function onSave() {
 							/>
 						</N8nSelect>
 					</div>
-					<N8nText v-if="nextOccurrenceText" :class="$style.help" size="small">
+					<N8nText v-if="nextOccurrenceText">
 						<span v-if="scheduleDescription">{{ scheduleDescription }} · </span>
 						{{
 							i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
