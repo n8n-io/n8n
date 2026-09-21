@@ -40,6 +40,7 @@ const CONTROL_PLANE_ONLY_PREFIXES = ['DB_'];
 
 interface EngineEnvOptions {
 	engine: EngineMode | undefined;
+	mains: number;
 	isQueueMode: boolean;
 	/** Names the network aliases of the main and the engine. */
 	projectName: string;
@@ -61,6 +62,7 @@ function mainHostname(projectName: string): string {
  */
 export function assertEngineSupported({
 	engine,
+	mains,
 	isQueueMode,
 	usePostgres,
 }: Omit<EngineEnvOptions, 'projectName'> & { usePostgres: boolean }): void {
@@ -68,6 +70,11 @@ export function assertEngineSupported({
 
 	if (isQueueMode) {
 		throw new Error('Engine 2.0 does not support queue mode: use a single main and no workers');
+	}
+
+	// The engine reports to a main; without one it would be started as "main 1".
+	if (mains !== 1) {
+		throw new Error(`Engine 2.0 needs exactly one main: got mains: ${mains}`);
 	}
 
 	if (!usePostgres) {
@@ -102,11 +109,11 @@ function resolveEngineDatabaseUrl(env: Record<string, string>): string {
  */
 export function applyEngineEnv(
 	env: Record<string, string>,
-	{ engine, isQueueMode, projectName }: EngineEnvOptions,
+	{ engine, mains, isQueueMode, projectName }: EngineEnvOptions,
 ): void {
 	if (!engine) return;
 
-	assertEngineSupported({ engine, isQueueMode, usePostgres: env.DB_TYPE === 'postgresdb' });
+	assertEngineSupported({ engine, mains, isQueueMode, usePostgres: env.DB_TYPE === 'postgresdb' });
 
 	const modules = (env.N8N_ENABLED_MODULES ?? '').split(',').filter(Boolean);
 	if (!modules.includes(ENGINE_MODULE)) modules.push(ENGINE_MODULE);
@@ -116,7 +123,10 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_MODE = 'remote';
 		env.N8N_ENGINE_BASE_URL = `http://${engineHostname(projectName)}:${ENGINE_PORT}`;
 		// Loopback by default; the engine container dials it over the stack network.
+		// The stack owns the port too: the engine env dials it and a caller's
+		// `env` must not move it.
 		env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
+		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = ENGINE_AUTH_SECRET;
 		// The main never touches the data plane database in this mode.
 		delete env.N8N_ENGINE_DATABASE_URL;
@@ -152,8 +162,8 @@ export function engineContainerEnv(
 		N8N_ENGINE_DATABASE_URL: databaseUrl,
 		N8N_ENGINE_AUTH_SECRET: ENGINE_AUTH_SECRET,
 		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `http://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
-		// The stack's external runner is bound to the main's broker, so the engine
-		// spawns its own.
-		N8N_RUNNERS_MODE: 'internal',
+		// The main dials this port and the stack probes it, so a caller's `env`
+		// must not move it.
+		N8N_ENGINE_PORT: String(ENGINE_PORT),
 	};
 }
