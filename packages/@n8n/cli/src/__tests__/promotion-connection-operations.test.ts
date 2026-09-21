@@ -4,6 +4,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { N8nClient } from '../client';
 import PromotionConnectionApply from '../commands/promotion-connection/apply';
 import PromotionConnectionPromote from '../commands/promotion-connection/promote';
+import PromotionConnectionPromoteSelection from '../commands/promotion-connection/promote-selection';
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
 interface OperationInternals {
@@ -89,6 +90,41 @@ describe('promotion-connection apply command', () => {
 			'Applied release at commit def5678 to the instance.',
 			expect.anything(),
 			APPLY_RESULT,
+		);
+	});
+});
+
+describe('promotion-connection promote-selection command', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('sends the project id and workflow ids, and names the branch it pushed to', async () => {
+		const command = new PromotionConnectionPromoteSelection([], {} as Config);
+		const internals = command as unknown as OperationInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { workflow: ['wf-1', 'wf-2'] },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		const succeed = vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		// `-w` values travel as the `workflowIds` array.
+		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2']);
+		// The count, branch, and commit live under `counts`/`git`. Reading them
+		// flat prints "undefined" while succeed() still exits 0.
+		expect(succeed).toHaveBeenCalledWith(
+			'Promoted 3 workflow(s) to main as commit abc1234.',
+			expect.anything(),
+			PROMOTE_RESULT,
 		);
 	});
 });

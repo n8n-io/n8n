@@ -225,6 +225,39 @@ Personal projects are not included. Clone the `promote` direction first. This
 command works on the `instance` connection only. The API key also needs
 `variable:list` when the workflows reference variables.
 
+## `promotion-connection list-changes`
+
+List the workflows that differ between a project and the branch of its
+promotion configuration, in one direction.
+
+```bash
+n8n-cli promotion-connection list-changes proj-abc promote
+n8n-cli promotion-connection list-changes proj-abc apply
+```
+
+For `promote` the rows are what a promotion would send to the branch, and the
+API key needs `gitConnection:push`. For `apply` the rows are what applying the
+branch would change on this instance, and the key needs `gitConnection:pull`.
+`commitSha` is the commit the rows were read from. Clone the direction first.
+Use the `id` of each row to build a selective promote.
+
+## `promotion-connection promote-selection`
+
+Read a chosen set of a project's workflows now, and push their current state to
+the `instance` connection's Promote branch.
+
+```bash
+n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -w wf-2
+```
+
+| Flag | Description |
+|------|-------------|
+| `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
+
+Archived or deleted ids leave the branch. An id from another project rejects the
+whole request before any write. Clone the `promote` direction first. The API key
+also needs `variable:list` when the workflows reference variables.
+
 ## `promotion-connection apply`
 
 Reset the local checkout to the tip of the configured branch, and import the

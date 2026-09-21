@@ -116,6 +116,24 @@ export type ApplyPackageResult = {
 	git: PromotionGitResult;
 };
 
+/** One workflow that differs between a project and its configured branch. */
+export interface PromotableResourceSummary {
+	id: string;
+	name: string;
+	type: 'workflow';
+	status: 'new' | 'modified' | 'renamed' | 'renamed-and-modified' | 'archived' | 'deleted';
+	version: number | null;
+	updatedAt: string | null;
+	updatedBy: string | null;
+	dependencyCount: number;
+}
+
+/** The changes of a project in one direction, with the commit they were read from. */
+export interface ProjectPromotionChanges {
+	commitSha: string | null;
+	changes: PromotableResourceSummary[];
+}
+
 /** State of one direction's local checkout, after a clone or a disconnect. */
 export type PromotionCheckoutResult = {
 	connectionId: string;
@@ -375,6 +393,18 @@ export class N8nClient {
 
 	async applyPackage(id: string) {
 		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply`);
+	}
+
+	async listProjectPromotionChanges(projectId: string, direction: PromotionDirection) {
+		return await this.get<ProjectPromotionChanges>(
+			`/promotions/projects/${projectId}/changes/${direction}`,
+		);
+	}
+
+	async promoteProjectSelection(projectId: string, workflowIds: string[]) {
+		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
+			workflowIds,
+		});
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
