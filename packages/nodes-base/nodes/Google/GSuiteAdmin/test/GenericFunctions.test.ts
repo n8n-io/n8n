@@ -405,5 +405,38 @@ describe('Google GSuiteAdmin Node', () => {
 
 			expect(body).toEqual({});
 		});
+
+		it('should not set keys for collections the user emptied', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					genderUi: {},
+					notesUi: {},
+					organizationUi: {},
+					addressesUi: { addressesValues: [] },
+					languagesUi: { languagesValues: [] },
+				},
+				body,
+			);
+
+			expect(body).toEqual({});
+		});
+
+		it('should drop collection rows the user never filled in', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					websitesUi: { websitesValues: [{ type: '', value: '', primary: false }] },
+					languagesUi: {
+						languagesValues: [{ languageType: 'code', languageCode: '', preference: 'preferred' }],
+					},
+				},
+				body,
+			);
+
+			expect(body).toEqual({});
+		});
 	});
 });

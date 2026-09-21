@@ -7,7 +7,10 @@ import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions'
 import { GSuiteAdmin } from '../GSuiteAdmin.node';
 import type { Mock } from 'vitest';
 
-vi.mock('../GenericFunctions', () => ({
+// Only the HTTP layer is stubbed; mapUserExtraFields stays real so the create/update
+// assertions below cover the node wiring it up.
+vi.mock('../GenericFunctions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../GenericFunctions')>()),
 	getGoogleAuth: vi.fn().mockImplementation(() => ({
 		oauth2Client: {
 			setCredentials: vi.fn(),
@@ -16,7 +19,6 @@ vi.mock('../GenericFunctions', () => ({
 	})),
 	googleApiRequest: vi.fn(),
 	googleApiRequestAllItems: vi.fn(),
-	mapUserExtraFields: vi.fn(),
 }));
 
 const node = new GSuiteAdmin();
@@ -389,6 +391,62 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 		);
 	});
 
+	it('should map the shared extra attributes onto the create body', async () => {
+		const mockCall = vi.fn().mockResolvedValue({ id: 'user-125' });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Grace';
+					case 'lastName':
+						return 'Hopper';
+					case 'password':
+						return 'SecurePassword123!';
+					case 'username':
+						return 'grace';
+					case 'additionalFields':
+						return {
+							recoveryEmail: 'recovery@example.com',
+							genderUi: { genderValues: { type: 'female', customGender: '' } },
+							organizationUi: {
+								organizationValues: [{ name: 'Acme', title: 'Engineer', department: '' }],
+							},
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			expect.objectContaining({
+				recoveryEmail: 'recovery@example.com',
+				gender: { type: 'female' },
+				organizations: [{ name: 'Acme', title: 'Engineer' }],
+			}),
+			{},
+		);
+	});
+
 	it('should include changePasswordAtNextLogin when set to false in create operation', async () => {
 		const mockCall = vi
 			.fn()
@@ -584,6 +642,52 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 });
 
 describe('GSuiteAdmin Node - user:update logic', () => {
+	it('should map the shared extra attributes onto the update body', async () => {
+		const mockCall = vi.fn().mockResolvedValue([{ success: true }]);
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-123';
+					case 'updateFields':
+						return {
+							recoveryPhone: '+12025550123',
+							// an emptied collection must not reach the API as [], which would clear it
+							addressesUi: {},
+							languagesUi: {
+								languagesValues: [
+									{ languageType: 'custom', customLanguage: 'Klingon', preference: 'preferred' },
+								],
+							},
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => data,
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		const calledBody = mockCall.mock.calls[0][2];
+
+		expect(calledBody.recoveryPhone).toBe('+12025550123');
+		expect(calledBody.languages).toEqual([{ customLanguage: 'Klingon' }]);
+		expect(calledBody).not.toHaveProperty('addresses');
+	});
+
 	it('should build suspended, roles, and customSchemas', async () => {
 		const mockCall = vi.fn().mockResolvedValue([{ success: true }]);
 		(googleApiRequest as Mock).mockImplementation(mockCall);
