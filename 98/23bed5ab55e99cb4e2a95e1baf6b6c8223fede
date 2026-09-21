@@ -1,0 +1,9 @@
+docs/generated/sqlite-schema/agent_checkpoints.md
+  ai_agent 9,18,50,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9823bed5ab55e99cb4e2a95e1baf6b6c8223fede",
+  "prompts": {}
+}
