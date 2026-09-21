@@ -174,7 +174,7 @@ export class N8NCheckpointStorage {
 		return null;
 	}
 
-	async hasMatchingThreadResource(
+	async hasNoConflictingThreadResource(
 		agentId: string,
 		threadId: string,
 		resourceId: string,

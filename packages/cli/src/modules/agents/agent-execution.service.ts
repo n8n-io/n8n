@@ -701,7 +701,11 @@ export class AgentExecutionService {
 		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		if (memory && memory.resourceId !== resourceId) return false;
-		return await this.checkpointStorage.hasMatchingThreadResource(agentId, threadId, resourceId);
+		return await this.checkpointStorage.hasNoConflictingThreadResource(
+			agentId,
+			threadId,
+			resourceId,
+		);
 	}
 
 	/** Narrow refs to those whose data lives in a blob store, i.e. all but `db`. */
