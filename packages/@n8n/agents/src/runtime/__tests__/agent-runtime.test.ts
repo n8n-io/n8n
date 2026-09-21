@@ -7026,6 +7026,7 @@ describe('AgentRuntime — mid-run observation', () => {
 	type CapturedModelCall = {
 		instructions: { content: string } | Array<{ content: string }>;
 		messages: Array<{ role: string; content: unknown }>;
+		tools: Record<string, unknown>;
 	};
 
 	function capturedCall(index: number): CapturedModelCall {
@@ -7052,6 +7053,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		extra?: {
 			skillSource?: RuntimeSkillSource;
 			tools?: BuiltTool[];
+			deferredTools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
 		},
@@ -7062,6 +7064,7 @@ describe('AgentRuntime — mid-run observation', () => {
 			instructions: 'You are a test assistant.',
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
+			deferredTools: extra?.deferredTools,
 			...(extra?.skillSource ? { skillSource: extra.skillSource } : {}),
 			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
 			observationalMemory: {
@@ -7175,6 +7178,61 @@ describe('AgentRuntime — mid-run observation', () => {
 		);
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
+
+	it.each(['load_skill', 'inspect_node'])(
+		'activates skill tool dependencies after %s and restores them on the next turn',
+		async (activationTool) => {
+			const source = createRuntimeSkillSource([
+				{
+					id: 'builder',
+					name: 'builder',
+					description: 'Build workflows.',
+					instructions: 'Choose a model from the catalog.',
+					dependencies: { tools: ['catalog', 'unregistered'] },
+					recommendedTools: ['optional_tool'],
+				},
+			]);
+			const catalogHandler = vi.fn(async () => ({ models: [] }));
+			const catalog = makeMockTool('catalog', catalogHandler);
+			const inspectNode: BuiltTool = {
+				name: 'inspect_node',
+				description: 'Inspect a node.',
+				inputSchema: z.object({}),
+				handler: async (_input, ctx) => {
+					await ctx.loadSkill?.('builder');
+					return { node: 'model' };
+				},
+			};
+			const options = {
+				skillSource: source,
+				tools: [...createRuntimeSkillTools(source), inspectNode],
+				deferredTools: [catalog, makeMockTool('optional_tool', async () => ({ done: true }))],
+			};
+			const memory = new InMemoryMemory();
+			const runtime = buildMidRunRuntime(memory, options);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCall('activate', activationTool, { skillId: 'builder' }),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess('Ready to choose a model.'));
+			await runtime.generate('Build it', { persistence: PERSISTENCE });
+			await runtime.dispose();
+
+			expect(capturedCall(0).tools).not.toHaveProperty('catalog');
+			expect(capturedCall(1).tools).toHaveProperty('catalog');
+			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
+			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
+				'Choose a model from the catalog.',
+			);
+
+			const next = buildMidRunRuntime(memory, options);
+			generateText.mockResolvedValueOnce(makeGenerateSuccess('Still ready.'));
+			await next.generate('Continue', { persistence: PERSISTENCE });
+			await next.dispose();
+			expect(capturedCall(2).tools).toHaveProperty('catalog');
+			expect(catalogHandler).not.toHaveBeenCalled();
+		},
+	);
 
 	it('restores active skills from a checkpoint with the newly selected content', async () => {
 		const source = createRuntimeSkillSource([
