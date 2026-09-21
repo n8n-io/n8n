@@ -117,10 +117,8 @@ describe('EngineAdditionalDataBuilder', () => {
 
 	describe('task runners', () => {
 		it('reports every runner as unavailable, so the Code node fails before it waits', () => {
-			expect(build().getRunnerStatus?.('python')).toEqual({
-				available: false,
-				reason: expect.stringContaining('not supported'),
-			});
+			// No reason: the Code node reads it as a Python install problem key.
+			expect(build().getRunnerStatus?.('python')).toEqual({ available: false });
 		});
 
 		it('rejects a runner task and names the feature', async () => {

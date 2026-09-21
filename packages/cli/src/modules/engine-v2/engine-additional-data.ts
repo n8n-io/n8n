@@ -9,8 +9,6 @@ import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-wor
 import { EventService } from '@/events/event.service';
 import { UrlService } from '@/services/url.service';
 
-const RUNNER_UNAVAILABLE_REASON = 'Task runners are not supported on Engine 2.0 yet';
-
 /** A capability the data plane does not have yet. The step that reaches it fails and says why. */
 function unimplemented(feature: string) {
 	return async (): Promise<never> => {
@@ -85,9 +83,10 @@ export class EngineAdditionalDataBuilder {
 				eventService.emit('hitl-response-actioned', payload);
 			},
 			// The data plane runs no task runner, so the Code node has nowhere to send
-			// work. Python asks first and gets a clear "unavailable"; JavaScript reaches
+			// work. Python asks first and gets "unavailable" with no reason, since the
+			// node maps reasons to Python install problems; JavaScript reaches
 			// `startRunnerTask` and fails there.
-			getRunnerStatus: () => ({ available: false, reason: RUNNER_UNAVAILABLE_REASON }),
+			getRunnerStatus: () => ({ available: false }),
 			startRunnerTask: unimplemented('Task runners (Code node)'),
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
