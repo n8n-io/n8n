@@ -91,9 +91,7 @@ describe('DatabricksVectorStore', () => {
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DELTA_SYNC',
-				embeddingSourceColumn: 'text',
-				embeddingModelEndpoint: 'e5',
-				vectorColumn: undefined,
+				embedding: { kind: 'managed', sourceColumn: 'text', modelEndpoint: 'e5' },
 				schemaColumns: undefined,
 				sourceTable: 'cat.sch.docs',
 			});
@@ -102,8 +100,7 @@ describe('DatabricksVectorStore', () => {
 		it('reads a self-managed Direct Access index with its schema columns', () => {
 			expect(parseIndexInfo(directDescribe)).toMatchObject({
 				indexType: 'DIRECT_ACCESS',
-				embeddingSourceColumn: undefined,
-				vectorColumn: 'embedding',
+				embedding: { kind: 'self', vectorColumn: 'embedding' },
 				schemaColumns: ['id', 'text', 'source', 'embedding'],
 				sourceTable: undefined,
 			});
@@ -123,6 +120,7 @@ describe('DatabricksVectorStore', () => {
 		it.each([
 			['missing primary key', { ...managedDescribe, primary_key: undefined }],
 			['unknown index type', { ...managedDescribe, index_type: 'OTHER' }],
+			['no embedding column', { ...managedDescribe, delta_sync_index_spec: {} }],
 			[
 				'malformed schema_json',
 				{
@@ -385,20 +383,16 @@ describe('DatabricksVectorStore', () => {
 		});
 
 		it.each([
-			['the score', [{ name: 'source' }, { name: 'id' }, { name: 'text' }], ['hr', 'a', 'hello']],
-			[
-				'a requested column',
-				[{ name: 'id' }, { name: 'text' }, { name: 'score' }],
-				['a', 'hello', 0.9],
-			],
-		])('rejects a manifest that lacks %s', async (_label, columns, row) => {
+			['score', [{ name: 'source' }, { name: 'id' }, { name: 'text' }], ['hr', 'a', 'hello']],
+			['source', [{ name: 'id' }, { name: 'text' }, { name: 'score' }], ['a', 'hello', 0.9]],
+		])('rejects a manifest that lacks the %s column', async (missing, columns, row) => {
 			const store = await managedStore({ metadataColumns: ['source'] });
 			fetchMock.mockResolvedValue(
 				json({ manifest: { columns }, result: { row_count: 1, data_array: [row] } }),
 			);
 
 			await expect(store.similaritySearchWithScore('hello', 2)).rejects.toThrow(
-				'Unexpected Databricks query response',
+				`Databricks query response lacks column "${missing}"`,
 			);
 		});
 
