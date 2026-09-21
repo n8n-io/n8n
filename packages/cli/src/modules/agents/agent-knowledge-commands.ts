@@ -1,5 +1,5 @@
+import { redactText } from '@n8n/utils/redaction/redact-text';
 import { Buffer } from 'node:buffer';
-import { redactText } from '@n8n/agents';
 import { z } from 'zod';
 
 import {

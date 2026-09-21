@@ -1,23 +1,24 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	getChildNodes,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-	type IConnections,
-} from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
+import type { AgentBackgroundJobSignal } from './background-job';
 
-export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-] as const;
+export type AgentActor = 'user' | 'builder' | 'mcp';
+
+export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
+
+/** Display name of each supported trigger, keyed by node type so a rename is a one-line change. */
+const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES: Record<
+	(typeof SUPPORTED_WORKFLOW_TOOL_TRIGGERS)[number],
+	string
+> = {
+	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'When Executed by Another Workflow',
+};
+
+/** Display name of the trigger a workflow tool has to start with, for backend copy. */
+export const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME =
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE];
 
 /**
  * Body nodes a workflow tool cannot run. The Wait node is absent by design — the
@@ -186,9 +187,20 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+export interface AgentConfigResponse {
+	config: AgentJsonConfig;
+	configHash: string;
+}
+
+export interface AgentConfigMutationResponse extends AgentConfigResponse {
+	updatedAt: string;
+	versionId: string | null;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;
+	skillHash: string;
 	versionId: string | null;
 }
 
@@ -318,14 +330,31 @@ export interface AgentPersistedMessageContentPart {
 	childTrace?: PersistedChildTrace;
 }
 
+/** Platform user who wrote a turn in a shared integration thread. */
+export interface AgentMessageAuthor {
+	id: string;
+	name: string;
+}
+
 export interface AgentPersistedMessageDto {
+	/** Background results that started this turn. */
+	backgroundTaskSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Set on user turns that came in through a chat integration. */
+	author?: AgentMessageAuthor;
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
 	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	/**
+	 * The recorded run error for a turn that ended in `error` or `interrupted`,
+	 * so history renders the same error bubble the live stream showed.
+	 */
+	executionError?: string;
+	/** ISO timestamp of when this turn was recorded. Absent on older history. */
+	createdAt?: string;
 }
 
 export interface AgentBuilderOpenSuspension {

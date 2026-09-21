@@ -160,6 +160,23 @@ describe('ActivityEventRepository', () => {
 			expect(deleted).toBe(501);
 		});
 
+		/** Without this the walk runs to the end of the backlog, holding up shutdown and stepdown. */
+		it('stops at a batch boundary once the caller aborts, leaving the rest for next time', async () => {
+			const controller = new AbortController();
+			const fullBatch = Array.from({ length: 500 }, (_, i) => ({ id: i + 1 }) as ActivityEvent);
+			entityManager.find.mockResolvedValue(fullBatch);
+			entityManager.delete.mockImplementation(async () => {
+				controller.abort();
+				return { affected: 500, raw: [] };
+			});
+
+			const deleted = await repository.deleteOlderThan(cutoff, controller.signal);
+
+			// A full batch would otherwise mean "keep going".
+			expect(entityManager.delete).toHaveBeenCalledTimes(1);
+			expect(deleted).toBe(500);
+		});
+
 		it('stops without deleting when nothing is old enough', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 

@@ -22,7 +22,7 @@ import {
 	type TaskRunnerLifecycleEventMap,
 } from '@/task-runners/task-runner-lifecycle-events';
 
-import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
+import { TaskBroker, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -188,7 +188,7 @@ export class TaskBrokerWsServer {
 								lastSeen: new Date(),
 								name: message.name,
 							},
-							this.sendMessage.bind(this, id) as MessageCallback,
+							this.sendMessage.bind(this, id),
 							() => this.isRunnerReachable(id, connection),
 						);
 
@@ -214,9 +214,7 @@ export class TaskBrokerWsServer {
 		});
 
 		connection.on('message', onMessage);
-		connection.send(
-			JSON.stringify({ type: 'broker:inforequest' } as BrokerMessage.ToRunner.InfoRequest),
-		);
+		connection.send(JSON.stringify({ type: 'broker:inforequest' }));
 	}
 
 	async removeConnection(

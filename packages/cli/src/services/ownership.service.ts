@@ -230,6 +230,9 @@ export class OwnershipService {
 	async getInstanceOwner() {
 		return await this.userRepository.findOneOrFail({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			// Permission checks read `user.role`. Without it, they show the owner
+			// less than they should, and report no error.
+			relations: ['role'],
 		});
 	}
 

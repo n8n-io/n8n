@@ -2,7 +2,6 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { ServiceIdentifier } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
 import * as a from 'node:assert/strict';
@@ -67,6 +66,14 @@ export class TaskRunnerModule {
 
 	@OnShutdown()
 	async stop() {
+		// Stop the broker server first: its drain lets in-flight tasks finish, so the
+		// runner processes are idle by the time they are stopped and exit within the
+		// short grace before the SIGKILL escalation.
+		if (this.taskBrokerHttpServer) {
+			await this.taskBrokerHttpServer.stop();
+			this.taskBrokerHttpServer = undefined;
+		}
+
 		const stopRunnerProcessTask = (async () => {
 			if (this.jsRunnerProcess) {
 				await this.jsRunnerProcess.stop();
@@ -81,14 +88,7 @@ export class TaskRunnerModule {
 			}
 		})();
 
-		const stopRunnerServerTask = (async () => {
-			if (this.taskBrokerHttpServer) {
-				await this.taskBrokerHttpServer.stop();
-				this.taskBrokerHttpServer = undefined;
-			}
-		})();
-
-		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask, stopRunnerServerTask]);
+		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask]);
 	}
 
 	private async loadTaskRequester() {
@@ -136,10 +136,7 @@ export class TaskRunnerModule {
 
 		const failureReason = await PyTaskRunnerProcess.checkRequirements();
 		if (failureReason) {
-			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).setRunnerUnavailable(
-				'python',
-				failureReason,
-			);
+			Container.get(TaskRequester).setRunnerUnavailable('python', failureReason);
 			const error = new MissingRequirementsError(failureReason);
 			this.logger.warn(error.message);
 			return; // allow bootup, will fail at execution time

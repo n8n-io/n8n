@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { TelegramWebhookInfo } from './GenericFunctions';
 import { apiRequest, getSecretToken } from './GenericFunctions';
 import { deriveHitlSecretToken } from './hitl/tokens';
 import type { IEvent } from './IEvent';
@@ -235,14 +236,18 @@ export class TelegramTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const endpoint = 'getWebhookInfo';
-				const webhookReturnData = await apiRequest.call(this, 'POST', endpoint, {});
+				const webhookReturnData = (await apiRequest.call(
+					this,
+					'POST',
+					endpoint,
+					{},
+				)) as TelegramWebhookInfo;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				if (webhookReturnData.result.url === webhookUrl) {
-					return true;
-				}
-
-				return false;
+				// A response without a result carries no registered URL, so report that no
+				// webhook exists. The caller then creates one, which surfaces a problem with
+				// the endpoint as a node error.
+				return webhookReturnData?.result?.url === webhookUrl;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');

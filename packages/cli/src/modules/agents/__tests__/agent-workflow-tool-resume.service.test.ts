@@ -1,7 +1,8 @@
-import type { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, RelatedAgentRun } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
@@ -13,9 +14,11 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
+import { encodeIntegrationMessageContext } from '../integrations/integration-message-context';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
 const agentRun: RelatedAgentRun = {
@@ -49,8 +52,12 @@ function setup() {
 	// Default to a genuinely parked run; tests that care override it.
 	checkpointStorage.getStatus.mockResolvedValue({
 		status: 'active',
-		checkpoint: { status: 'suspended' },
+		checkpoint: {
+			status: 'suspended',
+			persistence: { threadId: agentRun.threadId, resourceId: 'user-1' },
+		},
 	} as never);
+	const backgroundJobService = mock<AgentBackgroundJobService>();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -61,6 +68,7 @@ function setup() {
 		checkpointStorage,
 		instanceSettings,
 		publisher,
+		backgroundJobService,
 	);
 	return {
 		service,
@@ -74,6 +82,7 @@ function setup() {
 		publisher,
 		instanceSettings,
 		messageContextService,
+		backgroundJobService,
 	};
 }
 
@@ -87,6 +96,8 @@ function afterContext(
 		executionId: 'exec-1',
 		runData: {
 			status,
+			// The engine stamps this only on runs that ended without error or wait.
+			finished: status === 'success',
 			data: { ...data, ...(parentAgentRun ? { parentAgentRun } : {}) },
 		} as IRun,
 	});
@@ -104,6 +115,7 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 			'run-1',
 			'call-1',
 			{ type: 'workflow_finished', value: 'success' },
+			{ messageContext: null, allowLegacyThreadId: true },
 		);
 	});
 
@@ -185,11 +197,81 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 			expect.any(String),
 			expect.any(String),
 			{ type: 'workflow_finished', value: 'error' },
+			{ messageContext: null, allowLegacyThreadId: true },
 		);
 	});
 
-	// An agent with two connections on one platform must reply through the one the
-	// thread came in on, not whichever is found first.
+	// A successful action can move the turn to another platform. The continuation
+	// must use the platform and connection saved in the checkpoint.
+	it('uses the checkpoint platform, connection, and destination for a task continuation', async () => {
+		const { service, bridge, chatIntegrationService, messageContextService, checkpointStorage } =
+			setup();
+		const messageContext = {
+			integrationConnectionId: 'discord:cred-2',
+			platform: 'discord',
+			target: { type: 'thread' as const, threadId: 'discord:outbound:1' },
+			replyTarget: { type: 'thread' as const, threadId: 'discord:inbound:2' },
+			updatedAt: '2026-09-18T10:00:00.000Z',
+		};
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				status: 'suspended',
+				persistence: {
+					threadId: 'task-run-1',
+					resourceId: 'task:task-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			},
+		} as never);
+		messageContextService.getLatest.mockResolvedValue({
+			...messageContext,
+			integrationConnectionId: 'slack:other',
+		});
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+
+		await service.resume({ ...agentRun, threadId: 'task-run-1' }, 'success');
+
+		expect(messageContextService.getLatest).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith('agent-1', 'discord', 'cred-2');
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledWith(
+			'task-run-1',
+			'run-1',
+			'call-1',
+			{ type: 'workflow_finished', value: 'success' },
+			{ messageContext, allowLegacyThreadId: false },
+		);
+	});
+
+	it.each([
+		null,
+		{ platform: 'slack' },
+		{
+			integrationConnectionId: 'slack',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C1:1' },
+			updatedAt: '2026-09-18T10:00:00.000Z',
+		},
+	])('keeps the run suspended when its saved reply context is incomplete: %j', async (snapshot) => {
+		const { service, chatIntegrationService, messageContextService, checkpointStorage } = setup();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				status: 'suspended',
+				persistence: {
+					threadId: 'task-run-1',
+					resourceId: 'task:task-1',
+					hostMetadata: { n8nIntegrationMessageContext: snapshot },
+				},
+			},
+		} as never);
+
+		await service.resume({ ...agentRun, threadId: 'task-run-1' }, 'success');
+
+		expect(messageContextService.getLatest).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
+	});
+
 	it('resolves the bridge by the credential the thread came in on', async () => {
 		const { service, bridge, chatIntegrationService, messageContextService } = setup();
 		messageContextService.getLatest.mockResolvedValue({
@@ -204,13 +286,18 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 	});
 
 	it.each([
-		['there is no message context', null],
+		['there is no message context', null, null],
 		[
 			'the context belongs to another platform',
 			{ integrationConnectionId: 'discord:c', platform: 'discord' },
+			null,
 		],
-		['no credential is bound yet', { integrationConnectionId: 'slack', platform: 'slack' }],
-	])('falls back to any ingress bridge when %s', async (_label, context) => {
+		[
+			'no credential is bound yet',
+			{ integrationConnectionId: 'slack', platform: 'slack' },
+			{ integrationConnectionId: 'slack', platform: 'slack' },
+		],
+	])('falls back to any ingress bridge when %s', async (_label, context, expectedContext) => {
 		const { service, bridge, chatIntegrationService, messageContextService } = setup();
 		messageContextService.getLatest.mockResolvedValue(context as never);
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
@@ -218,6 +305,13 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 		await service.resume(agentRun, 'success');
 
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith('agent-1', 'slack', undefined);
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledWith(
+			'agent-1:slack:C123',
+			'run-1',
+			'call-1',
+			{ type: 'workflow_finished', value: 'success' },
+			{ messageContext: expectedContext, allowLegacyThreadId: true },
+		);
 	});
 
 	it('does nothing for a run with no chat surface at all', async () => {
@@ -274,6 +368,23 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		);
 	});
 
+	// MCP and AI Assistant test runs are `n8n_chat` too. They must resume on the
+	// runtime they started on, without the preview chat's extra instructions.
+	it.each([
+		['the preview chat', { ...previewRun, previewChat: true }, true],
+		['another draft surface', previewRun, undefined],
+	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
+		const { service, userRepository, agentTestRunService } = setup();
+		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
+
+		await service.resume(run, 'success');
+
+		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ previewChat: expected }),
+		);
+	});
+
 	it.each([
 		['a completed turn', completed],
 		[
@@ -283,9 +394,14 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	])('pushes the recorded execution after %s', async (_label, result) => {
 		const { service, userRepository, agentTestRunService, broadcaster } = setup();
 		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
-		agentTestRunService.resumeDraftRun.mockResolvedValue(result);
+		const execution = createDeferredPromise<typeof result>();
+		agentTestRunService.resumeDraftRun.mockReturnValue(execution.promise);
 
-		await service.resume(previewRun, 'success');
+		const resume = service.resume(previewRun, 'success');
+		await vi.waitFor(() => expect(agentTestRunService.resumeDraftRun).toHaveBeenCalled());
+		expect(broadcaster.notify).not.toHaveBeenCalled();
+		execution.resolve(result);
+		await resume;
 
 		expect(broadcaster.notify).toHaveBeenCalledWith({
 			projectId: 'project-1',
@@ -325,5 +441,81 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 			'Cannot resume preview chat run without its user',
 			expect.objectContaining({ runId: 'run-1' }),
 		);
+	});
+});
+
+describe('AgentWorkflowToolResumeService → background job settlement', () => {
+	/** Like {@link afterContext}, with node output the settle serializes. */
+	function afterContextWithOutput(status: IRun['status']): WorkflowExecuteAfterContext {
+		const ctx = afterContext(status, agentRun);
+		ctx.runData.data.resultData.runData = {
+			Fetch: [{ data: { main: [[{ json: { page: 1 } }]] } } as never],
+			Set: [{ data: { main: [[{ json: { ok: true } }]] } } as never],
+		};
+		return ctx;
+	}
+
+	it('settles the job with only the last node’s output serialized', async () => {
+		const { service, backgroundJobService } = setup();
+
+		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
+			status: 'completed',
+			result: '{"Set":[{"ok":true}]}',
+			error: null,
+		});
+	});
+
+	it('does not settle a success callback for a run that has not finished', async () => {
+		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
+		Object.assign(ctx.runData, { finished: false });
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('settles a failed execution with its error and no result', async () => {
+		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('error');
+		ctx.runData.data.resultData.error = { message: 'boom' } as never;
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
+			status: 'failed',
+			result: null,
+			error: 'boom',
+		});
+	});
+
+	it('does not settle while the execution is still waiting', async () => {
+		const { service, backgroundJobService } = setup();
+
+		await service.handleWorkflowExecuteAfter(afterContext('waiting', agentRun));
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('still resumes a suspended run after settling — the two paths coexist', async () => {
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+
+		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalled();
+		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+	});
+
+	it('never lets a failing settle disturb the resume path', async () => {
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		backgroundJobService.settleWorkflowJobByExecutionId.mockRejectedValue(new Error('db down'));
+
+		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
+
+		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
 	});
 });

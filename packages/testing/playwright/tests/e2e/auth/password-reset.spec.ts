@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.use({ capability: 'email' });
 
 test(
-	'Password reset email is delivered @capability:email',
+	'Password reset email is delivered',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

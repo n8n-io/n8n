@@ -187,8 +187,12 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToOne(pushMsg, pushRef, asBinary);
 	}
 
-	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(pushMsg, userIds);
+	sendToUsers(
+		pushMsg: PushMessage,
+		userIds: Array<User['id']>,
+		options?: { excludePushRef?: string },
+	) {
+		this.backend.sendToUsers(pushMsg, userIds, options);
 	}
 
 	@OnShutdown()

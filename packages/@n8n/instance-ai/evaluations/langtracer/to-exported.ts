@@ -25,11 +25,7 @@ export interface LangTracerCreateCaseBody {
 	/** `attach` is declared, not just tolerated: the turn shape is the push contract,
 	 *  and leaving it off let a hand-off case type-check while losing its attachment.
 	 *  Carrying it end-to-end needs lang-tracer #119 deployed. */
-	conversation?: Array<{
-		role: 'user' | 'assistant';
-		text: string;
-		attach?: { workflow: string };
-	}>;
+	conversation?: NonNullable<EvalTestCaseInput['conversation']>;
 	evalComplexity: 'simple' | 'medium' | 'complex';
 	evalTags: string[];
 	evalTriggerType?: string;
@@ -41,11 +37,23 @@ export interface LangTracerCreateCaseBody {
 	/** Forwarded verbatim, so the declared shape has to carry every authored
 	 *  field — an understated type silently drops `valid`/`blank` from review. */
 	credentials?: TestCaseCredential[];
-	/** Inline seed, forwarded verbatim — lang-tracer stores it at `metadata.seed`.
+	/** Inline seed, forwarded as authored — lang-tracer stores it at `metadata.seed`.
 	 *  Only the authored arm: a replay seed is derived from a source thread by
 	 *  promote/scrub over there, so pushing one would fabricate provenance. */
-	seed?: Extract<CaseSeed, { mode: 'inline' }>;
+	seed?: PushableSeed;
 	credentialFixture?: string;
+}
+
+type InlineSeed = Extract<CaseSeed, { mode: 'inline' }>;
+
+/** The seed as the case-write API takes it: without `folders`. The API's `seed`
+ *  is `additionalProperties: false` and has no such key, so the schema default
+ *  `[]` alone would fail EVERY seeded push, folder case or not. A non-empty
+ *  `folders` never reaches here: `unsupportedPushReason` refuses it. */
+export type PushableSeed = Omit<InlineSeed, 'folders'>;
+
+function pushableSeed({ folders: _notStored, ...seed }: InlineSeed): PushableSeed {
+	return seed;
 }
 
 export interface ToLangTracerOptions {
@@ -55,27 +63,53 @@ export interface ToLangTracerOptions {
 }
 
 /** Case content the case-write API can't take. An INLINE seed is pushable — it's a
- *  durable fixture, and the API stores it verbatim. A REPLAY seed isn't: it points at
+ *  durable fixture, and the API stores it verbatim — unless it carries a slot the
+ *  API's fixed key set lacks (folders, today). A REPLAY seed isn't: it points at
  *  a LangSmith trace that expires, lang-tracer derives it from a source thread it
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
+	if (testCase.credentials?.some((credential) => credential.description !== undefined)) {
+		return 'seeds credential descriptions, which the current LangTracer case-write schema does not store. Keep the case on disk until that contract supports descriptions.';
+	}
+	if (testCase.promptVersion !== undefined) {
+		return 'pins promptVersion, which the current case-write contract does not carry. Keep the case on disk.';
+	}
+	if (testCase.buildMode !== undefined) {
+		return 'pins buildMode, which the current LangTracer write/export contract does not carry. Keep the case on disk until that contract supports the mode.';
+	}
+	if (testCase.allowUserExecution) {
+		return 'enables user execution, which the current LangTracer write/export contract does not carry.';
+	}
 	const seed = testCase.seed;
 	switch (seed?.mode) {
 		case undefined:
 			return null;
 		case 'inline':
 			// The write API validates `metadata.seed` against a fixed key set
-			// (`additionalProperties: false`), so it does NOT store `projects` — a push
-			// would either 400 or land the case with the fixture stripped. A stripped
-			// project-scope case is the worst outcome available: it still runs, the seeded
-			// project never exists, and the agent's refusal is graded against a project
-			// list it never saw. Refuse until lang-tracer carries the key.
-			return seed.projects.length > 0
-				? 'seeds projects, which the case-write API does not store yet — pushing it would ' +
-						'land the case without its seeded project and grade the agent against a project ' +
-						'list it never saw. Keep it on disk until lang-tracer carries `seed.projects`.'
-				: null;
+			// (`additionalProperties: false`). It has no `folders` key, and its
+			// `workflows[]` items declare no `parentFolderId`, so a push would either
+			// 400 or land the case with the folder stripped and every workflow at the
+			// root. A stripped folder case is the worst outcome available: it still
+			// runs, the folder never exists, and the agent is graded on finding it.
+			// Refuse until lang-tracer carries both.
+			if (
+				seed.folders.length > 0 ||
+				seed.workflows.some((workflow) => workflow.parentFolderId !== undefined)
+			) {
+				return (
+					'seeds folders, which the case-write API does not store yet — pushing it would ' +
+					'land the case without its folder (and with every workflow at the project root) ' +
+					'and grade the agent on finding a folder that does not exist. Keep it on disk ' +
+					'until lang-tracer carries `seed.folders` and `seed.workflows[].parentFolderId`.'
+				);
+			}
+			// `projects` IS stored: the case-write contract (the `create_test_case` tool
+			// and `POST /api/v1/cases` share it) declares `seed.projects` with the same
+			// rules this schema enforces — unique, trimmed, at most 255 characters, at
+			// most 5. The push's own read-back check still catches a deployment that
+			// predates it.
+			return null;
 		case 'replay':
 			return (
 				'uses a replay seed — reconstructed from a LangSmith trace at run time, so it has no ' +
@@ -123,7 +157,7 @@ export function diskCaseToLangTracerCreate(
 	if (testCase.messageBudget !== undefined) body.messageBudget = testCase.messageBudget;
 	if (testCase.credentials !== undefined) body.credentials = testCase.credentials;
 	// Replay never reaches here — `unsupportedPushReason` skips those cases upstream.
-	if (testCase.seed?.mode === 'inline') body.seed = testCase.seed;
+	if (testCase.seed?.mode === 'inline') body.seed = pushableSeed(testCase.seed);
 	if (testCase.credentialFixture !== undefined) body.credentialFixture = testCase.credentialFixture;
 
 	return body;

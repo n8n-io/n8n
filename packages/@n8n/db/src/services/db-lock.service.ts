@@ -237,7 +237,7 @@ export class DbLockService {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
-			const token: OwnerToken = {} as OwnerToken;
+			const token: OwnerToken = {};
 			lockState.held = token;
 			return this.createReleaseFn(lockState, token);
 		}
@@ -288,7 +288,7 @@ export class DbLockService {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
-			const token: OwnerToken = {} as OwnerToken;
+			const token: OwnerToken = {};
 			lockState.held = token;
 			return this.createReleaseFn(lockState, token);
 		}
@@ -317,7 +317,7 @@ export class DbLockService {
 				// is never null while the lock is logically owned, preventing
 				// a concurrent tryAcquireLock from sneaking in during the
 				// microtask gap between resolve and the waiter's continuation.
-				const nextToken: OwnerToken = {} as OwnerToken;
+				const nextToken: OwnerToken = {};
 				lockState.held = nextToken;
 				next(nextToken);
 			} else {

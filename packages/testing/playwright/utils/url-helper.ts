@@ -22,3 +22,14 @@ export function getBackendUrl(): string | undefined {
 export function getFrontendUrl(): string | undefined {
 	return process.env.N8N_EDITOR_URL ?? process.env.N8N_BASE_URL;
 }
+
+/**
+ * Build the readiness URL of a backend.
+ * The backend serves readiness at `<N8N_ENDPOINT_HEALTH>/readiness` and adds a
+ * missing leading slash to that variable, so mirror both rules here.
+ */
+export function getReadinessUrl(baseUrl: string, healthEndpoint?: string): string {
+	const health = healthEndpoint ?? '/healthz';
+	const healthPath = health.startsWith('/') ? health : `/${health}`;
+	return `${baseUrl.replace(/\/+$/, '')}${healthPath}/readiness`;
+}

@@ -65,9 +65,13 @@ describe('SourceControlExportService Integration', () => {
 		// Setup export directory for testing (no longer creating real directories)
 		exportDirectory = path.join(process.cwd(), 'test-exports-' + uuid());
 
-		// Mock the instance settings to use our test directory
+		// Mock the instance settings to use our test directory. Keep the real
+		// encryptionKey: the cipher and the test key provider both read it, so a
+		// mock function here breaks credential encrypt/decrypt.
+		const { encryptionKey } = Container.get(InstanceSettings);
 		mockInstance(InstanceSettings, {
 			n8nFolder: exportDirectory,
+			encryptionKey,
 		});
 
 		// Get the services from container (this will use real dependencies)

@@ -1,4 +1,17 @@
-import { createSampleRateFormat } from './otel.utils';
+import { createSampleRateFormat, isOtlpProtocol } from './otel.utils';
+
+describe('isOtlpProtocol', () => {
+	it.each(['http/protobuf', 'grpc'])('accepts the supported protocol %s', (value) => {
+		expect(isOtlpProtocol(value)).toBe(true);
+	});
+
+	it.each(['http/json', 'HTTP/PROTOBUF', '', undefined, null, 1])(
+		'rejects %s',
+		(value: unknown) => {
+			expect(isOtlpProtocol(value)).toBe(false);
+		},
+	);
+});
 
 describe('createSampleRateFormat', () => {
 	describe.each(['en-US', 'de-DE', 'fr-FR', 'ar-EG', 'fa-IR'])('locale %s', (locale) => {

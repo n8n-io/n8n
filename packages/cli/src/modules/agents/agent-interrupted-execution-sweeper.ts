@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { AgentWakeService } from './background/agent-wake.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 @Service()
@@ -15,6 +16,7 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
@@ -55,12 +57,22 @@ export class AgentInterruptedExecutionSweeper {
 		// Background job rows ride along on the same cadence: after abandoned
 		// child executions were marked interrupted above, reconciliation can
 		// settle the job rows that pointed at them (plus timed-out ones).
-		if (this.agentsConfig.backgroundTasksEnabled) {
-			try {
+		// Workflow-job reconciliation runs even with the feature flag off, so
+		// rows created while it was on cannot strand as `running`.
+		try {
+			if (this.agentsConfig.backgroundTasksEnabled) {
 				await this.backgroundJobService.reconcile();
-			} catch (error) {
-				this.logger.error('Failed to reconcile background job rows', { error });
+			} else {
+				await this.backgroundJobService.reconcileWorkflowJobs();
 			}
+		} catch (error) {
+			this.logger.error('Failed to reconcile background job rows', { error });
+		}
+
+		try {
+			await this.agentWakeService.drainUnconsumed();
+		} catch (error) {
+			this.logger.error('Failed to schedule delivery of pending background job results', { error });
 		}
 	}
 }

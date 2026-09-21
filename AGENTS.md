@@ -41,6 +41,13 @@ frontend, and extensible node-based workflow engine.
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
+- **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
+  PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
+  parsing, …), you MUST check the shared packages for an existing
+  implementation and use it: `@n8n/utils` (generic helpers, redaction),
+  `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
+  (workflow graph and traversal). A new shared helper usually belongs in one of
+  these packages too; domain logic stays in the package that owns the domain.
 
 ## Agent Skills and Claude Code Plugin
 
@@ -129,6 +136,11 @@ profiles, tokens, determinism, and the other commands.
 ### Code Quality
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
+- `pnpm knip` - Report declared dependencies that no file in the package uses.
+  CI runs it on every PR as the "Unused Dependencies" check. To resolve a
+  finding, remove the dependency from the manifest. If the dependency is used
+  in a way knip cannot see, add an `ignoreDependencies` entry for the package
+  in `knip.ts` with a one-line reason
 
 Always run lint and typecheck before committing code to ensure quality.
 Execute these commands from within the specific package directory you're
@@ -153,7 +165,7 @@ The monorepo is organized into these key packages:
 - **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
-- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
+- **`packages/@n8n/instance-ai`**: "n8n Assistant" in the UI, "Instance AI" in code — n8n Assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 
@@ -161,7 +173,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Vitest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (UI, API, infrastructure, lifecycle, performance, and E2E orchestration)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -258,6 +270,56 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
 
+### ESLint configuration layers
+
+Rule policy lives in four shared configs in `@n8n/eslint-config`, and a package
+config picks exactly one:
+
+| layer | subpath | for |
+|---|---|---|
+| `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
+| `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
+| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
+
+A package config may add `ignores`, an additive plugin config, a block that
+raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
+down for the whole package: every lint script runs with `--quiet`, so a `warn`
+enforces nothing and reads as if it did. The code-health rule
+`lint-config-layering` enforces this, with existing debt in
+`.code-health-baseline.json`, which only shrinks.
+
+To stop enforcing a rule everywhere, retire it in `base.ts` with the count
+behind the decision. To enforce one again in a package that is ready, set it to
+`error` there. `node scripts/lint-parity/majority.mjs` prints how many packages
+downgrade each rule, and `scripts/lint-parity/snapshot.mjs` plus `diff.mjs`
+prove a config change only altered what you meant it to.
+
+### Encryption boundary
+
+New code encrypts and decrypts only through `cipher.encryptV2()` /
+`cipher.decryptV2()` — the key-manager module decides which key is used and in
+which output format. Enforced in CI by the rules in
+`packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
+`backendConfig`, and so of `nodesConfig`; every package that runs on Node
+extends one of those layers):
+
+- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
+- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
+  `packages/core/src/encryption/` and database migrations.
+- **Deployment keys are never deleted** — data encrypted with a key becomes
+  unreadable without it. Deactivate keys instead; the repository's delete
+  surface throws at runtime and the lint rule rejects call sites.
+- Inline disables that name these rules, and bare line-form disables, are
+  themselves lint errors. The code-health rule `encryption-boundary` (CI
+  "Static Analysis") is the enforcement layer: it checks that every package
+  that depends on `n8n-core` or `@n8n/db` extends `backendConfig` (or
+  `nodesConfig`) at `error` severity, and rejects every directive form that
+  would silence the
+  rules in non-test code (`eslint-disable*` and inline `eslint` configuration
+  comments). Widening the boundary happens in `encryption-boundary.ts` only;
+  that file and the rule files require security (IAM) approval via OWNERS.
+
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
@@ -265,33 +327,48 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
 - **data-testid must be a single value** (no spaces or multiple values)
 - Always use the `design-system` skill in reviews
 
-### Testing Guidelines
-- **Always work from within the package directory** when running tests
-- **Mock all external dependencies** in unit tests
-- **Prefer reusing hoisted shared `mock<T>(...)` fixtures** when a typed mock is immutable and used across tests. This rule exists to avoid massive test slowdowns from repeatedly creating nested proxy mocks while preserving the type contract. Avoid replacing these with `as unknown as T` helpers for entities like `User`.
-- **Confirm test cases with user** before writing unit tests
-- **Typecheck is critical before committing** - always run `pnpm typecheck`
-- **When modifying pinia stores**, check for unused computed properties
-- **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
+### Testing and Local Development
 
-What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
-- We use `nock` for server mocking
-- For frontend we use `vitest`
-- For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
-  See `packages/testing/playwright/README.md` for details.
-- **To iterate on a feature without docker rebuilds**, boot service containers
-  and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev:be` (backend on 5678). For frontend hot reload, also run
-  `pnpm dev:fe:editor` (8080). The root `pnpm dev` does not exist: it prints a
-  notice and exits with code 0, thus `pnpm dev && …` looks successful but no
-  server runs. See
-  [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
-- **In a codespace agent session**, use `pnpm dev:up`. It installs the missing
-  dependencies, starts the backend, waits for health, shares the port with the
-  org, and prints the URL. See
-  [.devcontainer/codespaces/README.md](.devcontainer/codespaces/README.md).
-- **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
+Choose the smallest runner that owns the behavior:
+
+| Need | Use |
+|------|-----|
+| Unit or component behavior | Vitest from the owning package |
+| UI, API, lifecycle, topology, or performance orchestration | Playwright; read `packages/testing/playwright/AGENTS.md` |
+| Add a test service, capability, or managed stack | Read `packages/testing/containers/README.md` |
+
+Testing rules:
+
+- Run tests and `pnpm typecheck` from the owning package.
+- Confirm unit test cases with the user before you write them.
+- Mock external dependencies. Use `nock` for HTTP services.
+- Trace side effects from imports, constructors, hooks, and mocked branches before
+  you run a new or changed test.
+- Do not let tests read from or write to the developer's home directory,
+  `~/.n8n`, or other user-owned locations.
+- Use a test-owned temporary directory for filesystem tests. Set
++  `N8N_USER_FOLDER` before you import modules that resolve it. n8n writes to `${N8N_USER_FOLDER}/.n8n`, so expect the `.n8n` subfolder there.
+- When a mock changes a state check such as `existsSync()`, inspect the branch
+  that it activates. Mock every reachable filesystem mutation unless filesystem
+  behavior is under test.
+- Run tests that can initialize n8n settings with an isolated
+  `N8N_USER_FOLDER` first. Clean up only paths that the test created.
+- Reuse immutable hoisted `mock<T>(...)` fixtures. Do not replace typed entity mocks with `as unknown as T`.
+- Use `createVitestConfigWithDecorators` for Vitest packages that use `@n8n/di` decorators.
+- Check for unused computed properties after you change a Pinia store.
+
+Choose a local development path:
+
+| Goal | Command |
+|------|---------|
+| Run product E2E against a local instance | `pnpm --filter=n8n-playwright test:local` |
+| Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
+| Add editor hot reload | `pnpm dev:fe:editor` |
+| Start a Codespace backend and share its port | `pnpm dev:up` |
+
+The root `pnpm dev` command does not start a server. See the
+[Playwright guide](packages/testing/playwright/README.md) and the
+[Codespaces guide](.devcontainer/codespaces/README.md) for details.
 
 ### Common Development Tasks
 
@@ -300,7 +377,9 @@ When implementing features:
 2. Implement backend logic in `packages/cli` module, follow
    `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/frontend/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
+   frontend feature module, obey
+   `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 

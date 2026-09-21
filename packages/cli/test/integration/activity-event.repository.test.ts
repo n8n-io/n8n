@@ -75,6 +75,125 @@ describe('ActivityEventRepository', () => {
 		expect(entry.data).toEqual({ truncated: true });
 	});
 
+	describe('reading one entry and one resource', () => {
+		let otherProject: Project;
+
+		beforeAll(async () => (otherProject = await createTeamProject()));
+
+		it('returns an entry inside the scope', async () => {
+			await repository.record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: 'workflow-1',
+			});
+			const [written] = await repository.findFeed({ projectIds: [project.id], limit: 1 });
+
+			const entry = await repository.findEntry({
+				id: written.id,
+				projectIds: [project.id],
+			});
+
+			expect(entry?.id).toBe(written.id);
+		});
+
+		/**
+		 * The property the tool depends on: an out-of-scope id and a pruned id answer the same way,
+		 * so the reader cannot be used to find out what another project holds.
+		 */
+		it('returns null for an entry in another project, as it does for one that never existed', async () => {
+			await repository.record({
+				category: 'workflow',
+				action: 'deleted',
+				projectId: otherProject.id,
+				resourceType: 'workflow',
+				resourceId: 'not-yours',
+			});
+			const [written] = await repository.findFeed({ projectIds: [otherProject.id], limit: 1 });
+
+			const outOfScope = await repository.findEntry({
+				id: written.id,
+				projectIds: [project.id],
+			});
+			const pruned = await repository.findEntry({
+				id: written.id + 10_000,
+				projectIds: [project.id],
+			});
+
+			expect(outOfScope).toBeNull();
+			expect(pruned).toBeNull();
+		});
+
+		it("returns one resource's own history, newest first, and nothing from another resource", async () => {
+			for (const action of ['created', 'saved', 'published']) {
+				await repository.record({
+					category: 'workflow',
+					action,
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: 'workflow-1',
+				});
+			}
+			await repository.record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: 'workflow-2',
+			});
+
+			const history = await repository.findByResource({
+				resourceType: 'workflow',
+				resourceId: 'workflow-1',
+				projectIds: [project.id],
+				limit: 10,
+			});
+
+			expect(history.map((entry) => entry.action)).toEqual(['published', 'saved', 'created']);
+		});
+
+		it("does not return another project's history for the same resource id", async () => {
+			await repository.record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: otherProject.id,
+				resourceType: 'workflow',
+				resourceId: 'shared-id',
+			});
+
+			const history = await repository.findByResource({
+				resourceType: 'workflow',
+				resourceId: 'shared-id',
+				projectIds: [project.id],
+				limit: 10,
+			});
+
+			expect(history).toEqual([]);
+		});
+
+		it('reads nothing when the caller has no projects in scope', async () => {
+			await repository.record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: 'workflow-1',
+			});
+			const [written] = await repository.findFeed({ projectIds: [project.id], limit: 1 });
+
+			expect(await repository.findEntry({ id: written.id, projectIds: [] })).toBeNull();
+			expect(
+				await repository.findByResource({
+					resourceType: 'workflow',
+					resourceId: 'workflow-1',
+					projectIds: [],
+					limit: 10,
+				}),
+			).toEqual([]);
+		});
+	});
+
 	describe('retention', () => {
 		it('deletes entries older than the cutoff and keeps the rest', async () => {
 			await repository.record({ category: 'workflow', action: 'old', projectId: project.id });

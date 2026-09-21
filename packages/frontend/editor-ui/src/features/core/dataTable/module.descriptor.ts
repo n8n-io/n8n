@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
 	DATA_TABLE_DETAILS,
 	DATA_TABLE_VIEW,
@@ -16,7 +16,7 @@ const DataTableView = async () => await import('@/features/core/dataTable/DataTa
 const DataTableDetailsView = async () =>
 	await import('@/features/core/dataTable/DataTableDetailsView.vue');
 
-export const DataTableModule: FrontendModuleDescription = {
+export const DataTableModule = defineFrontendModule({
 	id: 'data-table',
 	name: 'Data Table',
 	description: 'Manage and store data efficiently with the Data Table module.',
@@ -35,7 +35,7 @@ export const DataTableModule: FrontendModuleDescription = {
 				// Refresh the weekly summary when entering the datatables route. The import is
 				// lazy and unawaited: this descriptor is in the boot graph through the shell
 				// manifest, and a chunk that fails to load must not hold up navigation.
-				void import('@/features/execution/insights')
+				void import('@n8n/frontend-module-insights')
 					.then(({ useInsightsStore }) => {
 						const insightsStore = useInsightsStore();
 						if (insightsStore.isSummaryEnabled) {
@@ -95,4 +95,4 @@ export const DataTableModule: FrontendModuleDescription = {
 			displayName: 'Data Table',
 		},
 	],
-};
+});

@@ -1,4 +1,7 @@
 import type {
+	ComputerUseChannel,
+	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -147,6 +150,17 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/** Computer Use entries the client reported, reused by follow-up runs. Only the
+	 *  client can see its own rollout and the device, and a resumed or background
+	 *  run has no request of its own to ask. */
+	private readonly threadComputerUseChannels = new Map<string, ComputerUseChannel[]>();
+
+	/** Build mode captured at user-run entry and reused by follow-up runs. */
+	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadPromptSelections = new Map<
+		string,
+		{ version: string; metadata?: InstanceAiPromptConfiguration }
+	>();
 	/**
 	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
 	 * Required rather than optional: per-user concurrency counting depends on it, and a
@@ -446,7 +460,7 @@ export class RunStateRegistry<TUser = unknown> {
 		data: ConfirmationData,
 	): boolean {
 		const pending = this.pendingConfirmations.get(requestId);
-		if (!pending || pending.userId !== requestingUserId) return false;
+		if (pending?.userId !== requestingUserId) return false;
 
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve(data);
@@ -485,6 +499,43 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getTimeZone(threadId: string): string | undefined {
 		return this.threadTimeZones.get(threadId);
+	}
+
+	/** An omitted list clears it, so a client that stops reporting advertises nothing. */
+	setComputerUseChannels(threadId: string, channels: ComputerUseChannel[] | undefined): void {
+		if (channels === undefined) this.threadComputerUseChannels.delete(threadId);
+		else this.threadComputerUseChannels.set(threadId, channels);
+	}
+
+	getComputerUseChannels(threadId: string): ComputerUseChannel[] | undefined {
+		return this.threadComputerUseChannels.get(threadId);
+	}
+
+	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
+	setBuildMode(threadId: string, buildMode: InstanceAiBuildMode | undefined): void {
+		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
+		else this.threadBuildModes.set(threadId, buildMode);
+	}
+
+	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
+		return this.threadBuildModes.get(threadId);
+	}
+
+	setPromptVersion(threadId: string, version: string | undefined): void {
+		if (version === undefined) this.threadPromptSelections.delete(threadId);
+		else this.threadPromptSelections.set(threadId, { version });
+	}
+
+	getPromptVersion(threadId: string): string | undefined {
+		return this.threadPromptSelections.get(threadId)?.version;
+	}
+
+	setPromptConfiguration(threadId: string, metadata: InstanceAiPromptConfiguration): void {
+		this.threadPromptSelections.set(threadId, { version: metadata.version, metadata });
+	}
+
+	getPromptConfiguration(threadId: string): InstanceAiPromptConfiguration | undefined {
+		return this.threadPromptSelections.get(threadId)?.metadata;
 	}
 
 	/**
@@ -637,6 +688,9 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
+		this.threadComputerUseChannels.delete(threadId);
+		this.threadBuildModes.delete(threadId);
+		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
@@ -666,11 +720,15 @@ export class RunStateRegistry<TUser = unknown> {
 	 * confirmation Promise.
 	 */
 	shutdown(): {
-		activeRuns: ActiveRunState[];
+		activeRuns: Array<ActiveRunState & { promptVersion?: string }>;
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
 		pendingThreadIds: string[];
 	} {
-		const activeRuns = [...this.activeRuns.values()];
+		// Capture the selected version before clearing per-thread state.
+		const activeRuns = [...this.activeRuns.values()].map((run) => ({
+			...run,
+			promptVersion: this.getPromptVersion(run.threadId),
+		}));
 		const suspendedRuns = [...this.suspendedRuns.values()];
 		const pendingThreadIds = [
 			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),
@@ -681,6 +739,9 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
+		this.threadComputerUseChannels.clear();
+		this.threadBuildModes.clear();
+		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 

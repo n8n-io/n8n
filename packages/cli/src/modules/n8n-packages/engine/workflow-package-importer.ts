@@ -17,7 +17,11 @@ import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
+import {
+	assertArchiveTransitionsAllowed,
+	assertPackageImportApiKeyScopes,
+	assertTagWritesAllowed,
+} from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -125,6 +129,7 @@ export class WorkflowPackageImporter {
 		});
 
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
+		assertArchiveTransitionsAllowed(request.apiKeyScopes, [plan.workflowPlan]);
 		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
 
 		const content = await this.importOrchestrator.apply(plan);

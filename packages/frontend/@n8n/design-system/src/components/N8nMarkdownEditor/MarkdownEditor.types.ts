@@ -11,6 +11,8 @@ export type N8nMarkdownEditorProps = {
 	readonly?: boolean;
 	showToolbar?: MarkdownEditorToolbarMode;
 	maxHeight?: string | number;
+	/** Whether content should expand/collapse. Overwrites maxHeight. */
+	isCollapsible?: boolean;
 	extensions?: Extension[];
 	editorProps?: EditorOptions['editorProps'];
 	containerClass?: string;
@@ -18,6 +20,7 @@ export type N8nMarkdownEditorProps = {
 
 export type N8nMarkdownEditorEmits = {
 	'update:modelValue': [value: string];
+	'update:collapsed': [collapsed: boolean];
 	input: [value: string];
 	focus: [event: FocusEvent];
 	blur: [value: string, event: FocusEvent];

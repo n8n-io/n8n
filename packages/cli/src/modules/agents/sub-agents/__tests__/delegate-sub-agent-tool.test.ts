@@ -12,6 +12,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -87,6 +88,26 @@ describe('createN8nDelegateSubAgentTool', () => {
 			true,
 		);
 		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new UserError('terminal'))).toBe(false);
+		expect(
+			inlineOptions?.shouldRetrySubAgentResumeError?.(
+				new AgentExecutionRecordingError({
+					phase: 'create',
+					cause: new Error('database unavailable'),
+				}),
+			),
+		).toBe(true);
+		for (const executionStarted of [false, true]) {
+			expect(
+				inlineOptions?.shouldRetrySubAgentResumeError?.(
+					new AgentExecutionRecordingError({
+						phase: 'finalize',
+						executionId: 'execution-1',
+						executionStarted,
+						cause: new Error('database unavailable'),
+					}),
+				),
+			).toBe(false);
+		}
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {

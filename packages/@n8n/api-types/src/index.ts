@@ -11,6 +11,9 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
+export type * from './instance-reporting';
+export type * from './worker-pools';
+export type * from './node-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -120,11 +123,52 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+export {
+	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	AI_PREFERENCE_MAX_PER_SCOPE,
+	aiPreferenceContentSchema,
+	aiPreferenceScopeSchema,
+	aiPreferenceSourceSchema,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	aiPreferenceScopeOf,
+	aiPreferenceTargetOf,
+} from './schemas/ai-preference.schema';
+export type {
+	AiPreferenceCountDto,
+	AiPreferenceDto,
+	AiPreferenceListDto,
+	AiPreferenceTarget,
+	AiPreferenceProjectDto,
+	AiPreferenceUserDto,
+	AiPreferenceScope,
+	AiPreferenceSource,
+} from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
+export {
+	credentialIdParamSchema,
+	credentialTypeNameParamSchema,
+	executionIdParamSchema,
+	nodeTypePolicyIdParamSchema,
+	nodeTypePolicyScopeIdParamSchema,
+	folderIdParamSchema,
+	projectIdParamSchema,
+	promotionConnectionIdParamSchema,
+	promotionDirectionParamSchema,
+	promotionProviderIdParamSchema,
+	roleMappingRuleIdParamSchema,
+	roleSlugParamSchema,
+	tagIdParamSchema,
+	userIdParamSchema,
+	variableIdParamSchema,
+	workflowIdParamSchema,
+	workflowVersionIdParamSchema,
+} from './schemas/public-api-path-params.schema';
 export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
@@ -141,6 +185,10 @@ export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
+export {
+	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
+	credentialDescriptionSchema,
+} from './schemas/credential-description.schema';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -202,6 +250,11 @@ export {
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
+
+export {
+	ChangeEmailResponseSchema,
+	type ChangeEmailResponse,
+} from './schemas/change-email-response';
 
 export {
 	encryptionKeySchema,
@@ -305,6 +358,8 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
+	buildRunStepSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
@@ -312,6 +367,7 @@ export {
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
+	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
@@ -349,6 +405,7 @@ export {
 	workflowSetupNodeSchema,
 	setupItemSchema,
 	setupItemsPayloadSchema,
+	aiPreferencesAppliedPayloadSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -365,7 +422,14 @@ export {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	computerUseChannelSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -376,6 +440,8 @@ export {
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
+	instanceAiThreadArtifactSchema,
+	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -399,6 +465,7 @@ export {
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
@@ -414,6 +481,7 @@ export {
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
@@ -427,15 +495,27 @@ export {
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiEvalSeedFolderSchema,
+	instanceAiEvalSeedArtifactIdSchema,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
+	resolveInstanceAiPermissions,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_PREFILL_TYPES,
+	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	instanceAiBuildModeSchema,
+	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
+	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
+	InstanceAiPrefillType,
+	InstanceAiPrefillTypeReported,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
@@ -449,6 +529,7 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	ComputerUseChannel,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -487,6 +568,8 @@ export type {
 	InstanceAiConfirmationRequestEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
+	InstanceAiPreferencesAppliedEvent,
+	AiPreferencesAppliedPayload,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
@@ -507,6 +590,7 @@ export type {
 	InstanceAiSSEConnectionState,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
@@ -551,6 +635,8 @@ export type {
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
+	InstanceAiThreadArtifact,
+	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
@@ -574,6 +660,7 @@ export type {
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedAgent,
+	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -598,6 +685,7 @@ export type { AgentRunState } from './schemas/agent-run-reducer';
 export {
 	formatDebugJson,
 	summarizeJsonValue,
+	stepInstructions,
 	parseSystemPromptForDisplay,
 	parseMessageBlocks,
 	parseUsageSummary,
@@ -619,7 +707,7 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
+	MCP_INSTANCE_CONTEXT_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
@@ -751,3 +839,14 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+
+export {
+	instanceAiApprovalDetailsSchema,
+	type InstanceAiApprovalDetails,
+} from './schemas/instance-ai-approval.schema';
+export type {
+	ExecutionListPagination,
+	ExecutionListPaginationQuery,
+	SerializedCursor,
+} from './dto/executions/execution-list-pagination';
+export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';

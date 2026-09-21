@@ -1,5 +1,6 @@
 import { searchMcpRegistryServers } from '../mcp-registry-search';
 import type { McpRegistryServer } from '../mcp-registry.types';
+import { githubUsesCredentialsMockServer } from '../mock-servers';
 
 function server(overrides: Partial<McpRegistryServer> = {}): McpRegistryServer {
 	return {
@@ -66,6 +67,21 @@ describe('searchMcpRegistryServers', () => {
 		expect(result.slug).toBe('google-drive');
 		expect(result.name).toBe('googleDrive');
 		expect(result.credentialType).toBe('googleDriveMcpOAuth2Api');
+	});
+
+	it('uses the native OAuth2 credential type as agent authentication', () => {
+		const [result] = searchMcpRegistryServers(
+			[
+				{
+					...githubUsesCredentialsMockServer,
+					usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+				},
+			],
+			['git-hub'],
+		);
+
+		expect(result.authentication).toBe('githubOAuth2Api');
+		expect(result.credentialType).toBe('githubOAuth2Api');
 	});
 
 	it('ranks name matches above description matches', () => {

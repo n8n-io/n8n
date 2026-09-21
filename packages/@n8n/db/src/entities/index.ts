@@ -10,6 +10,7 @@ import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
+import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -18,6 +19,7 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import {
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
@@ -36,6 +38,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectPoolSettings } from './project-pool-settings.ee';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -68,7 +71,10 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
-import { WorkflowDependency } from './workflow-dependency-entity';
+import {
+	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
@@ -119,6 +125,7 @@ export {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -130,6 +137,7 @@ export {
 	CredentialsEntity,
 	type CredentialUsageScope,
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
 	EvaluationCollection,
@@ -157,6 +165,7 @@ export {
 	TagEntity,
 	User,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
@@ -190,6 +199,7 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
@@ -207,6 +217,7 @@ export const entities = {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -254,6 +265,7 @@ export const entities = {
 	Role,
 	ScheduledJob,
 	ScheduledTask,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

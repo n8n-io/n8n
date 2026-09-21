@@ -1,9 +1,12 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiThreadMessagesResponse,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
@@ -12,15 +15,18 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { z } from 'zod';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
 	patchThread,
-	type AgentDbMessage,
+	withBoundAgentTarget,
+	type AgentBuilderTarget,
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
@@ -272,6 +278,48 @@ export class InstanceAiMemoryService {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
+	async getThreadInfo(threadId: string): Promise<InstanceAiThreadInfo> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread) throw new NotFoundError('Thread not found');
+		return this.toThreadInfo(thread);
+	}
+
+	async listThreadHistory(
+		userId: string,
+		query: InstanceAiThreadHistoryQuery,
+	): Promise<InstanceAiThreadHistoryResponse> {
+		let before: { updatedAt: Date; id: string } | undefined;
+		if (query.cursor) {
+			try {
+				const parsed = z
+					.object({ updatedAt: z.string().datetime(), id: z.string().min(1).max(256) })
+					.parse(JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8')));
+				before = { updatedAt: new Date(parsed.updatedAt), id: parsed.id };
+			} catch {
+				throw new BadRequestError('Invalid thread history cursor');
+			}
+		}
+		const rows = await this.agentMemory.listThreadHistory(
+			userId,
+			query.limit,
+			query.search,
+			before,
+		);
+		const hasMore = rows.length > query.limit;
+		const threads = rows.slice(0, query.limit).map((thread) => this.toThreadInfo(thread));
+		const last = threads.at(-1);
+		return {
+			threads,
+			hasMore,
+			nextCursor:
+				hasMore && last
+					? Buffer.from(JSON.stringify({ updatedAt: last.updatedAt, id: last.id })).toString(
+							'base64url',
+						)
+					: null,
+		};
+	}
+
 	async listThreads(
 		userId: string,
 		page = 0,
@@ -489,9 +537,11 @@ export class InstanceAiMemoryService {
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
-	 *  and flip `confirmation.expired = true` on the ones with no live row. */
-	private async flagExpiredConfirmations(
-		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	 *  and flip `confirmation.expired = true` on the ones with no live row. Shared
+	 *  by the history read and the SSE run-sync frame so both render a settled
+	 *  card the same way. */
+	async flagExpiredConfirmations(
+		messages: Parameters<typeof markExpiredConfirmations>[0],
 	): Promise<void> {
 		const requestIds = collectConfirmationRequestIds(messages);
 		if (requestIds.length === 0) return;
@@ -589,6 +639,35 @@ export class InstanceAiMemoryService {
 		return this.toThreadInfo(updated);
 	}
 
+	/**
+	 * Replace this thread's pending new-agent marker with `target` as its bound
+	 * agent-builder target, in one patch — a merge-style update cannot delete a
+	 * key, and leaving both standing makes a reload show a phantom blank artifact
+	 * beside the real agent. Ownership is re-checked inside the patch so a thread
+	 * that changed hands between read and write cannot be rebound.
+	 */
+	async bindAgentBuilderTarget(
+		userId: string,
+		threadId: string,
+		target: AgentBuilderTarget,
+	): Promise<InstanceAiThreadInfo> {
+		const updated = await patchThread(this.agentMemory, {
+			threadId,
+			update: (thread) => {
+				// A `null` patch means "leave the thread alone", which would answer a
+				// non-owner with a success — throw instead.
+				if (thread.resourceId !== userId) {
+					throw new ForbiddenError('Not authorized for this thread');
+				}
+				return { metadata: withBoundAgentTarget(thread.metadata ?? {}, target) };
+			},
+		});
+		if (!updated) {
+			throw new NotFoundError(`Thread ${threadId} not found`);
+		}
+		return this.toThreadInfo(updated);
+	}
+
 	async getThreadMetadata(
 		userId: string,
 		threadId: string,
@@ -601,10 +680,12 @@ export class InstanceAiMemoryService {
 	/**
 	 * Delete conversation threads older than the configured TTL. Invoked on a
 	 * recurring schedule by the leader instance's prune job. Idempotent and
-	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled).
+	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled). Stops
+	 * before the next thread once `signal` aborts.
 	 */
 	async cleanupExpiredThreads(
 		onThreadDeleted?: (threadId: string) => Promise<void>,
+		signal?: AbortSignal,
 	): Promise<number> {
 		const ttlDays = this.instanceAiConfig.threadTtlDays;
 		if (!ttlDays || ttlDays <= 0) return 0;
@@ -618,7 +699,7 @@ export class InstanceAiMemoryService {
 		const perPage = 100;
 		let hasMore = true;
 
-		while (hasMore) {
+		while (hasMore && !signal?.aborted) {
 			const result = await this.agentMemory.listThreads({
 				perPage,
 				page: 0,
@@ -626,6 +707,7 @@ export class InstanceAiMemoryService {
 			});
 			let deletedInPage = 0;
 			for (const thread of result.threads) {
+				if (signal?.aborted) break;
 				if (thread.updatedAt < cutoff) {
 					try {
 						await onThreadDeleted?.(thread.id);

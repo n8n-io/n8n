@@ -29,6 +29,21 @@ export type IntegrationMessageTarget =
  */
 export type ReplyExpectation = 'required' | 'optional';
 
+export interface TelegramMessageAttachmentContext {
+	type: 'image' | 'file' | 'video' | 'audio';
+	file_id: string;
+	file_unique_id?: string;
+}
+
+/** Allow-listed platform data from the inbound message. */
+export type IntegrationPlatformMessageContext = {
+	type: 'telegram';
+	chat_id: string;
+	message_id: string;
+	message_thread_id?: string;
+	attachments: TelegramMessageAttachmentContext[];
+};
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -36,6 +51,7 @@ export interface IntegrationMessageContext {
 	messageId?: string;
 	interactingUserId?: string;
 	agentUserId?: string;
+	platformMessage?: IntegrationPlatformMessageContext;
 	subject?: IntegrationMessageSubject;
 	replyExpectation?: ReplyExpectation;
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */

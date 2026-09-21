@@ -215,7 +215,7 @@ export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 		name: 'get_current_message_context',
 		inputSchema: getCurrentMessageContextInputSchema,
 		description:
-			'get_current_message_context: no input. Returns the latest place this agent communicated in this thread. For Slack, context.agentUserId is the bot user ID for this agent; do not look it up as another user.',
+			'get_current_message_context: no input. Returns the latest place this agent communicated in this thread and any allow-listed platformMessage metadata. For Slack, context.agentUserId is the bot user ID for this agent; do not look it up as another user.',
 	},
 	{
 		name: 'get_current_subject',

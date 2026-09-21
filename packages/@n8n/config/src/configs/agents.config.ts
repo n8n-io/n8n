@@ -98,7 +98,7 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
-	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	/** When true, the sandbox provider deletes the knowledge sandbox once it goes idle. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
 

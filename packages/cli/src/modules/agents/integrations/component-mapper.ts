@@ -225,7 +225,7 @@ export class ComponentMapper {
 		children.push(
 			sdk.Image({
 				url: component.url as string,
-				alt: (component.altText as string) ?? 'image',
+				alt: component.altText ?? 'image',
 			}),
 		);
 	}

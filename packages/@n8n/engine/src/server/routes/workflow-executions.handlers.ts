@@ -20,6 +20,52 @@ const ExecutionIdParams = z.object({ id: z.string().uuid() });
  */
 const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).optional() }).strict();
 
+const datetimeStringWithOffset = () => z.string().datetime({ offset: true });
+
+const ExecutionStatusSchema = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']);
+
+const SearchExecutionsBody = z
+	.object({
+		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
+		status: z.array(ExecutionStatusSchema).min(1).optional(),
+		mode: z.string().min(1).max(32).optional(),
+		createdAfter: datetimeStringWithOffset().optional(),
+		createdBefore: datetimeStringWithOffset().optional(),
+		before: z
+			.object({ createdAt: datetimeStringWithOffset(), id: z.string().uuid() })
+			.strict()
+			.optional(),
+		limit: z.number().int().min(1).max(100).default(20),
+		includeTotal: z.boolean().optional(),
+		/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+		order: z
+			.object({ top: ExecutionStatusSchema.optional(), startedAt: z.literal('DESC').optional() })
+			.strict()
+			.optional(),
+	})
+	.strict()
+	// The cursor only walks its own `(createdAt, id)` order, so a status-first
+	// sort would drop the rows that sort after the cursor row. Ask for one or the
+	// other.
+	.refine((body) => !(body.before && body.order?.top), {
+		message: 'before cannot be combined with order.top',
+		path: ['before'],
+	});
+
+export function createSearchExecutionsHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = SearchExecutionsBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		const result = await executionQuery.searchExecutions(parsed.data);
+		res.status(200).json(result);
+	};
+}
+
 /** The validated `:id`, or `null` once the 400 has been sent. */
 function parseExecutionId(req: Request, res: Response): string | null {
 	const parsed = ExecutionIdParams.safeParse(req.params);
@@ -35,6 +81,7 @@ function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): Ex
 		status: record.status,
 		mode: record.mode,
 		graph: record.graph,
+		workflow: record.workflow,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
@@ -52,8 +99,8 @@ function toStepDetail(record: StepView): StepDetail {
 		status: record.status,
 		outputs: record.outputs,
 		error: record.error,
-		createdAt: record.createdAt.toISOString(),
-		updatedAt: record.updatedAt.toISOString(),
+		createdAt: record.createdAt,
+		updatedAt: record.updatedAt,
 	};
 }
 

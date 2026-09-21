@@ -529,6 +529,9 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
 				? toValue(options.setupHint)
 				: undefined;
+		// Render the form immediately; generating its saved name can wait for the server.
+		setCredentialPropertyDefaults();
+		if (setupHint) seedFromSetupHint(setupHint);
 		// Recipe-created credentials carry the creator's name ("fal.ai API Key
 		// (Jan D)") so same-recipe credentials stay tellable-apart in shared
 		// projects. A host-suggested name still needs the numbering dedup —
@@ -545,8 +548,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 						credentialTypeName: credentialTypeName.value,
 					})
 				: (credentialType.value?.displayName ?? '');
-		setCredentialPropertyDefaults();
-		if (setupHint) seedFromSetupHint(setupHint);
 		if (homeProject.value) {
 			credentialData.value = { ...credentialData.value, homeProject: homeProject.value };
 		}

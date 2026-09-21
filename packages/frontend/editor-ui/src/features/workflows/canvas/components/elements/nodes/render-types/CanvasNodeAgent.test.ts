@@ -42,7 +42,7 @@ vi.mock('@/features/agents/composables/useAgentNavigation', () => ({
 vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 	useAgentCapabilitySummary: (_projectId: unknown, agentId: { value: string }) => {
 		summaryAgentIdHolder.value = agentId;
-		return { summary: summaryHolder, error: errorHolder };
+		return { summary: summaryHolder, isLoading: { value: false }, error: errorHolder };
 	},
 	clearAgentCapabilitySummaryCache: vi.fn(),
 }));

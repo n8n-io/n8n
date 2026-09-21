@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
@@ -17,16 +18,13 @@ import type {
 	INodeCredentialsDetails,
 	INodeParameters,
 	INodeProperties,
-	INodeType,
-	IVersionedNodeType,
 	IRequestOptionsSimplified,
 	IWorkflowDataProxyAdditionalKeys,
 	WorkflowExecuteMode,
 	IHttpRequestHelper,
-	INodeTypeData,
-	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IDataObject,
 } from 'n8n-workflow';
 import {
@@ -35,58 +33,70 @@ import {
 	Workflow,
 	UnexpectedError,
 	UserError,
+	classifyTriggerIdentity,
+	getCredentialOwnRequestAllowedDomains,
 	isExpression,
 	jsonParse,
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import {
-	DCR_MANAGED_CREDENTIAL_FIELDS,
-	MANAGED_OAUTH_PINNED_FIELDS,
-} from '@/oauth/dcr-managed-fields';
+import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { createMockNodeTypes } from './credentials/mock-node-types';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
+import { UnsupportedEndUserCredentialTriggerError } from './errors/unsupported-end-user-credential-trigger.error';
+
+/**
+ * Applies the credential's allowlist to the requests its `preAuthentication` hook issues.
+ *
+ * Narrowed to the single method `IHttpRequestHelper` declares, rather than spreading the
+ * node's wider helper bag, so a hook cannot reach an unwrapped request method on it.
+ *
+ * Read per request rather than up front: `runPreAuthentication` runs on every OAuth2
+ * request for hooks that only transform token data in memory, and an empty `'domains'`
+ * list must not fail those.
+ */
+function restrictToCredentialDomains(
+	helpers: IHttpRequestHelper,
+	credentials: ICredentialDataDecryptedObject,
+): IHttpRequestHelper {
+	return {
+		helpers: {
+			httpRequest: async (requestOptions: IHttpRequestOptions): Promise<unknown> => {
+				const allowedDomains = getCredentialOwnRequestAllowedDomains(credentials);
+				if (allowedDomains === undefined) {
+					return await helpers.helpers.httpRequest(requestOptions);
+				}
+
+				// A request carries one allowlist, and honouring either side alone could widen
+				// what the other permits, so refuse rather than pick.
+				if (requestOptions.allowedDomains !== undefined) {
+					throw new UserError(
+						'This credential restricts requests to specific domains, which cannot be combined with the domains its authentication step asks for.',
+					);
+				}
+
+				return await helpers.helpers.httpRequest({ ...requestOptions, allowedDomains });
+			},
+		},
+	};
+}
 
 const mockNode = {
 	name: '',
 	typeVersion: 1,
 	type: 'mock',
 	position: [0, 0],
-	parameters: {} as INodeParameters,
+	parameters: {},
 } as INode;
 
-const mockNodesData: INodeTypeData = {
-	mock: {
-		sourcePath: '',
-		type: {
-			description: { properties: [] as INodeProperties[] },
-		} as INodeType,
-	},
-};
-
-const mockNodeTypes: INodeTypes = {
-	getKnownTypes(): IDataObject {
-		return {};
-	},
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return mockNodesData[nodeType]?.type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (!mockNodesData[nodeType]) {
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
-				tags: { nodeType },
-			});
-		}
-		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-	},
-};
+const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
@@ -204,7 +214,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialsExpired ||
 					isTestingCredentials
 				) {
-					const output = await credentialType.preAuthentication.call(helpers, credentials);
+					const output = await credentialType.preAuthentication.call(
+						restrictToCredentialDomains(helpers, credentials),
+						credentials,
+					);
 
 					// if there is data in the output, make sure the returned
 					// property is the expirable property
@@ -252,7 +265,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (typeof credentialType.preAuthentication !== 'function') {
 			return undefined;
 		}
-		const output = await credentialType.preAuthentication.call(helpers, credentials);
+		const output = await credentialType.preAuthentication.call(
+			restrictToCredentialDomains(helpers, credentials),
+			credentials,
+		);
 		return (output as ICredentialDataDecryptedObject) ?? undefined;
 	}
 
@@ -505,6 +521,30 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 	}
 
+	private assertTriggerSupportsEndUserCredential(
+		credentialsEntity: CredentialsEntity,
+		additionalData: IWorkflowExecuteAdditionalData,
+		executeData: IExecuteData | undefined,
+	): void {
+		if (!executeData) return;
+
+		const resolverId =
+			credentialsEntity.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(additionalData.workflowSettings);
+		if (!resolverId) return;
+
+		const isSystemResolver = resolverId === SYSTEM_RESOLVER_ID;
+		const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
+			executeData.node.type,
+			executeData.node.parameters,
+		);
+		const supportsResolver = isSystemResolver ? providesN8nIdentity : providesExternalIdentity;
+
+		if (!supportsResolver) {
+			throw new UnsupportedEndUserCredentialTriggerError(isSystemResolver ? 'system' : 'custom');
+		}
+	}
+
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 */
@@ -516,7 +556,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
+		// from their parent. Prefer expressionResolveValues.node when present: it is always
+		// the node making this call to resolve credentials.
+		const consumerNode = expressionResolveValues?.node ?? executeData?.node;
+
 		if (nodeCredentials.__aiGatewayManaged) {
 			const { userId, workflowId, projectId, executionId } = additionalData;
 			return await this.aiGatewayService.getSyntheticCredential({
@@ -525,6 +571,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				workflowId,
 				projectId,
 				executionId,
+				node: consumerNode,
 			});
 		}
 
@@ -534,7 +581,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.policyEnforcementService.enforceCredentialDecrypt({
 			credentialType: type,
 			credentialId: credentialsEntity.id,
-			consumer: executeData ? { nodeType: executeData.node.type } : null,
+			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
 			projectId: additionalData.projectId ?? null,
 		});
 
@@ -547,23 +594,41 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// In manual or internal mode (or when the root execution is manual, e.g. a subworkflow
 		// called from a manual parent), skip dynamic resolution unless a credentials context is
-		// present (set by webhook triggers with an identity extractor). Canvas node tests
-		// have no incoming request, so we fall back to static data for easier developer
-		// testing. Internal mode is used by OAuth authorize/revoke flows which are not
-		// actual workflow executions and should not trigger dynamic resolution.
+		// present or a trigger explicitly requests the credential. Canvas action-node tests have
+		// no incoming request, so they fall back to static data for easier developer testing.
+		// Trigger contexts opt in so a missing identity produces an actionable error instead.
+		// Internal mode is used by OAuth authorize/revoke flows which are not actual workflow
+		// executions and should not trigger dynamic resolution.
 		// For all other modes (especially production), always attempt resolution —
 		// missing credentials will surface an error rather than silently falling back to
 		// static data.
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
 		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
-		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
-			// Mark that this execution attempted to run with a private credential before
-			// resolution is attempted, so the flag survives even when resolution throws
-			// (e.g. the running user has not connected the credential). Telemetry-only;
-			// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
-			if (credentialsEntity.isResolvable) {
-				additionalData.currentNodeAttemptedDynamicCredentials = true;
-			}
+		const isManualTriggerCredentialRequest =
+			effectiveMode === 'manual' &&
+			options?.credentialUsage === 'trigger' &&
+			credentialsEntity.isResolvable;
+		const shouldAttemptDynamicResolution =
+			additionalData.executionContext?.credentials !== undefined ||
+			isManualTriggerCredentialRequest ||
+			!skipDynamicResolution;
+
+		// Mark that this execution attempted to run with a private credential before
+		// resolution is attempted, so the flag survives even when resolution throws
+		// (e.g. the running user has not connected the credential). Telemetry-only;
+		// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
+		if (shouldAttemptDynamicResolution && credentialsEntity.isResolvable) {
+			additionalData.currentNodeAttemptedDynamicCredentials = true;
+		}
+
+		if (
+			isManualTriggerCredentialRequest &&
+			additionalData.executionContext?.credentials === undefined
+		) {
+			this.assertTriggerSupportsEndUserCredential(credentialsEntity, additionalData, executeData);
+		}
+
+		if (shouldAttemptDynamicResolution) {
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
@@ -627,11 +692,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
+		// The credential type owns hidden OAuth endpoint/flow fields. Drop stored values so
+		// applyOverwrite (admin overwrite) and getNodeParameters (type default) fill them.
+		const storedData = { ...decryptedDataOriginal };
+		for (const field of OAUTH_PINNED_FIELDS) {
+			if (credentialsProperties.some((p) => p.name === field && p.type === 'hidden')) {
+				delete storedData[field];
+			}
+		}
+
 		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
-			type,
-			decryptedDataOriginal,
-		);
+		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(type, storedData);
 
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
@@ -667,19 +738,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (decryptedData.useDynamicClientRegistration) {
 			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
 				decryptedData[field] = decryptedDataOriginal[field];
-			}
-		} else if (this.credentialsOverwrites.usesManagedAuth(type, decryptedDataOriginal)) {
-			// For managed credentials the instance owns the OAuth endpoints. Honor an
-			// admin-configured overwrite for the field, otherwise pin the credential
-			// type default. The user's stored value is never used.
-			const overwrites = this.credentialsOverwrites.getOverwrites(type) ?? {};
-			for (const field of MANAGED_OAUTH_PINNED_FIELDS) {
-				const property = credentialsProperties.find((p) => p.name === field && p.type === 'hidden');
-				// Pinned endpoint/flow fields always default to a string; anything else is skipped.
-				if (typeof property?.default !== 'string') continue;
-				const overwritten = overwrites[field];
-				decryptedData[field] =
-					typeof overwritten === 'string' && overwritten !== '' ? overwritten : property.default;
 			}
 		}
 

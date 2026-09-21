@@ -74,10 +74,16 @@ const externalHooks = mock<ExternalHooks>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
+let originalUseWorkflowPublicationService: boolean;
+
 beforeAll(async () => {
 	await testDb.init();
 
 	globalConfig = Container.get(GlobalConfig);
+	// Most of this file asserts on the legacy activation path; the
+	// 'workflow publication outbox' block enables the service itself.
+	originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
@@ -122,6 +128,10 @@ beforeAll(async () => {
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 	);
+});
+
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(() => {

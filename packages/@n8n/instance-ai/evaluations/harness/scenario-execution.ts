@@ -431,12 +431,8 @@ function elideMiddle<T>(items: T[], max: number): { head: T[]; tail: T[]; omitte
 	};
 }
 
-function isObjectRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 function isNodeOutputs(value: unknown): value is Record<string, unknown[][]> {
-	if (!isObjectRecord(value)) return false;
+	if (!isRecord(value)) return false;
 	return Object.values(value).every(
 		(branches) => Array.isArray(branches) && branches.every((branch) => Array.isArray(branch)),
 	);
@@ -462,14 +458,14 @@ function getDownstreamsByBranch(
 ): string[][] {
 	if (!connections) return [];
 	const nodeConns = connections[nodeName];
-	if (!isObjectRecord(nodeConns)) return [];
+	if (!isRecord(nodeConns)) return [];
 	const typeConns = nodeConns[connectionType];
 	if (!Array.isArray(typeConns)) return [];
 	return typeConns.map((branch) => {
 		if (!Array.isArray(branch)) return [];
 		const targets: string[] = [];
 		for (const c of branch) {
-			if (isObjectRecord(c) && typeof c.node === 'string') targets.push(c.node);
+			if (isRecord(c) && typeof c.node === 'string') targets.push(c.node);
 		}
 		return targets;
 	});

@@ -123,7 +123,7 @@ describe('compacting cycle', () => {
 		}
 
 		// ACT
-		await compactionService['optimizeHistories']();
+		await compactionService['optimizeHistories'](new AbortController().signal);
 
 		// ASSERT
 		const allHistories = await Container.get(WorkflowHistoryRepository).find({});
@@ -206,7 +206,7 @@ describe('compacting cycle', () => {
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching
-		void compactionService['optimizeHistories']();
+		void compactionService['optimizeHistories'](new AbortController().signal);
 		await sleep(500);
 
 		// ASSERT
@@ -259,7 +259,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			// All versions span ~9.6 hours which is under the 10-hour threshold,
@@ -300,7 +300,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			// Total span is ~9.6 hours with a 5-hour threshold.
@@ -343,7 +343,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});

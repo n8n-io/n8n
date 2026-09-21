@@ -28,9 +28,17 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
-		// NOTE: `findOne({ where })`, not `findOneBy`: the latter's overload exceeds
-		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
-		const row = await this.repo.findOne({ where: { id } });
+		const row: ExecutionRecord | undefined = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.status', 'status')
+			.addSelect('execution.mode', 'mode')
+			.addSelect('execution.graph', 'graph')
+			.addSelect('execution.trigger_outputs', 'triggerOutputs')
+			.addSelect('execution.caller_context', 'callerContext')
+			.where('execution.id = :id', { id })
+			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
 	}

@@ -3,7 +3,7 @@ import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
@@ -24,7 +24,6 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
-import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -42,9 +41,11 @@ import { AgentPublishService } from '../agent-publish.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
@@ -119,7 +120,6 @@ function makeRuntimeReconstructionService(
 		mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
-		mock<UrlService>(),
 		mock<N8NCheckpointStorage>(),
 		mock<AgentSecureRuntime>(),
 		mock<EphemeralNodeExecutor>(),
@@ -244,7 +244,13 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, modificationTelemetry);
+		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		agentSkillsService = new AgentSkillsService(
+			logger,
+			agentRepository,
+			modificationTelemetry,
+			agentUpdateBroadcaster,
+		);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -257,23 +263,28 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
 			agentRepository,
 			runtimeCacheService,
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
 			n8nCheckpointStorage,
 			agentExecutionService,
+			new AgentTurnExecutionService(logger, agentExecutionService),
 			telemetry,
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
 			mock<AgentRunTracingService>(),
 			mock<ExternalHooks>(),
 			agentSandboxRuntimeService,
+			agentRepository,
+			mock<AiConfig>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -307,6 +318,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
+			mock<AgentUpdateBroadcaster>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
@@ -321,6 +333,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<SubAgentCleanupService>(),
 			mock<EventService>(),
 			agentExecutionService,
+			credentialsService,
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

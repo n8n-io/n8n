@@ -1,5 +1,6 @@
 import type { BuiltTelemetry, BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
+import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
@@ -13,6 +14,8 @@ import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-sto
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
 import { AgentsBuilderService } from '../agents-builder.service';
+
+const aiConfigMock = mock<AiConfig>();
 
 // The `Agent`/`Memory` SDK classes and observational-memory factories are
 // imported inside `agents-builder.service.ts` from `@n8n/agents`. Stubbing
@@ -200,6 +203,7 @@ function setup(
 		n8nMemory,
 		instanceAiCreditService,
 		n8nCheckpointStorage,
+		aiConfigMock,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -258,6 +262,36 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.streamCalls).toHaveLength(1);
 		expect(agentsSdkMocks.streamCalls[0]?.options.persistence.threadId).toBe(
 			'ia-builder:t:agent-1',
+		);
+	});
+
+	it('forwards the eval model catalog option to the builder tools', async () => {
+		const { service, user, credentialProvider, credentialService, agentsBuilderToolsService } =
+			setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, useEvalModelCatalog: true },
+			),
+		);
+
+		expect(agentsBuilderToolsService.getTools).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			credentialProvider,
+			credentialService,
+			user,
+			{
+				threadId: 'instance-thread-1',
+				runId: 'run-1',
+				useEvalModelCatalog: true,
+			},
 		);
 	});
 

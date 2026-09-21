@@ -7,10 +7,18 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiBuildMode,
+	InstanceAiConfirmRequest,
+	InstanceAiHandoffContext,
+	InstanceAiResourceAttachment,
+} from '@n8n/api-types';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { resolveEvalPromptSettings } from './build-mode';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -50,6 +58,7 @@ import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
 	evictLeftoverSeedTables,
+	reseedScenarioTables,
 	uniquifyScenarioTableNames,
 } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
@@ -75,6 +84,7 @@ import type {
 } from '../types';
 import {
 	agentTurnsAsText,
+	attachedAgentNote,
 	attachedWorkflowNote,
 	failedBuildsPerTurn,
 	lastAgentText,
@@ -105,6 +115,11 @@ interface MultiTurnDriverConfig {
 	threadId: string;
 	conversation: ConversationTurn[];
 	messageBudget?: number;
+	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
+	buildMode?: InstanceAiBuildMode;
+	promptVersion?: string;
+	allowUserExecution?: boolean;
+	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
@@ -135,7 +150,8 @@ interface MultiTurnDriverConfig {
 	credentialNameCounts?: Map<string, number>;
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
-	openingAttachments?: InstanceAiWorkflowAttachment[];
+	openingAttachments?: InstanceAiResourceAttachment[];
+	openingHandoffContext?: InstanceAiHandoffContext;
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -161,6 +177,7 @@ async function driveMultiTurnConversation(
 	const proxy = new UserProxyLlm({
 		conversation: proxyConversation,
 		messageBudget: config.messageBudget,
+		allowUserExecution: config.allowUserExecution,
 		logger: config.logger,
 		...(config.allowlistedCredentialIds !== undefined
 			? {
@@ -192,6 +209,9 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
+		config.buildMode,
+		config.promptVersion,
+		config.openingHandoffContext,
 	);
 
 	await runMultiTurnConversation({
@@ -205,6 +225,10 @@ async function driveMultiTurnConversation(
 		confirmationStrategy,
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
+		buildMode: config.buildMode,
+		promptVersion: config.promptVersion,
+		allowUserExecution: config.allowUserExecution,
+		beforeUserExecution: config.beforeUserExecution,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -231,6 +255,10 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
+	/** The ROOT folders a seed created in the thread's project (a folder delete
+	 *  cascades to its subfolders). Deleted in `cleanupBuild` after the workflows,
+	 *  because a folder delete archives what it holds. */
+	createdFolderIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
 	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
@@ -431,6 +459,10 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
+	buildMode?: WorkflowTestCase['buildMode'];
+	promptVersion?: string;
+	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
@@ -447,6 +479,9 @@ export interface BuildWorkflowConfig {
 	/** Data tables present before any build on this lane — the only ones the
 	 *  scenario-table eviction may delete. Omitted = no eviction. */
 	preRunDataTableIds?: Set<string>;
+	/** Root folders present before any build on this lane — the only ones the
+	 *  seed-folder eviction may delete. Omitted = no eviction. */
+	preRunFolderIds?: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
@@ -493,6 +528,7 @@ export function workflowExpectedForCase(
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
+	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -506,6 +542,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	let restoredFolderIds: string[] = [];
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
@@ -528,6 +565,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
+	// Seed-declared Agent id -> the Agent as actually restored. This keeps Agent
+	// attachments valid after each run receives new artifact ids.
+	let seedAgentsBySeedId = new Map<string, { id: string; name: string }>();
 	// Credential-setup lane (fixture server + extension-loaded browser). Stays
 	// undefined unless the session resolved a fixture for this case.
 	let credentialSetupLane: CredentialSetupLane | undefined;
@@ -777,6 +817,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					const created = await client.createTeamProject(project.name);
 					seededProjectIds.push(created.id);
 				}
+				// Seed folders are named verbatim too (the live turn says "the ODW
+				// folder"), so a crashed run's leftover would give the agent two folders
+				// of one name to disambiguate. Evicted by name before the restore.
+				await evictLeftoverSeedFolders(
+					client,
+					remapped.folders,
+					config.preRunFolderIds,
+					logger,
+					config.laneTag,
+				);
 				// A fixture-only seed (projects, no history) has nothing thread-scoped to
 				// restore, and `restore-thread` with an empty message list would be a
 				// pointless round-trip that logs "Seeded 0 prior message(s)".
@@ -784,7 +834,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.messages.length > 0 ||
 					remapped.workflows.length > 0 ||
 					remapped.dataTables.length > 0 ||
-					remapped.agents.length > 0;
+					remapped.agents.length > 0 ||
+					remapped.folders.length > 0;
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
 							threadId,
@@ -792,11 +843,26 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 							remapped.workflows,
 							remapped.dataTables,
 							remapped.agents,
+							{ folders: remapped.folders },
 						)
-					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] };
+					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [], folderIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
+				const restoredAgents: Array<[string, { id: string; name: string }]> = [];
+				for (const [index, agent] of seed.agents.entries()) {
+					const restoredId = restoredAgentIds[index];
+					const remappedAgent = remapped.agents[index];
+					if (restoredId !== undefined && remappedAgent !== undefined) {
+						restoredAgents.push([agent.id, { id: restoredId, name: remappedAgent.config.name }]);
+					}
+				}
+				seedAgentsBySeedId = new Map(restoredAgents);
+				// `folderIds` is positional to `folders`. Cleanup needs the ROOT folders
+				// only: n8n's folder delete cascades to the subfolders.
+				restoredFolderIds = remapped.folders.flatMap((folder, index) =>
+					folder.parentFolderId === undefined ? [restoreResult.folderIds[index]] : [],
+				);
 				// The server binds the thread to the agent the history LAST targeted, so
 				// the harness has to grade that same one — array order is an authoring
 				// artifact and `findAgentArtifactRef` takes the first ref it sees.
@@ -808,13 +874,20 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						: '';
 				const agentSuffix =
 					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
+				// Logged for the same reason as projects: a folder case is graded on the
+				// agent FINDING the folder, so a run where it never landed must be readable
+				// from the log alone.
+				const folderSuffix =
+					restoreResult.folderIds.length > 0
+						? `, ${String(restoreResult.folderIds.length)} folder(s)`
+						: '';
 				// Logged explicitly, not folded into the counts above: a project-scope case
 				// is graded on the agent SEEING this project, so a run where the fixture
 				// silently didn't land has to be readable from the log alone.
 				const projectSuffix =
 					seededProjectIds.length > 0 ? `, ${String(seededProjectIds.length)} project(s)` : '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${projectSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${folderSuffix}${projectSuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;
@@ -914,31 +987,70 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		await delay(SSE_SETTLE_DELAY_MS);
 
-		// The opening turn may hand the agent a seeded workflow, the way the editor does.
-		// Resolved AFTER the restore so it carries the id that exists on the instance;
-		// the case schema already refused an `attach` no seeded workflow declares.
-		const attachedSeedWorkflow = conversation[0]?.attach?.workflow;
-		const restoredForAttach =
+		// The opening turn may hand the assistant a seeded workflow or Agent.
+		// Resolve the attachment after restore so it carries the per-run id.
+		const openingAttachment = conversation[0]?.attach;
+		const attachedSeedWorkflow =
+			openingAttachment && 'workflow' in openingAttachment ? openingAttachment.workflow : undefined;
+		const attachedSeedAgent =
+			openingAttachment && 'agent' in openingAttachment ? openingAttachment.agent : undefined;
+		const restoredWorkflowForAttach =
 			attachedSeedWorkflow === undefined
 				? undefined
 				: seedWorkflowsBySeedId.get(attachedSeedWorkflow);
+		const restoredAgentForAttach =
+			attachedSeedAgent === undefined ? undefined : seedAgentsBySeedId.get(attachedSeedAgent);
 		// The schema already refused an `attach` no seeded workflow declares, so a miss
 		// here means the restore/remap dropped it. Fail loudly: sending no attachment
 		// would silently downgrade a hand-off case to a find-it one.
-		if (attachedSeedWorkflow !== undefined && restoredForAttach === undefined) {
+		if (attachedSeedWorkflow !== undefined && restoredWorkflowForAttach === undefined) {
 			seedingFailed = true;
 			throw new Error(
 				`The opening turn attaches seeded workflow "${attachedSeedWorkflow}", but the restore produced no workflow for that id — refusing to run the case unattached (it would silently become a find-it test).`,
 			);
 		}
-		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
-			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
-			: undefined;
+		if (attachedSeedAgent !== undefined && restoredAgentForAttach === undefined) {
+			seedingFailed = true;
+			throw new Error(
+				`The opening turn attaches seeded Agent "${attachedSeedAgent}", but the restore produced no Agent for that id — refusing to run the case unattached.`,
+			);
+		}
+		const openingAttachments: InstanceAiResourceAttachment[] | undefined =
+			restoredWorkflowForAttach !== undefined
+				? [
+						{
+							type: 'workflow',
+							id: restoredWorkflowForAttach.id,
+							name: restoredWorkflowForAttach.name,
+						},
+					]
+				: restoredAgentForAttach !== undefined
+					? [
+							{
+								type: 'agent',
+								id: restoredAgentForAttach.id,
+								name: restoredAgentForAttach.name,
+								projectId,
+							},
+						]
+					: undefined;
+		const openingHandoffContext: InstanceAiHandoffContext | undefined =
+			openingAttachment &&
+			'workflow' in openingAttachment &&
+			openingAttachment.source === 'setup-panel-execute' &&
+			restoredWorkflowForAttach
+				? { source: 'setup-panel-execute', workflowId: restoredWorkflowForAttach.id }
+				: undefined;
 		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
 		// prompt-aware checks read a text-less hand-off as a bare empty message — see
-		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
+		// the attachment note. Mirrors `openingMessageSuffix`, which diverges
 		// sent-vs-recorded the other way.
-		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
+		const recordedOpeningMessage = [
+			attachedWorkflowNote(restoredWorkflowForAttach?.name),
+			attachedAgentNote(restoredAgentForAttach?.name),
+			openingHandoffContext ? '[The user clicked Execute in the setup panel.]' : '',
+			openingMessage,
+		]
 			.filter(Boolean)
 			.join(' ');
 
@@ -949,6 +1061,28 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
+				buildMode,
+				promptVersion,
+				allowUserExecution: config.allowUserExecution,
+				beforeUserExecution: async (deadline) => {
+					const scenario = config.executionScenarios?.[0];
+					if (scenario) {
+						try {
+							await reseedScenarioTables(
+								client,
+								scenario,
+								threadId,
+								scenarioTableIdsByName,
+								logger,
+								deadline,
+							);
+						} catch (error) {
+							// Keep overall case timeouts separate from input setup failures.
+							seedingFailed = Date.now() < deadline;
+							throw error;
+						}
+					}
+				},
 				events,
 				approvedRequests,
 				startTime,
@@ -971,6 +1105,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
 				openingAttachments,
+				openingHandoffContext,
 				recordedOpeningMessage,
 			});
 		} else {
@@ -979,6 +1114,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
+				buildMode,
+				promptVersion,
+				openingHandoffContext,
 			);
 			await waitForAllActivity({
 				client,
@@ -1047,6 +1185,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			toolCalls: eventOutcome.toolCalls,
 			agentActivities: eventOutcome.agentActivities,
 		};
+		const metadataBudget = Math.min(5_000, startTime + timeoutMs - Date.now());
+		if (metadataBudget > 0) {
+			try {
+				buildTrace.promptConfiguration = (
+					await client.getThreadStatus(threadId, metadataBudget)
+				).promptConfiguration;
+			} catch {
+				logger.verbose('Prompt configuration was not available for this build.');
+			}
+		}
 		const outcome = await buildAgentOutcome(
 			client,
 			{ ...eventOutcome, workflowIds: threadWorkflowIds },
@@ -1074,6 +1222,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
+					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
 					threadId,
@@ -1094,6 +1243,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
+				createdFolderIds: restoredFolderIds,
 				artifactRefs,
 				conversationMetrics,
 				events,
@@ -1140,6 +1290,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
 			conversationMetrics,
@@ -1163,6 +1314,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,
 			threadId,
@@ -1271,16 +1423,49 @@ async function evictLeftoverSeedWorkflows(
 }
 
 /**
+ * Shared shape of the by-name evictions: list what is on the instance, keep
+ * what is stale, delete each one on its own so a failed delete never shields
+ * the next leftover, and log every outcome. Best-effort throughout — a failure
+ * here is logged and the restore still runs.
+ */
+async function evictLeftovers<T extends { name: string }>(args: {
+	noun: string;
+	list: () => Promise<T[]>;
+	isStale: (item: T) => boolean;
+	/** Deletes the item; the returned text is appended to the success log line. */
+	remove: (item: T) => Promise<string>;
+	logger: EvalLogger;
+	laneTag?: string;
+}): Promise<void> {
+	const tag = args.laneTag ?? '';
+	try {
+		const stale = (await args.list()).filter(args.isStale);
+		for (const item of stale) {
+			try {
+				const detail = await args.remove(item);
+				args.logger.info(
+					`  Evicted leftover seed ${args.noun} "${item.name}" before restore${detail}${tag}`,
+				);
+			} catch (error: unknown) {
+				args.logger.info(
+					`  Could not evict leftover seed ${args.noun} "${item.name}" (continuing): ${getErrorMessage(error)}${tag}`,
+				);
+			}
+		}
+	} catch (error: unknown) {
+		args.logger.info(
+			`  Could not list ${args.noun}s to evict leftovers (continuing): ${getErrorMessage(error)}${tag}`,
+		);
+	}
+}
+
+/**
  * Delete any team project already sitting on the instance under a seed project's
  * name, so a crashed run's leftover doesn't turn into a second "Foobar" the agent
  * has to disambiguate. Exact-name match: seed project names are NOT suffixed (the
  * live turn names them), so there is no pattern to key off — which also means this
  * would delete a same-named project a human created. Seed names should therefore be
  * distinctive enough not to collide with real ones.
- *
- * Best-effort: a failure here is logged and the run continues, since a duplicate
- * duplicate still leaves the case's premise (a visible project that isn't the bound
- * one) intact.
  */
 async function evictLeftoverSeedProjects(
 	client: N8nClient,
@@ -1288,23 +1473,55 @@ async function evictLeftoverSeedProjects(
 	logger: EvalLogger,
 	laneTag?: string,
 ): Promise<void> {
-	try {
-		const stale = (await client.listTeamProjects()).filter((project) => project.name === name);
-		for (const project of stale) {
-			try {
-				await client.deleteProject(project.id);
-				logger.info(`  Evicted leftover seed project "${name}" before restore${laneTag ?? ''}`);
-			} catch (error: unknown) {
-				logger.info(
-					`  Could not evict leftover seed project "${name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
-				);
-			}
-		}
-	} catch (error: unknown) {
-		logger.info(
-			`  Could not list projects to evict leftovers (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
-		);
-	}
+	await evictLeftovers({
+		noun: 'project',
+		list: async () => await client.listTeamProjects(),
+		isStale: (project) => project.name === name,
+		remove: async (project) => {
+			await client.deleteProject(project.id);
+			return '';
+		},
+		logger,
+		laneTag,
+	});
+}
+
+/**
+ * Delete any root folder that carries a seed folder's name AND existed before
+ * the run started, with everything in it. Root level only: a seed tree always
+ * starts at the root (every `parentFolderId` names a declared folder). Same
+ * blast radius as the project eviction, for the same reason: the name is
+ * verbatim, so nothing marks a leftover — see the README's `folders` section.
+ *
+ * The pre-run snapshot keeps a same-name match from reaching a sibling: the
+ * previous iteration's folder is still live (its cleanup runs after judging)
+ * when this one restores, and nothing created during the run is in the
+ * snapshot. No snapshot means no eviction.
+ */
+async function evictLeftoverSeedFolders(
+	client: N8nClient,
+	folders: ConversationSeed['folders'],
+	preRunFolderIds: Set<string> | undefined,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	const rootNames = new Set(
+		folders.filter((folder) => folder.parentFolderId === undefined).map((folder) => folder.name),
+	);
+	if (rootNames.size === 0 || preRunFolderIds === undefined) return;
+	// Inside the guarded callbacks: a failed project lookup is an eviction
+	// failure (logged, restore continues), not a seeding failure.
+	await evictLeftovers({
+		noun: 'folder',
+		list: async () => await client.listFolders(await client.getPersonalProjectId()),
+		isStale: (folder) => preRunFolderIds.has(folder.id) && rootNames.has(folder.name),
+		remove: async (folder) => {
+			const deleted = await client.deleteFolderTree(await client.getPersonalProjectId(), folder.id);
+			return deleted > 0 ? `, with ${String(deleted)} workflow(s) inside` : '';
+		},
+		logger,
+		laneTag,
+	});
 }
 
 function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
@@ -1317,11 +1534,6 @@ function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
-
-function truncate(text: string, maxLength: number): string {
-	if (text.length <= maxLength) return text;
-	return text.slice(0, maxLength) + '...';
-}
 
 /**
  * The provider key shape for the leak scan.

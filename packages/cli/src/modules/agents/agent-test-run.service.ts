@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
-	zodToJsonSchema,
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -11,14 +10,18 @@ import {
 	APPROVAL_SUSPEND_SCHEMA,
 	type ApprovalSuspendPayload,
 } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { StoredAttachmentRef } from './agent-chat-attachment.service';
-import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import {
+	AgentExecutionOrchestratorService,
+	type ExecuteForChatConfig,
+	type ResumeForChatConfig,
+} from './agent-execution-orchestrator.service';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -36,36 +39,35 @@ export type PrepareDraftRunResult =
 	| { status: 'session_not_found' }
 	| { status: 'agent_misconfigured'; missing: string[] };
 
-interface StreamDraftRunInput {
-	agentId: string;
-	projectId: string;
-	message: string;
-	user: User;
-	sessionId: string;
-	attachments?: StoredAttachmentRef[];
-	source?: string;
-	onExecutionRecorded?: (executionId: string) => void;
-	abortSignal?: AbortSignal;
+interface DraftRunConsumptionOptions {
+	errorMode?: 'throw' | 'forward';
+	onChunk?: (chunk: StreamChunk) => void;
 }
 
-interface ExecuteDraftRunInput extends PrepareDraftRunInput {
-	message: string;
-	user: User;
-	source?: string;
-	abortSignal?: AbortSignal;
+export interface ExecutePreparedDraftRunInput
+	extends Omit<ExecuteForChatConfig, 'memory'>,
+		DraftRunConsumptionOptions {
+	sessionId: string;
 }
 
-interface ResumeDraftRunInput {
-	agentId: string;
-	projectId: string;
-	sessionId: string;
-	runId: string;
-	toolCallId: string;
-	resumeData: unknown;
+export interface ResumePreparedDraftRunInput
+	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion'>,
+		DraftRunConsumptionOptions {
 	user: User;
-	source?: string;
+	initialResponse?: string;
+}
+
+type ExecuteDraftRunInput = PrepareDraftRunInput &
+	Pick<ExecuteForChatConfig, 'message' | 'user' | 'source' | 'abortSignal'>;
+
+interface ResumeDraftRunInput
+	extends Omit<
+		ResumeForChatConfig,
+		'expectedMemory' | 'integrationType' | 'usePublishedVersion' | 'onExecutionRecorded'
+	> {
+	sessionId: string;
+	user: User;
 	response: string;
-	abortSignal?: AbortSignal;
 }
 
 export const agentTestRunContinuationSchema = z
@@ -92,19 +94,14 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 	continuation: AgentTestRunContinuation;
 }
 
-export type AgentTestRunResult =
-	| { status: 'completed'; response: string; sessionId: string; executionId?: string }
-	| {
-			status: 'suspended';
-			response: string;
-			sessionId: string;
-			executionId?: string;
-			suspensions: AgentTestRunSuspension[];
-	  }
-	| { status: 'session_not_found' }
-	| { status: 'agent_misconfigured'; missing: string[] };
+export type PreparedDraftRunResult = {
+	response: string;
+	executionId: string;
+} & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
-type CollectedDraftRunResult = Extract<AgentTestRunResult, { status: 'completed' | 'suspended' }>;
+export type AgentTestRunResult =
+	| (PreparedDraftRunResult & { sessionId: string })
+	| Exclude<PrepareDraftRunResult, { status: 'ready' }>;
 
 const expectedApprovalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
 
@@ -181,77 +178,86 @@ export class AgentTestRunService {
 		return { status: 'ready', sessionId: sessionId ?? randomUUID() };
 	}
 
-	streamDraftRun({
-		agentId,
-		projectId,
-		message,
-		user,
+	async executePreparedDraftRun({
 		sessionId,
-		attachments,
-		source,
+		errorMode,
+		onChunk,
 		onExecutionRecorded,
-		abortSignal,
-	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
-		return this.agentExecutionOrchestratorService.executeForChat({
-			agentId,
-			projectId,
-			message,
-			user,
+		...execution
+	}: ExecutePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.executeForChat({
+			...execution,
 			memory: {
 				threadId: sessionId,
-				resourceId: draftChatMemoryResourceId(user.id),
+				resourceId: draftChatMemoryResourceId(execution.user.id),
 			},
-			attachments,
-			source,
-			onExecutionRecorded,
-			abortSignal,
-		});
-	}
-
-	async executeDraftRun(input: ExecuteDraftRunInput): Promise<AgentTestRunResult> {
-		const prepared = await this.prepareDraftRun(input);
-		if (prepared.status !== 'ready') return prepared;
-
-		let executionId: string | undefined;
-		const stream = this.streamDraftRun({
-			...input,
-			sessionId: prepared.sessionId,
 			onExecutionRecorded: (id) => {
 				executionId = id;
+				onExecutionRecorded?.(id);
 			},
 		});
 
-		return await this.collectDraftRun(stream, prepared.sessionId, '', () => executionId);
+		return await this.collectDraftRun(stream, '', () => executionId, { errorMode, onChunk });
 	}
 
-	async resumeDraftRun(input: ResumeDraftRunInput): Promise<AgentTestRunResult> {
-		const existing = await this.agentExecutionService.findThreadById(input.sessionId);
+	async resumePreparedDraftRun({
+		initialResponse = '',
+		errorMode,
+		onChunk,
+		onExecutionRecorded,
+		...execution
+	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.resumeForChat({
+			...execution,
+			usePublishedVersion: false,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			onExecutionRecorded: (id) => {
+				executionId = id;
+				onExecutionRecorded?.(id);
+			},
+		});
+
+		return await this.collectDraftRun(stream, initialResponse, () => executionId, {
+			errorMode,
+			onChunk,
+		});
+	}
+
+	async executeDraftRun({
+		credentialProvider,
+		...input
+	}: ExecuteDraftRunInput): Promise<AgentTestRunResult> {
+		const prepared = await this.prepareDraftRun({ ...input, credentialProvider });
+		if (prepared.status !== 'ready') return prepared;
+
+		const result = await this.executePreparedDraftRun({
+			...input,
+			sessionId: prepared.sessionId,
+		});
+		return { ...result, sessionId: prepared.sessionId };
+	}
+
+	async resumeDraftRun({
+		sessionId,
+		response,
+		...input
+	}: ResumeDraftRunInput): Promise<AgentTestRunResult> {
+		const existing = await this.agentExecutionService.findThreadById(sessionId);
 		if (existing && !threadBelongsTo(existing, input.projectId, input.agentId)) {
 			return { status: 'session_not_found' };
 		}
 
-		let executionId: string | undefined;
-		const stream = this.agentExecutionOrchestratorService.resumeForChat({
-			agentId: input.agentId,
-			projectId: input.projectId,
-			runId: input.runId,
-			toolCallId: input.toolCallId,
-			resumeData: input.resumeData,
-			user: input.user,
-			usePublishedVersion: false,
-			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+		const result = await this.resumePreparedDraftRun({
+			...input,
 			expectedMemory: {
-				threadId: input.sessionId,
+				threadId: sessionId,
 				resourceId: draftChatMemoryResourceId(input.user.id),
 			},
-			source: input.source,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
-			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
+			initialResponse: response,
 		});
-
-		return await this.collectDraftRun(stream, input.sessionId, input.response, () => executionId);
+		return { ...result, sessionId };
 	}
 
 	async resumeDraftApproval(input: {
@@ -337,36 +343,57 @@ export class AgentTestRunService {
 
 	private async collectDraftRun(
 		stream: AsyncIterable<StreamChunk>,
-		sessionId: string,
 		initialResponse: string,
 		getExecutionId: () => string | undefined,
-	): Promise<CollectedDraftRunResult> {
+		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
+	): Promise<PreparedDraftRunResult> {
 		let response = initialResponse;
 		const suspensions: AgentTestRunSuspension[] = [];
+		let errorChunk: Extract<StreamChunk, { type: 'error' }> | undefined;
+		let observerFailed = false;
+		let observerError: unknown;
 
-		for await (const chunk of stream) {
-			if (chunk.type === 'error') {
-				throw chunk.error;
+		try {
+			for await (const chunk of stream) {
+				if (!observerFailed && onChunk) {
+					try {
+						onChunk(chunk);
+					} catch (error) {
+						observerFailed = true;
+						observerError = error;
+					}
+				}
+				if (chunk.type === 'error' && errorMode === 'throw' && !observerFailed) {
+					errorChunk ??= chunk;
+					continue;
+				}
+				if (errorChunk) continue;
+				if (chunk.type === 'text-delta') {
+					response += chunk.delta;
+				} else if (chunk.type === 'tool-call-suspended') {
+					suspensions.push({
+						runId: chunk.runId,
+						toolCallId: chunk.toolCallId,
+						toolName: chunk.toolName,
+						...(chunk.input !== undefined ? { input: chunk.input } : {}),
+						...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
+						...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
+					});
+				}
 			}
-			if (chunk.type === 'text-delta') {
-				response += chunk.delta;
-			} else if (chunk.type === 'tool-call-suspended') {
-				suspensions.push({
-					runId: chunk.runId,
-					toolCallId: chunk.toolCallId,
-					toolName: chunk.toolName,
-					...(chunk.input !== undefined ? { input: chunk.input } : {}),
-					...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
-					...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
-				});
-			}
+		} catch (error) {
+			if (observerFailed) throw observerError;
+			throw error;
 		}
+		if (observerFailed) throw observerError;
 
+		// Draining preserves terminal usage and lets finalization failures take precedence.
+		if (errorChunk) throw errorChunk.error;
 		const executionId = getExecutionId();
+		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
 		const metadata = {
 			response,
-			sessionId,
-			...(executionId ? { executionId } : {}),
+			executionId,
 		};
 		return suspensions.length > 0
 			? { status: 'suspended', ...metadata, suspensions }

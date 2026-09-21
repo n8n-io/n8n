@@ -22,8 +22,7 @@ const object = 'object';
 const ignore = {};
 const noop = (_: string, value: unknown) => value;
 
-const primitives = (value: unknown) =>
-	value instanceof Primitive ? Primitive(value as string) : value;
+const primitives = (value: unknown) => (value instanceof Primitive ? Primitive(value) : value);
 
 const revive = (
 	input: unknown[],

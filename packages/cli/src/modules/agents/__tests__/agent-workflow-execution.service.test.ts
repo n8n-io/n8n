@@ -1,6 +1,7 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
@@ -14,6 +15,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -22,8 +24,12 @@ import { AgentWorkflowExecutionService } from '../agent-workflow-execution.servi
 import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
+import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
+
+const aiConfigMock = mock<AiConfig>();
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -96,6 +102,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			structuredOutput: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
+		mcpServerAttributions: new Map<string, string>(),
 		projectId,
 		agentId,
 		telemetryConfiguration: {
@@ -118,6 +125,8 @@ function makeService() {
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
+	const integrationMessageContextService = mock<IntegrationMessageContextService>();
+	integrationMessageContextService.getLatest.mockResolvedValue(null);
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
@@ -131,13 +140,15 @@ function makeService() {
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
 		agentRepository,
-		executionService,
+		new AgentTurnExecutionService(mockLogger(), executionService),
 		telemetry,
 		credentialsService,
 		reconstructionService,
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
+		aiConfigMock,
+		integrationMessageContextService,
 	);
 
 	return {
@@ -149,6 +160,7 @@ function makeService() {
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
+		integrationMessageContextService,
 	};
 }
 
@@ -165,7 +177,16 @@ describe('AgentWorkflowExecutionService', () => {
 			executionService,
 			telemetry,
 			agentRunTracingService,
+			integrationMessageContextService,
 		} = makeService();
+		const messageContext: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:credential-1',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:channel-1:message-1' },
+			interactingUserId: 'platform-user-1',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		};
+		integrationMessageContextService.getLatest.mockResolvedValue(messageContext);
 		const runtime = makeRuntime([
 			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { id: 1 } },
 			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
@@ -192,9 +213,14 @@ describe('AgentWorkflowExecutionService', () => {
 				// resourceId is the memory store's read scope: it must be stable
 				// across executions (NOT the execution id) or a reused session id
 				// would never see its prior messages.
-				persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+				persistence: {
+					resourceId: 'thread-1',
+					threadId: 'thread-1',
+					hostMetadata: { n8nIntegrationMessageContext: messageContext },
+				},
 			}),
 		);
+		expect(integrationMessageContextService.getLatest).toHaveBeenCalledExactlyOnceWith('thread-1');
 		expect(result).toEqual(
 			expect.objectContaining({
 				response: '',
@@ -277,21 +303,32 @@ describe('AgentWorkflowExecutionService', () => {
 			'hello',
 			expect.objectContaining({
 				persistence: expect.objectContaining({
-					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+						n8nIntegrationMessageContext: null,
+					},
 				}),
 			}),
 		);
 	});
 
-	it('records workflow stream setup failures', async () => {
-		const { service, agentRepository, reconstructionService, executionService } = makeService();
+	it.each(['stream', 'context'] as const)('records workflow %s setup failures', async (step) => {
+		const {
+			service,
+			agentRepository,
+			reconstructionService,
+			executionService,
+			integrationMessageContextService,
+		} = makeService();
 		const runtime = makeRuntime();
 		const principalHash = hashAgentSandboxPrincipal({
 			type: 'workflow-execution',
 			workflowId: 'workflow-1',
 			executionId: 'execution-1',
 		});
-		runtime.agent.stream.mockRejectedValue(new Error('stream setup failed'));
+		const error = new Error(`${step} setup failed`);
+		if (step === 'stream') runtime.agent.stream.mockRejectedValue(error);
+		else integrationMessageContextService.getLatest.mockRejectedValue(error);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
@@ -309,12 +346,64 @@ describe('AgentWorkflowExecutionService', () => {
 				undefined,
 				{ principalHash },
 			),
-		).rejects.toThrow('stream setup failed');
+		).rejects.toThrow(error.message);
 
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'fallback-execution-1',
 			expect.objectContaining({
-				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
+				record: expect.objectContaining({ error: error.message, finishReason: 'error' }),
+			}),
+		);
+	});
+
+	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
+		'reports required persistence failures from %s',
+		async (recordingOperation) => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			const cause = new Error('recording unavailable');
+			executionService[recordingOperation].mockRejectedValue(cause);
+			const creationFailed = recordingOperation === 'startExecutionRecording';
+
+			await expect(
+				service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+			).rejects.toMatchObject({
+				phase: creationFailed ? 'create' : 'finalize',
+				executionStarted: !creationFailed,
+				cause,
+				...(!creationFailed ? { executionId: 'execution-1' } : {}),
+			});
+			expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+			if (creationFailed) {
+				expect(runtime.agent.stream).not.toHaveBeenCalled();
+				expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('records a workflow initialization failure without invoking the SDK', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+			new Error('runtime setup failed'),
+		);
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('runtime setup failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					error: 'Failed to compile agent: runtime setup failed',
+					finishReason: 'error',
+				}),
 			}),
 		);
 	});
@@ -640,6 +729,7 @@ describe('AgentWorkflowExecutionService', () => {
 				executionService,
 				telemetry,
 				agentRunTracingService,
+				integrationMessageContextService,
 			} = makeService();
 			const runtime = makeRuntime([
 				{ type: 'text-start', id: 'text-1' },
@@ -708,13 +798,18 @@ describe('AgentWorkflowExecutionService', () => {
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
 			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			expect(integrationMessageContextService.getLatest).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused
 			// session id continues the same conversation.
 			expect(runtime.agent.stream).toHaveBeenCalledWith(
 				'hello',
 				expect.objectContaining({
-					persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+					persistence: {
+						resourceId: 'thread-1',
+						threadId: 'thread-1',
+						hostMetadata: { n8nIntegrationMessageContext: null },
+					},
 				}),
 			);
 

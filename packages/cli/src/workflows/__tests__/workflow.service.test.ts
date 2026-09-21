@@ -29,6 +29,7 @@ import { WorkflowActivationBadRequestError } from '@/errors/response-errors/work
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { EventService } from '@/events/event.service';
+import type { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -2051,6 +2052,8 @@ describe('WorkflowService', () => {
 		let workflowPublishedVersionRepositoryMock: MockProxy<WorkflowPublishedVersionRepository>;
 		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 		let ownershipServiceMock: MockProxy<OwnershipService>;
+		let sharedWorkflowRepositoryMock: MockProxy<SharedWorkflowRepository>;
+		let deleteEventServiceMock: MockProxy<EventService>;
 		let workflowScheduledJobOwnerMock: MockProxy<WorkflowScheduledJobOwner>;
 		let durableJobProvisionerMock: MockProxy<DurableJobProvisioner>;
 		let trxMock: MockProxy<EntityManager>;
@@ -2072,6 +2075,8 @@ describe('WorkflowService', () => {
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			ownershipServiceMock = mock<OwnershipService>();
+			sharedWorkflowRepositoryMock = mock<SharedWorkflowRepository>();
+			deleteEventServiceMock = mock<EventService>();
 			workflowRepositoryMock = mock();
 			executionPersistenceMock = mock();
 			activeWorkflowManagerMock = mock();
@@ -2093,7 +2098,7 @@ describe('WorkflowService', () => {
 
 			workflowService = new WorkflowService(
 				mock(), // logger
-				mock(), // sharedWorkflowRepository
+				sharedWorkflowRepositoryMock, // sharedWorkflowRepository
 				workflowRepositoryMock, // workflowRepository
 				mock(), // workflowTagMappingRepository
 				ownershipServiceMock, // ownershipService
@@ -2104,7 +2109,7 @@ describe('WorkflowService', () => {
 				mock(), // roleService
 				mock(), // projectService
 				executionPersistenceMock, // executionPersistence
-				mock(), // eventService
+				deleteEventServiceMock, // eventService
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
@@ -2127,6 +2132,57 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+			);
+		});
+
+		test("emits the deleted workflow's name and owning project, captured before the cascade", async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const workflow = makeWorkflowEntity({ isArchived: true });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			sharedWorkflowRepositoryMock.getWorkflowOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+
+			await workflowService.delete(user, WORKFLOW_ID);
+
+			expect(deleteEventServiceMock.emit).toHaveBeenCalledWith('workflow-deleted', {
+				user,
+				workflowId: WORKFLOW_ID,
+				workflowName: 'My workflow',
+				projectId: 'project-1',
+				publicApi: false,
+			});
+		});
+
+		test('deletes the workflow even when resolving its project throws', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const workflow = makeWorkflowEntity({ isArchived: true });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			// The lookup exists only to attribute an activity entry, so it must not fail the delete.
+			sharedWorkflowRepositoryMock.getWorkflowOwningProject.mockRejectedValue(
+				new Error('db is gone'),
+			);
+
+			await expect(workflowService.delete(user, WORKFLOW_ID)).resolves.toBeDefined();
+
+			expect(deleteEventServiceMock.emit).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ projectId: undefined }),
+			);
+		});
+
+		test('deletes the workflow even when no owning project can be resolved', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const workflow = makeWorkflowEntity({ isArchived: true });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			// An unowned workflow must not turn a delete into a failure just to record it.
+			sharedWorkflowRepositoryMock.getWorkflowOwningProject.mockResolvedValue(undefined);
+
+			await expect(workflowService.delete(user, WORKFLOW_ID)).resolves.toBeDefined();
+
+			expect(deleteEventServiceMock.emit).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ projectId: undefined }),
 			);
 		});
 

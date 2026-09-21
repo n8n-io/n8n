@@ -139,6 +139,39 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 	});
 
+	it('publishes a @Param schema in place of the default bare string', () => {
+		const widgetId = z
+			.string()
+			.regex(/^\d+$/)
+			.openapi({ type: 'integer', minimum: 1, description: 'The ID of the widget.' });
+
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method(@Param('widgetId', widgetId) _widgetId: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape.widgetId).toBe(widgetId);
+	});
+
+	it('falls back to a bare string for a @Param that declares no schema', () => {
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method(@Param('widgetId') _widgetId: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
+	});
+
 	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
 		class WidgetsPublicController {
 			@Get('/')

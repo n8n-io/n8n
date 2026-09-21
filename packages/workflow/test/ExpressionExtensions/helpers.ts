@@ -45,28 +45,33 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
 	);
 
 /**
- * Normalize expression results that may be Luxon instances (current engine)
- * or ISO strings (VM engine). The VM engine serializes Luxon types to ISO
- * strings at the isolate boundary via __prepareForTransfer.
+ * Normalize expression results that may be Luxon instances or ISO strings.
  *
- * TODO: When the non-VM expression engine is removed and only the VM engine
- * remains, these helpers become unnecessary — all results will be strings.
- * Replace usages with fromISO() directly.
+ * Both engines give back Luxon instances. The VM engine sends each Luxon value
+ * across the isolate boundary as a marker object and rebuilds an instance from
+ * it. More than one copy of Luxon is in play: the runtime bundle inlines its
+ * own, because packages/@n8n/expression-runtime/esbuild.config.js sets
+ * `external: []`. An instance from another copy fails `instanceof` against the
+ * Luxon this file imports, but still passes the Luxon `is*` check. The helpers
+ * below re-hydrate such an instance through ISO to get one of the local copy.
  */
 export const asDateTime = (v: unknown): DateTime => {
-	if (DateTime.isDateTime(v)) return v;
+	if (v instanceof DateTime) return v;
+	if (DateTime.isDateTime(v)) return DateTime.fromISO(v.toISO() ?? '', { setZone: true });
 	if (typeof v !== 'string') throw new Error(`Expected DateTime or ISO string, got ${typeof v}`);
 	return DateTime.fromISO(v);
 };
 
 export const asDuration = (v: unknown): Duration => {
-	if (Duration.isDuration(v)) return v;
+	if (v instanceof Duration) return v;
+	if (Duration.isDuration(v)) return Duration.fromISO(v.toISO() ?? '');
 	if (typeof v !== 'string') throw new Error(`Expected Duration or ISO string, got ${typeof v}`);
 	return Duration.fromISO(v);
 };
 
 export const asInterval = (v: unknown): Interval => {
-	if (Interval.isInterval(v)) return v;
+	if (v instanceof Interval) return v;
+	if (Interval.isInterval(v)) return Interval.fromISO(v.toISO());
 	if (typeof v !== 'string') throw new Error(`Expected Interval or ISO string, got ${typeof v}`);
 	return Interval.fromISO(v);
 };

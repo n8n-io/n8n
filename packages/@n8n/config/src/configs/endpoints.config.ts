@@ -72,6 +72,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
 	includePollTriggerMetrics: boolean = false;
 
+	/** Whether to include system task metrics (run duration, skips, in-flight runs, last success, scheduling failures). */
+	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
+	includeSystemTaskMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -100,6 +104,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
 	includeSsrfMetrics: boolean = false;
 
+	/** Whether to include metrics for decryption and key-lookup latency. */
+	@Env('N8N_METRICS_INCLUDE_ENCRYPTION_METRICS')
+	includeEncryptionMetrics: boolean = false;
+
 	/** Whether to include metrics for the DNS cache (currently only used by SSRF protection). */
 	@Env('N8N_METRICS_INCLUDE_DNS_CACHE_METRICS')
 	includeDnsCacheMetrics: boolean = false;
@@ -127,6 +135,10 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for the workflow publication service (main instances only). */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** Whether to include MCP workflow-builder post-save failure metrics. */
+	@Env('N8N_METRICS_INCLUDE_MCP_POST_SAVE_METRICS')
+	includeMcpPostSaveMetrics: boolean = false;
 
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
@@ -195,12 +207,20 @@ export class EndpointsConfig {
 	mcpAppsEnabled: boolean = false;
 
 	/**
-	 * Force-enable Canvas node-group support in the MCP workflow-builder tools.
-	 * Acts as an operator-level override of the PostHog rollout flag.
-	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 * Force-enable the instance-context read surface on the MCP server. That is four tools —
+	 * `get_instance_context`, `get_instance_activity`, `expand_instance_activity` and
+	 * `get_node_usage` — plus the `n8n://instance/context` resource and the one sentence in the
+	 * server instructions that points a client at them.
+	 *
+	 * Acts as an operator-level override of the PostHog rollout flag. Cannot
+	 * force-disable: setting this to `false` falls back to PostHog.
+	 *
+	 * The activity tools read what `N8N_ACTIVITY_LOG_ENABLED` writes, so with
+	 * only this flag on they answer from an empty log. The node-usage tool has
+	 * its own index and works either way.
 	 */
-	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
-	mcpCanvasGroupsEnabled: boolean = false;
+	@Env('N8N_MCP_INSTANCE_CONTEXT_ENABLED')
+	mcpInstanceContextEnabled: boolean = false;
 
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')

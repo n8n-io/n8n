@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nText } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
+import { useSessionStorage } from '@vueuse/core';
+import { TIME } from '@/app/constants/durations';
 import {
 	buildDisplayGroups,
+	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
@@ -22,13 +24,16 @@ import type {
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
-import type { AgentFixWithAssistantEvent, AgentFixWithAssistantFailure } from '../types';
+import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
+import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -42,7 +47,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [event?: AgentFixWithAssistantEvent];
+	sendToAssistant: [event?: AgentSendToAssistantEvent];
 }>();
 
 const i18n = useI18n();
@@ -51,6 +56,7 @@ const canSendToAssistant = computed(() =>
 );
 
 function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	if (group.kind === 'backgroundJobSignal') return;
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 	if (!executionId || failures.length === 0) return;
 	emit('sendToAssistant', { executionId, failures });
@@ -144,6 +150,66 @@ const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
+const formatChatDividerTimestamp = useChatDividerTimestamp();
+
+/**
+ * Divider label by group id: the first user message gets one, and so does any
+ * later user message whose gap since the previous one exceeds the window above.
+ * Messages without a `createdAt` (older history) are skipped and never become
+ * the "previous" reference.
+ */
+const dividerLabels = computed(() => {
+	const labels = new Map<string, string>();
+	let previousUserCreatedAt: number | undefined;
+	for (const group of displayGroups.value) {
+		if (group.kind !== 'message' || group.message.role !== 'user') continue;
+		const createdAt = group.message.createdAt;
+		if (createdAt === undefined) continue;
+		// A new local day always earns a divider, even inside the window: without
+		// it a chat that crosses midnight files today's messages under a
+		// "Yesterday at ..." heading.
+		if (
+			previousUserCreatedAt === undefined ||
+			createdAt - previousUserCreatedAt > TIME.HOUR ||
+			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
+		) {
+			labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		}
+		previousUserCreatedAt = createdAt;
+	}
+	return labels;
+});
+
+/**
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
+ */
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
+
+/**
+ * Newest user message that reads as a request to change the agent itself. Only
+ * the newest one carries the hand-off note, so a chat full of such asks doesn't
+ * repeat the same banner.
+ */
+const changeRequestGroupId = computed(() =>
+	canSendToAssistant.value && !changeNoteDismissed.value
+		? displayGroups.value.findLast(
+				(group) =>
+					group.kind === 'message' &&
+					group.message.role === 'user' &&
+					looksLikeAgentChangeRequest(group.message.content),
+			)?.id
+		: undefined,
+);
+
+function onEditWithAssistant(changeRequest: string) {
+	emit('sendToAssistant', { changeRequest });
+}
+
 function isThinkingActive(message: ChatMessage): boolean {
 	return (
 		message.status === CHAT_MESSAGE_STATUS.STREAMING ||
@@ -152,15 +218,12 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
+	if (group.kind === 'backgroundJobSignal') return '';
 	if (group.kind === 'toolRun') {
 		return group.finalMessage?.content ?? '';
 	}
 
 	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -223,6 +286,7 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'backgroundJobSignal') return false;
 	if (group.kind === 'toolRun') {
 		return (
 			group.finalMessage !== undefined &&
@@ -287,18 +351,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			: openMemoryFooterGroupId.value;
 }
 
-const spokenMessageId = ref<string | null>(null);
-const spokenText = computed(() => {
-	if (!spokenMessageId.value) return '';
-	return getAssistantRunContent(spokenMessageId.value);
-});
-const speech = useSpeechSynthesis(spokenText, {
-	pitch: 1,
-	rate: 1,
-	volume: 1,
-});
-const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
-
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
 // large enough that sub-pixel DOM growth during markdown rendering doesn't
@@ -340,24 +392,6 @@ function scrollToBottom(): void {
 
 function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
-}
-
-function isSpeakingMessage(messageId: string): boolean {
-	return spokenMessageId.value === messageId && speech.status.value === 'play';
-}
-
-function toggleReadAloud(messageId: string): void {
-	if (!isSpeechSynthesisAvailable.value) return;
-
-	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
-		speech.stop();
-		spokenMessageId.value = null;
-		return;
-	}
-
-	speech.stop();
-	spokenMessageId.value = messageId;
-	speech.speak();
 }
 
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
@@ -405,32 +439,22 @@ watch(
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-watch(
-	() => speech.status.value,
-	(status) => {
-		if (status === 'end') {
-			spokenMessageId.value = null;
-		}
-	},
-);
-
-watch(spokenText, (value) => {
-	if (!value && spokenMessageId.value) {
-		speech.stop();
-		spokenMessageId.value = null;
-	}
-});
-
-onBeforeUnmount(() => {
-	speech.stop();
-});
 </script>
 
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div
+				v-if="dividerLabels.has(group.id)"
+				:class="$style.timestampDivider"
+				data-testid="agent-chat-timestamp-divider"
+			>
+				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
+			</div>
+			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
+				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+			</div>
+			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
@@ -502,10 +526,7 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
@@ -554,6 +575,15 @@ onBeforeUnmount(() => {
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
+					<N8nText
+						v-if="group.message.role === 'user' && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
 						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -581,6 +611,40 @@ onBeforeUnmount(() => {
 							</div>
 						</template>
 					</template>
+					<N8nCallout
+						v-if="group.id === changeRequestGroupId"
+						theme="info"
+						icon="wand-sparkles"
+						slim
+						:class="$style.changeRequestNote"
+						data-testid="agent-preview-change-request-note"
+					>
+						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
+						<template #trailingContent>
+							<N8nButton
+								size="small"
+								variant="subtle"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -609,10 +673,7 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed
@@ -668,6 +729,11 @@ onBeforeUnmount(() => {
 	padding-top: var(--spacing--4xs);
 }
 
+.timestampDivider {
+	align-self: center;
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -709,10 +775,36 @@ onBeforeUnmount(() => {
 	margin-bottom: var(--spacing--2xs);
 }
 
+/* Stretches past the right-aligned user bubble it follows, and stacks the
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
+.changeRequestNote {
+	align-self: stretch;
+	margin-top: var(--spacing--2xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {
@@ -722,6 +814,10 @@ onBeforeUnmount(() => {
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
+}
+
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
 .chatMessageError {

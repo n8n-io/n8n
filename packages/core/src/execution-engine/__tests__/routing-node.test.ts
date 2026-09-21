@@ -2381,6 +2381,125 @@ describe('RoutingNode', () => {
 		}
 	});
 
+	describe('per-item errors', () => {
+		const createRoutingNode = ({
+			continueOnFail,
+			requestErrorUrl,
+		}: {
+			continueOnFail: boolean;
+			requestErrorUrl?: string;
+		}) => {
+			const items: INodeExecutionData[] = [
+				{ json: { id: 'first' } },
+				{ json: requestErrorUrl ? { id: 'second' } : {} },
+				{ json: { id: 'third' } },
+			];
+			const node: INode = {
+				parameters: {},
+				name: 'test',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-1234',
+				position: [0, 0],
+			};
+			const nodeType = mock<INodeType>();
+			nodeType.description = {
+				requestDefaults: {
+					baseURL: 'http://127.0.0.1:5678',
+					url: '=/items/{{ toPathSegment($json.id) }}',
+				},
+				properties: [],
+			} as unknown as INodeTypeDescription;
+			const runExecutionData = createEmptyRunExecutionData();
+			const workflow = new Workflow({
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData: { data: {}, node, source: null } as IExecuteData,
+				inputData: { main: [items] } as ITaskDataConnections,
+				runIndex: 0,
+				additionalData,
+				workflow,
+				node,
+				mode: 'internal',
+				connectionInputData: items,
+				runExecutionData,
+			});
+			executeFunctions.getNodeParameter.mockReturnValue({});
+
+			const requestUrls: string[] = [];
+			const contexts = items.map((_, itemIndex) => {
+				const context = getExecuteSingleFunctions(workflow, runExecutionData, 0, node, itemIndex);
+				// @ts-expect-error overwriting a method
+				context.getNodeParameter = () => ({});
+				context.continueOnFail.mockReturnValue(continueOnFail);
+				context.helpers.httpRequest = vi.fn(async (requestOptions: IHttpRequestOptions) => {
+					requestUrls.push(requestOptions.url);
+					if (requestOptions.url === requestErrorUrl) {
+						throw new Error('Request failed');
+					}
+					return { body: { url: requestOptions.url } };
+				});
+				return context;
+			});
+			let contextIndex = 0;
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return contexts[contextIndex++] as never;
+			} as never);
+
+			return {
+				requestUrls,
+				run: new RoutingNode(executeFunctions, nodeType).runNode(),
+			};
+		};
+
+		test('returns a preparation error and processes later items when continue on fail is enabled', async () => {
+			const { requestUrls, run } = createRoutingNode({ continueOnFail: true });
+
+			const result = await run;
+
+			expect(requestUrls).toEqual(['/items/first', '/items/third']);
+			expect(result?.[0]?.[0]?.json).toEqual({ url: '/items/first' });
+			expect(result?.[0]?.[1]?.error).toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Invalid identifier: a value is required',
+				context: { itemIndex: 1, runIndex: 0 },
+			});
+			expect(result?.[0]?.[2]?.json).toEqual({ url: '/items/third' });
+		});
+
+		test('throws a preparation error and does not process later items when continue on fail is disabled', async () => {
+			const { requestUrls, run } = createRoutingNode({ continueOnFail: false });
+
+			await expect(run).rejects.toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Invalid identifier: a value is required',
+				context: { itemIndex: 1, runIndex: 0 },
+			});
+			expect(requestUrls).toEqual(['/items/first']);
+		});
+
+		test('returns a request error and processes later items when continue on fail is enabled', async () => {
+			const { requestUrls, run } = createRoutingNode({
+				continueOnFail: true,
+				requestErrorUrl: '/items/second',
+			});
+
+			const result = await run;
+
+			expect(requestUrls).toEqual(['/items/first', '/items/second', '/items/third']);
+			expect(result?.[0]?.[0]?.json).toEqual({ url: '/items/first' });
+			expect(result?.[0]?.[1]?.error).toMatchObject({ message: 'Request failed' });
+			expect(result?.[0]?.[2]?.json).toEqual({ url: '/items/third' });
+		});
+	});
+
 	describe('itemIndex', () => {
 		const tests: Array<{
 			description: string;
@@ -2536,6 +2655,7 @@ describe('RoutingNode', () => {
 		const buildNodeType = (
 			baseURL: string | null = 'https://api.example.com',
 			routedUrl = 'https://other-host.example.com/path',
+			propertyBaseURL?: string,
 		): INodeType => {
 			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 			routingNodeType.description = {
@@ -2550,8 +2670,19 @@ describe('RoutingNode', () => {
 						routing: {
 							request: {
 								url: routedUrl,
+								...(propertyBaseURL ? { baseURL: propertyBaseURL } : {}),
 							},
 						},
+					},
+					// Declared so the Workflow constructor's parameter reconciliation keeps
+					// `options.baseURL` instead of dropping it as an undeclared parameter.
+					{
+						displayName: 'Options',
+						name: 'options',
+						type: 'collection',
+						placeholder: 'Add option',
+						default: {},
+						options: [{ displayName: 'Base URL', name: 'baseURL', type: 'string', default: '' }],
 					},
 				],
 			} as unknown as INodeTypeDescription;
@@ -2560,12 +2691,18 @@ describe('RoutingNode', () => {
 
 		const runWithCredential = async (
 			data: Record<string, unknown>,
-			options: { baseURL?: string | null; routedUrl?: string } = {},
+			options: {
+				baseURL?: string | null;
+				routedUrl?: string;
+				nodeParameters?: INodeParameters;
+				propertyBaseURL?: string;
+			} = {},
 		) => {
 			const credentialData = data as unknown as ICredentialDataDecryptedObject;
-			const nodeType = buildNodeType(options.baseURL, options.routedUrl);
+			const nodeType = buildNodeType(options.baseURL, options.routedUrl, options.propertyBaseURL);
+			const node: INode = { ...baseNode, parameters: options.nodeParameters ?? {} };
 			const workflow = new Workflow({
-				nodes: [baseNode],
+				nodes: [node],
 				connections: {},
 				active: false,
 				nodeTypes,
@@ -2573,12 +2710,12 @@ describe('RoutingNode', () => {
 
 			const executeFunctions = mock<executionContexts.ExecuteContext>();
 			Object.assign(executeFunctions, {
-				executeData: { data: {}, node: baseNode, source: null } as IExecuteData,
+				executeData: { data: {}, node, source: null } as IExecuteData,
 				inputData: { main: [[{ json: {} }]] } as ITaskDataConnections,
 				runIndex,
 				additionalData,
 				workflow,
-				node: baseNode,
+				node,
 				mode,
 				connectionInputData,
 				runExecutionData,
@@ -2589,7 +2726,7 @@ describe('RoutingNode', () => {
 				workflow,
 				runExecutionData,
 				runIndex,
-				baseNode,
+				node,
 				itemIndex,
 			);
 			const originalGetNodeParameter = executeSingleFunctions.getNodeParameter;
@@ -2707,6 +2844,164 @@ describe('RoutingNode', () => {
 			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
 				.requestOptions;
 			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test('prepares a dynamic path segment when the base URL is static', async () => {
+			// Regression test for NODE-6014.
+			const result = await runWithCredential(
+				{ apiKey: 'testApiKey' },
+				{
+					routedUrl: '=/tests/{{toPathSegment($parameter["endpoint"])}}',
+					nodeParameters: { endpoint: 'project-123' },
+				},
+			);
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.url).toBe('/tests/project-123');
+		});
+
+		describe('when requestDefaults.baseURL reads an optional override parameter', () => {
+			// Mirrors LmChatOpenAi/LmOpenAi/OpenAiAssistant/EmbeddingsOpenAi's
+			// `$parameter.options?.baseURL || <credential-owned default>` pattern.
+			const parameterizedBaseUrl =
+				'={{ $parameter.options?.baseURL || "https://api.example.com" }}';
+
+			test("does not widen the 'domains' allowlist with a caller-supplied override", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					},
+					{
+						baseURL: parameterizedBaseUrl,
+						nodeParameters: { options: { baseURL: 'http://override.example.com' } },
+					},
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBe('api.example.com');
+			});
+
+			test("blocks a declarative node when mode is 'none' and the caller supplies an override", async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						{
+							baseURL: parameterizedBaseUrl,
+							nodeParameters: { options: { baseURL: 'http://override.example.com' } },
+						},
+					),
+				).rejects.toThrow('This credential is configured to prevent use within an');
+			});
+
+			test("still trusts the credential-owned default when mode is 'none' and no override is supplied", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ baseURL: parameterizedBaseUrl, nodeParameters: {} },
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+
+			test("still widens the 'domains' allowlist with the node's own host when no override is supplied", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					{ baseURL: parameterizedBaseUrl, nodeParameters: {} },
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
+			});
+		});
+
+		describe("when a property's routing overrides requestDefaults.baseURL with a node-owned literal", () => {
+			// Mirrors Google Cloud Storage's object-upload operations, whose `routing.request`
+			// hardcodes a different `baseURL` than `requestDefaults.baseURL` - a node-owned
+			// change, not one driven by any caller-supplied parameter.
+
+			test("still widens the 'domains' allowlist with the overriding host, not just requestDefaults' host", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					},
+					{ propertyBaseURL: 'https://upload.example.com' },
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBe('upload.example.com, api.example.com');
+			});
+
+			test("does not block a declarative node when mode is 'none'", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ propertyBaseURL: 'https://upload.example.com' },
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+		});
+
+		describe("when a property's routing overrides requestDefaults.baseURL with a caller-supplied parameter", () => {
+			// Same shape as Google Cloud Storage's own override, but the property's `baseURL`
+			// itself reads an optional override parameter instead of a fixed literal.
+			const parameterizedPropertyBaseUrl =
+				'={{ $parameter.options?.baseURL || "https://storage.googleapis.com/upload/storage/v1" }}';
+
+			test("does not widen the 'domains' allowlist with a caller-supplied override", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					},
+					{
+						propertyBaseURL: parameterizedPropertyBaseUrl,
+						nodeParameters: { options: { baseURL: 'http://override.example.com' } },
+					},
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBe('api.example.com');
+			});
+
+			test("blocks a declarative node when mode is 'none' and the caller supplies an override", async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						{
+							propertyBaseURL: parameterizedPropertyBaseUrl,
+							nodeParameters: { options: { baseURL: 'http://override.example.com' } },
+						},
+					),
+				).rejects.toThrow('This credential is configured to prevent use within an');
+			});
+
+			test("still trusts the node-owned default when mode is 'none' and no override is supplied", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ propertyBaseURL: parameterizedPropertyBaseUrl, nodeParameters: {} },
+				);
+
+				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+					.requestOptions;
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
 		});
 	});
 });

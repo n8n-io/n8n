@@ -4,7 +4,6 @@ import type {
 	DependencyResourceType,
 	ResolvedDependency,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
@@ -17,11 +16,11 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { AgentCredentialDependencyRepository } from '@/modules/agents/repositories/agent-credential-dependency.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
 
 /** Workflows named for a node type when the caller does not say how many it wants. */
 const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
@@ -74,9 +73,7 @@ export class WorkflowDependencyQueryService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
-		private readonly agentDependencyRepository: AgentCredentialDependencyRepository,
-		private readonly agentRepository: AgentRepository,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly agentUsageProvider: AgentUsageProviderProxy,
 	) {}
 
 	/**
@@ -197,7 +194,7 @@ export class WorkflowDependencyQueryService {
 					})
 				: [],
 			maps.allAgentIds.size > 0
-				? this.agentRepository.findSummariesByIds([...maps.allAgentIds])
+				? this.agentUsageProvider.findAgentSummaries([...maps.allAgentIds])
 				: [],
 		]);
 
@@ -270,9 +267,7 @@ export class WorkflowDependencyQueryService {
 				],
 				select: ['workflowId', 'dependencyType', 'dependencyKey'],
 			}),
-			resourceType === 'credential' && this.moduleRegistry.isActive('agents')
-				? this.agentDependencyRepository.findByCredentialIds(accessibleInputIds)
-				: [],
+			this.loadAgentDeps(resourceType, accessibleInputIds),
 		]);
 
 		if (rawDeps.length === 0 && agentDeps.length === 0) return null;
@@ -280,9 +275,17 @@ export class WorkflowDependencyQueryService {
 		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps) };
 	}
 
+	/** Agents using the resources, as `{ agentId, resourceId }` regardless of resource type. */
+	private async loadAgentDeps(
+		resourceType: DependencyResourceType,
+		resourceIds: string[],
+	): Promise<Array<{ agentId: string; resourceId: string }>> {
+		return await this.agentUsageProvider.findAgentUsages(resourceType, resourceIds);
+	}
+
 	private buildDepMaps(
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
-		agentDeps: Array<{ agentId: string; credentialId: string }>,
+		agentDeps: Array<{ agentId: string; resourceId: string }>,
 	): RawDepMaps {
 		const agentUsageMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
@@ -323,7 +326,7 @@ export class WorkflowDependencyQueryService {
 		}
 
 		for (const dep of agentDeps) {
-			addToSet(agentUsageMap, dep.credentialId, dep.agentId);
+			addToSet(agentUsageMap, dep.resourceId, dep.agentId);
 			allAgentIds.add(dep.agentId);
 		}
 

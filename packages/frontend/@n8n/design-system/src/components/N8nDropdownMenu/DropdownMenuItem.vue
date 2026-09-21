@@ -201,7 +201,12 @@ onBeforeUnmount(() => {
 				:aria-selected="highlighted || undefined"
 				:disabled="disabled"
 				:data-test-id="testId"
-				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
+				:class="[
+					$style.item,
+					$style['sub-trigger'],
+					props.class,
+					{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+				]"
 				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -348,7 +353,11 @@ onBeforeUnmount(() => {
 			:aria-selected="highlighted || undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
@@ -384,7 +393,11 @@ onBeforeUnmount(() => {
 			:aria-selected="highlighted || undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
@@ -468,6 +481,22 @@ onBeforeUnmount(() => {
 	&[data-disabled] {
 		color: var(--text-color--disabled);
 		cursor: not-allowed;
+	}
+
+	&.destructive.destructive:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			.item-label.item-label {
+				color: var(--text-color--danger);
+			}
+
+			.icon.icon,
+			.item-check.item-check,
+			.sub-indicator.sub-indicator {
+				color: var(--icon-color--danger) !important;
+			}
+		}
 	}
 
 	:global([data-menu-items]:has([aria-selected='true'])) &:not([aria-selected='true']) {

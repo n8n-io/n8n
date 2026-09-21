@@ -8,7 +8,13 @@ import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import {
+	ACTIVITY_LOG_TOOLS,
+	BUILDER_TOOLS,
+	FOLDER_FEATURE_TOOLS,
+	INSTANCE_CONTEXT_TOOLS,
+	TOOLS_BY_SCOPE,
+} from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -69,6 +75,13 @@ export class McpProtectedResource implements ProtectedResource {
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
+		// Consent must not advertise a tool `tools/list` will not carry. The instance-context
+		// tools need the `instance-ai` module, and the two that read the log also need something
+		// writing it. The per-user rollout flag cannot be resolved here, so this covers the
+		// instance-wide half.
+		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
+		const activityToolsAvailable =
+			instanceContextAvailable && this.globalConfig.activityLog.enabled;
 
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
@@ -79,7 +92,9 @@ export class McpProtectedResource implements ProtectedResource {
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
-							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
+							(instanceContextAvailable || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(activityToolsAvailable || !ACTIVITY_LOG_TOOLS.has(tool)),
 					),
 				]),
 		);

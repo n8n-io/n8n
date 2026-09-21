@@ -1,3 +1,4 @@
+import { credentialDescriptionSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -171,6 +172,23 @@ export async function validateAccessToReferencedSecretProviders(
 			);
 		}
 	}
+}
+
+// #endregion
+
+// #region Description
+
+/** Parses a description. The column is `text`, so every write path must call this. */
+export function parseCredentialDescription(description: unknown): string | null {
+	if (description === undefined) return null;
+
+	const result = credentialDescriptionSchema.safeParse(description);
+
+	if (!result.success) {
+		throw new BadRequestError(result.error.issues[0].message);
+	}
+
+	return result.data;
 }
 
 // #endregion

@@ -513,10 +513,12 @@ describe('ImportService', () => {
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 				workflow: { id: first.id, name: first.name, nodes: first.nodes },
 				projectId: ownerPersonalProject.id,
+				transport: 'cli',
 			});
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 				workflow: { id: second.id, name: second.name, nodes: second.nodes },
 				projectId: ownerPersonalProject.id,
+				transport: 'cli',
 			});
 		});
 
@@ -594,6 +596,7 @@ describe('ImportService', () => {
 					nodes: workflowToReimport.nodes,
 				},
 				projectId: memberPersonalProject.id,
+				transport: 'cli',
 			});
 		});
 

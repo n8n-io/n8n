@@ -1184,10 +1184,19 @@ export class CanvasPage extends BasePage {
 	async openWorkflowHistory(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-version-history');
+		await this.page.waitForURL(/\/history(?:\/|$)/);
+		await expect(this.getWorkflowHistoryCloseButton()).toBeVisible();
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
 		await this.getWorkflowHistoryCloseButton().click();
+		// History still shows the workflow canvas, so canvas-ready is not enough
+		// to know we are back on the editor.
+		await this.page.waitForURL((url) => !/\/history(?:\/|$)/.test(url.pathname), {
+			timeout: 30_000,
+		});
+		await expect(this.getWorkflowHistoryCloseButton()).toBeHidden();
+		await expect(this.page.getByTestId('workflow-menu')).toBeVisible();
 	}
 
 	// Canvas node groups (selection toolbar + group overlay)

@@ -1,4 +1,4 @@
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
@@ -17,6 +17,27 @@ export interface SetupPanelRow {
 export interface SetupPanelThreadSource {
 	messages: ReadonlyArray<{ agentTree?: InstanceAiAgentNode }>;
 	setupItemsByWorkflowId: Record<string, InstanceAiSetupItem[]>;
+}
+
+function completeCredentialContext(
+	item: InstanceAiSetupItem,
+	fallback: InstanceAiSetupItem | undefined,
+): InstanceAiSetupItem {
+	if (
+		item.kind !== 'credential' ||
+		fallback?.kind !== 'credential' ||
+		item.id !== fallback.id ||
+		item.credentialType !== fallback.credentialType
+	) {
+		return item;
+	}
+	return {
+		...item,
+		nodeBindings: item.nodeBindings?.length ? item.nodeBindings : fallback.nodeBindings,
+		setupHint: item.setupHint ?? fallback.setupHint,
+		reason: item.reason ?? fallback.reason,
+		appDisplayName: item.appDisplayName ?? fallback.appDisplayName,
+	};
 }
 
 /**
@@ -56,6 +77,32 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
+	const credentialContext = shallowReactive(new Map<string, InstanceAiSetupItem>());
+	watch(
+		[() => toValue(options.workflowId), eventItems],
+		([id, items], [previousId]) => {
+			if (id !== previousId) credentialContext.clear();
+			// Later snapshots can omit the recipe while the workflow still needs the credential.
+			for (const item of items) {
+				if (item.kind === 'credential') {
+					credentialContext.set(
+						item.id,
+						completeCredentialContext(item, credentialContext.get(item.id)),
+					);
+				}
+			}
+		},
+		{ immediate: true, flush: 'sync' },
+	);
+
+	watch(
+		[eventItems, isAgentBuilding],
+		([items, building]) => {
+			// The SDK saves resolved credentials before announcing setup, while its tool is still active.
+			if (building && items.length > 0) void derivation.refreshWorkflow({ force: true });
+		},
+		{ immediate: true, flush: 'sync' },
+	);
 
 	/**
 	 * Reconciliation: while the agent edits the workflow, its events are the
@@ -71,7 +118,21 @@ export function useSetupPanelState(options: {
 
 	const rows = computed<SetupPanelRow[]>(() => {
 		if (rowSource.value === 'events') {
-			return eventItems.value.map((item) => ({ item, isDone: derivation.isItemDone(item) }));
+			// Resolve bindings without remembering temporary parameter issues during a build.
+			const derivedById = new Map(
+				derivation.derivedCredentialItems.value.map((item) => [item.id, item]),
+			);
+			const announcedIds = new Set(eventItems.value.map((item) => item.id));
+			const stillRequired = derivation.derivedCredentialItems.value.filter(
+				(item) => credentialContext.has(item.id) && !announcedIds.has(item.id),
+			);
+			return [...eventItems.value, ...stillRequired].map((event) => {
+				const item = completeCredentialContext(
+					completeCredentialContext(event, derivedById.get(event.id)),
+					credentialContext.get(event.id),
+				);
+				return { item, isDone: derivation.isItemDone(item) };
+			});
 		}
 		const derived = derivation.derivedItems.value;
 		const derivedIds = new Set(derived.map((item) => item.id));
@@ -85,11 +146,22 @@ export function useSetupPanelState(options: {
 			(item) =>
 				item.kind === 'parameters' && !derivedIds.has(item.id) && derivation.isItemDone(item),
 		);
-		return [...derived, ...settledEventItems].map((item) => ({
-			item,
-			isDone: derivation.isItemDone(item),
-		}));
+		return [...derived, ...settledEventItems].map((derivedItem) => {
+			const item = completeCredentialContext(derivedItem, credentialContext.get(derivedItem.id));
+			return { item, isDone: derivation.isItemDone(item) };
+		});
 	});
 
-	return { rows, rowSource, isAgentBuilding };
+	return {
+		credentialsAvailable: derivation.credentialsAvailable,
+		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
+		rows,
+		rowSource,
+		isAgentBuilding,
+		getNodeByName: derivation.getNodeByName,
+		workflowProjectId: derivation.workflowProjectId,
+		refreshWorkflow: derivation.refreshWorkflow,
+		isItemDone: derivation.isItemDone,
+		isCredentialConfigured: derivation.isCredentialConfigured,
+	};
 }

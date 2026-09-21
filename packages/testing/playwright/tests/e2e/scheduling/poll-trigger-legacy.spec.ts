@@ -4,10 +4,10 @@ import { test } from '../../../fixtures/base';
 
 // With the durable scheduler disabled (the default), poll triggers must still
 // fire via the legacy in-memory cron.
-test.use({ capability: { services: ['proxy'] } });
+test.use({ capability: 'proxy' });
 
 test.describe(
-	'Poll Trigger (legacy in-memory scheduler) @capability:proxy',
+	'Poll Trigger (legacy in-memory scheduler)',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

@@ -1,4 +1,5 @@
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { WorkflowRepository, WorkflowReviewRequestRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -41,7 +42,17 @@ let requestRepository: WorkflowReviewRequestRepository;
 let workflowEntityRepository: WorkflowRepository;
 let policyService: WorkflowReviewPolicyService;
 
+// The auto-publish outcome is asserted synchronously through the mocked
+// `ActiveWorkflowManager`, which is the legacy activation path.
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+
+afterAll(() => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
+});
+
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
 	workflowEntityRepository = Container.get(WorkflowRepository);

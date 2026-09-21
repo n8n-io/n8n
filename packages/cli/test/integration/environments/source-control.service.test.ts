@@ -357,7 +357,7 @@ describe('SourceControlService', () => {
 			movedIntoScopeCredential,
 			movedOutOfScopeWorkflow,
 			movedIntoScopeWorkflow,
-		] = await Promise.all([
+		] = [
 			await createCredentials(
 				{
 					name: 'OutOfScope',
@@ -386,7 +386,7 @@ describe('SourceControlService', () => {
 				},
 				projectA,
 			),
-		]);
+		];
 
 		const [projectACredentials, projectBCredentials] = await Promise.all(
 			[projectA, projectB].map(async (project) => [

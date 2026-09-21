@@ -39,6 +39,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
+	async existsRunningByThread(threadId: string): Promise<boolean> {
+		return await this.existsBy({ threadId, status: 'running' });
+	}
+
 	async touchRunning(executionId: string): Promise<void> {
 		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
 	}
@@ -63,6 +67,20 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			values as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
+	}
+
+	async moveTimelineToBlob(
+		executionId: string,
+		storedAt: Exclude<AgentExecution['storedAt'], 'db'>,
+	): Promise<void> {
+		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
+	}
+
+	async findTimelineStorageLocation(
+		executionId: string,
+	): Promise<AgentExecution['storedAt'] | null> {
+		const execution = await this.findOne({ select: ['storedAt'], where: { id: executionId } });
+		return execution?.storedAt ?? null;
 	}
 
 	/**

@@ -1223,6 +1223,8 @@ function synthesizePlaceholderValue(hint: string): string {
 	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
 	if (h.includes('chat') && h.includes('id')) return '100000000';
 	if (h.includes('telegram')) return '100000000';
+	// Page, account and object ids: the node validates the shape, so a word is rejected.
+	if (/\bid\b/.test(h) || h.includes('account')) return '100000000';
 	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
 	if (selectedResourceValue) return selectedResourceValue;
 	return '__evalMockValue';
@@ -1293,7 +1295,7 @@ function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
 		parameters[key] = {
 			...rl,
 			value: synthesizeResourceLocatorValue(key),
-		} as INodeParameters[string];
+		};
 	}
 }
 
@@ -1343,7 +1345,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 		const value = mapper.value;
 		const mappingKeys =
 			value !== null && typeof value === 'object' && !Array.isArray(value)
-				? Object.keys(value as Record<string, unknown>)
+				? Object.keys(value)
 				: [];
 
 		if (mappingKeys.length === 0) {
@@ -1355,7 +1357,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				mappingMode: 'autoMapInputData',
 				value: null,
 				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
-			} as INodeParameters[string];
+			};
 			changes.push(`${key}: defineBelow without mappings → autoMapInputData`);
 			continue;
 		}
@@ -1375,7 +1377,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				type: 'string',
 				canBeUsedToMatch: true,
 			})),
-		} as INodeParameters[string];
+		};
 	}
 	return changes;
 }

@@ -3,7 +3,7 @@ import { expect, test } from '../../../fixtures/base';
 test.use({ capability: 'proxy' });
 
 test.describe(
-	'Evaluations @capability:proxy',
+	'Evaluations',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},

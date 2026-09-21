@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -195,6 +196,73 @@ test('import:credentials should include only selected credential properties', as
 	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
 });
 
+test('import:credentials should trim a description and store a blank one as null', async () => {
+	await createOwner();
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+
+	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	expect(byId.get('desc-blank')).toBeNull();
+});
+
+test('import:credentials should keep a stored description when the file omits it', async () => {
+	await createOwner();
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description-omitted.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c]));
+	expect(byId.get('desc-untrimmed')?.name).toBe('cred-untrimmed-description-reimported');
+	expect(byId.get('desc-untrimmed')?.description).toBe('Read-only key for reporting.');
+});
+
+test.each([
+	['a non-string', 42],
+	['an over-cap', 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)],
+])(
+	'import:credentials should reject %s description and keep the stored one',
+	async (_label, description) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify([
+				{
+					id: 'desc-untrimmed',
+					name: 'cred-untrimmed-description',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description,
+				},
+			]),
+		);
+
+		try {
+			await expect(command.run([`--input=${inputPath}`])).rejects.toThrow(
+				'Credential "desc-untrimmed"',
+			);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	},
+);
+
 test('import:credentials should exclude selected credential properties', async () => {
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
@@ -315,6 +383,57 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	});
 });
 
+test('`import:credentials --userId ...` should succeed if the credential exists already and is owned by the same user', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				name: 'cred-aws-prod',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
 test("only update credential, don't create or update owner if neither `--userId` nor `--projectId` is passed", async () => {
 	//
 	// ARRANGE
@@ -373,6 +492,51 @@ test("only update credential, don't create or update owner if neither `--userId`
 			expect.objectContaining({
 				credentialsId: '123',
 				projectId: memberProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test('`import:credentials --projectId ...` should succeed if the credential exists already and is owned by the same project', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-prod' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
