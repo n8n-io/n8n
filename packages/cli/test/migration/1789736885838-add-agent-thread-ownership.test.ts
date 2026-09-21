@@ -23,6 +23,7 @@ describe('Agent thread ownership migration', () => {
 	const fixtures = [
 		{ id: 'memory', resource: `draft-chat:${ownerId}`, expectedOwner: ownerId },
 		{ id: legacyId, expectedOwner: ownerId },
+		{ id: `test-${agentId}` },
 		{ id: 'checkpoint', checkpoint: `draft-chat:${ownerId}`, expectedOwner: ownerId },
 		{ id: 'retained', checkpoint: `draft-chat:${ownerId}`, expired: true, expectedOwner: ownerId },
 		{ id: 'child', parent: 'memory', expectedOwner: ownerId },
@@ -33,11 +34,22 @@ describe('Agent thread ownership migration', () => {
 		{ id: 'shared-child', parent: 'integration', shared: true },
 		{ id: 'unknown' },
 		{ id: 'missing-user', resource: `draft-chat:${randomUUID()}` },
+		{ id: 'invalid-user', resource: 'draft-chat:not-a-user' },
+		{ id: 'late-conflict', checkpoint: `draft-chat:${ownerId}` },
 		{ id: 'conflict', resource: `draft-chat:${ownerId}`, checkpoint: `draft-chat:${otherOwnerId}` },
 		{ id: 'mixed', resource: `draft-chat:${ownerId}`, source: 'slack' },
 		{ id: 'orphan', parent: 'missing-parent', resource: `draft-chat:${ownerId}` },
+		{ id: 'mismatched-parent', parent: 'memory', parentAgentId: randomUUID() },
 		{ id: 'cycle-a', parent: 'cycle-b' },
 		{ id: 'cycle-b', parent: 'cycle-a' },
+		{ id: 'a-batched-child', parent: 'z-batched-parent', expectedOwner: ownerId },
+		{ id: 'z-batched-parent', resource: `draft-chat:${ownerId}`, expectedOwner: ownerId },
+		...Array.from({ length: 225 }, (_, index) => ({
+			id: `batch-${String(index).padStart(3, '0')}`,
+			checkpoint: `draft-chat:${ownerId}`,
+			expired: index % 2 === 0,
+			expectedOwner: ownerId,
+		})),
 	];
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
@@ -47,6 +59,41 @@ describe('Agent thread ownership migration', () => {
 		} finally {
 			await context.queryRunner.release();
 		}
+	}
+
+	async function expectNoStagingTable({ runQuery, tablePrefix, isSqlite }: TestMigrationContext) {
+		const tables = await runQuery(
+			isSqlite
+				? 'SELECT name FROM sqlite_temp_master WHERE name = :name'
+				: "SELECT tablename FROM pg_tables WHERE schemaname LIKE 'pg_temp_%' AND tablename = :name",
+			{ name: `${tablePrefix}agent_thread_ownership_backfill` },
+		);
+		expect(tables).toEqual([]);
+	}
+
+	async function checkFailedBackfill() {
+		await withContext(async ({ escape, runQuery }) => {
+			await runQuery(
+				`ALTER TABLE ${escape.tableName('agent_checkpoints')} RENAME TO ${escape.tableName('saved_checkpoints')}`,
+			);
+		});
+		try {
+			await expect(runSingleMigration(migrationName)).rejects.toThrow('agent_checkpoints');
+		} finally {
+			dataSource = Container.get(DataSource);
+			await withContext(async ({ escape, runQuery }) => {
+				await runQuery(
+					`ALTER TABLE ${escape.tableName('saved_checkpoints')} RENAME TO ${escape.tableName('agent_checkpoints')}`,
+				);
+			});
+		}
+		await withContext(async (context) => {
+			await expectNoStagingTable(context);
+			const table = await context.queryRunner.getTable(
+				`${context.tablePrefix}agent_execution_threads`,
+			);
+			expect(table?.columns.some((column) => column.name === 'ownerId')).toBe(false);
+		});
 	}
 
 	beforeAll(async () => {
@@ -75,7 +122,7 @@ describe('Agent thread ownership migration', () => {
 						agentId,
 						projectId,
 						parent: fixture.parent ?? null,
-						parentAgentId: fixture.parent ? agentId : null,
+						parentAgentId: fixture.parentAgentId ?? (fixture.parent ? agentId : null),
 						task: fixture.task ?? null,
 						now,
 					},
@@ -94,7 +141,7 @@ describe('Agent thread ownership migration', () => {
 					await runQuery(
 						`INSERT INTO ${t('agent_checkpoints')} ("runId", "agentId", "state", "expired") VALUES (:id, :agentId, :state, :expired)`,
 						{
-							id: randomUUID(),
+							id: `checkpoint-${fixture.id}`,
 							agentId,
 							expired: fixture.expired ?? false,
 							state: JSON.stringify({
@@ -105,14 +152,26 @@ describe('Agent thread ownership migration', () => {
 					);
 				}
 			}
+			await runQuery(
+				`INSERT INTO ${t('agent_checkpoints')} ("runId", "agentId", "state") VALUES (:id, :agentId, :state)`,
+				{
+					id: 'zz-conflicting-checkpoint',
+					agentId,
+					state: JSON.stringify({
+						persistence: { threadId: 'late-conflict', resourceId: `draft-chat:${otherOwnerId}` },
+					}),
+				},
+			);
 		});
 	});
 
 	afterAll(async () => await Container.get(DbConnection).close());
 
 	it('sets access from retained state and preserves rows through rollback and reapplication', async () => {
+		await checkFailedBackfill();
 		await runSingleMigration(migrationName);
 		dataSource = Container.get(DataSource);
+		await withContext(expectNoStagingTable);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			const threads = await runQuery<
 				Array<{ id: string; ownerId: string | null; accessScope: string }>
@@ -155,6 +214,7 @@ describe('Agent thread ownership migration', () => {
 		});
 		await runSingleMigration(migrationName);
 		dataSource = Container.get(DataSource);
+		await withContext(expectNoStagingTable);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			expect(
 				await runQuery(

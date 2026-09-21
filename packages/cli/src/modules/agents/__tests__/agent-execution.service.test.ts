@@ -10,7 +10,10 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type {
+	AgentExecutionThread,
+	AgentThreadAccess,
+} from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
@@ -109,10 +112,13 @@ describe('AgentExecutionService', () => {
 		);
 	});
 
-	async function recordExecution(params: RecordMessageParams): Promise<string> {
+	async function recordExecution(
+		params: RecordMessageParams,
+		access: AgentThreadAccess = previewAccess,
+	): Promise<string> {
 		const { record, ...startParams } = params;
 		const executionId = await service.startExecutionRecording(
-			{ ...startParams, access: previewAccess },
+			{ ...startParams, access },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
@@ -648,31 +654,35 @@ describe('AgentExecutionService', () => {
 		});
 
 		it('stamps the task snapshot version on newly created task sessions', async () => {
+			const access: AgentThreadAccess = { accessScope: 'project', ownerId: null };
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
-				thread: makeThread({ title: 'Task run' }),
+				thread: makeThread({ title: 'Task run', ...access }),
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await recordExecution({
-				threadId: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				projectId: 'project-1',
-				userMessage: 'Run task',
-				record: makeMessageRecord(),
-				source: 'task',
-				taskId: 'task-1',
-				taskVersionId: 'version-1',
-			});
+			await recordExecution(
+				{
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run task',
+					record: makeMessageRecord(),
+					source: 'task',
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				},
+				access,
+			);
 
 			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
 				'thread-1',
 				'agent-1',
 				'Agent',
 				'project-1',
-				previewAccess,
+				access,
 				undefined,
 				'task-1',
 				'version-1',
