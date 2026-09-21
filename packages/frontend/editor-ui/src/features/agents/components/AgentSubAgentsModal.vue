@@ -115,6 +115,7 @@ function onConfirm() {
 	<Modal
 		:name="props.modalName"
 		width="640px"
+		:show-close="false"
 		:custom-class="$style.modal"
 		data-testid="agent-sub-agents-modal"
 	>
@@ -138,6 +139,16 @@ function onConfirm() {
 					:title="i18n.baseText('agents.builder.subAgents.open')"
 					:aria-label="i18n.baseText('agents.builder.subAgents.open')"
 					data-test-id="agent-sub-agents-modal-open"
+				/>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="small"
+					icon-size="medium"
+					:class="$style.closeButton"
+					:aria-label="i18n.baseText('generic.close')"
+					data-test-id="dialog-close-button"
+					@click="closeModal"
 				/>
 			</div>
 		</template>
@@ -299,6 +310,10 @@ function onConfirm() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.closeButton {
+	margin-left: auto;
 }
 
 .content {

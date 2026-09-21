@@ -10,6 +10,7 @@ import {
 	N8nFormInput,
 	N8nHeading,
 	N8nIcon,
+	N8nIconButton,
 	N8nInput,
 	N8nMarkdownEditor,
 	N8nOption,
@@ -403,7 +404,7 @@ async function onSave() {
 </script>
 
 <template>
-	<Modal :name="modalName" width="860px" data-testid="agent-task-modal">
+	<Modal :name="modalName" width="860px" :show-close="false" data-testid="agent-task-modal">
 		<template #header>
 			<div :class="$style.header">
 				<N8nHeading tag="h2" size="large">
@@ -413,34 +414,45 @@ async function onSave() {
 						)
 					}}
 				</N8nHeading>
-				<div v-if="isEditing" :class="$style.headerActions">
-					<N8nTooltip
-						:content="
-							props.data.isPublished
-								? i18n.baseText('agents.builder.tasks.republishHint')
-								: i18n.baseText('agents.builder.tasks.publishHint')
-						"
-						placement="top"
-					>
-						<N8nSwitch2
-							:model-value="enabled"
-							data-testid="agent-task-toggle"
-							@update:model-value="(value) => onToggleEnabled(Boolean(value))"
-						/>
-					</N8nTooltip>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.execute')" placement="top">
-						<N8nButton
-							variant="ghost"
-							size="small"
-							icon-only
-							:loading="running"
-							:aria-label="i18n.baseText('agents.builder.tasks.execute')"
-							data-testid="agent-task-run"
-							@click="onRun"
+				<div :class="$style.headerRight">
+					<div v-if="isEditing" :class="$style.headerActions">
+						<N8nTooltip
+							:content="
+								props.data.isPublished
+									? i18n.baseText('agents.builder.tasks.republishHint')
+									: i18n.baseText('agents.builder.tasks.publishHint')
+							"
+							placement="top"
 						>
-							<template #icon><N8nIcon icon="play" :size="16" /></template>
-						</N8nButton>
-					</N8nTooltip>
+							<N8nSwitch2
+								:model-value="enabled"
+								data-testid="agent-task-toggle"
+								@update:model-value="(value) => onToggleEnabled(Boolean(value))"
+							/>
+						</N8nTooltip>
+						<N8nTooltip :content="i18n.baseText('agents.builder.tasks.execute')" placement="top">
+							<N8nButton
+								variant="ghost"
+								size="small"
+								icon-only
+								:loading="running"
+								:aria-label="i18n.baseText('agents.builder.tasks.execute')"
+								data-testid="agent-task-run"
+								@click="onRun"
+							>
+								<template #icon><N8nIcon icon="play" :size="16" /></template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						:aria-label="i18n.baseText('generic.close')"
+						data-test-id="dialog-close-button"
+						@click="closeModal"
+					/>
 				</div>
 			</div>
 		</template>
@@ -671,7 +683,12 @@ async function onSave() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	padding-right: var(--spacing--xl);
+}
+
+.headerRight {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .headerActions {
