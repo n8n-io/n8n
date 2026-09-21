@@ -378,6 +378,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 		const menuOpen = ref(false);
 		const value = ref('');
 		const mentionTriggerIndex = ref<number | null>(null);
+		const savedSelection = ref({ start: 0, end: 0 });
 		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
 		const items: Array<DropdownMenuItemProps<string>> = [
 			{
@@ -396,7 +397,30 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			},
 			{ id: 'invoices', label: 'Invoices workflow' },
 		];
-		const onSelect = action('select');
+		const logSelect = action('select');
+
+		const findItemLabel = (
+			menuItems: Array<DropdownMenuItemProps<string>>,
+			itemId: string,
+		): string | undefined => {
+			for (const item of menuItems) {
+				if (item.id === itemId) return item.label;
+				const childLabel = item.children && findItemLabel(item.children, itemId);
+				if (childLabel) return childLabel;
+			}
+
+			return undefined;
+		};
+
+		const saveSelection = () => {
+			const input = inputElement.value;
+			if (!input) return;
+
+			savedSelection.value = {
+				start: input.selectionStart,
+				end: input.selectionEnd,
+			};
+		};
 
 		const handleKeydown = (event: KeyboardEvent) => {
 			dropdownRef.value?.handleExternalKeydown(event);
@@ -420,6 +444,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 		const handleUpdateModelValue = async (newValue: string) => {
 			value.value = newValue;
 			await nextTick();
+			saveSelection();
 
 			const caret = inputElement.value?.selectionStart ?? newValue.length;
 			const candidateIndex = caret - 1;
@@ -438,6 +463,25 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			}
 		};
 
+		const handleSelect = async (itemId: string) => {
+			logSelect(itemId);
+			const label = findItemLabel(items, itemId);
+			if (!label) return;
+
+			const triggerIndex = mentionTriggerIndex.value;
+			const start = triggerIndex ?? savedSelection.value.start;
+			const end = triggerIndex === null ? savedSelection.value.end : savedSelection.value.start;
+			const insertedText = `"${label}"`;
+			value.value = value.value.slice(0, start) + insertedText + value.value.slice(end);
+			mentionTriggerIndex.value = null;
+
+			await nextTick();
+			const caret = start + insertedText.length;
+			inputElement.value?.focus({ preventScroll: true });
+			inputElement.value?.setSelectionRange(caret, caret);
+			savedSelection.value = { start: caret, end: caret };
+		};
+
 		return {
 			args,
 			chatInputRef,
@@ -450,7 +494,8 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			handleKeydown,
 			handleOpenChange,
 			handleUpdateModelValue,
-			onSelect,
+			handleSelect,
+			saveSelection,
 			onSubmit: methods.onSubmit,
 		};
 	},
@@ -459,17 +504,13 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			style="
 				display: flex;
 				flex-direction: column;
-				justify-content: flex-end;
 				box-sizing: border-box;
 				min-height: 100vh;
 				width: 100%;
-				padding: var(--spacing--lg);
+				padding: var(--spacing--4xl) var(--spacing--lg) var(--spacing--lg);
 			"
 			@keydown.capture="handleKeydown"
 		>
-			<p style="margin-bottom: var(--spacing--2xs); color: var(--text-color--subtle);">
-				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
-			</p>
 			<div ref="composerRef">
 				<N8nChatInput
 					ref="chatInputRef"
@@ -478,6 +519,9 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 					:max-length="args.maxLength"
 					@update:model-value="handleUpdateModelValue"
 					@submit="onSubmit"
+					@click="saveSelection"
+					@keyup="saveSelection"
+					@pointerdown.capture="saveSelection"
 				>
 					<template #right-actions>
 						<N8nDropdownMenu
@@ -490,7 +534,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 							searchable
 							search-mode="external"
 							@update:model-value="handleOpenChange"
-							@select="onSelect"
+							@select="handleSelect"
 						>
 							<template #trigger>
 								<N8nTooltip content="Open context menu" placement="top">
@@ -506,6 +550,9 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 					</template>
 				</N8nChatInput>
 			</div>
+			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
+				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
+			</p>
 		</div>
 	`,
 });
@@ -520,7 +567,7 @@ WithExternalDropdown.parameters = {
 	docs: {
 		description: {
 			story:
-				'Demonstrates typed and button-triggered opening with external focus and keyboard integration. Query filtering, text replacement, and attachments are not included.',
+				'Demonstrates typed and button-triggered opening, quoted text insertion, external focus, and keyboard integration. Query filtering and attachments are not included.',
 		},
 	},
 };
