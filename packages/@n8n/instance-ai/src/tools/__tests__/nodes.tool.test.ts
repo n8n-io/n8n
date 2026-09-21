@@ -6,7 +6,7 @@ import {
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
@@ -138,7 +138,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'list', query: 'http' } as never,
+				{ action: 'list', query: ['http'] } as never,
 				{} as never,
 			);
 
@@ -201,12 +201,12 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const first = await executeTool(
 				tool,
-				{ action: 'search', query: 'http', limit: 5 } as never,
+				{ action: 'search', query: ['http'], limit: 5 } as never,
 				{} as never,
 			);
 			const second = await executeTool(
 				tool,
-				{ action: 'search', query: 'http', limit: 5 } as never,
+				{ action: 'search', query: ['http'], limit: 5 } as never,
 				{} as never,
 			);
 
@@ -221,6 +221,16 @@ describe('nodes tool', () => {
 			});
 			expect(context.nodeService.getDescription).toHaveBeenCalledTimes(2);
 			expect(first).not.toHaveProperty('results.0.setupPreference');
+		});
+
+		it('requires query to be a string array', () => {
+			const tool = createNodesTool(createMockContext(), 'full');
+
+			expect(parseToolInput(tool, { action: 'search', query: ['Slack'] }).success).toBe(true);
+			expect(
+				parseToolInput(tool, { action: 'search', query: ['WhatsApp', 'Gemini'] }).success,
+			).toBe(true);
+			expect(parseToolInput(tool, { action: 'search', query: 'Slack' }).success).toBe(false);
 		});
 
 		it('should search multiple services in a single call when query is an array', async () => {
@@ -250,45 +260,6 @@ describe('nodes tool', () => {
 			const result = await executeTool(
 				tool,
 				{ action: 'search', query: ['WhatsApp', 'Gemini'] } as never,
-				{} as never,
-			);
-
-			expect(result).toMatchObject({
-				totalResults: 2,
-				results: [
-					expect.objectContaining({ name: 'n8n-nodes-base.whatsApp' }),
-					expect.objectContaining({ name: '@n8n/n8n-nodes-langchain.googleGemini' }),
-				],
-			});
-		});
-
-		it('should search multiple services in a single call when queries parameter is provided', async () => {
-			const searchableNodes = [
-				{
-					name: 'n8n-nodes-base.whatsApp',
-					displayName: 'WhatsApp Business Cloud',
-					description: 'Send messages with WhatsApp',
-					inputs: ['main'],
-					outputs: ['main'],
-					version: 1,
-				},
-				{
-					name: '@n8n/n8n-nodes-langchain.googleGemini',
-					displayName: 'Google Gemini',
-					description: 'Message Gemini',
-					inputs: ['main'],
-					outputs: ['main'],
-					version: 1,
-				},
-			];
-			const context = createMockContext();
-			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
-			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue(null);
-
-			const tool = createNodesTool(context, 'full');
-			const result = await executeTool(
-				tool,
-				{ action: 'search', queries: ['WhatsApp', 'Gemini'] } as never,
 				{} as never,
 			);
 
@@ -358,7 +329,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'search', query: 'firecrawl', limit: 5 } as never,
+				{ action: 'search', query: ['firecrawl'], limit: 5 } as never,
 				{} as never,
 			);
 
@@ -393,7 +364,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'search', query: 'agent', limit: 5 } as never,
+				{ action: 'search', query: ['agent'], limit: 5 } as never,
 				{} as never,
 			);
 
@@ -430,7 +401,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'search', query: 'agent', limit: 5 } as never,
+				{ action: 'search', query: ['agent'], limit: 5 } as never,
 				{} as never,
 			);
 
@@ -504,7 +475,7 @@ describe('nodes tool', () => {
 					discriminators?: unknown;
 					setupPreference?: unknown;
 				}>;
-			}>(tool, { action: 'search', query: 'message', limit: 5 } as never, {} as never);
+			}>(tool, { action: 'search', query: ['message'], limit: 5 } as never, {} as never);
 			const suggestedResult = await executeTool<{
 				results: Array<{
 					suggestedNodes: Array<{

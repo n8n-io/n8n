@@ -846,7 +846,7 @@ List available node types in the n8n instance.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | no | Filter by name or description |
+| `query` | string[] | no | Filter by name or description. Always an array, even for one name (e.g. `["Slack"]`) |
 | `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
@@ -879,8 +879,7 @@ subnode requirements and discriminator values.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string \| string[] | no | Short search query or array of search queries (e.g. `"Slack"` or `["WhatsApp", "Gemini"]`) |
-| `queries` | string[] | no | Array of search queries to search multiple services in one call |
+| `query` | string[] | no | Service names to search. Always an array, even for one name (e.g. `["Slack"]` or `["WhatsApp", "Gemini"]`) |
 | `connectionType` | string | no | AI sub-node connection type |
 | `limit` | number | no | Maximum results per query. Default 10 |
 

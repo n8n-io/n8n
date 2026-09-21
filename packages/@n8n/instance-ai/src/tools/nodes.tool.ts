@@ -41,14 +41,13 @@ const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 10). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 const NODE_QUERY_DESCRIPTION =
-	'Search query or array of search queries to filter by name or description (e.g. "slack" or ["whatsapp", "gemini"])';
+	'Service names to filter or search by. Always pass an array, even for one name (e.g. ["Slack"] or ["WhatsApp", "Gemini"]).';
+
+const querySchema = z.array(z.string()).optional().describe(NODE_QUERY_DESCRIPTION);
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),
-	query: z
-		.union([z.string(), z.array(z.string())])
-		.optional()
-		.describe(NODE_QUERY_DESCRIPTION),
+	query: querySchema,
 	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
@@ -61,18 +60,9 @@ const searchAction = z.object({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Pass a single service name ("Slack") or an array of service names (["WhatsApp", "Gemini", "Google Sheets"]) in query/queries to search multiple services in one call.',
+			'Search node types by name or AI connection type. Pass service names in query as an array (["Slack"] or ["WhatsApp", "Gemini", "Google Sheets"]).',
 		),
-	query: z
-		.union([z.string(), z.array(z.string())])
-		.optional()
-		.describe(NODE_QUERY_DESCRIPTION),
-	queries: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Array of search queries to search multiple services in one call (e.g. ["whatsapp", "gemini"])',
-		),
+	query: querySchema,
 	connectionType: z
 		.enum(AI_CONNECTION_TYPES)
 		.optional()
@@ -261,9 +251,12 @@ async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
 ) {
-	const queryString = Array.isArray(input.query) ? input.query.join(' ') : input.query;
+	const queryString = input.query
+		?.map((q) => q.trim())
+		.filter(Boolean)
+		.join(' ');
 	const nodes = await context.nodeService.listAvailable({
-		query: queryString,
+		query: queryString || undefined,
 		gatewayCreditsOnly: input.gatewayCreditsOnly,
 	});
 	return { nodes };
@@ -283,14 +276,7 @@ async function handleSearch(
 		cache.engine = engine;
 	}
 
-	let queryList: string[] = [];
-	if (Array.isArray(input.queries) && input.queries.length > 0) {
-		queryList = input.queries.map((q) => String(q).trim()).filter(Boolean);
-	} else if (Array.isArray(input.query)) {
-		queryList = input.query.map((q) => String(q).trim()).filter(Boolean);
-	} else if (typeof input.query === 'string' && input.query.trim().length > 0) {
-		queryList = [input.query.trim()];
-	}
+	const queryList = (input.query ?? []).map((q) => q.trim()).filter(Boolean);
 
 	let results: NodeSearchResult[] = [];
 	if (input.connectionType) {

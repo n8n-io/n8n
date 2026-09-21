@@ -188,7 +188,7 @@ follow its build → publish → assign steps.
    `data_extraction`, `document_processing`, `form_input`,
    `content_generation`, `triage`, `scraping_and_research`); use
    `nodes(action="search")` for service-specific nodes you cannot name exactly
-   (short service names like "Gmail", not task phrases — pass an array like `query: ["WhatsApp", "Gemini"]` to search multiple services in a single call; results include
+   (short service names like "Gmail", not task phrases — always pass `query` as an array, e.g. `["Gmail"]` or `["WhatsApp", "Gemini"]`; results include
    resource/operation/mode discriminators).
 2. Call `nodes(action="type-definition")` with the exact node IDs you will use
    (up to 10 per call), including discriminators. Do not speculatively fetch
