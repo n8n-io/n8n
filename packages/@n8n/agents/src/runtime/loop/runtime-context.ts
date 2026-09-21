@@ -173,6 +173,7 @@ export class RuntimeContextBuilder {
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
+			{ reasoningReplay: getProviderQuirks(getProviderPrefix(this.modelId)).reasoningReplay },
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
