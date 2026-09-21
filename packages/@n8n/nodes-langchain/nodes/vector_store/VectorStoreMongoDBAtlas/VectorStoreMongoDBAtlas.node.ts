@@ -9,6 +9,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
+	UserError,
 } from 'n8n-workflow';
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
@@ -336,6 +337,10 @@ export class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 
 	async similaritySearchVectorWithScore(query: number[], k: number) {
 		if (this.documentDbEndpointType) {
+			if (k > 1000) {
+				throw new UserError('DocumentDB vector search supports at most 1000 results');
+			}
+
 			const queryVector = MongoDBAtlasVectorSearch.fixArrayPrecision(query);
 			let searchStage: MongoDocument;
 
@@ -344,6 +349,7 @@ export class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 					vector: queryVector,
 					path: this.embeddingFieldName,
 					k,
+					lSearch: Math.max(k, 40),
 				};
 				if (Object.keys(this.preFilter).length > 0) {
 					cosmosSearch.filter = this.preFilter;

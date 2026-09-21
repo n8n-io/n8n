@@ -72,7 +72,8 @@ describe.runIf(connectionString)('DocumentDB vector search service', () => {
 			documentDbEndpointType,
 		);
 
-		const results = await store.similaritySearchVectorWithScore([1, 0, 0], 2);
+		const resultLimit = documentDbEndpointType === 'azure' ? 41 : 2;
+		const results = await store.similaritySearchVectorWithScore([1, 0, 0], resultLimit);
 
 		expect(results).toHaveLength(2);
 		expect(results[0]?.[0].pageContent).toBe('Closest result');
