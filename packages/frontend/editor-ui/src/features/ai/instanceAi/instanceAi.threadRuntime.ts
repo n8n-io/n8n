@@ -455,8 +455,6 @@ export function createThreadRuntime(
 	 * menu that disagrees with what the assistant received is worse than no menu.
 	 */
 	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
-	/** Durable seq of the live event behind `appliedPreferences`; undefined after a restore. */
-	let appliedPreferencesSeq: number | undefined;
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -1055,7 +1053,6 @@ export function createThreadRuntime(
 					if (eventId === 1 && seenEventIds.has(1)) {
 						seenEventIds.clear();
 						lastEventId.value = undefined;
-						appliedPreferencesSeq = undefined;
 					}
 					if (seenEventIds.has(eventId)) return;
 					seenEventIds.add(eventId);
@@ -1100,15 +1097,10 @@ export function createThreadRuntime(
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
 			if (parsed.data.type === 'preferences-applied') {
-				// Frames from concurrent mains can interleave, so the durable seq decides
-				// which turn is newer rather than arrival order.
-				const seq = eventId !== undefined && Number.isFinite(eventId) ? eventId : undefined;
-				const isStale =
-					seq !== undefined && appliedPreferencesSeq !== undefined && seq < appliedPreferencesSeq;
-				if (!isStale) {
-					appliedPreferences.value = parsed.data.payload;
-					if (seq !== undefined) appliedPreferencesSeq = seq;
-				}
+				// Last write wins, like `latestTasks` and `latestSetupItems`: a thread runs one
+				// turn at a time and each turn publishes one of these, so arrival order is turn
+				// order. A seq guard would freeze the menu after a backend sequence restart.
+				appliedPreferences.value = parsed.data.payload;
 			}
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
@@ -1298,7 +1290,6 @@ export function createThreadRuntime(
 		latestTasks.value = null;
 		latestSetupItems.value = null;
 		appliedPreferences.value = null;
-		appliedPreferencesSeq = undefined;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
