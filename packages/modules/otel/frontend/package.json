@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-otel",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
