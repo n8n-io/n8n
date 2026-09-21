@@ -32,14 +32,14 @@ const $style = useCssModule();
 const classes = computed(() => {
 	const applied: string[] = [];
 	if (props.spin) {
-		applied.push($style.spin);
+		applied.push('spin');
 	}
 
 	if (props.strokeWidth) {
-		applied.push($style.strokeWidth);
+		applied.push('strokeWidth');
 	}
 
-	return ['n8n-icon', ...applied];
+	return ['n8n-icon', ...applied.map((c) => $style[c])];
 });
 
 const sizesInPixels: Record<IconSize, number> = {
@@ -140,8 +140,7 @@ watch(
 		:width="size.width"
 		:data-icon="props.icon"
 		:style="styles"
-	/>
-	<svg
+	/><svg
 		v-else-if="fallbackBody"
 		v-svg-content="fallbackBody"
 		xmlns="http://www.w3.org/2000/svg"
