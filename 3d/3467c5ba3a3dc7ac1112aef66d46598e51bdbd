@@ -1,0 +1,49 @@
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_2ed659fa6b1ae7::t_87a8fb21b2d4bd 190-193,197,206
+  s_805dfaf49a4974::t_433c24c541914b 182-183,186,200-205,207-210
+  s_2ed659fa6b1ae7::t_c61ccc293b9d12 195,199
+  s_805dfaf49a4974::t_907a5906d1cf4f 196,198
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_805dfaf49a4974::t_8c95f12c7ab1d9 23-26,61-70,73,97,112,141-147,556
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_805dfaf49a4974::t_e2b0683b2fbbeb 717-725
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_805dfaf49a4974::t_ff11319d79db72 575-578,580,583
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_db8848787b2559 6-9,13-58,65-78,105-107,111
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_805dfaf49a4974::t_87ce315e27b6bf 33,35,38,43,45,85,87-88,133-136,138-141,143,147-151,153-157,166,168-172,174,177-181,183,186-190,192
+  s_805dfaf49a4974::t_b1f5a01871b26c 214
+  s_805dfaf49a4974::t_3b3c419a166f37 32,42,46-47,93,97-99,137,144-146,152,158-165,167,173,175-176,184-185,191,193-196,205
+  s_805dfaf49a4974::t_2c008ab478fa2f 96,132,197,202,206,212,231,233,251,256
+  s_805dfaf49a4974::t_433c24c541914b 29
+  s_2ed659fa6b1ae7::t_c61ccc293b9d12 40-41,44,83-84,86,182
+  s_805dfaf49a4974::t_c891d5ef944b54 53,82
+  s_805dfaf49a4974::t_460837255bfa5d 94,199-201
+  s_805dfaf49a4974::t_8e57e1809820b9 248
+  s_2ed659fa6b1ae7::t_2986c00794b1fd 39,89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3d3467c5ba3a3dc7ac1112aef66d46598e51bdbd",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
