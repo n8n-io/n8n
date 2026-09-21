@@ -20,41 +20,34 @@ describe('TypeAvailabilityPoliciesModule', () => {
 
 	// The available-types controller injects the node registry, whose import chain takes
 	// several seconds to transform — more than the default per-test timeout.
+	//
+	// Asserted by class name, read off the registry `init()` itself populated — the same
+	// reason the check-registration test below never imports the check class directly.
+	// Importing a controller module here (even just to get a class reference to look up)
+	// would register it via its own `@RestController`/`@Get` decorators regardless of
+	// whether `init()` still imports it, making the assertion pass even after a regression.
 	it('registers the node-types and credential-types instance, project and available-types controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
 
-		const { TypeAvailabilityPolicyInstanceController } = await import(
-			'../type-availability-policy-instance.controller.js'
-		);
-		const { TypeAvailabilityPolicyProjectController } = await import(
-			'../type-availability-policy-project.controller.js'
-		);
-		const { CredentialTypePolicyInstanceController } = await import(
-			'../credential-type-policy-instance.controller.js'
-		);
-		const { CredentialTypePolicyProjectController } = await import(
-			'../credential-type-policy-project.controller.js'
-		);
-		const { AvailableTypesController } = await import('../available-types.controller.js');
 		const registry = Container.get(ControllerRegistryMetadata);
+		const routeCountByName = new Map(
+			Array.from(registry.controllerClasses).map((controllerClass) => [
+				controllerClass.name,
+				registry.getControllerMetadata(controllerClass).routes.size,
+			]),
+		);
 
-		expect(
-			registry.getControllerMetadata(TypeAvailabilityPolicyInstanceController as never).routes.size,
-		).toBeGreaterThan(0);
-		expect(
-			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
-		).toBeGreaterThan(0);
-		expect(
-			registry.getControllerMetadata(CredentialTypePolicyInstanceController as never).routes.size,
-		).toBeGreaterThan(0);
-		expect(
-			registry.getControllerMetadata(CredentialTypePolicyProjectController as never).routes.size,
-		).toBeGreaterThan(0);
-		expect(
-			registry.getControllerMetadata(AvailableTypesController as never).routes.size,
-		).toBeGreaterThan(0);
+		for (const name of [
+			'TypeAvailabilityPolicyInstanceController',
+			'TypeAvailabilityPolicyProjectController',
+			'CredentialTypePolicyInstanceController',
+			'CredentialTypePolicyProjectController',
+			'AvailableTypesController',
+		]) {
+			expect(routeCountByName.get(name)).toBeGreaterThan(0);
+		}
 	}, 30_000);
 
 	// Registration is what makes the check run at all: the decision service reads the registry

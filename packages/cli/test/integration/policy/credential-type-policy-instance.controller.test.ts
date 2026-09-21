@@ -210,4 +210,28 @@ describe('credential type availability policy instance controller admin happy pa
 			expect.objectContaining({ updatedBy: owner.id, kind: 'credential-types', scopeId }),
 		);
 	});
+
+	/**
+	 * A principal with only `credentialTypePolicy:manage` (not `nodeTypePolicy:manage`) must not
+	 * be able to clear or rewrite a node-types scope's attachments by guessing its scope id —
+	 * `assertAttachableToScope` alone would not catch this, since an empty attachment list never
+	 * reaches it.
+	 */
+	test('PUT /scopes/:scopeId/attachments refuses a node-types scope, even with no attachments', async () => {
+		const nodeInstancePut = await testServer
+			.authAgentFor(owner)
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		const nodeScopeId = nodeInstancePut.body.data.scopeId;
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(`/credential-type-policies/scopes/${nodeScopeId}/attachments`)
+			.send({ attachments: [] });
+
+		expect(response.statusCode).toBe(404);
+
+		const unchanged = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
+		expect(unchanged.body.data.version).toBe(nodeInstancePut.body.data.version);
+	});
 });

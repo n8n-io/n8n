@@ -1,4 +1,4 @@
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -29,6 +29,7 @@ beforeAll(async () => {
 	projectEditor = await createMember();
 
 	project = await createTeamProject('Credential policy project', projectAdmin);
+	await linkUserToProject(projectEditor, project, 'project:editor');
 });
 
 afterEach(async () => {
