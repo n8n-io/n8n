@@ -47,7 +47,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 		_nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes = workflow.nodes.filter((node) =>
-			JSON.stringify(node.parameters).includes(HELPER_NAME),
+			JSON.stringify(node.parameters ?? {}).includes(HELPER_NAME),
 		);
 
 		return reportAffectedNodes(affectedNodes, (node) => ({

@@ -34,18 +34,41 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 
 	// The per-resource loops below assert "every field is hidden under SP", which is vacuously
 	// true for a field that was never added. Pin that the mention picker is one they cover.
-	it.each(['channelMessage', 'chatMessage'])('%s:create has a mentions field', (resource) => {
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+		['chatMessage', 'create'],
+	])('%s:%s has a mentions field', (resource, operation) => {
 		const mentions = actionProps.find(
 			(p) =>
 				p.name === 'mentions' &&
 				p.displayOptions?.show?.resource?.includes(resource) &&
-				p.displayOptions?.show?.operation?.includes('create'),
+				p.displayOptions?.show?.operation?.includes(operation),
 		);
 
 		expect(mentions).toBeDefined();
 	});
 
-	describe.each(['chatMessage', 'chatMember'])(
+	// Same reason, plus one more: the loop below filters on `displayOptions.show.resource`, so a
+	// field that lost that key is silently skipped rather than failing. Topic is also the only
+	// place the `updateDisplayOptions` deep-merge is checked - its own `chatType` condition has
+	// to survive alongside the injected resource/operation keys.
+	it('chat:create shows Topic only for a group chat', () => {
+		const topic = actionProps.find(
+			(p) =>
+				p.name === 'topic' &&
+				p.displayOptions?.show?.resource?.includes('chat') &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		expect(topic?.displayOptions?.show).toEqual({
+			resource: ['chat'],
+			operation: ['create'],
+			chatType: ['group'],
+		});
+	});
+
+	describe.each(['chat', 'chatMessage', 'chatMember'])(
 		'%s - hidden under SP via the slash-prefixed field-level key',
 		(resource) => {
 			it('operation selector carries hide["/authentication"] = [SP]', () => {

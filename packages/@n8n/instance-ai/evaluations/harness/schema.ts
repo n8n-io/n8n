@@ -1,4 +1,4 @@
-import { instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
+import { findSeedFolderIssues, instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -265,12 +265,22 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			c.seed.workflows.length > 0 ||
 			c.seed.dataTables.length > 0 ||
 			c.seed.agents.length > 0 ||
+			c.seed.folders.length > 0 ||
 			c.seed.projects.length > 0,
 		{
 			message:
-				'an inline seed must carry something — messages, workflows, dataTables, agents, or projects',
+				'an inline seed must carry something — messages, workflows, dataTables, agents, folders, or projects',
 		},
 	)
+	// Folder references span two arrays (a workflow's `parentFolderId` names a
+	// `folders[].id`), so only the case can check them. Fails at load, with every
+	// fault named, rather than mid-run where the restore would reject the seed.
+	.superRefine((c, ctx) => {
+		if (c.seed?.mode !== 'inline') return;
+		for (const message of findSeedFolderIssues(c.seed)) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['seed', 'folders'], message });
+		}
+	})
 	// Rejected rather than ignored on a later turn, so a misplaced one can't silently
 	// do nothing.
 	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {

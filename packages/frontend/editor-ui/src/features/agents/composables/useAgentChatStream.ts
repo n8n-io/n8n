@@ -13,7 +13,7 @@ import type {
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -882,7 +882,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					// backend requires a non-empty mime type and sniffs the real one.
 					return {
 						fileName: file.name,
-						mimeType: file.type || 'application/octet-stream',
+						mimeType: encoded.mimeType || 'application/octet-stream',
 						data: encoded.data,
 					};
 				}),
@@ -969,6 +969,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				role: 'user',
 				content: text,
 				status: 'success',
+				createdAt: Date.now(),
 			});
 		}
 
@@ -1029,10 +1030,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			createdAt: Date.now(),
 			...(files?.length && {
 				attachments: files.map((file) => ({
 					fileName: file.name,
-					mimeType: file.type || 'application/octet-stream',
+					mimeType: resolveFileMimeType(file.name, file.type) || 'application/octet-stream',
 					sizeBytes: file.size,
 					file,
 				})),

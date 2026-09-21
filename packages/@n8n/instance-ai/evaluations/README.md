@@ -894,7 +894,7 @@ For a **synthetic, sanitized** seed you want pinned in git (never a real user's 
 }
 ```
 
-Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows`, `dataTables` and `agents` (all default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow or agent `id` must be ≥8 characters (`remapSeedArtifactIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
+Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows`, `dataTables`, `agents`, `folders` and `projects` (all default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow or agent `id` must be ≥8 characters (`remapSeedArtifactIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
 
 **Each message must carry the envelope** — `id`, `role` (`user` or `assistant`), `type` (`llm`, `custom`, …), `createdAt` (a parseable timestamp; ordering before the live turn depends on it), and `content` as an array of blocks each with a `type`. Only the envelope is validated: **unknown block types are accepted**, because block shapes belong to the agent's message store rather than to the harness, and unknown keys are preserved rather than stripped. A `type: 'custom'` message is the one exception — it's stored but never rendered, so it may omit `role` and carry any `content` shape. The envelope is checked because a malformed message would otherwise be stored verbatim *and* skipped by `transcriptPrefixFromSeed`, leaving the case graded against a transcript that doesn't match what the agent saw.
 
@@ -929,6 +929,66 @@ the envelope rules above and fails at load, rather than becoming a message the
 transcript builder would silently drop.
 
 The seed lives **in the case body** rather than in a sibling file, so it travels with the case whatever the source — a JSON on disk, a suite pulled with `--source langtracer`, or a case body handed to a dispatcher. (There used to be a `seedFile` path pointing at a sibling JSON. Only the disk loader could resolve it, so a case delivered any other way lost its seed; the key is gone and a case still carrying it fails at load.)
+
+#### `folders` — "look at the ODW folder"
+
+A seed can create folders in the thread's project before the live turn, and place its
+workflows inside them. Use it to grade how the agent finds the contents of a folder the
+user names (CONTEXT-86: `workflows(action="list")` takes `folderPath` or `folderId`).
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "folders": [
+    { "id": "odwFolder0001", "name": "ODW" },
+    { "id": "odwArchive001", "name": "Archive", "parentFolderId": "odwFolder0001" }
+  ],
+  "workflows": [
+    { "id": "odwSignal1Wf", "name": "Odds Watch - 1", "parentFolderId": "odwFolder0001", "nodes": [], "connections": {} },
+    { "id": "rootWorkflow1", "name": "Voice Agent", "nodes": [], "connections": {} }
+  ]
+}
+```
+
+- **Folders are created first, parents before children, by `restore-thread`.** The server
+  generates the real ids and maps the seed ids to them, the way it does for data tables, so
+  the harness carries `folders` through the id remap untouched. A workflow's
+  `parentFolderId` names a `folders[].id`; omit it for the project root.
+- **Names are created verbatim**, with no `[seed …]` suffix, for the same reason seeded
+  projects are: the live turn says "the ODW folder", so the created name has to match. A
+  root folder of the same name that existed before the run started is evicted before the
+  restore, **with everything in it**, so a crashed run cannot leave two ODW folders for
+  the agent to disambiguate. Same blast radius as the project eviction: there is no seed
+  marker on the name, so a same-named folder a human made on that instance goes too.
+  Point folder cases at an eval instance, and pick names a real project would not use.
+  Folders created during the run (a previous iteration's, still live while it is judged)
+  are never touched.
+- **One folder case at a time per instance.** Two cases whose premises conflict (the
+  folder exists / the folder must not exist) share the project, so run them in separate
+  invocations. With `--iterations N` the previous iteration's folder is still live for
+  a few seconds while it is judged, so a same-named second folder can exist briefly;
+  keep the folder name distinctive and check the run log if a `folderPath` lookup came
+  back ambiguous. Seeded projects have the same window.
+- **Rules checked at case load**, not mid-run: a folder `id` has at least 8 characters;
+  ids are unique; every `parentFolderId` (on a folder or a workflow) names a declared
+  folder; no folder is its own ancestor; a `name` is already trimmed, has no `/` (the
+  `folderPath` separator) and passes n8n's own folder-name rules; at most 20 folders.
+- **Folders are licensed** (`feat:folders`). An unlicensed instance fails the restore
+  with a hint instead of seeding without the folder: the case would otherwise grade the
+  agent against a folder that does not exist. On a local instance started with
+  `E2E_TESTS=true`, `/rest/e2e/reset` stubs the license to all-false, so re-enable it
+  after seeding the owner: `PATCH /rest/e2e/feature {"feature":"feat:folders","enabled":true}`.
+  Folder exploration itself is behind the PostHog flag `110_instance_ai_folder_exploration`;
+  force it on with `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED=true` on the target instance.
+- **Cleanup deletes the folders after the workflows.** A folder delete does not delete
+  what it still holds. It archives that workflow and moves it to the project root, so the
+  order matters. Cleanup deletes the root folders only, and the `onDelete: 'CASCADE'`
+  foreign key removes the subfolders with them. Children go before parents on the rollback
+  path, where `deleteFolders` undoes a restore that failed part way.
+- **Not pushable yet.** The LangTracer case-write API validates `seed` with
+  `additionalProperties: false` and has no `folders` key, and its `workflows[]` items
+  declare no `parentFolderId`. `unsupportedPushReason` refuses such a case, so keep it on
+  disk (`--source disk`) until `n8n-io/lang-tracer` carries both.
 
 #### Handing the agent the workflow (`attach`)
 

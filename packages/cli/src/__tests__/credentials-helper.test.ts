@@ -52,6 +52,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -470,7 +471,7 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
-	describe('applyDefaultsAndOverwrites — managed OAuth endpoint fields', () => {
+	describe('applyDefaultsAndOverwrites - hidden OAuth endpoint fields', () => {
 		const buildHelper = (credentialsOverwrites: CredentialsOverwrites) =>
 			new CredentialsHelper(
 				new CredentialTypes(mockNodesAndCredentials),
@@ -489,7 +490,7 @@ describe('CredentialsHelper', () => {
 				.calledWith(credentialType.name)
 				.mockReturnValue({ type: credentialType, sourcePath: '' });
 
-		const managedOAuth2Type: ICredentialType = {
+		const slackOAuth2Type: ICredentialType = {
 			name: 'slackOAuth2Api',
 			displayName: 'Slack OAuth2 API',
 			properties: [
@@ -517,7 +518,7 @@ describe('CredentialsHelper', () => {
 			],
 		};
 
-		const managedOAuth1Type: ICredentialType = {
+		const twitterOAuth1Type: ICredentialType = {
 			name: 'twitterOAuth1Api',
 			displayName: 'Twitter OAuth1 API',
 			properties: [
@@ -550,11 +551,10 @@ describe('CredentialsHelper', () => {
 			],
 		};
 
-		test('resolves hidden OAuth2 endpoint fields from the credential type for managed credentials', async () => {
-			registerType(managedOAuth2Type);
+		test('resolves hidden OAuth2 endpoint fields from the credential type', async () => {
+			registerType(slackOAuth2Type);
 			const credentialsOverwrites = mock<CredentialsOverwrites>();
 			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
-			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
 
 			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
 				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
@@ -566,7 +566,7 @@ describe('CredentialsHelper', () => {
 					accessTokenUrl: 'https://custom.example.com/token',
 					authentication: 'header',
 				},
-				managedOAuth2Type.name,
+				slackOAuth2Type.name,
 				'internal',
 			);
 
@@ -582,13 +582,14 @@ describe('CredentialsHelper', () => {
 		});
 
 		test('honors an admin overwrite for a pinned endpoint field, falling back to the type default for the rest', async () => {
-			registerType(managedOAuth2Type);
+			registerType(slackOAuth2Type);
 			const credentialsOverwrites = mock<CredentialsOverwrites>();
-			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
-			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
-			credentialsOverwrites.getOverwrites.mockReturnValue({
-				accessTokenUrl: 'https://proxy.internal.example.com/token',
-			});
+			// Mirrors the real applyOverwrite: fill a field only when the stored value is empty
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) =>
+				data.accessTokenUrl
+					? data
+					: { ...data, accessTokenUrl: 'https://proxy.internal.example.com/token' },
+			);
 
 			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
 				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
@@ -598,7 +599,7 @@ describe('CredentialsHelper', () => {
 					authUrl: 'https://custom.example.com/authorize',
 					accessTokenUrl: 'https://custom.example.com/token',
 				},
-				managedOAuth2Type.name,
+				slackOAuth2Type.name,
 				'internal',
 			);
 
@@ -610,11 +611,10 @@ describe('CredentialsHelper', () => {
 			});
 		});
 
-		test('resolves hidden OAuth1 endpoint fields from the credential type for managed credentials', async () => {
-			registerType(managedOAuth1Type);
+		test('resolves hidden OAuth1 endpoint fields from the credential type', async () => {
+			registerType(twitterOAuth1Type);
 			const credentialsOverwrites = mock<CredentialsOverwrites>();
 			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
-			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
 
 			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
 				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
@@ -624,7 +624,7 @@ describe('CredentialsHelper', () => {
 					requestTokenUrl: 'https://custom.example.com/request_token',
 					accessTokenUrl: 'https://custom.example.com/access_token',
 				},
-				managedOAuth1Type.name,
+				twitterOAuth1Type.name,
 				'internal',
 			);
 
@@ -636,27 +636,115 @@ describe('CredentialsHelper', () => {
 			});
 		});
 
-		test('keeps user-provided endpoint fields for non-managed credentials', async () => {
-			registerType(managedOAuth2Type);
+		test('resolves a hidden dynamic client registration flag before evaluating displayOptions', async () => {
+			const databricksOAuth2Type: ICredentialType = {
+				name: 'databricksOAuth2Api',
+				displayName: 'Databricks OAuth2 API',
+				properties: [
+					{ displayName: 'Host', name: 'host', type: 'string', default: '' },
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'hidden',
+						default: false,
+					},
+					{
+						displayName: 'Authorization URL',
+						name: 'authUrl',
+						type: 'hidden',
+						default: '={{$self["host"].replace(/\\/$/, "")}}/oidc/v1/authorize',
+					},
+					{
+						displayName: 'Access Token URL',
+						name: 'accessTokenUrl',
+						type: 'hidden',
+						default: '={{$self["host"].replace(/\\/$/, "")}}/oidc/v1/token',
+					},
+					{ displayName: 'Use PKCE', name: 'usePkce', type: 'hidden', default: true },
+					{
+						displayName: 'Client ID',
+						name: 'clientId',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { useDynamicClientRegistration: [false] } },
+					},
+					{
+						displayName: 'Client Secret',
+						name: 'clientSecret',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { useDynamicClientRegistration: [false] } },
+					},
+				],
+			};
+			registerType(databricksOAuth2Type);
 			const credentialsOverwrites = mock<CredentialsOverwrites>();
 			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
-			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
 
 			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
 				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
 				{
+					host: 'https://adb-1.azuredatabricks.net/',
 					clientId: 'user-client-id',
 					clientSecret: 'user-client-secret',
-					accessTokenUrl: 'https://custom.example.com/token',
+					useDynamicClientRegistration: true,
+					accessTokenUrl: 'https://other.example.com/token',
+					usePkce: false,
 				},
-				managedOAuth2Type.name,
+				databricksOAuth2Type.name,
 				'internal',
 			);
 
-			expect(result).toMatchObject({ accessTokenUrl: 'https://custom.example.com/token' });
+			expect(result).toMatchObject({
+				useDynamicClientRegistration: false,
+				accessTokenUrl: 'https://adb-1.azuredatabricks.net/oidc/v1/token',
+				usePkce: true,
+				// displayOptions were evaluated with the pinned flag, so the client fields survive.
+				clientId: 'user-client-id',
+				clientSecret: 'user-client-secret',
+			});
 		});
 
-		test('leaves user-editable endpoint fields untouched for managed credentials', async () => {
+		test('keeps a user-editable dynamic client registration flag', async () => {
+			const mcpOAuth2Type: ICredentialType = {
+				name: 'mcpOAuth2Api',
+				displayName: 'MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'boolean',
+						default: true,
+					},
+					{
+						displayName: 'Access Token URL',
+						name: 'accessTokenUrl',
+						type: 'hidden',
+						default: 'https://auth.example.com/token',
+					},
+					{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' },
+					{ displayName: 'Client Secret', name: 'clientSecret', type: 'string', default: '' },
+				],
+			};
+			registerType(mcpOAuth2Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					useDynamicClientRegistration: false,
+					clientId: 'user-client-id',
+					clientSecret: 'user-client-secret',
+				},
+				mcpOAuth2Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({ useDynamicClientRegistration: false });
+		});
+
+		test('leaves user-editable endpoint fields untouched', async () => {
 			const genericOAuth2Type: ICredentialType = {
 				name: 'oAuth2Api',
 				displayName: 'OAuth2 API',
@@ -669,7 +757,6 @@ describe('CredentialsHelper', () => {
 			registerType(genericOAuth2Type);
 			const credentialsOverwrites = mock<CredentialsOverwrites>();
 			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
-			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
 
 			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
 				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
@@ -1615,6 +1702,30 @@ describe('CredentialsHelper', () => {
 		};
 
 		const credentialType = 'testApi';
+		const triggerExecuteData = {
+			data: {},
+			node: {
+				id: 'gmail-trigger',
+				name: 'Gmail Trigger',
+				type: 'n8n-nodes-base.gmailTrigger',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+			source: null,
+		} satisfies IExecuteData;
+		const actionExecuteData = {
+			data: {},
+			node: {
+				id: 'gmail-node',
+				name: 'Gmail',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+			source: null,
+		} satisfies IExecuteData;
 
 		const mockCredentialEntity = {
 			id: 'cred-456',
@@ -1757,8 +1868,123 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should skip resolution when executionContext is missing (manual mode)', async () => {
+		test.each([
+			{
+				name: 'system resolver',
+				credentialResolverId: undefined,
+				expectedMessage:
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, Form, or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+			},
+			{
+				name: 'custom resolver',
+				credentialResolverId: 'custom-resolver',
+				expectedMessage:
+					'End-user credentials with this resolver need a trigger that extracts an identity. Configure an identity extractor on the trigger, or switch this credential to Fixed.',
+			},
+		])(
+			'should explain unsupported manual triggers using the $name',
+			async ({ credentialResolverId, expectedMessage }) => {
+				dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+				mockCredentialResolutionProvider.getSystemResolverId.mockReturnValue('system-n8n');
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue({
+					...mockCredentialEntity,
+					isResolvable: true,
+				} as CredentialsEntity);
+
+				await expect(
+					credentialsHelper.getDecrypted(
+						{
+							...mockAdditionalData,
+							executionContext: undefined,
+							workflowSettings: {
+								...mockAdditionalData.workflowSettings,
+								credentialResolverId,
+							},
+						},
+						nodeCredentials,
+						credentialType,
+						'manual',
+						triggerExecuteData,
+						true,
+						undefined,
+						{ credentialUsage: 'trigger' },
+					),
+				).rejects.toThrow(expectedMessage);
+
+				expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			},
+		);
+
+		test('should surface resolver configuration errors instead of an unsupported-trigger error', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.getSystemResolverId.mockReturnValue(null);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new Error('Credential resolver is not configured'),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+						workflowSettings: {
+							...mockAdditionalData.workflowSettings,
+							credentialResolverId: undefined,
+						},
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					triggerExecuteData,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow('Credential resolver is not configured');
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should defer to the resolver when trigger execution data is unavailable', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new MissingExecutionContextError(),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					undefined,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow(MissingExecutionContextError);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should preserve static credentials for manual action-node tests without context', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
 				isDynamic: false,
@@ -1774,7 +2000,7 @@ describe('CredentialsHelper', () => {
 				nodeCredentials,
 				credentialType,
 				'manual',
-				undefined,
+				actionExecuteData,
 				true,
 			);
 
@@ -1782,22 +2008,27 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should resolve in manual mode when credentials context is present (test webhook with identity extractor)', async () => {
+		test('should resolve manual trigger credentials when execution context is present', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
 			const dynamicData = { apiKey: 'dynamic-key' };
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: dynamicData,
 				isDynamic: true,
 			});
 
-			// mockAdditionalData has credentials context set — simulates a test webhook run
 			const result = await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
 				'manual',
-				undefined,
+				triggerExecuteData,
 				true,
+				undefined,
+				{ credentialUsage: 'trigger' },
 			);
 
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalled();

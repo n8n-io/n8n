@@ -21,6 +21,7 @@ import { PrometheusQueueMetricsService } from './queue-metrics.service';
 import { PrometheusRouteMetricsService } from './route-metrics.service';
 import { PrometheusSchedulerMetricsService } from './scheduler-metrics.service';
 import { PrometheusSsrfMetricsService } from './ssrf-metrics.service';
+import { PrometheusSystemTaskMetricsService } from './system-task-metrics.service';
 import { PrometheusTokenExchangeMetricsService } from './token-exchange-metrics.service';
 import { PrometheusVersionMetricsService } from './version-metrics.service';
 import { PrometheusWebhookAndFormMetricsService } from './webhook-and-form-metrics.service';
@@ -61,6 +62,7 @@ export class PrometheusMetricsService {
 		scheduler: PrometheusSchedulerMetricsService,
 		pollTrigger: PrometheusPollTriggerMetricsService,
 		encryption: PrometheusEncryptionMetricsService,
+		systemTask: PrometheusSystemTaskMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -88,6 +90,7 @@ export class PrometheusMetricsService {
 			scheduler,
 			pollTrigger,
 			encryption,
+			systemTask,
 		];
 	}
 
