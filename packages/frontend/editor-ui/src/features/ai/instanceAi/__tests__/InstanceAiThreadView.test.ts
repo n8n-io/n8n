@@ -8,6 +8,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -529,6 +530,42 @@ describe('InstanceAiThreadView', () => {
 			});
 		});
 
+		it('shows an announced workflow before its first artifact exists', async () => {
+			seedSetupArtifacts();
+			thread.producedArtifacts = new Map();
+			const rendered = renderView({ props: { threadId: 'thread-1' } });
+			expect(rendered.queryByTestId('setup-panel')).not.toBeInTheDocument();
+			thread.setupItemsByWorkflowId = {
+				'wf-early': [
+					{ id: 'wf-early:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+				],
+			};
+			thread.latestSetupWorkflowId = 'wf-early';
+			await flushPromises();
+			expect(rendered.getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-early');
+			expect(rendered.getByTestId('setup-panel')).not.toHaveAttribute('data-project-id');
+		});
+
+		it('does not pick an arbitrary workflow from legacy setup rows', () => {
+			seedSetupArtifacts();
+			thread.producedArtifacts = new Map();
+			thread.latestSetupWorkflowId = undefined;
+			thread.setupItemsByWorkflowId = Object.fromEntries(
+				['wf-1', 'wf-2'].map((id) => [
+					id,
+					[
+						{
+							id: `${id}:credential:slackApi`,
+							kind: 'credential' as const,
+							credentialType: 'slackApi',
+						},
+					],
+				]),
+			);
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			expect(queryByTestId('setup-panel')).not.toBeInTheDocument();
+		});
+
 		it('follows the selected workflow and project when tabs change', async () => {
 			seedSetupArtifacts();
 			thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
@@ -872,6 +909,18 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(callOrder).toEqual(['loadThreadStatus', 'connectSSE']);
 		});
+	});
+
+	it('settles idle hydration without reconnecting an already-connected thread', async () => {
+		thread.hydrationStatus = 'idle';
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
+		});
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(thread.connectSSE).not.toHaveBeenCalled();
 	});
 
 	it('does not reconnect SSE when the runtime was replaced during status load', async () => {
@@ -1730,10 +1779,10 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
 
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await moveResize({ clientX: 720 });
 		expect(previewPanel.style.width).toBe('480px');
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
@@ -1797,8 +1846,8 @@ describe('InstanceAiThreadView', () => {
 		mockThreadAreaSizeState.width.value = 1200;
 		await vi.waitFor(() => expect(previewPanel.style.width).toBe('400px'));
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 720 });
 		await fireEvent.mouseUp(window);
 		expect(previewPanel.style.width).toBe('480px');
 
@@ -1815,8 +1864,8 @@ describe('InstanceAiThreadView', () => {
 
 		expect(previewPanel.style.width).toBe('400px');
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: 120 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 920 });
 		await fireEvent.mouseUp(window);
 
 		mockThreadAreaSizeState.width.value = 1600;

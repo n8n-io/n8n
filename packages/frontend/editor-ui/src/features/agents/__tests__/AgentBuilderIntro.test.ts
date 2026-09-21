@@ -12,7 +12,7 @@ describe('AgentBuilderIntro', () => {
 
 		expect(getByTestId('instance-ai-agent-intro')).toBeInTheDocument();
 		expect(getByText("Let's build your agent")).toBeInTheDocument();
-		expect(getByText(/build and configure the agent for you/)).toBeInTheDocument();
+		expect(getByText(/build and configure the agent/)).toBeInTheDocument();
 
 		for (const template of AGENT_TEMPLATES) {
 			expect(getByTestId(`agent-template-${template.id}`)).toBeInTheDocument();

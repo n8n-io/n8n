@@ -8,6 +8,7 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	type ActionDropdownItem,
+	type ResizeData,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -218,6 +219,8 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const previewDockWidth = ref(480);
+const isPreviewDockResizing = ref(false);
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
@@ -335,6 +338,7 @@ const {
 // editing is disabled even for a user who otherwise has permission — mirrors
 // the workflow artifact's read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
+const canDeletePreviewSession = computed(() => canEditAgent.value);
 
 // The intro is for a first build only: a new agent, still blank, editable, and
 // no template applied yet. A successful apply makes the config non-blank, so
@@ -506,11 +510,17 @@ const {
 	currentSessionTitle,
 	currentSessionIsEphemeral,
 	sessionMenu,
+	isDeletingSession,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
 	onNewChat,
-} = useAgentBuilderSession({ routeBacked: computed(() => !isArtifactMode.value) });
+	deleteSession,
+} = useAgentBuilderSession({
+	routeBacked: computed(() => !isArtifactMode.value),
+	projectId,
+	agentId,
+});
 
 // Config
 const { config, configHash, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
@@ -813,6 +823,11 @@ function startNewPreviewSession() {
 	onNewChat();
 }
 
+async function onDeletePreviewSession(sessionId: string) {
+	if (!canDeletePreviewSession.value) return;
+	await deleteSession(sessionId);
+}
+
 async function onOpenPreview() {
 	if (!isBuilt.value) return;
 
@@ -853,6 +868,10 @@ function returnToBuilderFromPreview() {
 function closePreviewDock() {
 	persistedPreviewOpen.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
+}
+
+function onPreviewDockResize({ width }: ResizeData) {
+	previewDockWidth.value = width;
 }
 
 function onPublished(updated: AgentResource) {
@@ -1485,9 +1504,10 @@ function onApplyTemplate(template: AgentTemplate) {
 		return;
 	}
 	replaceConfigAndScheduleSave(next);
-	if (template.connectedTriggers) {
-		connectedTriggers.value = [...template.connectedTriggers];
-	}
+	// Derive trigger chips from the template's draft integrations so the two
+	// stay in sync — a template can't declare chips without the matching
+	// integration entry.
+	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
 	aiPanelRef.value?.setPrefill({
 		text: locale.baseText('agents.builder.templates.draft', {
@@ -1559,23 +1579,11 @@ const externalUpdateTime = computed(() =>
 		interpolate: { count: externalUpdateAgeMinutes.value },
 	}),
 );
-const externalUpdateMessage = computed(() => {
-	let key: BaseTextKey;
-	switch (recentExternalUpdate.value?.source) {
-		case 'mcp':
-			key = 'agents.builder.externalUpdate.mcp';
-			break;
-		case 'builder':
-			key = 'agents.builder.externalUpdate.builder';
-			break;
-		case 'user':
-			key = 'agents.builder.externalUpdate.user';
-			break;
-		default:
-			key = 'agents.builder.externalUpdate.unknown';
-	}
-	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
-});
+const externalUpdateMessage = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.mcp', {
+		interpolate: { time: externalUpdateTime.value },
+	}),
+);
 
 function clearExternalUpdate() {
 	clearTimeout(externalUpdateTimer);
@@ -1583,12 +1591,6 @@ function clearExternalUpdate() {
 	externalUpdateAt = 0;
 	externalUpdateAgeMinutes.value = 0;
 	recentExternalUpdate.value = null;
-}
-
-function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
-	if (source === 'builder') return !isArtifactMode.value;
-	if (source === 'user') return isArtifactMode.value;
-	return true;
 }
 
 watch([projectId, agentId], clearExternalUpdate);
@@ -1664,7 +1666,7 @@ function onAgentPushMessage(event: PushMessage) {
 	) {
 		return;
 	}
-	if (shouldShowExternalUpdate(event.data.source)) {
+	if (event.data.source === 'mcp') {
 		clearExternalUpdate();
 		recentExternalUpdate.value = event.data;
 		externalUpdateAt = Date.now();
@@ -2354,7 +2356,10 @@ function onSwitchAgent(nextAgentId: string) {
 			:session-title="currentSessionTitle"
 			:session-options="sessionMenu"
 			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			:can-delete-session="canDeletePreviewSession"
+			:is-deleting-session="isDeletingSession"
 			@back="returnToBuilderFromPreview"
+			@delete-session="onDeletePreviewSession"
 			@new-session="startNewPreviewSession"
 			@session-select="onSessionPick"
 			@view-trace="viewPreviewTrace"
@@ -2416,9 +2421,13 @@ function onSwitchAgent(nextAgentId: string) {
 				{
 					[$style.previewOpen]: isPreviewDockOpen,
 					[$style.aiPanelOpen]: showAiPanel,
+					[$style.previewResizing]: isPreviewDockResizing,
 				},
 			]"
-			:style="{ '--agent-ai-panel-width': `${aiPanelWidth}px` }"
+			:style="{
+				'--agent-ai-panel-width': `${aiPanelWidth}px`,
+				'--agent-preview-chat-column-width': `${previewDockWidth}px`,
+			}"
 		>
 			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
 				<N8nResizeWrapper
@@ -2494,6 +2503,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					:template-applied="templateApplied"
 					@update:config="onConfigFieldUpdate"
@@ -2533,34 +2543,50 @@ function onSwitchAgent(nextAgentId: string) {
 					@unpublished="onUnpublished"
 				/>
 
-				<AgentPreviewDock
+				<N8nResizeWrapper
 					v-if="!isStandalonePreview"
-					:is-open="isPreviewDockOpen"
-					:session-title="currentSessionTitle"
-					:session-options="sessionMenu"
-					:has-session="currentSessionHasMessages"
-					:initialized="initialized"
-					:project-id="projectId"
-					:agent-id="agentId"
-					:agent="agent"
-					:local-config="localConfig"
-					:connected-triggers="connectedTriggers"
-					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="instanceAiAvailable"
-					:before-send="beforePreviewSend"
-					@view-trace="viewPreviewTrace"
-					@new-session="startNewPreviewSession"
-					@session-select="onSessionPick"
-					@close="closePreviewDock"
-					@continue-loaded="onContinueLoaded"
-					@send-to-assistant="onSendPreviewToAssistant"
-				/>
+					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
+					:width="previewDockWidth"
+					:min-width="320"
+					:supported-directions="['left']"
+					:grid-size="8"
+					@resizestart="isPreviewDockResizing = true"
+					@resize="onPreviewDockResize"
+					@resizeend="isPreviewDockResizing = false"
+				>
+					<AgentPreviewDock
+						:is-open="isPreviewDockOpen"
+						:session-title="currentSessionTitle"
+						:session-options="sessionMenu"
+						:has-session="currentSessionHasMessages"
+						:initialized="initialized"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent="agent"
+						:local-config="localConfig"
+						:connected-triggers="connectedTriggers"
+						:effective-session-id="effectiveSessionId"
+						:can-delete-session="canDeletePreviewSession"
+						:is-deleting-session="isDeletingSession"
+						:can-send-to-assistant="instanceAiAvailable"
+						:before-send="beforePreviewSend"
+						@view-trace="viewPreviewTrace"
+						@new-session="startNewPreviewSession"
+						@delete-session="onDeletePreviewSession"
+						@session-select="onSessionPick"
+						@close="closePreviewDock"
+						@continue-loaded="onContinueLoaded"
+						@send-to-assistant="onSendPreviewToAssistant"
+					/>
+				</N8nResizeWrapper>
 			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .root {
 	position: relative;
 	display: flex;
@@ -2578,23 +2604,38 @@ function onSwitchAgent(nextAgentId: string) {
 	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	transition:
+		padding-left var(--duration--snappy) var(--easing--ease-out),
+		padding-right var(--duration--snappy) var(--easing--ease-out);
 
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
-		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
 	&.aiPanelOpen {
-		// Keep the content next to the docked assistant instead of centering it.
-		--agent-builder-content-margin-inline: 0;
-
 		padding-left: var(--agent-ai-panel-width);
-		transition: padding-left var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
+	&.previewResizing {
 		transition: none;
 	}
+
+	@include motion.reduced-motion;
+}
+
+.previewResizeWrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: var(--agent-preview-chat-column-width);
+	max-width: 100%;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.previewResizeOpen {
+	pointer-events: auto;
 }
 
 .loading {

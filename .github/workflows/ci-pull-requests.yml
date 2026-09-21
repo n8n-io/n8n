@@ -30,6 +30,7 @@ jobs:
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
+      engine_e2e: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
@@ -77,8 +78,7 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
-              !scripts/preview.mjs
-              !scripts/preview-serve.mjs
+              !scripts/codespace-preview/**
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -94,8 +94,7 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
-              !scripts/preview.mjs
-              !scripts/preview-serve.mjs
+              !scripts/codespace-preview/**
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -133,9 +132,7 @@ jobs:
               OWNERS
               scripts/*.test.mjs
               scripts/codespace-env.mjs
-              scripts/preview.mjs
-              scripts/preview*
-              scripts/serve-ready.mjs
+              scripts/codespace-preview/**
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
@@ -145,6 +142,25 @@ jobs:
               packages/testing/playwright/utils/performance-helper.ts
               packages/testing/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
+            # Whole directories, not the `engine-*` files alone. Engine 2.0
+            # routing lives in ordinary control plane code: `workflow-runner.ts`
+            # and the webhook and trigger paths decide whether a run reaches the
+            # data plane, and the executions code merges v1 and v2 rows. A path
+            # this list misses skips `e2e-engine`, and `required-checks` counts
+            # a skipped job as a pass, so the gap would be silent.
+            engine-e2e:
+              packages/@n8n/engine/**
+              packages/@n8n/node-engine-compatibility/**
+              packages/@n8n/config/src/configs/engine.config.ts
+              packages/cli/src/modules/engine-v2/**
+              packages/cli/src/services/engine-*
+              packages/cli/src/executions/**
+              packages/cli/src/webhooks/**
+              packages/cli/src/workflows/triggers/**
+              packages/cli/src/workflow-runner.ts
+              packages/testing/containers/**
+              packages/testing/playwright/**
+              .github/workflows/ci-pull-requests.yml
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
@@ -165,8 +181,10 @@ jobs:
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
               packages/cli/src/**/*.integration.test.ts
+              packages/cli/src/modules/instance-registry/**
               packages/cli/vitest.*
               packages/testing/containers/services/postgres.ts
+              packages/testing/containers/services/redis.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
@@ -187,6 +205,7 @@ jobs:
               packages/cli/vitest.config.migration.ts
               packages/cli/vitest.config.migration.testcontainers.ts
               packages/testing/containers/services/postgres.ts
+              packages/testing/containers/services/redis.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
@@ -311,8 +330,10 @@ jobs:
       (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
         || needs.install-and-build.outputs.e2e_performance == 'true'
+        || needs.install-and-build.outputs.engine_e2e == 'true'
         || contains(github.event.pull_request.labels.*.name, 'force-e2e')
-        || contains(github.event.pull_request.labels.*.name, 'run-perf-tests'))
+        || contains(github.event.pull_request.labels.*.name, 'run-perf-tests')
+        || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e'))
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -338,6 +359,29 @@ jobs:
       workers: '1'
       pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
       artifact-prefix: e2e
+    secrets: inherit
+
+  # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes
+  # every workflow to the new engine. Runs, and blocks, when engine code changes
+  # or when the PR carries the `force-engine-e2e` label; skipped otherwise. One
+  # shard is enough while the tagged set is small. Internal PRs only: this
+  # project has no fork variant yet.
+  e2e-engine:
+    name: E2E on engine 2.0
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.engine_e2e == 'true'
+        || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e')) &&
+      github.event.pull_request.head.repo.fork != true &&
+      github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:engine-v2:e2e
+      workers: '1'
+      artifact-prefix: e2e-engine
     secrets: inherit
 
   # Boots the editor-ui against the Vite dev server and fails on any console
@@ -438,6 +482,7 @@ jobs:
         lint,
         check-packaging,
         e2e,
+        e2e-engine,
         dev-server-smoke,
         frontend-declarations,
         db-tests,

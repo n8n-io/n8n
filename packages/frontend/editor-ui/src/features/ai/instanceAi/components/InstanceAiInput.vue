@@ -16,13 +16,14 @@ import {
 } from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
 	USER_TYPED_MESSAGE,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillType,
-	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
@@ -54,12 +55,7 @@ type SuggestionsCyclePayload = {
 	telemetryPayload?: ITelemetryTrackProperties;
 };
 type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
-type ActivePrefill = {
-	/** The text as the pre-fill wrote it, so an edit can be detected. */
-	text: string;
-	prefillType: InstanceAiPrefillTypeReported;
-	prefillId?: string;
-};
+type ActivePrefill = InstanceAiPrefillPayload;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
@@ -117,6 +113,7 @@ const emit = defineEmits<{
 		attachments: InstanceAiAttachment[] | undefined,
 		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
+		responseStartedAtEpochMs: number,
 	];
 	stop: [];
 	'dismiss-context-chip': [];
@@ -202,11 +199,7 @@ function setTextIfEmpty(text: string) {
  * rather than `setText` so the submit can attribute them; `setText` and
  * friends stay for restoring a draft the user wrote.
  */
-function setPrefill(prefill: {
-	text: string;
-	prefillType: InstanceAiPrefillTypeReported;
-	prefillId?: string;
-}) {
+function setPrefill(prefill: InstanceAiPrefillPayload) {
 	inputText.value = prefill.text;
 	activePrefill.value = { ...prefill };
 }
@@ -338,9 +331,10 @@ function emitSubmittedMessage(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs: number,
 ) {
 	previewPrompt.value = null;
-	emit('submit', message, attachments, restoreDraft, authorship);
+	emit('submit', message, attachments, restoreDraft, authorship, responseStartedAtEpochMs);
 }
 
 /**
@@ -427,6 +421,7 @@ function submitComposerMessage(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	prefill: ActivePrefill | null,
+	responseStartedAtEpochMs = instanceAiResponseNow(),
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
@@ -445,6 +440,7 @@ function submitComposerMessage(
 			undefined,
 			() => restorePlanFeedbackDraft(message),
 			USER_TYPED_MESSAGE,
+			responseStartedAtEpochMs,
 		);
 		resetDraftComposer({ keepAttachments: true });
 		return;
@@ -459,6 +455,7 @@ function submitComposerMessage(
 		attachments,
 		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
 		resolveAuthorship(message, prefill),
+		responseStartedAtEpochMs,
 	);
 	resetDraftComposer();
 }
@@ -487,10 +484,11 @@ async function handleSubmit() {
 	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
+	const responseStartedAtEpochMs = instanceAiResponseNow();
 
 	// Plan feedback carries no attachments, so skip encoding the staged files.
 	if (props.isAwaitingPlanReview) {
-		submitComposerMessage(text, undefined, null);
+		submitComposerMessage(text, undefined, null, responseStartedAtEpochMs);
 		return;
 	}
 
@@ -504,7 +502,12 @@ async function handleSubmit() {
 		: [];
 	const attachments = [...fileAttachments, ...attachedResources.value];
 
-	submitComposerMessage(text, attachments.length ? attachments : undefined, prefill);
+	submitComposerMessage(
+		text,
+		attachments.length ? attachments : undefined,
+		prefill,
+		responseStartedAtEpochMs,
+	);
 }
 
 function removeResource(index: number) {

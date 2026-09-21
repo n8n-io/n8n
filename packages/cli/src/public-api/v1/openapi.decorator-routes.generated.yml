@@ -18,6 +18,12 @@ paths:
   /credentials/{credentialId}/transfer:
     put:
       $ref: ./handlers/credentials/spec/paths/transferCredential.generated.yml
+  /credentials/{credentialId}/test:
+    post:
+      $ref: ./handlers/credentials/spec/paths/testCredential.generated.yml
+  /credentials/schema/{credentialTypeName}:
+    get:
+      $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
@@ -46,6 +52,9 @@ paths:
   /projects/{projectId}/folders/{folderId}:
     get:
       $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
+  /insights/summary:
+    get:
+      $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml
@@ -144,6 +153,12 @@ paths:
   /promotions/connections/{promotionConnectionId}/apply:
     post:
       $ref: ./handlers/promotions/spec/paths/applyPackage.generated.yml
+  /promotions/connections/{promotionConnectionId}/apply/continue:
+    post:
+      $ref: ./handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  /promotions/projects/{projectId}/changes/{direction}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

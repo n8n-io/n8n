@@ -44,6 +44,14 @@ describe('isAgentConfigBlank', () => {
 			),
 		).toBe(false);
 	});
+
+	it('is not blank when integrations is non-empty', () => {
+		expect(
+			isAgentConfigBlank(
+				blankConfig({ integrations: [{ type: 'telegram', credentialId: 'cred-1' }] }),
+			),
+		).toBe(false);
+	});
 });
 
 describe('applyAgentTemplate', () => {

@@ -15,7 +15,11 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
-import { findAgentArtifactRef, type AgentScenarioContext } from '../harness/agent-execution';
+import {
+	draftAgentVerdict,
+	findAgentArtifactRef,
+	type AgentScenarioContext,
+} from '../harness/agent-execution';
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -317,6 +321,32 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			const agentArtifactFields = capturedAgent?.artifact
 				? { agentArtifact: capturedAgent.artifact }
 				: {};
+			const declaredCredentials = testCaseByFileSlug.get(inputs.testCaseFile)?.credentials;
+			// A draft Agent throws before its first model turn; running it only produces
+			// a red the judge pins on the builder. Decide ownership here instead.
+			const draft = draftAgentVerdict(capturedAgent?.artifact, declaredCredentials);
+			if (draft) {
+				logger.warn(`    [${scenario.name}] not run: ${draft.reasoning}`);
+				return await attachExpectations({
+					buildSuccess: true,
+					agentId: agentRef.id,
+					agentContext,
+					...agentArtifactFields,
+					passed: false,
+					score: 0,
+					reasoning: draft.reasoning,
+					failureCategory: draft.attribution,
+					attribution: draft.attribution,
+					execErrors: ['Agent has no model configured'],
+					buildDurationMs,
+					...buildSpendFields,
+					execDurationMs: 0,
+					nodeCount: 0,
+					threadId: build.threadId,
+					buildTrace: build.buildTrace,
+					planRejections: build.proxyDecisionStats?.rejection ?? 0,
+				});
+			}
 			let agentResult;
 			for (let attempt = 1; ; attempt++) {
 				try {

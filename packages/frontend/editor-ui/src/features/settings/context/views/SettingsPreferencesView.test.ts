@@ -35,6 +35,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		user: null,
 		projectId: null,
 		project: null,
+		source: 'ui',
 		scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',

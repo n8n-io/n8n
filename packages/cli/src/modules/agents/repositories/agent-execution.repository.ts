@@ -69,6 +69,20 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return result.affected === 1;
 	}
 
+	async moveTimelineToBlob(
+		executionId: string,
+		storedAt: Exclude<AgentExecution['storedAt'], 'db'>,
+	): Promise<void> {
+		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
+	}
+
+	async findTimelineStorageLocation(
+		executionId: string,
+	): Promise<AgentExecution['storedAt'] | null> {
+		const execution = await this.findOne({ select: ['storedAt'], where: { id: executionId } });
+		return execution?.storedAt ?? null;
+	}
+
 	/**
 	 * The first user-message text in each of the given threads. Used by the
 	 * sessions list to render a preview before the LLM-generated title is
@@ -199,20 +213,6 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			where: { threadId, hitlStatus: 'suspended' },
 			order: { createdAt: 'DESC' },
 		});
-	}
-
-	/**
-	 * Whether the thread ever parked a run. Counts rows on the
-	 * `(threadId, createdAt)` index without loading any execution data, so it is
-	 * cheap enough to ask on every inbound message.
-	 *
-	 * A row keeps `hitlStatus: 'suspended'` after its resume (the resumed turn is
-	 * a separate row), so this can only rule a thread out, never confirm that
-	 * something is parked right now — the checkpoint is the authority for that.
-	 */
-	async hasSuspendedRun(threadId: string): Promise<boolean> {
-		const count = await this.count({ where: { threadId, hitlStatus: 'suspended' } });
-		return count > 0;
 	}
 
 	/** Backfill model on a set of executions in a single statement. */

@@ -15,12 +15,12 @@ export interface AgentTemplate {
 		name: string;
 		instructions: string;
 		tools?: AgentJsonToolConfig[];
-		/** Draft channel integrations (empty `credentialId`) so the trigger
-		 * chips show as highlighted until the user connects a credential. */
+	/** Draft channel integrations (empty `credentialId`) so the trigger
+	 * chips show as highlighted until the user connects a credential.
+	 * The trigger types are derived from this list — no separate
+	 * `connectedTriggers` field is needed. */
 		integrations?: AgentIntegrationConfig[];
 	};
-	/** Channel trigger types to pre-connect as chips. */
-	connectedTriggers?: string[];
 }
 
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
@@ -34,7 +34,6 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 				'You are a friendly customer support agent. Answer user questions using the provided knowledge base. If you cannot find an answer, say so and offer to escalate to a human agent. Always be polite and concise.',
 			integrations: [{ type: 'telegram', credentialId: '' }],
 		},
-		connectedTriggers: ['telegram'],
 	},
 	{
 		id: 'research-assistant',
@@ -91,12 +90,17 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 ];
 
 /**
- * A blank agent: no instructions and no tools. `name` and `model` are ignored —
- * both are seeded on every new agent, so a default name or model does not count
- * as content the user would lose by applying a template.
+ * A blank agent: no instructions, no tools, and no channel integrations.
+ * `name` and `model` are ignored — both are seeded on every new agent, so a
+ * default name or model does not count as content the user would lose by
+ * applying a template.
  */
 export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
-	return config.instructions.trim() === '' && (config.tools?.length ?? 0) === 0;
+	return (
+		config.instructions.trim() === '' &&
+		(config.tools?.length ?? 0) === 0 &&
+		(config.integrations?.length ?? 0) === 0
+	);
 }
 
 /**
