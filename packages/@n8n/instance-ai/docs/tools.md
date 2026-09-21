@@ -642,11 +642,15 @@ works.
 its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
 Executor that inherits that node's main parents, then runs the tool from there.
 So a step on a tool is planned against the Agent: `mockInput` feeds the Agent's
-input, and `reuseExecutionId` replays the Agent's ancestors. The result names
-the nodes that can run it in `ranThroughNodeNames` — all of them when a tool
-hangs off several agents, since the engine picks one. A chain run on a tool runs
-every node above the Agent, so supply `reuseExecutionId` or `mockInput` when one
-of those nodes writes.
+input, and `reuseExecutionId` replays the Agent's ancestors. A chain run on a
+tool runs every node above the Agent, so supply `reuseExecutionId` or
+`mockInput` when one of those nodes writes.
+
+`ranThroughNodeNames` names the nodes that can run the tool, not the one that
+ran it. A tool that hangs off several agents lists them all: the engine picks
+one and reports no choice, so any single name here would be a guess. The plan
+covers every candidate's ancestry, so the run is right whichever one the engine
+takes.
 
 `toolArguments` supplies what the agent would normally decide — the values
 behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
@@ -665,12 +669,16 @@ run; the arguments are keyed under every name the tool can have so the lookup
 finds them. Think 1's hardcoded `thinking_tool` is the one name this cannot key,
 and there it costs the arguments, not the run.
 
-A node that holds several tools (MCP
-Client Tool, MCP Registry Client Tool) is refused: the Tool Executor runs the
-member whose name matches the request, that name is `buildMcpToolName` of the
-node name and the server's tool name, and a miss reports success with no result
-at all. Run the owning Agent instead and read the node's output from that
-execution.
+A node that holds several tools is refused: the Tool Executor runs the member
+whose name matches the request, that name is `buildMcpToolName` of the node
+name and the server's tool name, and a miss reports success with no result at
+all. Run the owning Agent instead and read the node's output from that
+execution. Two node types hold a toolkit, and the check is on the type, because
+a node name is the user's to change:
+
+- `@n8n/n8n-nodes-langchain.mcpClientTool` — "MCP Client Tool" on the canvas.
+- `@n8n/n8n-nodes-langchain.mcpRegistryClientTool` — "MCP Registry Client", a
+  hidden node the MCP registry adds.
 
 Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
 runs those only as part of the node that owns them, so the action points the

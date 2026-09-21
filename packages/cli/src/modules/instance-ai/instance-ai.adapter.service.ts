@@ -2330,7 +2330,10 @@ export class InstanceAiAdapterService {
 						inputMode: plan.inputMode,
 						mockedNodeNames: plan.mockedNodeNames,
 						// A sub-node only runs through the node that owns it, so the input
-						// the caller supplied fed that node, not the sub-node.
+						// the caller supplied fed that node, not the sub-node. Every owner is
+						// listed, not the one that ran: `rewireGraph` picks one and reports
+						// nothing about the choice, so naming a single owner here would be a
+						// guess.
 						...(plan.rootNodeNames ? { ranThroughNodeNames: plan.rootNodeNames } : {}),
 						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
 						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
