@@ -3,11 +3,8 @@ name: browser-use
 description: >-
   Drives a real browser through the Computer Use browser tools: opening pages,
   reading them, clicking, filling forms, and working through a web UI to reach a
-  goal. Load whenever a task needs a website operated rather than read — signing
-  into a console, completing a form, changing a setting, extracting something
-  only reachable after interaction. Credential setup has its own skill
-  (credential-setup-with-computer-use) that builds on this one; load that
-  instead when the goal is obtaining credential values. Do not load for
+  goal. Load whenever you operate with user's browser. Credential setup has its own skill
+  (credential-setup-with-computer-use) that builds on this one; load that instead when the goal is obtaining credential values. Do not load for
   fetching page content, which `research(action="fetch-url")` does without a
   browser.
 recommended_tools:
@@ -15,7 +12,6 @@ recommended_tools:
   - browser_tab_open
   - browser_navigate
   - browser_snapshot
-  - browser_content
   - browser_act
   - browser_click
   - browser_type
