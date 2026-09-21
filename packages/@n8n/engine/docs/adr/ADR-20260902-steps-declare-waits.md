@@ -132,14 +132,19 @@ into a different step type.
   correct primitive. It needs a task store in the data plane. We defer that
   adapter until the sweep shows that we need it. The change stays inside the
   firing mechanism.
-- **Delegate the time waits to the control plane.** This option breaks
-  standalone mode. It also adds cross-plane requests for a timer that the data
-  plane can fire against its own database.
+- **Delegate the time waits to the control plane.** Standalone mode has no
+  control plane, so a timer that lives there leaves an engine that cannot fire
+  a time wait at all. This package's own integration tests run that way. The
+  option also adds cross-plane requests for a timer that the data plane can
+  fire against its own database.
 - **Register the wait channels with the control plane at suspension.** This
   option adds a cross-plane API. It also adds a deregistration step to every
   cancel path and every timeout path. It keeps a second copy of the wait state.
-  A route that always accepts requests keeps the wait state in the data plane
-  only.
+  It widens the window in which a resume request arrives too early: the window
+  closes when the registration call returns rather than when the step row is
+  written, and a control plane that does not hold the channel yet has to refuse
+  the request. A route that always accepts requests keeps the wait state in the
+  data plane only, and leaves that window to the resolve path.
 
 ## Consequences
 
