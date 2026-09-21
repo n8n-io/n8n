@@ -1737,7 +1737,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		routeParams.agentId = 'a2';
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt')).toBeUndefined();
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt'),
+		).toBeUndefined();
 	});
 
 	it('opens the preview dock with the latest thread when prior sessions exist', async () => {
