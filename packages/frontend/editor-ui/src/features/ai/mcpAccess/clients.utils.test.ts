@@ -12,6 +12,8 @@ describe('getClientBrand', () => {
 		['Visual Studio Code', 'editor'],
 		['Codex CLI', 'cli'],
 		['ChatGPT', 'assistant'],
+		['Le Chat', 'assistant'],
+		['Mistral AI', 'assistant'],
 		['Some Unknown Client', null],
 	])('derives the type of %s as %s', (name, type) => {
 		expect(getClientBrand(name).type).toBe(type);
@@ -20,6 +22,7 @@ describe('getClientBrand', () => {
 	it('resolves a logo for recognized brands and none for unknown clients', () => {
 		expect(getClientBrand('Claude Code').icon).not.toBeNull();
 		expect(getClientBrand('Cursor').icon).not.toBeNull();
+		expect(getClientBrand('Le Chat').icon).not.toBeNull();
 		expect(getClientBrand('Some Unknown Client').icon).toBeNull();
 	});
 });
