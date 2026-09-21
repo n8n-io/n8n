@@ -40,11 +40,15 @@ export class DiscoverPublicDto extends Z.class({
 	data: discoverDataPublicSchema,
 }) {}
 
+const DISCOVER_INCLUDE_VALUES = ['schemas'] as const;
+
+// Strict on purpose: the legacy validator answered 400 to an unknown query parameter on this
+// route, and a client that relies on that must keep getting it. The list DTOs are not strict.
 export class DiscoverQueryPublicDto extends Z.class(
 	{
 		include: z
-			.enum(['schemas'], {
-				message: 'must be equal to one of the allowed values: schemas',
+			.enum(DISCOVER_INCLUDE_VALUES, {
+				message: `must be equal to one of the allowed values: ${DISCOVER_INCLUDE_VALUES.join(', ')}`,
 			})
 			.optional()
 			.openapi(discoverQueryFieldDocs.include),
