@@ -38,7 +38,6 @@ import {
 	type INode,
 	type IPinData,
 	type IWorkflowBase,
-	type WorkflowSettings,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -1928,26 +1927,14 @@ describe('GET /workflows', () => {
 			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
 				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
 
-				// Legacy stored callerPolicy: 'any' denies every caller, so the policy
-				// never makes it callable cross-project. Same-project workflows stay
-				// listed regardless of policy, because the list is a union of readable
-				// and callable workflows.
-				const crossProjectLegacyAnyWorkflow = await createWorkflow(
+				// callerPolicy: 'any' — callable by everyone
+				const anyPolicyWorkflow = await createWorkflow(
 					{
-						name: 'Cross Project Legacy Any Policy',
+						name: 'Any Policy',
 						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+						settings: { callerPolicy: 'any' },
 					},
 					owner,
-				);
-
-				const sameProjectLegacyAnyWorkflow = await createWorkflow(
-					{
-						name: 'Same Project Legacy Any Policy',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
-					},
-					member,
 				);
 
 				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
@@ -1964,7 +1951,7 @@ describe('GET /workflows', () => {
 				);
 
 				// callerPolicy: 'none' — callable by nobody
-				const nonePolicyWorkflow = await createWorkflow(
+				await createWorkflow(
 					{
 						name: 'None Policy',
 						nodes: [executeWorkflowTriggerNode()],
@@ -1985,24 +1972,30 @@ describe('GET /workflows', () => {
 					.expect(200);
 
 				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				expect(returnedIds).not.toContain(crossProjectLegacyAnyWorkflow.id);
-				expect(returnedIds).toContain(sameProjectLegacyAnyWorkflow.id);
+				expect(returnedIds).toContain(anyPolicyWorkflow.id);
 				expect(returnedIds).toContain(fromListWorkflow.id);
-				expect(returnedIds).not.toContain(nonePolicyWorkflow.id);
+				expect(returnedIds).not.toContain(
+					(
+						await createWorkflow(
+							{
+								name: 'None Policy Check',
+								nodes: [executeWorkflowTriggerNode()],
+								settings: { callerPolicy: 'none' },
+							},
+							owner,
+						)
+					).id,
+				);
 			});
 
 			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
 				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
 
-				// Allowlists the parent, so it would be callable with expansion enabled.
-				const fromListWorkflow = await createWorkflow(
+				const anyPolicyWorkflow = await createWorkflow(
 					{
-						name: 'From List Policy',
+						name: 'Any Policy',
 						nodes: [executeWorkflowTriggerNode()],
-						settings: {
-							callerPolicy: 'workflowsFromAList',
-							callerIds: parentWorkflow.id,
-						},
+						settings: { callerPolicy: 'any' },
 					},
 					owner,
 				);
@@ -2019,8 +2012,8 @@ describe('GET /workflows', () => {
 					.expect(200);
 
 				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				// member doesn't own fromListWorkflow, so without expansion it should not be visible
-				expect(returnedIds).not.toContain(fromListWorkflow.id);
+				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
+				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
 			});
 
 			test('should not expand the list when the requester cannot read the parent workflow', async () => {
