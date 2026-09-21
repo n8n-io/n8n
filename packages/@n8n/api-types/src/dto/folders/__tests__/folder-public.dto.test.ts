@@ -190,13 +190,14 @@ describe('UpdatedFolderPublicDto', () => {
 		expect(UpdatedFolderPublicDto.safeParse(updatedFolder).success).toBe(true);
 	});
 
-	it('strips fields the Public API does not publish', () => {
-		const parsed = UpdatedFolderPublicDto.parse({
+	it('rejects fields the Public API does not publish', () => {
+		const result = UpdatedFolderPublicDto.safeParse({
 			...updatedFolder,
 			projectId: 'project-id',
 			tags: [],
 		});
 
-		expect(parsed).toEqual(updatedFolder);
+		expect(result.success).toBe(false);
+		expect(result.error?.errors[0].code).toBe('unrecognized_keys');
 	});
 });

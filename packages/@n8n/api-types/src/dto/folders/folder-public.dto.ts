@@ -98,7 +98,7 @@ const folderCorePublicShape = {
 };
 
 /** The folder as PATCH publishes it. Allowlist of the fields `folder.yml` documented. */
-export class UpdatedFolderPublicDto extends Z.class(folderCorePublicShape) {}
+export class UpdatedFolderPublicDto extends Z.class(folderCorePublicShape, { strict: true }) {}
 
 export class FolderDetailsPublicDto extends Z.class({
 	...folderCorePublicShape,

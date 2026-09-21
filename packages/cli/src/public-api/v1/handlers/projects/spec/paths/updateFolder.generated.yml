@@ -68,6 +68,7 @@ responses:
             - parentFolderId
             - createdAt
             - updatedAt
+          additionalProperties: false
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
