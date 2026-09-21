@@ -6,6 +6,8 @@ import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import type { EngineStores } from '../../database';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
+import { createConsoleLogger } from '../../logging';
+import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
@@ -14,12 +16,14 @@ const fakeDataSource = () => ({ getRepository: vi.fn(() => ({})) }) as unknown a
 const secret = 'a'.repeat(32);
 const identityVerifier = new SharedSecretIdentityVerifier(secret);
 const token = mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' });
+const responseChannel = new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger());
 
 const runtime = () =>
 	createEngineRuntime({
 		dataSource: fakeDataSource(),
 		admittance: new AllowAllAdmittance(),
 		identityVerifier,
+		responseChannel,
 	});
 
 describe('createEngineRuntime', () => {
@@ -64,6 +68,7 @@ describe('createEngineRuntime', () => {
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
+			responseChannel,
 			externalDependencies: (given) => {
 				stores = given;
 				return {};
@@ -82,6 +87,7 @@ describe('createEngineRuntime', () => {
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
+			responseChannel,
 			externalDependencies: build,
 		});
 
@@ -96,6 +102,7 @@ describe('createEngineRuntime', () => {
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
+			responseChannel,
 			externalDependencies: () => ({
 				lifecycleEventCallback: vi.fn().mockResolvedValue(undefined),
 			}),

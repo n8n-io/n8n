@@ -1,4 +1,4 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -20,11 +20,11 @@ import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
+import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
-import { AgentExecutionService } from '../agent-execution.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
@@ -45,8 +45,11 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
-import type { ReplyExpectation, IntegrationMessageContext } from './integration-tools';
-import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
+import type {
+	IntegrationMessageContext,
+	IntegrationPlatformMessageContext,
+	ReplyExpectation,
+} from './integration-tools';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -64,6 +67,16 @@ const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
 function toMessageAuthor(author: Author): AgentMessageAuthor {
 	const name = (author.userName || author.fullName || author.userId).replace(/[\[\]\r\n]/g, '');
 	return { id: author.userId, name: name || author.userId };
+}
+
+function formatPlatformMessageContext(context: IntegrationPlatformMessageContext): string {
+	return [
+		'Telegram metadata for this message follows.',
+		'<telegram_message_context>',
+		JSON.stringify(context),
+		'</telegram_message_context>',
+		'Use these values when a tool needs Telegram identifiers.',
+	].join('\n');
 }
 
 interface SessionGenerationState {
@@ -111,6 +124,18 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 /** Enough of a parked run to tell the user what the agent is still waiting on. */
 interface OpenSuspension {
 	suspendPayload?: unknown;
+}
+
+function errorText(error: unknown): string {
+	const rateLimitMessage = rateLimitMessageFromError(error);
+	if (rateLimitMessage !== undefined) return `⚠️ ${rateLimitMessage}`;
+	if (isAttachmentValidationError(error)) {
+		return '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.';
+	}
+	if (error instanceof UserError) {
+		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
+	}
+	return '⚠️ Something went wrong while processing your request. Please try again.';
 }
 
 /**
@@ -270,19 +295,12 @@ export class AgentChatBridge {
 				yield* agentService.resumeForChat(config);
 			},
 			async findOpenSuspension({ agentId: aid, threadId }) {
-				// Checkpoints carry no thread index, so the authoritative lookup parses
-				// every active checkpoint of the agent. Gate it behind a counted query
-				// on the thread's own runs: a thread that never parked one cannot have
-				// an open checkpoint, and that is the common case for inbound traffic.
-				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
-					return null;
-				}
-				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
+				const { suspendedCheckpoint } = await Container.get(AgentConversationStateService).inspect(
 					aid,
 					threadId,
 				);
-				if (!checkpoint) return null;
-				const suspended = Object.values(checkpoint.pendingToolCalls ?? {}).find(
+				if (!suspendedCheckpoint) return null;
+				const suspended = Object.values(suspendedCheckpoint.pendingToolCalls ?? {}).find(
 					(toolCall) => toolCall.suspended,
 				);
 				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
@@ -670,6 +688,9 @@ export class AgentChatBridge {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
 				...bridgeExecutionContext.platformAgentContext,
+				...(bridgeExecutionContext.platformMessage
+					? { platformMessage: bridgeExecutionContext.platformMessage }
+					: {}),
 				subject,
 				replyExpectation,
 			});
@@ -681,9 +702,19 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
-			const modelMessage = bridgeExecutionContext.historyContext
-				? `${bridgeExecutionContext.historyContext}\n\n${labelledText}`
-				: labelledText;
+			const modelContext: string[] = [];
+			if (bridgeExecutionContext.historyContext) {
+				modelContext.push(bridgeExecutionContext.historyContext);
+			}
+			if (bridgeExecutionContext.platformMessage) {
+				modelContext.push(formatPlatformMessageContext(bridgeExecutionContext.platformMessage));
+			}
+			modelContext.push(
+				bridgeExecutionContext.platformMessage
+					? `The actual user message follows.\n${labelledText}`
+					: labelledText,
+			);
+			const modelMessage = modelContext.join('\n\n');
 			const stream = this.agentService.executeForChatPublished({
 				messageContext,
 				contextConversation: { threadId: threadId.id, resourceId: message.author.userId },
@@ -998,8 +1029,6 @@ export class AgentChatBridge {
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-		// Resolve a rate-limit message if the error is a rate-limit error, otherwise undefined.
-		const rateLimitMessage = rateLimitMessageFromError(error);
 		this.logger.error('[AgentChatBridge] Error in handler', {
 			agentId: this.agentId,
 			threadId: thread?.id,
@@ -1017,15 +1046,7 @@ export class AgentChatBridge {
 				);
 				return;
 			}
-			// A `UserError` is written for people and names the misconfiguration,
-			// which lets an agent owner fix it without reading server logs.
-			const text =
-				rateLimitMessage !== undefined
-					? `⚠️ ${rateLimitMessage}`
-					: error instanceof UserError
-						? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-						: '⚠️ Something went wrong while processing your request. Please try again.';
-			await thread.post(text);
+			await thread.post(errorText(error));
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {
 				agentId: this.agentId,

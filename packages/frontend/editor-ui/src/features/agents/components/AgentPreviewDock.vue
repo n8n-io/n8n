@@ -70,6 +70,7 @@ const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const i18n = useI18n();
@@ -278,6 +279,7 @@ useKeybindings({
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
+				@initial-consumed="emit('initial-consumed')"
 			/>
 		</div>
 	</aside>

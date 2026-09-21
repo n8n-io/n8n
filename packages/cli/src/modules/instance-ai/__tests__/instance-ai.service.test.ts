@@ -697,8 +697,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	const snapshotModes = ['off', 'seeded', 'read failure'];
-	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
+	const environmentGates = ['off', 'seeded', 'read failure'].flatMap((snapshotMode) =>
+		[true, false].map((instanceContextEnabled) => ({ snapshotMode, instanceContextEnabled })),
+	);
+	it.each(environmentGates)('starts with gates %j', async (gates) => {
+		const { snapshotMode, instanceContextEnabled } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -706,6 +709,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				runId: string,
 				abortSignal: AbortSignal,
 			) => Promise<{
+				instanceContextEnabled: boolean;
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
@@ -797,6 +801,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
+				instanceContextEnabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -875,6 +880,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'thread-1',
 			'run-1',
 			new AbortController().signal,
+		);
+		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ instanceContextEnabled }),
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
 		if (snapshotMode === 'off') {
@@ -4814,9 +4824,9 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 	});
 });
 
-describe('InstanceAiService setup panel Execute input', () => {
+describe('InstanceAiService run input gates', () => {
 	it.each([true, false])(
-		'forwards the Execute target only with the panel enabled: %s',
+		'forwards the setup panel target and the shared instance gate: %s',
 		async (enabled) => {
 			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 			vi.mocked(streamAgentRun).mockResolvedValueOnce({
@@ -4825,7 +4835,9 @@ describe('InstanceAiService setup panel Execute input', () => {
 				text: Promise.resolve(''),
 				workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
 			});
+			const buildBlock = vi.fn().mockResolvedValue(undefined);
 			const environment = {
+				instanceContextEnabled: enabled,
 				context: { setupItemsEmitter: enabled ? {} : undefined },
 				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
 				taskStorage: { get: vi.fn(async () => undefined) },
@@ -4837,7 +4849,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				createProxyRunConfig: vi.fn(async () => ({})),
 				browserSessionService: { getExtensionTraceContext: vi.fn() },
 				readThreadProvenance: vi.fn(async () => ({})),
-				instanceContext: { buildBlock: vi.fn().mockResolvedValue(undefined) },
+				instanceContext: { buildBlock },
 				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
 					throw error;
 				}),
@@ -4877,6 +4889,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				{ source: 'setup-panel-execute', workflowId: 'wf-target' },
 			);
 
+			expect(buildBlock).toHaveBeenCalledWith(expect.objectContaining({ enabled }));
 			expect(streamAgentRun).toHaveBeenCalled();
 			const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
 			expect(input).toEqual(expect.any(String));

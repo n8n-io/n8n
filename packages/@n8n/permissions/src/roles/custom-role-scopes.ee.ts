@@ -35,7 +35,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'move',
 		'delete',
 	],
-	execution: ['reveal'],
+	execution: ['read', 'reveal', 'delete'],
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],
 	sourceControl: ['push'],

@@ -1,3 +1,4 @@
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
 import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
@@ -95,6 +96,17 @@ export class WorkflowApiHelper {
 		if (!response.ok()) {
 			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
 		}
+	}
+
+	async getPublicationStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
+		const response = await this.api.request.get(`/rest/workflows/${workflowId}/publication-status`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflow publication status: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
 	}
 
 	async update(
