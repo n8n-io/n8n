@@ -196,4 +196,54 @@ describe('webhook runs on engine 2.0', () => {
 			}),
 		);
 	});
+
+	test('closes a failed stream without duplicating its error chunk', async () => {
+		const webhookId = randomUUID();
+		const trigger = webhookNode(webhookId);
+		trigger.parameters.responseMode = 'streaming';
+		const workflow = await createV2Workflow(trigger);
+		const errorChunk = {
+			type: 'error' as const,
+			content: 'it broke',
+			metadata: {
+				nodeId: trigger.id,
+				nodeName: trigger.name,
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+			},
+		};
+
+		startExecution.mockImplementationOnce(async (request) => {
+			responseSender.send({
+				type: 'chunk',
+				executionId: request.executionId,
+				payload: errorChunk,
+			});
+			responseSender.send({
+				type: 'ended',
+				executionId: request.executionId,
+				workflowId: workflow.id,
+				status: 'failed',
+				lastStep: {
+					nodeId: trigger.id,
+					nodeName: trigger.name,
+					status: 'failed',
+					outputs: null,
+					error: { name: 'NodeOperationError', message: 'it broke' },
+				},
+			});
+
+			return { executionId: request.executionId };
+		});
+
+		await startListening(workflow.id);
+
+		const response = await webhookAgent
+			.post(`/${webhookTestEndpoint}/${webhookId}`)
+			.send({ order: 42 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.text).toBe(`${JSON.stringify(errorChunk)}\n`);
+	});
 });
