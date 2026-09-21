@@ -453,7 +453,21 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 		};
 	},
 	template: `
-		<div style="width: 100%;" @keydown.capture="handleKeydown">
+		<div
+			style="
+				display: flex;
+				flex-direction: column;
+				justify-content: flex-end;
+				box-sizing: border-box;
+				min-height: 100vh;
+				width: 100%;
+				padding: var(--spacing--lg);
+			"
+			@keydown.capture="handleKeydown"
+		>
+			<p style="margin-bottom: var(--spacing--2xs); color: var(--text-color--subtle);">
+				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
+			</p>
 			<N8nChatInput
 				ref="chatInputRef"
 				:model-value="value"
@@ -487,9 +501,6 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 					</N8nDropdownMenu>
 				</template>
 			</N8nChatInput>
-			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
-				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
-			</p>
 		</div>
 	`,
 });
@@ -500,6 +511,7 @@ WithExternalDropdown.args = {
 	maxLength: 1000,
 };
 WithExternalDropdown.parameters = {
+	layout: 'fullscreen',
 	docs: {
 		description: {
 			story:
