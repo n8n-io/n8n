@@ -1,9 +1,9 @@
 operationId: replaceAttachments
 tags:
-  - NodeTypePolicy
+  - CredentialTypePolicy
 summary: Replace a scope's attached policy documents
 description: Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.
-x-required-scope: nodeTypePolicy:manage
+x-required-scope: credentialTypePolicy:manage
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the node type policy scope.
+    description: The ID of the credential type policy scope.
     name: scopeId
     in: path
 requestBody:

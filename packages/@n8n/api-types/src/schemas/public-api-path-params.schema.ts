@@ -59,3 +59,9 @@ export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 export const nodeTypePolicyScopeIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy scope.',
 );
+export const credentialTypePolicyIdParamSchema = stringIdParamSchema(
+	'The ID of the credential type policy document.',
+);
+export const credentialTypePolicyScopeIdParamSchema = stringIdParamSchema(
+	'The ID of the credential type policy scope.',
+);

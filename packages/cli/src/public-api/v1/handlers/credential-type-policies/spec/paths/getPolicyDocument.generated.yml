@@ -1,8 +1,8 @@
 operationId: getPolicyDocument
 tags:
-  - NodeTypePolicy
-summary: Retrieve a node type policy document
-x-required-scope: nodeTypePolicy:manage
+  - CredentialTypePolicy
+summary: Retrieve a credential type policy document
+x-required-scope: credentialTypePolicy:manage
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -10,7 +10,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the node type policy document.
+    description: The ID of the credential type policy document.
     name: policyId
     in: path
 responses:
