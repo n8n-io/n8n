@@ -23,7 +23,7 @@ import ParameterInputList from '@/features/ndv/parameters/components/ParameterIn
 import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nNotice, N8nSpinner, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
@@ -76,8 +76,18 @@ const nodeHelpers = useNodeHelpers();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 
+const nodeTypesLoaded = computed(() => Object.keys(nodeTypesStore.nodeTypes).length > 0);
+
 const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
+const nodeTypeError = ref(false);
+const nodeTypesLoadFailed = ref(false);
+// Tracks the initialNode identity that has been hydrated to prevent background
+// re-fires (e.g. nodeTypesStore reactivity) from overwriting user edits.
+const hydratedInitialNode = ref<string | null>(null);
+// Tracks which node identity a preserved (user-edited) name belongs to, so a
+// stale name cannot leak onto a different node after an identity swap.
+const preservedNameNodeId = ref<string | null>(null);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
 // `props.projectId` can be an empty string when the agent scope id has not
@@ -172,18 +182,12 @@ const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
 const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);
 
-watch(
-	node,
-	(currentNode) => {
-		if (currentNode) {
-			toolWorkflowStore.setNodes([currentNode]);
-			if (props.syncNodeToNdv) {
-				toolNdvStore.setActiveNodeName(currentNode.name, 'other');
-			}
-		}
-	},
-	{ immediate: true },
-);
+const isHydrated = computed(() => {
+	if (!nodeTypeDescription.value || !node.value?.name) {
+		return false;
+	}
+	return toolWorkflowStore.getNodeByName(node.value.name) != null;
+});
 
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) return undefined;
@@ -198,7 +202,13 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 });
 
 const isValid = computed(() => {
-	return node.value?.name && !hasParameterIssues.value && !hasCredentialIssues.value;
+	return (
+		node.value?.name &&
+		!hasParameterIssues.value &&
+		!hasCredentialIssues.value &&
+		!nodeTypeError.value &&
+		isHydrated.value
+	);
 });
 
 // Provide expression resolve context for dynamic parameter loading
@@ -267,66 +277,132 @@ provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 function handleChangeName(name: string) {
 	if (node.value) {
 		userEditedName.value = true;
+		// Capture the node identity being edited, but only once. Retrying the
+		// name does not change the identity, so re-reading it on a later edit
+		// would capture the edited name for id-less nodes.
+		if (preservedNameNodeId.value === null) {
+			preservedNameNodeId.value = node.value.id || node.value.name;
+		}
 		node.value = { ...node.value, name };
 	}
 }
 
+// Hydrate initial node with defaults once node types are available.
 watch(
-	() => props.initialNode,
-	(initialNode) => {
-		if (initialNode) {
-			const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
-			let nodeData =
-				uniqueName !== initialNode.name ? { ...initialNode, name: uniqueName } : initialNode;
+	[() => props.initialNode, nodeTypeDescription, nodeTypesLoaded],
+	([initialNode]) => {
+		if (!initialNode) {
+			node.value = null;
+			userEditedName.value = false;
+			hydratedInitialNode.value = null;
+			nodeTypeError.value = false;
+			return;
+		}
 
-			// Initialize parameters with defaults if node type is available
-			if (nodeTypeDescription.value) {
-				const defaultParameters = NodeHelpers.getNodeParameters(
-					nodeTypeDescription.value.properties ?? [],
+		const initialNodeId = initialNode.id || initialNode.name;
+		// Short-circuit if already hydrated for this node identity to prevent background
+		// re-fires (e.g. nodeTypes reactivity, hiddenOperations changes) from overwriting user edits.
+		if (hydratedInitialNode.value === initialNodeId) {
+			return;
+		}
+		// If the incoming node identity differs from the one the preserved name belongs to,
+		// drop the preserved name — it belongs to a different node.
+		if (preservedNameNodeId.value && preservedNameNodeId.value !== initialNodeId) {
+			preservedNameNodeId.value = null;
+		}
+
+		// Preserve a user-edited name when hydrating after a cold start; the name
+		// recomputation below would otherwise replace it with the default. Only
+		// re-apply it to the node identity it was edited on. `initialNodeId` is
+		// stable across edits to the local `node` ref, so it is the right
+		// comparison target for id-less nodes.
+		const preservedName =
+			hydratedInitialNode.value === null &&
+			userEditedName.value &&
+			preservedNameNodeId.value === initialNodeId
+				? node.value?.name
+				: null;
+
+		const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
+		let nodeData =
+			uniqueName !== initialNode.name ? { ...initialNode, name: uniqueName } : { ...initialNode };
+
+		// Initialize parameters with defaults if node type is available
+		if (nodeTypeDescription.value) {
+			const defaultParameters = NodeHelpers.getNodeParameters(
+				nodeTypeDescription.value.properties ?? [],
+				nodeData.parameters ?? {},
+				true, // returnDefaults: include all default values
+				false, // returnNoneDisplayed: exclude hidden parameters
+				nodeData,
+				nodeTypeDescription.value,
+			);
+
+			nodeData = {
+				...nodeData,
+				parameters: defaultParameters ?? {},
+			};
+
+			// Determine if the name is still a default (not user-edited).
+			// Check both isDefaultNodeName and displayName since tool variants
+			// set the initial name from displayName ("Airtable Tool")
+			// while defaults.name stays as the base ("Airtable").
+			const nameForCheck = nodeData.name.replace(/ \(\d+\)$/, '');
+			userEditedName.value = !(
+				NodeHelpers.isDefaultNodeName(
+					nameForCheck,
+					nodeTypeDescription.value,
+					nodeData.parameters,
+				) || nameForCheck === nodeTypeDescription.value.displayName
+			);
+
+			// Generate resource/operation-based automatic name for non-edited names
+			if (!userEditedName.value) {
+				const newName = NodeHelpers.makeNodeName(
 					nodeData.parameters ?? {},
-					true, // returnDefaults: include all default values
-					false, // returnNoneDisplayed: exclude hidden parameters
-					nodeData,
 					nodeTypeDescription.value,
 				);
-
-				nodeData = {
-					...nodeData,
-					parameters: defaultParameters ?? {},
-				};
-
-				// Determine if the name is still a default (not user-edited).
-				// Check both isDefaultNodeName and displayName since tool variants
-				// set the initial name from displayName ("Airtable Tool")
-				// while defaults.name stays as the base ("Airtable").
-				const nameForCheck = nodeData.name.replace(/ \(\d+\)$/, '');
-				userEditedName.value = !(
-					NodeHelpers.isDefaultNodeName(
-						nameForCheck,
-						nodeTypeDescription.value,
-						nodeData.parameters,
-					) || nameForCheck === nodeTypeDescription.value.displayName
-				);
-
-				// Generate resource/operation-based automatic name for non-edited names
-				if (!userEditedName.value) {
-					const newName = NodeHelpers.makeNodeName(
-						nodeData.parameters ?? {},
-						nodeTypeDescription.value,
-					);
-					if (newName && newName !== nameForCheck) {
-						nodeData = {
-							...nodeData,
-							name: makeUniqueName(newName, existingToolNames.value),
-						};
-					}
+				if (newName && newName !== nameForCheck) {
+					nodeData = {
+						...nodeData,
+						name: makeUniqueName(newName, existingToolNames.value),
+					};
 				}
 			}
 
+			// Re-apply a name the user edited before hydration completed, and
+			// keep it marked as edited so later auto-rename stays off.
+			if (preservedName !== null && preservedName !== undefined) {
+				nodeData = { ...nodeData, name: preservedName };
+				userEditedName.value = true;
+			}
+
+			nodeTypeError.value = false;
+			hydratedInitialNode.value = initialNodeId;
+			node.value = nodeData;
+		} else if (nodeTypesLoaded.value) {
+			// Node types catalog loaded but this specific node type was not found
+			nodeTypeError.value = true;
 			node.value = nodeData;
 		} else {
-			node.value = initialNode;
-			userEditedName.value = false;
+			// Node types catalog not loaded yet; defer hydration until loaded
+			node.value = nodeData;
+		}
+	},
+	{ immediate: true },
+);
+
+// Sync node to the isolated workflow document store only after hydration.
+// Declared after the hydration watcher so that on immediate fire, node.value
+// is already hydrated before being written to the document store.
+watch(
+	node,
+	(currentNode) => {
+		if (currentNode && nodeTypeDescription.value !== null) {
+			toolWorkflowStore.setNodes([currentNode]);
+			if (props.syncNodeToNdv) {
+				toolNdvStore.setActiveNodeName(currentNode.name, 'other');
+			}
 		}
 	},
 	{ immediate: true },
@@ -373,6 +449,14 @@ watch(
 );
 
 onMounted(async () => {
+	try {
+		nodeTypesLoadFailed.value = false;
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	} catch (error) {
+		console.error('Failed to load node types', error);
+		nodeTypesLoadFailed.value = true;
+	}
+
 	// Emit initial values
 	emit('update:valid', !!isValid.value);
 	if (node.value?.name) {
@@ -435,7 +519,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			<!-- Parameters Tab -->
 			<div v-show="activeTab === 'params'">
 				<ParameterInputList
-					v-if="node"
+					v-if="node && isHydrated"
 					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="node.parameters"
@@ -460,7 +544,23 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						<slot name="commonSettings" />
 					</div>
 				</ParameterInputList>
-				<div v-if="showNoParametersNotice" :class="$style.noParameters">
+				<div v-else-if="nodeTypesLoadFailed" :class="$style.errorNotice">
+					<N8nNotice theme="danger" :content="i18n.baseText('workflowDiff.error.loadNodeTypes')" />
+				</div>
+				<div v-else-if="nodeTypeError" :class="$style.errorNotice">
+					<N8nNotice
+						theme="warning"
+						:content="
+							i18n.baseText('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown', {
+								interpolate: { nodeType: props.initialNode.type },
+							})
+						"
+					/>
+				</div>
+				<div v-else-if="node" :class="$style.loading">
+					<N8nSpinner />
+				</div>
+				<div v-if="node && isHydrated && showNoParametersNotice" :class="$style.noParameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</N8nText>
@@ -470,7 +570,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			<!-- Settings Tab -->
 			<div v-show="activeTab === 'settings'">
 				<ParameterInputList
-					v-if="node && parametersByTab.settings.length > 0"
+					v-if="node && isHydrated && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"
 					:node-values="settingsNodeValues"
 					:is-read-only="false"
@@ -480,7 +580,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					@value-changed="handleChangeSettingsValue"
 				/>
 				<ParameterInputList
-					v-if="node"
+					v-if="node && isHydrated"
 					:parameters="nodeSettings"
 					:hide-delete="true"
 					:node-values="settingsNodeValues"
@@ -521,6 +621,17 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 }
 
 .commonSettings {
+	margin-top: var(--spacing--xs);
+}
+
+.loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: var(--spacing--xl) 0;
+}
+
+.errorNotice {
 	margin-top: var(--spacing--xs);
 }
 </style>

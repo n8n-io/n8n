@@ -80,6 +80,7 @@ function handleNodeNameUpdate(name: string) {
 					ref="contentRef"
 					:initial-node="data.node"
 					:existing-tool-names="data.existingToolNames"
+					:sync-node-to-ndv="true"
 					@update:valid="handleValidUpdate"
 					@update:node-name="handleNodeNameUpdate"
 				/>
