@@ -332,7 +332,13 @@ describe('McpService scope enforcement', () => {
 
 		instanceContext.buildBlock.mockResolvedValue({
 			block: 'Workflows that already exist here: 2',
-			cursor: { activityMark: 1, activitySeen: [], runsThrough: '2026-09-16T00:00:00.000Z' },
+			cursor: {
+				activityMark: 1,
+				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
+				activitySeen: [],
+				runsThrough: '2026-09-16T00:00:00.000Z',
+			},
 		});
 		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
 			'Workflows that already exist here: 2',
