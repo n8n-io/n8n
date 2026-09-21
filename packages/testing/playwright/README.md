@@ -1,4 +1,21 @@
-# Playwright E2E Test Guide
+# Playwright Test Orchestration Guide
+
+Playwright is not only the browser E2E runner. This package uses Playwright's
+worker lifecycle and project model to orchestrate browsers, APIs, n8n processes,
+service containers, deployment topologies, diagnostics, and benchmark artifacts.
+
+## Choose a suite
+
+| Goal | Start here |
+|------|------------|
+| Test a product UI or API journey | `tests/e2e/` |
+| Test PostgreSQL, queue mode, multi-main, encryption, or process lifecycle | `tests/infrastructure/` |
+| Measure infrastructure throughput or resource use | [`tests/infrastructure/benchmarks/README.md`](tests/infrastructure/benchmarks/README.md) |
+| Measure browser or canvas performance | `tests/performance/README.md` |
+| Test fixtures, startup, telemetry, or harness behavior | `tests/framework/` |
+
+Read `AGENTS.md` before you add a test. It defines suite boundaries, fixtures,
+container capabilities, and required verification.
 
 ## Development setup
 ```bash

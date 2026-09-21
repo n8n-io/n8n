@@ -10,7 +10,13 @@ import {
 import type { PushHandlerOptions } from './types';
 import type { INodeUi } from '@/Interface';
 
-const { mockToast, mockI18n, mockSettingsStore, mockWorkflowsStore } = vi.hoisted(() => ({
+const {
+	mockToast,
+	mockI18n,
+	mockSettingsStore,
+	mockWorkflowsStore,
+	mockClearPendingActivationModal,
+} = vi.hoisted(() => ({
 	mockToast: {
 		showError: vi.fn(),
 	},
@@ -23,6 +29,7 @@ const { mockToast, mockI18n, mockSettingsStore, mockWorkflowsStore } = vi.hoiste
 	mockWorkflowsStore: {
 		setWorkflowInactive: vi.fn(),
 	},
+	mockClearPendingActivationModal: vi.fn(),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -43,6 +50,10 @@ vi.mock('@n8n/stores/settings.store', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => mockWorkflowsStore,
+}));
+
+vi.mock('@/app/composables/workflowPublicationConfirmation', () => ({
+	clearPendingActivationModal: mockClearPendingActivationModal,
 }));
 
 describe('workflowFailedToActivate', () => {
@@ -144,6 +155,28 @@ describe('workflowFailedToActivate', () => {
 				expect.any(String),
 				expect.objectContaining({ description: undefined }),
 			);
+		});
+
+		// ADO-4969: the toast said "could not be activated" while the rest of the
+		// publish flow speaks of publishing.
+		it('titles the toast with "published" wording', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
+
+			expect(mockI18n.baseText).toHaveBeenCalledWith('workflowActivator.showError.title', {
+				interpolate: { newStateName: 'published' },
+			});
+		});
+
+		it('clears a pending activation success modal intent (ADO-4969)', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
+
+			expect(mockClearPendingActivationModal).toHaveBeenCalledWith('wf-123');
+		});
+
+		it('clears the pending intent even when viewing another workflow', async () => {
+			await workflowFailedToActivate(makeEvent({ workflowId: 'wf-other' }), options);
+
+			expect(mockClearPendingActivationModal).toHaveBeenCalledWith('wf-other');
 		});
 
 		it('does not set publicationStatus when the event is for a different workflow', async () => {

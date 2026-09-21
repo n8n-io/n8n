@@ -309,6 +309,28 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
+	 * Creates the workflow together with its `workflow:owner` share in one transaction.
+	 *
+	 * Deliberately outside the `workflowSave` clearance the other writes here assert: the only
+	 * caller is standalone node execution, whose row is archived, single-node and deleted after
+	 * the run. The content is still policed where it matters — `PolicyLifecycleHandler` enforces
+	 * `workflowStart` on `workflowExecuteBefore`, which every execution path reaches.
+	 */
+	async createWorkflowWithOwner(
+		workflow: WorkflowEntity,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		return await this.runInTransaction(ctx, async (em) => {
+			const saved = await em.save(workflow);
+			await em.save(
+				em.create(SharedWorkflow, { role: 'workflow:owner', projectId, workflowId: saved.id }),
+			);
+			return saved;
+		});
+	}
+
+	/**
 	 * Persists a new workflow, gated on a clearance for its content.
 	 *
 	 * A create binds to the node hash, not the id — an id here is either generated on insert or

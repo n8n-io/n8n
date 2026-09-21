@@ -20,6 +20,8 @@ import { getIntegrationToolConnectionDescriptors } from '../../integration-tools
 
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
 
+type AgentExecutor = ConstructorParameters<typeof AgentChatBridge>[2];
+
 export type ReplayWebhookHandler = (
 	request: Request,
 	options?: ReplayWebhookOptions,
@@ -73,14 +75,6 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		// The in-memory store does not track the origin→derived list; tests
 		// that need unbind semantics call unbindSession directly.
 		await Promise.resolve();
-	}
-
-	latest(): IntegrationMessageContext | undefined {
-		return [...this.contexts.values()].at(-1);
-	}
-
-	latestThreadId(): string | undefined {
-		return [...this.contexts.keys()].at(-1);
 	}
 }
 
@@ -196,6 +190,8 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
+	latestContext: () => IntegrationMessageContext | undefined;
+	latestThreadId: () => string | undefined;
 	nextStream: (chunks: StreamChunk[]) => void;
 	shutdown: () => Promise<void>;
 }
@@ -215,9 +211,18 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },
 		{ type: 'finish', finishReason: 'stop' },
 	];
+	let selectedContext: IntegrationMessageContext | undefined;
+	let selectedThreadId: string | undefined;
 	const agentExecutor = {
-		executeForChatPublished: vi.fn(() => toStream(stream)),
-		resumeForChat: vi.fn(() => toStream(stream)),
+		executeForChatPublished: vi.fn<AgentExecutor['executeForChatPublished']>((config) => {
+			selectedContext = config.messageContext ?? undefined;
+			selectedThreadId = config.memory.threadId.id;
+			return toStream(stream);
+		}),
+		resumeForChat: vi.fn<AgentExecutor['resumeForChat']>((config) => {
+			selectedContext = config.messageContext ?? undefined;
+			return toStream(stream);
+		}),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 
@@ -248,6 +253,8 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
+		latestContext: () => selectedContext,
+		latestThreadId: () => selectedThreadId,
 		nextStream: (chunks: StreamChunk[]) => {
 			stream = chunks;
 		},

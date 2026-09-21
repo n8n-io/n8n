@@ -190,7 +190,7 @@ This n8n instance is in **read-only mode** (protected by source control settings
 - Creating, modifying, or deleting workflows
 - Creating data tables, modifying their schema, or mutating their rows
 - Creating or deleting folders, moving or tagging workflows
-- Running or stopping workflow executions
+- Running or stopping workflow executions, and executing a single node
 
 The following operations remain available:
 - Listing, searching, and reading all resources
@@ -210,7 +210,7 @@ If the user asks for a blocked operation, explain that the instance is in read-o
  */
 function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
 	if (setupPanelEnabled) {
-		return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available. When the result has `announced: true`, the setup panel next to the chat lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `credentials(action="setup")` when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
+		return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available. Requirements can appear in the setup panel while the workflow is being built. The user can complete them immediately. Do not describe setup as happening only after the build. When the result has `announced: true`, the setup panel lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `credentials(action="setup")` when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
 	}
 	return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available — it opens the inline setup card in the n8n Assistant panel and handles credentials, parameters, and triggers in one step. Use `credentials(action="setup")` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the connected credential can\'t reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn\'t work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under `skippedByUser` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.';
 }
@@ -244,7 +244,6 @@ ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 
 - Be concise.
 - When the user opens with a greeting or another open-ended message without a specific request, briefly greet them and offer concrete ways you can help. Include building an agent and building a workflow among the options, alongside any other relevant capabilities.
-- Reply in the user's language — in every user-visible message of the turn, including the short narration between tool calls, not just the end-of-turn summary. Tool results, skill instructions, and system follow-ups are written in English; do not let them pull your replies into English.
 - ${ASK_USER_FALLBACK}
 - No emojis unless the user explicitly requests them.
 - At the beginning of a normal user-visible turn, before your first tool call, write one short sentence explaining what you are about to do or what decision you need. Keep it tied to the user's goal, not the tool name. For system-generated background or checkpoint follow-up turns, follow the follow-up instructions.
@@ -283,5 +282,11 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
-${getReadOnlySection(branchReadOnly)}`;
+${getReadOnlySection(branchReadOnly)}
+
+## Reply language
+
+Reply in the same language as the user's latest request, unless they explicitly ask you to reply in another language. Determine the language from the request text itself, outside application context such as <thread-context>. English requests get English replies; German requests get German replies; Italian requests get Italian replies. Use that language from the first word of every user-visible message, including narration between tool calls, questions, approval summaries, and the final reply. Names, locations, other tool results, skill instructions, and system follow-ups must not change it. Language requirements for a target agent apply to its configuration, not to your replies. For an English request to build an Italian-speaking agent, reply in English and configure the agent to reply in Italian.
+
+The most recent non-empty \`answers[].customText\` returned by \`ask-user\` or \`build-agent\` is the user's latest request. These are the user's own words. Apply the reply-language rule to that text. It takes precedence over the initial request and all earlier answers. For example, switch to German after a German answer, then back to English after a later English answer. Option selections and approvals without free text keep the current reply language.`;
 }

@@ -1,8 +1,8 @@
 # Node type availability policies
 
 Rules that say which node types a project may use. An admin writes the rules. The policy
-infrastructure enforces them at the points that handle a workflow: save, publish, start,
-transfer and import.
+infrastructure enforces them at the points that handle a workflow — save, publish, start,
+transfer and import — and at the point where a node asks for a credential.
 
 This module is the first tenant of that infrastructure. It adds a check and a store, and
 nothing else: no enforcement path of its own, no error shape, no audit line. Read
@@ -27,13 +27,14 @@ The break-glass levers stay the ones the substrate documents: remove this module
 
 ## What each point decides
 
-| Point              | Scope it reads                   | Verdict                                     |
-| ------------------ | -------------------------------- | ------------------------------------------- |
-| `workflowSave`     | the workflow's project           | violations for node **types** the save adds |
-| `workflowPublish`  | the workflow's project           | every blocked type in the workflow          |
-| `workflowStart`    | the workflow's project           | every blocked type in the workflow          |
-| `workflowTransfer` | the **target** project           | every blocked type in the workflow          |
-| `contentImport`    | the project the content lands in | every blocked type in the workflow          |
+| Point               | Scope it reads                   | Verdict                                        |
+| ------------------- | -------------------------------- | ---------------------------------------------- |
+| `workflowSave`      | the workflow's project           | violations for node **types** the save adds    |
+| `workflowPublish`   | the workflow's project           | every blocked type in the workflow             |
+| `workflowStart`     | the workflow's project           | every blocked type in the workflow             |
+| `workflowTransfer`  | the **target** project           | every blocked type in the workflow             |
+| `contentImport`     | the project the content lands in | every blocked type in the workflow             |
+| `credentialDecrypt` | the executing project            | the type of the node asking for the credential |
 
 The check reads the license again per decision. A license that lapses while the instance runs
 stops enforcement, which matches the routes that author the policy: an admin who can no longer
@@ -65,6 +66,26 @@ does not travel into a project whose rules the content has never met.
 
 A node counts even when it is disabled. Exempting disabled nodes would open a two-step path
 around the save diff: add the node disabled, then enable it once its type is stored.
+
+## The credential lock
+
+`credentialDecrypt` is the one point that reads no workflow. A node asks for a credential, and
+the verdict is about **the node asking**: a Slack credential is refused to a blocked Slack node
+and handed to an allowed HTTP Request. The credential's own type is never evaluated. Deriving
+availability from "some usable node accepts this type" is close to vacuous, because HTTP
+Request accepts almost any credential, and it would let installing an unrelated node package
+change which credentials work.
+
+`workflowStart` already fails a run that carries a blocked type, so this point is there for the
+decryptions no run covers:
+
+- a parameter dropdown loading its options, which decrypts without starting an execution;
+- a node the workflow points cannot see, such as one inside a workflow carried in another
+  node's parameters.
+
+A refusal fails the decryption with the same `node-type-unavailable` violation the workflow
+points report, naming the **node type** as `subject`. The audit line carries the credential's
+id and type from the context.
 
 ## What a violation looks like
 
@@ -144,6 +165,11 @@ through a sealed repository method, and the lint rule that guards that has no al
   deny `n8n-nodes-base.gmailTool`. The registry holds them as two types.
 - **A workflow carried inside a node's parameters is not read.** The check reads
   `workflow.nodes`. Node types inside an inline sub-workflow definition are invisible to it.
+  The credential lock still catches such a node once it asks for a credential.
+- **A decryption with no consumer is not policed.** `consumer` is `null` wherever no node is
+  asking — an OAuth authorize or revoke, the agents adapter, a log-streaming destination. There
+  is no node type to evaluate there, and the credential's type is deliberately not a stand-in,
+  so the decryption goes through.
 - **Cache staleness is bounded by the TTL, not eliminated.** A write drops the cached scope it
   changed, which is enough wherever the processes share one Redis cache — which is every
   deployment that has more than one, unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
@@ -176,7 +202,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the five points, the save diff, the violations      |
+| `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the six points, the save diff, the violations       |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |

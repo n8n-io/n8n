@@ -399,6 +399,9 @@ export class AgentRuntime {
 		if (!toolCall) {
 			throw new StaleResumeError(`No tool call found for toolCallId: ${options.toolCallId}`);
 		}
+		if (options.hostMetadata !== undefined && !state.persistence) {
+			throw new Error('Cannot update host metadata without persistence');
+		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
@@ -430,6 +433,7 @@ export class AgentRuntime {
 				runId: _rid,
 				toolCallId: _tcid,
 				onResumeClaimed: _onResumeClaimed,
+				hostMetadata,
 				...callerExecOptions
 			} = options;
 			const persisted = state.executionOptions ?? {};
@@ -452,16 +456,22 @@ export class AgentRuntime {
 				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
 
-			const resumeOptions: RuntimeExecutionOptions = {
-				persistence: state.persistence,
-				...mergedExecOptions,
-			};
-
 			const claimed = await this.runState.claimResume(this.runId, state);
 			if (!claimed) {
 				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
 			resumeClaimed = true;
+			const resumeOptions: RuntimeExecutionOptions = {
+				persistence: state.persistence
+					? {
+							...state.persistence,
+							...(state.persistence.hostMetadata || hostMetadata
+								? { hostMetadata: { ...state.persistence.hostMetadata, ...hostMetadata } }
+								: {}),
+						}
+					: undefined,
+				...mergedExecOptions,
+			};
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -889,6 +899,10 @@ export class AgentRuntime {
 			this.assertNotAborted(abortScope);
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
+
+			for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
+				this.deferredToolManager?.load(toolName);
+			}
 
 			const {
 				toolMap,
