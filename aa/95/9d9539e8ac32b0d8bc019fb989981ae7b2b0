@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-oversized-attachments.spec.ts
+  s_de30f096f807bf::t_4a2280ebc5b5de 212-219,224,235-236,245-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa959d9539e8ac32b0d8bc019fb989981ae7b2b0",
+  "prompts": {},
+  "sessions": {
+    "s_de30f096f807bf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa19-ec55-72c3-a0b7-b20b665f934d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
