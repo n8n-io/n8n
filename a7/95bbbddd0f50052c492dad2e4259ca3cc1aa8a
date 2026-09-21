@@ -29,6 +29,7 @@ packages/@n8n/engine/src/execution/execution.types.ts
   s_77655ca8fe3a59::t_f6b700aecb9b64 34-35,92,121-126
   s_77655ca8fe3a59::t_19f83ce102e350 97-115
   s_77655ca8fe3a59::t_c4f5938570bb21 93-96,116-120,127-130
+  s_13d0f2e1be0144::t_45be40b56a5d23 40
 packages/@n8n/engine/src/execution/step-ready-handler.ts
   s_77655ca8fe3a59::t_0f5e9556ae5333 32,35-38
   s_77655ca8fe3a59::t_f6b700aecb9b64 118
@@ -50,6 +51,14 @@ packages/@n8n/engine/src/index.ts
   "base_commit_sha": "a795bbbddd0f50052c492dad2e4259ca3cc1aa8a",
   "prompts": {},
   "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
     "s_691719f04965a8": {
       "agent_id": {
         "tool": "claude",
