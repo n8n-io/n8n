@@ -33,6 +33,7 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -167,6 +168,8 @@ const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'always_allow',
 ];
 
+const PREFERENCE_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = ['always_allow', 'blocked'];
+
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 	require_approval: 'settings.n8nAgent.permissions.needsApproval',
 	always_allow: 'settings.n8nAgent.permissions.alwaysAllow',
@@ -231,6 +234,18 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	},
 ];
 
+const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
+	id: 'preferences',
+	labelKey: 'settings.n8nAgent.permissions.group.preferences',
+	keys: ['createPreference'],
+};
+
+const permissionGroups = computed(() =>
+	isContextPreferencesEnabled()
+		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
+		: PERMISSION_GROUPS,
+);
+
 const expandedGroups = reactive<Record<string, boolean>>({});
 
 function isGroupLocked(group: PermissionGroup) {
@@ -251,7 +266,9 @@ function groupSummary(group: PermissionGroup) {
 }
 
 function permissionOptionsFor(key: keyof InstanceAiPermissions) {
-	return key === 'executeMcpTool' ? MCP_TOOL_PERMISSION_OPTIONS : PERMISSION_OPTIONS;
+	if (key === 'executeMcpTool') return MCP_TOOL_PERMISSION_OPTIONS;
+	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
+	return PERMISSION_OPTIONS;
 }
 
 /** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
@@ -758,7 +775,7 @@ function openAiUsageSettings() {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						v-for="group in PERMISSION_GROUPS"
+						v-for="group in permissionGroups"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
 						:class="{ [$style.dim]: isGroupLocked(group) }"
