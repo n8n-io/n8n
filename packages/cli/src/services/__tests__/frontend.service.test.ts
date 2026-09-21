@@ -279,6 +279,20 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should enable folders for Registered Community instances', async () => {
+			// ADO-5920: Some certificates report the plan without the folder feature.
+			license.getPlanName.mockReturnValue('Registered Community');
+			license.isFoldersEnabled.mockReturnValue(false);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings).toMatchObject({
+				license: { planName: 'Registered Community' },
+				folders: { enabled: true },
+			});
+		});
+
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
 			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
 			const { service } = createMockService();
