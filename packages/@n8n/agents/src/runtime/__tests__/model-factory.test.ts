@@ -294,6 +294,31 @@ describe('createModel', () => {
 		expect(model.api).toBe('chat-completions');
 	});
 
+	it('routes a keyless custom endpoint (e.g. Ollama) through the optional-apiKey builder', () => {
+		// createOpenAI({apiKey: undefined}) throws "OpenAI API key is missing" even
+		// against a keyless local server. Self-hosted OpenAI-compatible servers
+		// (Ollama, LM Studio, vLLM, ...) commonly serve with no key at all, so a
+		// keyless custom baseURL must go through createOpenAICompatible instead.
+		const model = createModel({
+			id: 'openai/llama3.2-vision',
+			baseURL: 'http://ollama:11434/v1',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('http://ollama:11434/v1');
+		expect(model.apiKey).toBeUndefined();
+		// Only createOpenAICompatible's mock sets this key; createOpenAI's does not.
+		expect('includeUsage' in model).toBe(true);
+	});
+
+	it('still uses the official OpenAI client for a custom endpoint that has an apiKey', () => {
+		const model = createModel({
+			id: 'openai/gpt-4o',
+			apiKey: 'sk-test',
+			baseURL: 'https://custom.endpoint.com/v1',
+		}) as unknown as Record<string, unknown>;
+		expect(model.apiKey).toBe('sk-test');
+		expect('includeUsage' in model).toBe(false);
+	});
+
 	it('uses the Responses API when a baseURL explicitly serves it', () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
 		// serve /responses. /chat/completions rejects reasoning effort once tools

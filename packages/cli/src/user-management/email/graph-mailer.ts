@@ -41,7 +41,9 @@ export class GraphMailer {
 	) {
 		this.config = globalConfig.userManagement.emails.microsoftGraph;
 		this.sender = this.config.sender;
-		this.fetch = outboundHttp.transport({ proxy: 'env', ssrf: 'disabled' }).asCustomFetch();
+		this.fetch = outboundHttp
+			.transport({ proxy: 'env', useDefaultSsrfPolicy: 'unsafe' })
+			.asCustomFetch();
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {

@@ -156,8 +156,19 @@ function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
-			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
+			const isCustomEndpoint = Boolean(
+				providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL),
+			);
+			// Self-hosted OpenAI-compatible servers (Ollama, LM Studio, vLLM, ...) commonly
+			// need no key at all. `@ai-sdk/openai`'s createOpenAI hard-requires one — it
+			// throws "OpenAI API key is missing" even against a keyless local server — so
+			// route keyless custom endpoints through the same optional-apiKey builder the
+			// `custom` provider entry below uses.
+			if (isCustomEndpoint && !providerCreds.apiKey) {
+				return buildOpenAiCompatible('openai', undefined, providerCreds, model, fetch);
+			}
+			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const provider = createOpenAI({ ...providerCreds, fetch });
 			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
 			// vLLM, Ollama), which speaks /chat/completions; the provider's default
@@ -165,10 +176,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// servers do not implement. OpenAI credentials also carry the official
 			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
 			// explicitly support one API or the other.
-			const useChat =
-				apiStyle === 'chat' ||
-				(apiStyle === undefined &&
-					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
+			const useChat = apiStyle === 'chat' || (apiStyle === undefined && isCustomEndpoint);
 			return useChat ? provider.chat(model) : provider(model);
 		},
 	},
