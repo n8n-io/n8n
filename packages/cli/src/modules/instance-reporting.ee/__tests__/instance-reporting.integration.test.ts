@@ -291,7 +291,7 @@ describe('instance reporting retries', () => {
 		await stampCreatedAt(abandoned.id, new Date(AFTER_SLOT));
 
 		// The next pass finds the day settled and moves on to tomorrow's slot.
-		await vi.advanceTimersByTimeAsync(Time.hours.toMilliseconds);
+		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
 		await armed(harness, 4);
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS);
 		expectArmedFor(harness, NEXT_SLOT);
