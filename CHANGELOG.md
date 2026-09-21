@@ -1,3 +1,12 @@
+## [2.39.9](https://github.com/n8n-io/n8n/compare/n8n@2.39.8...n8n@2.39.9) (2026-09-21)
+
+
+### Bug Fixes
+
+* **API:** Resolve HTTP 405 error on PATCH /credentials/{credentialId} public API endpoint ([#38982](https://github.com/n8n-io/n8n/issues/38982)) ([48dccc2](https://github.com/n8n-io/n8n/commit/48dccc20c80db6dda03bfa877e39e3f409bc11b5))
+* **core:** Tear down workflow triggers when publication meets a node type the instance cannot load ([#39057](https://github.com/n8n-io/n8n/issues/39057)) ([badfc76](https://github.com/n8n-io/n8n/commit/badfc7613cbac5b3c7b4df93db75871403b517c6))
+
+
 ## [2.39.8](https://github.com/n8n-io/n8n/compare/n8n@2.39.7...n8n@2.39.8) (2026-09-18)
 
 
