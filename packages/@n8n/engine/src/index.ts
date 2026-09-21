@@ -35,15 +35,17 @@ export type {
 } from './lifecycle-events';
 
 export {
-	ExecutionResponseChannel,
+	createInMemoryResponsePair,
+	ExecutionResponseReceiver,
+	ExecutionResponseSender,
 	executionResponseSchema,
-	InMemoryResponseTransport,
-	noopResponseTransport,
+	noopResponseFrameSender,
 } from './response-channel';
 export type {
 	EndedMessage,
 	ExecutionResponse,
-	ResponseTransport,
+	ResponseFrameReceiver,
+	ResponseFrameSender,
 	Unsubscribe,
 } from './response-channel';
 

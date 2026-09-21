@@ -1,6 +1,5 @@
 import type {
 	createDataSource,
-	EngineLogger,
 	ExecutionMode,
 	StartExecutionResult,
 	TriggerOutputs,
@@ -9,8 +8,8 @@ import type {
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
-	ExecutionResponseChannel,
-	noopResponseTransport,
+	ExecutionResponseSender,
+	noopResponseFrameSender,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
 	WorkflowExecution,
@@ -58,12 +57,6 @@ export const realNodeTypes: INodeTypes = {
 export const converter = new V1WorkflowConverter();
 
 const authSecret = 'a'.repeat(32);
-const silentLogger: EngineLogger = {
-	error: () => {},
-	warn: () => {},
-	info: () => {},
-	debug: () => {},
-};
 const caller = { cpId: 'cp-1', tenantId: 'tenant-1' };
 
 export type Assignment = { name: string; value: string | number; type: string };
@@ -332,7 +325,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(authSecret),
 			// Nothing here waits for a response; the fixture reads the run over the API.
-			responseChannel: new ExecutionResponseChannel(noopResponseTransport, silentLogger),
+			responseSender: new ExecutionResponseSender(noopResponseFrameSender),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);

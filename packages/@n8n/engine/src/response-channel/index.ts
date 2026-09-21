@@ -1,6 +1,7 @@
-export { ExecutionResponseChannel } from './execution-response-channel';
+export { ExecutionResponseReceiver } from './execution-response-receiver';
+export { ExecutionResponseSender } from './execution-response-sender';
 export { executionResponseSchema } from './execution-response.schema';
 export type { EndedMessage, ExecutionResponse } from './execution-response.types';
-export { InMemoryResponseTransport } from './in-memory-transport';
-export { noopResponseTransport } from './response-transport';
-export type { ResponseTransport, Unsubscribe } from './response-transport';
+export { createInMemoryResponsePair } from './in-memory-response-pair';
+export { noopResponseFrameSender } from './response-frame';
+export type { ResponseFrameReceiver, ResponseFrameSender, Unsubscribe } from './response-frame';

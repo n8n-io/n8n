@@ -1,38 +1,26 @@
 import type { EngineLogger } from '../logging';
 import { executionResponseSchema } from './execution-response.schema';
 import type { ExecutionResponse } from './execution-response.types';
-import type { ResponseTransport, Unsubscribe } from './response-transport';
+import type { ResponseFrameReceiver, Unsubscribe } from './response-frame';
 
-/**
- * Sends responses from an execution back to its caller.
- *
- * The engine publishes a response with an execution ID. A caller subscribes
- * with the same ID and receives only responses for that execution.
- *
- * This class serializes outgoing responses and validates incoming responses.
- * The transport delivers them in-process or across process boundaries.
- */
-export class ExecutionResponseChannel {
+/** Receives responses from executions and delivers them to their callers. */
+export class ExecutionResponseReceiver {
 	constructor(
-		private readonly transport: ResponseTransport,
+		private readonly frameReceiver: ResponseFrameReceiver,
 		private readonly logger: EngineLogger,
 	) {}
 
-	publish(response: ExecutionResponse): void {
-		this.transport.publish(response.executionId, JSON.stringify(response));
-	}
-
 	/** Listens to one execution. Call the returned function once the run is answered. */
-	subscribe(executionId: string, handler: (response: ExecutionResponse) => void): Unsubscribe {
-		return this.transport.subscribe(executionId, (frame) => {
+	receive(executionId: string, handler: (response: ExecutionResponse) => void): Unsubscribe {
+		return this.frameReceiver.receive(executionId, (frame) => {
 			const response = this.fromFrame(frame);
 			if (response === undefined) return;
 
 			try {
 				handler(response);
 			} catch (error) {
-				// One bad subscriber must not take the transport down with it.
-				this.logger.error('a response subscriber threw', {
+				// One bad handler must not take the frame receiver down with it.
+				this.logger.error('a response handler threw', {
 					executionId: response.executionId,
 					type: response.type,
 					error,
@@ -42,7 +30,7 @@ export class ExecutionResponseChannel {
 	}
 
 	async stop(): Promise<void> {
-		await this.transport.stop();
+		await this.frameReceiver.stop();
 	}
 
 	private fromFrame(frame: string): ExecutionResponse | undefined {

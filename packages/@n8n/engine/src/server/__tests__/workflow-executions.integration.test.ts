@@ -11,9 +11,8 @@ import { createDataSource, createStores, WorkflowExecution } from '../../databas
 import { generateId } from '../../database/generate-id';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
-import { createConsoleLogger } from '../../logging';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
+import { ExecutionResponseSender, noopResponseFrameSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -488,7 +487,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
-			responseChannel: new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+			responseSender: new ExecutionResponseSender(noopResponseFrameSender),
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
