@@ -83,15 +83,13 @@ export class McpProtectedResource implements ProtectedResource {
 		const supportedScopes = new Set(this.scopes);
 		// Consent and tool registration use the same instance activity gate.
 		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
-		let activityToolsAvailable = false;
-		if (instanceContextAvailable) {
-			try {
-				activityToolsAvailable =
-					(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
-					true;
-			} catch {
-				// Keep activity tools hidden when the gate cannot be read.
-			}
+		let instanceContextEnabled = false;
+		try {
+			instanceContextEnabled =
+				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
+				true;
+		} catch {
+			// Keep context tools hidden when the gate cannot be read.
 		}
 
 		return Object.fromEntries(
@@ -104,8 +102,8 @@ export class McpProtectedResource implements ProtectedResource {
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
-							(instanceContextAvailable || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
-							(activityToolsAvailable || !ACTIVITY_LOG_TOOLS.has(tool)),
+							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
 					),
 				]),
 		);

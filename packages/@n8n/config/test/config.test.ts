@@ -294,7 +294,6 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
-			mcpInstanceContextEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
