@@ -1,0 +1,75 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_3aa04d86b738c5::t_d6cbb289e4ff85 232-252
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_3aa04d86b738c5::t_293e0e6b544bc0 4-7
+  s_3aa04d86b738c5::t_1db19b04f87b73 92-159
+  s_3aa04d86b738c5::t_8531923fc8d057 197-221,235-243
+packages/cli/src/modules/agents/sub-agents/format-sub-agent-tool-output.ts
+  ai_agent 1-4
+  s_3aa04d86b738c5::t_022b6355f6616b 5-26
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_3aa04d86b738c5::t_c772c565dec339 178
+  s_3aa04d86b738c5::t_73609744472737 161
+  s_3aa04d86b738c5::t_4ba43310d37058 59-66,72-73
+packages/@n8n/db/src/migrations/common/1787756564283-CreateAgentBackgroundJobTable.ts
+  s_3aa04d86b738c5::t_d66159927a2ed6 71-82
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 55
+packages/cli/src/modules/agents/agents.module.ts
+  h_7555c3ee6524cf 117,119,137,146-148
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_3aa04d86b738c5::t_f8fd5af42bffd3 18
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 52
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_3aa04d86b738c5::t_c45d1fbf92bae8 12,14-18
+  s_3aa04d86b738c5::t_08f84788941ad3 94-98
+  s_3aa04d86b738c5::t_3bbf484cd54001 62-65
+  s_3aa04d86b738c5::t_b5bcd31576f6b5 131-141,144-149,156-173
+  s_3aa04d86b738c5::t_67e23f3165f89a 13
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_3aa04d86b738c5::t_2f6fce207c69f3 61-64,69-78,82
+  s_3aa04d86b738c5::t_a702acfa92e944 179-182,187
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_3aa04d86b738c5::t_478dbcec31047c 99-111
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_3aa04d86b738c5::t_30b623a8edfc91 29
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_3aa04d86b738c5::t_2d43135dea06cb 20
+  s_3aa04d86b738c5::t_692fd98095d9b1 21
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_3aa04d86b738c5::t_501c5e44ab13bd 61-63
+  s_3aa04d86b738c5::t_3daa0e1cbbc43a 111-114,116,120,124-126,130-147
+  s_3aa04d86b738c5::t_964a3100881bea 193
+  ai_agent 127-129
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_3aa04d86b738c5::t_738c66fe70569f 847-920
+  s_3aa04d86b738c5::t_2f11649ee8a9df 34-35
+  s_3aa04d86b738c5::t_4d5af5967dfce3 19
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_3aa04d86b738c5::t_618f50c3b51a14 14-15
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_3aa04d86b738c5::t_b13c6b38e78f2b 3
+  s_3aa04d86b738c5::t_88b1f9eb780920 41-46,49-55,57-58,60-61,63-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b89331947ce209fad8f34d6057de43feb2fc7a3",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3aa04d86b738c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3ca6b41-c1b6-47e3-8bb0-85185f8b1e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

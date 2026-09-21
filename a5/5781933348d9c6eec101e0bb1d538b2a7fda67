@@ -1,0 +1,23 @@
+packages/@n8n/decorators/src/controller/__tests__/scoped.test.ts
+  s_e2203a10d11968::t_6437b0d3b4c4b7 5
+packages/@n8n/decorators/src/controller/__tests__/requires-user-quota.test.ts
+  s_e2203a10d11968::t_aba641855ef2dc 5
+packages/@n8n/decorators/src/controller/__tests__/license.test.ts
+  s_e2203a10d11968::t_b02b5a9013ae6e 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a55781933348d9c6eec101e0bb1d538b2a7fda67",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.ts
+  s_a3c0d644af6da0::t_96f647c2ab2b7d 126
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_a3c0d644af6da0::t_4e1188765ddf00 208
+  s_a3c0d644af6da0::t_6dfc7d5c689fb1 207,209-211
+  s_a3c0d644af6da0::t_a3e2810c169519 39
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_a3c0d644af6da0::t_6c4e66065a34ca 29
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_a3c0d644af6da0::t_c315965c7a36db 18
+  s_a3c0d644af6da0::t_4c063c8cd7726c 20
+  s_a3c0d644af6da0::t_f7f9636c690f5f 643
+  s_a3c0d644af6da0::t_da73f09fdf27d3 628-632,634-638,641-642,644,647-648
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_a3c0d644af6da0::t_ea5f8675a57f95 24
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_a3c0d644af6da0::t_62cc3661de3661 192-193
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_a3c0d644af6da0::t_592aa8115dfca3 793
+  s_a3c0d644af6da0::t_44fb78a3e98e7b 276
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_a3c0d644af6da0::t_ddf2439b943da4 1735-1741,1743-1746,1748
+  s_a3c0d644af6da0::t_d84c27a3b8bfdc 109-113
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.test.ts
+  s_a3c0d644af6da0::t_523bd319fa5630 11,15,21-22,30,43-44,56,59,61-62,71,73,82-83,86
+packages/frontend/editor-ui/src/features/agents/utils/agentNode.ts
+  s_a3c0d644af6da0::t_9b3e6981b9d823 2,15-34
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_a3c0d644af6da0::t_aca320e664029b 1098,1107-1110
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_a3c0d644af6da0::t_0628a77479cef5 19-20
+  s_a3c0d644af6da0::t_b42a57700e0870 266-287
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_a3c0d644af6da0::t_b13e762d7926b6 26
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.ts
+  s_a3c0d644af6da0::t_5be3ae06eb671a 5
+  s_a3c0d644af6da0::t_209c8864dc5402 1,12,36-40,42,47
+  s_a3c0d644af6da0::t_3adfc9dec71888 45,49
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_a3c0d644af6da0::t_e920fb59a21347 126-127
+  s_a3c0d644af6da0::t_3940aba1e61744 705,719-720
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "03d831e7910beb277a8eae8519940262d4447e34",
+  "prompts": {},
+  "sessions": {
+    "s_a3c0d644af6da0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e5bf55fd-f866-4569-bbc0-721158cacb4e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

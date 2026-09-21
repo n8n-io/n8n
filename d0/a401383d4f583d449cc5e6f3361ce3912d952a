@@ -1,0 +1,19 @@
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_3612cbc787c49f::t_91ce5935215d99 125-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d0a401383d4f583d449cc5e6f3361ce3912d952a",
+  "prompts": {},
+  "sessions": {
+    "s_3612cbc787c49f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f4c7cd2-91be-4afa-abb8-26358af5a1fc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

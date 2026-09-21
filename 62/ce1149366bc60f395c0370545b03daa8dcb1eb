@@ -1,0 +1,24 @@
+packages/workflow/src/credential-domain-restrictions.ts
+  s_0bbd7503e759da::t_da906b00337f90 232-234
+  s_0bbd7503e759da::t_72a878caad320a 260-262
+packages/workflow/test/credential-domain-restrictions.test.ts
+  s_0bbd7503e759da::t_4044440e594517 819,827-836
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_0bbd7503e759da::t_33843776821871 22,29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62ce1149366bc60f395c0370545b03daa8dcb1eb",
+  "prompts": {},
+  "sessions": {
+    "s_0bbd7503e759da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c07ff7-2748-45ac-a0db-939d2d8afbdb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

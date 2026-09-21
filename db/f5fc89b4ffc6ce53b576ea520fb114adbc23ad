@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_6ed9d39c972411::t_61249d09a35234 33-34,36
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_6ed9d39c972411::t_1e1d6429a4b351 2289-2319
+  s_6ed9d39c972411::t_8553caa00abf4a 1624-1628
+  s_6ed9d39c972411::t_6e1cc89413252e 2211
+  s_6ed9d39c972411::t_00e37714961b34 1724-1728
+  s_6ed9d39c972411::t_f9927a457326ea 2442,2456
+  s_6ed9d39c972411::t_8294703223cf97 6-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "dbf5fc89b4ffc6ce53b576ea520fb114adbc23ad",
+  "prompts": {},
+  "sessions": {
+    "s_6ed9d39c972411": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "842fd55d-175d-4852-9a85-7d8aa263ae47",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

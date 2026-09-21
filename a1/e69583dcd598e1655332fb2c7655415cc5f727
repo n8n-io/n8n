@@ -1,0 +1,112 @@
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_ae93d0f1bb3441::t_b39f55a0acedb0 3,17-18,41,55-56,77-82,90-91,93,313-342
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  s_ae93d0f1bb3441::t_be795424ae462c 127-129,169-171,326-333,358
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  s_ae93d0f1bb3441::t_1789eddc1175eb 1-49,53-74
+  s_ae93d0f1bb3441::t_66608746567792 50-52
+packages/cli/src/scheduling/schedule-columns.ts
+  s_ae93d0f1bb3441::t_b0b01bf0f3cf27 2
+packages/@n8n/scheduler/src/core/reconciliation/index.ts
+  s_ae93d0f1bb3441::t_7c8c2f37edc957 1-8
+packages/@n8n/scheduler/src/core/lifecycle/options.ts
+  s_ae93d0f1bb3441::t_e5908e4230d8da 22-24,37-39,68,73
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_ae93d0f1bb3441::t_90a344156513a4 5-6,167
+  s_ae93d0f1bb3441::t_ece03c477bd710 1-4,7-61,63-166,168-184,189,206-335
+  s_ae93d0f1bb3441::t_c89c3e34b1ef34 185-188
+  s_ae93d0f1bb3441::t_f85a8fe1ee4647 62,190-205
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_ae93d0f1bb3441::t_4fa3c872c52c14 3,21,23,46-47,51-54,83-93,99,104
+packages/cli/src/scheduling/__tests__/workflow-scheduled-job-owner.test.ts
+  s_ae93d0f1bb3441::t_b39f55a0acedb0 14
+  s_ae93d0f1bb3441::t_699d642e6f5f3f 33
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_ae93d0f1bb3441::t_f36c7a0e14d7a6 71-74
+  s_ae93d0f1bb3441::t_e5908e4230d8da 70,75,77-87
+packages/@n8n/scheduler/src/core/factory.ts
+  s_ae93d0f1bb3441::t_90a344156513a4 492-500
+  s_ae93d0f1bb3441::t_5efda2a26fa983 10,24-30,84-96,160-162,182,187
+  s_ae93d0f1bb3441::t_03fca9f771f24e 159
+  s_ae93d0f1bb3441::t_6c15390326b90b 569-571
+  s_ae93d0f1bb3441::t_a93e1a7e8190c0 489-491,501-568,572-583,648-657,698
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_ae93d0f1bb3441::t_8cf71f0e5ead58 370
+  s_ae93d0f1bb3441::t_f52888ca424ded 424-427,429-434
+  s_ae93d0f1bb3441::t_66608746567792 337-339,395-397,411-413
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_ae93d0f1bb3441::t_a916fabadcb587 42-44,127-141,164-166,304-309
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_ae93d0f1bb3441::t_6df03e8e5715d0 371-377
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_ae93d0f1bb3441::t_c724fef2748925 2-3,5-63,69,71
+  s_ae93d0f1bb3441::t_8f5dd115cbb9c7 64-68,70
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  s_ae93d0f1bb3441::t_e91e89b755888c 1-33
+packages/@n8n/scheduler/src/core/index.ts
+  s_ae93d0f1bb3441::t_5d695e8a195905 66-79
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_ae93d0f1bb3441::t_b39f55a0acedb0 16,59
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_ae93d0f1bb3441::t_50151a58df2c9c 306-309,312-318
+  s_ae93d0f1bb3441::t_c89c3e34b1ef34 193-198,218-224
+  s_ae93d0f1bb3441::t_c7b98cba9f6ce9 1-192,199,203-217,225-226,230-245,249-268,272-293,295,297-298,300,302-305,310-311,319-344
+  s_ae93d0f1bb3441::t_66608746567792 200-202,227-229,246-248,269-271
+  h_32d8cd6a0d6aad 294,296,299,301
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_ae93d0f1bb3441::t_4fa3c872c52c14 33,101,138
+  s_ae93d0f1bb3441::t_66608746567792 235-237
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_ae93d0f1bb3441::t_66608746567792 52-54
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_ae93d0f1bb3441::t_7fbe27b63e8a58 16,1441-1459
+packages/@n8n/db/src/migrations/common/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_ae93d0f1bb3441::t_66608746567792 199-201
+packages/@n8n/scheduler/src/core/errors.ts
+  s_ae93d0f1bb3441::t_e5908e4230d8da 61-66,72-81,84-98
+  s_ae93d0f1bb3441::t_b9e90cbf1f0875 67-71,82-83
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_ae93d0f1bb3441::t_f60973b6fdb2e0 12-13,82-83
+packages/cli/src/scheduling/workflow-scheduled-job-owner.ts
+  s_ae93d0f1bb3441::t_bc18ff5f7d3b0e 11-12
+  s_ae93d0f1bb3441::t_b0b01bf0f3cf27 6-7,21
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_ae93d0f1bb3441::t_477a6ced3653c4 2,10-11,92,99-108,129,146,162,164,177,179,196,201,218,222,235,253,257,281,296
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_ae93d0f1bb3441::t_ec495870596e3f 40-41,57
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/owner.test.ts
+  s_ae93d0f1bb3441::t_f98b36defd1e05 1-72
+packages/@n8n/scheduler/src/observability/attributes.ts
+  s_ae93d0f1bb3441::t_5d695e8a195905 29-33
+packages/cli/src/scheduling/scheduled-job-owners.ts
+  s_ae93d0f1bb3441::t_4c4217ae92599e 1-11
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_ae93d0f1bb3441::t_97e3aea5b81be8 4,402-405,409,412-418
+packages/cli/test/migration/1787306400000-generalize-scheduled-job-owner.test.ts
+  s_ae93d0f1bb3441::t_66608746567792 160-162
+packages/@n8n/config/test/config.test.ts
+  s_ae93d0f1bb3441::t_affc25d5d6fa6d 488
+packages/@n8n/scheduler/src/core/scheduler.ts
+  s_ae93d0f1bb3441::t_5d695e8a195905 4,54-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a1e69583dcd598e1655332fb2c7655415cc5f727",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ae93d0f1bb3441": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99223e9-ae53-41b4-a199-a83b6c795e8c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

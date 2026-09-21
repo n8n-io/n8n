@@ -1,0 +1,27 @@
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-key-manager.module.test.ts
+  s_55e39bb7fbc194::t_d4fc19bb2a8acc 23,26,29-30,34
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_55e39bb7fbc194::t_70b8a485dbf18d 104
+packages/cli/src/encryption/key-rotation-flag.ts
+  s_55e39bb7fbc194::t_d8328053499129 10-12,15
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_55e39bb7fbc194::t_a98633d6741a12 98
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.test.ts
+  s_55e39bb7fbc194::t_80d576f44d5dff 97-99,101,103-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ac33c7f71477048cfbac360865de37469c8f18c2",
+  "prompts": {},
+  "sessions": {
+    "s_55e39bb7fbc194": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c741a169-812e-45ae-a263-444667344468",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

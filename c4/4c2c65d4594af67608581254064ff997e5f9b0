@@ -1,0 +1,14 @@
+packages/@n8n/engine/docs/adr/ADR-2026-08-28-trigger-settlement-before-execution.md
+  h_8fb27e0cdf6d1e 1,9-12,14-19,23-25,27-28,32,36-37,42-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c44c2c65d4594af67608581254064ff997e5f9b0",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

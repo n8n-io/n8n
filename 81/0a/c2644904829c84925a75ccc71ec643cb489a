@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/handlers/evaluations/evaluations.handler.ts
+  s_279d01fc5e54d2::t_72570c12f26a66 48
+packages/cli/src/evaluation.ee/evaluation-test-run.service.ts
+  s_279d01fc5e54d2::t_37f7517f2fbb2a 24
+packages/cli/src/evaluation.ee/__tests__/evaluation-test-run.service.test.ts
+  s_279d01fc5e54d2::t_20fb27ebc973d0 38,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "810ac2644904829c84925a75ccc71ec643cb489a",
+  "prompts": {},
+  "sessions": {
+    "s_279d01fc5e54d2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f9444598-7f92-4e28-945f-c0e28a0e11f3",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

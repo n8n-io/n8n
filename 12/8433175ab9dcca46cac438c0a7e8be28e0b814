@@ -1,0 +1,11 @@
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 320-321,324,328,332
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 881-882,885,889,893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "128433175ab9dcca46cac438c0a7e8be28e0b814",
+  "prompts": {}
+}

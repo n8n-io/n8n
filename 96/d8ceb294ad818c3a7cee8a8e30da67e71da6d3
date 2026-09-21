@@ -1,0 +1,19 @@
+AGENTS.md
+  s_b370a35485f958::t_5e1a850849237c 44-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "96d8ceb294ad818c3a7cee8a8e30da67e71da6d3",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

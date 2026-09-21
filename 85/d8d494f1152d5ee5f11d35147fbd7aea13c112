@@ -1,0 +1,39 @@
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  s_bac47989227862::t_cea92fbe6e9b8c 69
+  s_bac47989227862::t_81f3f879665c69 70,72,74-75
+  s_2b982a746d2c2a::t_921134053038f6 16,21,36,48,53-55,58-68,71,73,79,84,87
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  s_2b982a746d2c2a::t_e0ca30fd4c0904 296,310-313,316-323
+packages/cli/src/modules/token-exchange/token-exchange.config.ts
+  s_2b982a746d2c2a::t_e0ca30fd4c0904 34
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key.service.test.ts
+  s_2b982a746d2c2a::t_921134053038f6 232,237
+packages/cli/src/modules/token-exchange/__tests__/token-exchange.module.test.ts
+  s_2b982a746d2c2a::t_e0ca30fd4c0904 9,14,20-21
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_2b982a746d2c2a::t_b18493243e5503 35-36,38-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "85d8d494f1152d5ee5f11d35147fbd7aea13c112",
+  "prompts": {},
+  "sessions": {
+    "s_2b982a746d2c2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f641c50-3998-4bf5-a9bf-cb8ed965925e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_bac47989227862": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfe1686f-8d11-417a-bc45-2dd4cb57f5d9",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

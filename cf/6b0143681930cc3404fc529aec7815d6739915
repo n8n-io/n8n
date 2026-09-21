@@ -1,0 +1,25 @@
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  h_5d40c27a8fdfd1 538
+  s_5814610743239a::t_138059162c35a7 540-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "cf6b0143681930cc3404fc529aec7815d6739915",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_5814610743239a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39d4de9e-ec83-446f-876b-bbf5ac0dfb22",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

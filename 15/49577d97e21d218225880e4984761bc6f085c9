@@ -1,0 +1,72 @@
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_44c84d6d02d595::t_f8af5b65501e4f 123-125
+  s_44c84d6d02d595::t_3d5ac590848738 61
+  s_44c84d6d02d595::t_a67429aa374042 16-47
+  s_44c84d6d02d595::t_75b6bd1d447894 186-188
+packages/nodes-base/nodes/Confluence/actions/search/index.ts
+  s_44c84d6d02d595::t_51464870a31f54 4
+  s_44c84d6d02d595::t_8ddd6e398bd186 29-36
+packages/nodes-base/utils/atlassian.ts
+  s_44c84d6d02d595::t_9931a05211e6b4 5,32-34,36-37,55-96,117,131,138-176
+packages/nodes-base/utils/__tests__/atlassian.test.ts
+  s_44c84d6d02d595::t_3207b7d11aebc0 1,10,13
+  s_44c84d6d02d595::t_de21049d431a4c 8,66
+  s_44c84d6d02d595::t_47d7c50c6c7089 293-361,364-461,463-504
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_44c84d6d02d595::t_975789889b2b96 58-69
+packages/nodes-base/credentials/test/JiraSoftwareCloudOAuth2Api.credentials.test.ts
+  s_44c84d6d02d595::t_9f44248f939ed7 81-86
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_44c84d6d02d595::t_a611129bb10ffc 8,13
+  s_44c84d6d02d595::t_c771344d77c1ab 86-120,128
+  s_44c84d6d02d595::t_8fd31dffe3970d 160
+  s_44c84d6d02d595::t_60ed0691e5b6f4 201
+packages/nodes-base/nodes/Confluence/methods/listSearch.ts
+  s_44c84d6d02d595::t_84d918507c2c2c 69-79,82-101
+  s_44c84d6d02d595::t_c32c6ea0f7db5f 8-9,11
+packages/nodes-base/nodes/Confluence/actions/space/index.ts
+  s_44c84d6d02d595::t_0c04297095be7c 5
+  s_44c84d6d02d595::t_f0e84b045751d7 36-43
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_44c84d6d02d595::t_a00bbff9b914b9 79,85
+  s_44c84d6d02d595::t_de21049d431a4c 7,65,289,409
+  s_44c84d6d02d595::t_2ea5c2283d7439 301,421
+  s_44c84d6d02d595::t_59da6caf54af5d 20-21
+  s_44c84d6d02d595::t_ea4b65d6ac7f35 485-486,495-496
+  s_44c84d6d02d595::t_d2f6d8d485217b 231-232,239-272,277-279
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_44c84d6d02d595::t_43ab72b93db346 44-51
+  s_44c84d6d02d595::t_5b29ae457ea42c 4
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_44c84d6d02d595::t_de21049d431a4c 11,32
+packages/nodes-base/nodes/Confluence/test/methods/listSearch.test.ts
+  s_44c84d6d02d595::t_88be04f13bee2a 5-6,8-14
+  s_44c84d6d02d595::t_98d9fb4e970263 2
+  s_44c84d6d02d595::t_83109c095cdcc7 457
+  s_44c84d6d02d595::t_0ac1e0c495e2cd 454-456,458-520
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts
+  s_44c84d6d02d595::t_a55172f961b729 18-29
+packages/nodes-base/credentials/test/AtlassianOAuth2Api.credentials.test.ts
+  s_44c84d6d02d595::t_ec7a905ed6ab83 14-16
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_44c84d6d02d595::t_7bd93d446cb4d4 119-126
+  s_44c84d6d02d595::t_992be6367369be 15
+packages/nodes-base/credentials/test/ConfluenceCloudOAuth2Api.credentials.test.ts
+  s_44c84d6d02d595::t_6f8589d44d417e 118-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1549577d97e21d218225880e4984761bc6f085c9",
+  "prompts": {},
+  "sessions": {
+    "s_44c84d6d02d595": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "664f42f9-3e32-4aeb-9502-528a74aed79f",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,51 @@
+packages/nodes-base/nodes/Confluence/actions/page/bodyEnvelope.ts
+  s_5b8c5abdc7edbe::t_d714d9294a3bdf 50
+  s_5b8c5abdc7edbe::t_d56127fba99ccf 137-142,155-165
+  s_5b8c5abdc7edbe::t_f0a179475bf035 61
+  s_5b8c5abdc7edbe::t_949a0bff4945d7 12,14
+  s_5b8c5abdc7edbe::t_bcab7a8bcdd472 71
+packages/nodes-base/nodes/Confluence/actions/page/update.operation.ts
+  s_5b8c5abdc7edbe::t_44c18b9d3d648b 4
+  s_5b8c5abdc7edbe::t_6648cc6a1c741a 33-38,40-44,46-48,50-54,56
+  s_5b8c5abdc7edbe::t_3b84806e5317cd 79
+  s_5b8c5abdc7edbe::t_70fcf77e0faabf 39,45,49,55,57
+  s_5b8c5abdc7edbe::t_8cc72667e35e75 83,86-89,91,94
+  s_5b8c5abdc7edbe::t_dc21557b1ad5e7 64
+  s_5b8c5abdc7edbe::t_a8dc03c98c00ab 32
+  s_5b8c5abdc7edbe::t_371249f512b32f 75-78,80-82,84,90,92-93
+packages/nodes-base/nodes/Confluence/test/actions/page/append.operation.test.ts
+  s_5b8c5abdc7edbe::t_14d4c4ef266ef5 195-205
+  s_5b8c5abdc7edbe::t_2348749616d4e0 134-143
+  s_5b8c5abdc7edbe::t_411af6d1ab6d8f 108-117
+  s_5b8c5abdc7edbe::t_f3eb30d088e526 206-214
+packages/nodes-base/nodes/Confluence/actions/page/pageWrite.ts
+  s_5b8c5abdc7edbe::t_a2c120d8880ffc 78,82,87,89
+  s_5b8c5abdc7edbe::t_4a424e74506310 64
+  s_5b8c5abdc7edbe::t_95099ec599b083 38-50
+  s_5b8c5abdc7edbe::t_de8b55cb181686 85-86
+  s_5b8c5abdc7edbe::t_6b20143df77603 88
+packages/nodes-base/nodes/Confluence/actions/page/append.operation.ts
+  s_5b8c5abdc7edbe::t_d77ef2d8eb5d5f 77
+packages/nodes-base/nodes/Confluence/test/actions/page/update.operation.test.ts
+  s_5b8c5abdc7edbe::t_a379d4efd618db 240
+  s_5b8c5abdc7edbe::t_919cdc986d9cc4 78,84-88,90-92,154-169
+  s_5b8c5abdc7edbe::t_f607c2052d7e1d 69,75,89,93,95-110,112-130,136-140,142,150-153
+  s_5b8c5abdc7edbe::t_b7dbad4c3b540f 111,131-135,141,143-149
+  s_5b8c5abdc7edbe::t_cdb3ac03cc933a 79-83,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8333093d29f20300a21a4cd43983a8238853e94d",
+  "prompts": {},
+  "sessions": {
+    "s_5b8c5abdc7edbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d677c73-6143-4e48-b5a8-0b9a8953ccc4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

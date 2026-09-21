@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_66b5f43a0aceeb::t_b5c11c6c0b5337 4
+  s_66b5f43a0aceeb::t_8994b989ef0e51 296-298
+  s_66b5f43a0aceeb::t_4928b33f27c3b7 335,345
+  s_66b5f43a0aceeb::t_7f09d42f7a835d 315,342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "a5d42e92533294b51c073c75afbae1fbdce4989a",
+  "prompts": {},
+  "sessions": {
+    "s_66b5f43a0aceeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "912770f3-ffc9-4790-a6ca-25a2dd3e1027",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_6e0e8168b15a08::t_a1625dcbb869ab 62
+  s_6e0e8168b15a08::t_9bbd155dc515cd 50,53,55-61,63-67,69,71-82,91-99,118-119,122
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.test.ts
+  s_6e0e8168b15a08::t_9bbd155dc515cd 82-83,97,115-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6dd48918356c91ced0a9e236c32ec6674e897eef",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

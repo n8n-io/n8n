@@ -1,0 +1,31 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_be6d12de03f718::t_4ede43d3adef9d 5204-5233
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_be6d12de03f718::t_f47d6c5c1b92d6 739-743,751,760-767,775-776,782
+  s_be6d12de03f718::t_ee75c217bcbf90 646-653,655,657-662
+packages/@n8n/workflow-sdk/src/generate-types/schema-coverage.test.ts
+  s_be6d12de03f718::t_2d5d1cdc155c6f 30,47,73-74,93-95,114,121,126-129,133-155,176,178,181,186-191,199,201-202,206-211,218-220
+packages/@n8n/workflow-sdk/src/generate-types/schema-coverage.ts
+  s_be6d12de03f718::t_264eeee63409e2 9-14,32-37,41,45-49,53-54,68-79,91-93,95-96,102-105,112-116,121-126,128-138,155-156,158-159,163-164,167,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "590b2defc239f7999c5484b59f0167b6f94a9b9d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_b04c58447561ba::t_b95e8f2dc631e1 283
+  s_b04c58447561ba::t_40485c7b595c64 310-318,320-323,325-326,354-365,367-371
+  s_b04c58447561ba::t_7f9c151fd17e41 319,366
+packages/cli/test/migration/1789138249047-add-agent-turn-queue.test.ts
+  s_b04c58447561ba::t_76d7895ff5ac7a 44,80-91,103,110,121
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_b04c58447561ba::t_b57bb7257194c8 49
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_495fd8f45af9d9 13,467,469-471,507-510,517-520,535
+  s_b04c58447561ba::t_48453fd4ff35d4 536-537
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_b04c58447561ba::t_d1173be0b228cb 388-394
+packages/frontend/editor-ui/src/features/agents/composables/useAgentExecutionUpdates.ts
+  s_b04c58447561ba::t_6343030eaa98d6 6-7,26,42,45,55,62-64,72
+  s_b04c58447561ba::t_af58d53570cc48 17-19
+  s_b04c58447561ba::t_5660181b730d47 31
+  s_b04c58447561ba::t_20cfab111e700f 49
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_2f7a119e0a514c 273-276,301-304
+  s_b04c58447561ba::t_b2d47da440d586 258-272,277-300,305-307
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_1466215c474f7e 12,85-93,186-189
+  s_b04c58447561ba::t_b4311e8b7f5f1f 109-113
+  s_b04c58447561ba::t_01cafcb1dc12d7 114-131
+  s_b04c58447561ba::t_bdb5f8d5f9d4a2 184-185,192
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_b04c58447561ba::t_34ff81fc715e21 108,224-229,232-233,270,277,757-759,904
+  s_b04c58447561ba::t_c8f395d8fa92b1 110
+  s_b04c58447561ba::t_49bbb9e23d8bf8 221,241,269,276,318,756,762,827,834,907,1031
+  s_b04c58447561ba::t_00f36ed55e0a1e 288
+  s_b04c58447561ba::t_a62f2cf443a3d3 107,760
+  s_b04c58447561ba::t_27ed205202dedd 109,111,222-223,230-231,234-235,761
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_b04c58447561ba::t_c4a106d74e69d7 250
+  s_b04c58447561ba::t_34f357063fbab6 280
+packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
+  s_b04c58447561ba::t_a99f85b6fdd2fc 165
+  s_b04c58447561ba::t_93eca280c09257 30,43,95,98-101,107-110
+packages/@n8n/api-types/src/push/agents.ts
+  s_b04c58447561ba::t_a6ca65d808dc82 9
+  s_b04c58447561ba::t_3892523801fd9c 8
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_b04c58447561ba::t_fbf8ec8e855c3b 201,205-206,209,211,216,220-226
+  s_b04c58447561ba::t_32a3e2b61b7999 210,229
+  s_b04c58447561ba::t_fa1af9087ac3b6 305
+packages/cli/src/modules/agents/__tests__/test-utils/turn-queue.ts
+  s_b04c58447561ba::t_2ee50a0c89a8f1 98-99,101
+packages/@n8n/db/src/migrations/common/1789138249047-AddAgentTurnQueue.ts
+  s_b04c58447561ba::t_906a45e1e2d47d 17-18,67
+  s_b04c58447561ba::t_915353fb2e3f49 13-14,19,55-56,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "644c02b28f59a01c11e276b27c0bc7b637ab253d",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_f9b13e4b7356bc::t_7a791231b44429 23-27,227,231,237,242,244,305-322
+  s_e20e90eb190c8e::t_f68ed53001b781 58,80-81,207,220,250,334,425,466,482
+  s_e20e90eb190c8e::t_cbff76ee9fba4d 229-230,232-236,238,245,280,282-289,299
+  s_e709738dce3464::t_3742295f99ca70 545
+  s_e20e90eb190c8e::t_85bc11c8013d4f 37
+  s_e709738dce3464::t_2eac3d839b2810 323-324
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_b39cdb9e5521d2::t_251d8804a4d87d 196-197
+  s_e20e90eb190c8e::t_30d3872fef7a07 99,104,106-109,113-114,117,119,131,137,141
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e20e90eb190c8e::t_edadce6c2ba936 248-249,332
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_e709738dce3464::t_3742295f99ca70 114,124
+  s_e20e90eb190c8e::t_87834ab3b1832d 110-113,125,128,157
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_e20e90eb190c8e::t_914d264dc91fb7 7-12,70-71,75-76,89-97,104-110,304,317-324,327-331,333,336-340,365,367-368,371-374,377-385
+  s_3908f0cbdbbeb4::t_113bfe0bc5bc36 297,305
+  s_f9b13e4b7356bc::t_3cc1360c446cd1 363-364,366,369-370
+  s_e709738dce3464::t_3742295f99ca70 375-376
+  s_e20e90eb190c8e::t_211bb1bb9badfe 111
+  s_e20e90eb190c8e::t_3a77496702812c 386
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e20e90eb190c8e::t_204d86217b4dbe 19-25,84-85,177-202,231-232
+  s_f9b13e4b7356bc::t_6e30a95ec2f6ca 166
+  s_e709738dce3464::t_3742295f99ca70 229
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_e20e90eb190c8e::t_4e363cd33e2c17 80
+  s_e20e90eb190c8e::t_f44db89c27d364 30-31,90,107,141,202
+  s_b39cdb9e5521d2::t_20e8c8341c708a 149,151-171
+  s_e20e90eb190c8e::t_8b64e120cff919 83,95,97,100,103,120-121,125,130,135-140,142-148,198-201,203,207-208
+  s_b39cdb9e5521d2::t_b9c99a16a71944 150
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_e20e90eb190c8e::t_75c7afba52e44e 15-24,52-55
+  s_f9b13e4b7356bc::t_8fde627a4bc358 12-13
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e20e90eb190c8e::t_40a55801d0911f 260-267,269,274,282-286,291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "304465e43da20c97f666bd2634795084a82cc199",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3908f0cbdbbeb4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5284630a-8b35-4883-9031-fe2e12225b2b",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b39cdb9e5521d2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f0dc68f4-28a6-4981-9ced-f3d9ffe84b68",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e20e90eb190c8e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cab11449-a1b9-417e-80c6-e4100d881074",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e709738dce3464": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "026ea3e9-01fb-48cb-9f02-6495f17bb8ee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f9b13e4b7356bc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b99c7ea6-d927-43d9-9b1c-faa772d6dfb9",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

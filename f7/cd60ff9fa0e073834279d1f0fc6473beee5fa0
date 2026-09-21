@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/assistant/views/SettingsAIView.vue
+  s_d806bc073a556c::t_290a3c702fd63a 44
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d806bc073a556c::t_290a3c702fd63a 5234,5241,5247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f7cd60ff9fa0e073834279d1f0fc6473beee5fa0",
+  "prompts": {},
+  "sessions": {
+    "s_d806bc073a556c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e1e729e-670e-4891-9cfe-1a89eee71421",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

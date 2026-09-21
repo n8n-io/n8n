@@ -1,0 +1,41 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_ecdf2f2961dcf9::t_c11d88c2822289 700,711
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_ecdf2f2961dcf9::t_627a89c05664ed 1158-1159,1161-1162,1165
+  s_ecdf2f2961dcf9::t_f76c9d91b5fafd 96,104-105
+  s_ecdf2f2961dcf9::t_51867c6f82b548 1180,1184,1187
+  s_ecdf2f2961dcf9::t_182d549ac0e801 168-171
+  s_ecdf2f2961dcf9::t_86db973bc47902 1105
+  s_ecdf2f2961dcf9::t_7b5e1740a75b71 1079-1080,1086
+  s_ecdf2f2961dcf9::t_01af0a3f89cb8d 106
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_ecdf2f2961dcf9::t_46be7cbfade4f3 1108-1109
+  s_ecdf2f2961dcf9::t_5028ded73ebd62 57
+  s_ecdf2f2961dcf9::t_e5d38d651d024f 263-268
+  s_ecdf2f2961dcf9::t_5e2429c53836de 1110,1371
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_ecdf2f2961dcf9::t_949a347c56a98c 98-99
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_ecdf2f2961dcf9::t_530c56e68fc578 1863-1866,1874
+  s_ecdf2f2961dcf9::t_60c329a57c7234 1907,1919,1925-1929,1933
+  s_ecdf2f2961dcf9::t_6a417c43b858d8 1706
+  s_ecdf2f2961dcf9::t_274cd21879097f 1746
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_ecdf2f2961dcf9::t_73a01f06314b86 93-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "10dad3fcde02a28f35e481b81e8ad5e018020dee",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

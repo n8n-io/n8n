@@ -1,0 +1,415 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da76d9a372587f::t_a6c8e42b5b1a03 898
+  s_da76d9a372587f::t_1d4ac3cb4cb70c 544
+  s_da76d9a372587f::t_8e7ca50dfe45a4 991-993
+  s_da76d9a372587f::t_d81e200ceadeff 227-228,238
+  s_da76d9a372587f::t_2ae1c92f661391 205
+  s_da76d9a372587f::t_a4a3d3d7c6447a 412,429-431
+  s_da76d9a372587f::t_b57b1c2d63666f 1069
+  s_da76d9a372587f::t_e4da7d8fd375e2 1095-1098
+  s_da76d9a372587f::t_30ef32cc44144d 47
+  s_da76d9a372587f::t_a89ef3f4940bb2 1022
+  s_da76d9a372587f::t_e88c312331054c 200-204
+  s_da76d9a372587f::t_05f2487aaf426f 234
+  s_da76d9a372587f::t_148d1b50bdd640 908,921-923,925,928,938-940
+  s_da76d9a372587f::t_2c6e8fd37d3865 945-947,951,953-956,961-968,970-976,1081
+  s_da76d9a372587f::t_73b9f7e0ca32a5 914-920,924,926-927,929-937
+  s_da76d9a372587f::t_bd81c1893a7e29 977-980,986-987,1080,1082
+  s_da76d9a372587f::t_06cb53d199c02b 910-913
+  s_da76d9a372587f::t_4802e30eab6e9b 909
+  s_da76d9a372587f::t_6a3869cb1ca2ec 948-950
+  s_da76d9a372587f::t_e656d7d3316592 7
+  s_da76d9a372587f::t_070cd66cda8f68 206
+packages/@n8n/api-types/src/agents/types.ts
+  s_da76d9a372587f::t_61e390c133f7cc 6
+  s_da76d9a372587f::t_fc860e87cc2f43 1
+  s_da76d9a372587f::t_2b1d7ce0eff871 8-9,15-18
+  s_da76d9a372587f::t_d391efccc64264 10-14,19
+  s_dc1bcc8544e6b1::t_2552ad74460094 349-351
+  s_dc1bcc8544e6b1::t_5a44989c40aa2d 346-348
+packages/testing/playwright/tests/e2e/agents/agent-sessions.spec.ts
+  s_da76d9a372587f::t_147608d8863ac8 6
+  s_da76d9a372587f::t_e8c11cfc938c4d 36-37,39
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/workflowToolInputFields.test.ts
+  s_da76d9a372587f::t_288ddd622192c0 2
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_da76d9a372587f::t_172dc4f9b1356f 293
+  s_da76d9a372587f::t_3fd450e3d9fdca 560
+  s_da76d9a372587f::t_c2b41da74e27a5 575
+  s_da76d9a372587f::t_ed4a3571d76252 595-602
+  s_da76d9a372587f::t_4d6db95e55d1f8 539
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_da76d9a372587f::t_5eb7960325f57f 309-316,323,330,337-338
+  s_da76d9a372587f::t_34a1eb23d6fdba 203,214,221,231,246-259,262
+  s_da76d9a372587f::t_83d016bc725aee 282-285
+  s_da76d9a372587f::t_a18b06de8c1ea5 84-93,105
+  s_da76d9a372587f::t_7a9ff7a08a35f9 317-319
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_da76d9a372587f::t_50d09035e9233e 625-627,632-653
+  s_da76d9a372587f::t_6f437d0175a9e8 8
+  s_da76d9a372587f::t_d383d44c237211 628-629,631
+  s_da76d9a372587f::t_2d42c543319a7d 630
+packages/cli/src/modules/agents/attachable-workflows.service.ts
+  s_da76d9a372587f::t_aea1723ae7f7b1 1,16,54-57,63
+  s_da76d9a372587f::t_e34e2dd00f3a99 11-12
+  s_da76d9a372587f::t_a2a1adadaea4c3 62
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_da76d9a372587f::t_8312a9ff46cc2f 189
+  s_da76d9a372587f::t_120e0a3e723076 20
+  s_da76d9a372587f::t_c1d12bacddaf9f 652-653
+  s_da76d9a372587f::t_3f66010d326000 218,222,232-233,235-242
+  s_da76d9a372587f::t_3a8929ba0e091b 589-590
+  s_da76d9a372587f::t_c92f9f50901b0c 635-636
+  s_da76d9a372587f::t_c3118796658606 428-429,440-441
+  s_da76d9a372587f::t_cb092b8a986198 201-203
+  s_da76d9a372587f::t_9720d650e43dd7 21
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_da76d9a372587f::t_60b4ce3533be73 38-40
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_da76d9a372587f::t_507c8bafd74982 29,34-35,42-49
+  s_da76d9a372587f::t_cd4d73dc723392 36
+  s_da76d9a372587f::t_c38b2e834a4f72 161-163,168-173,175
+  s_da76d9a372587f::t_437c6c01a581b1 12,17
+  s_da76d9a372587f::t_88f95d6dfc9c7f 164-167,174
+  s_da76d9a372587f::t_75f6efb6125998 352,355-366,372-375,377-386,387
+  s_da76d9a372587f::t_cab294e5a87530 50-52,156-160
+  s_da76d9a372587f::t_bcaf7c54ccb3d6 353,367,370
+  s_da76d9a372587f::t_abef19ba9a8e1e 368
+  s_da76d9a372587f::t_e440cdcd1c9e10 369,371
+  s_da76d9a372587f::t_34386c50fda7f0 354
+  s_da76d9a372587f::t_a64374c2836df3 376
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_da76d9a372587f::t_670f8cb32dae6b 53-55
+packages/cli/src/modules/agents/tools/workflow-tool-unavailable-error.ts
+  s_da76d9a372587f::t_f0e73a247b1ed7 1-4,8-13,15-19
+  s_da76d9a372587f::t_07fe107d54a7e2 5-7,14
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_da76d9a372587f::t_5be69c2922e09e 14
+  s_da76d9a372587f::t_46720e36ad437c 986-992
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_da76d9a372587f::t_06b746bb0e15d2 4
+  s_da76d9a372587f::t_6aae6e20e9266c 55
+  s_da76d9a372587f::t_d0584820b1095c 126-130,134-136
+  s_da76d9a372587f::t_72525e8a8667d6 16-19,28-29,34
+  s_da76d9a372587f::t_de922077e36b51 75-79,83-84,87
+  s_da76d9a372587f::t_a780103812345f 35
+  s_da76d9a372587f::t_22e2e12373714c 137
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_da76d9a372587f::t_754f545cd2b43c 7,9
+  s_da76d9a372587f::t_f7d4a656c70a28 79
+  s_da76d9a372587f::t_cd6a41732d09fb 57
+  s_da76d9a372587f::t_d4291d5ea4d5e5 102-104
+  s_da76d9a372587f::t_53d664c00fd52a 8
+packages/frontend/editor-ui/src/features/agents/utils/validationIssues.ts
+  s_da76d9a372587f::t_63adf827428fd1 1-9
+  s_dc1bcc8544e6b1::t_27842b10c59d3e 10-14
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_da76d9a372587f::t_7e504e9ed17060 1031-1057
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_da76d9a372587f::t_7fa484744ee74b 276
+  s_dc1bcc8544e6b1::t_3b5bca29cc34c8 310-311
+  s_dc1bcc8544e6b1::t_e6f7397425fd41 29
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_da76d9a372587f::t_59d1e2b91fa95b 34-36,38
+  s_da76d9a372587f::t_340bdc073975a1 98
+  s_da76d9a372587f::t_0c88c4147b3d7c 111
+  s_da76d9a372587f::t_efdcfbb2bb59e8 157
+  s_da76d9a372587f::t_8e5a560a0ce0ea 260
+  s_da76d9a372587f::t_d2220f3d8ce31c 73-75,82,88
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_da76d9a372587f::t_e68b147bc34f99 103,109,110-111
+  s_da76d9a372587f::t_3f29ebcafbfdf0 7
+  s_da76d9a372587f::t_2395141190cd6b 100-102,104-107
+  s_da76d9a372587f::t_e4670a67708d6d 108
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_da76d9a372587f::t_4cbe39f85fbecf 154-158,160-163
+  s_da76d9a372587f::t_fd0c4996709391 150-151,159
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_da76d9a372587f::t_6e180e53eee2cd 88-89
+  s_da76d9a372587f::t_d438338a9b2fe2 46,50-52,54-55,57,64,66
+  s_da76d9a372587f::t_03a521441ab812 170
+  s_da76d9a372587f::t_58933c239ba7ca 19-20,22
+  s_da76d9a372587f::t_6c3b1faf6580ca 146
+  s_da76d9a372587f::t_e7748a292de501 73-74
+  s_da76d9a372587f::t_e0b80f3d3e82a3 123,129
+  s_da76d9a372587f::t_671e48aca51796 107
+  s_da76d9a372587f::t_bf032d39b2edc7 184
+  s_da76d9a372587f::t_dba5cc7614d14a 12,53,65,97,122,128
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_da76d9a372587f::t_ab751d4cce8b49 536-539,549-578,580-606
+  s_da76d9a372587f::t_e59598b43ea735 21-22
+  s_da76d9a372587f::t_ef8382a3a95543 540-543,547-548
+  s_da76d9a372587f::t_3f9fa817d76698 579
+  s_da76d9a372587f::t_a0d8d30299ca95 130,146,159
+  s_da76d9a372587f::t_45973642c4e100 544-546
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_da76d9a372587f::t_fc96d375d15b9e 341-342
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_da76d9a372587f::t_13fec0ef9912d3 1250-1289
+  s_da76d9a372587f::t_7b032bcad89660 29-37
+  s_da76d9a372587f::t_868bcdb4f88894 1181-1182,1189,1200-1204
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_da76d9a372587f::t_7c9f51d7e97f7e 659-668
+  s_da76d9a372587f::t_e287378b7f6813 38,42
+  s_da76d9a372587f::t_d071cafa74cd60 857-895,899-905,907-909,911-924
+  s_da76d9a372587f::t_b0ddf11fcb3a45 26-30
+  s_da76d9a372587f::t_887611367ec171 279
+  s_da76d9a372587f::t_2a3fcdca1f86e8 615-624
+  s_da76d9a372587f::t_ce8c809fb43182 46
+  s_da76d9a372587f::t_6d22a80a05bab7 896-898,906,910
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_da76d9a372587f::t_b4c356efe7857f 346,348-356
+  s_da76d9a372587f::t_79151bc883ceb0 68,78
+  s_da76d9a372587f::t_acdca112c45301 347
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_da76d9a372587f::t_b7d37c761545ab 8072
+  s_da76d9a372587f::t_cfe44ad226ff94 7685
+  s_da76d9a372587f::t_22a227a09430c0 7670
+  s_da76d9a372587f::t_0a79d683097c03 7691
+  s_da76d9a372587f::t_cd2ed2c2c7753d 7692
+  s_da76d9a372587f::t_1e120f27063582 7696-7699
+  s_da76d9a372587f::t_e0575155d78005 7700
+  s_da76d9a372587f::t_435748786e98bb 7669,7684,7689,8071
+  s_dc1bcc8544e6b1::t_fb63fbb13b70af 7629-7631
+  s_dc1bcc8544e6b1::t_1db96471df061c 7632
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_da76d9a372587f::t_d696b50ff1c057 605,607-610,611-612
+  s_da76d9a372587f::t_3931e7d3e62367 294
+  s_da76d9a372587f::t_1f2ccae978eca1 87
+  s_da76d9a372587f::t_c960862a026b1e 192-194,196-203
+  s_da76d9a372587f::t_cd0351f549e346 495,518
+  s_da76d9a372587f::t_f03186f2c2083a 255,260
+  s_da76d9a372587f::t_13d1059d4fd830 329
+  s_da76d9a372587f::t_bdef0bae7d7fd4 309-310,316-320,324,328,330-332,339-342,357-360,370,373-374,381-384,393
+  s_da76d9a372587f::t_605744eebb60f0 450,456,466
+  s_da76d9a372587f::t_dbf00f4b95a429 371-372
+  s_da76d9a372587f::t_fe15063166c096 606
+  s_da76d9a372587f::t_ee7a211ca109c1 494
+  s_da76d9a372587f::t_7687f3d16f44b3 188-191
+  s_da76d9a372587f::t_b360cdc3e68db0 589
+  s_da76d9a372587f::t_4e430688533d7e 549
+  s_da76d9a372587f::t_b54603832d1be4 720-722,737-740,754-768
+  s_da76d9a372587f::t_d804ad5cb533b8 195
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_da76d9a372587f::t_f5d67cfcd71bb3 506-513
+  s_da76d9a372587f::t_152994890317b5 152-153,158-159
+  s_da76d9a372587f::t_d381535d23b5ef 407,439
+  s_da76d9a372587f::t_4f24b928f2e4cc 203-219
+  s_da76d9a372587f::t_3f2382cfc3ac88 620,631
+  s_da76d9a372587f::t_8ec1f5a4e0cc48 665
+  s_da76d9a372587f::t_76669287638a57 663,666-667,675
+  s_da76d9a372587f::t_5aefe5bdc769f4 528-530,532-533
+  s_da76d9a372587f::t_8a6819460aeb56 31
+  s_da76d9a372587f::t_c1f031b99f0531 392
+  s_da76d9a372587f::t_7db60b3fcf2a8f 527,531,535-554,556-558,560
+  s_da76d9a372587f::t_d86bcc974b9cc9 555
+  s_da76d9a372587f::t_3860efd18bf445 671
+  s_da76d9a372587f::t_e363aa8eafb282 154-157
+  s_da76d9a372587f::t_fc4ea665a29221 380-384
+  s_da76d9a372587f::t_35a5c0e9784a4c 464-468
+  s_da76d9a372587f::t_442ed5d232a655 56
+  s_da76d9a372587f::t_e054de97c060c3 43
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.utils.ts
+  s_da76d9a372587f::t_9f67410a24a60e 46-47
+  s_da76d9a372587f::t_78181bc910bd18 64-65
+  s_da76d9a372587f::t_74a620826d7482 24-25
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_da76d9a372587f::t_64c14fe4618310 18,26,28,31-33,35,40,42-45,47,65,97,107-108,112,118-120,125,187,192-207,243-246,252-255
+  s_da76d9a372587f::t_0231fe5d269e82 292-297,325,335,345,355,366,376
+  s_da76d9a372587f::t_7667255cb9b239 328-330
+  s_da76d9a372587f::t_0a839e9386e0ff 12
+  s_da76d9a372587f::t_663e8fa26a787c 210-236
+  s_da76d9a372587f::t_9afb2e16603a18 96
+  s_da76d9a372587f::t_246d86fa132319 153,183,290
+  s_da76d9a372587f::t_8fb67bcfc51258 3
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_da76d9a372587f::t_bd13c7218bfb91 136-137
+  s_da76d9a372587f::t_f6bf3a35537796 135
+  s_da76d9a372587f::t_f201a134d48d7c 2
+  s_da76d9a372587f::t_3e0771d479a285 1
+  s_da76d9a372587f::t_cb5f39dd5f3bc9 134
+  s_dc1bcc8544e6b1::t_67bbc1f2d3aa8d 51-53
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_da76d9a372587f::t_cacf8c7ff6dacb 1366
+  s_da76d9a372587f::t_c2539dd818a658 1365
+  s_da76d9a372587f::t_a60f8146fda8e5 34
+  s_da76d9a372587f::t_6ae54a765b1426 1364
+  s_dc1bcc8544e6b1::t_93e4f094e46b44 638-640,653-662,666-715
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 663-665
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_da76d9a372587f::t_2626976e98579e 678-680
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_da76d9a372587f::t_4541ad8f65bfcf 146-155
+  s_da76d9a372587f::t_a8ae9e7391945f 375-378
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_da76d9a372587f::t_74c1c6f17a43b4 702-708
+  s_da76d9a372587f::t_95544df9133950 74
+  s_da76d9a372587f::t_1845ac4a7df3ee 736-738
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_da76d9a372587f::t_a0c7b24b1ffe5a 497-499
+  s_da76d9a372587f::t_d76a66fcab6725 66
+  s_da76d9a372587f::t_547d6dd809e9ba 481-483
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_da76d9a372587f::t_6bcdb2a8a31474 70-71
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_da76d9a372587f::t_ad74e5477be54f 1368
+  s_da76d9a372587f::t_066d3d61f9904e 1375-1379,1381-1382
+  s_da76d9a372587f::t_e059c09d53e76d 1380
+  s_dc1bcc8544e6b1::t_d12203df4bd438 2402,2421,2444-2445,2452
+  s_dc1bcc8544e6b1::t_e6acf2e61a85ae 2479,2492-2554
+  s_dc1bcc8544e6b1::t_ef886d0ecf3a35 2555-2556
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_da76d9a372587f::t_b128c2bd698ac1 572-588
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_da76d9a372587f::t_f3938336311216 245
+  s_da76d9a372587f::t_41946abba16c8b 244,246-248
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_da76d9a372587f::t_b058f0c280129d 49
+  s_da76d9a372587f::t_6d10589be4db1d 7-8,18-19
+  s_da76d9a372587f::t_da86f134cb841e 46-48,52
+packages/frontend/editor-ui/src/features/agents/utils/workflowToolTriggers.ts
+  s_da76d9a372587f::t_0582aeae3699fe 1-13
+packages/cli/src/modules/agents/agent-credential-index.listener.ts
+  s_8cd1a0d19700c3::t_7f6f044995ed42 7-8,10-12,14-19,21-24,26-29
+packages/cli/src/modules/agents/__tests__/agent-credential-index.service.test.ts
+  s_8cd1a0d19700c3::t_896e30117a05c3 46-53,56-61
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_8cd1a0d19700c3::t_8329b4227c5030 557
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_dc1bcc8544e6b1::t_43859aa105e8fc 5,14-22
+  s_dc1bcc8544e6b1::t_9bcb187809e111 120,124-135
+  s_dc1bcc8544e6b1::t_c6de4b983f19d6 6
+  s_dc1bcc8544e6b1::t_157365f15eaa81 227-229
+  s_dc1bcc8544e6b1::t_4f2f91a8681dc1 386
+  s_dc1bcc8544e6b1::t_b37b20b6c4f833 139
+  s_dc1bcc8544e6b1::t_925011cc943f8a 165,167-168
+  s_dc1bcc8544e6b1::t_9a7ed3eaeadab6 419
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 478,486-488,537-539
+  s_dc1bcc8544e6b1::t_6f17cbec34f72c 511-535,550
+  s_dc1bcc8544e6b1::t_41df4978d9097b 544
+  s_dc1bcc8544e6b1::t_2591e5659dbbf2 207-209
+  s_dc1bcc8544e6b1::t_d695bcaea87978 255-257
+  s_dc1bcc8544e6b1::t_43f760535039c3 462-477,479-485,489-507,510,536,540-543,545-549
+  s_dc1bcc8544e6b1::t_7b2452e1cd7a32 136
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_dc1bcc8544e6b1::t_8c85bc5c6b438b 36,46-55
+  s_dc1bcc8544e6b1::t_ab935f2a9ed39b 2
+  s_dc1bcc8544e6b1::t_ead855c723e0f1 56-58
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_dc1bcc8544e6b1::t_d0a147b24ddf7b 761-768
+  s_dc1bcc8544e6b1::t_db5e45ec668439 22
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_dc1bcc8544e6b1::t_bcc582a584766c 1562-1566,1580-1584
+  s_dc1bcc8544e6b1::t_55f95d2a6d0e4f 173-178
+  s_dc1bcc8544e6b1::t_5ad043867e22e2 774,778-782,790-802,815
+  s_dc1bcc8544e6b1::t_4b299002dc09c5 764
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_dc1bcc8544e6b1::t_840ab01ea77af3 26
+  s_dc1bcc8544e6b1::t_dfb1b82c709305 30
+  s_dc1bcc8544e6b1::t_01e0ea7e2442ae 5-6,12
+  s_dc1bcc8544e6b1::t_668d62249e0c2c 49
+  s_dc1bcc8544e6b1::t_7a87274e2f183f 154-161
+  s_dc1bcc8544e6b1::t_2512b86b535148 264-305,308,312,315-316,319-321
+  s_dc1bcc8544e6b1::t_089aab9d82f43e 112-113,122
+  s_dc1bcc8544e6b1::t_49a2e864df195c 306-307,309-311,313-314,317-318
+  s_dc1bcc8544e6b1::t_82912dcb1e6964 7
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_dc1bcc8544e6b1::t_ad7ca8b2fa53e9 129-131
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_dc1bcc8544e6b1::t_fada4324ce7249 3,18
+  s_dc1bcc8544e6b1::t_35b7b4791b3b5b 76,81,86,90-92
+  s_dc1bcc8544e6b1::t_76afef2d3d102a 2,7-14,19,22-23,35-37,51-52
+  s_dc1bcc8544e6b1::t_f6665981e3f3dd 77-80,82-85,87-89
+  s_dc1bcc8544e6b1::t_ad4ca7ac82dd1d 121-133
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 2029-2032
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_dc1bcc8544e6b1::t_617fcae6782014 10
+  s_dc1bcc8544e6b1::t_215810fed83fa8 340,346-358
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_dc1bcc8544e6b1::t_3698ca6e3613c6 335-337
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_dc1bcc8544e6b1::t_cc5d0bb7cafa5d 48
+packages/@n8n/api-types/src/agents/dto.ts
+  s_dc1bcc8544e6b1::t_aa5cb041de9130 284-285
+packages/cli/src/modules/agents/agent-publish-dependencies.error.ts
+  s_dc1bcc8544e6b1::t_25a04511e61784 1-15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentConfirmationModal.test.ts
+  s_dc1bcc8544e6b1::t_7ab702513df799 1-21,24-77
+  s_dc1bcc8544e6b1::t_905643198f1d39 22-23
+packages/frontend/editor-ui/src/app/components/PublicationIndicator.vue
+  s_dc1bcc8544e6b1::t_ff88b509a15680 1-52
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_dc1bcc8544e6b1::t_e7095993c1cc96 1004,1024,1031,1040-1091
+  s_dc1bcc8544e6b1::t_82d5df5df44a18 963
+  s_dc1bcc8544e6b1::t_982007db730652 1092
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_dc1bcc8544e6b1::t_606fd32d31db64 2,8-14
+  s_dc1bcc8544e6b1::t_c056635f721bbc 66
+  s_dc1bcc8544e6b1::t_f1dcaabeeea1bc 42,74-80,110
+  s_dc1bcc8544e6b1::t_5df9245e3f44a1 3,5,19-34,49-65,67-69,81-109,111
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfirmationModal.ts
+  s_dc1bcc8544e6b1::t_4b882fd3f8fee8 8,13-16,25-27,29
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_dc1bcc8544e6b1::t_925d04b70eb10d 208,210,212
+  s_dc1bcc8544e6b1::t_bd066cbbc0096c 16
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_dc1bcc8544e6b1::t_06605c975ec8ac 1009
+  s_dc1bcc8544e6b1::t_dfd6d123b5d778 89
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_dc1bcc8544e6b1::t_955b7a292ba876 240-242
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_dc1bcc8544e6b1::t_05a50ff588a9fc 1001
+  s_dc1bcc8544e6b1::t_60f191cc75443d 1015-1022
+  s_dc1bcc8544e6b1::t_99a332f2a5880e 165-166,183-184
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 975-981
+  s_dc1bcc8544e6b1::t_8b0ebedbbd29bb 147
+  s_dc1bcc8544e6b1::t_1c10f66ae7d393 958-959,971-974,983-1000,1002-1007,1009-1014,1023-1032,1034-1061
+  s_dc1bcc8544e6b1::t_1d2fc0632424cb 1033
+  s_dc1bcc8544e6b1::t_8f5006b0fa6d91 1008
+  s_dc1bcc8544e6b1::t_7898f6bb045a73 3,13
+  s_dc1bcc8544e6b1::t_e01307467f6a2b 960-970,982
+  s_dc1bcc8544e6b1::t_f9bef28556fcd8 120-121
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_dc1bcc8544e6b1::t_d99a2fee24c246 10
+  s_dc1bcc8544e6b1::t_fa22175a73b4a7 60-65
+packages/cli/src/events/maps/relay.event-map.ts
+  s_dc1bcc8544e6b1::t_acc4b909fe9edb 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "db0849141c7be695d2f414b1a8a1e580b50ee7b7",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

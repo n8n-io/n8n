@@ -1,0 +1,137 @@
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 79-84
+packages/@n8n/cli/src/index.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 35-41,111-114,116-117
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_aeecfe178a9b3d::t_b805497a554994 1-11,16-22,25-32,35-36,38-65,67,71-72,76,79
+  s_41061fdec7ba5e::t_42b326398e51e7 12,23-24,33-34
+  s_7562978115634d::t_8deb080811fa6b 13-15
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_c49a2c9eccdc63::t_721c3a134620fd 23-28
+packages/cli/src/modules/git-connections.ee/git-connections.module.ts
+  s_aeecfe178a9b3d::t_a4451ec3b56d95 1-18
+  ai_agent 23-24
+packages/@n8n/permissions/src/scope-information.ts
+  s_c49a2c9eccdc63::t_c00d5840547114 164
+packages/@n8n/cli/src/client.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 263-293
+  s_677c6aba5d38ab::t_6e73ac1ff39998 294-298,300-305
+  s_677c6aba5d38ab::t_bd57d36932a398 299
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 52-54,58-60,80,82
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_7562978115634d::t_38b110692dc811 1,5-7,12,16-17,22-23,26-29,51-56,58-59,63-68,70-72,74,82-211,371,223,231,233,240,247,252,255,262,265,270,273,278,281,288,294,296,302,305,307,310,313,320,326,330,333,339,343,346,352,356,360,364,366
+  s_677c6aba5d38ab::t_0abc180b57eddb 3,18,38,43-50
+  s_677c6aba5d38ab::t_3edc8e2bc282d2 13,15
+  s_7562978115634d::t_166d5d75abdc5c 39-42,57,60-62,69
+  s_7562978115634d::t_d37e3f61fb9dfc 75-80
+  s_7562978115634d::t_bc3301678c95a7 81
+  s_677c6aba5d38ab::t_b50b2d87e43f06 222,287,359,369-370
+packages/@n8n/permissions/src/constants.ee.ts
+  s_c49a2c9eccdc63::t_9a343eef7f0c10 38
+  s_c49a2c9eccdc63::t_7099ab71df13a2 113
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_c49a2c9eccdc63::t_09c2be5278355f 69-74
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_aeecfe178a9b3d::t_e8d218d4a78e36 7,10-11,13-14,17,19,21,24-25,33,35,38-40,42-43,46-66,69-72,80,91,96,98,102-103,117-119,123-125,203-210,255-308,316-338,170-172,176,179-180,186-187,193-195,201-202
+  s_677c6aba5d38ab::t_f6d54091595311 12,23,32,34,44-45
+  s_086a0479eaeb4e::t_0aea6e7976731c 67
+  s_9c782a75089598::t_a469b35443f67e 68
+  s_cde07e4490f40c::t_a05a4961f6826a 73-79,85-86,88-90,92-95,97,99,101,105-106,108,115-116,120,122,126,128
+  s_7562978115634d::t_51bcbad1f893a9 81-84,87,100
+  s_c99dd4ad746340::t_593315fe7ec5ee 110-114,200
+  s_7562978115634d::t_3e43ec157a957e 121,127
+  s_677c6aba5d38ab::t_ae3e69b4103d98 211-254,169
+  s_7562978115634d::t_705e7100060996 309-315
+packages/@n8n/api-types/src/dto/index.ts
+  s_aeecfe178a9b3d::t_c9994138f82526 100,115-121,123-125,362,370,108-114,164,168
+  s_677c6aba5d38ab::t_1bff40479a7636 104,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "339d4922cde3fb9cd2758da5cb45d28059e068c0",
+  "prompts": {},
+  "sessions": {
+    "s_086a0479eaeb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1542716d-5651-44c2-8497-002755dfa5e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_41061fdec7ba5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61f1414e-b826-4947-a27e-5fa60f13739f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_677c6aba5d38ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65836050-cd82-42db-a51e-69a4641dabf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_9c782a75089598": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e00744d1-d8d4-4c51-afc6-6871d15ae4d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c49a2c9eccdc63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4438d6f2-9586-4cae-a94e-42a967f048af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c99dd4ad746340": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "573dbfcf-6518-4e1d-b9a1-0978f01bfbd9",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cde07e4490f40c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eeea650-8cd3-4efb-9b4c-d9f9d39dcfc1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ce3ad51e58ece2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3c1f968-40f9-4473-b4dc-7a46936822c1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

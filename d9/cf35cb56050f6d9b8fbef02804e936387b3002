@@ -1,0 +1,27 @@
+scripts/inspect-activity-log.mjs
+  s_f2ecf78efc7a31::t_aac6c4b31fd998 72-74,94-103,133-135,146-151,366-368
+  s_f2ecf78efc7a31::t_465e875b15e8a9 277
+  s_f2ecf78efc7a31::t_935e0ae50216d0 198-202,278-280,353-358
+  s_f2ecf78efc7a31::t_173fcbae8d0bc2 1-71,75-93,104-132,136-145,152-166,172-197,203-274,281-352,359-365,369-372
+  s_f2ecf78efc7a31::t_0b0c8224ba20d6 167-171,275-276
+package.json
+  s_f2ecf78efc7a31::t_384eb9b5a69b80 69
+AGENTS.md
+  s_f2ecf78efc7a31::t_aac6c4b31fd998 97-98,117-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9cf35cb56050f6d9b8fbef02804e936387b3002",
+  "prompts": {},
+  "sessions": {
+    "s_f2ecf78efc7a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "571634ba-8cae-4e9a-a244-c914fd959e23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

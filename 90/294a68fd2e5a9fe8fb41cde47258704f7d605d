@@ -1,0 +1,33 @@
+packages/nodes-base/utils/microsoft/transport.ts
+  s_bad2f3733540aa::t_0edd6e9c464127 225-232
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/create.operation.ts
+  s_bad2f3733540aa::t_1c005d30fb7e6a 138-140,150
+  s_bad2f3733540aa::t_fdb6493affbd3f 182,190,194
+  s_bad2f3733540aa::t_7749db2864fed7 111-113
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.clamp.test.ts
+  s_bad2f3733540aa::t_bc971aff08a576 43-52
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/getAll.operation.ts
+  s_bad2f3733540aa::t_d56a1014f4ca88 9-11
+  s_bad2f3733540aa::t_63877845ce7f88 35-40,43-46
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/router.ts
+  s_bad2f3733540aa::t_90ed8824ddbb20 13,15,17,20,24-41,48
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipalStrippedOperation.test.ts
+  s_bad2f3733540aa::t_73be9e2f0bb0a7 91-98,100-101,103-104,106-112
+  s_bad2f3733540aa::t_ad4f7434b1fbdc 1-90,99,102,105,113-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "90294a68fd2e5a9fe8fb41cde47258704f7d605d",
+  "prompts": {},
+  "sessions": {
+    "s_bad2f3733540aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d766035d-2f59-434c-8dd5-970b6b2e2c45",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

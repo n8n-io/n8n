@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_41df6966a3c9ce::t_9caf3e064baced 9
+  s_41df6966a3c9ce::t_8bb2acebd73590 377-422
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_41df6966a3c9ce::t_47e0634fe0a161 163-172
+  s_41df6966a3c9ce::t_3a0cba1cd449f7 212-222
+  s_41df6966a3c9ce::t_cfa57c755ee7ed 3,185,201
+  s_41df6966a3c9ce::t_ff162bae93d1e0 211
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  s_41df6966a3c9ce::t_b80bd07765b879 87-88,91
+  s_41df6966a3c9ce::t_11f2314e0a2301 696-719
+  s_41df6966a3c9ce::t_47b8162aebf996 67-68
+  s_41df6966a3c9ce::t_e922b29df5f5f3 841-843,845-856
+  s_41df6966a3c9ce::t_9a65a2d06fdab5 844
+  s_41df6966a3c9ce::t_e7a15475326959 677-695
+  s_41df6966a3c9ce::t_6b09fde9064375 607-608,610-614
+  s_41df6966a3c9ce::t_3e316226852a06 10
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_41df6966a3c9ce::t_990fa7b31e9df8 43
+  s_41df6966a3c9ce::t_2b7d9fc7f11160 534-535
+  s_41df6966a3c9ce::t_0319d63df7f2f3 57-60
+  s_41df6966a3c9ce::t_fcb4e0d65e4b1e 386,389
+  s_41df6966a3c9ce::t_7600ac2f76fc97 636
+  s_41df6966a3c9ce::t_3a969281ac39b5 487-488,495,498-501,509-510,515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2b2f345ef91ef155c56ca01da953030c6e69296c",
+  "prompts": {},
+  "sessions": {
+    "s_41df6966a3c9ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "993ad4b4-b06f-4d08-b0a7-4c7de28ec904",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

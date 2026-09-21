@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Confluence/actions/attachment/delete.operation.ts
+  s_208a7c96834666::t_a919c3cf36ceb3 1-16,18-31,34-39,42
+  s_208a7c96834666::t_d5b74d8f495293 32-33,40-41
+  s_208a7c96834666::t_b9278d1ee86a8e 17
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_208a7c96834666::t_fa1f9aaf7ffa67 3,6
+  s_208a7c96834666::t_b8c75355292364 33
+  s_208a7c96834666::t_d6272202c6fbbb 23
+  s_208a7c96834666::t_5afdecda3af723 20
+  s_208a7c96834666::t_342e0bae8eb337 21-22,24-25,36
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_208a7c96834666::t_fb9cdb07dca3d6 35-37
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_208a7c96834666::t_7401f1cfd5b5cb 68,80-82
+  s_208a7c96834666::t_3f7d8b8529b1c6 69-79,83-84
+packages/nodes-base/nodes/Confluence/test/actions/attachment/delete.operation.test.ts
+  s_208a7c96834666::t_f2672b4998985d 36,43
+  s_208a7c96834666::t_6ac3fd7c7802ee 1,5
+  s_208a7c96834666::t_8eb0330782196b 2-4,6-35,37-42,44-56
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_208a7c96834666::t_4c8f60b2dba27c 27,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bff1aed2e0b56332c5abd8a8ec36d0362df38c75",
+  "prompts": {},
+  "sessions": {
+    "s_208a7c96834666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9996a3c5-7637-487a-99bb-db72780d34e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

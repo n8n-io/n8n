@@ -1,0 +1,45 @@
+packages/@n8n/api-types/src/dto/user/confirm-email-change-request.dto.ts
+  s_d511e0fdef37cd::t_25a09e916c0759 5
+packages/@n8n/api-types/src/dto/user/__tests__/resolve-change-email-token-query.dto.test.ts
+  s_d511e0fdef37cd::t_cb53e7ce73a9d8 1-43
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_c237911cfeb22f::t_70ed9b641a13dd 94-114
+packages/@n8n/api-types/src/dto/user/resolve-change-email-token-query.dto.ts
+  s_d511e0fdef37cd::t_d365368d94c877 5
+packages/@n8n/api-types/src/dto/user/__tests__/confirm-email-change-request.dto.test.ts
+  s_d511e0fdef37cd::t_a6b69e4a773de7 1-43
+packages/cli/src/controllers/change-email.controller.ts
+  s_c237911cfeb22f::t_7f358e7efca3af 182-186
+packages/cli/test/integration/user.repository.test.ts
+  s_c237911cfeb22f::t_42ea9e6642a118 3
+  s_c237911cfeb22f::t_cab930b1b2fc2d 204-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c4612a8a58bbfff40bc6dd276d8aa9dfbfdaa634",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c237911cfeb22f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4583c61-9411-46bd-b3f0-a3556ef59817",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_d511e0fdef37cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62141e12-53d0-40c6-8300-6922038c8704",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

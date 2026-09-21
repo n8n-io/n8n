@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/twilio/voice-adapter.test.ts
+  s_766636dc171bdc::t_e8bea6d8234d2b 336-355,357-363,365-421
+  s_766636dc171bdc::t_7fea2ff2f622a2 356
+  s_766636dc171bdc::t_8dbf143231808d 364
+packages/cli/src/modules/agents/integrations/platforms/twilio-voice-adapter.ts
+  s_766636dc171bdc::t_3f7cdea1f2e1a2 43-45,579
+  s_766636dc171bdc::t_5782c3bfd26f89 585,589-591,601,604-606,608-621,623
+  s_766636dc171bdc::t_a1172bce7cb46d 300,307-323,364,372,375,387-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8a5a0eafb3ed4f6b6d1e59abf7b5371790a1f8f5",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_766636dc171bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9477d701-73d0-426f-ba21-91d4ca0057de",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

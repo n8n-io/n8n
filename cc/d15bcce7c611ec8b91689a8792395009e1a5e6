@@ -1,0 +1,14 @@
+packages/cli/src/modules/data-table/data-table.service.ts
+  h_ed1b2d65e81e8e 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ccd15bcce7c611ec8b91689a8792395009e1a5e6",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

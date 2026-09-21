@@ -1,0 +1,21 @@
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_789df6092fdb18::t_55611cde612d32 482-483,506-508,635-636,649-659
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  s_789df6092fdb18::t_55611cde612d32 292,320,322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "440f2d93afd4602c4c2b20c87ca6ea30a6f2a963",
+  "prompts": {},
+  "sessions": {
+    "s_789df6092fdb18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e0c672d-eb42-42b3-b9c8-9120776c0c10",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

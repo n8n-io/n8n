@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ecdf2f2961dcf9::t_3be0f20bd7c488 276
+  s_ecdf2f2961dcf9::t_622fc6409a9d34 1506-1511,1542
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_ecdf2f2961dcf9::t_d66ced3d314bda 450
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_ecdf2f2961dcf9::t_5c4e28114897f1 1219-1226
+  s_ecdf2f2961dcf9::t_6e674c26e32e26 1086
+  s_ecdf2f2961dcf9::t_2036113eeb9ceb 1009-1010
+  s_ecdf2f2961dcf9::t_e07e31d225f94e 340,398,417,434,440,451,461,467,491,734,774,817,854,876,891,973,1017,1237
+  s_ecdf2f2961dcf9::t_e54e3767477d67 970-971
+  s_ecdf2f2961dcf9::t_5028ded73ebd62 60-63
+  s_ecdf2f2961dcf9::t_a2c87ffa304677 58-59,64-66
+packages/cli/src/modules/agents/agent-runnable-state.service.ts
+  s_ecdf2f2961dcf9::t_e0aca2e6d693fd 79
+  s_ecdf2f2961dcf9::t_87a3545386b5bf 42,46-47,56
+  s_ecdf2f2961dcf9::t_fabef2188794ee 13-14
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfig.ts
+  s_ecdf2f2961dcf9::t_7d3edb4be85b13 9-10
+  s_ecdf2f2961dcf9::t_aa9f67e0e91636 35
+  s_ecdf2f2961dcf9::t_5995a07b6ca5ca 73
+  s_ecdf2f2961dcf9::t_e55976650b7d77 58-59,65
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ecdf2f2961dcf9::t_8942dee43048b0 904-905
+  s_ecdf2f2961dcf9::t_ac52df94548b92 732-733
+  s_ecdf2f2961dcf9::t_fe7686d9865264 906-908
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_ecdf2f2961dcf9::t_8f22a8e0e0e740 162
+  s_ecdf2f2961dcf9::t_15bd6add691fb6 152-153
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_ecdf2f2961dcf9::t_e1191cc9fdd45b 888
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_ecdf2f2961dcf9::t_f39dcda4221ff8 598-601
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_ecdf2f2961dcf9::t_a4b8b9ce26c4b9 45
+packages/@n8n/api-types/src/agents/dto.ts
+  s_ecdf2f2961dcf9::t_fd9a3da8fb1eeb 134-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3070efea46370de462f1c2681b5af8ccc5ccd443",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

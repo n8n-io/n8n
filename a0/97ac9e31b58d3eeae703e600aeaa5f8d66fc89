@@ -1,0 +1,9 @@
+packages/core/src/execution-engine/workflow-execute.ts
+  ai_agent 366,1578-1624,1722-1723,1731,1811,2170,2242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a097ac9e31b58d3eeae703e600aeaa5f8d66fc89",
+  "prompts": {}
+}

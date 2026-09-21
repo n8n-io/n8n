@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_8c48e07312d780::t_eb746af39edfc5 402,405-436,647-648,650
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_8c48e07312d780::t_322e1383996201 90-96,113,124,136-146,150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47b04acd8e8eec137d036a4c21dd5d6415223504",
+  "prompts": {},
+  "sessions": {
+    "s_8c48e07312d780": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f484ab20-4ea7-4bad-a79b-94b94f341d58",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

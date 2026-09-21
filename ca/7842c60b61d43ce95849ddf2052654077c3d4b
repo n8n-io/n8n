@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Entra/test/MicrosoftEntra.node.test.ts
+  s_93c0126193f42d::t_ee3cb354727581 17-21,153-155,161,188-189,191
+packages/nodes-base/nodes/Microsoft/Entra/test/GenericFunctions.test.ts
+  s_93c0126193f42d::t_d71c1287818f45 371-399,449-454,553-554,559
+  s_93c0126193f42d::t_6bb23b392a4f82 555-558,560-564
+  s_93c0126193f42d::t_01a71e04c70ca2 565
+packages/nodes-base/nodes/Microsoft/Entra/GenericFunctions.ts
+  s_93c0126193f42d::t_b91b8ea82d5799 59,108-126,132,141,162-164,171-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ca7842c60b61d43ce95849ddf2052654077c3d4b",
+  "prompts": {},
+  "sessions": {
+    "s_93c0126193f42d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fb9674f-1f49-4b71-aa19-064d4c683e90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

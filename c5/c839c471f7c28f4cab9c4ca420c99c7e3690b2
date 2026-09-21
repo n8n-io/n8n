@@ -1,0 +1,26 @@
+packages/workflow/src/expression-sandboxing.ts
+  s_6907a3782c62db::t_a392a4dc617f19 1-7,138-182,394-396,402,514-521
+packages/workflow/src/expression-evaluator-proxy.ts
+  s_6907a3782c62db::t_3d36c1825ced8d 3,9-14
+packages/workflow/src/expression.ts
+  s_6907a3782c62db::t_9917ea9b5e46a3 278
+  s_6907a3782c62db::t_b2121d816f83da 9
+packages/workflow/test/expression-sandboxing.test.ts
+  s_6907a3782c62db::t_bd06b27409d2c4 13,21,471-479,650-684,687-692,695-710,713,715-716,719,721-728,731-739,745,748-754,757-762,765-776,779-784,786,788-794,797-798,800-801,803,806-807,809,811,814-815,817,819,822-823,830-835,838-839,841,843,846-850,852-865,1140-1178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c5c839c471f7c28f4cab9c4ca420c99c7e3690b2",
+  "prompts": {},
+  "sessions": {
+    "s_6907a3782c62db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e9d3d37-bd05-4741-a218-21e2422daa50",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

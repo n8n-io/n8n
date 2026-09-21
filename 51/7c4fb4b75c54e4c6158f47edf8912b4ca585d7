@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/integrations/platforms/twilio-voice-integration.ts
+  h_44f8d1c0f2f8c4 29-31,150
+packages/cli/src/modules/agents/integrations/platforms/twilio-voice-adapter.ts
+  s_766636dc171bdc::t_083ef118ff8b3a 393-399,402-403,407-409,413
+  s_766636dc171bdc::t_2c0e2ef7ac580a 400-401
+packages/cli/src/modules/agents/integrations/platforms/__tests__/twilio/voice-adapter.test.ts
+  s_766636dc171bdc::t_b62d0c13fc1c5d 14,57,59,157-194
+  s_766636dc171bdc::t_fdd6459e48104c 195
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-channel-instructions.test.ts
+  s_83a79a67da082f::t_69fbbc6a5cc672 1-170
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_83a79a67da082f::t_69120e0c81cb63 252-258
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_83a79a67da082f::t_ed1916f28148f3 221-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "517c4fb4b75c54e4c6158f47edf8912b4ca585d7",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_766636dc171bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9477d701-73d0-426f-ba21-91d4ca0057de",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_83a79a67da082f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f85a4e5-4ef1-486a-a0f6-95029d552c73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

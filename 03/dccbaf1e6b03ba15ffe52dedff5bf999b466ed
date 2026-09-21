@@ -1,0 +1,47 @@
+packages/@n8n/task-runner-python/src/task_runner.py
+  s_51cc314dd74007::t_ea9b659279d2fe 129-131
+packages/cli/src/task-runners/task-runner-process-py.ts
+  s_51cc314dd74007::t_7e545912880637 52-61
+packages/cli/src/task-runners/task-runner-process-js.ts
+  s_51cc314dd74007::t_c472422654e751 65-74
+packages/@n8n/task-runner/package.json
+  s_51cc314dd74007::t_4b55b815df3c16 40
+packages/@n8n/task-runner-python/tests/unit/test_task_runner.py
+  s_51cc314dd74007::t_e4a1867e46e9a8 97-115
+packages/cli/src/task-runners/__tests__/task-runner-process-py.test.ts
+  s_51cc314dd74007::t_2ed511f90dda8c 53-60
+packages/@n8n/task-runner/src/__tests__/start.test.ts
+  s_51cc314dd74007::t_a1f4bd3ba9b3d6 4
+  s_51cc314dd74007::t_fcf3196a070402 18,21,32,35-40
+  s_51cc314dd74007::t_797e80607b9040 41
+  s_51cc314dd74007::t_a5d67e1d75ba36 28
+  s_51cc314dd74007::t_f8703b989ca6a4 23-24
+  s_51cc314dd74007::t_fe4e7c5d1eb12a 25
+  s_51cc314dd74007::t_090b2df556cf6a 9
+  s_51cc314dd74007::t_8557b4be396e1b 1-3,5-8,10-17,19-20,22,26-27,29-31,33-34,42-46
+pnpm-lock.yaml
+  ai_agent 1131,3715-3717,14296,28513
+packages/@n8n/task-runner/src/start.ts
+  s_51cc314dd74007::t_67b73f49af93fe 2
+  s_51cc314dd74007::t_45d5135b2766b5 76-78
+  s_51cc314dd74007::t_797d9e2a611305 1
+  s_51cc314dd74007::t_e2be120cda19c8 75,79
+packages/cli/src/task-runners/__tests__/task-runner-process.test.ts
+  s_51cc314dd74007::t_01b382aa6b019a 117-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03dccbaf1e6b03ba15ffe52dedff5bf999b466ed",
+  "prompts": {},
+  "sessions": {
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

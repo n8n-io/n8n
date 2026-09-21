@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.ts
+  s_dab2d060d91655::t_4910dd6e637d3d 12-13
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_dab2d060d91655::t_ead645fd6d39c3 9,11,13
+packages/nodes-base/nodes/Elastic/Elasticsearch/GenericFunctions.ts
+  s_dab2d060d91655::t_5ab78a17dcbd4e 8,10,12
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_dab2d060d91655::t_82bf8b13178c58 3
+packages/nodes-base/utils/url.test.ts
+  s_dab2d060d91655::t_9606a64114dfb4 1,3,5,10-11,13-23,29
+packages/nodes-base/utils/url.ts
+  s_dab2d060d91655::t_1122503706656d 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d5c48ad09c7709625e9056fa49a23005cbfa91b0",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

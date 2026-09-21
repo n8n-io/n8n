@@ -1,0 +1,89 @@
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_bbf490a14f322f::t_8c9cc798056dc0 25-31
+  s_bbf490a14f322f::t_487a46a229046f 1,6
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_bbf490a14f322f::t_15435ae2fe5659 5-10
+  s_bbf490a14f322f::t_e686354afc71de 84
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_bbf490a14f322f::t_d8b0ed3aed01f2 94-106
+  s_bbf490a14f322f::t_141b70a17eb8af 7,9,15
+  s_bbf490a14f322f::t_d8e49a5b90d0ac 49,51
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_bbf490a14f322f::t_17de903bf96ced 33
+  s_bbf490a14f322f::t_2747011ef11bda 8
+  s_bbf490a14f322f::t_528e3a9efd51dc 68
+  s_bbf490a14f322f::t_27d3b783f742c1 31-32,34-35
+  s_bbf490a14f322f::t_684d73cd4e655b 84
+packages/@n8n/engine/src/auth/index.ts
+  s_bbf490a14f322f::t_ad6152aa60f60e 1-11
+packages/@n8n/engine/package.json
+  s_bbf490a14f322f::t_dc3ecd8e0a9602 31,42
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_bbf490a14f322f::t_b91cfc437a69bd 3-4,8-12,16,21-22
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_bbf490a14f322f::t_0f5be947631a0a 6,13-16,21,25,27-28,30-33
+  s_bbf490a14f322f::t_d02dbc6d622412 26
+  s_bbf490a14f322f::t_921b8a893cb65d 51
+packages/@n8n/engine/src/auth/identity-token.ts
+  s_bbf490a14f322f::t_86949011d8e1c9 1-58
+packages/@n8n/engine/src/auth/express-request.d.ts
+  s_bbf490a14f322f::t_08edef06d79446 1-5,7-10
+  s_bbf490a14f322f::t_174805b2ad3157 6
+packages/@n8n/engine/src/auth/authenticate.ts
+  s_bbf490a14f322f::t_c16dd3f4363bb5 1-27
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_bbf490a14f322f::t_40b280b9bdbeda 8,20
+  s_bbf490a14f322f::t_d02dbc6d622412 21,23,60,87,97,111,132,146,160
+  s_bbf490a14f322f::t_e6591321865f66 44
+  s_bbf490a14f322f::t_17de903bf96ced 22
+  s_bbf490a14f322f::t_c0af27a9c126d0 119
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_bbf490a14f322f::t_af1ea93c53e686 5
+  s_bbf490a14f322f::t_07911cbc9c25fb 25-26
+  s_bbf490a14f322f::t_aedc20146ede5f 60
+  s_bbf490a14f322f::t_22da877ebc53a1 84
+packages/@n8n/engine/src/testing/__tests__/start-engine-server.integration.test.ts
+  s_bbf490a14f322f::t_91e46d44598882 4,14-17
+packages/@n8n/engine/src/auth/__tests__/authenticate.test.ts
+  s_bbf490a14f322f::t_e518d3fc9c0ee2 1-53
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_bbf490a14f322f::t_915d14d74adf01 6-13,30-34,42-47,51-57
+packages/@n8n/engine/src/auth/identity.types.ts
+  s_bbf490a14f322f::t_f8a57204f152a1 1-13
+packages/@n8n/engine/src/serve.ts
+  s_bbf490a14f322f::t_c6a6cf57713569 5
+  s_bbf490a14f322f::t_be91ef3a013a18 18-21,26-30
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_bbf490a14f322f::t_e3f5133a671ad8 2,14,22
+  s_bbf490a14f322f::t_09ae4d0927bdc7 54-67
+pnpm-lock.yaml
+  ai_agent 2289-2291,2317-2319,23244-23245,30842,43645
+packages/@n8n/engine/src/testing/start-engine-server.ts
+  s_bbf490a14f322f::t_cbf17dcae0ac2a 3,7-10,14
+packages/@n8n/engine/src/index.ts
+  s_bbf490a14f322f::t_3bcbf9591c25d4 4-10
+packages/@n8n/config/src/configs/engine.config.ts
+  s_bbf490a14f322f::t_eb666f8d8fbc50 36-46
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_bbf490a14f322f::t_7cfa1a414eecd7 69
+packages/@n8n/engine/src/auth/__tests__/identity-token.test.ts
+  s_bbf490a14f322f::t_d02dbc6d622412 75
+  s_bbf490a14f322f::t_b3a3c6270efe5f 1-42,44-74,76-108
+  s_bbf490a14f322f::t_8fff8b65fac6b1 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b140dfce68836a3e235349bb2050fe8333cd05df",
+  "prompts": {},
+  "sessions": {
+    "s_bbf490a14f322f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ece18f95-8e74-45a7-a833-7cec81111898",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

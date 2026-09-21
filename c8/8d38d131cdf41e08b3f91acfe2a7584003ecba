@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/recorded-integration.test.ts
+  s_b04c58447561ba::t_89af848985ae78 199-204
+  s_b04c58447561ba::t_9fbe275a9074f9 175-198,205-257
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_b04c58447561ba::t_be641e5050d852 400-403
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_b04c58447561ba::t_15763170941703 13,44-52
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_b04c58447561ba::t_b219a8aa120c77 216
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_b04c58447561ba::t_39bc6592ff87ec 225
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_b04c58447561ba::t_5496dad5fc853c 230,239-241
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b04c58447561ba::t_c78e5f31bf7736 30,33,687-688,691-713,715,720-728,730-747,821-823,857-858,1217
+  s_b04c58447561ba::t_20cf74d51958c0 138
+  s_b04c58447561ba::t_8d2695488fd35c 690
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_b04c58447561ba::t_7c6ed386fb9c66 8,12,201,216,232-244,247
+  s_b04c58447561ba::t_c87117dbdc1870 9,217
+  s_b04c58447561ba::t_3efb9eed20b9a8 224-230,250-255
+  s_b04c58447561ba::t_36273fc7e9e9b1 263,265,280
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_b04c58447561ba::t_2049a7c779134d 266
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_24ec755fc753f1 723,3368-3376
+  s_b04c58447561ba::t_33e4fb882c69e5 1803-1825,1827-1855
+  s_b04c58447561ba::t_7e91db0069d10f 12-14,16-17
+  s_b04c58447561ba::t_ce0e237475c580 15,1826
+  s_b04c58447561ba::t_1f2b5a20746f05 40,58-68,71-72,75-76,85-86,97,104-111,114
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_b04c58447561ba::t_1c08b6c3688b28 776
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c88d38d131cdf41e08b3f91acfe2a7584003ecba",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

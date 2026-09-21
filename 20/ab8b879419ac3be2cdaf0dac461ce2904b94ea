@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20ab8b879419ac3be2cdaf0dac461ce2904b94ea",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

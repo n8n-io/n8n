@@ -1,0 +1,76 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c58f180068ff95::t_5a22009a1e7fdb 1724-1725
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue
+  s_c58f180068ff95::t_e0cabdc9cbcf02 30-36,42-45,61
+  s_c58f180068ff95::t_755529e2ceb199 66-70
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.ts
+  s_79fc4234628e1e::t_30fcf4ec657ae2 165
+  s_c58f180068ff95::t_905404970e5a77 6
+  s_c58f180068ff95::t_763ad5ce552342 27
+  s_c58f180068ff95::t_7f3c8d0cda6dc2 125-127,129-133,136
+  s_c58f180068ff95::t_98b39d43fcdd75 45
+  s_79fc4234628e1e::t_94ad684a6f2c42 56
+  s_79fc4234628e1e::t_82fa9391c72cd3 128,134-135,137-142,146
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputWrapper.vue
+  s_79fc4234628e1e::t_5e40e6cfa5bb93 124
+  s_79fc4234628e1e::t_12ac461dbedaf6 223
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/resolvableHighlighter.ts
+  s_c58f180068ff95::t_8591f889f6d730 46
+  s_c58f180068ff95::t_ffc66a4a377f66 36-39
+  s_c58f180068ff95::t_624f1a55f69a5d 19
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  s_c58f180068ff95::t_c59049bb8abbfe 331,350-376
+packages/frontend/editor-ui/src/app/utils/expressions.ts
+  s_c58f180068ff95::t_3a53f4386bcae8 12-21
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/Assignment.vue
+  s_79fc4234628e1e::t_e886aa74b0c863 110
+  s_79fc4234628e1e::t_7d732e08d026d9 209
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputHint.test.ts
+  s_c58f180068ff95::t_a8445ce53596da 6-7,15-16,19-20,27-28
+  s_79fc4234628e1e::t_4750b891af870f 1-5,8-14,17-18,21-26,29-30
+packages/frontend/editor-ui/src/app/types/expressions.ts
+  s_c58f180068ff95::t_a8edada7367066 13
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.test.ts
+  s_79fc4234628e1e::t_ad759f495e7990 569-577,579-582,584-591,594-595,597-598,613-616,618-621,624-625
+  s_c58f180068ff95::t_60a80b34faaa72 578,583,592-593,596,599-612,617,622-623
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.test.ts
+  s_79fc4234628e1e::t_2440f2224513d2 6-7,10,16-33
+  s_c58f180068ff95::t_9da4e89b208a05 139-142,149,153-156,167-172,174-182,185,191-214
+  s_79fc4234628e1e::t_3ff85b565f13f5 63
+  s_79fc4234628e1e::t_09b8139659467d 143-148,150-152,157-166,173,183-184,186-190
+  s_79fc4234628e1e::t_6147da9fdc9264 34
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.ts
+  s_c58f180068ff95::t_c2adc2f7ef5daf 45,47
+  s_c58f180068ff95::t_309596dd642bf0 471,474-475
+  s_c58f180068ff95::t_5e477c3cbd0ec9 104
+packages/frontend/editor-ui/src/features/shared/editors/composables/useRedactionHint.ts
+  s_c58f180068ff95::t_e7ba139aea5add 1-32
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputHint.vue
+  s_79fc4234628e1e::t_45d2e8b66d7adf 11,20
+  s_c58f180068ff95::t_458818e074b83e 50
+  s_c58f180068ff95::t_daf17e759c59ff 74-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d029910054d7760da7e9fd0c456d353c1b2ad02f",
+  "prompts": {},
+  "sessions": {
+    "s_79fc4234628e1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "258434d1-5529-48e2-94bd-80607a58c4b3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c58f180068ff95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca80bb3e-c38f-4490-9d65-43399a7ebafd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

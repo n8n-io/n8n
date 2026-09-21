@@ -1,0 +1,29 @@
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_5fa111a231c8b4::t_167d65b8594258 778-782,789-790
+  s_5fa111a231c8b4::t_406771812eee5e 882-894,1387
+  s_5fa111a231c8b4::t_ef7c2916e9d91d 1390-1412
+  s_5fa111a231c8b4::t_aecee56d8b6127 874-879
+  s_5fa111a231c8b4::t_afd02922486182 1344-1345
+  s_5fa111a231c8b4::t_8429c30d3e3508 1353,1386
+  s_5fa111a231c8b4::t_6b40e56996ce35 826-831
+  s_5fa111a231c8b4::t_77bb94ae4d381e 880-881
+  s_5fa111a231c8b4::t_42cee71cfec05b 1388-1389
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_5fa111a231c8b4::t_7a9aff29b266f0 2,279,296,426,454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "d6793d0676b8754dc6bb67a1ddffca34e2ded4fc",
+  "prompts": {},
+  "sessions": {
+    "s_5fa111a231c8b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62a020c7-78d9-4f3c-99a9-db13d0a06806",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

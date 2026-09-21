@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/create.operation.ts
+  s_bad2f3733540aa::t_fdb6493affbd3f 181,189,193
+  s_bad2f3733540aa::t_1c005d30fb7e6a 138
+  s_bad2f3733540aa::t_7749db2864fed7 111-113
+  s_bad2f3733540aa::t_c83f042ae13eb1 136,139-140
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipalStrippedOperation.test.ts
+  s_bad2f3733540aa::t_705db3bb0362fd 2,7,23-24,26-28,30-32,34,45-48,53,57-60,62,71-86,92-93,96-105,107-126,128-142
+  s_bad2f3733540aa::t_15d90d888a5de9 87-91,95
+  s_bad2f3733540aa::t_ad4f7434b1fbdc 1,3-6,8-22,25,29,33,35-44,49-52,54-56,61,63-70,106,127,143-144
+  s_bad2f3733540aa::t_73be9e2f0bb0a7 94
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.clamp.test.ts
+  s_bad2f3733540aa::t_0335d7d5fddc5b 53-55
+  s_bad2f3733540aa::t_bc971aff08a576 43-52
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/router.ts
+  s_bad2f3733540aa::t_03ac50feabd223 31-34,36-41
+  s_bad2f3733540aa::t_e575d5ac73f324 49
+  s_bad2f3733540aa::t_90ed8824ddbb20 13,15,17,20,24-30,35,42
+packages/nodes-base/utils/microsoft/transport.ts
+  s_bad2f3733540aa::t_1ee79c25145ea1 227-233
+  s_bad2f3733540aa::t_0edd6e9c464127 225-226
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/getAll.operation.ts
+  s_bad2f3733540aa::t_d56a1014f4ca88 9-11
+  s_bad2f3733540aa::t_63877845ce7f88 35-39,43-46
+  s_bad2f3733540aa::t_1324c5622effac 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d06b794cab31e0c808e2e5ab0a1fba6495ee082c",
+  "prompts": {},
+  "sessions": {
+    "s_bad2f3733540aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d766035d-2f59-434c-8dd5-970b6b2e2c45",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

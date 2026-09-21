@@ -1,0 +1,58 @@
+packages/nodes-base/nodes/Databricks/Databricks.node.ts
+  ai_agent 108-112
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_4410279ccd224c::t_8a17edb521919a 67-74
+  s_4410279ccd224c::t_ef0944e718021b 82-85
+  s_4410279ccd224c::t_5edcb44cd82d82 105
+packages/nodes-base/nodes/Databricks/actions/job/shared.ts
+  s_4410279ccd224c::t_cd74cfe45c0246 45-49
+  s_4410279ccd224c::t_000055e4927b55 1-44,50-64
+packages/nodes-base/nodes/Databricks/actions/job/getRun.operation.ts
+  s_4410279ccd224c::t_ebdb639bc5eae0 1-31,33-41,43-47
+  s_4410279ccd224c::t_c0bba441e63572 32,42
+packages/nodes-base/nodes/Databricks/test/job-get-run.workflow.json
+  s_4410279ccd224c::t_04044af0f6a770 1-74
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_4410279ccd224c::t_0c7df8035e225e 16-17,19
+  ai_agent 1427-1437,1457-1461,1471-1475,1492-1496,1498,1500-1508,1516-1519
+  s_4410279ccd224c::t_ae5c76f4e79d0e 797
+  s_4410279ccd224c::t_096017a5121943 708-734
+  s_4410279ccd224c::t_3ccce005e04919 1360-1426,1438-1456,1462-1470,1476-1491,1497,1499,1509-1515,1520-1550,1552-1652
+  s_4410279ccd224c::t_87117816725be3 1551
+  s_4410279ccd224c::t_0ccab99fbf5dad 636-667
+packages/nodes-base/nodes/Databricks/resources/job/operations.ts
+  s_4410279ccd224c::t_62264a637966ec 15-19
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_4410279ccd224c::t_9203dabd003639 494-573
+  s_4410279ccd224c::t_00858b1ccf645a 17
+  s_4410279ccd224c::t_46e2b36af4de3f 18
+  s_4410279ccd224c::t_13409f97647c0a 14,26,31
+  s_4410279ccd224c::t_7c89e061cce6ee 446-457
+packages/nodes-base/nodes/Databricks/actions/router.ts
+  s_4410279ccd224c::t_518b886e6fbd1e 76
+  s_4410279ccd224c::t_7ee85fcb0a5f19 7
+packages/nodes-base/nodes/Databricks/actions/job/Job.resource.ts
+  s_4410279ccd224c::t_6e66e553914500 1
+packages/nodes-base/nodes/Databricks/actions/job/run.operation.ts
+  s_4410279ccd224c::t_b112016ea6a6e9 88
+  s_4410279ccd224c::t_0526f060cc5770 47
+  s_4410279ccd224c::t_27d40fd416f87a 14-21
+packages/nodes-base/nodes/Databricks/resources/job/parameters.ts
+  s_4410279ccd224c::t_8d04370ca41513 6,9-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f80b039ed12a4f17870c5a5cf373b94316ea301e",
+  "prompts": {},
+  "sessions": {
+    "s_4410279ccd224c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13e2727e-5262-4313-be17-5cbc36a25dfe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+packages/@n8n/config/test/config.test.ts
+  s_088ff38dd5d51f::t_26152c296398ce 201-205
+packages/cli/src/workflows/workflow.service.ts
+  s_088ff38dd5d51f::t_4d3e870030e6bd 1477,1482,1522-1523
+  s_088ff38dd5d51f::t_f0bc6b38d83f96 1478-1481
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_088ff38dd5d51f::t_71e57d2722b50b 222
+packages/cli/src/events/maps/relay.event-map.ts
+  s_088ff38dd5d51f::t_35221c7860bd8a 144-151,461,486,498-500
+packages/cli/test/integration/workflows/workflow-index.test.ts
+  s_088ff38dd5d51f::t_fa6878400270aa 338-339
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_088ff38dd5d51f::t_3c4460801352af 2140-2157,2159-2171
+  s_088ff38dd5d51f::t_6e20561eab1235 2138
+  s_088ff38dd5d51f::t_6a0351ada8dec0 2139,2158
+  s_088ff38dd5d51f::t_c7b51ddc48d582 32,2055-2056,2078-2079,2101,2112
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_088ff38dd5d51f::t_c6ad4367696e02 445-446,1283,1319-1320,1350
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_088ff38dd5d51f::t_8d07adf3c99135 648-651,653-657,665-670,697-701
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_088ff38dd5d51f::t_bc4c86ae35696c 1230
+  s_088ff38dd5d51f::t_349f9716b8da99 1168-1169,1229,1255-1256
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_088ff38dd5d51f::t_27887d9dfedde6 61-73,77-91,353-356
+  s_088ff38dd5d51f::t_adb0cadd5b8164 1-60,74-76,92-352,357-424
+packages/@n8n/config/src/index.ts
+  s_088ff38dd5d51f::t_45fc0f19f747e1 100
+  s_088ff38dd5d51f::t_64d196d8df5449 3,334-336
+packages/cli/src/commands/base-command.ts
+  s_088ff38dd5d51f::t_b552d66492fbda 37,240
+packages/@n8n/config/src/configs/logging.config.ts
+  s_088ff38dd5d51f::t_350d552fe48ea5 59
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_088ff38dd5d51f::t_b3adc611e88425 3-4,9
+packages/cli/test/integration/activity-event-relay.test.ts
+  s_088ff38dd5d51f::t_1f83e6da6d5073 5,12,134-136,138,142-144
+  s_088ff38dd5d51f::t_7b3c8be9f1f1b1 13-14
+  s_088ff38dd5d51f::t_589ce89934dbd1 35-44,55,73,94
+  s_088ff38dd5d51f::t_6e20561eab1235 6
+  s_088ff38dd5d51f::t_67dff8099e9ed7 1,62-69,79,100,139
+  s_088ff38dd5d51f::t_873dc6a30d2b9c 2-4,7-11,15-34,45-54,56-61,70-72,74-78,80-93,95-99,101-133,137,140-141,145-150
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_088ff38dd5d51f::t_b76d0bfe84bf6c 380
+  s_088ff38dd5d51f::t_4187b57da86528 5-6,8,10,31
+  s_088ff38dd5d51f::t_752ed33b1ff0dc 406-444
+  s_088ff38dd5d51f::t_fb1259621b3ed9 153-154,159
+  s_088ff38dd5d51f::t_5326407fa97365 1-4,7,9,11-30,32-152,155-158,160-333,338-379,381-405,445-458
+  s_088ff38dd5d51f::t_6e20561eab1235 334-337
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_088ff38dd5d51f::t_b3adc611e88425 1-67
+packages/@n8n/config/src/configs/activity-log.config.ts
+  s_088ff38dd5d51f::t_b92a0f084f0715 1-19
+packages/cli/src/services/pruning/__tests__/activity-pruning.task.test.ts
+  s_088ff38dd5d51f::t_6e20561eab1235 49-52,54-56
+  s_088ff38dd5d51f::t_bae39a38938d68 1-48,53,57-76
+packages/cli/src/credentials/credentials.controller.ts
+  s_088ff38dd5d51f::t_71e57d2722b50b 210
+  s_088ff38dd5d51f::t_f0bc6b38d83f96 372-373
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_088ff38dd5d51f::t_153a4afd0046e5 365
+packages/cli/src/modules/favorites/__tests__/favorites.event-relay.test.ts
+  s_088ff38dd5d51f::t_fa6878400270aa 21-22
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_088ff38dd5d51f::t_c6ad4367696e02 976,1042,1072-1073,1692-1693
+packages/cli/src/credentials/credentials.service.ts
+  s_088ff38dd5d51f::t_280eacc7f49fc2 1212-1216,1232,1238,1241-1245,1250-1251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "093d8a5dc0065c2a4dfcb37f7762579ad3e8faba",
+  "prompts": {},
+  "sessions": {
+    "s_088ff38dd5d51f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95b8e2c8-0712-4f25-a78d-8e30044b968c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

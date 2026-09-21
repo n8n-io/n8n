@@ -1,0 +1,19 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_c7f0a2b3e0a627::t_ca021d7c8c75f2 375,392-393,398,475,493,496,499-507,509-514,516,518-537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a338153d2af34187eba600c6c8ee035d351f67a",
+  "prompts": {},
+  "sessions": {
+    "s_c7f0a2b3e0a627": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e60472a-615d-4741-aacc-ba03dc7489a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

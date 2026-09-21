@@ -1,0 +1,47 @@
+.agents/review-rules/README.md
+  s_2d7f45893fae89::t_baf3547d34cf08 18
+  s_2d7f45893fae89::t_42ec0fac89849c 29-34,42
+.agents/review-rules/db-migrations/conventions-and-tests.md
+  s_2d7f45893fae89::t_01f8fdca23d62e 12-13
+  s_2d7f45893fae89::t_ab5ea1a7eb80f5 6,8-11,14-21,23-24,31-32
+  s_2d7f45893fae89::t_c612ac99762b3c 25-29
+  s_2d7f45893fae89::t_c94a26fca41e78 1-4,7,22,30
+  s_2d7f45893fae89::t_a93b53f3a70a4e 5
+.agents/review-rules/db-migrations/necessity-and-schema-design.md
+  s_2d7f45893fae89::t_c612ac99762b3c 30-31
+  s_2d7f45893fae89::t_a93b53f3a70a4e 11-12,40
+  s_2d7f45893fae89::t_ab5ea1a7eb80f5 5,7,9-10,13-15,19-29,32-39
+  s_2d7f45893fae89::t_8a49a63e18efd1 1-4,6,8,16-18
+cubic.yaml
+  s_2d7f45893fae89::t_bb2c9ce6665a34 170-171,173-175
+  s_2d7f45893fae89::t_9f332f6a6b4819 159-160,166-169,224-225
+  s_2d7f45893fae89::t_b956961190e316 161-165,172
+.agents/review-rules/db-migrations/performance-and-scale.md
+  s_2d7f45893fae89::t_812d8b2bbd69bc 1-4,18,22
+  s_2d7f45893fae89::t_ab5ea1a7eb80f5 5-17,20-21,23
+  s_2d7f45893fae89::t_a7f9d9f37d34c9 19
+.agents/review-rules/db-migrations/cross-db-compatibility.md
+  s_2d7f45893fae89::t_ab5ea1a7eb80f5 5-6,8,14-18,29-31
+  s_2d7f45893fae89::t_c94a26fca41e78 1-4,7,9-10,21-23
+  s_2d7f45893fae89::t_c612ac99762b3c 24-28
+  s_2d7f45893fae89::t_a93b53f3a70a4e 11-13,19-20
+.agents/review-rules/db-migrations/data-safety.md
+  s_2d7f45893fae89::t_812d8b2bbd69bc 1-4
+  s_2d7f45893fae89::t_ab5ea1a7eb80f5 5-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7db12d3c8368a2e0ba94cd7acdb239239247ff6c",
+  "prompts": {},
+  "sessions": {
+    "s_2d7f45893fae89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3eb2cf1-fe29-4d75-86d6-107bbd08afcb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

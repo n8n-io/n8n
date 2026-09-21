@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_1c5c954e086b86::t_92993d22e44bbe 128-129,188,202-231
+  s_1c5c954e086b86::t_d91e8d802a66ae 232-233
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/toolConfig.utils.test.ts
+  s_1c5c954e086b86::t_27ef40477494c3 19-28,82,86-95
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_1c5c954e086b86::t_5d5f084af76edd 38,95,98
+  s_f66a8774fa549b::t_9c47d8576167fa 99-101
+packages/frontend/editor-ui/src/features/shared/toolConfig/toolConfig.utils.ts
+  s_1c5c954e086b86::t_7aa73ab2ace93b 5-7,11,16-20,26,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e3b6f874f72765648ca1a9fd5c1f189ca1f777e",
+  "prompts": {},
+  "sessions": {
+    "s_1c5c954e086b86": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cce0ff2b-4e9f-4c09-8f68-4db35c9e76c8",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f66a8774fa549b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "95cbd464-ce09-49bf-9a11-36a2e6b07056",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

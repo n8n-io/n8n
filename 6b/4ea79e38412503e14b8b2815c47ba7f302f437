@@ -1,0 +1,62 @@
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_fcfb4ad341e90f::t_bad6e8c8b78ed9 228-229
+  s_fcfb4ad341e90f::t_2642f529a03f29 145-147
+  s_fcfb4ad341e90f::t_0bb936f19e1ea3 141
+  h_9b272a633435fb 182,197-221,223-227,230-260,350
+  s_fcfb4ad341e90f::t_d095291291b086 183
+  s_fcfb4ad341e90f::t_6980116bb4e823 222
+  s_1f43e4ce711e34::t_a2204c2fb954c6 7-13
+  s_fcfb4ad341e90f::t_b4b93993fb8403 267-269,277-283
+  s_1f43e4ce711e34::t_90d81b09b099ed 368
+  s_fcfb4ad341e90f::t_1b1468e0769df5 297-298,303-306,312,314,340-342,345
+  s_8451f163e9abdb::t_fa1c9e991cb4b4 181,184-196,299,307-308,325-328,347-349,351,360-367,369-377
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_8451f163e9abdb::t_fa1c9e991cb4b4 6,38,177-186,188,190-192,195,224-240
+  s_42cfdcbb7ef5d0::t_91f4d9185e8050 189
+  h_9b272a633435fb 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b4ea79e38412503e14b8b2815c47ba7f302f437",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1f43e4ce711e34": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8b5c20d6-43cd-49c0-be97-272108e8c46e",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_42cfdcbb7ef5d0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3343b9b-2a36-487f-b424-9c295caea4b1",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8451f163e9abdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "adad7c91-0312-4482-8d08-7735dcdb4ae4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_fcfb4ad341e90f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "63f97e84-6c5f-47ac-bd0c-0523cee75c92",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

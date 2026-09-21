@@ -1,0 +1,31 @@
+packages/@n8n/scheduler/src/core/recurrence/kinds/recurring-cron.ts
+  ai_agent 5,157
+packages/@n8n/scheduler/src/core/recurrence/kinds/one-off.ts
+  ai_agent 2,42
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_37b3037d1e56c4::t_222f8b03f906f5 72
+packages/@n8n/scheduler/src/core/recurrence/field.ts
+  ai_agent 2,14-15,17,24
+packages/@n8n/scheduler/src/core/recurrence/kinds/interval.ts
+  ai_agent 4,51
+packages/@n8n/scheduler/src/core/recurrence/kinds/cron.ts
+  ai_agent 6,127
+packages/@n8n/scheduler/src/core/recurrence/resolve.ts
+  ai_agent 2,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fae345a671b5c8ad2097a7f82243917580cb9d2e",
+  "prompts": {},
+  "sessions": {
+    "s_37b3037d1e56c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fd19c94-4cd5-47b2-9b97-9e2f6644c16a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

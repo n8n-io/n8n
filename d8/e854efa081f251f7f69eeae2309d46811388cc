@@ -1,0 +1,67 @@
+packages/cli/src/modules/mcp/tools/instance-activity.tool.ts
+  s_6e3f52ff14ba6e::t_d655c6d92efbdc 32-34,120-123
+  s_6e3f52ff14ba6e::t_9372fe3f3befac 73-77,143-144,163,172,174
+  s_6e3f52ff14ba6e::t_d9835eb6ca2c92 1-31,35-72,78-119,124-142,145-162,164-171,173,175-254
+packages/cli/src/modules/mcp/tools/get-node-usage.tool.ts
+  s_6e3f52ff14ba6e::t_467621af444d45 1-150
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_6e3f52ff14ba6e::t_ab09f607094a5a 205-218
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_6e3f52ff14ba6e::t_d655c6d92efbdc 155-157,287
+  s_6e3f52ff14ba6e::t_92cc240b8539a8 14-15,103-107,154,158,189-240
+  s_6e3f52ff14ba6e::t_83734224c00cd4 37-43,56,180-181,183-184
+  s_6e3f52ff14ba6e::t_4292566bc4249f 284-286,288
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_6e3f52ff14ba6e::t_93a0e44ed5d092 29-35,652-664
+  s_6e3f52ff14ba6e::t_b8c5879264ee22 7-8,14-15,21,37-46,82-83,91-92,97-100,108-109,177-178,566,579,594,605
+  s_6e3f52ff14ba6e::t_2fb9bf4de3786b 616-651,665-749,751-786
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_6e3f52ff14ba6e::t_86176a842dcb83 197
+  s_6e3f52ff14ba6e::t_c5acab11f09cbf 609-613,618,624
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_6e3f52ff14ba6e::t_0ddcc3bee10ee6 27-31,135-144
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_6e3f52ff14ba6e::t_90bfdce95182ca 81-84,132-133,241-242,248,255-256,587-612,614
+  s_6e3f52ff14ba6e::t_d3688c0600bfc3 53,76
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_6e3f52ff14ba6e::t_20669b3cb4cf48 65
+  s_6e3f52ff14ba6e::t_1d31015642ab15 342,359,403,505,517,523
+packages/cli/src/modules/mcp/__tests__/instance-activity.tool.test.ts
+  s_6e3f52ff14ba6e::t_92916398ce718d 1-214
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_6e3f52ff14ba6e::t_334e66b5550486 161-172,190-191
+  s_6e3f52ff14ba6e::t_a3fd6ae8a30b07 95-97,173-189
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_6e3f52ff14ba6e::t_f74ac3e82b23c1 8,19,84-102,176-177
+  s_6e3f52ff14ba6e::t_1881a3cc184876 265,296-298,301,307,313,317-318,324,332-337,342,344,350-355
+  s_6e3f52ff14ba6e::t_37d93b0b7477f3 367,690-694,715
+  s_6e3f52ff14ba6e::t_d655c6d92efbdc 695-712
+  s_6e3f52ff14ba6e::t_ff5fa652157674 14,259-262,271-289,292-294,299,302-306,308,311,319-323,325-328,502-507,511
+  s_6e3f52ff14ba6e::t_328291a0295a71 211-216
+  s_6e3f52ff14ba6e::t_08c711627df1d5 472,474-484,486-490,494-501,508-510,512-543,547-561
+packages/cli/src/modules/mcp/__tests__/get-node-usage.tool.test.ts
+  s_6e3f52ff14ba6e::t_67250be07a6d4c 1-44,50-119
+  s_6e3f52ff14ba6e::t_d655c6d92efbdc 45-49
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_6e3f52ff14ba6e::t_ab09f607094a5a 19-23
+packages/cli/test/integration/instance-context.service.test.ts
+  s_6e3f52ff14ba6e::t_0725318a2a42d2 291-427
+  s_6e3f52ff14ba6e::t_83864b10949eda 12,17-18
+  s_6e3f52ff14ba6e::t_20669b3cb4cf48 125,128,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8e854efa081f251f7f69eeae2309d46811388cc",
+  "prompts": {},
+  "sessions": {
+    "s_6e3f52ff14ba6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62e55d43-3015-410a-8652-f8d8d66de8ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

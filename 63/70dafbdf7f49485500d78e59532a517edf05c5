@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  s_dab2d060d91655::t_04efdf64d8d291 3-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6370dafbdf7f49485500d78e59532a517edf05c5",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

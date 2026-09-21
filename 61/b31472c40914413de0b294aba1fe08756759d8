@@ -1,0 +1,19 @@
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  ai_agent 1-328
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  ai_agent 52-55,105,210,276-367,695-699
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  ai_agent 1-224
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  ai_agent 10,16,29,31,41,90-91,103,115,159-173,289-674
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  ai_agent 29,55,264,273-274,459-891,1084,1093-1094
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  ai_agent 1-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61b31472c40914413de0b294aba1fe08756759d8",
+  "prompts": {}
+}

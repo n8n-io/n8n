@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_d423008e69ea2f::t_f46fd5c23f710a 2778-2779
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "646e9f727f1ac2ce0c4f3a95114c36ca09e4c7f9",
+  "prompts": {},
+  "sessions": {
+    "s_d423008e69ea2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07821bca-476a-4e36-8f00-257f70554eb8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

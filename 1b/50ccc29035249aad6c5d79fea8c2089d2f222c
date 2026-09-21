@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_13cf415df802d6::t_75515ac06479d2 19-22
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_13cf415df802d6::t_b77aa58eb26d46 64,99,114,172,195,212,232,290,340,356
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_13cf415df802d6::t_fa91e76bdcdd18 119,186,800
+  s_13cf415df802d6::t_c9a0684ca1037b 89,94,136,156,161,203,770,775,817
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_13cf415df802d6::t_75515ac06479d2 98-101,108-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1b50ccc29035249aad6c5d79fea8c2089d2f222c",
+  "prompts": {},
+  "sessions": {
+    "s_13cf415df802d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c0ec642-e533-422b-82bc-34688614dc2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

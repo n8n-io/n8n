@@ -1,0 +1,173 @@
+packages/@n8n/db/src/migrations/common/1787400000000-CreateInstanceAiMemoryEntryTables.ts
+  s_13379fbae15d5c::t_e35fc8f306a7c8 1-127
+docs/generated/sqlite-schema/instance_ai_resources.md
+  ai_agent 19,42-43,52-71
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_13379fbae15d5c::t_5a2b2d112e7cab 87
+  s_13379fbae15d5c::t_924de30c00092e 191-192
+  s_13379fbae15d5c::t_d0b5228ae525f9 1265-1303
+  s_13379fbae15d5c::t_e211a7adb2fb63 674-676
+  s_13379fbae15d5c::t_1f14cdfed25666 2237,2243-2248,2261-2262,2264-2296
+  s_13379fbae15d5c::t_116e07903295ca 2238-2242,2249-2260,2263
+  s_13379fbae15d5c::t_594d4b1bc95e6b 4996
+  s_13379fbae15d5c::t_09ff7c0fd68392 31
+  s_13379fbae15d5c::t_0c9e024fda22a8 28-29
+  s_13379fbae15d5c::t_29c667248639c5 2199-2204,2206
+  s_13379fbae15d5c::t_7f60557f3aa57c 843-844
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  ai_agent 8,45-46,100-113
+packages/cli/src/modules/instance-ai/repositories/instance-ai-memory-entry-cursor.repository.ts
+  s_13379fbae15d5c::t_3d514af42c148c 1-11
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 631
+packages/@n8n/api-types/src/index.ts
+  s_13379fbae15d5c::t_778546b3f7fc8d 492-495
+packages/cli/src/modules/instance-ai/entities/instance-ai-memory-entry-cursor.entity.ts
+  s_13379fbae15d5c::t_ee88d8ac7c6e5d 1-14
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 291
+packages/@n8n/instance-ai/src/agent/episodic-memory-prompts.ts
+  s_13379fbae15d5c::t_ebcb23efd22e5c 1-52,54,56,63-136,158-167,169-200,202
+  s_13379fbae15d5c::t_f5c84575759907 53,55,57-62
+  s_13379fbae15d5c::t_f32a1dbe6849f9 137-157
+  s_13379fbae15d5c::t_f580082af3d700 168
+  s_13379fbae15d5c::t_76021255322b60 201
+  ai_agent 203-204
+docs/generated/sqlite-schema/instance_ai_memory_entry_sources.md
+  ai_agent 1-104
+packages/cli/src/modules/instance-ai/repositories/instance-ai-memory-entry.repository.ts
+  s_13379fbae15d5c::t_4089814255b07e 11-15,20-25
+  s_13379fbae15d5c::t_3a099e572408d3 16-19
+  s_13379fbae15d5c::t_c3054379b43992 1-10,26
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_13379fbae15d5c::t_0e80b538036a32 358-359
+docs/generated/postgres-schema/public.instance_ai_memory_entries.md
+  ai_agent 1-90
+docs/generated/postgres-schema/public.instance_ai_memory_entry_cursors.md
+  ai_agent 1-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 91
+packages/cli/src/modules/instance-ai/repositories/instance-ai-memory-entry-lock.repository.ts
+  s_13379fbae15d5c::t_e5700916cba1d8 1-11
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiView.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 146,177,203
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.memory.api.ts
+  s_13379fbae15d5c::t_aa15d4e248ab4f 10
+  s_13379fbae15d5c::t_0909b3e0617a67 80-85
+docs/generated/postgres-schema/README.md
+  ai_agent 78-81,271-277,1035-1071
+packages/@n8n/instance-ai/src/types.ts
+  s_13379fbae15d5c::t_14cf5a76bcd8e4 7
+  s_13379fbae15d5c::t_64d62a932cf41a 1458-1466
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_13379fbae15d5c::t_9ef083c1589fa1 272-287
+  s_13379fbae15d5c::t_dbdabc5633b91e 10-12
+docs/generated/sqlite-schema/instance_ai_observations.md
+  ai_agent 19,55,72-79
+docs/generated/postgres-schema/public.instance_ai_resources.md
+  ai_agent 8,33-34,43-62
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_13379fbae15d5c::t_5d7414d3d23885 2-11,14-22,24-26,36
+  s_13379fbae15d5c::t_dc77a592a980ef 213-217,229-232
+  s_13379fbae15d5c::t_cbcc1ac750683b 53
+  ai_agent 258-259,835-837
+  s_13379fbae15d5c::t_7b219fbe9c678e 247-257,260-263
+  s_13379fbae15d5c::t_6c111c32ad6ebe 640-834,838-1040
+  s_13379fbae15d5c::t_591aa4b4bc27a8 52,58,61-64,67-70
+packages/cli/src/modules/instance-ai/entities/instance-ai-memory-entry-lock.entity.ts
+  s_13379fbae15d5c::t_ec61e3439004a9 1-14
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_13379fbae15d5c::t_f03cd41fa95c92 5724-5725
+  s_13379fbae15d5c::t_376bf340c991da 5699-5701
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiDebug.store.ts
+  s_13379fbae15d5c::t_d5cccdfa333766 11,18,39-41,132-146,158-159,174-175,182
+docs/generated/postgres-schema/public.instance_ai_memory_entry_locks.md
+  ai_agent 1-56
+packages/cli/src/modules/instance-ai/entities/instance-ai-memory-entry.entity.ts
+  s_13379fbae15d5c::t_01b28316eb1b47 1-38
+docs/generated/sqlite-schema/instance_ai_memory_entry_cursors.md
+  ai_agent 1-65
+docs/generated/sqlite-schema/instance_ai_threads.md
+  ai_agent 19,51-52,106-119
+docs/generated/sqlite-schema/instance_ai_memory_entries.md
+  ai_agent 1-94
+docs/generated/sqlite-schema/instance_ai_memory_entry_locks.md
+  ai_agent 1-63
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_13379fbae15d5c::t_5ed1931f6da83e 93
+  s_13379fbae15d5c::t_f6d0f2d4cba5c2 117-126
+  s_13379fbae15d5c::t_d9ddf254625bc4 146-149
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_13379fbae15d5c::t_af5243e57e32f1 1603-1612,1615-1617,1619-1629
+  s_13379fbae15d5c::t_6c923bdd63fb04 1613-1614,1618
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 97
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_13379fbae15d5c::t_57246c5423ce70 52-54,57-59,68
+  s_13379fbae15d5c::t_7b7f27bea02c7e 65,67
+  s_13379fbae15d5c::t_1435be29d74a46 55-56,60-64,66
+packages/@n8n/config/test/config.test.ts
+  s_13379fbae15d5c::t_15fdbb5421e65d 338-340
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_13379fbae15d5c::t_08b7a8e618080a 57-60
+  s_13379fbae15d5c::t_e7279589605c4f 7-10
+packages/cli/src/modules/instance-ai/repositories/instance-ai-memory-entry-source.repository.ts
+  s_13379fbae15d5c::t_5ed0181d64d9ac 2,10-17
+  s_13379fbae15d5c::t_d4c72066378246 1,3-9,18-19
+packages/@n8n/instance-ai/docs/memory.md
+  s_13379fbae15d5c::t_79e247a786a444 64-67,71-80,84-92
+  s_13379fbae15d5c::t_d51c76e178c7b4 68-70
+  s_13379fbae15d5c::t_a7927605c502bd 131
+  s_13379fbae15d5c::t_81d6b935b91fbe 81-83
+  s_13379fbae15d5c::t_2da7ce221c687f 129-130
+docs/generated/sqlite-schema/README.md
+  ai_agent 78-81,254-260,1022-1058
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  s_13379fbae15d5c::t_159d78cc26b388 10-13
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_13379fbae15d5c::t_b84473356ce6c8 123-128
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 424
+docs/generated/postgres-schema/public.instance_ai_observations.md
+  ai_agent 8,51,68-75
+packages/cli/src/modules/instance-ai/entities/instance-ai-memory-entry-source.entity.ts
+  s_13379fbae15d5c::t_d1da0d640ed9d9 1-23
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_13379fbae15d5c::t_93ffa81b95f854 137
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_13379fbae15d5c::t_9068d5f007de92 1046-1053
+  s_13379fbae15d5c::t_3b5f48afc1e95c 170-175
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 117
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDebugPanel.vue
+  s_13379fbae15d5c::t_9d2430b65d3d1a 22-25,27,30-39
+  s_13379fbae15d5c::t_57a87897571880 464-551
+  s_13379fbae15d5c::t_c1bb4c5bb2127d 926-972
+  s_13379fbae15d5c::t_07272797e1d0c7 149-157
+  s_13379fbae15d5c::t_052f28fa6ecc8c 262-269
+docs/generated/postgres-schema/public.instance_ai_memory_entry_sources.md
+  ai_agent 1-100
+packages/cli/src/modules/instance-ai/entities/index.ts
+  s_13379fbae15d5c::t_c0f31517ef22df 10-13
+  s_13379fbae15d5c::t_78dc68135a7d52 22
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_13379fbae15d5c::t_af8066c6d48e91 426
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_13379fbae15d5c::t_ba71495de45c52 7019,7067-7075,7372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8c7fc1a0a63b634240905f8ced0db9aea0a4ac2",
+  "prompts": {},
+  "sessions": {
+    "s_13379fbae15d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30793bc1-1833-4934-a600-8c9178d6f91e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

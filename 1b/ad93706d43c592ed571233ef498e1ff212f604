@@ -1,0 +1,46 @@
+packages/@n8n/config/src/configs/engine.config.ts
+  s_eda1948fcdabb8::t_0548b31729e0c2 55,57-59,61-62,65,72-73,76,83
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-client.test.ts
+  s_eda1948fcdabb8::t_cdca9821fcecc1 67
+  s_eda1948fcdabb8::t_693d45216b212f 48,85
+  s_eda1948fcdabb8::t_86aa68358a24eb 8,116-118
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 58,89
+packages/cli/src/modules/engine-v2/engine-control-plane-server.ts
+  s_eda1948fcdabb8::t_82521bf76c06d9 11,44,90
+  s_eda1948fcdabb8::t_cdca9821fcecc1 96
+packages/cli/src/modules/engine-v2/engine-control-plane-auth.middleware.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 3,43
+  s_eda1948fcdabb8::t_82521bf76c06d9 22
+  s_eda1948fcdabb8::t_e7ae988a7c43da 41
+packages/cli/src/modules/engine-v2/engine-control-plane-client.ts
+  s_eda1948fcdabb8::t_82521bf76c06d9 9,13,16,34,36-38,45
+  s_eda1948fcdabb8::t_cdca9821fcecc1 10
+  s_eda1948fcdabb8::t_86aa68358a24eb 6,43
+packages/@n8n/config/test/engine.config.test.ts
+  s_eda1948fcdabb8::t_0548b31729e0c2 39,42-43,46-48,52-53
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  s_eda1948fcdabb8::t_693d45216b212f 30,32
+  s_eda1948fcdabb8::t_cdca9821fcecc1 56
+  s_eda1948fcdabb8::t_86aa68358a24eb 3,69,86,97
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-auth.middleware.test.ts
+  s_eda1948fcdabb8::t_82521bf76c06d9 9,13,34,63
+  s_eda1948fcdabb8::t_86aa68358a24eb 3,54,67,93-95,102,108
+  s_eda1948fcdabb8::t_cdca9821fcecc1 26,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1bad93706d43c592ed571233ef498e1ff212f604",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

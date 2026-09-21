@@ -1,0 +1,38 @@
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_a55786a50e57d3::t_024bd7f2e9193b 21-22
+  s_a55786a50e57d3::t_1c47d70f90f6af 103-107
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_a55786a50e57d3::t_9444786ec11362 745
+  s_a55786a50e57d3::t_db9b03b5b3bf55 715-716
+  s_a55786a50e57d3::t_4bd121d7f77b57 711-714,717-744,746-764,770-773
+  s_a55786a50e57d3::t_2a5a287443d91d 765-769
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_a55786a50e57d3::t_813b438ae43acd 124,126-127
+  s_a55786a50e57d3::t_0d122dba5a6c3b 378-379
+  s_a55786a50e57d3::t_0728474fb1fb36 488-490
+  s_a55786a50e57d3::t_f243f3ac9efcf3 513-544,547
+  s_a55786a50e57d3::t_2eb3bd1dc08de1 284-285,290-292
+  s_a55786a50e57d3::t_b04bf876d66722 571-573
+  s_a55786a50e57d3::t_2e9767f07c31d6 433-434,436-437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "948e6e1718babfb0afe1cf83df94aee1b3c653a4",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a55786a50e57d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "db696bc5-00ab-49ae-be41-4a4e7ee9fd89",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

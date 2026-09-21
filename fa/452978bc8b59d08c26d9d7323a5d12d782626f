@@ -1,0 +1,34 @@
+packages/cli/src/modules/node-dry-run/README.md
+  s_be6d12de03f718::t_ba94990bd93b51 95-106
+  s_be6d12de03f718::t_94f6199a03cb89 67-74
+packages/cli/src/modules/node-dry-run/node-dry-run.service.ts
+  s_be6d12de03f718::t_18c66120c2d765 54-55,57-62,70,77,90-114,116-124,146,154
+  s_be6d12de03f718::t_cddcd33347825a 36-43
+  s_be6d12de03f718::t_6e9d81f4d2475a 12,16,18
+  s_be6d12de03f718::t_9c2f22c076db13 160,191,193,199-214
+packages/cli/src/modules/node-dry-run/__tests__/node-dry-run.service.test.ts
+  s_be6d12de03f718::t_a2d9ab73bffd33 94-98
+  s_be6d12de03f718::t_fd8b74af142f84 101,105,107-113,118-120
+  s_be6d12de03f718::t_6581e071180dae 28-31,42-47
+  s_be6d12de03f718::t_04e43016c085b3 12,48-63
+  s_be6d12de03f718::t_c88ff5de6225ae 114-117,121-122
+  s_be6d12de03f718::t_00295d82003493 99,182-214
+  s_be6d12de03f718::t_90dbc618bad9a3 102-104,106
+  s_be6d12de03f718::t_1b44b93101468b 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fa452978bc8b59d08c26d9d7323a5d12d782626f",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_c1331d5be8a1ad::t_ae746e271be507 123
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_c1331d5be8a1ad::t_eae68bbc6a2cbd 55,64-67
+  s_c1331d5be8a1ad::t_ae746e271be507 54,56,61-63,68-76,174,190-200,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae193fcfa15fc67652927d3fbb9609c762dadbda",
+  "prompts": {},
+  "sessions": {
+    "s_c1331d5be8a1ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08a88-2ca3-7e43-aab7-841951c96fd7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

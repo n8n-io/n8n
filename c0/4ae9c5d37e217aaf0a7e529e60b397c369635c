@@ -1,0 +1,59 @@
+packages/@n8n/scheduler/src/core/errors.ts
+  s_ae93d0f1bb3441::t_8392f4736f3ccb 99-112,114-119,121-125,127-132,134-136
+  s_ae93d0f1bb3441::t_4b621fac2cd405 64,71,113,120,126,133
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_ae93d0f1bb3441::t_197885b4a7a07a 4-19
+packages/cli/src/scheduling/__tests__/scheduled-job-owner-registry.test.ts
+  s_ae93d0f1bb3441::t_b19da03ea8ea32 4-11
+packages/@n8n/scheduler/src/core/provisioning/provisioner.ts
+  s_ae93d0f1bb3441::t_6c2e60d40e95fd 1-5,16-22,27,34-41,44,53,57-62,72,78,90-91,95-96,99-113,118
+  s_ae93d0f1bb3441::t_4b621fac2cd405 42-43,92-94,97-98
+  s_ae93d0f1bb3441::t_77dace63aaf4e6 11-15,114-117
+packages/@n8n/scheduler/src/core/index.ts
+  s_ae93d0f1bb3441::t_d709e51426d49d 87-93
+  s_ae93d0f1bb3441::t_658c2e1b189a8d 33
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_ae93d0f1bb3441::t_8385259e0448fd 81
+  s_ae93d0f1bb3441::t_3356f29b608a5f 14
+packages/@n8n/scheduler/src/core/provisioning/__tests__/provisioner.test.ts
+  s_ae93d0f1bb3441::t_78207a6d389092 3
+  s_ae93d0f1bb3441::t_56c0efd3da8bbf 22-28,30-31,40,42-46,48-51,53,66,69,77-115,117-126,128-134,136-144
+  s_ae93d0f1bb3441::t_3356f29b608a5f 29
+  s_ae93d0f1bb3441::t_4b621fac2cd405 116,127,135
+  s_ae93d0f1bb3441::t_77dace63aaf4e6 71-74
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_ae93d0f1bb3441::t_4b621fac2cd405 57,84
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_ae93d0f1bb3441::t_14ec0b40916172 3,54,88,90
+  s_ae93d0f1bb3441::t_8385259e0448fd 311-312,315-317
+packages/@n8n/scheduler/src/core/provisioning/index.ts
+  s_ae93d0f1bb3441::t_d709e51426d49d 4
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  s_ae93d0f1bb3441::t_4b621fac2cd405 20
+packages/@n8n/scheduler/README.md
+  s_ae93d0f1bb3441::t_016f7e5c5fca0e 17-18,23,47-49,222,224,244,283-285,292,305,338,344,357-359,445-446,462,471,511,537-540,550-552,557
+  s_ae93d0f1bb3441::t_d75d3478dc6bb9 286,297-298
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_ae93d0f1bb3441::t_016c144c5c0a29 3,31,33,99-104,137,144,159-160
+  s_ae93d0f1bb3441::t_4b621fac2cd405 161-162
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_ae93d0f1bb3441::t_692dd4a724c6fd 20,22,45,80
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_ae93d0f1bb3441::t_eb49fb08e5fa01 16,59,84,1001-1002
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c04ae9c5d37e217aaf0a7e529e60b397c369635c",
+  "prompts": {},
+  "sessions": {
+    "s_ae93d0f1bb3441": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99223e9-ae53-41b4-a199-a83b6c795e8c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

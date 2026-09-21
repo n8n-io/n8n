@@ -1,0 +1,65 @@
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_41df6966a3c9ce::t_4f223fec912d1a 3,10,14-19
+  s_41df6966a3c9ce::t_3bfe80ce6315f4 273,279,285,287,291,297,303,309,319,328-387
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_41df6966a3c9ce::t_15efc681691215 268-269
+  s_41df6966a3c9ce::t_404deaf61275ce 44
+  s_41df6966a3c9ce::t_58e8207f5e030b 506
+  s_41df6966a3c9ce::t_09aace5696a2d3 380-381
+  s_41df6966a3c9ce::t_9c019ca3fdfd4f 627
+  s_41df6966a3c9ce::t_51ff867602e629 57
+  s_41df6966a3c9ce::t_5536fce5cd791c 479-505,507-528,530-535
+  s_41df6966a3c9ce::t_d4a383e92892bc 565-566
+  s_41df6966a3c9ce::t_e70a3f52cf34dc 51,55-56
+  s_41df6966a3c9ce::t_12d41443e990c8 628,630-634
+  s_41df6966a3c9ce::t_e218b219ec7beb 529
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  s_41df6966a3c9ce::t_2b3dd1dfdd0df7 555-571,575,587,594,597-605
+  s_41df6966a3c9ce::t_ed9eb01b06dd7b 392-404
+  s_41df6966a3c9ce::t_4d076ea871790e 318
+  s_41df6966a3c9ce::t_3471f2efd6cb23 610-613,630-647
+  s_41df6966a3c9ce::t_c63b98fc2b9588 650-691
+  s_41df6966a3c9ce::t_2e04a92878a027 48-50
+  s_41df6966a3c9ce::t_dd47736ecdb5ed 794-800
+  s_41df6966a3c9ce::t_799e36fdf6f621 84-91
+  s_41df6966a3c9ce::t_4e76c5bb1aa483 316,415,430,456,477,491,546,621
+  s_41df6966a3c9ce::t_ed8847998e4519 608,648,699-700,718-719,726,729,735,739-749,752-754,759-767,769-773,775-779,782-787,789-790,792-793
+  s_41df6966a3c9ce::t_c330ed86cae607 10
+  s_41df6966a3c9ce::t_6cf3beeec2c66a 407
+  s_41df6966a3c9ce::t_8e9040c9ea56ad 506
+  s_41df6966a3c9ce::t_21f4b3cb3eca3c 768,774,780-781,788,791
+  s_41df6966a3c9ce::t_a1f876e86d84ac 355-362
+  s_93c0126193f42d::t_4f70d49bcd7ec2 606-607,609,649
+packages/nodes-base/nodes/Git/test/Git.node.test.ts
+  s_41df6966a3c9ce::t_3e5727f4012f57 342,362,369,371-376,391-395,401-422
+  s_41df6966a3c9ce::t_af8d05b859a875 101-103
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_41df6966a3c9ce::t_2d49bc4ece19bb 1-3
+  s_41df6966a3c9ce::t_51ff867602e629 194-195
+  s_41df6966a3c9ce::t_c782c83214271d 136-138,140,157,163,165-171,174-175,178-193,196,199-224
+  s_41df6966a3c9ce::t_f049bf8302f765 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a360a660675c81810f0dc7e54426574e48c48eb6",
+  "prompts": {},
+  "sessions": {
+    "s_41df6966a3c9ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "993ad4b4-b06f-4d08-b0a7-4c7de28ec904",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_93c0126193f42d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fb9674f-1f49-4b71-aa19-064d4c683e90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

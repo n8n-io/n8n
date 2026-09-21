@@ -1,0 +1,25 @@
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_f132370d90443c::t_b5b553ad058209 8
+  s_f132370d90443c::t_c891badae0dad5 165-169
+  s_f132370d90443c::t_09cbe77bb345d9 170-172
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_097b469d3278fa 27
+  s_f132370d90443c::t_6223d03c72003c 114-118
+  s_f132370d90443c::t_364658f5672074 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d6e840d02c36e3eacdd275860116a158aaa11eec",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

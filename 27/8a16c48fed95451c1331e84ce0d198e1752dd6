@@ -1,0 +1,24 @@
+packages/cli/eslint.config.mjs
+  s_d1dc23c9ac935c::t_c2ecdc69ae62f3 405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "278a16c48fed95451c1331e84ce0d198e1752dd6",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d1dc23c9ac935c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "459753ee-472a-4bc9-905f-dc26abc20691",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

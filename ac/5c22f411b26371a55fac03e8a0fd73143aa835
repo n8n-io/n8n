@@ -1,0 +1,28 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_0db7d900a53861::t_a2c42884ecaacd 405-417,419-421,424,429-430,432-433
+  s_0db7d900a53861::t_98a0d9b8fc974a 305-308,310-364,366-398
+  s_0db7d900a53861::t_0e5aaab3b6f0e3 440
+  s_0db7d900a53861::t_db564108dd5419 447-491,493-495
+  s_0db7d900a53861::t_38031f0a7c9666 418
+  s_0db7d900a53861::t_13fc05ef536674 365
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_0db7d900a53861::t_ef8857d77ba2fb 387
+  s_0db7d900a53861::t_4b9e03b32f0500 321-341,344,349-350,360-370
+  s_0db7d900a53861::t_dfdbf869292304 342-343,345-348,351-359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac5c22f411b26371a55fac03e8a0fd73143aa835",
+  "prompts": {},
+  "sessions": {
+    "s_0db7d900a53861": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd2b372f-b713-443b-8568-4213e644191a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

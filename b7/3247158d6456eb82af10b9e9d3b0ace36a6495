@@ -1,0 +1,27 @@
+packages/@n8n/scan-community-package/scanner/env-proxy.test.mjs
+  s_51cc314dd74007::t_704431cddf59b6 1-112
+packages/@n8n/scan-community-package/scanner/env-proxy.mjs
+  s_51cc314dd74007::t_4e6a4227ab8aa0 1-38
+pnpm-lock.yaml
+  ai_agent 1131,3579-3587,14308,28525
+packages/@n8n/scan-community-package/package.json
+  s_51cc314dd74007::t_80a5cdaa92c319 21-23
+packages/@n8n/scan-community-package/scanner/scanner.mjs
+  s_51cc314dd74007::t_229a322a2e62b1 14,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b73247158d6456eb82af10b9e9d3b0ace36a6495",
+  "prompts": {},
+  "sessions": {
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/token-exchange/__tests__/token-exchange.module.test.ts
+  s_e2b4eb4ee0550c::t_ad291d5dc81225 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a9ab40a80cc2bfd5c953416fceed54688a583984",
+  "prompts": {},
+  "sessions": {
+    "s_e2b4eb4ee0550c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d37752e2-95b2-4104-9833-de7298855167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

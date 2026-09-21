@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.ts
+  s_77e2521f9359d8::t_c79fe9c2c3bfea 911-914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "113c6dbfbc8b112885a3ae843ba25bbd4d31bff7",
+  "prompts": {},
+  "sessions": {
+    "s_77e2521f9359d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "002a141a-8e10-481b-9445-fb7a8e4b8876",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.stories.ts
+  s_1c454f33116688::t_840bce72d5d53c 84-89,340,353,366
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_1c454f33116688::t_5725dda0deb36b 448-450
+  s_1c454f33116688::t_50635c65132c7d 447,453-454,457,467,472,522,526,540,543,557,560
+  s_1c454f33116688::t_f52211471b7c35 439-442,445
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_1c454f33116688::t_29344ef6d3efea 469-472
+  s_1c454f33116688::t_e1ff2e6b9392e9 307,309-319,455,465,473
+  s_1c454f33116688::t_9473871b5cd858 3,464,466-468,474
+  s_1c454f33116688::t_4be9f2cdb5e0ec 543
+  s_1c454f33116688::t_e92010516e4518 337-347,357,475-481
+packages/frontend/@n8n/design-system/src/components/N8nTabs/index.ts
+  s_1c454f33116688::t_c94e8ea2e1aea6 3
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1c454f33116688::t_8c97a879bbc970 8596-8597
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55f396c020180d0297090956329ba69861c16535",
+  "prompts": {},
+  "sessions": {
+    "s_1c454f33116688": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab01-29a2-775a-944f-5e73dea2f7d0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

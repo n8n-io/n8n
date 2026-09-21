@@ -1,0 +1,23 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_acba6083221792::t_8cebdbac3a0c63 267,275,286
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection-project.repository.ts
+  s_acba6083221792::t_21f392ac99529c 26-35
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_acba6083221792::t_a6ac37ff3b8604 140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f10b8a4ccec94634be07a9e9fc8fa6f555f55de5",
+  "prompts": {},
+  "sessions": {
+    "s_acba6083221792": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "445078e6-3753-4428-820c-a091ec1e8b6d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

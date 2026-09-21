@@ -1,0 +1,28 @@
+packages/@n8n/ai-utilities/src/model-discovery/chat-model-errors.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-15,41-51,58-74,30,37,40
+  s_1a327c511cdf2b::t_0d9fc3d6f93cd1 16-28,31,52-53,55-57
+  s_1a327c511cdf2b::t_349512f262bc72 29,32-36,54
+  s_1a327c511cdf2b::t_3cb01f2d333ed4 38-39
+packages/cli/src/modules/agents/builder/__tests__/call-agent-failure.test.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-47,59
+  s_1a327c511cdf2b::t_ffa2ef64872775 48-58
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/chat-model-errors.test.ts
+  s_1a327c511cdf2b::t_a86745caea8023 1-41,49-71
+  s_1a327c511cdf2b::t_3cb01f2d333ed4 42-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3ebba8cfc10e760d2d0583c8658290b97d8a36d",
+  "prompts": {},
+  "sessions": {
+    "s_1a327c511cdf2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f7b6638-a1cb-40f3-bd31-f4efb257a8a0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  s_dab2d060d91655::t_0ef8ea89b648a0 13,306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f1fb2772696659088fb16ad768ff021f0f171231",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

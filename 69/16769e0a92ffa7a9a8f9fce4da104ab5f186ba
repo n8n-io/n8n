@@ -1,0 +1,71 @@
+packages/@n8n/scheduler/src/observability/attributes.ts
+  ai_agent 29-33
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  ai_agent 1-335
+packages/@n8n/scheduler/src/core/recurrence/resolve.ts
+  ai_agent 2,21
+packages/@n8n/scheduler/src/core/materializer/owner-key.ts
+  s_ae93d0f1bb3441::t_0efcff398be92e 1-37
+packages/@n8n/scheduler/src/core/recurrence/kinds/interval.ts
+  ai_agent 4,51
+packages/@n8n/scheduler/src/core/materializer/__tests__/owner-key.test.ts
+  ai_agent 1-89
+packages/@n8n/scheduler/src/observability/metrics.ts
+  ai_agent 40-41,57
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  ai_agent 1-344
+packages/@n8n/scheduler/src/core/materializer/index.ts
+  ai_agent 21
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  ai_agent 1-71
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  ai_agent 16,1441-1459
+packages/@n8n/scheduler/src/core/recurrence/kinds/one-off.ts
+  ai_agent 2,42
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/owner.test.ts
+  s_ae93d0f1bb3441::t_f98b36defd1e05 1-72
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  ai_agent 1-33
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  ai_agent 1-74
+packages/@n8n/config/src/configs/scheduler.config.ts
+  ai_agent 349-406
+packages/@n8n/scheduler/src/core/lifecycle/options.ts
+  ai_agent 22-24,37-39,68,73
+packages/@n8n/scheduler/src/core/recurrence/field.ts
+  ai_agent 2,14-15,17,24
+packages/@n8n/scheduler/src/core/recurrence/kinds/recurring-cron.ts
+  ai_agent 5,157
+packages/@n8n/config/test/config.test.ts
+  ai_agent 486-491
+packages/@n8n/scheduler/src/core/scheduler.ts
+  ai_agent 4,54-60
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  ai_agent 70-87
+packages/@n8n/scheduler/src/core/factory.ts
+  ai_agent 10,24-30,84-96,159-162,182,187,489-583,648-657,698
+packages/@n8n/scheduler/src/core/recurrence/kinds/cron.ts
+  ai_agent 6,127
+packages/@n8n/scheduler/src/core/errors.ts
+  s_ae93d0f1bb3441::t_76e00df04db2d4 61-98
+packages/@n8n/scheduler/src/core/reconciliation/index.ts
+  ai_agent 1-8
+packages/@n8n/scheduler/src/core/index.ts
+  s_ae93d0f1bb3441::t_76e00df04db2d4 55-61,68,73-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6916769e0a92ffa7a9a8f9fce4da104ab5f186ba",
+  "prompts": {},
+  "sessions": {
+    "s_ae93d0f1bb3441": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99223e9-ae53-41b4-a199-a83b6c795e8c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 1-29
+packages/nodes-base/nodes/Confluence/test/actions/attachment/getMany.operation.test.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 1-235
+packages/nodes-base/nodes/Confluence/actions/description.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 5,37-40,48
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 8,177-263
+packages/nodes-base/nodes/Confluence/actions/attachment/getMany.operation.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 1-141
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 199-201,204-205,207,211-236
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 68-87
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_208a7c96834666::t_030770bcdabe71 37
+  s_208a7c96834666::t_9e23f4c23abb9f 4,16-21,31-32,35-36,61
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 16,18-21,23-29
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_208a7c96834666::t_9e23f4c23abb9f 72-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3a917c97b9a3e2bdd3cd8ad3c21f34e0a64cfdac",
+  "prompts": {},
+  "sessions": {
+    "s_208a7c96834666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9996a3c5-7637-487a-99bb-db72780d34e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

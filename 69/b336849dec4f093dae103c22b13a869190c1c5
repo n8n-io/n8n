@@ -1,0 +1,42 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/description.ts
+  s_18c1cdec2a3c42::t_535536ffbf8b8f 16-24,46
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/createAgentSequence.ts
+  s_18c1cdec2a3c42::t_95160ba147cc41 33,35,37-39,46,48-52
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/tests/createAgentSequence.test.ts
+  s_18c1cdec2a3c42::t_9e616b6ba37ebb 128,130
+  s_18c1cdec2a3c42::t_0735d51df9bf09 115-127,129,131-143,145,150
+  s_c0de4902d408c4::t_f93f21620e9ab6 144,146-149,151-152
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/types.ts
+  s_18c1cdec2a3c42::t_a75446edf07e53 38
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/tests/executeBatch.test.ts
+  s_18c1cdec2a3c42::t_1ce1e5d2c4346e 13
+  s_18c1cdec2a3c42::t_89e3dbd5f3008e 69
+  s_18c1cdec2a3c42::t_ae29ac25d45a1a 10,27,41,45,56-68,70-71
+  s_18c1cdec2a3c42::t_7c8d97dbeb38b1 72
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+  s_18c1cdec2a3c42::t_4e10800b74f911 85,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "69b336849dec4f093dae103c22b13a869190c1c5",
+  "prompts": {},
+  "sessions": {
+    "s_18c1cdec2a3c42": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8edf0576-5040-428d-8684-a641dd59772a",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c0de4902d408c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ef198330-46a6-4a2b-bb62-9f88fe6195e5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

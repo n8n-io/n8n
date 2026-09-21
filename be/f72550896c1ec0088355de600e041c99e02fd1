@@ -1,0 +1,19 @@
+packages/workflow/src/expression.ts
+  s_6415615520e467::t_aa6c221e64e0fa 656
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bef72550896c1ec0088355de600e041c99e02fd1",
+  "prompts": {},
+  "sessions": {
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

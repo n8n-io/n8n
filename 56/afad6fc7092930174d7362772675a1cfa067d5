@@ -1,0 +1,51 @@
+packages/cli/src/modules/instance-ai/__tests__/browser-local-mcp-server.test.ts
+  s_97958366b9864a::t_04e4acefa817c2 33,35,166-206,208-218,220-252,254-287
+  s_97958366b9864a::t_1b54d271b33a28 207,219,253
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_97958366b9864a::t_c5eb701419818f 5409
+packages/@n8n/mcp-browser/src/index.ts
+  s_97958366b9864a::t_dde0b02843e6d7 17
+  s_97958366b9864a::t_bb2f5d73a2c7cc 11
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_97958366b9864a::t_af5be24ee45653 178,202,210
+packages/@n8n/computer-use/src/gateway-session.ts
+  s_97958366b9864a::t_60b2b28d0ee6f3 1-2,7-10,80,98-101
+  s_97958366b9864a::t_1b54d271b33a28 81-83
+packages/@n8n/computer-use/src/gateway-session.test.ts
+  s_97958366b9864a::t_1b54d271b33a28 221,228
+  s_97958366b9864a::t_3111f17d6107e5 220,222-227,229-260
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_97958366b9864a::t_d8e4f25b334b34 2506
+packages/@n8n/mcp-browser/src/tools/credential.ts
+  s_97958366b9864a::t_1b54d271b33a28 180-181
+  s_97958366b9864a::t_40fbefe31c54aa 26-27
+  s_97958366b9864a::t_8d0066ed9ec951 24-25,28-29,179,182-188
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_97958366b9864a::t_e09f19ece862c9 1667,1693,1729
+packages/@n8n/mcp-browser/src/tools/credential.test.ts
+  s_97958366b9864a::t_1d34c4fde934da 486-502
+  s_97958366b9864a::t_19cbd5cf06048f 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_97958366b9864a::t_c5eb701419818f 211
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_97958366b9864a::t_00e1471d8653d8 3,16-21,93,113,123-124,129-130,133-136,139,146-175,178-200,202-205
+  s_97958366b9864a::t_13e555862864db 15,27,29-30,33-34
+  s_97958366b9864a::t_7fba0b46d574f1 128
+  s_97958366b9864a::t_1b54d271b33a28 31-32,176-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56afad6fc7092930174d7362772675a1cfa067d5",
+  "prompts": {},
+  "sessions": {
+    "s_97958366b9864a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a1c8344-19f2-47e1-88d7-50ebf051747d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

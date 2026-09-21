@@ -1,0 +1,110 @@
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsPanelLayout.ts
+  s_fc9099b66f67e9::t_5560a8a371627c 26,28-29,33,37-38,41,43-44,48,52-53,56,58-59,63-67,73,128,154-156,165-167
+  s_fc9099b66f67e9::t_2bf32bc5cf8986 117
+  ai_agent 30-32,34-36,45-47,49-51,60-62
+  s_e351b4b7502a11::t_60f5f97a812410 4
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  ai_agent 75-77,79-81
+  s_e351b4b7502a11::t_8d9b517e1cfb60 17
+  s_fc9099b66f67e9::t_5560a8a371627c 71,73-74,78,82-83,85,326
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  ai_agent 304-305,307-310
+packages/frontend/editor-ui/src/features/execution/logs/components/LogDetailsPanel.vue
+  s_fc9099b66f67e9::t_5560a8a371627c 106,108-109,113,117-120,219-220,271-272
+  ai_agent 110-112,114-116
+packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/ResizeWrapper.vue
+  s_e351b4b7502a11::t_714e8f27097a5d 56-58,67,171
+  s_fc9099b66f67e9::t_88426f30661d18 5,15-17,19,21,27,29,31,33,35,37,39,41,90-94,103,111-116,119-120,122-131,145,167-168
+  s_76af21091af99c::t_d129f2d993172c 9,23-26,74-82,85-87,134,136,139-144,150,153,156,172
+  s_fc9099b66f67e9::t_7e23a0fc04bfe8 89,95-102,104,107-110,117-118,121,149
+  s_c6931ac21a0a51::t_3c1443efd5da70 2,135,137-138
+  s_afaea994459df5::t_61f667097bec36 4,12,154,157-162,180-200
+  s_76af21091af99c::t_e7d14e020ddc0b 155
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_afaea994459df5::t_50fe2b9f292161 16-17
+packages/frontend/@n8n/design-system/src/index.ts
+  s_fc9099b66f67e9::t_5560a8a371627c 17-19
+  s_e351b4b7502a11::t_a489cb0616d7c4 15-16,20
+  s_e351b4b7502a11::t_3cd7e24c793ffd 14
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.vue
+  s_fc9099b66f67e9::t_5560a8a371627c 695
+packages/frontend/@n8n/design-system/src/composables/useResizablePanel.test.ts
+  s_99e19316ac295f::t_4f6e7be325dbf3 1-7,9-26,34-36,39-58,60,62-67,70-71,73,76,79,81,84,87,89,92-93,95-98,101-104,107-110,113-122,125-127,129-130,133,135-143,148-150,152-157,159,162-169,172-173,175-178,180-182,184-186,222-229,232-233,235-238,240-242,244-246
+  s_99e19316ac295f::t_b7431679feaccc 8,27-33,37,189-218
+  s_99e19316ac295f::t_5d1c9dd47c1cf1 219
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_afaea994459df5::t_622df5eff1d408 141-142
+packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/ResizeWrapper.stories.ts
+  s_afaea994459df5::t_736a11afb845a2 74-75
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useChatArtifacts.ts
+  ai_agent 26-28,30-32
+  s_fc9099b66f67e9::t_5560a8a371627c 22,24-25,29,33-35,88-89,91
+  s_e351b4b7502a11::t_9115e90ad495bf 4
+packages/frontend/@n8n/design-system/src/composables/useResizablePanel.ts
+  s_c6931ac21a0a51::t_467b020668a80b 342
+  s_c6931ac21a0a51::t_c7060f82a55944 184-188,207,340,343-344,393
+  s_e351b4b7502a11::t_a489cb0616d7c4 4-5,216,235,325-326,329,333,370
+  s_fc9099b66f67e9::t_a61231805d2888 52-53,79-82,105,107,120-121,159,161,164-167,171-176,180-181,240-251,266-268,270-271,275-276,314-315,324,349-350,355-356
+  s_fc9099b66f67e9::t_e12ae8b6152a58 9-10,17-22,24,26,28,30,32-33,36-47,49-50,54-59,62,64-76,84-85,88,92-101,103-104,106,108-119,122-137,140-148,150-156,160,170,177,182-183,189-205,210-215,217-218,220,223-224,226-234,236-239,252-253,264-265,272-274,277-278,284-285,295,300-301,304,306-307,310-313,317-319,327-328,330-332,347-348,351-352,357-360,366-367,386-387,392,394,397-398
+  s_c6931ac21a0a51::t_49daa6857efd95 219,221-222,225
+  s_99e19316ac295f::t_9899819a0dfd1f 379
+  s_e351b4b7502a11::t_070d2e2e72fbd4 2-3,6-8,11-13,51,60,77,83,86-87,89-91,208-209,254-263,279-281,283,288-292,296-298,302-303,305,308-309,323,334,336-339,345,353-354,361-365,368,371
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.vue
+  s_fc9099b66f67e9::t_5560a8a371627c 43-45,161,173,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1adb1c2af5053cde08a3d2bc5068ca386ebaef94",
+  "prompts": {},
+  "sessions": {
+    "s_76af21091af99c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a086bf-9eb9-79d1-aa49-b2e26dc5842b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_99e19316ac295f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a086b6-854b-743d-8810-e7fabdcdb72a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_afaea994459df5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a086c7-8684-77b0-b986-e3270d2bb2d2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c6931ac21a0a51": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a086dc-aeff-7b24-8e26-2318fb9936af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e351b4b7502a11": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a08696-aa8e-74ad-99f9-448bc44d4a4e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fc9099b66f67e9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a086a5-9d8e-77e0-9aa4-c14c2cd50150",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

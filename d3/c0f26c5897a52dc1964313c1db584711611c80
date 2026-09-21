@@ -1,0 +1,75 @@
+packages/@n8n/cli/src/commands/git-connections/instance/disconnect.ts
+  s_1d6094ab725e17::t_e03b7c8c5a6be9 1-13
+packages/@n8n/api-types/src/dto/index.ts
+  s_1d6094ab725e17::t_91e2489969a63d 118
+packages/@n8n/api-types/src/dto/git-connections/instance-git-connection.dto.ts
+  s_1d6094ab725e17::t_5b9667a6a13120 34-46
+  s_1d6094ab725e17::t_91897fcd99da3e 4
+packages/cli/src/public-api/v1/controllers/__tests__/instance-git-connection.public.controller.test.ts
+  s_1d6094ab725e17::t_2fcb7e6538de31 60-78,82-111
+  s_1d6094ab725e17::t_4e6d348459856e 79-81
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_1d6094ab725e17::t_595c357b05d8e2 23
+packages/cli/src/public-api/v1/handlers/instance-git-connection/spec/paths/cloneInstanceGitConnection.generated.yml
+  ai_agent 1-32
+packages/cli/src/public-api/v1/handlers/instance-git-connection/spec/paths/disconnectInstanceGitConnection.generated.yml
+  ai_agent 1-20
+packages/@n8n/permissions/src/scope-information.ts
+  s_1d6094ab725e17::t_4b241893642e8f 164-168
+packages/cli/src/public-api/v1/handlers/instance-git-connection/spec/paths/pullInstanceGitConnection.generated.yml
+  ai_agent 1-22
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 40-51
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_1d6094ab725e17::t_b0d504d4d4e3cf 69
+packages/@n8n/cli/src/commands/git-connections/instance/pull.ts
+  s_1d6094ab725e17::t_e677d8a2c75584 1-19
+packages/@n8n/cli/src/commands/git-connections/instance/clone.ts
+  s_1d6094ab725e17::t_c1036ad7a1ff09 1-18
+packages/@n8n/permissions/src/constants.ee.ts
+  s_1d6094ab725e17::t_d15b3ddc39267e 37,111
+packages/cli/test/integration/public-api/instance-git-connection.test.ts
+  s_1d6094ab725e17::t_10f8744ad8807a 154-204
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection-project.repository.ts
+  s_1d6094ab725e17::t_1a4d65f8422c4f 48-60
+packages/cli/src/modules/git-connections.ee/instance-git-connection.service.ts
+  s_1d6094ab725e17::t_4d3e4126a8234e 3,6-8,10,12-13,16-20,23,26,50-62,69-76,134-143,145,149-241,264-287
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 79
+packages/cli/src/public-api/v1/handlers/instance-git-connection/spec/paths/pushInstanceGitConnection.generated.yml
+  ai_agent 1-53
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_1d6094ab725e17::t_e716ca65b04a58 215-224
+packages/cli/src/modules/git-connections.ee/__tests__/instance-git-connection.service.test.ts
+  s_1d6094ab725e17::t_732351687251ea 2-4,11,14,22-24,30-41
+  s_1d6094ab725e17::t_642882be54c90e 289-295,297-321,323-377,379-381
+  s_1d6094ab725e17::t_a93e7b62e60b1a 296,322,378
+  s_1d6094ab725e17::t_e7b4ac1e134cb9 5-7
+  s_1d6094ab725e17::t_c8c4b8b13dd4ab 25-28
+  s_1d6094ab725e17::t_bf6c039f94ec32 52-59,62
+  s_1d6094ab725e17::t_6ae388856f4138 71
+packages/@n8n/cli/src/client.ts
+  s_1d6094ab725e17::t_c6854b27fb62e0 286-303
+  s_1d6094ab725e17::t_0fd16607f24c70 69-73
+packages/cli/src/public-api/v1/controllers/instance-git-connection.public.controller.ts
+  s_1d6094ab725e17::t_83b15567992ace 1-6,21
+  s_1d6094ab725e17::t_6b595e312b8745 81-150
+packages/@n8n/cli/src/commands/git-connections/instance/push.ts
+  s_1d6094ab725e17::t_e253c2395f0b4f 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3c0f26c5897a52dc1964313c1db584711611c80",
+  "prompts": {},
+  "sessions": {
+    "s_1d6094ab725e17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3dc51a6-e92d-4428-84bd-94be9c2bf358",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

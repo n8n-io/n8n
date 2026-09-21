@@ -1,0 +1,20 @@
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_b9b95935b8a400::t_9e332e59c7597e 74
+  s_b9b95935b8a400::t_0fb80c40d23c00 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03e5ea3e4736c2f562a66abe4e1d749260784386",
+  "prompts": {},
+  "sessions": {
+    "s_b9b95935b8a400": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1676e87c-ae31-46c4-83d3-9fee1812eb6d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

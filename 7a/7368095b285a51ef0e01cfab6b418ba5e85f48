@@ -1,0 +1,24 @@
+packages/cli/test/migration/1787826404992-add-require-branch-for-promotion-to-git-connection.test.ts
+  s_d8c2d163d3a1a0::t_c1fd1d9f9eb261 99-103
+  s_d8c2d163d3a1a0::t_08553ec9655f6f 63,65,71,84-98,104-116
+  s_d8c2d163d3a1a0::t_cd4ce6ed20b0e8 158-171
+  s_d8c2d163d3a1a0::t_bf57a56fabe0ca 1-62,64,66-70,72-83,117-157,172-189
+packages/@n8n/db/src/migrations/sqlite/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  s_d8c2d163d3a1a0::t_950f8b791d0fa5 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a7368095b285a51ef0e01cfab6b418ba5e85f48",
+  "prompts": {},
+  "sessions": {
+    "s_d8c2d163d3a1a0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23333e77-640b-4412-888f-aed84f03846a",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Confluence/actions/page/delete.operation.ts
+  s_203e44364a8ab0::t_7fe7242a19db2a 5
+  ai_agent 36
+  s_203e44364a8ab0::t_7059b695da318f 1-4,6-35,37-84
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_203e44364a8ab0::t_04f49ee04a7695 16,23
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_203e44364a8ab0::t_f0bcbccae7f033 52-67
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_203e44364a8ab0::t_20f45994de8499 28-32,43
+  s_203e44364a8ab0::t_363dc0b5c856e2 4,7
+packages/nodes-base/nodes/Confluence/test/actions/page/delete.operation.test.ts
+  s_203e44364a8ab0::t_cfe4b6f1e3519c 1-162
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_203e44364a8ab0::t_294ff3b932833a 30-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da547eed18f6ef35314d224a7642b85bd1b919c7",
+  "prompts": {},
+  "sessions": {
+    "s_203e44364a8ab0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87ff9245-61e0-4bf2-9a9b-adfe0c8e295d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

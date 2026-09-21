@@ -1,0 +1,52 @@
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_91222aac31d016::t_9dd5aafb078658 22
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_91222aac31d016::t_cae05d404bdf1e 2
+  s_91222aac31d016::t_54796d10cd4a14 18-19,21-27
+packages/@n8n/permissions/src/scope-information.ts
+  s_91222aac31d016::t_f77667c5f26f80 160-163
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  h_9b272a633435fb 10-14,16-19,23-27,30-33,35,37-53,55,169,174-175,211-212
+  s_b3870ba058e6f8::t_4fa5603cb8c7bf 15,171
+  s_b3870ba058e6f8::t_dab091ddbe0add 166,168
+  s_4201f3747fb456::t_ba478f303aa3ef 170,176
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_91222aac31d016::t_57691844c76d75 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e74853217edd0e8f551bf9b9e77e541559a44712",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4201f3747fb456": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c68-6715-7023-974d-f39a0c6286fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_91222aac31d016": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8683da72-3c4c-49be-8a2f-d9949b95271c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b3870ba058e6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c9d-04e1-71b1-bad6-f92565fc72f2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_7042435b4384cd::t_61d582df74ecf5 396-412,414-418
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_7042435b4384cd::t_f0b23f00d8c8ac 34
+  s_7042435b4384cd::t_f3a27b95babedb 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4da3dbcc502bc2688cba54fd8b368f58011d720e",
+  "prompts": {},
+  "sessions": {
+    "s_7042435b4384cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa05707c-0497-4ef5-b091-c6e3c26588ca",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

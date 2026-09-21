@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getTags.test.ts
+  s_aa4dc5d9a1db02::t_04af5b28169d18 161-166
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_aa4dc5d9a1db02::t_1f83e49dbc8226 308-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4b316bd790b28d36c4fefbfd91a4ec5bc2ba6571",
+  "prompts": {},
+  "sessions": {
+    "s_aa4dc5d9a1db02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3be6a95-6503-4192-954e-1d5f96c876b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

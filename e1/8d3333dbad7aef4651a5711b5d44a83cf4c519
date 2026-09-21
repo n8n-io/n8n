@@ -1,0 +1,21 @@
+packages/cli/src/chat/__tests__/chat-resume-node-types.integration.test.ts
+  ai_agent 5,109-111
+  s_532d66a3340d61::t_958d3bbb0da9b2 125-131,135-139
+  s_532d66a3340d61::t_38d57043a8d4a7 1-4,6-108,112-124,132-134,140-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e18d3333dbad7aef4651a5711b5d44a83cf4c519",
+  "prompts": {},
+  "sessions": {
+    "s_532d66a3340d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0cdb269-a35c-46f6-ba93-76bbd855b705",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

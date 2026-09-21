@@ -1,0 +1,66 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_6d370183fdbddb::t_41757990e677fa 16,23,38,43,51,56,253,258,615,650,655,663,689,712,731,733-737,739,741-747,752
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_6d370183fdbddb::t_40b4d6f5b74eee 147
+  s_6d370183fdbddb::t_41757990e677fa 20
+  ai_agent 157
+  h_ce2c4b90496ac9 19,155-156
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+  ai_agent 41-43,48
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_6d370183fdbddb::t_41757990e677fa 105-106,113
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_6d370183fdbddb::t_295a0e0386fe12 25,66,237
+  s_6d370183fdbddb::t_ff876436cb930e 111,297
+packages/@n8n/cli/src/client.ts
+  s_6d370183fdbddb::t_41757990e677fa 73
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_6d370183fdbddb::t_6da53dcf153bf4 54,419
+  s_6d370183fdbddb::t_bfa5dfe73ac25b 362-365,367,410,433
+  s_6d370183fdbddb::t_5579eea78e2e89 366
+  s_6d370183fdbddb::t_41757990e677fa 403-409,487-497
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_6d370183fdbddb::t_e3c0b25031e8ba 447,461,465-466,469-473,477,482-483,486-487,490-494,497-501
+  s_6d370183fdbddb::t_41757990e677fa 23,45,67-70,89,102,107,380-381,383-384,391-416,418-425,446,448-452,460,462-463
+  s_6d370183fdbddb::t_07af490d803029 445
+  s_6d370183fdbddb::t_0bb8434ca3d40b 417
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_6d370183fdbddb::t_c4bf98bbe7376a 5,23
+  s_6d370183fdbddb::t_41757990e677fa 16
+  s_6d370183fdbddb::t_5159fca5b1ba31 22
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_6d370183fdbddb::t_41757990e677fa 76
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_6d370183fdbddb::t_c7c1754080133f 234
+  s_6d370183fdbddb::t_f4f6a43bd78530 233
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  ai_agent 222
+  s_6d370183fdbddb::t_bf7b7ca34cc824 231-232
+  s_6d370183fdbddb::t_41757990e677fa 10,18,47,108,116-126,149-165,176-179,220-221,223-230
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_6d370183fdbddb::t_bc6c2acae11690 63,85
+  s_6d370183fdbddb::t_fd859017115ce8 232
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_6d370183fdbddb::t_130aa7bb26c551 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8471674f0319e26d01cd19e33b9cf398f6978148",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6d370183fdbddb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6c096f15-88e1-4340-88ec-210800329683",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

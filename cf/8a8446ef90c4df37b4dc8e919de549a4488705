@@ -1,0 +1,33 @@
+packages/@n8n/config/test/decorators.test.ts
+  s_16fdb2a0e62f0d::t_fad9f87ad5db23 39-40,49-51,57-69
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_16fdb2a0e62f0d::t_1a3e04ec0b2d75 8757,8759-8760,8770-8771
+  s_16fdb2a0e62f0d::t_5cae86ce38783c 8752-8755,8761-8769,8777-8778,8794-8796,8800-8804,8811-8824
+  s_16fdb2a0e62f0d::t_3b174b6e0438bb 8797-8799,8805-8810
+  s_16fdb2a0e62f0d::t_ec080674b5d383 8658-8681
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_16fdb2a0e62f0d::t_ad01a29b8202e8 71-72
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_16fdb2a0e62f0d::t_3abcd94ef3f4a8 127-130,132-135,141-142
+  s_16fdb2a0e62f0d::t_57922a3b72b27b 252-259
+packages/@n8n/config/src/configs/ai.config.ts
+  s_16fdb2a0e62f0d::t_7e7275ac83bb62 50-51
+packages/@n8n/config/src/decorators.ts
+  s_16fdb2a0e62f0d::t_38e9f12b8903d5 60-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf8a8446ef90c4df37b4dc8e919de549a4488705",
+  "prompts": {},
+  "sessions": {
+    "s_16fdb2a0e62f0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ed43002-afb6-4a23-a675-489f6eb0745f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

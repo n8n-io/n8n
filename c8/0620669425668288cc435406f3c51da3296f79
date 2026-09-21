@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_af721e3366faac::t_a28a0fdead6053 567
+  s_af721e3366faac::t_e6b58fb5ecd43a 494,505-507,509,512-514,516-519,523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c80620669425668288cc435406f3c51da3296f79",
+  "prompts": {},
+  "sessions": {
+    "s_af721e3366faac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbbde3a5-cbc5-4486-a4b8-414f4b03fb7b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

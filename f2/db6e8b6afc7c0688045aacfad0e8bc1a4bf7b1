@@ -1,0 +1,27 @@
+packages/cli/src/modules/breaking-changes/rules/v3/external-secrets-project-roles-default.rule.ts
+  ai_agent 69-71
+  s_84040fb7ac48aa::t_5ff242ecec3c35 29
+  s_84040fb7ac48aa::t_0ef61ad3ba4731 1-28,30-68,72-74
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_84040fb7ac48aa::t_df3390defe67e1 34
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/external-secrets-project-roles-default.rule.test.ts
+  s_84040fb7ac48aa::t_77d1127ec32926 2
+  s_84040fb7ac48aa::t_1bb9a368015bc5 1,3-17,19-65
+  s_84040fb7ac48aa::t_4d79e0ca2fb2b9 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f2db6e8b6afc7c0688045aacfad0e8bc1a4bf7b1",
+  "prompts": {},
+  "sessions": {
+    "s_84040fb7ac48aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a75fcc4-4978-424c-8aee-2e0ee4fb36a7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

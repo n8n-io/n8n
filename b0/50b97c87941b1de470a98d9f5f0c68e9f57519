@@ -1,0 +1,32 @@
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-writer.ts
+  s_bbc3d5a8b61a61::t_93cb0a39efa944 23
+  h_9b272a633435fb 1
+packages/cli/src/modules/n8n-packages/io/tar/tar-package-writer.ts
+  s_bbc3d5a8b61a61::t_58ce809d5fe171 46
+packages/cli/src/modules/n8n-packages/io/package-writer.ts
+  s_bbc3d5a8b61a61::t_e30c06351be927 7,10
+  s_bbc3d5a8b61a61::t_e61f75a1eac5cf 3-5
+packages/cli/src/modules/n8n-packages/io/__tests__/utils/capturing-writer.ts
+  s_bbc3d5a8b61a61::t_3c63dbc4de37b9 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b050b97c87941b1de470a98d9f5f0c68e9f57519",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bbc3d5a8b61a61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09400759-1a32-4497-8153-b2a81bf6cc24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

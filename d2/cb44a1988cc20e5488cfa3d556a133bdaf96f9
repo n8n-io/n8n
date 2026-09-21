@@ -1,0 +1,21 @@
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_fd14e5d6c273e0::t_13f55fbb3eac6d 67
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_fd14e5d6c273e0::t_ecd6e9c091b126 969-971
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2cb44a1988cc20e5488cfa3d556a133bdaf96f9",
+  "prompts": {},
+  "sessions": {
+    "s_fd14e5d6c273e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7edd1df-b889-4e1e-b8e0-1cb648f7e7c3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

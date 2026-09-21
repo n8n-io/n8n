@@ -1,0 +1,35 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_6bf40a92f12566::t_124e69ff045ff4 124-151
+  s_6bf40a92f12566::t_7c5b700676be1a 717-728
+  s_6bf40a92f12566::t_039ea5e2155009 397-405
+  s_6bf40a92f12566::t_24b799a6578d81 645-655
+  s_6bf40a92f12566::t_d56e994059ccce 508-514
+  s_6bf40a92f12566::t_a3841a4b9badb1 539-541,545-546
+  s_6bf40a92f12566::t_d8cd7754a39d1a 406-414
+  s_6bf40a92f12566::t_ceaaddd3abecba 710-716
+  s_6bf40a92f12566::t_dab9662488faec 428-430,433-438
+  s_6bf40a92f12566::t_b044ae2459ae26 425-427,431-432
+  s_6bf40a92f12566::t_631130d6b41e1f 97-110
+  s_6bf40a92f12566::t_1016d89de861ab 515-526
+  s_6bf40a92f12566::t_8dc0da290d3f6f 599-619
+  s_6bf40a92f12566::t_8843fceecb4507 620-633
+  s_6bf40a92f12566::t_d981f328a375f8 78-84
+  s_6bf40a92f12566::t_818f3541a43468 90-96
+  s_6bf40a92f12566::t_9ac881f620ed0f 542-544,547-552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7606fadf49a4706218ed70ca9ab87dd0254a16bb",
+  "prompts": {},
+  "sessions": {
+    "s_6bf40a92f12566": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acd166d2-e453-445b-bc4e-6dfd687860cd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

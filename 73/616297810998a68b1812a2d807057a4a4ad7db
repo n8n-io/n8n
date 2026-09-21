@@ -1,0 +1,72 @@
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_8b86eb076521e6::t_2262bf27071b5a 5-8,21,30-36
+packages/cli/src/events/event.service.ts
+  s_8b86eb076521e6::t_16a72b9de31691 10,19-20
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_8b86eb076521e6::t_16a72b9de31691 75-78
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_8b86eb076521e6::t_f79dab789b2876 25,63,93,130
+  s_8b86eb076521e6::t_bd1c1d4166fb7f 166
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 6-7,19,25,33,91,145-185,203-218
+  s_2fc564e3187e71::t_b5cee77d497a1e 186-202
+packages/cli/src/scheduling/system-tasks/system-task-run-observer.ts
+  s_2fc564e3187e71::t_aee555b2935744 9-11,25
+  s_8b86eb076521e6::t_2262bf27071b5a 1-8,12-24,26-37
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_8b86eb076521e6::t_b12b642dc00445 892-938,940-1122
+  s_2fc564e3187e71::t_b5cee77d497a1e 939
+  s_8b86eb076521e6::t_566ea3a748b429 12-13,43,56,68
+packages/cli/src/scheduling/system-tasks/system-task-job-registrar.ts
+  s_8b86eb076521e6::t_2262bf27071b5a 11-12,64,93
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-job-registrar.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 12,145,153,155,208-219
+packages/@n8n/config/test/config.test.ts
+  s_8b86eb076521e6::t_16a72b9de31691 270
+packages/cli/test/integration/scheduling/system-task-provisioning.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 13,178
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  s_2fc564e3187e71::t_aee555b2935744 89
+  s_8b86eb076521e6::t_2262bf27071b5a 14,28,91
+packages/cli/src/events/maps/system-task-metrics.event-map.ts
+  s_8b86eb076521e6::t_16a72b9de31691 1-67
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_2fc564e3187e71::t_b5cee77d497a1e 109-124
+  s_8b86eb076521e6::t_566ea3a748b429 84-108
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_2fc564e3187e71::t_aee555b2935744 215-216,231-235,245
+  s_8b86eb076521e6::t_2262bf27071b5a 19-21,25,84,222-227,242-244,271-272,275,280-285,304,330,335-338,340-346,369,385-388
+  s_8b86eb076521e6::t_bd1c1d4166fb7f 389-393
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_8b86eb076521e6::t_566ea3a748b429 116,118,139
+  s_8b86eb076521e6::t_63fb3b99961b77 1-115,117,119-138,140-142
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_8b86eb076521e6::t_2262bf27071b5a 23,63,90
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_8b86eb076521e6::t_bd1c1d4166fb7f 98-99,213-218
+  s_8b86eb076521e6::t_b12b642dc00445 1-97,100-212,219-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73616297810998a68b1812a2d807057a4a4ad7db",
+  "prompts": {},
+  "sessions": {
+    "s_2fc564e3187e71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43cbfc44-a81b-4873-b6bf-317bdcb62056",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_8b86eb076521e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f155d013-6503-4c9b-bdf2-af0961d3e187",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

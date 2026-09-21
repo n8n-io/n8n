@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_ff14c7b96858ea 85
+  s_f132370d90443c::t_adcdfd79c2e8c7 134
+  s_f132370d90443c::t_fb49e3b9b44604 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "18b2ae6570e4360738bae0f4a384c7c7245b7d43",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

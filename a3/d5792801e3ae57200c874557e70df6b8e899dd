@@ -1,0 +1,38 @@
+packages/workflow/test/expression-array-proxy-semantics.test.ts
+  s_52ebfe1ffb87fb::t_650c019193a5fe 186-235
+  s_52ebfe1ffb87fb::t_321a316a4f14ae 82-88,91-93,99,105,110-112,118,124-126,131-183
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_52ebfe1ffb87fb::t_c943a9fb949261 236-237
+  s_52ebfe1ffb87fb::t_cd728a0684d236 170-177,181,182-194,204-210,213-222,224-225
+  s_52ebfe1ffb87fb::t_e128be9bc0e78b 315-316,319,324,326
+  s_52ebfe1ffb87fb::t_fcdeee95b8c2b8 238-240,254-256,276,327-328,334
+  s_52ebfe1ffb87fb::t_21b947ae3eba41 195-203
+  s_52ebfe1ffb87fb::t_ac18543a677558 318,320-323
+  s_52ebfe1ffb87fb::t_24415d983611f8 178-180
+  s_52ebfe1ffb87fb::t_1ff495456dde56 312
+  s_52ebfe1ffb87fb::t_2a0e5a2d546522 211-212
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_52ebfe1ffb87fb::t_c3fbee4264e46e 516-600,609-643,659-668
+  s_52ebfe1ffb87fb::t_eea00225604a5a 644-658
+  s_52ebfe1ffb87fb::t_a8c0949f0e7605 601-608
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  s_52ebfe1ffb87fb::t_30c2cc6c95e0b1 33-38
+packages/workflow/src/extensions/array-extensions.ts
+  s_52ebfe1ffb87fb::t_ff32547b10a200 33-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a3d5792801e3ae57200c874557e70df6b8e899dd",
+  "prompts": {},
+  "sessions": {
+    "s_52ebfe1ffb87fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deaa7c0e-2dcb-468c-afaf-442d735dfc87",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

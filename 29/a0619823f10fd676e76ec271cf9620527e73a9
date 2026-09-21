@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/vite.config.mts
+  s_efb0e6e7ad51ed::t_aef55083c52c4e 26-28,30-31,166-188,232
+  s_81c6ae39c83974::t_e4f660b8282b4b 214
+  s_81c6ae39c83974::t_0b30d98f91833a 189-213,217-231
+packages/frontend/editor-ui/vitest.config.mts
+  s_81c6ae39c83974::t_035758d53927fd 2,8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "29a0619823f10fd676e76ec271cf9620527e73a9",
+  "prompts": {},
+  "sessions": {
+    "s_81c6ae39c83974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2a3857c-dcc3-4658-b86e-6436a170b7e9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_efb0e6e7ad51ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a36c30c1-16ae-4c82-9c86-53d0f70b9c98",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

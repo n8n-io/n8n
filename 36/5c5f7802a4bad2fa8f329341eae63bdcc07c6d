@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.test.ts
+  s_73c79eca38cc29::t_c9d6ee5ce40541 241-254,256-263,265-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "365c5f7802a4bad2fa8f329341eae63bdcc07c6d",
+  "prompts": {},
+  "sessions": {
+    "s_73c79eca38cc29": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "900f43c0-bbaa-400d-84ff-924a2ccf531a",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

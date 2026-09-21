@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_1a30b35e849e33::t_8e39350aaef307 26,48,87,89,93,121-122,125-129,188-190,192,194,196,208,244,253,258,265-273,293,334-360,616-626
+  s_1a30b35e849e33::t_ac72a2aa90520c 627
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_1a30b35e849e33::t_b4be2a67886a83 107
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_1a30b35e849e33::t_b4be2a67886a83 81,83-85
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_1a30b35e849e33::t_b4be2a67886a83 2
+packages/testing/playwright/pages/components/InstanceAiSidebar.ts
+  s_402ee2248f4170::t_ea7f6709626be4 3-4,27-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "60482e9bb18b011452699674c7604ea84d88be2b",
+  "prompts": {},
+  "sessions": {
+    "s_1a30b35e849e33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d61e7c6d-d29a-47e2-acc4-9d591602f01a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_402ee2248f4170": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18975633-3226-47a2-b728-0e77800cd291",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

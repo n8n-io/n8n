@@ -1,0 +1,102 @@
+packages/@n8n/api-types/src/dto/source-control/source-control-status-query-public.dto.ts
+  s_f132370d90443c::t_d7bb8a4d064f6c 1-10
+packages/@n8n/api-types/src/dto/index.ts
+  s_f132370d90443c::t_313c2fd5dd9d07 101-102
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_f132370d90443c::t_baafe1903e3ee2 9
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_f132370d90443c::t_5170f7c33f9507 13-27
+  s_f132370d90443c::t_1a605f1a2d44de 28,43-46,48-50,52-53,55-57,59-63,65-67,69-71,73,75-80,82-86,89-90,92,94-98,101-125,127-129,131-135,137-143,146-148,150-152,154-158,160-162,164-166,169-171,174-175,178-179,181-185,187-189,191-199,201-203,205-208,210-212,214,216-223,225-236,239-241,243,245-246,248-250,252-255,257-258,260-263,265-268,284-285,287-304,306-312,314-327,335-340,342-364,366-395,399,401-407,420-428,430-433,435-437
+  s_f132370d90443c::t_4562c9a56fe89d 167,176-177,180,186,190,200,204,213,224,237-238,242,244,247,251,256,259,264,283,286,313,341,365,400,429,434
+  s_f132370d90443c::t_54fec027ddcab5 305
+  s_f132370d90443c::t_c3a9a8886cd6cd 1
+  s_f132370d90443c::t_ce64adadb04f8b 396-398,408-419
+  s_f132370d90443c::t_c14c2b54cde2ff 328-334
+  s_f132370d90443c::t_2e471071007e40 269-282
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f132370d90443c::t_61de6f79308b36 36
+  s_f132370d90443c::t_b918eb1fc3e9c2 110
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_ead3ba981ab43f 43-44
+  s_f132370d90443c::t_53fa09b3899a0c 66-69
+  s_f132370d90443c::t_ef2826de9f933a 1-20,22-33,34-42,45-49,50-51,64,70
+  s_f132370d90443c::t_f8fb0ab2ef3cb3 21
+  s_f132370d90443c::t_07af9acb2d9b0b 56
+  h_5d40c27a8fdfd1 52-55,64-65
+  s_f132370d90443c::t_cf599831aab67d 50-51,58-63
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_f132370d90443c::t_82dd037b2b2b37 244-246
+packages/cli/src/public-api/v1/shared/services/pagination.service.ts
+  s_f132370d90443c::t_015f9110737a12 1
+  s_f132370d90443c::t_77d797ca26d194 48,54,55-59
+  s_f132370d90443c::t_d2f2edd0cf91c0 20,27,49-53
+  h_5d40c27a8fdfd1 21
+  s_f132370d90443c::t_1ba2447fc81b34 23-26,28-37,39
+packages/@n8n/permissions/src/__tests__/types.test.ts
+  s_f132370d90443c::t_fabb23bf420467 25
+  s_f132370d90443c::t_1ec26f2e89e715 85
+packages/cli/src/public-api/v1/shared/services/__tests__/pagination.service.test.ts
+  s_f132370d90443c::t_876c30c397bdf8 53,56,58-59,63,70,71,74,79,80,83,88,91,96,99,104,114-115
+  s_f132370d90443c::t_f1b4c4829cb004 3,54-57,60,61-63,67-69,72-73,76-78,81-82,85-87,89-90,93-95,97-98,101-103,105-106,112-113
+  s_f132370d90443c::t_a6c354fc123e97 84,92,100
+  s_f132370d90443c::t_bf6ae9bf408eac 64-66,75,107-111
+packages/cli/src/public-api/v1/shared/services/source-controlled-file-pagination.service.ts
+  s_f132370d90443c::t_7ef15c39f4cf7b 1-5,7,13-14,15-18,23
+  h_5d40c27a8fdfd1 6,8,9-12,19-22
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_f132370d90443c::t_79a1419ebb3494 16
+packages/@n8n/api-types/src/dto/source-control/source-control-status-public.dto.ts
+  s_f132370d90443c::t_2959172612fc52 1-9
+packages/cli/src/public-api/v1/shared/services/__tests__/source-controlled-file-pagination.service.test.ts
+  s_f132370d90443c::t_16ff407e75576d 1-2,4-18,26,28,31,37,39,42,48,50,53,61,64,67-68,70,74,75,78,81,84,87,90,93,97,101-102
+  s_f132370d90443c::t_0b8a66ef96b6aa 3,19-25,27,29-30,32-36,38,40-41,43-47,49,51-52,54-60,62-63,65-66,69,71-73,76-77,79-80,82-83,85-86,88-89,91-92,94-96,98-100
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_f132370d90443c::t_3e18bc291d3c0b 36
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_f132370d90443c::t_b6d9dda2a476e4 62
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_f132370d90443c::t_392e26bff526e4 72
+packages/cli/src/modules/source-control.ee/types/source-control-get-status.ts
+  s_f132370d90443c::t_0bc9cab33d372e 63-64,66
+  s_f132370d90443c::t_8c5448f909bf63 65
+  s_f132370d90443c::t_847428a7aa0767 76
+  h_5d40c27a8fdfd1 75
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_f132370d90443c::t_31505bdf448ab4 200-201,203-206,208-211,214-217,219
+  s_f132370d90443c::t_6ddc73f8f32a74 220-222
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f132370d90443c::t_1a2df59c1983f7 351-364
+  s_f132370d90443c::t_e891b08e4f7f29 116-117,122-123
+  s_f132370d90443c::t_fcfa8c1204fb58 403-420
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f132370d90443c::t_eb5cefa40267f8 447-468
+  s_f132370d90443c::t_6120c3a5a2bffd 381-396
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_f132370d90443c::t_c2c95f9a2d14e9 892-971
+  s_f132370d90443c::t_f519809d03fa6b 54,64
+packages/cli/src/events/maps/relay.event-map.ts
+  s_f132370d90443c::t_9711f322c3e40e 690-696,716-717,723
+  s_f132370d90443c::t_4befffc5ef8f51 718-722
+  s_f132370d90443c::t_d2b376d964d9df 724
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "565b47453d9a12eb5ab4e22a8b8ac0c2ff62200e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

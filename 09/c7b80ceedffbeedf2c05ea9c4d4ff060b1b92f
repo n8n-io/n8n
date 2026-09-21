@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fc1a41fd88eb5b::t_f38c1cf5c6a0c9 483-541
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fc1a41fd88eb5b::t_65ecb4ebb0204e 17-20,202,204,206,208-223,225,236-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09c7b80ceedffbeedf2c05ea9c4d4ff060b1b92f",
+  "prompts": {},
+  "sessions": {
+    "s_fc1a41fd88eb5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbadcb29-0d8e-46b0-95a2-3ecb4d90ae2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

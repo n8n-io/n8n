@@ -1,0 +1,33 @@
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_caf3d1430d6b56::t_88199a988b1c2a 3,19-24,27-33,113-119,148-154,288-294
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  s_caf3d1430d6b56::t_bd4e12359bd272 235,266,279-280,284-287,299,307-312,321,399,404
+  s_caf3d1430d6b56::t_be0f181334678c 410,418,423-425,592,595,723-729,736,742-743,751-758,762-764,769-771
+  s_caf3d1430d6b56::t_a04edc2503397d 5-6,59-74,78-119,121-124,126,130-162,164-215
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_caf3d1430d6b56::t_f3960e5f0d09db 3-4,62
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_caf3d1430d6b56::t_3177d143483b96 185,191-207
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  s_caf3d1430d6b56::t_69d5140fd5f366 4,14-15,32-43,67-74,78,80,88-108,111-118,396-415
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_caf3d1430d6b56::t_4628ad78a4672d 11-16,18,23-25
+packages/@n8n/node-engine-compatibility/src/index.ts
+  s_caf3d1430d6b56::t_05ed8279178ea1 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ac8a347750483cbab939f542c90d10b1d65c4bb",
+  "prompts": {},
+  "sessions": {
+    "s_caf3d1430d6b56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5b89d54-ffed-44a9-91f6-e008e539fb57",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

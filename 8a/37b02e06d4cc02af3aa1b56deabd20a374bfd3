@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_be6d12de03f718::t_d9ef0c5d1539bc 65-67
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_be6d12de03f718::t_e2a9fc3e6eae74 680
+  s_be6d12de03f718::t_f7fa0e695a9f9b 643
+  s_be6d12de03f718::t_aa34fdd0623370 701
+packages/@n8n/instance-ai/docs/tools.md
+  s_be6d12de03f718::t_6acdb30c3c3274 799-800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8a37b02e06d4cc02af3aa1b56deabd20a374bfd3",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

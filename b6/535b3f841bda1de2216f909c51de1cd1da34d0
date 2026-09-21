@@ -1,0 +1,63 @@
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_4ac255d31d4818::t_fb5235321d0148 8-11
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_4ac255d31d4818::t_9cd14f5a02e317 637
+  s_4ac255d31d4818::t_5e59ea9fd41f04 664
+  s_4ac255d31d4818::t_361d4652a57aab 574
+  s_4ac255d31d4818::t_7d5468db650e66 256-270
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_4ac255d31d4818::t_99f869845b3826 154-159
+  s_4ac255d31d4818::t_0a671d70942427 893
+  s_4ac255d31d4818::t_3bf3b2b0597ae1 1068
+  s_4ac255d31d4818::t_997f973c0049cd 1067,1069
+  s_4ac255d31d4818::t_47f04c8953173c 892,894
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_4ac255d31d4818::t_7563e5a49c2d38 1,5-6,23,25-30,32,47,65-127
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_4ac255d31d4818::t_6bd1c1222605e2 214-218,285
+  s_4ac255d31d4818::t_d6bc39fd150f33 271-275
+  s_4ac255d31d4818::t_6e8a5d5ce614b6 184-188
+  s_4ac255d31d4818::t_a13c985441e2eb 191-201
+  s_4ac255d31d4818::t_c5e591152396a6 189-190
+  s_4ac255d31d4818::t_e2600cfc7e6bc6 276-278,282-284
+  s_4ac255d31d4818::t_fe80473733b4d8 286-288
+  s_4ac255d31d4818::t_8ad09995d890f2 279-281,289-290
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_4ac255d31d4818::t_41cb05dcb4e424 86-103
+  s_4ac255d31d4818::t_4b6978d559a24e 44-46
+  s_4ac255d31d4818::t_a7e23336ac387d 21-26
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  s_4ac255d31d4818::t_1bd6af5a596e67 115-168
+  s_4ac255d31d4818::t_0f98c41cb9a787 56
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_4ac255d31d4818::t_837c3212d123cf 286,295
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_4ac255d31d4818::t_b69ca3c54f7fe2 86-89
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_4ac255d31d4818::t_08c171d41f7fc1 1,4-6,13-21,24-28,33,38,42-51,54-61
+  s_4ac255d31d4818::t_8aa0f77a7bade5 62
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_4ac255d31d4818::t_b8c368111d646e 177-179,182
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_4ac255d31d4818::t_1a01f411f35a90 113-115
+  s_4ac255d31d4818::t_7ba843589b3f46 583
+  s_4ac255d31d4818::t_54b9c7a50422a4 395-396
+  s_4ac255d31d4818::t_9720b05f0572cd 556,564-572
+  s_4ac255d31d4818::t_581357b77a7fd6 496-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b6535b3f841bda1de2216f909c51de1cd1da34d0",
+  "prompts": {},
+  "sessions": {
+    "s_4ac255d31d4818": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "59165f5c-6518-4b66-b303-3c73c4371cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

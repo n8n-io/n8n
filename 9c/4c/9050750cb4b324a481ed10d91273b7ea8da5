@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/git-connections/instance-git-settings.dto.ts
+  s_cb485bb7079c13::t_e9a5297aee7f36 3-8
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_cb485bb7079c13::t_4802507e1a5d7f 12,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c4c9050750cb4b324a481ed10d91273b7ea8da5",
+  "prompts": {},
+  "sessions": {
+    "s_cb485bb7079c13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91156476-ac48-448c-8bed-29ff6c905297",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

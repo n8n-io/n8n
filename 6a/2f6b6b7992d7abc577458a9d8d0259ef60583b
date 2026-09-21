@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_9ad1d4922a3f9f::t_caef016e830e81 100
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_9ad1d4922a3f9f::t_8f0dd8c4b505ed 326-387
+packages/@n8n/instance-ai/CLAUDE.md
+  s_9ad1d4922a3f9f::t_c727cc313f94dd 70
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_9ad1d4922a3f9f::t_caef016e830e81 21,78-79,293-300,304-314
+packages/@n8n/instance-ai/docs/architecture.md
+  s_9ad1d4922a3f9f::t_c727cc313f94dd 417-421
+packages/@n8n/instance-ai/src/index.ts
+  s_9ad1d4922a3f9f::t_7a4dd0d72bd417 608
+packages/@n8n/instance-ai/docs/tools.md
+  s_9ad1d4922a3f9f::t_c727cc313f94dd 715-718,835-837
+  s_9ad1d4922a3f9f::t_f4599526926c90 838
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_9ad1d4922a3f9f::t_8f0dd8c4b505ed 3,73-80,118,127,144,187,204,228
+packages/@n8n/instance-ai/src/types.ts
+  s_9ad1d4922a3f9f::t_caef016e830e81 989-990
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_9ad1d4922a3f9f::t_650771430766ac 124-125,142
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_9ad1d4922a3f9f::t_8e44696ae9a633 1
+  s_9ad1d4922a3f9f::t_8f0dd8c4b505ed 67-74,307-319,1608-1630
+  s_6e0e8168b15a08::t_4dec080fbb01c5 1631-1632
+packages/@n8n/instance-ai/docs/configuration.md
+  s_9ad1d4922a3f9f::t_c727cc313f94dd 169-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6a2f6b6b7992d7abc577458a9d8d0259ef60583b",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_9ad1d4922a3f9f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01ac7-ba1d-7230-9c9b-b63d160cb305",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

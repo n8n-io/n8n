@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/otel/module.descriptor.test.ts
+  s_ac0d5ccc5f40fe::t_a0a391627f3b7a 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "67df38fcdfe7c8e73b15d42751a7a2e26122eadc",
+  "prompts": {},
+  "sessions": {
+    "s_ac0d5ccc5f40fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "447a8257-6b92-4f35-bcb8-76eae5fcd94e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_adb5d982725a9c::t_931c6dd1f8a908 311
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_adb5d982725a9c::t_d514578304f2de 422-424
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/instanceAiEmbed.types.test.ts
+  s_adb5d982725a9c::t_406cf1cae85863 21
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  ai_agent 198
+  s_adb5d982725a9c::t_82234d73215534 326-336,340-343
+  s_adb5d982725a9c::t_83661818e9ae36 45
+  s_adb5d982725a9c::t_ea2617b904c5b3 423,432-434
+  s_adb5d982725a9c::t_90b8a0c9712d64 239-257,260-264,266-267,269-274,278,292-296
+  s_adb5d982725a9c::t_ce0374609be6f4 258-259,265,268
+  s_adb5d982725a9c::t_401a38f3537d78 90-99
+  s_adb5d982725a9c::t_20aea1751f67b3 181,183-189,199-201
+  s_adb5d982725a9c::t_31e6ced19818cb 139-140
+  s_adb5d982725a9c::t_723cabb060d0be 202
+  s_adb5d982725a9c::t_329606cad6679b 220,222-230
+  s_adb5d982725a9c::t_6ee7e024531a6d 383
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_adb5d982725a9c::t_9884cc8749f164 610-617,624-632
+  s_adb5d982725a9c::t_4cb5da5b98a048 129-134
+  s_adb5d982725a9c::t_168abc348e051b 222-227,230,241,245-266
+  s_adb5d982725a9c::t_0d6ce09342d2d7 544
+  s_adb5d982725a9c::t_200cb802a273d4 559,561,569,572
+  s_adb5d982725a9c::t_f2ca52db69b48d 618-623
+  s_adb5d982725a9c::t_471a744745ca98 364-380
+  s_adb5d982725a9c::t_6988d6eb9913df 341,361,381
+  s_adb5d982725a9c::t_3725d56f8f66e7 482-510,512-515
+  s_adb5d982725a9c::t_e6ff4ffa353738 274-314
+  s_adb5d982725a9c::t_73b9483c8bc000 173-198
+  s_adb5d982725a9c::t_48d6d5d33f2455 460,472-474
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_adb5d982725a9c::t_cb7b176b5cdad1 141-155
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_adb5d982725a9c::t_635aa47e9a2f1b 339
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_adb5d982725a9c::t_6af93917b7e251 132-135
+  s_adb5d982725a9c::t_b4d68adc9328f7 250,260,269
+  s_adb5d982725a9c::t_94de53a6c5be44 123-130
+  s_adb5d982725a9c::t_d3f19cebd881f0 251
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_adb5d982725a9c::t_f0e6033fe88785 171-177,189-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f2355bfe18d646caedc85e184850f2c2dc48437f",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

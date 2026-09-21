@@ -1,0 +1,41 @@
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/verdict-disclosure.test.ts
+  ai_agent 3
+  s_5da2fe073f2f3a::t_480d3819e94042 1-2,4-168
+packages/@n8n/instance-ai/src/workflow-loop/render-claim.ts
+  s_5da2fe073f2f3a::t_46c78480112526 67-102
+packages/@n8n/instance-ai/src/workflow-loop/verdict-disclosure.ts
+  s_5da2fe073f2f3a::t_46c78480112526 1-82
+packages/@n8n/instance-ai/src/workflow-loop/index.ts
+  s_5da2fe073f2f3a::t_6d23f6cff0aa76 61-65
+packages/@n8n/instance-ai/src/index.ts
+  s_5da2fe073f2f3a::t_209e4c812840c6 587-589
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-terminal-outcome.service.test.ts
+  s_5da2fe073f2f3a::t_c5dfe01090f624 211-301
+  s_5da2fe073f2f3a::t_d7550e7e7ff083 7-12,106-109
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  ai_agent 2172
+  s_5da2fe073f2f3a::t_ca73f9c739b180 2174,2222
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_5da2fe073f2f3a::t_2f98f6c6c77557 5,9,163-169,171-175,191-192,194-196,200-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "964f0a0f6b2d43a4c0af0666eab5484b66438277",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5da2fe073f2f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c08877c-0969-4b5a-9bc2-3d40e58743ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

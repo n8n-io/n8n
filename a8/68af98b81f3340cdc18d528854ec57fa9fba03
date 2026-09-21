@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_4201f3747fb456::t_5c56cc38837f1b 214-216
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_4201f3747fb456::t_5c56cc38837f1b 3,5-7,11-15,18,25,27,35,37,217-314,318-319
+  s_4201f3747fb456::t_f787e6fd90c44b 315-317
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_4201f3747fb456::t_f787e6fd90c44b 137-138,176-178
+  s_4201f3747fb456::t_f65a0cae3ab9fe 6-7,10,12,16-20,23,29-30,33,35,131-136,139-168,170-175,179-188
+packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.integration.test.ts
+  s_4201f3747fb456::t_5c56cc38837f1b 69-88
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection-project.repository.ts
+  s_4201f3747fb456::t_f65a0cae3ab9fe 1-20
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_4201f3747fb456::t_f65a0cae3ab9fe 46,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a868af98b81f3340cdc18d528854ec57fa9fba03",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4201f3747fb456": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c68-6715-7023-974d-f39a0c6286fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

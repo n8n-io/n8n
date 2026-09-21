@@ -1,0 +1,50 @@
+packages/cli/src/chat/__tests__/chat-resume-node-types.integration.test.ts
+  s_532d66a3340d61::t_9304949321e81c 1
+  s_532d66a3340d61::t_ddf5c8fdc6443b 8-9
+  s_532d66a3340d61::t_9e64470ed8c93d 12
+  s_532d66a3340d61::t_4a04cfc9f9b4ef 82-83,87-95
+  s_532d66a3340d61::t_3b3636afea5734 156-195
+  s_532d66a3340d61::t_0573ac8a71d9e9 196-211
+packages/cli/src/chat/__tests__/chat-execution-manager.test.ts
+  s_532d66a3340d61::t_72a5cdf6918716 47,65,75-91
+  s_532d66a3340d61::t_d514c6906c4d63 96-102
+  s_532d66a3340d61::t_9caad1764f9ec5 155-168
+  s_532d66a3340d61::t_e9f1204cfe0edd 169-182,186-192
+  ai_agent 183-185,468-470,602-603
+  s_532d66a3340d61::t_2f0a9574782724 520-522,558-560,601
+  s_532d66a3340d61::t_6f7877060673ae 819-827
+  s_532d66a3340d61::t_32ae9fa9942a0b 848-878
+  s_532d66a3340d61::t_8af096235fde9b 926-978
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.service.integration.test.ts
+  s_532d66a3340d61::t_8dd9e5d91df35d 2246-2250
+  s_532d66a3340d61::t_24ff17a31c09c5 2363-2508
+packages/cli/src/chat/chat-execution-manager.ts
+  ai_agent 42-55
+  s_532d66a3340d61::t_8a306dc0cf16b0 70-71
+  s_532d66a3340d61::t_ed7b58ff33e2a1 121
+  s_532d66a3340d61::t_763b5eace5882b 129-143
+  s_532d66a3340d61::t_48e87d258711c0 152
+  s_532d66a3340d61::t_14a1aa4c3dd156 153-155
+  s_532d66a3340d61::t_5e872f7e980f96 156-163
+  s_532d66a3340d61::t_f4fb7655fffa46 169-177
+packages/cli/src/modules/chat-hub/chat-hub.service.ts
+  s_532d66a3340d61::t_42b0de61eb279c 29
+  s_532d66a3340d61::t_be7b73e0bc808b 73
+  s_532d66a3340d61::t_fbff03288e4c05 145-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20c08272301b2da483cb465979109cec71d4f39a",
+  "prompts": {},
+  "sessions": {
+    "s_532d66a3340d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0cdb269-a35c-46f6-ba93-76bbd855b705",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
