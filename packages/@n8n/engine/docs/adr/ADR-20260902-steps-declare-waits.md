@@ -169,8 +169,11 @@ into a different step type.
   resolve path must handle this window. It must not refuse the request.
 - A time wait under 65 seconds does not reach the engine. The Wait node sleeps
   in the process for those waits and then returns normally. The shim runs that
-  node code unchanged, so the engine never sees a declaration. Node-level
-  waiting stays node behaviour. That 65-second minimum is the floor, and it
+  node code unchanged, so the engine never sees a declaration. The engine
+  therefore cannot make such a wait durable, cancel it, or report it: to the
+  engine the step is only slow. Those waits behave on engine v2 exactly as they
+  do on engine v1, including being lost if the worker stops while one sleeps.
+  That 65-second minimum is the floor, and it
   applies to the `timeInterval` and `specificTime` modes only. A `webhook` wait
   and a `form` wait return earlier in the node, and no floor applies to them.
 - A wait with a `limitWaitTime` can fire up to one sweep interval after its
@@ -200,15 +203,15 @@ into a different step type.
 - Data-plane pruning must exclude the waiting executions. By age, a paused
   execution looks the same as a finished one. If the engine prunes a paused
   execution, it destroys a workflow run.
-- The `specificTime` mode of the Wait node resolves its target time in the
-  timezone of the workflow. The node converts it and hands over an absolute
-  instant, so nothing in the data plane converts a time. The shim does not give
-  the node the workflow's timezone, so the node falls back to the default one,
-  and the instant it produces is wrong by that offset. Durations are not
-  affected. The execution row now holds a workflow snapshot
-  (ADR-20260904-store-the-workflow-with-the-execution), so the timezone is
-  already in the data plane. The gap closes when the executor request carries
-  the settings from that snapshot.
+- The executor request carries the workflow settings that a node needs to
+  resolve its parameters. The `specificTime` mode of the Wait node resolves its
+  target time in the timezone of the workflow. The node converts it and hands
+  over an absolute instant, so nothing in the data plane converts a time, and
+  durations are not affected. The execution row holds a workflow snapshot
+  (ADR-20260904-store-the-workflow-with-the-execution), but the execution path
+  does not read that document, so the settings travel as their own field. Until
+  the shim work carries them, the node falls back to the default timezone and
+  the instant it produces is wrong by that offset.
 
 ## Links
 
