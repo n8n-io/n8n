@@ -9,6 +9,7 @@ import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -55,6 +56,7 @@ export class InstanceReportingService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly license: License,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		outboundHttp: OutboundHttp,
@@ -66,12 +68,6 @@ export class InstanceReportingService {
 			// collector, so the URL is never user-controlled.
 			useDefaultSsrfPolicy: 'unsafe',
 			baseURL: this.config.instanceReportingBaseUrl.replace(/\/+$/, ''),
-			// An unset token drops the header, so an unauthenticated receiver works.
-			headers: () => ({
-				authorization: this.config.instanceReportingAuthToken
-					? `Bearer ${this.config.instanceReportingAuthToken}`
-					: undefined,
-			}),
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
@@ -93,9 +89,24 @@ export class InstanceReportingService {
 	 * daily point while every sample sits 24 hours apart; re-measuring hours later
 	 * would stretch one interval and skew the whole series.
 	 *
+	 * The license certificate is the credential: the receiver accepts a report
+	 * only from an instance that holds a certificate n8n issued. It is read fresh
+	 * for every report, so a renewed license is sent as soon as it is stored.
+	 *
 	 * @throws when delivery fails, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
+		// Checked before anything is measured or persisted: without a certificate
+		// the receiver rejects every attempt, so a pending row would only burn its
+		// retry budget for nothing.
+		const licenseCert = await this.license.loadCertStr();
+		if (!licenseCert) {
+			this.logger.warn(
+				'Skipping the instance report because this instance has no license certificate. Set N8N_LICENSE_CERT or activate a license.',
+			);
+			return;
+		}
+
 		const now = new Date();
 		let report = await this.reportRepository.findTodaysPending(now);
 
@@ -126,6 +137,10 @@ export class InstanceReportingService {
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
 			n8nVersion: N8N_VERSION,
 			dataPoints: report.dataPoints,
+			// In the body rather than a header: a certificate is several KB and
+			// grows with the license, which is more than common proxies allow per
+			// header. The receiver verifies it, then drops it; it is never stored.
+			licenseCert,
 		};
 
 		try {
@@ -137,7 +152,7 @@ export class InstanceReportingService {
 				returnFullResponse: true,
 				// Inspect the status here rather than catching a generic request error.
 				ignoreHttpStatusErrors: true,
-				// A redirect would forward the auth token to whatever host it names.
+				// A redirect would forward the license certificate to whatever host it names.
 				disableFollowRedirect: true,
 			});
 

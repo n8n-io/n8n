@@ -30,12 +30,19 @@ export class InstanceReportingModule implements ModuleInterface {
 			);
 		}
 
-		if (!(await this.isConfigured())) {
-			Container.get(Logger)
-				.scoped('instance-reporting')
-				.warn(
-					'Instance reporting is enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset, so no reports will be sent',
-				);
+		const logger = Container.get(Logger).scoped('instance-reporting');
+
+		if (!(await this.hasReceiver())) {
+			logger.warn(
+				'Instance reporting is enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset, so no reports will be sent',
+			);
+			return;
+		}
+
+		if (!(await this.hasLicenseCert())) {
+			logger.warn(
+				'Instance reporting is enabled but this instance has no license certificate, so no reports will be sent. The receiver accepts reports only from licensed instances. Set N8N_LICENSE_CERT or activate a license.',
+			);
 			return;
 		}
 
@@ -50,8 +57,8 @@ export class InstanceReportingModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
 	 * Return values:
-	 * { enabled: false } - module loaded but no receiver configured
-	 * { enabled: true, reportTime: 'HH:mm' } - module loaded and receiver configured
+	 * { enabled: false } - module loaded but no receiver configured, or no license certificate
+	 * { enabled: true, reportTime: 'HH:mm' } - module loaded, receiver configured, certificate present
 	 *
 	 * Built once at startup and cached for the process lifetime.
 	 **/
@@ -75,10 +82,26 @@ export class InstanceReportingModule implements ModuleInterface {
 		return [InstanceMonitoringReport];
 	}
 
-	/** Whether a receiver is configured, i.e. whether reports are actually sent. */
+	/** Whether reports are actually sent: a receiver is configured and there is a certificate to authenticate with. */
 	private async isConfigured(): Promise<boolean> {
+		return (await this.hasReceiver()) && (await this.hasLicenseCert());
+	}
+
+	private async hasReceiver(): Promise<boolean> {
 		const { InstanceReportingConfig } = await import('./instance-reporting.config.js');
 
 		return Container.get(InstanceReportingConfig).instanceReportingBaseUrl !== '';
+	}
+
+	/**
+	 * The license certificate is the credential the receiver checks, so an
+	 * unlicensed (community) instance cannot report. Read the raw string rather
+	 * than asking whether the license is valid: an expired certificate is still
+	 * accepted by the receiver.
+	 */
+	private async hasLicenseCert(): Promise<boolean> {
+		const { License } = await import('@/license.js');
+
+		return (await Container.get(License).loadCertStr()) !== '';
 	}
 }

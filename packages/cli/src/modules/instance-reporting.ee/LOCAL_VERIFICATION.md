@@ -15,7 +15,13 @@ the test.
 - The receiver runs on `http://127.0.0.1:3456` and answers `POST
   /api/v1/instance-reports` with **201** on success. Any other status counts as
   a rejection.
-- The receiver accepts `Authorization: Bearer testing`.
+- The receiver trusts the license certificate this instance sends. The
+  instance sends whatever `N8N_LICENSE_CERT` holds, so either use a real
+  n8n-issued certificate, or a certificate minted by a development CA that the
+  receiver is configured to trust (see the receiver's `mock-license` tooling
+  and `N8N_MONITORING_ADDITIONAL_ISSUER_CERTS`). A development certificate
+  makes the license SDK log `cert could not be initialized` once at boot; the
+  instance then runs as community and still reports.
 - Keep the receiver's request log visible. You must see the raw body.
 - `sqlite3` is installed. The dev instance uses SQLite at
   `~/.n8n/database.sqlite` unless you set another database.
@@ -34,8 +40,8 @@ cd packages/cli
 
 export N8N_ENABLED_MODULES=instance-reporting
 export N8N_INSTANCE_REPORTING_BASE_URL=http://127.0.0.1:3456
-export N8N_INSTANCE_REPORTING_AUTH_TOKEN=testing
 export N8N_INSTANCE_REPORTING_LABEL=local-dev
+export N8N_LICENSE_CERT=<certificate the receiver trusts, see prerequisites>
 
 # Compact insights quickly, so raw rows reach insights_by_period in a minute.
 export N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES=1
@@ -49,7 +55,8 @@ pnpm dev
 
 Expected on the first boot:
 
-- No warning about `N8N_INSTANCE_REPORTING_BASE_URL` being unset.
+- No warning about `N8N_INSTANCE_REPORTING_BASE_URL` being unset, and none
+  about a missing license certificate.
 - The log line `Started the instance reporting timer`.
 - A `Resolved the instance reporting time` line with a random `HH:mm` at or
   after `03:00`.
@@ -137,7 +144,8 @@ ahead and the tick correctly skips.
 **Receiver side.** The receiver must log one `POST /api/v1/instance-reports`
 with:
 
-- header `Authorization: Bearer testing`
+- no `Authorization` header
+- `licenseCert`: the exact value of `N8N_LICENSE_CERT`
 - `instanceId`: a 64-character hex string, equal to the instance id in
   `~/.n8n/config`
 - `batchId`: a UUID-like id, equal to the row id from the query below
@@ -172,10 +180,11 @@ Run these after step 4. Each is short.
 | 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasDeliveredToday` short-circuits the tick |
 | 5.2 | Retry resends the same measurement | Make the receiver answer 500. Delete today's delivered row, then restart | Request arrives, `lastError` holds `rejected with status 500`, `deliveredAt` NULL, `attempts` grows. Retries land ~5 minutes apart, 3 attempts in total, then `Giving up on the instance report for today`. Every retry carries the **same** `batchId` and the same values — no re-measurement |
 | 5.3 | Recovery keeps the pending row | During 5.2, switch the receiver back to 201 before the third attempt | The next attempt reuses the pending row and marks it delivered. No second row for the day |
-| 5.4 | Wrong token | Set `N8N_INSTANCE_REPORTING_AUTH_TOKEN=wrong`, clear today's row, restart | The receiver answers 401/403, delivery fails, `lastError` names the status. Nothing is marked delivered |
+| 5.4 | Untrusted certificate | Set `N8N_LICENSE_CERT` to a certificate the receiver does not trust (any well-formed one from another CA), clear today's row, restart | The receiver answers 401, delivery fails, `lastError` names the status. Nothing is marked delivered |
+| 5.4b | No certificate | Unset `N8N_LICENSE_CERT` on an instance with no activated license, restart | Warning `no license certificate, so no reports will be sent`; no timer, no request, no row |
 | 5.5 | Non-201 success code is a failure | Make the receiver answer 200 | Treated as a rejection: `Instance report was rejected with status 200` |
 | 5.6 | Receiver down | Stop the receiver, clear today's row, restart | Delivery fails with a connection error in `lastError`; the instance stays healthy and keeps serving |
-| 5.7 | Redirect is not followed | Make the receiver answer 302 to another local port | The report is rejected with status 302. The second port never sees the bearer token |
+| 5.7 | Redirect is not followed | Make the receiver answer 302 to another local port | The report is rejected with status 302. The second port never sees the license certificate |
 | 5.8 | Base URL unset | Unset `N8N_INSTANCE_REPORTING_BASE_URL`, restart | Warning `enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset`; no timer, no request |
 | 5.9 | Insights disabled | `N8N_DISABLED_MODULES=insights`, restart | Startup fails with the `UserError` that names both variables |
 | 5.10 | Trailing slash in the base URL | Use `http://127.0.0.1:3456/`, clear today's row, restart | The path is still `/api/v1/instance-reports`, with no double slash |
@@ -202,8 +211,8 @@ sqlite3 "$N8N_DB" "DELETE FROM instance_monitoring_report;"
 sqlite3 "$N8N_DB" "DELETE FROM settings WHERE key = 'features.centralInstanceMonitoring';"
 ```
 
-Unset the `N8N_INSTANCE_REPORTING_*` and `N8N_INSIGHTS_*` variables, or start a
-new shell. The backdated `insights_by_period` rows stay wrong for the Insights
+Unset the `N8N_INSTANCE_REPORTING_*`, `N8N_LICENSE_CERT` and `N8N_INSIGHTS_*`
+variables, or start a new shell. The backdated `insights_by_period` rows stay wrong for the Insights
 UI; drop them, or use a throwaway `N8N_USER_FOLDER` for the whole test if you
 want your dev data untouched.
 
