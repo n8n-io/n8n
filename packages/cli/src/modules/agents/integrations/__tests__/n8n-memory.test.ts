@@ -1007,7 +1007,6 @@ describe('N8nMemory', () => {
 				agentId: 'agent-1',
 				observationScopeId: 't-1',
 				lastObservedMessageId: 'm-7',
-				emptyLogThroughMessageId: 'm-7',
 				lastObservedAt,
 				createdAt: new Date(),
 				updatedAt: new Date('2026-05-05T00:00:00Z'),
@@ -1016,36 +1015,30 @@ describe('N8nMemory', () => {
 			const cursor = await memory.getCursor('t-1');
 			expect(cursor?.lastObservedAt.getTime()).toBe(lastObservedAt.getTime());
 			expect(cursor?.lastObservedMessageId).toBe('m-7');
-			expect(cursor?.emptyLogThroughMessageId).toBe('m-7');
 		});
 
-		it.each([undefined, null, 'm-9'])(
-			'stores cursor fields and clears omitted empty-log markers: %s',
-			async (emptyLogThroughMessageId) => {
-				const lastObservedAt = new Date('2026-05-05T00:00:00.500Z');
-				await memory.setCursor({
+		it('upserts on setCursor with cursor-advance fields keyed by agent and observation scope', async () => {
+			const lastObservedAt = new Date('2026-05-05T00:00:00.500Z');
+			await memory.setCursor({
+				observationScopeId: 't-1',
+				lastObservedMessageId: 'm-9',
+				lastObservedAt,
+				updatedAt: new Date('2026-05-05T00:00:00Z'),
+			});
+
+			expect(observationCursorRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
 					observationScopeId: 't-1',
 					lastObservedMessageId: 'm-9',
-					emptyLogThroughMessageId,
 					lastObservedAt,
-					updatedAt: new Date('2026-05-05T00:00:00Z'),
-				});
-
-				expect(observationCursorRepository.upsert).toHaveBeenCalledWith(
-					expect.objectContaining({
-						agentId: 'agent-1',
-						observationScopeId: 't-1',
-						lastObservedMessageId: 'm-9',
-						emptyLogThroughMessageId: emptyLogThroughMessageId ?? null,
-						lastObservedAt,
-					}),
-					expect.objectContaining({ conflictPaths: ['agentId', 'observationScopeId'] }),
-				);
-				const call = observationCursorRepository.upsert.mock.calls[0][0] as Record<string, unknown>;
-				expect(call).not.toHaveProperty('summary');
-				expect(call).not.toHaveProperty('summaryUpdatedAt');
-			},
-		);
+				}),
+				expect.objectContaining({ conflictPaths: ['agentId', 'observationScopeId'] }),
+			);
+			const call = observationCursorRepository.upsert.mock.calls[0][0] as Record<string, unknown>;
+			expect(call).not.toHaveProperty('summary');
+			expect(call).not.toHaveProperty('summaryUpdatedAt');
+		});
 	});
 
 	describe('locks', () => {

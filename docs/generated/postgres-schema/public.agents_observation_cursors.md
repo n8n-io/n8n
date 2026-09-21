@@ -6,7 +6,6 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns this cursor |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| emptyLogThroughMessageId | varchar(36) |  | true |  |  | Certifies that the full history through this message needs no stored observations. NULL requires retained observations. |
 | lastObservedAt | timestamp(3) with time zone |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
 | observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream checkpointed by this cursor |
@@ -44,7 +43,6 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_36_ emptyLogThroughMessageId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId FK

@@ -9,9 +9,6 @@ export class InstanceAiObservationCursor extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36 })
 	lastObservedMessageId: string;
 
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	emptyLogThroughMessageId: string | null;
-
 	@DateTimeColumn()
 	lastObservedAt: Date;
 }

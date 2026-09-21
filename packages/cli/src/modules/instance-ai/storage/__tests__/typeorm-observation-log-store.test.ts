@@ -103,7 +103,6 @@ describe('TypeORMObservationLogStore', () => {
 		observationCursorRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({
 			observationScopeId: 'thread-1',
 			lastObservedMessageId: 'message-2',
-			emptyLogThroughMessageId: 'message-2',
 			lastObservedAt,
 			updatedAt,
 		} as never);
@@ -114,13 +113,6 @@ describe('TypeORMObservationLogStore', () => {
 		await store.setCursor({
 			observationScopeId: 'thread-1',
 			lastObservedMessageId: 'message-2',
-			emptyLogThroughMessageId: 'message-2',
-			lastObservedAt,
-			updatedAt,
-		});
-		await store.setCursor({
-			observationScopeId: 'thread-1',
-			lastObservedMessageId: 'message-2',
 			lastObservedAt,
 			updatedAt,
 		});
@@ -128,16 +120,13 @@ describe('TypeORMObservationLogStore', () => {
 		await expect(store.getCursor('thread-1')).resolves.toEqual({
 			observationScopeId: 'thread-1',
 			lastObservedMessageId: 'message-2',
-			emptyLogThroughMessageId: 'message-2',
 			lastObservedAt,
 			updatedAt,
 		});
-		expect(observationCursorRepo.upsert).toHaveBeenNthCalledWith(
-			1,
+		expect(observationCursorRepo.upsert).toHaveBeenCalledWith(
 			{
 				observationScopeId: 'thread-1',
 				lastObservedMessageId: 'message-2',
-				emptyLogThroughMessageId: 'message-2',
 				lastObservedAt,
 				updatedAt,
 			},
@@ -145,11 +134,6 @@ describe('TypeORMObservationLogStore', () => {
 				conflictPaths: ['observationScopeId'],
 				skipUpdateIfNoValuesChanged: false,
 			},
-		);
-		expect(observationCursorRepo.upsert).toHaveBeenNthCalledWith(
-			2,
-			expect.objectContaining({ emptyLogThroughMessageId: null }),
-			expect.any(Object),
 		);
 	});
 

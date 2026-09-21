@@ -528,6 +528,10 @@ describe('runObservationLogObserver', () => {
 	it('advances empty batches without consuming messages that arrive during observation', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.appendObservationLogEntries([
+			{ observationScopeId: 'thread-1', marker: 'critical', text: 'Keep the prior decision.' },
+		]);
+		const beforeLog = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
 		await store.saveMessages({
 			threadId: 'thread-1',
 			resourceId: 'user-1',
@@ -553,22 +557,23 @@ describe('runObservationLogObserver', () => {
 		expect(await run()).toMatchObject({ observationsWritten: 0, cursorAdvanced: true });
 		expect(await store.getCursor('thread-1')).toMatchObject({
 			lastObservedMessageId: 'm1',
-			emptyLogThroughMessageId: 'm1',
 		});
 		mockGenerateText.mockResolvedValue({ text: 'NO_OBSERVATIONS' });
 		expect(await run()).toMatchObject({ observationsWritten: 0, cursorAdvanced: true });
 		expect(await store.getCursor('thread-1')).toMatchObject({
 			lastObservedMessageId: 'm2',
-			emptyLogThroughMessageId: 'm2',
 		});
 		expect(await run()).toEqual({ status: 'skipped', reason: 'no-delta' });
-		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual(
+			beforeLog,
+		);
 	});
 
-	it('requires retained observations after an empty prefix gains a useful fact', async () => {
+	it('keeps an empty prefix until observations allow the cursor to advance', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		for (const [index, output] of [
+			' \nNO_OBSERVATIONS\n ',
 			'NO_OBSERVATIONS',
 			'* CRITICAL Deployment requires approval.',
 			'NO_OBSERVATIONS',
@@ -578,7 +583,7 @@ describe('runObservationLogObserver', () => {
 				threadId: 'thread-1',
 				resourceId: 'user-1',
 				messages: [
-					message(id, 'user', index === 1 ? 'Ask before deployment.' : 'Thanks.', new Date(index)),
+					message(id, 'user', index === 2 ? 'Ask before deployment.' : 'Thanks.', new Date(index)),
 				],
 			});
 			expect(
@@ -589,18 +594,25 @@ describe('runObservationLogObserver', () => {
 					tokenCounter: () => 10,
 					observe: async () => await Promise.resolve(output),
 				}),
-			).toMatchObject({ cursorAdvanced: true });
-			expect(await store.getCursor('thread-1')).toMatchObject({
-				lastObservedMessageId: id,
-				emptyLogThroughMessageId: index === 0 ? id : null,
+			).toMatchObject({
+				status: 'ran',
+				observationsWritten: index === 2 ? 1 : 0,
+				cursorAdvanced: index >= 2,
+				skippedLines: [],
 			});
+			if (index < 2) {
+				expect(await store.getCursor('thread-1')).toBeNull();
+				expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+			} else {
+				expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: id });
+			}
 		}
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
 			{ text: 'Deployment requires approval.' },
 		]);
 	});
 
-	it('reviews full history before certifying an inconsistent cursor as empty', async () => {
+	it('keeps history and the stored cursor after an empty result with missing observations', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		await store.saveMessages({
@@ -617,13 +629,22 @@ describe('runObservationLogObserver', () => {
 			lastObservedAt: new Date(1),
 			updatedAt: new Date(1),
 		});
+		const beforeCursor = await store.getCursor('thread-1');
+		const beforeMessages = await store.getMessagesForObservationScope('thread-1');
 		const observe = vi.fn(async () => await Promise.resolve('NO_OBSERVATIONS'));
-		await runObservationLogObserver({
-			memory: store,
-			observationScopeId: 'thread-1',
-			observationLogTailLimit: 0,
-			tokenCounter: () => 10,
-			observe,
+		expect(
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 0,
+				tokenCounter: () => 10,
+				observe,
+			}),
+		).toMatchObject({
+			status: 'ran',
+			observationsWritten: 0,
+			cursorAdvanced: false,
+			skippedLines: [],
 		});
 		expect(observe).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -633,10 +654,9 @@ describe('runObservationLogObserver', () => {
 				]),
 			}),
 		);
-		expect(await store.getCursor('thread-1')).toMatchObject({
-			lastObservedMessageId: 'm2',
-			emptyLogThroughMessageId: 'm2',
-		});
+		expect(await store.getCursor('thread-1')).toEqual(beforeCursor);
+		expect(await store.getMessagesForObservationScope('thread-1')).toEqual(beforeMessages);
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
 
 	it.each(['NO_OBSERVATIONS', '* CRITICAL (14:40) Progress noted.'])(
@@ -644,6 +664,9 @@ describe('runObservationLogObserver', () => {
 		async (output) => {
 			const store = new InMemoryMemory();
 			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.appendObservationLogEntries([
+				{ observationScopeId: 'thread-1', marker: 'important', text: 'Email approval is pending.' },
+			]);
 			const pendingHost: AgentDbMessage = {
 				id: 'm2',
 				createdAt: new Date(2026, 4, 12, 14, 31),

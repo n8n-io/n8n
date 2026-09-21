@@ -275,17 +275,14 @@ export class MemoryOrchestrator {
 			renderObservationLog(observations, {
 				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
 			}) ?? undefined;
-		// Observations are stamped at observer run time, after the messages they
-		// observed are persisted, so the latest observation's createdAt is a safe
-		// upper bound on those messages' createdAt. Seeding the list's clock here
-		// keeps new live messages ordered after the observer cursor's
-		// lastObservedAt even when resource-filtered history did not surface them
-		// (e.g. resources sharing a thread on fast back-to-back runs).
+		// Empty batches can move the cursor beyond the latest observation.
+		// Seed both timestamps to keep new messages after the trusted cursor.
 		if (observations.length > 0) {
 			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
-		} else if (hasObservationLogObserverMemory(memory)) {
-			const { cursor } = await readObservationState(memory, options.threadId);
-			if (cursor) list.seedLastCreatedAt(new Date(cursor.lastObservedAt).getTime());
+			if (hasObservationLogObserverMemory(memory)) {
+				const cursor = await memory.getCursor(options.threadId);
+				if (cursor) list.seedLastCreatedAt(new Date(cursor.lastObservedAt).getTime());
+			}
 		}
 	}
 
@@ -438,9 +435,9 @@ export class MemoryOrchestrator {
 	 * loop block: it joins the in-flight task, or falls back to a synchronous
 	 * Observer run. Best-effort: a skipped (lock held) or failed observer run —
 	 * or any failure in the surrounding store reads and token counting — leaves
-	 * the window untouched and never fails the run. A failed attempt disables
-	 * observation until the next run. Lock contention and incomplete tool calls
-	 * can be checked again at the next boundary.
+	 * the window untouched and never fails the run. A failed attempt or a response
+	 * that does not advance the cursor disables observation until the next run.
+	 * Lock contention and incomplete tool calls can be checked at the next boundary.
 	 */
 	async maybeObserveMidRun(
 		list: AgentMessageList,

@@ -289,7 +289,6 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_36_ emptyLogThroughMessageId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId FK

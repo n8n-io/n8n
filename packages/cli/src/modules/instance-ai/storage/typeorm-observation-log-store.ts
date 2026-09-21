@@ -220,7 +220,6 @@ export class TypeORMObservationLogStore
 		return {
 			observationScopeId: entity.observationScopeId,
 			lastObservedMessageId: entity.lastObservedMessageId,
-			emptyLogThroughMessageId: entity.emptyLogThroughMessageId,
 			lastObservedAt: entity.lastObservedAt,
 			updatedAt: entity.updatedAt,
 		};
@@ -231,7 +230,6 @@ export class TypeORMObservationLogStore
 			{
 				observationScopeId: cursor.observationScopeId,
 				lastObservedMessageId: cursor.lastObservedMessageId,
-				emptyLogThroughMessageId: cursor.emptyLogThroughMessageId ?? null,
 				lastObservedAt: cursor.lastObservedAt,
 				updatedAt: cursor.updatedAt,
 			},

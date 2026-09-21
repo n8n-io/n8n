@@ -70,10 +70,7 @@ export async function readObservationState(
 	]);
 	const hasActiveObservations = observations.length > 0;
 	// Missing memory is not proof that the processed history was empty.
-	const trusted =
-		cursor &&
-		(hasActiveObservations || cursor.emptyLogThroughMessageId === cursor.lastObservedMessageId);
-	return { cursor: trusted ? cursor : null, hasActiveObservations };
+	return { cursor: hasActiveObservations ? cursor : null, hasActiveObservations };
 }
 
 export interface RunObservationLogObserverOpts {
@@ -282,21 +279,23 @@ export async function runObservationLogObserver(
 		inserted.push(row);
 	}
 
-	const lastMessage = observable[observable.length - 1];
-	// A matching marker proves that an empty log is intentional. Without it,
-	// later runs must ignore the cursor and review the full history again.
-	await memory.setCursor({
-		observationScopeId,
-		lastObservedMessageId: lastMessage.id,
-		lastObservedAt: lastMessage.createdAt,
-		emptyLogThroughMessageId: noObservations && !hasActiveObservations ? lastMessage.id : null,
-		updatedAt: now,
-	});
+	// ponytail: Keep raw history when no observations exist; later runs may review it again.
+	// Add a durable empty-review marker if repeated reviews across runs become costly.
+	const cursorAdvanced = inserted.length > 0 || hasActiveObservations;
+	if (cursorAdvanced) {
+		const lastMessage = observable[observable.length - 1];
+		await memory.setCursor({
+			observationScopeId,
+			lastObservedMessageId: lastMessage.id,
+			lastObservedAt: lastMessage.createdAt,
+			updatedAt: now,
+		});
+	}
 
 	return {
 		status: 'ran',
 		observationsWritten: inserted.length,
-		cursorAdvanced: true,
+		cursorAdvanced,
 		tokenCount,
 		skippedLines: parsed.skippedLines,
 	};

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRIMARY KEY NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "emptyLogThroughMessageId" varchar(36), CONSTRAINT "FK_5b6319b2e9a37c1064a72428f9a" FOREIGN KEY ("observationScopeId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRIMARY KEY NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_5b6319b2e9a37c1064a72428f9a" FOREIGN KEY ("observationScopeId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -16,7 +16,6 @@ CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRI
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| emptyLogThroughMessageId | varchar(36) |  | true |  |  |  |
 | lastObservedAt | datetime(3) |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
 | observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
@@ -45,7 +44,6 @@ erDiagram
 
 "instance_ai_observation_cursors" {
   datetime_3_ createdAt
-  varchar_36_ emptyLogThroughMessageId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar observationScopeId PK

@@ -3,6 +3,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
+import { runObservationLogObserver } from '../memory/observation-log-observer';
 import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
@@ -40,50 +41,53 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 	const m2 = message('m2', 'second', new Date(2026, 4, 12, 14, 31));
 	const m3 = message('m3', 'third', new Date(2026, 4, 12, 14, 32));
 
-	it.each([undefined, null, 'm2'])(
-		'keeps full history without observations or a matching empty-log marker: %s',
-		async (emptyLogThroughMessageId) => {
-			const store = new InMemoryMemory();
-			await seedThread(store, [m1, m2, m3]);
-			// Cursor advanced to the latest message, but the observation log is empty —
-			// the desync that caused mid-thread amnesia.
-			await store.setCursor({
-				observationScopeId: THREAD_ID,
-				lastObservedMessageId: m3.id,
-				lastObservedAt: m3.createdAt,
-				updatedAt: m3.createdAt,
-				emptyLogThroughMessageId,
-			});
+	it('keeps full history on load and resume when observations are missing', async () => {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2, m3]);
+		// The cursor alone cannot replace missing observations.
+		await store.setCursor({
+			observationScopeId: THREAD_ID,
+			lastObservedMessageId: m3.id,
+			lastObservedAt: m3.createdAt,
+			updatedAt: m3.createdAt,
+		});
 
-			const loaded = await buildOrchestrator(store).loadHistoryMessages({
-				threadId: THREAD_ID,
-				resourceId: RESOURCE_ID,
-			});
+		const loaded = await buildOrchestrator(store).loadHistoryMessages({
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
 
-			// Without the fallback this returns [] (only messages after the cursor),
-			// which is exactly the amnesia bug. The whole conversation must survive.
-			expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
-			const resumed = new AgentMessageList();
-			resumed.addHistory([m1, m2, m3]);
-			await buildOrchestrator(store).applyObservationMask(resumed, {
-				threadId: THREAD_ID,
-				resourceId: RESOURCE_ID,
-			});
-			expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
-		},
-	);
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+		const resumed = new AgentMessageList();
+		resumed.addHistory([m1, m2, m3]);
+		await buildOrchestrator(store).applyObservationMask(resumed, {
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
+		expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
 
-	it('loads and resumes an empty log without hiding newer messages', async () => {
+	it('keeps new messages after an empty batch advances beyond older observations', async () => {
 		const store = new InMemoryMemory();
 		const reviewed = message('reviewed', 'Thanks.', new Date('2099-01-01T00:00:00Z'));
 		await seedThread(store, [reviewed]);
-		await store.setCursor({
-			observationScopeId: THREAD_ID,
-			lastObservedMessageId: reviewed.id,
-			lastObservedAt: reviewed.createdAt,
-			updatedAt: reviewed.createdAt,
-			emptyLogThroughMessageId: reviewed.id,
-		});
+		await store.appendObservationLogEntries([
+			{
+				observationScopeId: THREAD_ID,
+				marker: 'critical',
+				text: 'Deployment requires approval.',
+				createdAt: new Date('2098-01-01T00:00:00Z'),
+			},
+		]);
+		expect(
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: THREAD_ID,
+				observationLogTailLimit: 20,
+				tokenCounter: () => 10,
+				observe: async () => await Promise.resolve('NO_OBSERVATIONS'),
+			}),
+		).toMatchObject({ observationsWritten: 0, cursorAdvanced: true });
 		const persistence = { threadId: THREAD_ID, resourceId: RESOURCE_ID };
 		const list = new AgentMessageList();
 		await buildOrchestrator(store).loadInto(list, { persistence });
