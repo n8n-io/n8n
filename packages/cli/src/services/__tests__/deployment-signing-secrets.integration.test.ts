@@ -35,7 +35,7 @@ describe('deployment signing secrets (integration)', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['DeploymentKey']);
+		await testDb.resetDeploymentKeys();
 	});
 
 	it('seeds a secret in wrapped form and reads it back in usable form', async () => {

@@ -1,10 +1,14 @@
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull } from '@n8n/typeorm';
+import type { DeepPartial, Repository } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import { DeploymentKey } from '../entities/deployment-key';
 import { DbLock, DbLockService } from '../services/db-lock.service';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 /**
  * Marker for signing-secret rows whose value is wrapped with the instance
@@ -25,14 +29,55 @@ export type ListDeploymentKeysOptions = {
 	createdAtTo?: Date;
 };
 
+class DeploymentKeyStore extends BaseRepository<DeploymentKey> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(DeploymentKey, dataSource.manager, transactionRunner);
+	}
+
+	managerForContext(ctx: OperationContext) {
+		return this.managerFor(ctx);
+	}
+}
+
 @Service()
-export class DeploymentKeyRepository extends Repository<DeploymentKey> {
+export class DeploymentKeyRepository {
+	private readonly store: DeploymentKeyStore;
+
 	constructor(
 		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
 		private readonly dbLockService: DbLockService,
 		private readonly cipher: Cipher,
 	) {
-		super(DeploymentKey, dataSource.manager);
+		this.store = new DeploymentKeyStore(dataSource, transactionRunner);
+	}
+
+	async find(...args: Parameters<Repository<DeploymentKey>['find']>) {
+		return await this.store.find(...args);
+	}
+
+	async findOne(...args: Parameters<Repository<DeploymentKey>['findOne']>) {
+		return await this.store.findOne(...args);
+	}
+
+	async findOneByOrFail(...args: Parameters<Repository<DeploymentKey>['findOneByOrFail']>) {
+		return await this.store.findOneByOrFail(...args);
+	}
+
+	create(entity: DeepPartial<DeploymentKey>): DeploymentKey {
+		return this.store.create(entity);
+	}
+
+	async save(entity: DeepPartial<DeploymentKey>): Promise<DeploymentKey> {
+		return await this.store.save(entity);
+	}
+
+	async insert(...args: Parameters<Repository<DeploymentKey>['insert']>) {
+		return await this.store.insert(...args);
+	}
+
+	async update(...args: Parameters<Repository<DeploymentKey>['update']>) {
+		return await this.store.update(...args);
 	}
 
 	/**
@@ -72,7 +117,7 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 			);
 		}
 		if (rewrapLegacy) {
-			await this.update(
+			await this.store.update(
 				{ id: row.id, algorithm: IsNull() },
 				{
 					value: this.cipher.encryptDEKWithInstanceKey(row.value),
@@ -103,8 +148,8 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	 * starting concurrently cannot create duplicate rows.
 	 */
 	async seedLegacyCbcKey(encryptedValue: string): Promise<void> {
-		await this.dbLockService.withLock(DbLock.DATA_ENCRYPTION_KEY_SEED, async (tx) => {
-			const repo = tx.getRepository(DeploymentKey);
+		await this.dbLockService.withLockContext(DbLock.DATA_ENCRYPTION_KEY_SEED, async (ctx) => {
+			const repo = this.store.managerForContext(ctx).getRepository(DeploymentKey);
 			const existing = await repo.findOne({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
@@ -123,15 +168,15 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	}
 
 	async findActiveByType(type: string): Promise<DeploymentKey | null> {
-		return await this.findOne({ where: { type, status: 'active' } });
+		return await this.store.findOne({ where: { type, status: 'active' } });
 	}
 
 	async findAllByType(type: string): Promise<DeploymentKey[]> {
-		return await this.find({ where: { type } });
+		return await this.store.find({ where: { type } });
 	}
 
 	async findDataEncryptionKeys(): Promise<DeploymentKey[]> {
-		return await this.find({ where: { type: 'data_encryption' } });
+		return await this.store.find({ where: { type: 'data_encryption' } });
 	}
 
 	async rewrapLegacyDataEncryptionValue(
@@ -139,13 +184,16 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 		oldValue: string,
 		wrappedValue: string,
 	): Promise<void> {
-		await this.update({ id, type: 'data_encryption', value: oldValue }, { value: wrappedValue });
+		await this.store.update(
+			{ id, type: 'data_encryption', value: oldValue },
+			{ value: wrappedValue },
+		);
 	}
 
 	async findAndCountForList(
 		opts: ListDeploymentKeysOptions,
 	): Promise<{ items: DeploymentKey[]; count: number }> {
-		const qb = this.createQueryBuilder('deploymentKey');
+		const qb = this.store.createQueryBuilder('deploymentKey');
 
 		if (opts.type) {
 			qb.andWhere('deploymentKey.type = :type', { type: opts.type });
@@ -184,13 +232,13 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	async insertOrIgnore(
 		entityData: Pick<DeploymentKey, 'type' | 'value' | 'status' | 'algorithm'>,
 	): Promise<void> {
-		const entity = this.create(entityData);
-		await this.createQueryBuilder().insert().values(entity).orIgnore().execute();
+		const entity = this.store.create(entityData);
+		await this.store.createQueryBuilder().insert().values(entity).orIgnore().execute();
 	}
 
-	/** Atomically deactivates any existing active key of the same type, then saves the given entity as active. */
 	async insertAsActive(entity: DeploymentKey & { status: 'active' }): Promise<DeploymentKey> {
-		return await this.manager.transaction(async (tx) => {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const tx = this.store.managerForContext(ctx);
 			await tx.update(
 				DeploymentKey,
 				{ type: entity.type, status: 'active' },
@@ -200,42 +248,14 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 		});
 	}
 
-	/** Atomically deactivates any existing active key of the given type, then sets the target key as active. */
 	async promoteToActive(id: string, type: string): Promise<void> {
-		await this.manager.transaction(async (tx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
+			const tx = this.store.managerForContext(ctx);
 			const target = await tx.findOne(DeploymentKey, { where: { id, type } });
-			if (!target) {
-				throw new Error(`Deployment key '${id}' of type '${type}' not found`);
-			}
+			if (!target) throw new UnexpectedError(`Deployment key '${id}' of type '${type}' not found`);
+
 			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
 			await tx.update(DeploymentKey, { id, type }, { status: 'active' });
 		});
-	}
-
-	// Deployment keys must never be deleted: data encrypted with a key becomes
-	// unreadable without it. Keys are deactivated instead (`markInactive` /
-	// `promoteToActive`). These parameterless shadows close the inherited
-	// TypeORM delete surface twice over — calls with arguments no longer
-	// type-check, and any call throws at runtime. Call sites are additionally
-	// rejected in CI by `n8n-local-rules/no-deployment-key-delete`.
-
-	async delete(): Promise<never> {
-		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
-	}
-
-	async remove(): Promise<never> {
-		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
-	}
-
-	async softDelete(): Promise<never> {
-		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
-	}
-
-	async softRemove(): Promise<never> {
-		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
-	}
-
-	async clear(): Promise<never> {
-		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
 	}
 }

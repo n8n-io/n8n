@@ -23,7 +23,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DeploymentKey']);
+	await testDb.resetDeploymentKeys();
 	await Container.get(CacheService).delete(JWE_KEY_CACHE_KEY);
 });
 

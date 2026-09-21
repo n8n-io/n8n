@@ -20,7 +20,8 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'DeploymentKey']);
+	await testDb.truncate(['User']);
+	await testDb.resetDeploymentKeys();
 	owner = await createOwner();
 	ownerAgent = testServer.authAgentFor(owner);
 	member = await createMember();

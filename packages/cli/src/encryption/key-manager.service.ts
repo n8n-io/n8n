@@ -386,9 +386,8 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	}
 
 	/**
-	 * Transitions key to 'inactive'. Never deletes: DeploymentKeyRepository's
-	 * delete/remove/softDelete/softRemove/clear all throw, so a deactivated
-	 * key's value stays intact and readable for any ciphertext still using it.
+	 * Transitions a key to inactive. The repository exposes no delete operation,
+	 * and the database rejects direct deletion.
 	 */
 	async markInactive(id: string): Promise<void> {
 		await this.deploymentKeyRepository.update(id, { status: 'inactive' });

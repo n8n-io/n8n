@@ -3,7 +3,6 @@ import { ESLintUtils } from '@typescript-eslint/utils';
 const TARGET_RULES = [
 	'no-legacy-cipher-methods',
 	'no-misplaced-cipher-primitives',
-	'no-deployment-key-delete',
 	// A `-next-line` directive naming this rule cannot suppress the report
 	// this rule emits at the directive's own line.
 	'no-encryption-guardrail-disable',

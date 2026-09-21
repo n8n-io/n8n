@@ -193,11 +193,9 @@ checks that the token exists, was minted for this point, and binds to this
 subject. Only `PolicyEnforcementService` may import the minter; a lint rule
 enforces that.
 
-A second lint rule, `no-unsealed-workflow-entity-write`, flags direct
-`save`/`insert`/`update`/`upsert` calls on `WorkflowEntity` in runtime code. It is
-syntactic. It catches `save({ id, nodes })` and `update(id, { nodes })`, not a
-payload built off-site or an aliased receiver. The runtime check is the enforcing
-half.
+The workflow entity subscriber rejects inserts and node-bearing updates outside
+the repository's scoped write context. The repository opens that context only
+after it validates the matching clearance token.
 
 ## Add a check
 

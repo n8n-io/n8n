@@ -20,7 +20,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DeploymentKey']);
+	await testDb.resetDeploymentKeys();
 });
 
 afterAll(async () => {
@@ -91,6 +91,23 @@ describe('EncryptionBootstrapService (integration)', () => {
 			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 		});
 		expect(rows).toHaveLength(1);
+	});
+
+	it('keeps the active key when the activation target does not exist', async () => {
+		await Container.get(EncryptionBootstrapService).run();
+		const repository = Container.get(DeploymentKeyRepository);
+		const activeBefore = await repository.findOne({
+			where: { type: 'data_encryption', status: 'active' },
+		});
+
+		await expect(repository.promoteToActive('missing', 'data_encryption')).rejects.toThrow(
+			'not found',
+		);
+
+		const activeAfter = await repository.findOne({
+			where: { type: 'data_encryption', status: 'active' },
+		});
+		expect(activeAfter?.id).toBe(activeBefore?.id);
 	});
 
 	describe('end-to-end write path (real key store, real cipher)', () => {

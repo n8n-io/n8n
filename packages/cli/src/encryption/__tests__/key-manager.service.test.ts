@@ -687,10 +687,6 @@ describe('KeyManagerService', () => {
 
 			await service.markInactive('old-active');
 
-			expect(repo.delete).not.toHaveBeenCalled();
-			expect(repo.remove).not.toHaveBeenCalled();
-			expect(repo.softDelete).not.toHaveBeenCalled();
-			expect(repo.softRemove).not.toHaveBeenCalled();
 			expect(repo.update).toHaveBeenCalledWith('old-active', { status: 'inactive' });
 		});
 	});

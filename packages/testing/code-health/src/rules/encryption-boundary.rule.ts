@@ -22,7 +22,6 @@ const DEFAULT_TRIGGER_DEPENDENCIES = ['n8n-core', '@n8n/db'];
 const DEFAULT_GUARDED_RULES = [
 	'no-legacy-cipher-methods',
 	'no-misplaced-cipher-primitives',
-	'no-deployment-key-delete',
 	'no-encryption-guardrail-disable',
 ];
 

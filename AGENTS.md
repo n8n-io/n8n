@@ -308,8 +308,8 @@ extends one of those layers):
 - The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
   `packages/core/src/encryption/` and database migrations.
 - **Deployment keys are never deleted** — data encrypted with a key becomes
-  unreadable without it. Deactivate keys instead; the repository's delete
-  surface throws at runtime and the lint rule rejects call sites.
+  unreadable without it. Deactivate keys instead; the repository does not expose
+  deletion and database triggers reject direct deletion.
 - Inline disables that name these rules, and bare line-form disables, are
   themselves lint errors. The code-health rule `encryption-boundary` (CI
   "Static Analysis") is the enforcement layer: it checks that every package

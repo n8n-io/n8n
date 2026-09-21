@@ -1,7 +1,7 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
 import { NoGuardrailDisableRule } from './no-guardrail-disable.js';
-import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
 
 // Register the guarded rules so ESLint can resolve the disable directives under test (an
 // unknown rule name in a directive would emit an extra "rule not found" error). The `-audit`

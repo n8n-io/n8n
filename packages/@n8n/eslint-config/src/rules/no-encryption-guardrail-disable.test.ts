@@ -1,5 +1,4 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
 import { NoMisplacedCipherPrimitivesRule } from './no-misplaced-cipher-primitives.js';
@@ -16,7 +15,6 @@ const ruleTester = new RuleTester({
 			rules: {
 				'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
 				'no-misplaced-cipher-primitives': NoMisplacedCipherPrimitivesRule,
-				'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
 				'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 			},
 		},
@@ -42,10 +40,6 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 		{
 			code: '// eslint-disable-next-line n8n-local-rules/no-legacy-cipher-methods\nconst a = 1;',
 			errors: [{ messageId: 'noDisable', data: { rule: 'no-legacy-cipher-methods' } }],
-		},
-		{
-			code: '/* eslint-disable n8n-local-rules/no-deployment-key-delete */\nconst a = 1;',
-			errors: [{ messageId: 'noDisable', data: { rule: 'no-deployment-key-delete' } }],
 		},
 		{
 			code: '// eslint-disable-line n8n-local-rules/no-misplaced-cipher-primitives',
