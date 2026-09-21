@@ -1,12 +1,79 @@
 packages/cli/src/auth/auth.service.ts
   s_a4556b837ab6e9::t_ab4a3ae9726a09 41-46,50,52-58
   s_a4556b837ab6e9::t_84b4aea97f0c84 51,59
+  s_a4556b837ab6e9::t_ccf5eddce5c993 250,295,394,459,470,485,501
 packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
   s_a4556b837ab6e9::t_364de6aeed6470 2,4,31,33-39,41-44,48,55
+  s_a4556b837ab6e9::t_ccf5eddce5c993 14,26,32,40,46,53
 packages/cli/src/auth/__tests__/auth.service.test.ts
   s_a4556b837ab6e9::t_ed0d94104a1b02 671-672,674-678
   s_a4556b837ab6e9::t_59b48732438b31 659,679-687,689-696
   s_a4556b837ab6e9::t_be1050755f69a1 660-663
+  s_a4556b837ab6e9::t_ccf5eddce5c993 44,66,69,591,608,664,673,688
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 15
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 35,108-111,120
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-authorization.api.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 119,285,302
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 7,123,126
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 205
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 24
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 35,55
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 15,24,102-104
+packages/cli/src/services/user.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 218,461-464
+packages/cli/eslint.config.mjs
+  s_a4556b837ab6e9::t_ccf5eddce5c993 34-43,191-197,214,220-245
+packages/cli/test/integration/auth.api.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 339,361,374,403
+packages/cli/src/controllers/users.controller.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 154
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 24,169
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 12,39-40,56
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 1394,1399-1401,1410,1415-1417
+packages/cli/src/services/public-api-key.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 342-343,349
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 161,214,218,261,294
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 33
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 26,95,116,126,133,256,280-282,378,388,399,463-466,475-478,500-503,524-527,541-544,781-784,792-795,803-806,817-820,883-886,982-985,996-999
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 1712
+packages/cli/test/integration/password-reset.api.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 152
+packages/cli/src/services/jwt.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 1,4,9-21,27-31,70-75,78-91,95-147
+packages/cli/src/services/__tests__/public-api-key.service.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 108,114,142
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 13,17,40,69-76,82,89,179
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 29,64-67,86,102,130-133,143,304-307,331-334,355-358,380,411,438-441
+packages/cli/test/integration/controllers/invitation/invitation.controller.integration.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 61
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 47
+packages/cli/src/services/token-purposes.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 1-55
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 79-92,94-95,472,477
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 31,39
+packages/cli/src/services/__tests__/jwt.service.test.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 32,38,56,59-62,66-69,75-119,136,148,163,178
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_a4556b837ab6e9::t_ccf5eddce5c993 141,150,184,192
 ---
 {
   "schema_version": "authorship/3.0.0",
