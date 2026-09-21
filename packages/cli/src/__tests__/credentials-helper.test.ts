@@ -6,14 +6,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import {
-	type InstanceSettings,
-	type Credentials,
-	Cipher,
-	CipherAes256GCM,
-	CipherAes256CBC,
-	EncryptionKeyProxy,
-} from 'n8n-core';
+import { type InstanceSettings, type Credentials, Cipher, EncryptionKeyProxy } from 'n8n-core';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 import { WekanApi } from 'n8n-nodes-base/credentials/WekanApi.credentials';
 import type {
@@ -73,8 +66,6 @@ describe('CredentialsHelper', () => {
 	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
-		new CipherAes256GCM(),
-		new CipherAes256CBC(),
 		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
@@ -952,7 +943,7 @@ describe('CredentialsHelper', () => {
 				id: 'cred-123',
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
-				data: cipher.encrypt(existingCredentialData),
+				data: cipher.encryptWithInstanceKey(existingCredentialData),
 				usageScope: 'project',
 			};
 
@@ -986,7 +977,9 @@ describe('CredentialsHelper', () => {
 			expect(updatedAt).toBeInstanceOf(Date);
 			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
 
-			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
+			const decryptedUpdatedData = cipher.decryptWithInstanceKey(
+				updatedCredentialData.data as string,
+			);
 			const parsedUpdatedData = JSON.parse(decryptedUpdatedData);
 
 			expect(parsedUpdatedData).toEqual({
@@ -1055,7 +1048,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
 					usageScope: 'project',
@@ -1110,7 +1103,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: null,
 					usageScope: 'project',
@@ -1166,7 +1159,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
 					usageScope: 'project',
@@ -1207,7 +1200,7 @@ describe('CredentialsHelper', () => {
 
 				// Verify OAuth token was updated in database
 				const updateCall = credentialsRepository.update.mock.calls[0];
-				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const updatedData = cipher.decryptWithInstanceKey(updateCall[1].data as string);
 				const parsedData = JSON.parse(updatedData);
 				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
 			});
@@ -1218,7 +1211,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
 					usageScope: 'project',
@@ -1254,7 +1247,7 @@ describe('CredentialsHelper', () => {
 
 				// Verify OAuth token was updated in database
 				const updateCall = credentialsRepository.update.mock.calls[0];
-				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const updatedData = cipher.decryptWithInstanceKey(updateCall[1].data as string);
 				const parsedData = JSON.parse(updatedData);
 				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
 			});
@@ -1535,7 +1528,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-license-test',
 			name: 'License Test Credential',
 			type: 'testApi',
-			data: cipher.encrypt({ apiKey: 'test' }),
+			data: cipher.encryptWithInstanceKey({ apiKey: 'test' }),
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
@@ -1645,7 +1638,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-456',
 			name: 'Test Credentials',
 			type: credentialType,
-			data: cipher.encrypt({ apiKey: 'static-key' }),
+			data: cipher.encryptWithInstanceKey({ apiKey: 'static-key' }),
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
@@ -2263,7 +2256,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-aaa',
 			name: 'Account A Credential',
 			type: credentialType,
-			data: cipher.encrypt(credentialDataA),
+			data: cipher.encryptWithInstanceKey(credentialDataA),
 			isResolvable: false,
 			resolverId: null,
 			usageScope: 'project',
@@ -2273,7 +2266,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-bbb',
 			name: 'Account B Credential',
 			type: credentialType,
-			data: cipher.encrypt(credentialDataB),
+			data: cipher.encryptWithInstanceKey(credentialDataB),
 			isResolvable: false,
 			resolverId: null,
 			usageScope: 'project',
@@ -2442,7 +2435,7 @@ describe('CredentialsHelper', () => {
 
 			// Simulate saving credential B with updated data (re-encrypt with new values)
 			const updatedDataB = { apiKey: 'key_account_B_UPDATED', accountId: 'pn_B_UPDATED' };
-			credEntityB.data = cipher.encrypt(updatedDataB);
+			credEntityB.data = cipher.encryptWithInstanceKey(updatedDataB);
 
 			const resultA_after = await credentialsHelper.getDecrypted(
 				additionalData,
@@ -2938,7 +2931,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-policy',
 			name: 'Policy Test Credential',
 			type: 'testApi',
-			data: cipher.encrypt({ apiKey: 'test' }),
+			data: cipher.encryptWithInstanceKey({ apiKey: 'test' }),
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
