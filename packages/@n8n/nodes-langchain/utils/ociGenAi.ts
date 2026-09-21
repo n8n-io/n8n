@@ -1,4 +1,6 @@
 import {
+	OperationalError,
+	UnexpectedError,
 	UserError,
 	type ICredentialDataDecryptedObject,
 	type NodeEgressFilter,
@@ -208,11 +210,24 @@ function getOciSignerAndRequestBody(
 		};
 	}
 
-	throw new Error('OCI SDK cannot prepare this request body for signing');
+	throw new UnexpectedError('OCI SDK cannot prepare this request body for signing');
 }
 
-/** Matches the OCI LangChain integration: one SDK attempt per LangChain call. */
-async function getOciClientConfiguration() {
+/** Bounds inference retries to the node timeout while retaining the SDK default when disabled. */
+async function getOciInferenceClientConfiguration(requestTimeout?: number) {
+	if (requestTimeout === undefined) return {};
+
+	const { common } = await loadOciSdk();
+	const { MaxTimeTerminationStrategy } = common;
+	return {
+		retryConfiguration: {
+			terminationStrategy: new MaxTimeTerminationStrategy(requestTimeout / 1000),
+		},
+	};
+}
+
+/** Catalog calls have their own short caller deadline, so do not leave SDK retries running after it. */
+async function getOciModelCatalogClientConfiguration() {
 	const { common } = await loadOciSdk();
 	const { MaxAttemptsTerminationStrategy } = common;
 	return {
@@ -274,30 +289,6 @@ async function createOciEgressHttpClient(
 			});
 		},
 	};
-}
-
-/**
- * Bounds the time the node waits for an OCI SDK operation. OCI's fetch wrapper
- * does not accept an abort signal per request, so the underlying request may finish later.
- */
-export async function awaitOciGenAiRequest<T>(
-	request: Promise<T>,
-	requestTimeout?: number,
-): Promise<T> {
-	if (requestTimeout === undefined) return await request;
-
-	let timeout: ReturnType<typeof setTimeout> | undefined;
-	const timeoutPromise = new Promise<never>((_, reject) => {
-		timeout = setTimeout(() => {
-			reject(new Error(`OCI request timed out after ${requestTimeout}ms`));
-		}, requestTimeout);
-	});
-
-	try {
-		return await Promise.race([request, timeoutPromise]);
-	} finally {
-		if (timeout !== undefined) clearTimeout(timeout);
-	}
 }
 
 export async function validateOciEndpoint(
@@ -646,7 +637,7 @@ async function createOciGenAiClientInternal(
 	);
 	const client = new GenerativeAiInferenceClient(
 		httpClient === undefined ? { authenticationDetailsProvider } : { httpClient },
-		await getOciClientConfiguration(),
+		await getOciInferenceClientConfiguration(requestTimeout),
 	);
 
 	// Use the same region-id setup path as @oracle/langchain-oci.
@@ -777,7 +768,7 @@ export async function createOciGenAiModelClient(
 	const httpClient = await createOciEgressHttpClient(authenticationDetailsProvider, egressFilter);
 	const client = new GenerativeAiClient(
 		httpClient === undefined ? { authenticationDetailsProvider } : { httpClient },
-		await getOciClientConfiguration(),
+		await getOciModelCatalogClientConfiguration(),
 	);
 
 	client.regionId = required(credentials, 'regionId');
@@ -848,7 +839,7 @@ async function getOciModelCatalogResponse<T>(request: Promise<T>): Promise<T> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
 		timeout = setTimeout(() => {
-			reject(new Error('OCI model catalog request timed out'));
+			reject(new OperationalError('OCI model catalog request timed out'));
 		}, OCI_MODEL_CATALOG_REQUEST_TIMEOUT_MS);
 	});
 

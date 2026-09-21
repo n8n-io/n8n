@@ -180,7 +180,7 @@ describe('EmbeddingsOciGenAi', () => {
 			default: -1,
 			typeOptions: { minValue: -1 },
 			description:
-				'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
+				'Maximum amount of time an OCI embedding request is allowed to take, including retries, in seconds. Set to -1 for no timeout.',
 		});
 	});
 
@@ -205,11 +205,12 @@ describe('EmbeddingsOciGenAi', () => {
 		expect(getOnDemandEmbeddingModelFallbacks).toHaveBeenCalledWith('us-chicago-1', 'embed');
 	});
 
-	it('creates OCI embeddings with the selected model and options', async () => {
+	it('passes the selected timeout to the OCI client and creates embeddings with the selected options', async () => {
 		const node = new EmbeddingsOciGenAi();
 		const context = createContext();
 
 		const result = await node.supplyData.call(context, 0);
+		// The OCI SDK applies request timeouts when its signed client is constructed.
 		expect(createClient).toHaveBeenCalledWith(expect.anything(), expect.anything(), 45000);
 
 		expect(MockedOciGenAiEmbeddings).toHaveBeenCalledWith(

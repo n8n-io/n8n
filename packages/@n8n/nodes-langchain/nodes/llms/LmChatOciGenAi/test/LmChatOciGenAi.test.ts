@@ -129,7 +129,8 @@ describe('LmChatOciGenAi', () => {
 		expect(timeout).toMatchObject({
 			default: 60000,
 			typeOptions: { minValue: 1 },
-			description: 'Maximum amount of time a request is allowed to take in milliseconds',
+			description:
+				'Maximum amount of time an OCI request is allowed to take, including retries, in milliseconds',
 		});
 	});
 
@@ -144,12 +145,13 @@ describe('LmChatOciGenAi', () => {
 		expect(idMode?.placeholder).toBe('xai.grok-4.6');
 	});
 
-	it('creates one OCI chat model with the selected on-demand model and options', async () => {
+	it('passes the selected timeout to the OCI client and creates a chat model with the selected options', async () => {
 		const node = new LmChatOciGenAi();
 		const context = createContext();
 
 		const result = await node.supplyData.call(context, 0);
 
+		// The OCI SDK applies request timeouts when its signed client is constructed.
 		expect(createClient).toHaveBeenCalledWith(
 			expect.objectContaining({ regionId: 'us-phoenix-1' }),
 			expect.anything(),

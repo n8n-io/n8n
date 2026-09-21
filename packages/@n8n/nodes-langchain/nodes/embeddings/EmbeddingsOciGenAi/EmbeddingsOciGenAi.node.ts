@@ -16,7 +16,6 @@ import {
 import type { models as ociModels } from 'oci-generativeaiinference';
 
 import {
-	awaitOciGenAiRequest,
 	createOciGenAiClient,
 	getOciEmbeddingModelCapabilities,
 	getOciEmbeddingModelIdsWithOutputDimensions,
@@ -47,34 +46,17 @@ type OciEmbeddingsOptions = {
 };
 
 type OciGenAiEmbeddingsConstructor = new (
-	params: ConstructorParameters<typeof OciGenAiEmbeddings>[0] & { requestTimeout?: number },
+	params: ConstructorParameters<typeof OciGenAiEmbeddings>[0],
 ) => OciGenAiEmbeddings;
 
-/** Creates an embeddings wrapper that applies the node's request timeout. */
+/** Creates the OCI embeddings wrapper only when n8n supplies the embeddings model. */
 async function createN8nOciGenAiEmbeddings(): Promise<OciGenAiEmbeddingsConstructor> {
 	const { langchainOci } = await loadOciSdk();
 	const { OciGenAiEmbeddings } = langchainOci as unknown as {
 		OciGenAiEmbeddings: typeof import('@oracle/langchain-oci').OciGenAiEmbeddings;
 	};
 
-	return class N8nOciGenAiEmbeddings extends OciGenAiEmbeddings {
-		private readonly requestTimeout: number | undefined;
-
-		constructor(
-			params: ConstructorParameters<typeof OciGenAiEmbeddings>[0] & { requestTimeout?: number },
-		) {
-			super(params);
-			this.requestTimeout = params.requestTimeout;
-		}
-
-		override async embedDocuments(documents: string[]): Promise<number[][]> {
-			return await awaitOciGenAiRequest(super.embedDocuments(documents), this.requestTimeout);
-		}
-
-		override async embedQuery(text: string): Promise<number[]> {
-			return await awaitOciGenAiRequest(super.embedQuery(text), this.requestTimeout);
-		}
-	};
+	return class N8nOciGenAiEmbeddings extends OciGenAiEmbeddings {};
 }
 
 function isResourceLocatorValue(value: unknown): value is ResourceLocatorValue {
@@ -293,7 +275,7 @@ const optionsProperty: INodeProperties = {
 				minValue: NO_REQUEST_TIMEOUT,
 			},
 			description:
-				'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
+				'Maximum amount of time an OCI embedding request is allowed to take, including retries, in seconds. Set to -1 for no timeout.',
 		},
 		...outputDimensionsProperties,
 		customOutputDimensionsProperty,
@@ -510,9 +492,8 @@ export class EmbeddingsOciGenAi implements INodeType {
 			compartmentId,
 			batchSize,
 			maxConcurrency,
-			// Do not repeat an operation after the node-level request timeout has elapsed.
+			// OCI owns retries so configured requests use its MaxTime termination strategy.
 			maxRetries: 0,
-			...(timeout === NO_REQUEST_TIMEOUT ? {} : { requestTimeout: timeout * 1000 }),
 			...(outputDimensions !== undefined ? { outputDimensions } : {}),
 			...(truncate !== undefined ? { truncate } : {}),
 			...(servingMode === 'dedicated' ? { dedicatedEndpointId } : { onDemandModelId: model }),

@@ -23,6 +23,9 @@ vi.mock('oci-common', () => {
 		MaxAttemptsTerminationStrategy: class {
 			constructor(_maxAttempts: number) {}
 		},
+		MaxTimeTerminationStrategy: class {
+			constructor(_maxTimeInSeconds: number) {}
+		},
 		SimpleAuthenticationDetailsProvider: class {
 			constructor(..._args: unknown[]) {}
 		},

@@ -1,5 +1,5 @@
 import { models as ociModels } from 'oci-generativeai';
-import type { NodeEgressFilter } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, type NodeEgressFilter } from 'n8n-workflow';
 
 const {
 	proxyFetch,
@@ -7,6 +7,7 @@ const {
 	generativeAiClient,
 	generativeAiInferenceClient,
 	maxAttemptsTerminationStrategy,
+	maxTimeTerminationStrategy,
 	defaultRequestSigner,
 	simpleAuthenticationDetailsProvider,
 } = vi.hoisted(() => ({
@@ -16,6 +17,9 @@ const {
 	generativeAiInferenceClient: vi.fn(),
 	maxAttemptsTerminationStrategy: vi.fn().mockImplementation(function MockMaxAttempts() {
 		return { maxAttempts: 1 };
+	}),
+	maxTimeTerminationStrategy: vi.fn().mockImplementation(function MockMaxTime(maxTime: number) {
+		return { maxTime };
 	}),
 	defaultRequestSigner: vi.fn().mockImplementation(function MockDefaultRequestSigner() {
 		return { signHttpRequest: vi.fn() };
@@ -39,6 +43,7 @@ vi.mock('oci-common', () => ({
 		}),
 	},
 	MaxAttemptsTerminationStrategy: maxAttemptsTerminationStrategy,
+	MaxTimeTerminationStrategy: maxTimeTerminationStrategy,
 	DefaultRequestSigner: defaultRequestSigner,
 	SimpleAuthenticationDetailsProvider: simpleAuthenticationDetailsProvider.mockImplementation(
 		function MockAuthenticationProvider() {
@@ -70,7 +75,6 @@ vi.mock('oci-generativeaiinference', () => ({
 
 import {
 	clearOciGenAiCachesForTesting,
-	awaitOciGenAiRequest,
 	createOciGenAiClient,
 	getCachedOciGenAiModelCatalogPage,
 	getOciEmbeddingModelCapabilities,
@@ -257,6 +261,7 @@ describe('OCI input validation', () => {
 			generativeAiInferenceClient.mockClear();
 			proxyFetch.mockClear();
 			maxAttemptsTerminationStrategy.mockClear();
+			maxTimeTerminationStrategy.mockClear();
 			simpleAuthenticationDetailsProvider.mockClear();
 		});
 
@@ -310,17 +315,34 @@ describe('OCI input validation', () => {
 			);
 		});
 
-		it('uses the OCI SDK default transport with one SDK attempt outside n8n execution', async () => {
+		it('classifies unsupported OCI request bodies as unexpected integration failures', async () => {
+			await createOciGenAiClient(ociCredentials, secureEgressFilter);
+
+			const httpClient = generativeAiInferenceClient.mock.calls[0][0].httpClient;
+			await expect(
+				httpClient.send({
+					method: 'POST',
+					headers: new Headers(),
+					uri: 'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com/test',
+					body: { unsupported: true },
+				}),
+			).rejects.toBeInstanceOf(UnexpectedError);
+		});
+
+		it('uses OCI default retries when inference has no configured timeout', async () => {
 			await createOciGenAiClient(ociCredentials);
 
-			expect(maxAttemptsTerminationStrategy).toHaveBeenCalledWith(1);
-			expect(generativeAiInferenceClient).toHaveBeenCalledWith(expect.anything(), {
-				retryConfiguration: { terminationStrategy: { maxAttempts: 1 } },
-			});
+			expect(maxAttemptsTerminationStrategy).not.toHaveBeenCalled();
+			expect(maxTimeTerminationStrategy).not.toHaveBeenCalled();
+			expect(generativeAiInferenceClient).toHaveBeenCalledWith(expect.anything(), {});
 		});
 
 		it('applies the configured timeout to OCI inference requests', async () => {
 			await createOciGenAiClient(ociCredentials, secureEgressFilter, 60000);
+			expect(maxTimeTerminationStrategy).toHaveBeenCalledWith(60);
+			expect(generativeAiInferenceClient).toHaveBeenCalledWith(expect.anything(), {
+				retryConfiguration: { terminationStrategy: { maxTime: 60 } },
+			});
 
 			const httpClient = generativeAiInferenceClient.mock.calls[0][0].httpClient;
 			await httpClient.send({
@@ -727,13 +749,13 @@ describe('OCI input validation', () => {
 				listModels.mockImplementationOnce(async () => await new Promise<never>(() => {}));
 
 				const pendingPage = getCachedOciGenAiModelCatalogPage(ociCredentials, request);
-				const timedOutPage = expect(pendingPage).rejects.toThrow(
-					'OCI model catalog request timed out',
-				);
+				const timedOutPage = pendingPage.catch((error: unknown) => error);
 				// Let lazy OCI module loading reach the catalog timeout before advancing time.
 				await vi.dynamicImportSettled();
 				await vi.advanceTimersByTimeAsync(OCI_MODEL_CATALOG_REQUEST_TIMEOUT_MS);
-				await timedOutPage;
+				const timeoutError = await timedOutPage;
+				expect(timeoutError).toBeInstanceOf(OperationalError);
+				expect(timeoutError).toMatchObject({ message: 'OCI model catalog request timed out' });
 
 				listModels.mockResolvedValueOnce({
 					modelCollection: {
@@ -861,27 +883,5 @@ describe('OCI input validation', () => {
 			});
 			expect(listModels).toHaveBeenCalledTimes(2);
 		});
-	});
-});
-
-describe('OCI request timeout', () => {
-	it('returns the SDK response when it resolves before the configured timeout', async () => {
-		await expect(awaitOciGenAiRequest(Promise.resolve('response'), 1_000)).resolves.toBe(
-			'response',
-		);
-	});
-
-	it('returns a timeout error when an SDK request remains pending', async () => {
-		vi.useFakeTimers();
-		try {
-			const pendingRequest = awaitOciGenAiRequest(new Promise<never>(() => {}), 1_000);
-			const expectation = expect(pendingRequest).rejects.toThrow(
-				'OCI request timed out after 1000ms',
-			);
-			await vi.advanceTimersByTimeAsync(1_000);
-			await expectation;
-		} finally {
-			vi.useRealTimers();
-		}
 	});
 });

@@ -17,7 +17,6 @@ import type { models as ociInferenceModels } from 'oci-generativeaiinference';
 
 import {
 	createOciGenAiClient,
-	awaitOciGenAiRequest,
 	getCachedOciGenAiModelCatalogPage,
 	isOciGenAiCredentials,
 	loadOciSdk,
@@ -48,7 +47,6 @@ type OciChatRequestParams = {
 type OciGenAiChatConstructor = new (
 	params: ConstructorParameters<typeof OciGenAiGenericChatType>[0] & {
 		defaultRequestParams?: OciChatRequestParams;
-		requestTimeout?: number;
 	},
 ) => OciGenAiGenericChatType;
 
@@ -146,28 +144,14 @@ export async function createN8nOciGenAiGenericChat(): Promise<OciGenAiChatConstr
 	};
 	return class N8nOciGenAiGenericChat extends OciGenAiGenericChat {
 		private readonly defaultRequestParams: OciChatRequestParams;
-		private readonly requestTimeout: number | undefined;
 
 		constructor(
 			params: ConstructorParameters<typeof OciGenAiGenericChat>[0] & {
 				defaultRequestParams?: OciChatRequestParams;
-				requestTimeout?: number;
 			},
 		) {
 			super(params);
 			this.defaultRequestParams = params.defaultRequestParams ?? {};
-			this.requestTimeout = params.requestTimeout;
-		}
-
-		override async _makeRequest<ResponseType>(
-			messages: Parameters<InstanceType<typeof OciGenAiGenericChat>['_makeRequest']>[0],
-			options: Parameters<InstanceType<typeof OciGenAiGenericChat>['_makeRequest']>[1],
-			stream?: boolean,
-		): Promise<ResponseType> {
-			return await awaitOciGenAiRequest(
-				super._makeRequest<ResponseType>(messages, options, stream),
-				this.requestTimeout,
-			);
 		}
 
 		override _prepareRequest(
@@ -367,7 +351,8 @@ const optionsProperty: INodeProperties = {
 			typeOptions: {
 				minValue: 1,
 			},
-			description: 'Maximum amount of time a request is allowed to take in milliseconds',
+			description:
+				'Maximum amount of time an OCI request is allowed to take, including retries, in milliseconds',
 		},
 	],
 };
@@ -577,9 +562,8 @@ export class LmChatOciGenAi implements INodeType {
 		const modelParams = {
 			client,
 			compartmentId,
-			// Do not repeat an operation after the node-level request timeout has elapsed.
+			// Let OCI own retries so they share the configured request-time budget.
 			maxRetries: 0,
-			requestTimeout: timeout,
 			defaultRequestParams,
 			...(servingMode === 'onDemand' ? { onDemandModelId: model } : { dedicatedEndpointId }),
 		};
