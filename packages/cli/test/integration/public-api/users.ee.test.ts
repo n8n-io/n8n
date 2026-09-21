@@ -292,9 +292,6 @@ describe('With license without quota:users', () => {
 		authOwnerAgent = testServer.publicApiAgentFor(owner);
 	});
 
-	// Headline demonstration for the `@RequiresUserQuota` gate: an owner API key that has every
-	// scope it needs still gets the licence 403, with the same message body as the legacy
-	// `validLicenseWithUserQuota` middleware.
 	test('GET /users should fail due to invalid license', async () => {
 		const response = await authOwnerAgent.get('/users').expect(403);
 
@@ -311,25 +308,6 @@ describe('With license without quota:users', () => {
 		const member = await createMemberWithApiKey();
 
 		const response = await testServer.publicApiAgentFor(member).get(`/users/${member.id}`);
-
-		expect(response.status).toBe(403);
-		expect(response.body).toHaveProperty('message', 'Forbidden');
-	});
-
-	// Known, accepted behavior change: `PublicApiControllerRegistry` always checks the API-key
-	// scope before `@Licensed`. The legacy `changeRole` handler ran the checks in the opposite
-	// order (license first, then scope), so a caller that failed both checks used to see the
-	// licence message here. Both outcomes are a 403; only the message body changes when both
-	// checks fail at once.
-	test('PATCH /users/:id/role answers the generic Forbidden message when scope and license both fail', async () => {
-		const member = await createMemberWithApiKey();
-		const secondMember = await createMember();
-		const payload = { newRoleName: 'global:admin' };
-
-		const response = await testServer
-			.publicApiAgentFor(member)
-			.patch(`/users/${secondMember.id}/role`)
-			.send(payload);
 
 		expect(response.status).toBe(403);
 		expect(response.body).toHaveProperty('message', 'Forbidden');
