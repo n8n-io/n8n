@@ -57,9 +57,13 @@ the most likely of those.
    secret. It does this each time it needs a URL. This needs no column and no
    migration. Any code that holds the two ids can build the URL. The
    send-and-wait nodes need this when they compose the message that they send.
-3. **The claims name one step.** The claims hold the execution id and the step
-   id. Therefore a token for one step cannot resolve the wait of a different
-   step.
+3. **The claims name the execution.** The claims hold the execution id. A
+   resume URL is built before the step that waits exists: `$execution.resumeUrl`
+   is evaluated by whichever node reads it, and the usual pattern sends the URL
+   from a node that runs before the wait. There is no step id to name at that
+   point. The data plane therefore picks the waiting step of the execution when
+   the request arrives. Engine v1 keys its resume URL by execution for the same
+   reason.
 4. **The token does not expire.** The status of the step is the control. The
    token shows which caller can make the request. The compare-and-set that every
    other transition uses decides if the request still applies. `resumeStep`
@@ -105,15 +109,14 @@ the most likely of those.
 - The token authenticates the request. It does not authorize the workflow. Who
   can resume a given wait is a separate decision, if that rule becomes narrower
   than "the caller that holds the URL".
-- The claims name a step, and a step can hold more than one wait in sequence. A
-  step can suspend, resume on a request, and then suspend again with a new
-  declaration. The same token applies to each of those waits. To make a token
-  apply to one wait only, the engine must add a suspension counter to the claims
-  and to the compare-and-set. The counter must be on the step row, so this
-  changes decision 2 in part. No v1 node reaches this case, because
-  `putExecutionToWait` is on `IExecuteFunctions` and not on
-  `IWebhookFunctions`. Therefore the resume method of a node cannot suspend the
-  step again.
+- One token covers every wait of the execution, not one wait. Engine v1's
+  per-execution `resumeToken` does the same, so the bar is unchanged. An
+  execution with two waits open at once is ambiguous, and the resolve path
+  answers 409. Engine v1 has the same single-wait limit. A `webhookSuffix` is
+  the natural way to tell two apart if that limit ever lifts.
+- A send-and-wait node builds its URL inside the node that waits, where the
+  step is known. Those URLs could carry the step id, which would mean two claim
+  shapes rather than one. This record does not choose between them.
 - The verification of the token shows which step the caller means. It does not
   show that the step still waits. Therefore the resolve path reads the step row
   in all cases. The token does not remove a database read. It decides if the
