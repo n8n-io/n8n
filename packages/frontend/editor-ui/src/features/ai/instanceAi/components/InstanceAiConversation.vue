@@ -12,11 +12,12 @@ import {
 import { storeToRefs } from 'pinia';
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
+	InstanceAiPrefillTypeReported,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -48,7 +49,7 @@ import {
 	stashPendingHandoffContext,
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
-import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from '../prefills';
+import type { InstanceAiMessageAuthorship } from '../prefills';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
 import {
 	agentPreviewContextIcon,
@@ -614,19 +615,16 @@ function isDirty(): boolean {
 }
 
 /**
- * Lets a host's `empty` slot start the conversation from one of its own
- * examples. The payload mirrors what `InstanceAiInput` exposes, so it carries
- * its pre-fill type through to telemetry rather than reporting as user-typed.
+ * Puts n8n-authored text into the composer without sending it. The host owns
+ * the wording and the pre-fill tag; this just forwards to the input so the
+ * submit can attribute the message correctly.
  */
-function submitSuggestion(
-	payload: InstanceAiPrefillDeclaration & {
-		promptKey: BaseTextKey;
-		suggestionId: string;
-		suggestionKind: 'prompt' | 'quick_example';
-		position: number;
-	},
-) {
-	chatInputRef.value?.submitSuggestion(payload);
+function setPrefill(prefill: {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+}) {
+	chatInputRef.value?.setPrefill(prefill);
 }
 
 /** So a host-triggered send (e.g. the "fix with AI" offer) re-follows new messages. */
@@ -639,7 +637,7 @@ defineExpose({
 	applyHandoff,
 	dismissPendingComposerContext,
 	resetScroll,
-	submitSuggestion,
+	setPrefill,
 	// Read by the host for panels that sit beside (not inside) the conversation.
 	pendingComposerContext,
 });

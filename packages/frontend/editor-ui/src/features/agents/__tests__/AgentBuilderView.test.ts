@@ -14,6 +14,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus } from '../agents.eventBus';
+import { AGENT_TEMPLATES } from '../agentTemplates';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -42,6 +43,7 @@ const showErrorMock = vi.fn();
 const pushConnectMock = vi.fn();
 const pushListeners = new Set<(event: PushMessage) => void>();
 const handoffMock = vi.fn();
+const setPrefillMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -362,6 +364,11 @@ const baseTextFn = (
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
+		'agents.new.defaultName': 'New Agent',
+		'agents.builder.templates.customerSupport.label': 'Customer Support',
+		'agents.builder.templates.researchAssistant.label': 'Research Assistant',
+		'agents.builder.templates.dataAnalyst.label': 'Data Analyst',
+		'agents.builder.templates.socialMediaMonitor.label': 'Social Media Monitor',
 	};
 	if (key === 'agents.builder.externalUpdate.time') {
 		const minutes = options?.adjustToNumber ?? 0;
@@ -377,6 +384,9 @@ const baseTextFn = (
 
 ${String(options?.interpolate?.diagnostics ?? '')}
 `;
+	}
+	if (key === 'agents.builder.templates.draft') {
+		return `I started from the ${String(options?.interpolate?.template ?? '')} template. Review its instructions and tools, then ask me what to change before you edit anything.`;
 	}
 	return map[key] ?? key;
 };
@@ -567,12 +577,13 @@ const commonStubs = {
 			'<button data-testid="ai-panel-emit-thread-id" @click="$emit(\'update:threadId\', \'thread-99\')" />' +
 			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
 			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
+			'<slot name="empty" />' +
 			'</div>',
 		props: ['subject', 'launch', 'threadId', 'beforeNewThread', 'beforeSend'],
 		emits: ['update:threadId', 'update:building', 'close'],
-		// Stands in for the real `defineExpose`d `handoff` — the view calls this
-		// through a template ref, not a prop or emit.
-		methods: { handoff: handoffMock },
+		// Stands in for the real `defineExpose`d `handoff` and `setPrefill` — the
+		// view calls these through a template ref, not a prop or emit.
+		methods: { handoff: handoffMock, setPrefill: setPrefillMock },
 	},
 	AgentBuildingIndicator: {
 		name: 'AgentBuildingIndicator',
@@ -638,6 +649,10 @@ const commonStubs = {
 		props: ['icon', 'size', 'spin'],
 	},
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
+	N8nHeading: {
+		template: '<component :is="tag"><slot/></component>',
+		props: ['tag', 'size', 'bold'],
+	},
 	N8nActionDropdown: { template: '<div />' },
 	Transition: { template: '<div><slot/></div>' },
 };
@@ -726,6 +741,8 @@ function resetViewMocks() {
 	uploadAgentFilesMock.mockResolvedValue([]);
 	showErrorMock.mockReset();
 	showMessageMock.mockReset();
+	handoffMock.mockReset();
+	setPrefillMock.mockReset();
 	pushConnectMock.mockReset();
 	pushListeners.clear();
 	fetchConfigMock.mockClear();
@@ -2576,6 +2593,161 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it('shows the template intro for a blank pending agent and hides it for a saved one', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		await vi.waitFor(() =>
+			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(true),
+		);
+		expect(wrapper.find('[data-test-id="agent-template-customer-support"]').exists()).toBe(true);
+	});
+
+	it('applies a template, shows the chip, drafts the adjustment and hides the intro', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((t) => t.id === 'customer-support'),
+		);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				name: 'Customer Support Agent',
+				instructions: expect.stringContaining('customer support'),
+				integrations: [{ type: 'telegram', credentialId: '' }],
+			}),
+			expect.anything(),
+		);
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('templateApplied')).toBe(true);
+		expect(editor.props('connectedTriggers')).toEqual(['telegram']);
+		expect(setPrefillMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				prefillType: 'template_adjustment',
+				prefillId: 'customer-support',
+				text: expect.stringContaining('Customer Support'),
+			}),
+		);
+		expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
+	});
+
+	it('keeps a renamed agent name when applying a template', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		// Rename the agent before applying a template; the template must keep it.
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('update:config', { name: 'Ops bot' });
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((t) => t.id === 'customer-support'),
+		);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ name: 'Ops bot' }),
+			expect.anything(),
+		);
+	});
+
+	it('refuses a template once the agent has content', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		// Type instructions first — the intro disappears.
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('update:config', { instructions: 'x' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
+
+		// Calling onApplyTemplate directly (the intro is gone, so no row to click).
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES[0],
+		);
+		await flushPromises();
+
+		expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		expect(setPrefillMock).not.toHaveBeenCalled();
+	});
+
+	it('clears the chip on a manual edit but not on an auto default', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((t) => t.id === 'customer-support'),
+		);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		updateConfigMock.mockClear();
+
+		let editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('templateApplied')).toBe(true);
+
+		// An auto-applied default model must not dismiss the chip.
+		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+		await flushPromises();
+		editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('templateApplied')).toBe(true);
+
+		// A manual edit dismisses it.
+		editor.vm.$emit('update:config', { instructions: 'y' });
+		await flushPromises();
+		editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('templateApplied')).toBe(false);
 	});
 
 	it('keeps the embedded AI panel closed by default for an existing agent', async () => {

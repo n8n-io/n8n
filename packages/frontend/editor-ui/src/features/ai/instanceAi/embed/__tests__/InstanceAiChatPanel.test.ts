@@ -72,7 +72,7 @@ const InstanceAiViewHeaderStub = defineComponent({
 // — these two stand in for the real `defineExpose`d `isDirty`/`applyHandoff`.
 const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
 const applyHandoffMock = vi.hoisted(() => vi.fn());
-const submitSuggestionMock = vi.hoisted(() => vi.fn());
+const setPrefillMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
@@ -81,7 +81,7 @@ const InstanceAiConversationStub = defineComponent({
 	methods: {
 		isDirty: isDirtyMock,
 		applyHandoff: applyHandoffMock,
-		submitSuggestion: submitSuggestionMock,
+		setPrefill: setPrefillMock,
 	},
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
@@ -138,7 +138,7 @@ describe('InstanceAiChatPanel', () => {
 		showMessage.mockClear();
 		isDirtyMock.mockReset().mockReturnValue(false);
 		applyHandoffMock.mockClear();
-		submitSuggestionMock.mockClear();
+		setPrefillMock.mockClear();
 		clearPendingHandoffContext('thread-2');
 		clearPendingComposerDraft('thread-2');
 	});
@@ -216,36 +216,31 @@ describe('InstanceAiChatPanel', () => {
 		pending.resolve(true);
 	});
 
-	it('shows the build-your-agent intro for a pending agent and sends the example it picks', async () => {
-		const pendingSubject: InstanceAiEmbedSubject = {
-			type: 'agent',
-			id: 'agent-1',
-			projectId: 'p1',
-			pending: true,
-		};
-
+	it('renders the host empty slot inside the conversation', async () => {
 		const { getByTestId } = renderPanel({
-			props: { subject: pendingSubject, launch, threadId: 't-match' },
-		});
-		await vi.waitFor(() => expect(getByTestId('instance-ai-agent-intro')).toBeInTheDocument());
-
-		await fireEvent.click(getByTestId('instance-ai-agent-intro-example-triage-tickets'));
-
-		expect(submitSuggestionMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				suggestionId: 'triage-tickets',
-				prefillType: 'suggestion_catalog',
-			}),
-		);
-	});
-
-	it('does not show the intro for an agent that is already saved', async () => {
-		const { queryByTestId, getByTestId } = renderPanel({
 			props: { subject, launch, threadId: 't-match' },
+			slots: { empty: '<div data-test-id="host-empty" />' },
 		});
 		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
 
-		expect(queryByTestId('instance-ai-agent-intro')).toBeNull();
+		expect(getByTestId('host-empty')).toBeInTheDocument();
+	});
+
+	it('forwards setPrefill to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.setPrefill({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+
+		expect(setPrefillMock).toHaveBeenCalledWith({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
 	});
 
 	it('resumes the most recent thread for the subject instead of minting one', async () => {

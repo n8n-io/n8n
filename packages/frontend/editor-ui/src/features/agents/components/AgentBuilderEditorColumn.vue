@@ -55,6 +55,8 @@ const props = defineProps<{
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	/** A starter template was applied and nothing was edited by hand since. */
+	templateApplied?: boolean;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -106,6 +108,14 @@ const i18n = useI18n();
 					:class="$style.identityHeader"
 					@update:config="emit('update:config', $event)"
 				/>
+				<div
+					v-if="templateApplied"
+					:class="$style.templateAppliedChip"
+					data-testid="agent-template-applied-chip"
+				>
+					<N8nIcon icon="sparkles" size="small" />
+					{{ i18n.baseText('agents.builder.templates.appliedChip') }}
+				</div>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
@@ -405,6 +415,7 @@ const i18n = useI18n();
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
+	align-items: center;
 	width: 100%;
 }
 
@@ -414,6 +425,21 @@ const i18n = useI18n();
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 var(--agent-builder-content-margin-inline, auto);
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.templateAppliedChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border-width) solid
+		color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+	border-radius: var(--radius--full);
+	background: color-mix(in srgb, var(--background--brand) 10%, var(--background--surface));
+	color: color-mix(in srgb, var(--background--brand) 70%, var(--text-color));
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	white-space: nowrap;
 }
 
 .tabsRow {

@@ -22,7 +22,11 @@ import {
 	watch,
 } from 'vue';
 import { useRouter } from 'vue-router';
-import type { InstanceAiHandoffContext, InstanceAiThreadSummary } from '@n8n/api-types';
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiPrefillTypeReported,
+	InstanceAiThreadSummary,
+} from '@n8n/api-types';
 import { N8nHeading, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -41,7 +45,6 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
-import AgentBuilderIntro from './AgentBuilderIntro.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
 
@@ -61,20 +64,17 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
+const slots = defineSlots<{
+	/** A host's welcome state, rendered by the conversation until the thread has its first message. */
+	empty?: () => unknown;
+}>();
+
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
 const store = useInstanceAiStore();
 const subject = computed(() => props.subject);
 const { threads } = useInstanceAiEmbedThreads(subject);
-/**
- * The welcome intro belongs to the first build of a brand-new agent. Latched at
- * setup rather than read reactively: the host derives `pending` from its own
- * unsaved state, which clears on the first autosave, and the intro must not
- * vanish while the user is still reading it. The host keys this panel by agent
- * id, so a different subject remounts and re-reads this.
- */
-const showAgentIntro = props.subject.type === 'agent' && props.subject.pending === true;
 // Scopes the header's popover history to this panel's subject — a stable
 // function reference so the list's `filter` prop doesn't re-run on every render.
 function threadFilter(thread: InstanceAiThreadSummary): boolean {
@@ -165,7 +165,24 @@ function handoff(context: InstanceAiHandoffContext, initialDraft?: PendingCompos
 	return true;
 }
 
-defineExpose({ handoff });
+/**
+ * Puts n8n-authored text into the mounted conversation's composer without
+ * sending it. The host (e.g. the agent builder) owns the wording and the
+ * pre-fill tag. A no-op while no thread is mounted yet.
+ */
+function setPrefill(prefill: {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+}) {
+	conversationRef.value?.setPrefill(prefill);
+}
+
+defineExpose({
+	handoff,
+	/** Forwards to the mounted conversation's composer; a no-op while no thread is mounted. */
+	setPrefill,
+});
 
 /** The assistant is actively mutating the subject — the thread list stops
  * accepting select/new while that's true, so a click can't race it. */
@@ -399,14 +416,7 @@ const ThreadScope = defineComponent({
 					beforeSend: props.beforeSend,
 					onThreadMissing: () => scopeEmit('thread-missing'),
 				},
-				showAgentIntro
-					? {
-							empty: () =>
-								h(AgentBuilderIntro, {
-									onSelect: (payload) => conversationRef.value?.submitSuggestion(payload),
-								}),
-						}
-					: undefined,
+				slots.empty ? { empty: slots.empty } : undefined,
 			);
 	},
 });

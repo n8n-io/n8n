@@ -87,8 +87,10 @@ import {
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
+import { applyAgentTemplate, isAgentConfigBlank, type AgentTemplate } from '../agentTemplates';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -241,6 +243,8 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // `isRouteAgentPending` to false, which must not close the panel out from
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
+/** A starter template was applied and nothing was edited by hand since; drives the editor chip. */
+const templateApplied = ref(false);
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
 	// component instance, so `history.state` — just updated by that navigation —
@@ -248,6 +252,7 @@ watch(agentId, () => {
 	// `initialize()` watcher) reflects the new agent instead of the mounted one.
 	routePendingAgentId.value = readPendingAgentIdFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
+	templateApplied.value = false;
 });
 const isAiPanelOpen = computed({
 	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
@@ -330,6 +335,18 @@ const {
 // editing is disabled even for a user who otherwise has permission — mirrors
 // the workflow artifact's read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
+
+// The intro is for a first build only: a new agent, still blank, editable, and
+// no template applied yet. A successful apply makes the config non-blank, so
+// the intro cannot come back after a reload either.
+const showAgentIntro = computed(
+	() =>
+		openedForPendingAgent.value &&
+		effectiveCanEditAgent.value &&
+		!templateApplied.value &&
+		localConfig.value !== null &&
+		isAgentConfigBlank(localConfig.value),
+);
 
 const isVersionHistoryOpen = ref(false);
 
@@ -1370,6 +1387,9 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
+	// The chip means "untouched template"; an auto-applied default (seeded model)
+	// is not a user edit and must not dismiss it.
+	if (meta?.source !== 'auto') templateApplied.value = false;
 	Object.assign(localConfig.value, updates);
 	// Mirror identity edits onto the agent resource so the header reflects them
 	// before the next fetch.
@@ -1442,6 +1462,39 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		type: 'config',
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
 		baseConfigHash: configHash.value,
+	});
+}
+
+// Apply a starter template to a blank agent: writes instructions and tools,
+// pre-connects any channel triggers, and drops a `template_adjustment` draft
+// into the assistant composer so the user can ask for changes. Refuses (with a
+// toast) once the agent already has content — the intro is for a first build.
+function onApplyTemplate(template: AgentTemplate) {
+	if (!localConfig.value) return;
+	const next = applyAgentTemplate(
+		localConfig.value,
+		template,
+		locale.baseText('agents.new.defaultName'),
+	);
+	if (!next) {
+		showMessage({
+			title: locale.baseText('agents.builder.templates.notBlank.title'),
+			message: locale.baseText('agents.builder.templates.notBlank.message'),
+			type: 'warning',
+		});
+		return;
+	}
+	replaceConfigAndScheduleSave(next);
+	if (template.connectedTriggers) {
+		connectedTriggers.value = [...template.connectedTriggers];
+	}
+	templateApplied.value = true;
+	aiPanelRef.value?.setPrefill({
+		text: locale.baseText('agents.builder.templates.draft', {
+			interpolate: { template: locale.baseText(template.labelKey) },
+		}),
+		prefillType: 'template_adjustment',
+		prefillId: template.id,
 	});
 }
 
@@ -2387,7 +2440,11 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
 						@close="isAiPanelOpen = false"
-					/>
+					>
+						<template v-if="showAgentIntro" #empty>
+							<AgentBuilderIntro @select="onApplyTemplate" />
+						</template>
+					</InstanceAiChatPanel>
 				</N8nResizeWrapper>
 			</aside>
 			<AgentBuildingIndicator v-if="embeddedAiBuilding" />
@@ -2438,6 +2495,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
 					:config-validation-issues="configValidation?.issues ?? []"
+					:template-applied="templateApplied"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"
