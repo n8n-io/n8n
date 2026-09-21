@@ -376,6 +376,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 		const dropdownRef = ref<DropdownMenuExposed | null>(null);
 		const menuOpen = ref(false);
 		const value = ref('');
+		const mentionTriggerIndex = ref<number | null>(null);
 		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
 		const items: Array<DropdownMenuItemProps<string>> = [
 			{
@@ -400,12 +401,40 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			dropdownRef.value?.handleExternalKeydown(event);
 		};
 
-		const handleOpenChange = async (open: boolean) => {
-			menuOpen.value = open;
-			if (!open) return;
-
+		const openMenu = async () => {
+			menuOpen.value = true;
 			await nextTick();
 			dropdownRef.value?.highlightFirstItem();
+		};
+
+		const handleOpenChange = async (open: boolean) => {
+			if (open) {
+				await openMenu();
+			} else {
+				menuOpen.value = false;
+				mentionTriggerIndex.value = null;
+			}
+		};
+
+		const handleUpdateModelValue = async (newValue: string) => {
+			value.value = newValue;
+			await nextTick();
+
+			const caret = inputElement.value?.selectionStart ?? newValue.length;
+			const candidateIndex = caret - 1;
+			const followsWhitespace =
+				candidateIndex === 0 || /\s/.test(newValue[candidateIndex - 1] ?? '');
+			if (newValue[candidateIndex] === '@' && followsWhitespace) {
+				mentionTriggerIndex.value = candidateIndex;
+				await openMenu();
+				return;
+			}
+
+			const triggerIndex = mentionTriggerIndex.value;
+			if (triggerIndex !== null && (newValue[triggerIndex] !== '@' || caret <= triggerIndex)) {
+				menuOpen.value = false;
+				mentionTriggerIndex.value = null;
+			}
 		};
 
 		return {
@@ -418,6 +447,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 			items,
 			handleKeydown,
 			handleOpenChange,
+			handleUpdateModelValue,
 			onSelect,
 			onSubmit: methods.onSubmit,
 		};
@@ -429,7 +459,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 				:model-value="value"
 				:placeholder="args.placeholder"
 				:max-length="args.maxLength"
-				@update:model-value="value = $event"
+				@update:model-value="handleUpdateModelValue"
 				@submit="onSubmit"
 			>
 				<template #right-actions>
@@ -458,7 +488,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 				</template>
 			</N8nChatInput>
 			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
-				Open the menu with the @ button. Use Enter and the arrow keys while focus stays in the message input.
+				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
 			</p>
 		</div>
 	`,
@@ -473,7 +503,7 @@ WithExternalDropdown.parameters = {
 	docs: {
 		description: {
 			story:
-				'Demonstrates the focus and keyboard integration for an external dropdown. Product mention parsing and attachments are not included.',
+				'Demonstrates typed and button-triggered opening with external focus and keyboard integration. Query filtering, text replacement, and attachments are not included.',
 		},
 	},
 };
