@@ -70,6 +70,7 @@ export interface ModelCallContext {
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
+	onInputRejected?: (error: unknown) => Promise<void>;
 	aiSdkOptions: {
 		telemetry?: TelemetryOptions;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;

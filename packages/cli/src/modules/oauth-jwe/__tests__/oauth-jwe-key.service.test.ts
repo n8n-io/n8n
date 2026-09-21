@@ -56,8 +56,8 @@ describe('OAuthJweKeyService', () => {
 		cacheService.get.mockImplementation(async (_key, options) => {
 			return await options?.refreshFn?.('cache-key');
 		});
-		cipher.encryptWithInstanceKey.mockImplementation((value: string) => `enc(${value})`);
-		cipher.decryptWithInstanceKey.mockImplementation((value: string) =>
+		cipher.encryptDEKWithInstanceKey.mockImplementation((value: string) => `enc(${value})`);
+		cipher.decryptDEKWithInstanceKey.mockImplementation((value: string) =>
 			value.startsWith('enc(') ? value.slice(4, -1) : JSON.stringify(privateJwkFixture),
 		);
 	});
@@ -65,7 +65,7 @@ describe('OAuthJweKeyService', () => {
 	describe('initialize / loadOrGenerate', () => {
 		it('reuses an existing active row without inserting', async () => {
 			repository.findOne.mockResolvedValue(makeRow({ value: JSON.stringify(privateJwkFixture) }));
-			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
+			cipher.decryptDEKWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
 
 			await Container.get(OAuthJweKeyService).initialize();
 
@@ -80,7 +80,7 @@ describe('OAuthJweKeyService', () => {
 					value: (entity as DeploymentKey).value,
 					algorithm: (entity as DeploymentKey).algorithm,
 				});
-				cipher.decryptWithInstanceKey.mockImplementation((value: string) =>
+				cipher.decryptDEKWithInstanceKey.mockImplementation((value: string) =>
 					value === row?.value ? JSON.stringify(privateJwkFixture) : '',
 				);
 				return { identifiers: [{ id: 'row-1' }], generatedMaps: [], raw: [] };
@@ -96,13 +96,13 @@ describe('OAuthJweKeyService', () => {
 				status: 'active',
 			});
 			expect((inserted as DeploymentKey).id).toEqual(expect.any(String));
-			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledTimes(1);
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
 		});
 
 		it('throws when the persisted private JWK has no kid', async () => {
 			const { kid: _kid, ...kidless } = privateJwkFixture;
 			repository.findOne.mockResolvedValue(makeRow({ value: 'enc-row' }));
-			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(kidless));
+			cipher.decryptDEKWithInstanceKey.mockReturnValue(JSON.stringify(kidless));
 
 			await expect(Container.get(OAuthJweKeyService).initialize()).rejects.toThrow(
 				`OAuth JWE private key for "${ALGORITHM}" is missing a kid`,
@@ -111,7 +111,7 @@ describe('OAuthJweKeyService', () => {
 
 		it('throws when the persisted JWK kid does not match the row id', async () => {
 			repository.findOne.mockResolvedValue(makeRow({ id: 'different-id', value: 'enc-row' }));
-			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
+			cipher.decryptDEKWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
 
 			await expect(Container.get(OAuthJweKeyService).initialize()).rejects.toThrow(
 				`OAuth JWE private key for "${ALGORITHM}" has a kid that does not match its row id`,
@@ -134,7 +134,7 @@ describe('OAuthJweKeyService', () => {
 			repository.findOne.mockImplementation(async () => row);
 			repository.insert.mockImplementation(async () => {
 				row = makeRow({ value: 'winner-row' });
-				cipher.decryptWithInstanceKey.mockImplementation((value: string) =>
+				cipher.decryptDEKWithInstanceKey.mockImplementation((value: string) =>
 					value === 'winner-row' ? JSON.stringify(privateJwkFixture) : '',
 				);
 				throw makeUniqueViolation('23505');
@@ -148,7 +148,7 @@ describe('OAuthJweKeyService', () => {
 			repository.findOne.mockImplementation(async () => row);
 			repository.insert.mockImplementation(async () => {
 				row = makeRow({ value: 'winner-row' });
-				cipher.decryptWithInstanceKey.mockImplementation((value: string) =>
+				cipher.decryptDEKWithInstanceKey.mockImplementation((value: string) =>
 					value === 'winner-row' ? JSON.stringify(privateJwkFixture) : '',
 				);
 				throw makeUniqueViolation('SQLITE_CONSTRAINT_UNIQUE');
@@ -169,7 +169,7 @@ describe('OAuthJweKeyService', () => {
 	describe('getKeyPair / getPublicJwk', () => {
 		beforeEach(() => {
 			repository.findOne.mockResolvedValue(makeRow({ value: 'enc-active' }));
-			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
+			cipher.decryptDEKWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
 		});
 
 		it('uses the first algorithm by default', async () => {
@@ -217,6 +217,36 @@ describe('OAuthJweKeyService', () => {
 		});
 	});
 
+	describe('earlier wrap format', () => {
+		const legacyValue = 'U2FsdGVkX1-legacy-wrapped';
+
+		beforeEach(() => {
+			repository.findOne.mockResolvedValue(makeRow({ value: legacyValue }));
+			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
+		});
+
+		it('reads a row in the earlier wrap format and leaves the stored value untouched', async () => {
+			repository.findOne.mockResolvedValue(makeRow({ value: legacyValue }));
+
+			const pair = await Container.get(OAuthJweKeyService).getKeyPair();
+
+			expect(pair.kid).toBe('row-1');
+			expect(cipher.decryptWithInstanceKey).toHaveBeenCalledWith(legacyValue);
+			// Older instances in a rolling deployment can only read this format,
+			// and the cache is shared — the stored row must not be rewritten.
+			expect(repository.update).not.toHaveBeenCalled();
+		});
+
+		it('does not touch a row already in the DEK-style wrap', async () => {
+			repository.findOne.mockResolvedValue(makeRow({ value: 'enc-active' }));
+
+			await Container.get(OAuthJweKeyService).getKeyPair();
+
+			expect(repository.update).not.toHaveBeenCalled();
+			expect(cipher.decryptWithInstanceKey).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('cache hit', () => {
 		it('does not invoke refreshFn when the cache returns data', async () => {
 			cacheService.get.mockResolvedValue([
@@ -226,7 +256,7 @@ describe('OAuthJweKeyService', () => {
 					kid: 'row-1',
 				},
 			]);
-			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
+			cipher.decryptDEKWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
 
 			await Container.get(OAuthJweKeyService).getKeyPair();
 

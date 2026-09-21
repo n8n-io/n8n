@@ -125,19 +125,6 @@ export declare namespace UserRequest {
 	>;
 }
 
-export declare namespace InsightsRequest {
-	type GetSummary = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			startDate?: string;
-			endDate?: string;
-			projectId?: string;
-		}
-	>;
-}
-
 export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };

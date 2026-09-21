@@ -246,8 +246,9 @@ describe('AgentTestRunService', () => {
 				resumeSchema: { type: 'object' },
 			},
 		];
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 			yield* chunks;
+			config.onExecutionRecorded?.('execution-1');
 		});
 
 		await expect(
@@ -263,6 +264,7 @@ describe('AgentTestRunService', () => {
 			status: 'suspended',
 			response: 'I can do that. ',
 			sessionId: 'session-1',
+			executionId: 'execution-1',
 			suspensions: [
 				{
 					runId: 'run-1',

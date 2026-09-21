@@ -52,6 +52,9 @@ paths:
   /projects/{projectId}/folders/{folderId}:
     get:
       $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
+  /insights/summary:
+    get:
+      $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml

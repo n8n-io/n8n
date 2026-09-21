@@ -1,4 +1,5 @@
 import { renderComponent } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
@@ -306,10 +307,13 @@ describe('LogsPanel', () => {
 		expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
 		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: 0 }));
-		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
+		await startResize(
+			rendered.getByTestId('resize-handle'),
+			{ height: 40 },
+			{ clientY: VIEWPORT_HEIGHT - 40 },
+		);
+		await moveResize({ clientY: 500 });
+		await fireEvent.mouseUp(window);
 
 		await waitFor(() => {
 			expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
@@ -325,14 +329,13 @@ describe('LogsPanel', () => {
 		expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
 		expect(rendered.queryByTestId('logs-overview-body')).toBeInTheDocument();
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(
-			new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: VIEWPORT_HEIGHT }),
+		await startResize(
+			rendered.getByTestId('resize-handle'),
+			{ height: 240 },
+			{ clientY: VIEWPORT_HEIGHT - 240 },
 		);
-		window.dispatchEvent(
-			new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: VIEWPORT_HEIGHT }),
-		);
+		await moveResize({ clientY: VIEWPORT_HEIGHT });
+		await fireEvent.mouseUp(window);
 
 		await waitFor(() => {
 			expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
