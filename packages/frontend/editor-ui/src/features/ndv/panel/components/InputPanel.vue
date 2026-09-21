@@ -530,7 +530,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								icon-only
 								hide-label
 								variant="subtle"
-								size="small"
+								size="medium"
 								:node-name="nodeNameToExecute"
 								:aria-label="i18n.baseText('ndv.input.noOutputData.action')"
 								:tooltip="i18n.baseText('ndv.input.noOutputData.action')"

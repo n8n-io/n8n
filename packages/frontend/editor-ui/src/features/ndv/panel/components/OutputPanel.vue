@@ -424,7 +424,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						icon-only
 						hide-label
 						variant="subtle"
-						size="small"
+						size="medium"
 						:node-name="activeNode?.name ?? ''"
 						:aria-label="noOutputActionLabel"
 						:tooltip="noOutputActionLabel"
