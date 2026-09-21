@@ -75,6 +75,8 @@ packages/cli/src/auth/__tests__/auth.service.test.ts
   s_a4556b837ab6e9::t_9708bc2c3bc0e4 66,69
   s_a4556b837ab6e9::t_72842cec91341e 591,608
   s_a4556b837ab6e9::t_658a0bc90ce463 44
+  s_a4556b837ab6e9::t_d3a7ae485906fe 664
+  s_a4556b837ab6e9::t_0219218aa93eb8 673,688
 packages/cli/src/services/user.service.ts
   s_a4556b837ab6e9::t_22e1b236f8b23b 218,461-464
 packages/cli/test/integration/auth.api.test.ts
