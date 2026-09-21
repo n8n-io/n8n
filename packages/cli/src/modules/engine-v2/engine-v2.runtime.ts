@@ -142,9 +142,11 @@ export class EngineV2Runtime {
 		// id to cancel them. `$execution.id` also reads it.
 		additionalData.executionId = context.executionId;
 
-		// `putExecutionToWait` calls this hook, and the v1 one marks the execution
-		// waiting in `ActiveExecutions`, where a data-plane run is never registered.
-		// The engine records a wait from the step's declaration instead.
+		// `putExecutionToWait` calls this hook when it is set. The hook `getBase`
+		// installs marks the execution waiting in `ActiveExecutions`, which never
+		// registers a data-plane run, so it throws and fails the step before the
+		// shim can read the deadline. The engine records the wait from the step's
+		// declaration, so the data plane has no use for the hook.
 		delete additionalData.setExecutionStatus;
 
 		additionalData.credentialsHelper = new RemoteCredentialsHelper(
