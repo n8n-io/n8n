@@ -51,7 +51,7 @@ test.describe(
 	},
 	() => {
 		test('should test manual workflow @engine:v2', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
+			const { workflowId } = await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
@@ -85,6 +85,8 @@ test.describe(
 			await n8n.notifications.waitForNotificationAndClose(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeVisible();
 			await n8n.canvas.clearExecutionData();
