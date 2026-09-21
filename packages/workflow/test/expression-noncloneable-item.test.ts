@@ -57,6 +57,12 @@ const guardedGetter = () => {
 	return o;
 };
 
+const deepChain = (depth: number) => {
+	let node: Record<string, unknown> = { fn: () => 1 };
+	for (let level = depth; level > 0; level--) node = { next: node, tag: level };
+	return node;
+};
+
 type Case = {
 	name: string;
 	extra: () => Record<string, unknown>;
@@ -309,5 +315,40 @@ describe.skipIf(ENGINE !== 'vm')('the message a rejected value produces', () => 
 		expect((caught as ExpressionError).message).toBe(
 			"Can't read item from node 'Upstream': the value at json.fn cannot be used in an expression (a function)",
 		);
+	});
+});
+
+describe.skipIf(ENGINE !== 'vm')('an item nested deeper than the depth cap', () => {
+	let world: ReturnType<typeof makeWorld>;
+
+	beforeAll(async () => {
+		world = makeWorld({ deep: deepChain(200) });
+		await world.workflow.expression.acquireIsolate();
+	});
+	afterAll(async () => {
+		await world.workflow.expression.releaseIsolate();
+	});
+
+	it('reads a sibling key of the nested value', () => {
+		expect(world.evaluate("={{ $('Upstream').item.json.plain_key }}")).toBe('the-value');
+	});
+
+	it('reads a level above the cap', () => {
+		const path = `json.deep${'.next'.repeat(20)}.tag`;
+		expect(world.evaluate(`={{ $('Upstream').item.${path} }}`)).toBe(21);
+	});
+
+	it('raises on a read below the cap', () => {
+		const path = `json.deep${'.next'.repeat(190)}.tag`;
+
+		let caught: unknown;
+		try {
+			world.evaluate(`={{ $('Upstream').item.${path} }}`);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(ExpressionError);
+		expect((caught as ExpressionError).message).toContain('stopped early');
 	});
 });
