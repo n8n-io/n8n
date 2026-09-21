@@ -249,6 +249,7 @@ onMounted(async () => {
 });
 
 const nextOccurrenceText = computed(() => {
+	if (!isEditing.value) return '';
 	const next = getNextScheduleOccurrence(cronExpression.value, timezone.value);
 	if (!next) return '';
 	return formatScheduleDateTime(next, timezone.value);
@@ -616,18 +617,14 @@ async function onSave() {
 							/>
 						</N8nSelect>
 					</div>
-					<div v-if="nextOccurrenceText" :class="$style.scheduleSummary">
-						<N8nText v-if="scheduleDescription" bold>
-							{{ scheduleDescription }}
-						</N8nText>
-						<N8nText :class="$style.help" size="small">
-							{{
-								i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
-									interpolate: { occurrence: nextOccurrenceText },
-								})
-							}}
-						</N8nText>
-					</div>
+					<N8nText v-if="nextOccurrenceText" :class="$style.help" size="small">
+						<span v-if="scheduleDescription">{{ scheduleDescription }} · </span>
+						{{
+							i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
+								interpolate: { occurrence: nextOccurrenceText },
+							})
+						}}
+					</N8nText>
 				</div>
 
 				<N8nText
@@ -738,12 +735,6 @@ async function onSave() {
 
 .timezoneSelect {
 	width: 14rem;
-}
-
-.scheduleSummary {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 
 .help {

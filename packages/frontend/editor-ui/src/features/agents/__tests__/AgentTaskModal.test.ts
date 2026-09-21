@@ -420,13 +420,14 @@ describe('AgentTaskModal', () => {
 			).toBeInTheDocument();
 		}
 
-		it('previews a new task in the timezone its author is reading', () => {
+		it('does not preview the next execution for a new task', () => {
 			setBrowserTimezone('Asia/Tokyo');
 
-			const { getByText } = renderModal();
+			const { queryByText } = renderModal();
 
-			// 13:00 UTC is 22:00 in Tokyo, so the default 09:00 cron fires next morning.
-			expectNextRun(getByText, '2026-01-02T00:00:00.000Z', 'Asia/Tokyo');
+			expect(
+				queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/),
+			).not.toBeInTheDocument();
 		});
 
 		it("previews an existing task in the task's own timezone", () => {
