@@ -207,10 +207,8 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
+	 * Force-enable the non-blocking setup panel. When false, PostHog selects
+	 * the setup flow through `118_instance_ai_setup_overhaul`.
 	 */
 	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
 	instanceAiSetupPanelEnabled: boolean = false;

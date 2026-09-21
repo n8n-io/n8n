@@ -1,3 +1,4 @@
+import { v4 as uuid } from 'uuid';
 import {
 	computed,
 	getCurrentScope,
@@ -62,13 +63,16 @@ export function useSetupPanelExecution(options: {
 	async function executeWorkflow(): Promise<SetupPanelExecutionResult | undefined> {
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId || runningWorkflows.has(workflowId) || disposed) return;
-		if (!pushStore.isConnected)
-			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId));
 		if (executionState.isWorkflowRunning) return;
 		runningWorkflows.add(workflowId);
 		let cleanup = () => {};
+		const testRequestId = uuid();
+		let requestSent = false;
+		let executionStarted = false;
 		try {
+			if (!pushStore.isConnected)
+				throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 			const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
 			await nodeTypesStore.loadNodeTypesIfNotLoaded();
 			if (
@@ -181,13 +185,24 @@ export function useSetupPanelExecution(options: {
 				cleanup();
 				completed.resolve(undefined);
 			});
+			requestSent = true;
 			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
+				session_id: rootStore.pushRef,
+				test_request_id: testRequestId,
 				source: 'instance_ai_setup_panel',
 				workflow_id: workflowId,
 				thread_id: options.thread.id,
 			});
 			const response = await runWorkflowApi(
-				{ workflowId, triggerToStartFrom: { name: trigger.name } },
+				{
+					workflowId,
+					triggerToStartFrom: { name: trigger.name },
+					setupTestRequest: {
+						test_request_id: testRequestId,
+						thread_id: options.thread.id,
+						session_id: rootStore.pushRef,
+					},
+				},
 				executionState.documentId,
 			);
 			if (disposed) {
@@ -197,6 +212,7 @@ export function useSetupPanelExecution(options: {
 				}
 				return;
 			}
+			executionStarted = Boolean(response.executionId || response.waitingForWebhook);
 			waitingForWebhook = response.waitingForWebhook === true;
 			executionState.setExecutionWaitingForWebhook(waitingForWebhook);
 			if (response.executionId) observeId(response.executionId);
@@ -227,6 +243,19 @@ export function useSetupPanelExecution(options: {
 				},
 			);
 			return { ...result, notified };
+		} catch (error) {
+			if (!executionStarted)
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED, {
+					session_id: rootStore.pushRef,
+					workflow_id: workflowId,
+					thread_id: options.thread.id,
+					...(requestSent ? { test_request_id: testRequestId } : {}),
+					source: 'instance_ai_setup_panel',
+					initiated_by: 'user',
+					status: 'start_failed',
+					error_type: 'start',
+				});
+			throw error;
 		} finally {
 			cleanup();
 			cancelWaits.delete(workflowId);

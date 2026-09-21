@@ -15,6 +15,8 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
@@ -217,7 +219,7 @@ type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesServi
  * and credential checkers. `getNodeParameters` walks the dependency graph and
  * fills only displayed properties.
  */
-function resolveDisplayedDefaults(
+export function resolveDisplayedDefaults(
 	nodeProperties: INodeProperties[],
 	parameters: Record<string, unknown>,
 	nodeType: string,
@@ -479,6 +481,19 @@ export class InstanceAiAdapterService {
 		);
 		return {
 			userId: user.id,
+			observeWorkflowSetup: threadId
+				? async (workflowId, buildComplete) => {
+						const { InstanceAiWorkflowSetupTelemetryService } = await import(
+							'./instance-ai-workflow-setup-telemetry.service.js'
+						);
+						await Container.get(InstanceAiWorkflowSetupTelemetryService).observe(
+							user,
+							threadId,
+							workflowId,
+							buildComplete,
+						);
+					}
+				: undefined,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			modelId,
@@ -584,6 +599,7 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		setupPanelEnabled: boolean;
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
@@ -611,6 +627,8 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			setupPanelEnabled:
+				flags[INSTANCE_AI_SETUP_PANEL_FLAG] === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
@@ -2001,8 +2019,10 @@ export class InstanceAiAdapterService {
 					});
 				};
 
+				let startedExecutionId: string | undefined;
 				try {
 					const executionId = await workflowRunner.run(runData);
+					startedExecutionId = executionId;
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
 						try {
 							await pruneUnreachedVerificationPinData({
@@ -2061,6 +2081,20 @@ export class InstanceAiAdapterService {
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
 					};
 				} catch (error) {
+					if (!startedExecutionId && pinDataPlan.mockDataSources.length === 0) {
+						const { InstanceAiWorkflowSetupTelemetryService } = await import(
+							'./instance-ai-workflow-setup-telemetry.service.js'
+						);
+						await Container.get(InstanceAiWorkflowSetupTelemetryService).recordTestResult(
+							workflowId,
+							{
+								source: 'assistant',
+								initiated_by: 'assistant',
+								status: 'start_failed',
+								error_type: 'start',
+							},
+						);
+					}
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
 					// silently dropped from telemetry.

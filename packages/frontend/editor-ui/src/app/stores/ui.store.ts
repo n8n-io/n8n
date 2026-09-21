@@ -454,6 +454,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			closeOnSave: false,
 			workflowId: options.workflowId,
 			onCredentialCreated: undefined,
+			onConnectionEvent: undefined,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -474,6 +475,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
 			onCredentialCreated?: NewCredentialsModal['onCredentialCreated'];
+			onConnectionEvent?: NewCredentialsModal['onConnectionEvent'];
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
@@ -486,6 +488,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			forceManualMode,
 			closeOnSave: options.closeOnSave ?? false,
 			onCredentialCreated: options.onCredentialCreated,
+			onConnectionEvent: options.onConnectionEvent,
 			projectId,
 			suggestedName,
 			workflowId: options.workflowId,

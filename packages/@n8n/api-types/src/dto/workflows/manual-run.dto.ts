@@ -1,3 +1,4 @@
+import { instanceAiSetupTestRequestSchema } from '../../instance-ai-setup-telemetry';
 import type { AiAgentRequest, IDestinationNode, IRunData, ITaskData } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -26,6 +27,7 @@ const agentRequestSchema = z.custom<AiAgentRequest>(isObject);
 // 1. Full manual execution from a known trigger
 const fullManualExecutionFromKnownTriggerSchema = z.object({
 	agentRequest: agentRequestSchema.optional(),
+	setupTestRequest: instanceAiSetupTestRequestSchema.optional(),
 	chatSessionId: z.string().optional(),
 	destinationNode: destinationNodeSchema.optional(),
 	triggerToStartFrom: triggerToStartFromSchema,
@@ -34,12 +36,14 @@ const fullManualExecutionFromKnownTriggerSchema = z.object({
 // 2. Full manual execution from an unknown trigger, derived from the destination
 const fullManualExecutionFromUnknownTriggerSchema = z.object({
 	agentRequest: agentRequestSchema.optional(),
+	setupTestRequest: instanceAiSetupTestRequestSchema.optional(),
 	destinationNode: destinationNodeSchema,
 });
 
 // 3. Partial execution up to a destination node, reusing existing run data
 const partialManualExecutionToDestinationSchema = z.object({
 	agentRequest: agentRequestSchema.optional(),
+	setupTestRequest: instanceAiSetupTestRequestSchema.optional(),
 	runData: z.custom<IRunData>(isObject),
 	destinationNode: destinationNodeSchema,
 	dirtyNodeNames: z.array(z.string()).optional(),

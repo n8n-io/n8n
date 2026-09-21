@@ -22,7 +22,7 @@ import {
 	DOMAIN_RESTRICTION_FIELDS,
 	type ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES, BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -48,6 +48,11 @@ import type {
 } from '../../composables/useSetupPanelActions';
 import { useSetupPanelDocument } from '../../composables/useSetupPanelDocument';
 import type { SetupPanelConnectionMethod } from '../../composables/useSetupPanelTelemetry';
+import type { CredentialConnectionEvent } from '@/features/credentials/credentials.types';
+import type {
+	SetupConnectionError,
+	SetupConnectionCancellation,
+} from '../../composables/useWorkflowSetupTracking';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 
 const props = defineProps<{
@@ -66,6 +71,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	bindCredential: [item: SetupCredentialItem, credentialId: string];
 	connectStarted: [method: SetupPanelConnectionMethod];
+	connectFailed: [error: SetupConnectionError];
+	connectCancelled: [reason: SetupConnectionCancellation];
 	askForHelp: [credential: InstanceAiCredentialContext];
 	setCredentialsPerNode: [];
 	'update:busy': [value: boolean];
@@ -378,14 +385,6 @@ function emitBinding(id: string, submittedData?: ICredentialDataDecryptedObject)
 	emit('bindCredential', props.item, id);
 }
 
-function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
-	const credential = update.properties.credentials?.[props.item.credentialType];
-	if (!credential || typeof credential === 'string') return;
-	emit('connectStarted', 'existing');
-	if (credential.__aiGatewayManaged) emitBinding(AI_GATEWAY_MANAGED_TAG);
-	else if (credential.id) emitBinding(credential.id);
-}
-
 function formData(): ICredentialDataDecryptedObject {
 	const data = { ...form.credentialData.value };
 	delete data.homeProject;
@@ -426,6 +425,7 @@ async function saveKey() {
 	if (form.isCredentialTestable.value) {
 		await form.testCredential({ ...details, id: credential.id });
 		if (!form.testedSuccessfully.value) {
+			emit('connectFailed', 'validation');
 			await credentialsStore.deleteCredential({ id: credential.id });
 			return;
 		}
@@ -458,6 +458,7 @@ async function connect() {
 					workflowId: props.workflowId,
 					data: submittedData,
 					name: form.credentialName.value || undefined,
+					onOutcome: onConnectionEvent,
 				},
 			);
 			if (credential) emitBinding(credential.id, submittedData);
@@ -468,6 +469,7 @@ async function connect() {
 				nodeType: props.node.type,
 				serviceName: serviceName.value,
 				source: 'credential_type',
+				onOutcome: onConnectionEvent,
 				projectId: props.projectId,
 				workflowId: props.workflowId,
 			});
@@ -477,12 +479,26 @@ async function connect() {
 			await saveKey();
 		}
 	} catch (error) {
+		emit('connectFailed', 'connection');
 		toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
 	} finally {
 		busy.value = false;
 	}
 }
 
+let advancedAttemptActive = false;
+function onConnectionEvent(event: CredentialConnectionEvent) {
+	if (!active) return;
+	if (event.type === 'started') {
+		if (event.method !== 'advanced' || !advancedAttemptActive) emit('connectStarted', event.method);
+		advancedAttemptActive = event.method === 'advanced';
+	} else {
+		advancedAttemptActive = false;
+		if (event.type === 'completed') emitBinding(event.credentialId);
+		else if (event.type === 'failed') emit('connectFailed', event.errorType);
+		else emit('connectCancelled', event.reason);
+	}
+}
 function onMenuAction(id: string) {
 	if (id === 'per-node') {
 		emit('setCredentialsPerNode');
@@ -513,7 +529,7 @@ function onMenuAction(id: string) {
 		}
 		return;
 	}
-	emit('connectStarted', 'advanced');
+	onConnectionEvent({ type: 'started', method: 'advanced' });
 	uiStore.openNewCredential(
 		props.item.credentialType,
 		false,
@@ -526,7 +542,7 @@ function onMenuAction(id: string) {
 			closeOnSave: true,
 			credentialSetupHint: props.item.setupHint,
 			workflowId: props.workflowId,
-			onCredentialCreated: (credential) => emitBinding(credential.id),
+			onConnectionEvent,
 		},
 	);
 }
@@ -586,9 +602,7 @@ onScopeDispose(() => {
 				standalone
 				hide-issues
 				skip-auto-select
-				@credential-selected="onCredentialSelected"
-				@connection-started="emit('connectStarted', 'oauth')"
-				@connection-completed="emitBinding($event)"
+				:observe-connection="onConnectionEvent"
 			>
 				<template v-if="perNodeActions.length" #label-postfix>
 					<N8nDropdownMenu

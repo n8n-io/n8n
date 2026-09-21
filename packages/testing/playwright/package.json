@@ -63,6 +63,7 @@
     "@memlab/api": "2.0.0",
     "@memlab/heap-analysis": "2.0.0",
     "@n8n/api-types": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/permissions": "workspace:*",

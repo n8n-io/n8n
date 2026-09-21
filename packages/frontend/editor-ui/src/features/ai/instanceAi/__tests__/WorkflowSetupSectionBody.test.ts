@@ -76,6 +76,7 @@ vi.mock('@/features/settings/environments.ee/environments.store', () => ({
 
 function makeContext(): WorkflowSetupContext {
 	return {
+		threadId: 'thread-1',
 		sections: computed(() => []),
 		currentStepIndex: ref(0),
 		activeSection: computed(() => undefined),

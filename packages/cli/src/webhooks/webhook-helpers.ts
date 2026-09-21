@@ -649,6 +649,7 @@ export async function executeWebhook(
 		 * a node that establishes its own carrier below still wins.
 		 */
 		encryptedRunnerIdentity?: string;
+		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	},
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
@@ -1119,6 +1120,7 @@ export async function executeWebhook(
 			};
 		}
 
+		if (options?.telemetryMetadata) runData.telemetryMetadata = options.telemetryMetadata;
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,

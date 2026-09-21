@@ -67,6 +67,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		super(WorkflowDependency, dataSource.manager);
 	}
 
+	async findWorkflowIdsUsingCredential(credentialId: string): Promise<string[]> {
+		const rows = await this.find({
+			where: { dependencyType: 'credentialId', dependencyKey: credentialId },
+			select: ['workflowId'],
+		});
+		return [...new Set(rows.map((row) => row.workflowId))];
+	}
+
 	/**
 	 * How many workflows in scope use each node type, most-used first.
 	 *

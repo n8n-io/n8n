@@ -167,6 +167,7 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 	const parameters = ref({ formId: '' });
 
 	return {
+		threadId: 'thread-1',
 		sections: computed(() => [section]),
 		currentStepIndex: ref(0),
 		activeSection: computed(() => section),

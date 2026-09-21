@@ -1,3 +1,4 @@
+import { useThreadPendingSetup } from './composables/useThreadPendingSetup';
 import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -542,6 +543,7 @@ export function createThreadRuntime(
 		...findLatestSetupItemsFromMessages(messages.value),
 		...latestSetupItems.value,
 	}));
+	const pendingSetup = useThreadPendingSetup(setupItemsByWorkflowId, messages);
 	const latestSetupWorkflowId = computed(() => {
 		let latest: InstanceAiAgentNode['latestSetupAnnouncement'];
 		for (const message of messages.value) {
@@ -1318,6 +1320,8 @@ export function createThreadRuntime(
 
 		const isPrefill = authorship.kind === 'prefill';
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
+			session_id: rootStore.pushRef,
+			...(pendingSetup.value !== undefined ? { has_pending_setup: pendingSetup.value } : {}),
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,

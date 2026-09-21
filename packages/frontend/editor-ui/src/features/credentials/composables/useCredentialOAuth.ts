@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
-import type { ICredentialsResponse } from '../credentials.types';
+import type { CredentialConnectionOutcome, ICredentialsResponse } from '../credentials.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -30,11 +30,13 @@ interface OAuthPopupState {
 }
 
 interface OAuthAuthorizationOptions {
+	onOutcome?: (outcome: CredentialConnectionOutcome) => void;
 	abortOnPopupClose?: boolean;
 	popup?: OAuthPopupState;
 }
 
 interface CreateAndAuthorizeOptions {
+	onOutcome?: OAuthAuthorizationOptions['onOutcome'];
 	onAuthorizationStarted?: (reopen: () => void) => void;
 	projectId?: string;
 	workflowId?: string;
@@ -265,6 +267,7 @@ export function useCredentialOAuth() {
 		const popupWindow = options.popup?.window ?? openOAuthPopup('about:blank', signal);
 		if (!popupWindow) {
 			showPopupBlockedError();
+			options.onOutcome?.({ type: 'failed', errorType: 'connection' });
 			return false;
 		}
 		const popup: OAuthPopupState = options.popup ?? { window: popupWindow };
@@ -282,12 +285,14 @@ export function useCredentialOAuth() {
 			if (!urlResult.ok) {
 				popup.window.close();
 				if (urlResult.error === 'no-url') showOAuthUrlError();
+				options.onOutcome?.({ type: 'failed', errorType: 'connection' });
 				return false;
 			}
 
 			if (!isValidHttpUrl(urlResult.result)) {
 				popup.window.close();
 				showOAuthUrlError();
+				options.onOutcome?.({ type: 'failed', errorType: 'connection' });
 				return false;
 			}
 
@@ -339,6 +344,12 @@ export function useCredentialOAuth() {
 			});
 		}
 
+		if (!signal?.aborted && outcome !== 'success')
+			options.onOutcome?.(
+				outcome === 'aborted'
+					? { type: 'cancelled', reason: 'oauth_closed' }
+					: { type: 'failed', errorType: 'connection' },
+			);
 		return outcome === 'success';
 	}
 
@@ -394,6 +405,7 @@ export function useCredentialOAuth() {
 	): Promise<ICredentialsResponse | null> {
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 		if (!credentialType) {
+			options.onOutcome?.({ type: 'failed', errorType: 'connection' });
 			return null;
 		}
 
@@ -406,6 +418,7 @@ export function useCredentialOAuth() {
 		if (!initialPopup) {
 			showPopupBlockedError();
 			oauthAbortController.value = null;
+			options.onOutcome?.({ type: 'failed', errorType: 'connection' });
 			return null;
 		}
 		const popup: OAuthPopupState = { window: initialPopup };
@@ -469,12 +482,17 @@ export function useCredentialOAuth() {
 			popup.window.close();
 			oauthAbortController.value = null;
 			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
+			options.onOutcome?.({ type: 'failed', errorType: 'connection' });
 			return null;
 		}
 
 		pendingCredentialId.value = credential.id;
 
-		const success = await authorize(credential, controller.signal, { popup }).finally(() => {
+		const success = await authorize(credential, controller.signal, {
+			popup,
+			onOutcome: options.onOutcome,
+			abortOnPopupClose: options.onOutcome ? true : undefined,
+		}).finally(() => {
 			authorizationFinished = true;
 		});
 

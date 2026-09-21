@@ -9,6 +9,8 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
@@ -241,6 +243,10 @@ export class PostHogClient {
 
 		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
 			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
+		}
+
+		if (this.globalConfig.instanceAi.instanceAiSetupPanelEnabled) {
+			overrides[INSTANCE_AI_SETUP_PANEL_FLAG] = INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT;
 		}
 
 		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {

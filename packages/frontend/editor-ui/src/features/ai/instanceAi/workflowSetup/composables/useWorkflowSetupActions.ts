@@ -30,6 +30,7 @@ export interface WorkflowSetupActions {
 
 export function useWorkflowSetupActions(deps: {
 	requestId: Ref<string>;
+	workflowId?: Ref<string | undefined>;
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	currentStepIndex: Ref<number>;
@@ -42,6 +43,7 @@ export function useWorkflowSetupActions(deps: {
 	const isActionPending = ref(false);
 	const workflowSetupTelemetry = useWorkflowSetupTelemetry({
 		requestId: deps.requestId,
+		workflowId: deps.workflowId,
 		sections: deps.sections,
 		activeSection: deps.activeSection,
 		isReady: deps.isReady,

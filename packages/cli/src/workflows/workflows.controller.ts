@@ -527,13 +527,13 @@ export class WorkflowsController {
 
 		const n8nAuthCookie = this.authService.getCookieToken(req);
 
-		const result = await this.workflowExecutionService.executeManually(
-			dbWorkflow,
-			body,
-			req.user,
-			req.headers['push-ref'],
-			n8nAuthCookie,
-		);
+		const result = await this.workflowExecutionService
+			.executeManually(dbWorkflow, body, req.user, req.headers['push-ref'], n8nAuthCookie)
+			.catch((error: unknown) => {
+				if (!body.setupTestRequest)
+					this.eventService.emit('instance-ai-setup-test-start-failed', { workflowId });
+				throw error;
+			});
 
 		if ('executionId' in result) {
 			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(

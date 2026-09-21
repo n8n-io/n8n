@@ -104,6 +104,11 @@ describe('useSetupPanelExecution', () => {
 			expect(workflows.runWorkflow).toHaveBeenCalledWith({
 				workflowId: 'wf-1',
 				triggerToStartFrom: { name: 'Start' },
+				setupTestRequest: {
+					test_request_id: expect.any(String),
+					thread_id: 'thread-1',
+					session_id: useRootStore().pushRef,
+				},
 			});
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 			finish(status);
@@ -124,6 +129,8 @@ describe('useSetupPanelExecution', () => {
 				source: 'instance_ai_setup_panel',
 				workflow_id: 'wf-1',
 				thread_id: 'thread-1',
+				session_id: useRootStore().pushRef,
+				test_request_id: expect.any(String),
 			});
 			expect(handlers.size).toBe(0);
 		},
@@ -274,6 +281,11 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenNthCalledWith(1, {
 			workflowId: 'wf-1',
 			triggerToStartFrom: { name: 'Start' },
+			setupTestRequest: {
+				test_request_id: expect.any(String),
+				thread_id: 'thread-1',
+				session_id: useRootStore().pushRef,
+			},
 		});
 		expect(isRunning.value).toBe(true);
 		workflowId.value = 'wf-2';
@@ -285,6 +297,11 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenNthCalledWith(2, {
 			workflowId: 'wf-2',
 			triggerToStartFrom: { name: 'Second start' },
+			setupTestRequest: {
+				test_request_id: expect.any(String),
+				thread_id: 'thread-1',
+				session_id: useRootStore().pushRef,
+			},
 		});
 		finish('success', 'exec-2', 'wf-2');
 		await expect(second).resolves.toMatchObject({
@@ -401,6 +418,11 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenCalledWith({
 			workflowId: 'wf-1',
 			triggerToStartFrom: { name: disabled ? 'Start' : 'Selected' },
+			setupTestRequest: {
+				test_request_id: expect.any(String),
+				thread_id: 'thread-1',
+				session_id: useRootStore().pushRef,
+			},
 		});
 		finish();
 		await pending;

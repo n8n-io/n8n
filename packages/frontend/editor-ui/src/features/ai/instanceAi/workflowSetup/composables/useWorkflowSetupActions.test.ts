@@ -1,3 +1,5 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -133,6 +135,7 @@ function getTelemetryCalls(eventName: string) {
 }
 
 describe('useWorkflowSetupActions', () => {
+	beforeEach(() => setActivePinia(createTestingPinia()));
 	beforeEach(() => {
 		telemetryTrack.mockReset();
 	});

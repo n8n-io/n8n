@@ -28,6 +28,10 @@ export class InstanceAiModule implements ModuleInterface {
 			'./instance-ai-setup-telemetry.service.js'
 		);
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
+		const { InstanceAiWorkflowSetupTelemetryService } = await import(
+			'./instance-ai-workflow-setup-telemetry.service.js'
+		);
+		Container.get(InstanceAiWorkflowSetupTelemetryService);
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 

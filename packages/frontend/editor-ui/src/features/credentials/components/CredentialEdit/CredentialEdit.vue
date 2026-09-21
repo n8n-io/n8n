@@ -290,6 +290,11 @@ const onCredentialCreated = computed<NewCredentialsModal['onCredentialCreated']>
 	return isCredentialModalState(modalState) ? modalState.onCredentialCreated : undefined;
 });
 
+const connectionObserver = computed<NewCredentialsModal['onConnectionEvent']>(() => {
+	const state = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(state) ? state.onConnectionEvent : undefined;
+});
+
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -488,6 +493,7 @@ async function beforeClose() {
 	}
 
 	if (!keepEditing) {
+		connectionObserver.value?.({ type: 'cancelled', reason: 'dialog_closed' });
 		pendingAuthType.value = null;
 		uiStore.activeCredentialType = null;
 		return true;
@@ -713,6 +719,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		pendingAuthType.value = null;
 	}
 
+	connectionObserver.value?.({ type: 'started', method: 'advanced' });
 	let credential: ICredentialsResponse | null = null;
 
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
@@ -745,6 +752,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	isSaving.value = false;
+	if (!credential) connectionObserver.value?.({ type: 'failed', errorType: 'save' });
 	if (credential) {
 		credentialId.value = credential.id;
 		// The save response omits the encrypted `data` (see credentials.controller.ts),
@@ -772,6 +780,11 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			await testCredential(credentialDetails);
 			isTesting.value = false;
 
+			connectionObserver.value?.(
+				testedSuccessfully.value
+					? { type: 'completed', credentialId: credential.id }
+					: { type: 'failed', errorType: 'validation' },
+			);
 			if (testedSuccessfully.value && closeOnSave.value) {
 				closeDialog();
 			}
@@ -779,6 +792,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			authError.value = '';
 			testedSuccessfully.value = false;
 
+			if (!isOAuthType.value)
+				connectionObserver.value?.({ type: 'completed', credentialId: credential.id });
 			if (!isOAuthType.value && closeOnSave.value) {
 				closeDialog();
 			}
@@ -1052,6 +1067,7 @@ async function deleteCredential() {
 }
 
 async function oAuthCredentialAuthorize() {
+	connectionObserver.value?.({ type: 'started', method: 'advanced' });
 	let url;
 
 	credentialsStore.pendingOAuthRefresh = true;
@@ -1069,6 +1085,7 @@ async function oAuthCredentialAuthorize() {
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
 		);
+		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1080,6 +1097,7 @@ async function oAuthCredentialAuthorize() {
 	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
 		oauthPopup.close();
+		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1112,6 +1130,7 @@ async function oAuthCredentialAuthorize() {
 			},
 		);
 
+		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1121,6 +1140,7 @@ async function oAuthCredentialAuthorize() {
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
 		);
+		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1134,6 +1154,7 @@ async function oAuthCredentialAuthorize() {
 				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
 			);
+			connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
 			return;
 		}
 	} catch {
@@ -1142,6 +1163,7 @@ async function oAuthCredentialAuthorize() {
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
 		);
+		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1159,6 +1181,11 @@ async function oAuthCredentialAuthorize() {
 	};
 
 	const handleOAuthResult = (successfullyConnected: boolean) => {
+		connectionObserver.value?.(
+			successfullyConnected
+				? { type: 'completed', credentialId: credential.id }
+				: { type: 'failed', errorType: 'connection' },
+		);
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
 			workflow_id: telemetryWorkflowId.value || null,
@@ -1217,6 +1244,7 @@ async function oAuthCredentialAuthorize() {
 
 	const outcome = await waitForOAuthCallback({
 		popup: oauthPopup,
+		abortOnPopupClose: connectionObserver.value ? true : undefined,
 		trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
 		signal: abortController.signal,
 		verifyConnected: canVerifyConnected
@@ -1227,7 +1255,11 @@ async function oAuthCredentialAuthorize() {
 
 	// A superseded or unmounted flow must not report a result: its telemetry
 	// and UI side effects would describe a flow the user is no longer running.
-	if (outcome === 'aborted') return;
+	if (outcome === 'aborted') {
+		if (!abortController.signal.aborted)
+			connectionObserver.value?.({ type: 'cancelled', reason: 'oauth_closed' });
+		return;
+	}
 
 	handleOAuthResult(outcome === 'success');
 }

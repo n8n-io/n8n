@@ -45,6 +45,10 @@ vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 	}),
 }));
 
+vi.mock('@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment', () => ({
+	useInstanceAiSetupPanelExperiment: () => ({ isEnabled: computed(() => false) }),
+}));
+
 const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockFetchPreferences = vi.fn();

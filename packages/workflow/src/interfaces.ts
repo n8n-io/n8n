@@ -3719,6 +3719,8 @@ export type WorkflowExecutionMockDataSource =
 	| 'workflow_pin_data';
 
 export interface IWorkflowExecutionTelemetryMetadata {
+	setupTestRequest?: { test_request_id: string; thread_id: string; session_id: string };
+
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 }
 

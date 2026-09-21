@@ -423,6 +423,8 @@ export {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
@@ -847,3 +849,5 @@ export type {
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
+
+export * from './instance-ai-setup-telemetry';

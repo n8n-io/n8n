@@ -137,8 +137,8 @@ const InputStub = defineComponent({
 	},
 });
 const ExistingCredentialStub = defineComponent({
-	props: ['workflowId', 'projectId', 'overrideCredType'],
-	emits: ['credentialSelected'],
+	props: ['workflowId', 'projectId', 'overrideCredType', 'observeConnection'],
+	emits: ['credentialSelected', 'connectionEvent'],
 	setup(props, { emit }) {
 		return () =>
 			h(
@@ -146,12 +146,15 @@ const ExistingCredentialStub = defineComponent({
 				{
 					'data-workflow-id': props.workflowId,
 					'data-project-id': props.projectId,
-					onClick: () =>
+					onClick: () => {
+						props.observeConnection?.({ type: 'started', method: 'existing' });
+						props.observeConnection?.({ type: 'completed', credentialId: 'existing' });
 						emit('credentialSelected', {
 							properties: {
 								credentials: { [props.overrideCredType]: { id: 'existing', name: 'Existing' } },
 							},
-						}),
+						});
+					},
 				},
 				'Select existing connection',
 			);
@@ -415,12 +418,14 @@ describe('InstanceAiSetupCredential', () => {
 		await flushPromises();
 		expect(rendered.emitted<[unknown, string]>('bindCredential')).toBeUndefined();
 		expect(store.deleteCredential).toHaveBeenCalledWith({ id: savedCredential.id });
+		expect(rendered.emitted('connectFailed')).toEqual([['validation']]);
 		expect(rendered.getByLabelText('API key')).toHaveValue('wrong');
 		form.testedSuccessfully.value = true;
 		await fireEvent.update(rendered.getByLabelText('API key'), 'correct');
 		await fireEvent.click(rendered.getByRole('button', { name: 'Save' }));
 		await flushPromises();
 		expect(store.createNewCredential).toHaveBeenCalledTimes(2);
+		expect(rendered.emitted('connectStarted')).toEqual([['api_key'], ['api_key']]);
 		expect(store.createNewCredential).toHaveBeenLastCalledWith(
 			expect.objectContaining({ data: { apiKey: 'correct' } }),
 			'workflow-project',
@@ -503,6 +508,8 @@ describe('InstanceAiSetupCredential', () => {
 			'test.service',
 			expect.objectContaining({ workflowId: 'wf', projectId: 'workflow-project' }),
 		);
+		mocks.authorize.mock.calls[0][2]?.onOutcome?.({ type: 'cancelled', reason: 'oauth_closed' });
+		expect(rendered.emitted('connectCancelled')).toEqual([['oauth_closed']]);
 		expect(rendered.getByText('Current account')).toBeVisible();
 		expect(rendered.emitted<[unknown, string]>('bindCredential')).toBeUndefined();
 	});
@@ -549,6 +556,7 @@ describe('InstanceAiSetupCredential', () => {
 			nodeType: node.type,
 			serviceName: 'Service',
 			source: 'credential_type',
+			onOutcome: expect.any(Function),
 			projectId: 'workflow-project',
 			workflowId: 'wf',
 		});
@@ -569,6 +577,7 @@ describe('InstanceAiSetupCredential', () => {
 			projectId: 'workflow-project',
 			data: { apiKey: 'client-secret' },
 			name: 'Service account',
+			onOutcome: expect.any(Function),
 		});
 	});
 
@@ -607,7 +616,10 @@ describe('InstanceAiSetupCredential', () => {
 				closeOnSave: true,
 			}),
 		);
-		ui.openNewCredential.mock.calls[0][7]?.onCredentialCreated?.(savedCredential);
+		ui.openNewCredential.mock.calls[0][7]?.onConnectionEvent?.({
+			type: 'completed',
+			credentialId: savedCredential.id,
+		});
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(savedCredential.id);
 	});
 
@@ -641,7 +653,10 @@ describe('InstanceAiSetupCredential', () => {
 				node,
 				expect.objectContaining({ workflowId: 'wf', closeOnSave: true }),
 			);
-			ui.openNewCredential.mock.calls[0][7]?.onCredentialCreated?.(savedCredential);
+			ui.openNewCredential.mock.calls[0][7]?.onConnectionEvent?.({
+				type: 'completed',
+				credentialId: savedCredential.id,
+			});
 			expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(
 				savedCredential.id,
 			);

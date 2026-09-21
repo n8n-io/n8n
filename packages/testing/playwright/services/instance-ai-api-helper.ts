@@ -16,6 +16,28 @@ export interface InstanceAiFileAttachmentPayload {
  */
 export class InstanceAiApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
+	async createSetupThread(options: {
+		data: { threadId: string; projectId: string; source: 'playwright' };
+	}): Promise<APIResponse> {
+		return await this.api.request.post('/rest/instance-ai/threads', options);
+	}
+
+	async observeSetup(options: {
+		headers?: Record<string, string>;
+		data: {
+			workflowId: string;
+			threadId: string;
+			buildComplete?: boolean;
+			execute?: boolean;
+			simulate?: boolean;
+		};
+	}): Promise<APIResponse> {
+		return await this.api.request.post('/rest/instance-ai/test/workflow-setup', options);
+	}
+
+	async getSetupState(workflowId: string): Promise<APIResponse> {
+		return await this.api.request.get(`/rest/instance-ai/test/workflow-setup/${workflowId}`);
+	}
 
 	/**
 	 * Post a chat message to a thread.

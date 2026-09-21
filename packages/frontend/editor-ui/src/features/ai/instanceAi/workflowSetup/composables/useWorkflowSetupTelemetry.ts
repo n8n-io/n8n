@@ -1,3 +1,4 @@
+import { instanceAiSetupRequirementId } from '@n8n/api-types';
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -9,6 +10,7 @@ type SkippedSetupInput = { label: string; options: string[] };
 type SetupStepOutcome = 'completed' | 'skipped';
 
 type WorkflowSetupStepTelemetryInput = {
+	item_id: string;
 	input_type: 'credential' | 'parameter';
 	node_type: string;
 	credential_type?: string;
@@ -16,8 +18,10 @@ type WorkflowSetupStepTelemetryInput = {
 };
 
 type WorkflowSetupStepTelemetryPayload = {
+	session_id: string;
 	thread_id: string;
 	input_thread_id: string;
+	workflow_id?: string;
 	instance_id: string;
 	type: 'setup';
 	request_id: string;
@@ -29,7 +33,7 @@ type WorkflowSetupStepTelemetryPayload = {
 
 type SetupTelemetryContext = Pick<
 	WorkflowSetupStepTelemetryPayload,
-	'thread_id' | 'input_thread_id' | 'instance_id' | 'type'
+	'session_id' | 'thread_id' | 'input_thread_id' | 'instance_id' | 'type' | 'workflow_id'
 >;
 
 interface WorkflowSetupTelemetryInputAccessors {
@@ -39,6 +43,7 @@ interface WorkflowSetupTelemetryInputAccessors {
 
 export function useWorkflowSetupTelemetry(deps: {
 	requestId: Ref<string>;
+	workflowId?: Ref<string | undefined>;
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	isReady: Ref<boolean>;
@@ -54,6 +59,8 @@ export function useWorkflowSetupTelemetry(deps: {
 	function getSetupTelemetryContext(): SetupTelemetryContext {
 		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		return {
+			session_id: rootStore.pushRef,
+			workflow_id: deps.workflowId?.value,
 			thread_id: deps.thread.id,
 			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 			instance_id: rootStore.instanceId,
@@ -76,15 +83,31 @@ export function useWorkflowSetupTelemetry(deps: {
 	): WorkflowSetupStepTelemetryInput[] {
 		const inputs: WorkflowSetupStepTelemetryInput[] = [];
 		if (section.credentialType) {
-			inputs.push({
-				input_type: 'credential',
-				node_type: section.node.type,
-				credential_type: section.credentialType,
-			});
+			const nodes = section.credentialTargetNodes.length
+				? section.credentialTargetNodes
+				: [section.node];
+			for (const node of nodes)
+				inputs.push({
+					item_id: instanceAiSetupRequirementId(
+						deps.workflowId?.value ?? '',
+						node.id,
+						'credential',
+						section.credentialType,
+					),
+					input_type: 'credential',
+					node_type: node.type,
+					credential_type: section.credentialType,
+				});
 		}
 
 		for (const parameterName of section.parameterNames) {
 			inputs.push({
+				item_id: instanceAiSetupRequirementId(
+					deps.workflowId?.value ?? '',
+					section.node.id,
+					'parameter',
+					parameterName,
+				),
 				input_type: 'parameter',
 				node_type: section.node.type,
 				parameter_name: parameterName,

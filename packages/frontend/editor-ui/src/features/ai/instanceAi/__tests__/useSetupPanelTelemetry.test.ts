@@ -1,3 +1,5 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { effectScope, nextTick, ref } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { SetupPanelRow } from '../composables/useSetupPanelState';
@@ -17,6 +19,7 @@ const shown = TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_ITEM_SHOWN;
 const dismissed = TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED;
 
 describe('useSetupPanelTelemetry', () => {
+	beforeEach(() => setActivePinia(createTestingPinia()));
 	const scopes: ReturnType<typeof effectScope>[] = [];
 	beforeEach(() => track.mockClear());
 	afterEach(() => {
@@ -76,6 +79,7 @@ describe('useSetupPanelTelemetry', () => {
 		expect(track).toHaveBeenCalledExactlyOnceWith(observed, {
 			workflow_id: 'wf',
 			thread_id: 'thread',
+			session_id: expect.any(String),
 			credential_count: 1,
 			pending_credential_count: 0,
 			pending_parameter_count: 0,
@@ -106,6 +110,7 @@ describe('useSetupPanelTelemetry', () => {
 		expect(track).toHaveBeenLastCalledWith(dismissed, {
 			workflow_id: 'wf',
 			thread_id: 'thread',
+			session_id: expect.any(String),
 			reason: 'items_removed',
 		});
 		state.scope.stop();
@@ -125,7 +130,6 @@ describe('useSetupPanelTelemetry', () => {
 			dismissed,
 			expect.objectContaining({ workflow_id: 'wf', reason: 'navigation' }),
 		);
-		state.telemetry.trackConnectionCompleted(item, 'credential', 'error');
 		state.telemetry.trackConnectionCompleted(item, 'credential', 'applied');
 		state.telemetry.trackConnectionCompleted(item, 'credential', 'applied');
 		const completions = track.mock.calls.filter(
@@ -137,6 +141,8 @@ describe('useSetupPanelTelemetry', () => {
 				{
 					workflow_id: 'wf',
 					thread_id: 'thread',
+					attempt_id: expect.any(String),
+					session_id: expect.any(String),
 					source: 'instance_ai_setup_panel',
 					credential_type: 'slackApi',
 					credential_id: 'credential',

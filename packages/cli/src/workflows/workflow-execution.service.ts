@@ -406,6 +406,9 @@ export class WorkflowExecutionService {
 					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
 					n8nAuthCookie,
+					...(payload.setupTestRequest
+						? { telemetryMetadata: { setupTestRequest: payload.setupTestRequest } }
+						: {}),
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -444,6 +447,9 @@ export class WorkflowExecutionService {
 					destinationNode: payload.destinationNode,
 					workflowIsActive,
 					n8nAuthCookie,
+					...(payload.setupTestRequest
+						? { telemetryMetadata: { setupTestRequest: payload.setupTestRequest } }
+						: {}),
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -462,6 +468,8 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
+			if (payload.setupTestRequest)
+				data.telemetryMetadata = { setupTestRequest: payload.setupTestRequest };
 			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 				this.ownershipService,
 				workflowData.id,

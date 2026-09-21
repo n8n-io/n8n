@@ -530,6 +530,8 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(authorize).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({ id: credential.id, type: credential.type, isResolvable: true }),
+			undefined,
+			{ onOutcome: expect.any(Function), abortOnPopupClose: true },
 		);
 		expect(credentials.getUsableCredentialById(credential.id)).toMatchObject({
 			connectedByMe: true,
@@ -586,6 +588,10 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(workflows.runWorkflow).toHaveBeenCalledWith({
 			workflowId: 'wf-1',
 			triggerToStartFrom: { name: 'Start' },
+			setupTestRequest: expect.objectContaining({
+				test_request_id: expect.any(String),
+				thread_id: 'thread-1',
+			}),
 		});
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		await view.rerender({ workflowId: 'wf-2' });

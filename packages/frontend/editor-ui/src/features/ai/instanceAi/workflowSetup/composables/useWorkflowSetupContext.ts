@@ -21,6 +21,7 @@ import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 import { useWorkflowSetupInputs, type CredentialSelectionsMap } from './useWorkflowSetupInputs';
 
 export interface WorkflowSetupContext {
+	threadId: string;
 	/** The wizard shows one section per step, in this order. */
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	currentStepIndex: Ref<number>;
@@ -107,6 +108,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	}
 
 	const actions = useWorkflowSetupActions({
+		workflowId,
 		requestId: opts.requestId,
 		sections,
 		activeSection,
@@ -143,6 +145,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	});
 
 	const context: WorkflowSetupContext = {
+		threadId: thread.id,
 		sections,
 		currentStepIndex,
 		activeSection,
