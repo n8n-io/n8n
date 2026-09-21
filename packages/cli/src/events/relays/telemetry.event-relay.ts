@@ -39,7 +39,13 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { partitionTypesByAction } from '@/modules/type-availability-policies/policy-evaluator';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
+import { packageResolverFor } from '@/modules/type-availability-policies/package-resolver';
+import {
+	partitionTypesByAction,
+	type PackageResolver,
+} from '@/modules/type-availability-policies/policy-evaluator';
 import type {
 	PolicyAction,
 	PolicyRule,
@@ -109,15 +115,17 @@ function countRuleActions(rules: readonly PolicyRule[]) {
 const MAX_LISTED_POLICY_TYPES = 100;
 
 /**
- * What a saved policy makes of every node type this instance knows. Runs the same evaluation
- * the node panel runs, once per save rather than once per workflow open.
+ * What a saved policy makes of every type this instance knows, within the policy's own kind
+ * (node types or credential types). Runs the same evaluation the node panel runs, once per
+ * save rather than once per workflow open.
  */
 function summarizeTypeAvailability(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
 	typeNames: readonly string[],
+	resolvePackage: PackageResolver,
 ) {
-	const partition = partitionTypesByAction(rules, defaultAction, typeNames);
+	const partition = partitionTypesByAction(rules, defaultAction, typeNames, resolvePackage);
 
 	return {
 		evaluated_type_count: typeNames.length,
@@ -175,6 +183,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {
 		super(eventService);
 	}
@@ -550,6 +559,12 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
+		const typeNames =
+			kind === CREDENTIAL_TYPES_KIND
+				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
+				: Object.keys(this.nodeTypes.getKnownTypes());
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+
 		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
 			...policyActor(updatedBy),
 			kind,
@@ -559,11 +574,7 @@ export class TelemetryEventRelay extends EventRelay {
 			is_first_write: before === null,
 			...countRuleActions(rulesAfter),
 			...countSelectorKinds(rulesAfter),
-			...summarizeTypeAvailability(
-				rulesAfter,
-				after.defaultAction,
-				Object.keys(this.nodeTypes.getKnownTypes()),
-			),
+			...summarizeTypeAvailability(rulesAfter, after.defaultAction, typeNames, resolvePackage),
 			previous_rule_count: rulesBefore?.length ?? null,
 			shadow_warning_count: warningCount,
 			version: after.version,
