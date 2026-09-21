@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { computed, nextTick, ref } from 'vue';
 
 import '../../css/_tokens.scss';
 
@@ -8,6 +9,11 @@ import type { WorkflowSuggestion } from '../../types/assistant';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import type {
+	DropdownMenuExposed,
+	DropdownMenuItemProps,
+} from '../N8nDropdownMenu/DropdownMenu.types';
 
 export default {
 	title: 'Areas/Assistant/ChatInput',
@@ -354,6 +360,122 @@ export const WithActions = ActionsTemplate.bind({});
 WithActions.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
+};
+
+const ExternalDropdownTemplate: StoryFn = (args) => ({
+	components: {
+		N8nChatInput,
+		N8nDropdownMenu,
+		N8nIconButton,
+		N8nTooltip,
+	},
+	setup() {
+		const chatInputRef = ref<{
+			getInputElement: () => HTMLTextAreaElement | undefined;
+		} | null>(null);
+		const dropdownRef = ref<DropdownMenuExposed | null>(null);
+		const menuOpen = ref(false);
+		const value = ref('');
+		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
+		const items: Array<DropdownMenuItemProps<string>> = [
+			{
+				id: 'orders',
+				label: 'Orders workflow',
+				selectable: true,
+				children: [
+					{ id: 'validate-order', label: 'Validate order' },
+					{
+						id: 'fulfillment',
+						label: 'Fulfillment group',
+						selectable: true,
+						children: [{ id: 'create-shipment', label: 'Create shipment' }],
+					},
+				],
+			},
+			{ id: 'invoices', label: 'Invoices workflow' },
+		];
+		const onSelect = action('select');
+
+		const handleKeydown = (event: KeyboardEvent) => {
+			dropdownRef.value?.handleExternalKeydown(event);
+		};
+
+		const handleOpenChange = async (open: boolean) => {
+			menuOpen.value = open;
+			if (!open) return;
+
+			await nextTick();
+			dropdownRef.value?.highlightFirstItem();
+		};
+
+		return {
+			args,
+			chatInputRef,
+			dropdownRef,
+			menuOpen,
+			value,
+			inputElement,
+			items,
+			handleKeydown,
+			handleOpenChange,
+			onSelect,
+			onSubmit: methods.onSubmit,
+		};
+	},
+	template: `
+		<div style="width: 100%;" @keydown.capture="handleKeydown">
+			<N8nChatInput
+				ref="chatInputRef"
+				:model-value="value"
+				:placeholder="args.placeholder"
+				:max-length="args.maxLength"
+				@update:model-value="value = $event"
+				@submit="onSubmit"
+			>
+				<template #right-actions>
+					<N8nDropdownMenu
+						ref="dropdownRef"
+						:model-value="menuOpen"
+						:items="items"
+						:external-focus-target="inputElement"
+						placement="top-end"
+						searchable
+						search-mode="external"
+						@update:model-value="handleOpenChange"
+						@select="onSelect"
+					>
+						<template #trigger>
+							<N8nTooltip content="Open context menu" placement="top">
+								<N8nIconButton
+									icon="at-sign"
+									title="Open context menu"
+									variant="ghost"
+									size="medium"
+								/>
+							</N8nTooltip>
+						</template>
+					</N8nDropdownMenu>
+				</template>
+			</N8nChatInput>
+			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
+				Open the menu with the @ button. Use Enter and the arrow keys while focus stays in the message input.
+			</p>
+		</div>
+	`,
+});
+
+export const WithExternalDropdown = ExternalDropdownTemplate.bind({});
+WithExternalDropdown.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+WithExternalDropdown.parameters = {
+	docs: {
+		description: {
+			story:
+				'Demonstrates the focus and keyboard integration for an external dropdown. Product mention parsing and attachments are not included.',
+		},
+	},
 };
 
 export const Streaming = Template.bind({});
