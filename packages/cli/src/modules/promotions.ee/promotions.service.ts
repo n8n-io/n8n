@@ -9,7 +9,7 @@ import type {
 	PromotionDirection,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRepository, WorkflowRepository, type User } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -102,7 +102,7 @@ export class PromotionsService {
 		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
-		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly connectionRepository: PromotionConnectionRepository,
 		private readonly projectService: ProjectService,
 		private readonly n8nPackagesService: N8nPackagesService,
@@ -377,8 +377,8 @@ export class PromotionsService {
 	/**
 	 * Promotes a client-chosen set of a project's workflows. The client sends ids
 	 * only; the server reads each one now, so the push carries the current state.
-	 * Live workflows export, archived or missing ones leave the branch, and an id
-	 * from another project rejects the whole request before any write.
+	 * Live and archived workflows export, only missing ones leave the branch, and
+	 * an id from another project rejects the whole request before any write.
 	 */
 	async promoteProjectSelection(
 		projectId: string,
@@ -410,36 +410,34 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Splits selected ids into live pushes and deletions, using the current instance
-	 * state. An id from another project rejects the whole request.
+	 * Splits selected ids into pushes and deletions, using the current instance
+	 * state. A live or archived workflow exports; only an id whose workflow is
+	 * gone leaves the branch. An id from another project rejects the whole request.
 	 */
 	private async classifySelection(
 		projectId: string,
 		workflowIds: string[],
 	): Promise<SelectivePushOptions> {
-		const rows = await this.workflowRepository.findOwnerProjectAndArchivedState(workflowIds);
-		const byId = new Map(rows.map((row) => [row.id, row]));
+		const ownerProjects =
+			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const live: string[] = [];
 		const deleted: string[] = [];
 		for (const id of workflowIds) {
-			const row = byId.get(id);
+			const ownerProject = ownerProjects.get(id);
 			// Gone since the list was fetched: promote it as a deletion. Last write wins.
-			if (!row) {
+			if (!ownerProject) {
 				deleted.push(id);
 				continue;
 			}
-			if (row.projectId !== projectId) {
+			if (ownerProject.id !== projectId) {
 				throw new BadRequestError(
 					`Workflow ${id} does not belong to project ${projectId} and cannot be promoted from it`,
 				);
 			}
-			// An archived selection leaves the branch, the same way a deletion does.
-			if (row.isArchived) {
-				deleted.push(id);
-			} else {
-				live.push(id);
-			}
+			// Archived workflows travel like live ones, so the branch keeps them
+			// archived instead of removing them, matching a full promote.
+			live.push(id);
 		}
 
 		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };

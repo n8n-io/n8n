@@ -1,6 +1,6 @@
 import type { PromotionBindingPreflightResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
+import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -61,7 +61,7 @@ describe('PromotionsService', () => {
 	const providersService = mock<PromotionProvidersService>();
 	const gitService = mock<PromotionsGitService>();
 	const projectRepository = mock<ProjectRepository>();
-	const workflowRepository = mock<WorkflowRepository>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const connectionRepository = mock<PromotionConnectionRepository>();
 	const projectService = mock<ProjectService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
@@ -128,7 +128,7 @@ describe('PromotionsService', () => {
 			),
 			gitService,
 			projectRepository,
-			workflowRepository,
+			sharedWorkflowRepository,
 			connectionRepository,
 			projectService,
 			n8nPackagesService,
@@ -944,13 +944,15 @@ describe('PromotionsService', () => {
 			connectionRepository.findInstanceConnection.mockResolvedValue({ id: 'conn1' } as never);
 		});
 
-		it('promotes live workflows and pushes archived or missing ones as deletions', async () => {
-			workflowRepository.findOwnerProjectAndArchivedState.mockResolvedValue([
-				{ id: 'w1', projectId: 'p1', isArchived: false },
-				{ id: 'w2', projectId: 'p1', isArchived: true },
-				{ id: 'w4', projectId: 'p1', isArchived: false },
-				// w3 is left out on purpose: it no longer exists.
-			]);
+		it('promotes live and archived workflows and pushes only missing ones as deletions', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([
+					['w1', mock<Project>({ id: 'p1' })],
+					['w2', mock<Project>({ id: 'p1' })],
+					['w4', mock<Project>({ id: 'p1' })],
+					// w3 is left out on purpose: it no longer exists.
+				]),
+			);
 			const promoteSelection = vi.spyOn(service, 'promoteSelection').mockResolvedValue({} as never);
 
 			await service.promoteProjectSelection('p1', actor, {
@@ -962,15 +964,17 @@ describe('PromotionsService', () => {
 				'conn1',
 				actor,
 				expect.objectContaining({ canExportVariableValues: true }),
-				{ projectId: 'p1', workflowIds: ['w1', 'w4'], deletedWorkflowIds: ['w2', 'w3'] },
+				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
 			);
 		});
 
 		it('rejects a selection that includes a workflow from another project', async () => {
-			workflowRepository.findOwnerProjectAndArchivedState.mockResolvedValue([
-				{ id: 'w1', projectId: 'p1', isArchived: false },
-				{ id: 'w9', projectId: 'other', isArchived: false },
-			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([
+					['w1', mock<Project>({ id: 'p1' })],
+					['w9', mock<Project>({ id: 'other' })],
+				]),
+			);
 			const promoteSelection = vi.spyOn(service, 'promoteSelection');
 
 			await expect(

@@ -171,7 +171,7 @@ beforeEach(async () => {
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,
-		Container.get(WorkflowRepository),
+		Container.get(SharedWorkflowRepository),
 		connectionRepository,
 		projectService,
 		packagesService,
@@ -370,6 +370,32 @@ async function readBranchEntities(
 	};
 	await walk(exportRoot);
 	return found;
+}
+
+/** Reads the `isArchived` flag of a workflow file on the branch, by id. */
+async function readBranchWorkflowArchived(
+	inspectionDir: string,
+	workflowId: string,
+): Promise<boolean | undefined> {
+	const exportRoot = path.join(inspectionDir, 'n8n-export');
+	let archived: boolean | undefined;
+	const walk = async (dir: string): Promise<void> => {
+		const entries = await readdir(dir, { withFileTypes: true });
+		for (const entry of entries) {
+			const fullPath = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				await walk(fullPath);
+				continue;
+			}
+			if (entry.name !== 'workflow.json') continue;
+			const parsed = jsonParse<{ id: string; isArchived: boolean }>(
+				await readFile(fullPath, 'utf-8'),
+			);
+			if (parsed.id === workflowId) archived = parsed.isArchived;
+		}
+	};
+	await walk(exportRoot);
+	return archived;
 }
 
 async function setupProjectWithWorkflows(projectName: string, workflowNames: string[]) {
@@ -1315,7 +1341,7 @@ describe('Promote a project selection', () => {
 		expect(onBranch).toContain(w3.id);
 	});
 
-	it('removes an archived selected workflow from the branch, like a deletion', async () => {
+	it('keeps an archived selected workflow on the branch, archived', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
@@ -1336,8 +1362,41 @@ describe('Promote a project selection', () => {
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
-		expect(onBranch).not.toContain(workflows[0].id);
+		// The archived workflow stays on the branch, carried as archived, the same
+		// way a full promote treats it, so the two promotes do not fight.
+		expect(onBranch).toContain(workflows[0].id);
+		expect(await readBranchWorkflowArchived(dir, workflows[0].id)).toBe(true);
 		expect(onBranch).toContain(workflows[1].id);
+	});
+
+	it('promotes a workflow archived since the last promote as an archived write', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		// A workflow created and archived after the baseline is not on the branch.
+		const workflowRepository = Container.get(WorkflowRepository);
+		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
+		await workflowRepository.update(w3.id, { isArchived: true });
+
+		// Selecting it next to a valid workflow must not fail the whole request; it
+		// is written to the branch as archived rather than treated as a deletion.
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [workflows[0].id, w3.id],
+			canExportVariableValues: true,
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
+		expect(onBranch).toContain(w3.id);
+		expect(await readBranchWorkflowArchived(dir, w3.id)).toBe(true);
+		expect(onBranch).toContain(workflows[0].id);
 	});
 
 	it('rejects a selection with a workflow from another project and pushes nothing', async () => {
