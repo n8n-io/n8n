@@ -1,4 +1,5 @@
 import type {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	PromotePackageDto,
@@ -46,6 +47,7 @@ import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import {
+	buildCacheDescriptor,
 	buildPromotionBranchName,
 	checkoutBranchName,
 	repositoryUrl,
@@ -362,8 +364,12 @@ export class PromotionsService {
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
-	async apply(connectionId: string, actor: User): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor);
+	async apply(
+		connectionId: string,
+		actor: User,
+		expectedSource?: ApplyPackageDto['expectedSource'],
+	): Promise<ApplyPackageResultDto> {
+		return await this.applyFromSource(connectionId, actor, expectedSource);
 	}
 
 	async continueApply(
@@ -377,7 +383,7 @@ export class PromotionsService {
 	private async applyFromSource(
 		connectionId: string,
 		actor: User,
-		expectedSource?: ContinueApplyPackageDto['expectedSource'],
+		expectedSource?: ApplyPackageDto['expectedSource'],
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
@@ -542,13 +548,12 @@ export class PromotionsService {
 	}
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
-		return {
-			schemaVersion: 1,
-			configId: input.configId,
+		return buildCacheDescriptor({
 			connectionId: input.connectionId,
-			remoteUrl: repositoryUrl(input),
-			checkoutBranchName: checkoutBranchName(input.config),
-		};
+			configId: input.configId,
+			target: input.target,
+			config: input.config,
+		});
 	}
 
 	private checkoutIdentity(input: PromotionOperationInput) {

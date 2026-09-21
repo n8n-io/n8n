@@ -546,6 +546,8 @@ const commonStubs = {
 			'initialPrompt',
 			'canSendToAssistant',
 			'beforeSend',
+			'canDeleteSession',
+			'isDeletingSession',
 		],
 		emits: [
 			'view-trace',
@@ -600,10 +602,10 @@ const commonStubs = {
 		props: ['config', 'disabled'],
 		emits: ['update:config'],
 	},
-	AgentSkillsListPanel: {
-		name: 'AgentSkillsListPanel',
-		template: '<div data-testid="stub-agent-skills-list-panel" />',
-		props: ['skills', 'disabled'],
+	AgentSkillsSection: {
+		name: 'AgentSkillsSection',
+		template: '<div data-testid="stub-agent-skills-section" />',
+		props: ['skills', 'disabled', 'showLabel', 'validationIssues'],
 		emits: ['open-skill', 'add-skill', 'remove-skill'],
 	},
 	AgentSubAgentsPanel: {
@@ -1160,6 +1162,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 
 		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('canDeleteSession')).toBe(
+			false,
+		);
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {
@@ -4047,7 +4052,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(vm.localConfig.tools).toEqual(tools);
 	});
 
-	it('shows applied skills and opens a skill modal from the capabilities section', async () => {
+	it('shows applied skills and opens a skill modal from the Skills section', async () => {
 		const skill = {
 			name: 'summarize_notes',
 			description: 'Summarize notes before replying',
@@ -4069,11 +4074,11 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		const wrapper = await renderView();
 
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
-		expect(capabilities.exists()).toBe(true);
-		expect(capabilities.props('skills')).toEqual([{ id: 'summarize_notes', skill }]);
+		const skillsSection = wrapper.findComponent({ name: 'AgentSkillsSection' });
+		expect(skillsSection.exists()).toBe(true);
+		expect(skillsSection.props('skills')).toEqual([{ id: 'summarize_notes', skill }]);
 
-		capabilities.vm.$emit('open-skill', 'summarize_notes');
+		skillsSection.vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
@@ -4110,7 +4115,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		const wrapper = await renderView();
 		wrapper
-			.findComponent({ name: 'AgentCapabilitiesSection' })
+			.findComponent({ name: 'AgentSkillsSection' })
 			.vm.$emit('remove-skill', 'summarize_notes');
 		await nextTick();
 
@@ -4119,7 +4124,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(vm.localConfig.skills).toEqual([]);
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([]);
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([]);
 	});
 
 	it('opens the add skill modal and applies the created skill', async () => {
@@ -4149,7 +4154,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('add-skill');
+		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
 		await nextTick();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
@@ -4174,7 +4179,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]);
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
 		expect(showMessageMock).toHaveBeenCalledWith({
@@ -4224,9 +4229,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 
 		const wrapper = await renderView();
-		wrapper
-			.findComponent({ name: 'AgentCapabilitiesSection' })
-			.vm.$emit('open-skill', 'summarize_notes');
+		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
@@ -4240,7 +4243,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		).toEqual({
 			summarize_notes: updatedSkill,
 		});
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'summarize_notes', skill: updatedSkill },
 		]);
 
@@ -4290,9 +4293,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 
 		const wrapper = await renderView();
-		wrapper
-			.findComponent({ name: 'AgentCapabilitiesSection' })
-			.vm.$emit('open-skill', 'summarize_notes');
+		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();

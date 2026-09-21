@@ -996,6 +996,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"

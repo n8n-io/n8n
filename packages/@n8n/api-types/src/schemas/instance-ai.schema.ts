@@ -56,6 +56,43 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/** Used to determine resource for nodes that have no resource and operation, like http request node*/
+export const NODE_RESOURCE_GRANT_FALLBACK_KEYS = ['mode', 'url', 'query', 'command', 'action'];
+
+/** Width of `instance_ai_thread_grants.grantKey`. */
+const MAX_GRANT_KEY_LENGTH = 512;
+
+/**
+ * Builds the thread-level grant key for `nodes(action="execute")`. Scoped per
+ * node type + resource + operation (the split the generated node TS types use).
+ * Extracts the discriminators from the parameters itself so backend and
+ * frontend cannot build diverging keys.
+ *
+ * Null when a fallback discriminator (a long URL, GraphQL query or command) pushes the key
+ * past the column width: the call then needs approval every time. Truncating instead would
+ * let one approved URL stand for every other URL sharing its prefix.
+ */
+export function buildExecuteNodeSessionGrantKey(
+	nodeType: string,
+	parameters?: Record<string, unknown>,
+): string | null {
+	const resourceParts = [
+		nodeType,
+		typeof parameters?.resource === 'string' ? parameters.resource : '',
+		typeof parameters?.operation === 'string' ? parameters.operation : '',
+	].filter(Boolean);
+	if (resourceParts.length === 1) {
+		for (const name of NODE_RESOURCE_GRANT_FALLBACK_KEYS) {
+			if (typeof parameters?.[name] === 'string' && parameters?.[name]) {
+				resourceParts.push(parameters?.[name]);
+				break;
+			}
+		}
+	}
+	const key = `nodes:execute:${resourceParts.join(':')}`;
+	return key.length <= MAX_GRANT_KEY_LENGTH ? key : null;
+}
+
 /**
  * Builds the thread-level "always allow" grant key for running one node of a
  * workflow ("execute step").
@@ -1795,6 +1832,8 @@ export interface InstanceAiAgentNode {
 	 * regardless of which agent emitted.
 	 */
 	setupItemsByWorkflowId?: Record<string, InstanceAiSetupItem[]>;
+	/** Latest setup announcement, including its emitting agent and replay-stable time. */
+	latestSetupAnnouncement?: { workflowId: string; agentId: string; timestamp: string };
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -2033,6 +2072,7 @@ const instanceAiPermissionsSchema = z.object({
 	fetchUrl: instanceAiPermissionModeSchema,
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
+	executeNode: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
 });
 
@@ -2059,6 +2099,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	fetchUrl: 'require_approval',
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
+	executeNode: 'require_approval',
 	executeMcpTool: 'require_approval',
 };
 
@@ -2097,6 +2138,17 @@ export function applyBranchReadOnlyOverrides(
 		}
 	}
 	return overridden;
+}
+
+export function resolveInstanceAiPermissions(
+	persisted: Partial<InstanceAiPermissions>,
+): InstanceAiPermissions {
+	const resolved = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...persisted };
+	// Only a saved block carries over; inheriting always_allow would widen the grant.
+	if (persisted.executeNode === undefined && persisted.runWorkflow === 'blocked') {
+		resolved.executeNode = 'blocked';
+	}
+	return resolved;
 }
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-pr
 import { VM_EAGER_BENCHMARK_PROFILE } from '../../../../utils/benchmark';
 import { runKafkaBacklogTest } from '../harness/kafka-backlog-harness';
 
-const MESSAGE_COUNT = 2_000;
+const MESSAGE_COUNT = 5_000;
 
 test.use({
 	capability: benchConfig(`single-instance-ceiling-${VM_EAGER_BENCHMARK_PROFILE.isolationSuffix}`, {
@@ -22,13 +22,13 @@ test.describe(
 		],
 	},
 	() => {
-		test('Kafka trigger + 1 noop, 1KB payload, 2k msgs', async ({ api, services }, testInfo) => {
+		test('Kafka trigger + 1 noop, 1KB payload, 5k msgs', async ({ api, services }, testInfo) => {
 			await runKafkaBacklogTest({
 				api,
 				services,
 				testInfo,
 				messageCount: MESSAGE_COUNT,
-				timeoutMs: 180_000,
+				timeoutMs: 300_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				minimumCompletionRatio: 1,
 				dimensions: VM_EAGER_BENCHMARK_PROFILE.dimensions,

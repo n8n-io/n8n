@@ -9,10 +9,33 @@ import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
 	mergeCustomHeaders,
+	parseJsonParameter,
 	unwrapNestedOutput,
 	getSessionId,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
+
+describe('parseJsonParameter', () => {
+	it('should parse a JSON string', () => {
+		expect(parseJsonParameter('{"a":1}', 'failed')).toEqual({ a: 1 });
+	});
+
+	it('should return an object value as-is', () => {
+		const value = { type: 'object', properties: { a: { type: 'number' } } };
+		expect(parseJsonParameter(value, 'failed')).toBe(value);
+	});
+
+	it('should return an array value as-is', () => {
+		const value = ['vs_1', 'vs_2'];
+		expect(parseJsonParameter(value, 'failed')).toBe(value);
+	});
+
+	it('should throw the given error message on invalid JSON', () => {
+		expect(() => parseJsonParameter('not json', 'Failed to parse schema')).toThrow(
+			'Failed to parse schema',
+		);
+	});
+});
 
 describe('escapeSingleCurlyBrackets', () => {
 	it('should return undefined when input is undefined', () => {
