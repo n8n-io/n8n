@@ -101,6 +101,12 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 			});
 
 			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
+			expect(googleApiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/directory/v1/customer/my_customer/orgunits',
+				{},
+				{ type: 'all' },
+			);
 			expect(result).toEqual([
 				{ name: '/', value: '/' },
 				{ name: 'Engineering', value: '/engineering' },
@@ -110,6 +116,13 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 
 		it('should return only the root unit when the response has no organizational units', async () => {
 			(googleApiRequest as Mock).mockResolvedValue({ kind: 'admin#directory#orgUnits' });
+
+			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
+			expect(result).toEqual([{ name: '/', value: '/' }]);
+		});
+
+		it('should return root unit when API request fails (e.g. missing scope)', async () => {
+			(googleApiRequest as Mock).mockRejectedValue(new Error('Insufficient Permission'));
 
 			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
 			expect(result).toEqual([{ name: '/', value: '/' }]);
