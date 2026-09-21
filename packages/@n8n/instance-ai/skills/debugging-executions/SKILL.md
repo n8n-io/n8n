@@ -180,9 +180,9 @@ A tool that declares `$fromAI` arguments is refused without them: it would
 otherwise fail for a reason that has nothing to do with the user's problem, and
 you would report that as the defect. A node that holds several tools is refused
 outright, because nothing here can name one of its tools the way the agent
-does: both `mcpClientTool` ("MCP Client Tool") and `mcpRegistryClientTool` (the
-hidden "MCP Registry Client"). Run the Agent for those, and read the node's
-output from that execution.
+does: the "MCP Client Tool" node, and every node the MCP registry added, whose
+type is `@n8n/mcp-registry.<server slug>`. Run the Agent for those, and read
+the node's output from that execution.
 
 A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
 way at all. Run the Agent, and read the sub-node with

@@ -693,13 +693,22 @@ describe('tool arguments', () => {
 	});
 
 	describe('isToolkitNode', () => {
-		it('is true for the MCP tool nodes, which hold several tools', () => {
+		it('is true for the MCP Client Tool, which holds several tools', () => {
 			expect(
 				isToolkitNode(node('MCP Client', { type: '@n8n/n8n-nodes-langchain.mcpClientTool' })),
 			).toBe(true);
-			expect(
-				isToolkitNode(node('Registry', { type: '@n8n/n8n-nodes-langchain.mcpRegistryClientTool' })),
-			).toBe(true);
+		});
+
+		// A registry server is saved as `@n8n/mcp-registry.<slug>`. The runtime
+		// class behind every one of them is hidden and never appears as a node
+		// type, so matching that class name matches nothing a user can build.
+		it('is true for a node the MCP registry added, whatever the server slug', () => {
+			expect(isToolkitNode(node('Linear', { type: '@n8n/mcp-registry.linear' }))).toBe(true);
+			expect(isToolkitNode(node('Notion', { type: '@n8n/mcp-registry.notionMcp' }))).toBe(true);
+		});
+
+		it('is false for a type that only starts like the registry package', () => {
+			expect(isToolkitNode(node('Decoy', { type: '@n8n/mcp-registryish.thing' }))).toBe(false);
 		});
 
 		it('is false for a node that supplies one tool', () => {

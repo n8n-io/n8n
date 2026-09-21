@@ -4470,7 +4470,9 @@ describe('resolveDataTableByIdOrName', () => {
 /**
  * Node types for the run tests. A type whose name says "tool" describes an
  * `ai_tool` output, which is what `NodeHelpers.isTool` reads, so a step run on
- * one takes the same branch it takes in a real instance.
+ * one takes the same branch it takes in a real instance. A node the MCP
+ * registry added is named for its server (`@n8n/mcp-registry.<slug>`) and says
+ * "tool" nowhere, yet it describes an `ai_tool` output all the same.
  */
 function runNodeTypesStub(): NodeTypes {
 	const nodeTypes = mock<NodeTypes>();
@@ -4479,7 +4481,11 @@ function runNodeTypesStub(): NodeTypes {
 			({
 				description: {
 					name: type,
-					outputs: [/tool/i.test(type) ? NodeConnectionTypes.AiTool : NodeConnectionTypes.Main],
+					outputs: [
+						/tool/i.test(type) || type.startsWith('@n8n/mcp-registry.')
+							? NodeConnectionTypes.AiTool
+							: NodeConnectionTypes.Main,
+					],
 				},
 			}) as never,
 	);
@@ -5853,6 +5859,36 @@ describe('createExecutionAdapter runStep()', () => {
 			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
 			await expect(runStep('wf-1', 'MCP Client', { mockInput: [{}] })).rejects.toThrow(
+				'holds several tools, and a step run cannot pick one of them',
+			);
+			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses a node the MCP registry added, whose type carries the server slug', async () => {
+			// The registry saves a server as `@n8n/mcp-registry.<slug>` and routes
+			// every one of them to one hidden runtime class, so the type on the
+			// canvas is never that class's name. Matching the class alone let this
+			// node through, and the Tool Executor then matched no member and
+			// reported success with no result.
+			const registryWorkflow = {
+				...toolkitWorkflow,
+				nodes: toolkitWorkflow.nodes.map((node) =>
+					node.name === 'MCP Client'
+						? { ...node, name: 'Linear', type: '@n8n/mcp-registry.linear' }
+						: node,
+				),
+				connections: {
+					Trigger: agentWorkflow.connections.Trigger,
+					'Create Ticket': agentWorkflow.connections['Create Ticket'],
+					Linear: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+			const harness = createRunAdapterForTests(registryWorkflow, {
+				execution: makeExecution({ status: 'success' }),
+			});
+			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+			await expect(runStep('wf-1', 'Linear', { mockInput: [{}] })).rejects.toThrow(
 				'holds several tools, and a step run cannot pick one of them',
 			);
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();

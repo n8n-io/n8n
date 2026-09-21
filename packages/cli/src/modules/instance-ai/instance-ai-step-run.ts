@@ -12,11 +12,12 @@ import type {
 import {
 	mapConnectionsByDestination,
 	MCP_CLIENT_TOOL_NODE_TYPE,
-	MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 	nodeNameToToolName,
 	traverseNodeParameters,
 } from 'n8n-workflow';
+
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
 
 /**
  * Plans the run data an "execute step" run needs.
@@ -567,14 +568,19 @@ export function pinDataForStepRun(
  * and a rule that lives in the nodes package, and a name that misses matches
  * nothing — the run then reports success with no result and no error.
  */
-const TOOLKIT_NODE_TYPES = new Set<string>([
-	MCP_CLIENT_TOOL_NODE_TYPE,
-	MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE,
-]);
+const TOOLKIT_NODE_TYPES = new Set<string>([MCP_CLIENT_TOOL_NODE_TYPE]);
+
+/**
+ * The MCP registry saves a server as its own node type, `@n8n/mcp-registry.<slug>`,
+ * and routes every one of them to a single hidden runtime class. So the match is
+ * on the package, the way `agents-tools.service.ts` decides the same question:
+ * the class name never appears as a node type, and each slug is a type of its own.
+ */
+const MCP_REGISTRY_NODE_TYPE_PREFIX = `${MCP_REGISTRY_PACKAGE_NAME}.`;
 
 /** Whether this node holds several tools instead of one. */
 export function isToolkitNode(node: INode): boolean {
-	return TOOLKIT_NODE_TYPES.has(node.type);
+	return TOOLKIT_NODE_TYPES.has(node.type) || node.type.startsWith(MCP_REGISTRY_NODE_TYPE_PREFIX);
 }
 
 /** Arguments a tool node expects an agent to fill, from its `$fromAI` calls. */

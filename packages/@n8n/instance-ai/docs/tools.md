@@ -673,12 +673,15 @@ A node that holds several tools is refused: the Tool Executor runs the member
 whose name matches the request, that name is `buildMcpToolName` of the node
 name and the server's tool name, and a miss reports success with no result at
 all. Run the owning Agent instead and read the node's output from that
-execution. Two node types hold a toolkit, and the check is on the type, because
-a node name is the user's to change:
+execution. The check is on the node type, because a node name is the user's to
+change:
 
 - `@n8n/n8n-nodes-langchain.mcpClientTool` — "MCP Client Tool" on the canvas.
-- `@n8n/n8n-nodes-langchain.mcpRegistryClientTool` — "MCP Registry Client", a
-  hidden node the MCP registry adds.
+- `@n8n/mcp-registry.<slug>` — a server the MCP registry added, one node type
+  for each server. All of them run on one hidden class
+  (`mcpRegistryClientTool`), and that class name never appears as a node type,
+  so the match is on the `@n8n/mcp-registry` package — the same test
+  `agents-tools.service.ts` makes.
 
 Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
 runs those only as part of the node that owns them, so the action points the
