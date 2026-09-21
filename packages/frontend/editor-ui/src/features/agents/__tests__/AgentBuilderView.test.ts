@@ -184,8 +184,15 @@ const upsertSessionThreadMock = vi.fn((thread: (typeof sessionThreads)[number]) 
 	const index = sessionThreads.findIndex(({ id }) => id === thread.id);
 	if (index === -1) sessionThreads.push(thread);
 	else sessionThreads.splice(index, 1, thread);
-	if (thread.canContinueInPreview && !previewSessionThreads.some(({ id }) => id === thread.id))
+	previewSessionThreads.splice(
+		0,
+		previewSessionThreads.length,
+		...previewSessionThreads.filter(({ id }) => id !== thread.id),
+	);
+	if (thread.canContinueInPreview) {
 		previewSessionThreads.push(thread);
+		previewSessionThreads.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+	}
 });
 const resetSessionStoreMock = vi.fn(() => {
 	sessionThreads.length = 0;
@@ -2370,6 +2377,27 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		expect(routerReplace).not.toHaveBeenCalled();
 		expect(preview.props('effectiveSessionId')).toBe(newSessionId);
+	});
+
+	it('ignores session validation after Preview closes', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'stale-route-thread';
+		const detail = Promise.withResolvers<{ thread: SessionThread; executions: [] }>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		routerReplace.mockClear();
+
+		preview.vm.$emit('close');
+		await nextTick();
+		detail.resolve({
+			thread: { id: 'stale-route-thread', canContinueInPreview: false, updatedAt: '' },
+			executions: [],
+		});
+		await flushPromises();
+
+		expect(preview.props('isOpen')).toBe(false);
+		expect(routerReplace).not.toHaveBeenCalled();
 	});
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {

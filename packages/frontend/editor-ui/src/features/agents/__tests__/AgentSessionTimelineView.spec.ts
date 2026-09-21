@@ -36,9 +36,22 @@ const routeParams = reactive({ projectId: 'p1', agentId: 'a1', threadId: 'thread
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const sessionThreads = reactive<SessionThread[]>([]);
+const previewSessionThreads = reactive<SessionThread[]>([]);
 const pushListeners = new Set<(event: PushMessage) => void>();
 const agentPermissions = vi.hoisted(() => ({ canUpdate: { value: true } }));
 const deleteSession = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+const fetchSessionThreads = vi.fn().mockResolvedValue(undefined);
+const upsertSessionThread = vi.fn((thread: SessionThread) => {
+	const historyIndex = sessionThreads.findIndex(({ id }) => id === thread.id);
+	if (historyIndex === -1) sessionThreads.push(thread);
+	else sessionThreads.splice(historyIndex, 1, thread);
+	const previewIndex = previewSessionThreads.findIndex(({ id }) => id === thread.id);
+	if (previewIndex !== -1) previewSessionThreads.splice(previewIndex, 1);
+	if (thread.canContinueInPreview) {
+		previewSessionThreads.push(thread);
+		previewSessionThreads.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+	}
+});
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: routeParams, query: {} }),
@@ -72,11 +85,9 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('@/features/agents/agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
-		get previewThreads() {
-			return sessionThreads.filter((thread) => thread.canContinueInPreview);
-		},
-		fetchThreads: vi.fn().mockResolvedValue(undefined),
-		upsertThread: vi.fn(),
+		previewThreads: previewSessionThreads,
+		fetchThreads: fetchSessionThreads,
+		upsertThread: upsertSessionThread,
 	}),
 }));
 
@@ -139,13 +150,12 @@ describe('AgentSessionTimelineView', () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		agentPermissions.canUpdate.value = true;
 		deleteSession.mockClear();
+		fetchSessionThreads.mockReset().mockResolvedValue(undefined);
+		upsertSessionThread.mockClear();
 		routeParams.threadId = 'thread-a';
-		sessionThreads.splice(
-			0,
-			sessionThreads.length,
-			privateThread('thread-a'),
-			privateThread('thread-c'),
-		);
+		const initialThreads = [privateThread('thread-a'), privateThread('thread-c')];
+		sessionThreads.splice(0, sessionThreads.length, ...initialThreads);
+		previewSessionThreads.splice(0, previewSessionThreads.length, ...initialThreads);
 		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
 			'thread-b' as unknown as ReturnType<typeof globalThis.crypto.randomUUID>,
 		);
@@ -250,6 +260,31 @@ describe('AgentSessionTimelineView', () => {
 		const dock = wrapper.findComponent(AgentPreviewDock);
 		expect(dock.props('hasSession')).toBe(true);
 		expect(dock.props('sessionTitle')).toBe('Digimon villains');
+	});
+
+	it('keeps a loaded preview session when the first page finishes later', async () => {
+		const fetched = Promise.withResolvers<undefined>();
+		sessionThreads.splice(0, sessionThreads.length);
+		previewSessionThreads.splice(0, previewSessionThreads.length);
+		fetchSessionThreads.mockImplementationOnce(async () => {
+			await fetched.promise;
+			const firstPage = privateThread('thread-c');
+			sessionThreads.splice(0, sessionThreads.length, firstPage);
+			previewSessionThreads.splice(0, previewSessionThreads.length, firstPage);
+		});
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		await nextTick();
+
+		wrapper.findComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: privateThread('thread-a'),
+			executions: [],
+		});
+		fetched.resolve(undefined);
+		await flushPromises();
+
+		expect(wrapper.findComponent(AgentPreviewDock).props('sessionOptions')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'thread-a' })]),
+		);
 	});
 
 	it('keeps the timeline when the preview switches to an existing session', async () => {

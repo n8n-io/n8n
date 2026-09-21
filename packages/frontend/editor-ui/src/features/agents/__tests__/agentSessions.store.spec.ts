@@ -101,19 +101,22 @@ describe('useAgentSessionsStore', () => {
 		});
 	});
 
-	it('ignores a Preview response after switching agents or resetting the store', async () => {
+	it('keeps the latest Preview request in control after switching agents or resetting', async () => {
 		const older = Promise.withResolvers<ThreadsPage>();
+		const newer = Promise.withResolvers<ThreadsPage>();
 		const resetResponse = Promise.withResolvers<ThreadsPage>();
 		listThreads.mockResolvedValue(page([], null));
-		listPreviewThreads
-			.mockReturnValueOnce(older.promise)
-			.mockResolvedValueOnce(page(['newer'], null));
+		listPreviewThreads.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
 		const store = useAgentSessionsStore();
 		const first = store.fetchThreads('project-1', 'agent-1');
-		await store.fetchThreads('project-1', 'agent-2');
+		const second = store.fetchThreads('project-1', 'agent-2');
 		older.resolve(page(['older'], null));
 		await first;
+		expect(store.previewLoading).toBe(true);
+		newer.resolve(page(['newer'], null));
+		await second;
 		expect(store.previewThreads.map(({ id }) => id)).toEqual(['newer']);
+		expect(store.previewLoading).toBe(false);
 		listPreviewThreads.mockReturnValueOnce(resetResponse.promise);
 		const pending = store.fetchThreads('project-1', 'agent-2');
 		store.reset();
@@ -121,6 +124,21 @@ describe('useAgentSessionsStore', () => {
 		await pending;
 		expect(store.previewThreads).toEqual([]);
 		expect(store.previewLoading).toBe(false);
+	});
+
+	it('keeps Preview pending until a failed initial request succeeds', async () => {
+		listThreads.mockResolvedValue(page([], null));
+		listPreviewThreads
+			.mockRejectedValueOnce(new Error('Unavailable'))
+			.mockResolvedValueOnce(page(['private'], null));
+		const store = useAgentSessionsStore();
+
+		await expect(store.fetchThreads('project-1', 'agent-1')).rejects.toThrow('Unavailable');
+		expect(store.previewLoading).toBe(true);
+		await store.refreshThreads('project-1', 'agent-1');
+
+		expect(store.previewLoading).toBe(false);
+		expect(store.previewThreads.map(({ id }) => id)).toEqual(['private']);
 	});
 
 	it('retains the active filter across refresh and pagination without changing it for overrides', async () => {

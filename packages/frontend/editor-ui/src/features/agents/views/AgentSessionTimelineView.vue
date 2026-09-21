@@ -223,7 +223,18 @@ const dockHasSession = computed(
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
-	if (detail?.thread.canContinueInPreview) sessionsStore.upsertThread(detail.thread);
+	upsertLoadedPreviewThread(projectId.value, agentId.value);
+}
+
+function upsertLoadedPreviewThread(targetProjectId: string, targetAgentId: string) {
+	const loadedThread = thread.value;
+	if (
+		loadedThread?.canContinueInPreview &&
+		loadedThread.projectId === targetProjectId &&
+		loadedThread.agentId === targetAgentId
+	) {
+		sessionsStore.upsertThread(loadedThread);
+	}
 }
 
 let previewLoadRequestId = 0;
@@ -243,7 +254,10 @@ watch(
 					filters: defaultAgentSessionFilters(),
 				}),
 			]);
-			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
+			if (requestId === previewLoadRequestId) {
+				agent.value = loadedAgent;
+				upsertLoadedPreviewThread(nextProjectId, nextAgentId);
+			}
 		} finally {
 			if (requestId === previewLoadRequestId) previewInitialized.value = true;
 		}

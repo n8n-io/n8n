@@ -58,17 +58,14 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		previewTarget = target;
 		const requestId = ++latestPreviewRequestId;
 		previewLoading.value = true;
-		try {
-			const rootStore = useRootStore();
-			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
-				limit: ITEMS_PER_PAGE,
-				previewOnly: true,
-			});
-			if (requestId !== latestPreviewRequestId) return;
-			previewThreads.value = page.threads;
-		} finally {
-			if (requestId === latestPreviewRequestId) previewLoading.value = false;
-		}
+		const rootStore = useRootStore();
+		const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+			limit: ITEMS_PER_PAGE,
+			previewOnly: true,
+		});
+		if (requestId !== latestPreviewRequestId) return;
+		previewThreads.value = page.threads;
+		previewLoading.value = false;
 	}
 
 	async function fetchHistoryThreads(
