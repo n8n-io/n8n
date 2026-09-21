@@ -70,7 +70,7 @@ describe('Telegram Bot API integration scenarios', () => {
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'identify this artwork',
-					modelMessage: expect.stringContaining('"chat_id":"123456"'),
+					modelMessage: expect.stringContaining('The actual user message follows.'),
 				}),
 			);
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(

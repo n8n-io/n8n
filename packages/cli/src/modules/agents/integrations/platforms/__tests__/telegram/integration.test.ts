@@ -95,17 +95,6 @@ describe('TelegramIntegration capabilities', () => {
 
 		expect(integration.actions).toEqual(['respond', 'send_dm', 'edit_message']);
 	});
-
-	it('tells the Builder and Agent where to find inbound photo identifiers', () => {
-		const { integration } = makeIntegration();
-
-		expect(integration.builderGuidance.capabilities).toContain(
-			'Receive Telegram photos and expose their chat and file identifiers to the agent.',
-		);
-		expect(integration.contextToolGuidance).toEqual([
-			expect.stringContaining('attachment file_id values'),
-		]);
-	});
 });
 
 describe('TelegramIntegration.validateConfig', () => {

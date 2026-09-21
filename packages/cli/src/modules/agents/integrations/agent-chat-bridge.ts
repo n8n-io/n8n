@@ -705,7 +705,11 @@ export class AgentChatBridge {
 			if (bridgeExecutionContext.platformMessage) {
 				modelContext.push(formatPlatformMessageContext(bridgeExecutionContext.platformMessage));
 			}
-			modelContext.push(labelledText);
+			modelContext.push(
+				bridgeExecutionContext.platformMessage
+					? `The actual user message follows.\n${labelledText}`
+					: labelledText,
+			);
 			const modelMessage = modelContext.join('\n\n');
 			const stream = this.agentService.executeForChatPublished({
 				messageContext,
