@@ -3,7 +3,6 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE,
-	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	LOCAL_STORAGE_LOGS_SYNC_SELECTION,
 } from '@/app/constants';
 import { useLocalStorage } from '@vueuse/core';
@@ -17,7 +16,10 @@ import type { ChatMessage } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
 
 export const useLogsStore = defineStore('logs', () => {
-	const isOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
+	// Session state. The host that renders the panel restores and persists it:
+	// WorkflowLayout keeps the editor value in localStorage, InstanceAiLayout
+	// keeps the artifact value in memory for the page session (INS-1192).
+	const isOpen = ref(false);
 	const preferPoppedOut = ref(false);
 	const state = computed(() =>
 		isOpen.value

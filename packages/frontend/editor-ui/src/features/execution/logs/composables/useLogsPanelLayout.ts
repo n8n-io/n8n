@@ -1,6 +1,15 @@
-import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
+import {
+	computed,
+	inject,
+	onBeforeUnmount,
+	toValue,
+	watch,
+	type ComputedRef,
+	type ShallowRef,
+} from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { LogsPanelHostKey } from '@/app/constants/injectionKeys';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import {
@@ -22,9 +31,14 @@ export function useLogsPanelLayout(
 ) {
 	const logsStore = useLogsStore();
 	const telemetry = useTelemetry();
+	// The host defines where the panel lives and how it persists its height (INS-1192).
+	const host = inject(LogsPanelHostKey, {
+		context: 'editor',
+		heightStorageKey: LOCAL_STORAGE_PANEL_HEIGHT,
+	});
 
-	const resizer = useResizablePanel(LOCAL_STORAGE_PANEL_HEIGHT, {
-		container: document.body,
+	const resizer = useResizablePanel(host.heightStorageKey, {
+		container: computed(() => toValue(host.heightContainer) ?? document.body),
 		position: 'bottom',
 		snap: false,
 		defaultSize: (size) => size * 0.3,
@@ -57,6 +71,14 @@ export function useLogsPanelLayout(
 	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
 	const shouldPopOut = computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING);
 
+	function trackToggle(newState: 'attached' | 'collapsed' | 'floating') {
+		telemetry.track('User toggled log view', {
+			new_state: newState,
+			source: 'user',
+			context: host.context,
+		});
+	}
+
 	const { canPopOut, isPoppedOut, popOutWindow } = usePopOutWindow({
 		title: popOutWindowTitle,
 		initialHeight: INITIAL_POPUP_HEIGHT,
@@ -69,7 +91,7 @@ export function useLogsPanelLayout(
 				return;
 			}
 
-			telemetry.track('User toggled log view', { new_state: 'attached' });
+			trackToggle('attached');
 			logsStore.setPreferPoppedOut(false);
 		},
 	});
@@ -82,14 +104,11 @@ export function useLogsPanelLayout(
 		}
 
 		logsStore.toggleOpen(open);
-
-		telemetry.track('User toggled log view', {
-			new_state: wasOpen ? 'collapsed' : 'attached',
-		});
+		trackToggle(wasOpen ? 'collapsed' : 'attached');
 	}
 
 	function handlePopOut() {
-		telemetry.track('User toggled log view', { new_state: 'floating' });
+		trackToggle('floating');
 		logsStore.toggleOpen(true);
 		logsStore.setPreferPoppedOut(true);
 	}

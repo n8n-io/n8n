@@ -25,7 +25,11 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	LogsPanelHostKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
@@ -108,11 +112,12 @@ describe('LogsPanel', () => {
 		).setWorkflowExecutionData(execution);
 	}
 
-	function render() {
+	function render(provide: Record<symbol, unknown> = {}) {
 		const wfId = workflowsStore.workflowId;
 		const wrapper = renderComponent(LogsPanel, {
 			global: {
 				provide: {
+					...provide,
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowIdKey as unknown as string]: computed(() => wfId),
@@ -181,6 +186,24 @@ describe('LogsPanel', () => {
 
 		expect(await rendered.findByTestId('logs-overview-header')).toBeInTheDocument();
 		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
+	});
+
+	it('should size the panel relative to the container the host provides', async () => {
+		logsStore.toggleOpen(true);
+		setWorkflow(aiManualWorkflow);
+		const heightContainer = document.createElement('div');
+		Object.defineProperty(heightContainer, 'offsetHeight', { configurable: true, get: () => 400 });
+
+		render({
+			[LogsPanelHostKey as symbol]: {
+				context: 'artifact',
+				heightStorageKey: 'TEST_LOGS_PANEL_HEIGHT',
+				heightContainer,
+			},
+		});
+
+		// 30% of the 400px container. The 800px body would give 240px.
+		expect(logsStore.height).toBe(120);
 	});
 
 	it('should only render logs panel if the workflow has no chat trigger', async () => {
