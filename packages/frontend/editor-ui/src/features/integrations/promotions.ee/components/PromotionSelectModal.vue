@@ -13,6 +13,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
 import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
+import { promotionEventBus } from '../promotions.eventBus';
 import { applyPromotion } from '../promotionsSettings.api';
 
 interface Props {
@@ -144,6 +145,7 @@ async function onApplyAll() {
 			expectedSource && { expectedSource },
 		);
 		if (result.status === 'applied') {
+			promotionEventBus.emit('applied');
 			const { counts } = result;
 			toast.showMessage({
 				title: i18n.baseText('promotions.modal.incoming.applied.title'),

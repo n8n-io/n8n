@@ -8809,5 +8809,6 @@
 	"promotions.modal.incoming.applyError": "Could not apply the changes",
 	"promotions.modal.incoming.paused.title": "Apply paused",
 	"promotions.modal.incoming.paused.blocked": "Some credentials or variables are not set up on this instance yet. Nothing was changed.",
-	"promotions.modal.incoming.paused.source-changed": "The source changed since this preview. Refresh and review the changes again."
+	"promotions.modal.incoming.paused.source-changed": "The source changed since this preview. Refresh and review the changes again.",
+	"promotions.applied.projectRemoved": "Apply removed this project from the instance."
 }

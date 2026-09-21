@@ -39,5 +39,5 @@ export function usePromotionChangeCount(
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { count, failed };
+	return { count, failed, refetch: fetchCount };
 }

@@ -70,6 +70,7 @@ import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -668,6 +669,23 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+// An applied package rewrites every team project and can delete the one on this page.
+async function onPromotionApplied() {
+	const projectId = route.params.projectId as string | undefined;
+	if (projectId) {
+		await projectsStore.getMyProjects();
+		if (!projectsStore.myProjects.some(({ id }) => id === projectId)) {
+			toast.showMessage({
+				title: i18n.baseText('promotions.applied.projectRemoved'),
+				type: 'info',
+			});
+			await router.replace({ name: VIEWS.HOMEPAGE });
+			return;
+		}
+	}
+	await initialize();
+}
+
 const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
@@ -751,9 +769,11 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
+	promotionEventBus.on('applied', onPromotionApplied);
 });
 
 onBeforeUnmount(() => {
+	promotionEventBus.off('applied', onPromotionApplied);
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);

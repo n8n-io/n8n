@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import PromotionSelectModal from './PromotionSelectModal.vue';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
+import { promotionEventBus } from '../promotions.eventBus';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, Response, type Request } from 'miragejs';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -302,10 +303,13 @@ describe('PromotionSelectModal', () => {
 			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
 		}));
 
+		let applied: ReturnType<typeof vi.spyOn>;
+
 		beforeEach(() => {
 			server.get('/rest/promotions/project-1/changes/apply', applyChanges);
 			server.post('/api/v1/promotions/connections/connection-1/apply', applyPackage);
 			confirm.mockResolvedValue(MODAL_CONFIRM);
+			applied = vi.spyOn(promotionEventBus, 'emit');
 		});
 
 		it('should offer to apply all changes instead of promoting', async () => {
@@ -349,8 +353,9 @@ describe('PromotionSelectModal', () => {
 			await waitFor(() =>
 				expect(useUIStore().closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY),
 			);
-			// A closed modal has no list to refresh.
+			// A closed modal has no list to refresh; the open views learn about the apply instead.
 			expect(applyChanges).toHaveBeenCalledTimes(1);
+			expect(applied).toHaveBeenCalledWith('applied');
 		});
 
 		it('should warn instead of reporting counts when apply pauses on bindings', async () => {
@@ -374,6 +379,7 @@ describe('PromotionSelectModal', () => {
 			expect(showMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
 			expect(useUIStore().closeModal).not.toHaveBeenCalled();
+			expect(applied).not.toHaveBeenCalled();
 		});
 
 		it('should show the error and still refetch the changes when apply fails', async () => {

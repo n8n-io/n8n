@@ -11,6 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -53,8 +54,9 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: mockShowError }),
+	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 
 const router = createRouter({
@@ -76,6 +78,11 @@ const router = createRouter({
 		{
 			path: '/templates',
 			name: VIEWS.TEMPLATES,
+			component: { template: '<div></div>' },
+		},
+		{
+			path: '/home/workflows',
+			name: VIEWS.HOMEPAGE,
 			component: { template: '<div></div>' },
 		},
 	],
@@ -464,6 +471,34 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true, 'none');
+		});
+	});
+
+	describe('promotions', () => {
+		it('should reload the list after a package was applied', async () => {
+			renderComponent({ pinia });
+			await waitAllPromises();
+			const fetches = workflowsListStore.fetchWorkflowsPage.mock.calls.length;
+
+			promotionEventBus.emit('applied');
+
+			await waitFor(() =>
+				expect(workflowsListStore.fetchWorkflowsPage.mock.calls.length).toBeGreaterThan(fetches),
+			);
+		});
+
+		it('should leave a project page that the applied package removed', async () => {
+			await router.push('/project-1');
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.myProjects = [];
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			promotionEventBus.emit('applied');
+
+			await waitFor(() => expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE));
+			expect(projectsStore.getMyProjects).toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
 		});
 	});
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
@@ -9,6 +9,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
+import { promotionEventBus } from '../promotions.eventBus';
 import { usePromotionConnection } from '../composables/usePromotionConnection';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 
@@ -59,16 +60,29 @@ watch(
 	},
 	{ immediate: true },
 );
-const { count: promotableChangeCount } = usePromotionChangeCount(
+const { count: promotableChangeCount, refetch: refetchPromotable } = usePromotionChangeCount(
 	currentProjectId,
 	'promote',
 	showPromoteBanner,
 );
-const { count: incomingChangeCount, failed: incomingCheckFailed } = usePromotionChangeCount(
-	currentProjectId,
-	'apply',
-	showIncomingBanner,
-);
+const {
+	count: incomingChangeCount,
+	failed: incomingCheckFailed,
+	refetch: refetchIncoming,
+} = usePromotionChangeCount(currentProjectId, 'apply', showIncomingBanner);
+
+// An apply changes both counts: the instance now matches the source it applied.
+async function onPromotionApplied() {
+	await Promise.all([refetchPromotable(), refetchIncoming()]);
+}
+
+onMounted(() => {
+	promotionEventBus.on('applied', onPromotionApplied);
+});
+
+onBeforeUnmount(() => {
+	promotionEventBus.off('applied', onPromotionApplied);
+});
 
 const promotionBannerText = computed(() => {
 	if (promotableChangeCount.value === 1) {

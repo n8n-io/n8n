@@ -15,6 +15,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import PromotionBanners from './PromotionBanners.vue';
 import { invalidatePromotionConnection } from '../composables/usePromotionConnection';
+import { promotionEventBus } from '../promotions.eventBus';
 
 const renderComponent = createComponentRenderer(PromotionBanners);
 
@@ -124,6 +125,30 @@ describe('PromotionBanners', () => {
 
 		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
 		await waitFor(() => expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument());
+	});
+
+	it('refetches both counts after a package was applied', async () => {
+		const promoteChanges = vi.fn(() => oneChange('Outgoing workflow', 'modified'));
+		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
+		server.get('/api/v1/promotions/connections', () =>
+			connections({
+				promote: { id: 'config-1' },
+				apply: { id: 'config-2', settings: { branchName: 'main' } },
+			}),
+		);
+		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
+		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('promotion-banner');
+		await findByTestId('promotion-incoming-banner');
+
+		promotionEventBus.emit('applied');
+
+		await waitFor(() => expect(promoteChanges).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
 	});
 
 	it('keeps the incoming changes entry visible when the check fails', async () => {
