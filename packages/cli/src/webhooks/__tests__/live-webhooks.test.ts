@@ -412,6 +412,10 @@ describe('LiveWebhooks', () => {
 			response.on = emitter.on.bind(emitter) as unknown as Response['on'];
 			response.once = emitter.once.bind(emitter) as unknown as Response['once'];
 			response.emit = emitter.emit.bind(emitter) as unknown as Response['emit'];
+			// Explicit: the auto-mock returns a truthy stub for these, which would
+			// read as "response already over" and release before the test begins.
+			Object.defineProperty(response, 'writableEnded', { value: false, configurable: true });
+			Object.defineProperty(response, 'destroyed', { value: false, configurable: true });
 
 			// Deliberately not awaited: on master this never resolves. Failures are
 			// surfaced rather than swallowed, so a broken arrangement cannot be
@@ -427,6 +431,10 @@ describe('LiveWebhooks', () => {
 			expect(handlerError).toBeUndefined();
 			expect(releaseIsolate).toBeDefined();
 
+			// Both events, because a real response emits 'finish' then 'close' and
+			// the release is subscribed to both. Emitting only one would still pass
+			// if the exactly-once guard were removed.
+			response.emit('finish');
 			response.emit('close');
 			await new Promise((resolve) => setImmediate(resolve));
 

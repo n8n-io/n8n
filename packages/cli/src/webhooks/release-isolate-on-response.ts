@@ -40,5 +40,12 @@ export function releaseIsolateOnResponse(workflow: Workflow, response: Response)
 	response.on('close', releaseQuietly);
 	response.on('finish', releaseQuietly);
 
+	// The caller awaits before reaching this point, so the client may already
+	// have disconnected — in which case 'close' fired before the listener above
+	// existed and would never fire again, leaking the isolate this is meant to
+	// protect. Releasing immediately is safe: both flags mean the response is
+	// over, and `release` is guarded so the listeners cannot double-release.
+	if (response.writableEnded || response.destroyed) releaseQuietly();
+
 	return release;
 }

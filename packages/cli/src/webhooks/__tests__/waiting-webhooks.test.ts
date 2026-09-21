@@ -971,6 +971,10 @@ describe('WaitingWebhooks', () => {
 			res.on = emitter.on.bind(emitter) as unknown as express.Response['on'];
 			res.once = emitter.once.bind(emitter) as unknown as express.Response['once'];
 			res.emit = emitter.emit.bind(emitter) as unknown as express.Response['emit'];
+			// Explicit: the auto-mock returns a truthy stub for these, which would
+			// read as "response already over" and release before the test begins.
+			Object.defineProperty(res, 'writableEnded', { value: false, configurable: true });
+			Object.defineProperty(res, 'destroyed', { value: false, configurable: true });
 
 			// Deliberately not awaited: on master this never resolves. Failures are
 			// surfaced rather than swallowed, so a broken arrangement cannot be
@@ -986,6 +990,10 @@ describe('WaitingWebhooks', () => {
 			expect(handlerError).toBeUndefined();
 			expect(acquireIsolate).toHaveBeenCalledTimes(1);
 
+			// Both events, because a real response emits 'finish' then 'close' and
+			// the release is subscribed to both. Emitting only one would still pass
+			// if the exactly-once guard were removed.
+			res.emit('finish');
 			res.emit('close');
 			await new Promise((resolve) => setImmediate(resolve));
 
