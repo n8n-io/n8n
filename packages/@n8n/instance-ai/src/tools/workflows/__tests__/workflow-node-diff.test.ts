@@ -245,7 +245,7 @@ describe('downgradeUnchangedNodeBlockers', () => {
 				{
 					...finding,
 					severity: 'informational',
-					message: expect.stringContaining('pre-existing node, unchanged by this build'),
+					message: expect.stringContaining('pre-existing node issue; not blocking this edit'),
 				},
 			]);
 		});
@@ -284,13 +284,55 @@ describe('downgradeUnchangedNodeBlockers', () => {
 		});
 
 		it('keeps the finding blocking when an outgoing connection is removed', () => {
-			const nodes = [makeComposeNode(), node];
+			const nodes = [
+				makeComposeNode(),
+				node,
+				makeNode({ id: 'destination', name: 'Destination', type: 'n8n-nodes-base.noOp' }),
+			];
 			const saved = makeWorkflow(nodes, {
-				[nodeName]: { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+				[nodeName]: { main: [[{ node: 'Destination', type: 'main', index: 0 }]] },
 			});
-			const built = makeWorkflow(nodes);
+			const built = makeWorkflow(nodes, {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			});
 
 			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('only preserves the Switch output finding when a node is inserted upstream', () => {
+			const saved = makeWorkflow([makeComposeNode(), node], {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			});
+			const built = makeWorkflow(
+				[...saved.nodes, makeNode({ id: 'set', name: 'Greeting', type: 'n8n-nodes-base.set' })],
+				{
+					Compose: { main: [[{ node: 'Greeting', type: 'main', index: 0 }]] },
+					Greeting: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+				},
+			);
+			const result = downgradeUnchangedNodeBlockers([finding], built, saved);
+			if (code === 'SWITCH_NO_OUTPUT_CONNECTIONS') {
+				expect(result).toEqual([expect.objectContaining({ code, severity: 'informational' })]);
+			} else {
+				expect(result).toEqual([finding]);
+			}
+		});
+
+		it('handles an upstream rename without node IDs', () => {
+			const saved = makeWorkflow([makeComposeNode({ id: '' }), { ...node, id: '' }], {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			});
+			const built = makeWorkflow(
+				[makeComposeNode({ id: '', name: 'Renamed' }), { ...node, id: '' }],
+				{ Renamed: { main: [[{ node: nodeName, type: 'main', index: 0 }]] } },
+			);
+			const result = downgradeUnchangedNodeBlockers([finding], built, saved);
+			if (code === 'SWITCH_NO_OUTPUT_CONNECTIONS') {
+				expect(result).toEqual([expect.objectContaining({ code, severity: 'informational' })]);
+			} else {
+				expect(result).toEqual([finding]);
+			}
 		});
 
 		it('keeps the finding blocking for a new node or a missing baseline', () => {
@@ -359,7 +401,7 @@ describe('downgradeUnchangedNodeBlockers', () => {
 
 		const unchangedResult = downgradeUnchangedNodeBlockers([chatModelWarning], built, saved);
 		expect(unchangedResult[0].severity).toBe('informational');
-		expect(unchangedResult[0].message).toContain('pre-existing node, unchanged by this build');
+		expect(unchangedResult[0].message).toContain('pre-existing node issue; not blocking this edit');
 
 		const modifiedBuilt = makeWorkflow([
 			makeNode({

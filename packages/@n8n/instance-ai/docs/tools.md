@@ -413,12 +413,18 @@ provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
 replacement.
 
-For edits, selected validation findings on unchanged saved nodes become
-informational. This includes literal HTTP authentication and missing Switch
-outputs when parameters, wiring, credentials, and disabled state are unchanged.
-New or changed configurations still require validation. The sandbox CLI has no
-saved-workflow baseline, so `build-workflow` makes the final decision. Preserve
-unrelated nodes and report any remaining blocker instead of expanding the edit.
+For edits, only `INVALID_PARAMETER`, `chat_model_validation`,
+`HARDCODED_CREDENTIALS`, and `SWITCH_NO_OUTPUT_CONNECTIONS` can become
+informational. Missing saved state or a finding without a node name keeps the
+finding blocking. Other codes keep their original severity.
+
+Literal HTTP authentication requires unchanged parameters, wiring, credentials,
+and disabled state. A saved Switch with unchanged configuration and no outputs
+can receive input through a different node if it already had an input connection.
+New Switches, re-enabled Switches, newly connected parked Switches, and removed
+output branches remain blocking. The sandbox CLI has no saved-workflow baseline,
+so `build-workflow` makes the final decision. Preserve unrelated nodes and report
+any remaining blocker instead of expanding the edit.
 
 ### `workflows(action="delete")`
 
