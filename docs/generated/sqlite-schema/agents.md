@@ -164,6 +164,7 @@ erDiagram
   boolean expired
   varchar_255_ runId PK
   TEXT state
+  TEXT threadId
   datetime_3_ updatedAt
 }
 "agent_credential_dependency" {

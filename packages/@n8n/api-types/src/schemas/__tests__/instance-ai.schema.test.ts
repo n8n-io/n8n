@@ -44,6 +44,7 @@ import {
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
+	resolveInstanceAiPermissions,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
@@ -409,6 +410,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.executeNode).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -433,6 +435,46 @@ describe('applyBranchReadOnlyOverrides', () => {
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+describe('resolveInstanceAiPermissions', () => {
+	it('should fill missing keys from the defaults', () => {
+		const result = resolveInstanceAiPermissions({ createWorkflow: 'always_allow' });
+
+		expect(result.createWorkflow).toBe('always_allow');
+		expect(result.deleteWorkflow).toBe('require_approval');
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should carry a blocked runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'blocked' });
+
+		expect(result.executeNode).toBe('blocked');
+	});
+
+	it('should not carry an always_allow runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'always_allow' });
+
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should prefer an explicit executeNode over the runWorkflow fallback', () => {
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' })
+				.executeNode,
+		).toBe('always_allow');
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'always_allow', executeNode: 'blocked' })
+				.executeNode,
+		).toBe('blocked');
+	});
+
+	it('should not mutate the persisted permissions object', () => {
+		const persisted: Partial<InstanceAiPermissions> = { runWorkflow: 'blocked' };
+		resolveInstanceAiPermissions(persisted);
+
+		expect(persisted.executeNode).toBeUndefined();
 	});
 });
 

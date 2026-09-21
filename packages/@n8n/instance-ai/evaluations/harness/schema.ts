@@ -1,4 +1,8 @@
-import { findSeedFolderIssues, instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
+import {
+	credentialDescriptionSchema,
+	findSeedFolderIssues,
+	instanceAiEvalSeedDataTableSchema,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -30,23 +34,25 @@ export const conversationTurnTextSchema = z
 			'unbalanced stage direction — text opens `[` but never closes it, so the proxy would send it as dialogue instead of treating it as a direction',
 	});
 
+const workflowTurnAttachmentSchema = z
+	.object({
+		workflow: z.string().min(1),
+		source: z.literal('setup-panel-execute').optional(),
+	})
+	.strict();
+
+const agentTurnAttachmentSchema = z.object({ agent: z.string().min(1) }).strict();
+
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
-	/** Hand the agent a seeded workflow with this turn, the way the editor does when
-	 *  a user opens the assistant with a workflow in front of them — without it the
-	 *  eval agent has to guess which workflow prose like "why is this failing?"
-	 *  means, and we score a clarification failure the real user never hit.
+	/** Hand the assistant a seeded resource with this turn, the way the editor does
+	 *  when a user opens the assistant with a workflow or Agent in front of them.
+	 *  Without it, the assistant has to guess which resource the user means.
 	 *
-	 *  `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  The resource id is the id as the seed declares it. The harness swaps in the
 	 *  per-run remapped id. Opening turn only (refined below). */
-	attach: z
-		.object({
-			workflow: z.string().min(1),
-			source: z.literal('setup-panel-execute').optional(),
-		})
-		.strict()
-		.optional(),
+	attach: z.union([workflowTurnAttachmentSchema, agentTurnAttachmentSchema]).optional(),
 });
 
 const ExecutionScenarioSchema = z.object({
@@ -204,7 +210,10 @@ const evalTestCaseObjectSchema = z
 							message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
 						}),
 					name: z.string().min(1).optional(),
+					description: credentialDescriptionSchema.optional(),
+					// False lets the connection test fail for a credential that is already broken.
 					valid: z.boolean().optional(),
+					// True seeds no field values and disables the connection-test bypass.
 					blank: z.boolean().optional(),
 				}),
 			)
@@ -296,7 +305,8 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	// as a builder failure. Only an inline seed declares workflows to point at.
 	.refine(
 		(c) => {
-			const attached = c.conversation?.[0]?.attach?.workflow;
+			const attachment = c.conversation?.[0]?.attach;
+			const attached = attachment && 'workflow' in attachment ? attachment.workflow : undefined;
 			if (attached === undefined) return true;
 			const declared = c.seed?.mode === 'inline' ? c.seed.workflows : [];
 			return declared.some((workflow) => workflow.id === attached);
@@ -304,6 +314,19 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		{
 			message:
 				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
+		},
+	)
+	.refine(
+		(c) => {
+			const attachment = c.conversation?.[0]?.attach;
+			const attached = attachment && 'agent' in attachment ? attachment.agent : undefined;
+			if (attached === undefined) return true;
+			const declared = c.seed?.mode === 'inline' ? c.seed.agents : [];
+			return declared.some((agent) => agent.id === attached);
+		},
+		{
+			message:
+				'`attach.agent` must be the id of an Agent the inline seed declares — otherwise the attachment points at nothing',
 		},
 	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it

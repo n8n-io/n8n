@@ -28,6 +28,7 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -51,6 +52,7 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	preventScroll?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
@@ -98,7 +100,7 @@ const i18n = useI18n();
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
-		<div :class="$style.panelArea">
+		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<AgentIdentityHeader
 					:config="localConfig"
@@ -126,6 +128,22 @@ const i18n = useI18n();
 						:project-id="projectId"
 						@update:config="(changes, meta) => emit('update:config', changes, meta)"
 					/>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.skills.title')"
+						:description="i18n.baseText('agents.builder.skills.description')"
+						data-testid="agent-skills-panel"
+					>
+						<AgentSkillsSection
+							:skills="appliedSkills"
+							:disabled="childrenDisabled"
+							:show-label="false"
+							:validation-issues="configValidationIssues ?? []"
+							@open-skill="emit('open-skill', $event)"
+							@add-skill="emit('add-skill')"
+							@remove-skill="emit('remove-skill', $event)"
+						/>
+					</AgentPanel>
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
@@ -175,13 +193,11 @@ const i18n = useI18n();
 							:is-published="Boolean(agent?.activeVersionId)"
 							:validation-issues="configValidationIssues ?? []"
 							:agent-unsaved="agentUnsaved"
+							:sections="['tools', 'subAgents', 'tasks']"
 							@open-tool="emit('open-tool', $event)"
-							@open-skill="emit('open-skill', $event)"
 							@add-tool="emit('add-tool', $event)"
-							@add-skill="emit('add-skill')"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
-							@remove-skill="emit('remove-skill', $event)"
 						/>
 					</AgentPanel>
 
@@ -320,6 +336,7 @@ const i18n = useI18n();
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 .advancedTrigger {
 	display: flex;
@@ -370,9 +387,12 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
 	scrollbar-gutter: stable;
+	@include scrollbar-mixins.hoverable-scroll-bar;
+}
+
+.preventScroll {
+	overflow: hidden;
 }
 
 .panelAreaContainer {
