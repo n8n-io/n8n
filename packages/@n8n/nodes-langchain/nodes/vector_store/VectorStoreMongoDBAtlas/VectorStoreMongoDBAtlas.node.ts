@@ -25,7 +25,12 @@ export const METADATA_FIELD_NAME = 'metadata_field';
 export const PRE_FILTER_NAME = 'preFilter';
 export const POST_FILTER_NAME = 'postFilterPipeline';
 
-const documentDbEndpointCache = new WeakMap<MongoClient, Promise<boolean>>();
+export type DocumentDbEndpointType = 'azure' | 'openSource';
+
+const documentDbEndpointCache = new WeakMap<
+	MongoClient,
+	Promise<DocumentDbEndpointType | undefined>
+>();
 
 const mongoCollectionRLC: INodeProperties = {
 	displayName: 'MongoDB Collection',
@@ -193,7 +198,9 @@ export async function getDatabase(context: IFunctionsContext, client: MongoClien
 	return client.db(credentials.database as string);
 }
 
-export async function isDocumentDbEndpoint(client: MongoClient): Promise<boolean> {
+export async function getDocumentDbEndpointType(
+	client: MongoClient,
+): Promise<DocumentDbEndpointType | undefined> {
 	const cachedResult = documentDbEndpointCache.get(client);
 	if (cachedResult) return await cachedResult;
 
@@ -202,14 +209,16 @@ export async function isDocumentDbEndpoint(client: MongoClient): Promise<boolean
 		.command({ hello: 1 })
 		.then((response) => {
 			const internal = response.internal;
-			if (typeof internal !== 'object' || internal === null) return false;
+			if (typeof internal !== 'object' || internal === null) return undefined;
 
 			const kind =
 				'kind' in internal && typeof internal.kind === 'string' ? internal.kind.toLowerCase() : '';
 			const versions = 'documentdb_versions' in internal ? internal.documentdb_versions : undefined;
-			return kind === 'azuredocumentdb' || Array.isArray(versions);
+			if (kind === 'azuredocumentdb') return 'azure';
+			if (Array.isArray(versions)) return 'openSource';
+			return undefined;
 		})
-		.catch(() => false);
+		.catch(() => undefined);
 
 	documentDbEndpointCache.set(client, result);
 	return await result;
@@ -218,9 +227,9 @@ export async function isDocumentDbEndpoint(client: MongoClient): Promise<boolean
 export async function hasVectorIndex(
 	collection: Collection,
 	indexName: string,
-	isDocumentDb: boolean,
+	documentDbEndpointType: DocumentDbEndpointType | undefined,
 ): Promise<boolean> {
-	if (isDocumentDb) return true;
+	if (documentDbEndpointType) return true;
 
 	const indexes = await collection.listSearchIndexes().toArray();
 	return indexes.some((index) => index.name === indexName);
@@ -305,7 +314,7 @@ export class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 	private readonly documentCollection: Collection;
 	private readonly embeddingFieldName: string;
 	private readonly metadataFieldName: string;
-	private readonly isDocumentDb: boolean;
+	private readonly documentDbEndpointType?: DocumentDbEndpointType;
 
 	constructor(
 		embeddings: EmbeddingsInterface,
@@ -313,7 +322,7 @@ export class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 		mongoClient: MongoClient,
 		preFilter: IDataObject,
 		postFilterPipeline?: IDataObject[],
-		isDocumentDb = false,
+		documentDbEndpointType?: DocumentDbEndpointType,
 	) {
 		super(embeddings, options);
 		this.mongoClient = mongoClient;
@@ -322,25 +331,49 @@ export class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 		this.documentCollection = options.collection;
 		this.embeddingFieldName = options.embeddingKey ?? 'embedding';
 		this.metadataFieldName = options.textKey ?? 'text';
-		this.isDocumentDb = isDocumentDb;
+		this.documentDbEndpointType = documentDbEndpointType;
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number) {
-		if (this.isDocumentDb) {
-			const vectorSearch: MongoDocument = {
-				queryVector: MongoDBAtlasVectorSearch.fixArrayPrecision(query),
-				path: this.embeddingFieldName,
-				limit: k,
-				numCandidates: 10 * k,
-			};
-			if (Object.keys(this.preFilter).length > 0) {
-				vectorSearch.filter = this.preFilter;
+		if (this.documentDbEndpointType) {
+			const queryVector = MongoDBAtlasVectorSearch.fixArrayPrecision(query);
+			let searchStage: MongoDocument;
+
+			if (this.documentDbEndpointType === 'azure') {
+				const cosmosSearch: MongoDocument = {
+					vector: queryVector,
+					path: this.embeddingFieldName,
+					k,
+				};
+				if (Object.keys(this.preFilter).length > 0) {
+					cosmosSearch.filter = this.preFilter;
+				}
+				searchStage = {
+					$search: {
+						cosmosSearch,
+						returnStoredSource: true,
+					},
+				};
+			} else {
+				const vectorSearch: MongoDocument = {
+					queryVector,
+					path: this.embeddingFieldName,
+					limit: k,
+					numCandidates: 10 * k,
+				};
+				if (Object.keys(this.preFilter).length > 0) {
+					vectorSearch.filter = this.preFilter;
+				}
+				searchStage = { $vectorSearch: vectorSearch };
 			}
+
+			const scoreType =
+				this.documentDbEndpointType === 'azure' ? 'searchScore' : 'vectorSearchScore';
 
 			const results = await this.documentCollection
 				.aggregate([
-					{ $vectorSearch: vectorSearch },
-					{ $set: { score: { $meta: 'vectorSearchScore' } } },
+					searchStage,
+					{ $set: { score: { $meta: scoreType } } },
 					{ $project: { [this.embeddingFieldName]: 0 } },
 					...(this.postFilterPipeline ?? []),
 				])
@@ -370,7 +403,8 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	meta: {
 		displayName: 'MongoDB Atlas Vector Store',
 		name: 'vectorStoreMongoDBAtlas',
-		description: 'Work with your data in MongoDB Atlas or DocumentDB Vector Store',
+		description:
+			'Work with your data in MongoDB Atlas, Azure DocumentDB, or open-source DocumentDB',
 		icon: { light: 'file:mongodb.svg', dark: 'file:mongodb.dark.svg' },
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoremongodbatlas/',
@@ -397,9 +431,9 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 			const metadataFieldName = getMetadataFieldName(context, itemIndex);
 
 			const collection = db.collection(collectionName);
-			const isDocumentDb = await isDocumentDbEndpoint(client);
+			const documentDbEndpointType = await getDocumentDbEndpointType(client);
 
-			if (!(await hasVectorIndex(collection, mongoVectorIndexName, isDocumentDb))) {
+			if (!(await hasVectorIndex(collection, mongoVectorIndexName, documentDbEndpointType))) {
 				throw new NodeOperationError(context.getNode(), `Index ${mongoVectorIndexName} not found`, {
 					itemIndex,
 					description: 'Please check that the index exists in your collection',
@@ -423,7 +457,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 				client,
 				preFilter ?? {},
 				postFilterPipeline,
-				isDocumentDb,
+				documentDbEndpointType,
 			);
 		} catch (error) {
 			void client.close().catch(() => {});

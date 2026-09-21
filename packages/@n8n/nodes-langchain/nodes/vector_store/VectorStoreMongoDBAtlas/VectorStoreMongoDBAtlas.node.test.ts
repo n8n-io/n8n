@@ -7,6 +7,7 @@ import {
 	EMBEDDING_NAME,
 	getCollectionName,
 	getCollections,
+	getDocumentDbEndpointType,
 	getEmbeddingFieldName,
 	getFilterValue,
 	getMetadataFieldName,
@@ -14,7 +15,6 @@ import {
 	ExtendedMongoDBAtlasVectorSearch,
 	getVectorIndexName,
 	hasVectorIndex,
-	isDocumentDbEndpoint,
 	METADATA_FIELD_NAME,
 	MONGODB_COLLECTION_NAME,
 	VECTOR_INDEX_NAME,
@@ -217,8 +217,8 @@ describe('VectorStoreMongoDBAtlas', () => {
 		});
 	});
 
-	describe('.isDocumentDbEndpoint', () => {
-		it('detects DocumentDB endpoints case-insensitively and caches the result', async () => {
+	describe('.getDocumentDbEndpointType', () => {
+		it('detects Azure DocumentDB endpoints case-insensitively and caches the result', async () => {
 			const command = vi.fn().mockResolvedValue({
 				internal: { kind: 'AzureDocumentDB' },
 			});
@@ -226,8 +226,8 @@ describe('VectorStoreMongoDBAtlas', () => {
 				db: vi.fn(() => ({ command })),
 			} as unknown as MongoClient;
 
-			await expect(isDocumentDbEndpoint(client)).resolves.toBe(true);
-			await expect(isDocumentDbEndpoint(client)).resolves.toBe(true);
+			await expect(getDocumentDbEndpointType(client)).resolves.toBe('azure');
+			await expect(getDocumentDbEndpointType(client)).resolves.toBe('azure');
 			expect(command).toHaveBeenCalledOnce();
 			expect(command).toHaveBeenCalledWith({ hello: 1 });
 		});
@@ -239,7 +239,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 				})),
 			} as unknown as MongoClient;
 
-			await expect(isDocumentDbEndpoint(client)).resolves.toBe(false);
+			await expect(getDocumentDbEndpointType(client)).resolves.toBeUndefined();
 		});
 
 		it('detects the open-source DocumentDB hello signature', async () => {
@@ -251,7 +251,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 				})),
 			} as unknown as MongoClient;
 
-			await expect(isDocumentDbEndpoint(client)).resolves.toBe(true);
+			await expect(getDocumentDbEndpointType(client)).resolves.toBe('openSource');
 		});
 
 		it('returns false when the endpoint probe fails', async () => {
@@ -261,7 +261,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 				})),
 			} as unknown as MongoClient;
 
-			await expect(isDocumentDbEndpoint(client)).resolves.toBe(false);
+			await expect(getDocumentDbEndpointType(client)).resolves.toBeUndefined();
 		});
 	});
 
@@ -270,7 +270,9 @@ describe('VectorStoreMongoDBAtlas', () => {
 			const listSearchIndexes = vi.fn();
 			const collection = { listSearchIndexes };
 
-			await expect(hasVectorIndex(collection as never, 'vector-index', true)).resolves.toBe(true);
+			await expect(hasVectorIndex(collection as never, 'vector-index', 'azure')).resolves.toBe(
+				true,
+			);
 			expect(listSearchIndexes).not.toHaveBeenCalled();
 		});
 
@@ -280,13 +282,15 @@ describe('VectorStoreMongoDBAtlas', () => {
 				listSearchIndexes: vi.fn(() => ({ toArray })),
 			};
 
-			await expect(hasVectorIndex(collection as never, 'vector-index', false)).resolves.toBe(true);
+			await expect(hasVectorIndex(collection as never, 'vector-index', undefined)).resolves.toBe(
+				true,
+			);
 			expect(collection.listSearchIndexes).toHaveBeenCalledOnce();
 		});
 	});
 
 	describe('ExtendedMongoDBAtlasVectorSearch', () => {
-		it('uses DocumentDB native vector search without an Atlas index name', async () => {
+		it('uses open-source DocumentDB vector search without an Atlas index name', async () => {
 			const toArray = vi.fn().mockResolvedValue([
 				{
 					text: 'Matched document',
@@ -312,7 +316,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 				client,
 				{ category: 'support' },
 				[{ $match: { active: true } }],
-				true,
+				'openSource',
 			);
 
 			const results = await vectorStore.similaritySearchVectorWithScore([1, 0.25], 3);
@@ -340,6 +344,107 @@ describe('VectorStoreMongoDBAtlas', () => {
 					0.91,
 				],
 			]);
+		});
+
+		it('uses Azure DocumentDB cosmos search and search scores', async () => {
+			const toArray = vi.fn().mockResolvedValue([
+				{
+					text: 'Matched document',
+					category: 'support',
+					score: 0.92,
+				},
+			]);
+			const aggregate = vi.fn(() => ({ toArray }));
+			const collection = {
+				aggregate,
+				db: { client: { appendMetadata: vi.fn() } },
+			};
+			const vectorStore = new ExtendedMongoDBAtlasVectorSearch(
+				mock<EmbeddingsInterface>(),
+				{
+					collection: collection as never,
+					indexName: 'ignored-index',
+					textKey: 'text',
+					embeddingKey: 'embedding',
+				},
+				{} as MongoClient,
+				{ category: 'support' },
+				[{ $match: { active: true } }],
+				'azure',
+			);
+
+			const results = await vectorStore.similaritySearchVectorWithScore([1, 0.25], 3);
+
+			expect(aggregate).toHaveBeenCalledWith([
+				{
+					$search: {
+						cosmosSearch: {
+							vector: [1.000000000000001, 0.25],
+							path: 'embedding',
+							k: 3,
+							filter: { category: 'support' },
+						},
+						returnStoredSource: true,
+					},
+				},
+				{ $set: { score: { $meta: 'searchScore' } } },
+				{ $project: { embedding: 0 } },
+				{ $match: { active: true } },
+			]);
+			expect(results[0]?.[0].pageContent).toBe('Matched document');
+			expect(results[0]?.[1]).toBe(0.92);
+		});
+
+		it('preserves the MongoDB Atlas vector search path', async () => {
+			const rawResults = [
+				{
+					text: 'Atlas result',
+					category: 'support',
+					score: 0.93,
+				},
+			];
+			const toArray = vi.fn();
+			const map = vi.fn((mapper: (result: (typeof rawResults)[number]) => unknown) => {
+				toArray.mockResolvedValue(rawResults.map(mapper));
+				return { toArray };
+			});
+			const aggregate = vi.fn(() => ({ map }));
+			const collection = {
+				aggregate,
+				db: { client: { appendMetadata: vi.fn() } },
+			};
+			const vectorStore = new ExtendedMongoDBAtlasVectorSearch(
+				mock<EmbeddingsInterface>(),
+				{
+					collection: collection as never,
+					indexName: 'atlas-index',
+					textKey: 'text',
+					embeddingKey: 'embedding',
+				},
+				{} as MongoClient,
+				{ category: 'support' },
+				[{ $match: { active: true } }],
+			);
+
+			const results = await vectorStore.similaritySearchVectorWithScore([1, 0.25], 3);
+
+			expect(aggregate).toHaveBeenCalledWith([
+				{
+					$vectorSearch: {
+						queryVector: [1.000000000000001, 0.25],
+						index: 'atlas-index',
+						path: 'embedding',
+						limit: 3,
+						numCandidates: 30,
+						filter: { category: 'support' },
+					},
+				},
+				{ $set: { score: { $meta: 'vectorSearchScore' } } },
+				{ $project: { embedding: 0 } },
+				{ $match: { active: true } },
+			]);
+			expect(results[0]?.[0].pageContent).toBe('Atlas result');
+			expect(results[0]?.[1]).toBe(0.93);
 		});
 	});
 

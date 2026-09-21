@@ -3,27 +3,35 @@ import { MongoClient } from 'mongodb';
 
 import {
 	ExtendedMongoDBAtlasVectorSearch,
-	isDocumentDbEndpoint,
+	getDocumentDbEndpointType,
 } from './VectorStoreMongoDBAtlas.node';
 
 const connectionString = process.env.DOCUMENTDB_URI;
 
 describe.runIf(connectionString)('DocumentDB vector search service', () => {
-	let client: MongoClient;
+	let client: MongoClient | undefined;
+	let connected = false;
 
 	beforeAll(async () => {
 		if (!connectionString) throw new Error('DOCUMENTDB_URI is required for service tests');
 		client = new MongoClient(connectionString);
 		await client.connect();
+		connected = true;
 	});
 
 	afterAll(async () => {
-		await client.db('n8n_vector_e2e').dropDatabase();
-		await client.close();
+		if (!client) return;
+		try {
+			if (connected) await client.db('n8n_vector_e2e').dropDatabase();
+		} finally {
+			await client.close();
+		}
 	});
 
 	it('detects DocumentDB and executes native vector search', async () => {
-		await expect(isDocumentDbEndpoint(client)).resolves.toBe(true);
+		if (!client) throw new Error('DocumentDB client is not connected');
+		const documentDbEndpointType = await getDocumentDbEndpointType(client);
+		expect(documentDbEndpointType).toBeDefined();
 
 		const database = client.db('n8n_vector_e2e');
 		const collection = database.collection('documents');
@@ -61,7 +69,7 @@ describe.runIf(connectionString)('DocumentDB vector search service', () => {
 			client,
 			{ category: 'included' },
 			undefined,
-			true,
+			documentDbEndpointType,
 		);
 
 		const results = await store.similaritySearchVectorWithScore([1, 0, 0], 2);
