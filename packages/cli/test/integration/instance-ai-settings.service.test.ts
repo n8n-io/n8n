@@ -10,6 +10,7 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
@@ -171,6 +172,13 @@ describe('InstanceAiSettingsService (integration)', () => {
 			}),
 		);
 
+		// A real clearance, so the row is protected by its usage scope alone, not by the seal.
+		const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave({
+			credential: { id: workflowCredential.id, type: workflowCredential.type },
+			storedCredential: { id: workflowCredential.id, type: workflowCredential.type },
+			projectId: null,
+		});
+
 		const updated = await credentialsRepository.updateInstanceCredential(
 			workflowCredential.id,
 			{
@@ -179,7 +187,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 				type: workflowCredential.type,
 				data: 'other-encrypted',
 			},
-			{},
+			{ policyCleared },
 		);
 
 		expect(updated).toBeNull();
