@@ -86,6 +86,8 @@ export class FsByteStore implements ByteStore {
 
 	async deletePrefix(prefix: string) {
 		const dir = this.getAbsolutePath(prefix);
+		// Node only retries ENOTEMPTY/EBUSY/EPERM when maxRetries > 0; these surface
+		// transiently when the tree changes during the recursive walk.
 		await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 });
 		await this.removeEmptyAncestors(path.dirname(dir));
 	}

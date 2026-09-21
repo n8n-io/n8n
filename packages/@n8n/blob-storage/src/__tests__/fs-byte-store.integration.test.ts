@@ -220,7 +220,7 @@ describe('deletePrefix', () => {
 		await expect(store.deletePrefix('.')).rejects.toThrow(UnexpectedError);
 	});
 
-	it('asks node to retry a removal that fails on a busy or non-empty dir', async () => {
+	it('passes a retry budget to the recursive removal', async () => {
 		await store.write('wf/exec/binary_data/one.bin', body);
 		const rmSpy = vi.spyOn(fs, 'rm');
 
