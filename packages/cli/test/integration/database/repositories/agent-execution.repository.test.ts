@@ -13,7 +13,8 @@ import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend
 import { AgentsConfig } from '@n8n/config';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -35,9 +36,11 @@ import type { AgentExecutionLogStore } from '@/modules/agents/execution-log/agen
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
+import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -46,6 +49,7 @@ describe('AgentExecutionRepository', () => {
 	let repository: AgentExecutionRepository;
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
+	let attachmentRepo: AgentChatAttachmentRepository;
 	let projectId: string;
 	let agentId: string;
 
@@ -55,6 +59,7 @@ describe('AgentExecutionRepository', () => {
 		repository = Container.get(AgentExecutionRepository);
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
+		attachmentRepo = Container.get(AgentChatAttachmentRepository);
 	});
 
 	beforeEach(async () => {
@@ -86,14 +91,16 @@ describe('AgentExecutionRepository', () => {
 	function recordingServices(memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>()) {
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
+		const attachmentService = mock<AgentChatAttachmentService>();
+		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
 			mockLogger(),
 			repository,
 			threadRepo,
 			memory,
 			mock<Telemetry>(),
-			mock<AgentChatAttachmentService>(),
-			mock<AgentExecutionLogStore>(),
+			attachmentService,
+			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
 			mock<ErrorReporter>(),
 			mock<AgentExecutionUpdateBroadcaster>(),
@@ -101,8 +108,41 @@ describe('AgentExecutionRepository', () => {
 		);
 		return {
 			executionService,
+			attachmentService,
+			executionLogStore,
 			turns: new AgentTurnExecutionService(mockLogger(), executionService),
 		};
+	}
+
+	function buildAttachment(threadId: string) {
+		return attachmentRepo.create({
+			id: generateNanoId(),
+			agentId,
+			projectId,
+			threadId,
+			binaryDataId: `attachment:${uuid()}`,
+			fileName: 'attachment.txt',
+			mimeType: 'text/plain',
+			fileSizeBytes: 1,
+			source: 'chat',
+		});
+	}
+
+	function insertAttachmentAfterSnapshot(attachment: AgentChatAttachment) {
+		const find = EntityManager.prototype.find;
+		const spy = vi.spyOn(EntityManager.prototype, 'find').mockImplementation(async function (
+			this: EntityManager,
+			target,
+			options,
+		) {
+			const rows = await find.call(this, target, options);
+			if (target === AgentChatAttachment) {
+				spy.mockRestore();
+				await this.save(AgentChatAttachment, attachment);
+			}
+			return rows;
+		});
+		return spy;
 	}
 
 	async function collect(stream: AsyncIterable<StreamChunk>) {
@@ -405,11 +445,40 @@ describe('AgentExecutionRepository', () => {
 		expect(await storage.getStatus(suspension.runId, agentId)).toEqual({ status: 'not-found' });
 	});
 
+	it.each([0, 1])('keeps attachments added after reading %i attachment rows', async (count) => {
+		const thread = await createThread();
+		const otherThread = await createThread({ sessionNumber: 2 });
+		const captured = Array.from({ length: count }, () => buildAttachment(thread.id));
+		const late = buildAttachment(thread.id);
+		const unrelated = buildAttachment(otherThread.id);
+		await attachmentRepo.save([...captured, unrelated]);
+		const { executionService, attachmentService } = recordingServices();
+		const interceptor = insertAttachmentAfterSnapshot(late);
+
+		try {
+			expect(await executionService.deleteThread(projectId, agentId, thread.id)).toBe(true);
+		} finally {
+			interceptor.mockRestore();
+		}
+
+		expect(await attachmentRepo.findByThread(thread.id, { projectId })).toMatchObject([
+			{ id: late.id, binaryDataId: late.binaryDataId },
+		]);
+		expect(await attachmentRepo.findOneBy({ id: unrelated.id })).toEqual(unrelated);
+		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+		expect(attachmentService.deleteStoredData).toHaveBeenCalledExactlyOnceWith(
+			captured.map(({ binaryDataId }) => binaryDataId),
+			{ threadId: thread.id },
+		);
+	});
+
 	it('rolls back session database cleanup when memory cleanup fails', async () => {
 		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
+		const attachment = await attachmentRepo.save(buildAttachment(threadId));
 		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
 		memoryBackend.deleteThread.mockRejectedValue(new Error('Memory cleanup failed'));
-		const { executionService } = recordingServices(memoryBackend);
+		const { executionService, attachmentService, executionLogStore } =
+			recordingServices(memoryBackend);
 		const executionsBefore = await repository.findByThreadIdOrdered(threadId);
 
 		await expect(executionService.deleteThread(projectId, agentId, threadId)).rejects.toThrow(
@@ -419,6 +488,9 @@ describe('AgentExecutionRepository', () => {
 		expect(await checkpointRepo.findByRunId(suspension.runId)).not.toBeNull();
 		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
 		expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executionsBefore);
+		expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+		expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
+		expect(executionLogStore.delete).not.toHaveBeenCalled();
 	});
 
 	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {

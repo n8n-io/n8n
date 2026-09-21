@@ -290,12 +290,24 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 		if (!thread) return null;
 
-		const refs = await this.findExternalRefs(manager, projectId, threadId);
+		const { attachments, executionLogs } = await this.findExternalRefs(
+			manager,
+			projectId,
+			threadId,
+		);
 		const checkpoints = await this.findSessionCheckpoints(manager, agentId, threadId);
 		if (checkpoints.length > 0) await manager.remove(AgentCheckpoint, checkpoints);
-		await manager.delete(AgentChatAttachment, { projectId, threadId });
+		if (attachments.length > 0) {
+			await manager.delete(
+				AgentChatAttachment,
+				attachments.map(({ id }) => id),
+			);
+		}
 		await manager.delete(AgentExecutionThread, { id: threadId });
-		return refs;
+		return {
+			executionLogs,
+			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+		};
 	}
 
 	private async findSessionCheckpoints(
@@ -325,19 +337,19 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		manager: EntityManager,
 		projectId: string,
 		threadId: string,
-	): Promise<AgentSessionDeletionRefs> {
+	): Promise<{
+		executionLogs: AgentSessionDeletionRefs['executionLogs'];
+		attachments: Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>>;
+	}> {
 		const executionLogs = await manager.find(AgentExecution, {
 			select: ['id', 'storedAt'],
 			where: { threadId, storedAt: Not('db') },
 		});
 		const attachments = await manager.find(AgentChatAttachment, {
-			select: ['binaryDataId'],
+			select: ['id', 'binaryDataId'],
 			where: { projectId, threadId },
 		});
-		return {
-			executionLogs,
-			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
-		};
+		return { executionLogs, attachments };
 	}
 }
 
