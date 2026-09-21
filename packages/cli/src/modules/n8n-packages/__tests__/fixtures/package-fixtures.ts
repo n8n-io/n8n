@@ -21,15 +21,15 @@ import { streamToBuffer } from '../utils/tar-support';
 /** `versionId` every workflow fixture carries, so a test can name it as published. */
 export const WIRE_VERSION_ID = 'wire-version-id';
 
-export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowMetadata>;
+export type PackageWorkflow = SerializedWorkflow & SerializedWorkflowMetadata;
 
 function workflowFiles(workflow: PackageWorkflow): {
 	content: SerializedWorkflow;
 	metadata: SerializedWorkflowMetadata;
 } {
-	const { publishedVersionId, ...content } = workflow;
+	const { versionId, publishedVersionId, ...content } = workflow;
 
-	return { content, metadata: { publishedVersionId: publishedVersionId ?? null } };
+	return { content, metadata: { versionId, publishedVersionId: publishedVersionId ?? null } };
 }
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */

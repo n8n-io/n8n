@@ -267,6 +267,10 @@ export type { FolderPublic } from './folders/folder-public.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export {
+	InsightsSummaryPublicDto,
+	InsightsSummaryQueryPublicDto,
+} from './insights/insights-summary-public.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
@@ -308,12 +312,12 @@ export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-docu
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
 export {
 	ListNodeTypePolicyDocumentsQueryDto,
-	NodeTypePolicyAttachmentsPublicDto,
-	NodeTypePolicyDocumentListPublicDto,
-	NodeTypePolicyDocumentPublicDto,
-	NodeTypePolicyDocumentWriteResultPublicDto,
-	NodeTypePolicyEffectivePublicDto,
-	NodeTypePolicyEffectiveWriteResultPublicDto,
+	PolicyAttachmentsPublicDto,
+	PolicyDocumentListPublicDto,
+	PolicyDocumentPublicDto,
+	PolicyDocumentWriteResultPublicDto,
+	PolicyEffectivePublicDto,
+	PolicyEffectiveWriteResultPublicDto,
 } from './node-type-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
@@ -577,15 +581,21 @@ export {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionApplyConfigPublicSchema,
+	promotionConfigCheckoutSchema,
 	promotionConfigSettingsSchema,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 	promotionDirectionSchema,
 	promotionGitApplySettingsSchema,
 	promotionGitPromoteSettingsSchema,
 	promotionGitSettingsSchemas,
+	promotionApplyConfigSummarySchema,
+	promotionPromoteConfigSummarySchema,
 	promotionPromoteConfigPublicSchema,
+	type PromotionConfigCheckout,
 	type PromotionConfigSettings,
 	type PromotionConnectionConfigsPublic,
+	type PromotionConnectionConfigsSummary,
 	type PromotionDirection,
 } from './promotions/promotion-config.dto';
 export {
@@ -604,7 +614,9 @@ export {
 	promotionConnectionProjectPublicSchema,
 	promotionConnectionPublicSchema,
 	promotionConnectionScopeSchema,
+	promotionConnectionSummarySchema,
 	promotionConnectionTargetSchema,
+	type PromotionConnectionSummary,
 	type PromotionConnectionScope,
 	type PromotionConnectionTarget,
 } from './promotions/promotion-connection.dto';

@@ -358,6 +358,7 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
@@ -366,6 +367,7 @@ export {
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
+	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
@@ -500,6 +502,7 @@ export {
 	findUnbackedSeedWorkflowTools,
 	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
+	resolveInstanceAiPermissions,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
