@@ -585,6 +585,7 @@ async function handleSubmit(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -624,6 +625,7 @@ async function handleSubmit(
 		authorship,
 		attachments,
 		pushRef: rootStore.pushRef,
+		responseStartedAtEpochMs,
 	});
 	if (!sent) {
 		isStartingThread.value = false;

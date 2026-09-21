@@ -347,7 +347,12 @@ const listVersionsAction = z.object({
 });
 
 const restoreVersionAction = z.object({
-	action: z.literal('restore-version').describe('Restore a workflow to a previous version'),
+	action: z
+		.literal('restore-version')
+		.describe(
+			'Restore a previous version into the current draft. This does not publish it. ' +
+				'For a production rollback, publish the restored draft through the normal approval flow.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
 });
@@ -1493,7 +1498,7 @@ async function resolveUnverifiedPublishDisclosure(
 }
 
 const SETUP_PANEL_ANNOUNCED_GUIDANCE =
-	'The setup panel next to the chat now lists what this workflow still needs (`open`); nothing is ' +
+	'The setup panel now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
 	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
@@ -2143,9 +2148,27 @@ async function handleRestoreVersion(
 	}
 
 	try {
-		await context.workflowService.restoreVersion!(input.workflowId, input.versionId);
-		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
-		return { success: true };
+		const restored = await context.workflowService.restoreVersion!(
+			input.workflowId,
+			input.versionId,
+		);
+		await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, restored);
+		const { versionId, activeVersionId } = restored;
+		const isPublished = activeVersionId === versionId;
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			publishState: {
+				live: activeVersionId === null ? 'unpublished' : isPublished ? 'current' : 'stale',
+				activeVersionId,
+				savedVersionId: versionId,
+			},
+			publishStateNote: isPublished
+				? 'The restored draft matches the published version.'
+				: 'Restored the draft only. Production has not changed. ' +
+					'For a production rollback, publish the restored draft through the normal approval flow. ' +
+					'Do not report the rollback as live until it is published.',
+		};
 	} catch (error) {
 		return {
 			success: false,

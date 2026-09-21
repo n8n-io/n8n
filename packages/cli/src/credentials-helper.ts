@@ -41,10 +41,7 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import {
-	DCR_MANAGED_CREDENTIAL_FIELDS,
-	MANAGED_OAUTH_PINNED_FIELDS,
-} from '@/oauth/dcr-managed-fields';
+import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -695,11 +692,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
+		// The credential type owns hidden OAuth endpoint/flow fields. Drop stored values so
+		// applyOverwrite (admin overwrite) and getNodeParameters (type default) fill them.
+		const storedData = { ...decryptedDataOriginal };
+		for (const field of OAUTH_PINNED_FIELDS) {
+			if (credentialsProperties.some((p) => p.name === field && p.type === 'hidden')) {
+				delete storedData[field];
+			}
+		}
+
 		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
-			type,
-			decryptedDataOriginal,
-		);
+		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(type, storedData);
 
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
@@ -735,19 +738,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (decryptedData.useDynamicClientRegistration) {
 			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
 				decryptedData[field] = decryptedDataOriginal[field];
-			}
-		} else if (this.credentialsOverwrites.usesManagedAuth(type, decryptedDataOriginal)) {
-			// For managed credentials the instance owns the OAuth endpoints. Honor an
-			// admin-configured overwrite for the field, otherwise pin the credential
-			// type default. The user's stored value is never used.
-			const overwrites = this.credentialsOverwrites.getOverwrites(type) ?? {};
-			for (const field of MANAGED_OAUTH_PINNED_FIELDS) {
-				const property = credentialsProperties.find((p) => p.name === field && p.type === 'hidden');
-				// Pinned endpoint/flow fields always default to a string; anything else is skipped.
-				if (typeof property?.default !== 'string') continue;
-				const overwritten = overwrites[field];
-				decryptedData[field] =
-					typeof overwritten === 'string' && overwritten !== '' ? overwritten : property.default;
 			}
 		}
 

@@ -220,8 +220,7 @@ watch(
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
-// Anchors to the active canvas tab's workflow; on a hydrated thread with no
-// tab state yet, the latest workflow artifact wins (insertion order).
+// Early setup announcements can arrive before the first workflow artifact.
 const setupPanelWorkflowId = computed(() => {
 	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
 	const active = preview.activeWorkflowId.value;
@@ -230,13 +229,14 @@ const setupPanelWorkflowId = computed(() => {
 	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow') latest = entry.id;
 	}
-	return latest;
+	return latest ?? thread.latestSetupWorkflowId;
 });
 const setupPanelProjectId = computed(() =>
 	setupPanelWorkflowId.value
 		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
 		: undefined,
 );
+const setupOverlapHeight = ref(0);
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
@@ -810,6 +810,7 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 				<InstanceAiConversation
 					ref="conversation"
 					enable-mentions
+					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 					@mention-workflow-selected="preview.openWorkflowPreview"
@@ -819,6 +820,7 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 							v-if="setupPanelWorkflowId"
 							:workflow-id="setupPanelWorkflowId"
 							:project-id="setupPanelProjectId"
+							@update:overlap-height="setupOverlapHeight = $event"
 						/>
 					</template>
 					<template #inline-offers>

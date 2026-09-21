@@ -640,6 +640,8 @@ export type {
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
+	InstanceAiExecuteNodeService,
+	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiDataTableService,

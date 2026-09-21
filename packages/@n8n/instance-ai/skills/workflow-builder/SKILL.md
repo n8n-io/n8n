@@ -9,6 +9,9 @@ description: >-
   data-table-manager first, then this skill. Do not load planning or
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
+  Don't use this skill for explicit one-off tasks that can be done by a single
+  node execution: load one-off-operations and run the node with
+  nodes(action="execute").
 recommended_tools:
   - read_file
   - write_file
@@ -198,6 +201,8 @@ follow its build → publish → assign steps.
    method name, method type, credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
+   For new model choices, follow `model-selection` before writing code,
+   even without credentials.
 5. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
@@ -516,7 +521,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` and let setup collect it. When the persistent
+   setup panel is enabled, the user can fill announced requirements during the
+   build. Do not tell them to wait until the build finishes.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -795,10 +802,9 @@ asked for that exact name.
 
 ## Node Configuration Safety Rules
 
-- Fetch `nodes(action="type-definition")` before configuring nodes. Generated
-  definitions and `@builderHint` annotations are the source of truth.
+- Fetch `nodes(action="type-definition")` for parameter names and shapes.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
-  model fields when credentials are available.
+  model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type

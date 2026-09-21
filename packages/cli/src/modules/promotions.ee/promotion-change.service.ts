@@ -195,10 +195,7 @@ export class PromotionChangeService {
 		);
 		const desiredWorkflowPaths = new Map(
 			desired.files
-				.filter(
-					({ type, fileName }) =>
-						type === 'workflow' && fileName === PACKAGE_ENTITY_LAYOUT.workflows.fileName,
-				)
+				.filter(({ type }) => type === 'workflow')
 				.map(({ entityId, path }) => [entityId, path]),
 		);
 		const archiveCheckPaths = [...changedIds].flatMap((id) => {

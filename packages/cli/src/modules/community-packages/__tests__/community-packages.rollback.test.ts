@@ -367,6 +367,20 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		});
 	});
 
+	describe('uninstall', () => {
+		test('drops the ledger entry along with the directory', async () => {
+			await communityPackagesService.removePackage(
+				PACKAGE_NAME,
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '1.0.0' }),
+			);
+
+			expect(await nodeModulesEntries()).toEqual([]);
+			// A leftover entry lets `npm prune` resolve the package from the registry and
+			// write it back to disk.
+			expect(await ledgerDependencies()).toEqual({});
+		});
+	});
+
 	describe('update with a missing or malformed ledger', () => {
 		test('restores the previous version from the database instead of dropping the entry', async () => {
 			// Unlike the shared beforeEach's valid ledger, this one can't be read at all.

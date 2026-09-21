@@ -32,6 +32,7 @@ import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import type { InstanceAiDraftMention } from '../mentions/instanceAiMentions.types';
 import { buildMentionKey } from '../mentions/buildMentionAttachment';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
@@ -84,7 +85,8 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	if (credential.placeholderTitles?.length) {
 		return `${templatedValuesQuestion(credential)}${node}`;
 	}
-	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
+	const setupContext = credential.setupContext ? ` ${credential.setupContext}` : '';
+	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}${setupContext}`;
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
@@ -127,6 +129,7 @@ export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
+	responseStartedAtEpochMs?: number;
 	/**
 	 * Required so a new hand-off cannot stash an opener that reports as
 	 * user-typed. Optional on the read path only, for stashes a previous
@@ -483,13 +486,17 @@ export async function provisionLaunchedThread(
 	payload: PendingFirstMessage,
 	launch: InstanceAiThreadLaunch,
 ): Promise<string | null> {
+	const pendingMessage = {
+		...payload,
+		responseStartedAtEpochMs: payload.responseStartedAtEpochMs ?? instanceAiResponseNow(),
+	};
 	const threadId = uuidv4();
 	try {
 		await useInstanceAiStore().syncThread(threadId, projectId, launch);
 	} catch {
 		return null;
 	}
-	stashPendingFirstMessage(threadId, payload);
+	stashPendingFirstMessage(threadId, pendingMessage);
 	return threadId;
 }
 
@@ -677,6 +684,7 @@ export function useInstanceAiHandoff() {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;
+		const responseStartedAtEpochMs = instanceAiResponseNow();
 		try {
 			if (options?.newTab) {
 				// Open the tab now, inside the click gesture, so it isn't popup-blocked.
@@ -685,7 +693,7 @@ export function useInstanceAiHandoff() {
 				const tab = window.open('', '_blank');
 				const threadId = await provisionLaunchedThread(
 					projectId,
-					{ message, attachments, context: options?.context, authorship },
+					{ message, attachments, context: options?.context, authorship, responseStartedAtEpochMs },
 					launch,
 				);
 				if (!threadId) {
@@ -713,6 +721,7 @@ export function useInstanceAiHandoff() {
 				attachments,
 				pushRef: rootStore.pushRef,
 				handoffContext: options?.context,
+				responseStartedAtEpochMs,
 			});
 			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {

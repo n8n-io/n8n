@@ -12,6 +12,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -45,6 +46,7 @@ import {
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
+	resolveInstanceAiPermissions,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
@@ -410,6 +412,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.executeNode).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -434,6 +437,46 @@ describe('applyBranchReadOnlyOverrides', () => {
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+describe('resolveInstanceAiPermissions', () => {
+	it('should fill missing keys from the defaults', () => {
+		const result = resolveInstanceAiPermissions({ createWorkflow: 'always_allow' });
+
+		expect(result.createWorkflow).toBe('always_allow');
+		expect(result.deleteWorkflow).toBe('require_approval');
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should carry a blocked runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'blocked' });
+
+		expect(result.executeNode).toBe('blocked');
+	});
+
+	it('should not carry an always_allow runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'always_allow' });
+
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should prefer an explicit executeNode over the runWorkflow fallback', () => {
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' })
+				.executeNode,
+		).toBe('always_allow');
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'always_allow', executeNode: 'blocked' })
+				.executeNode,
+		).toBe('blocked');
+	});
+
+	it('should not mutate the persisted permissions object', () => {
+		const persisted: Partial<InstanceAiPermissions> = { runWorkflow: 'blocked' };
+		resolveInstanceAiPermissions(persisted);
+
+		expect(persisted.executeNode).toBeUndefined();
 	});
 });
 
@@ -707,6 +750,45 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+});
+
+describe('node execution session grant keys', () => {
+	it('scopes the key by resource and operation', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.slack', {
+				resource: 'message',
+				operation: 'post',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.slack:message:post');
+	});
+
+	it('falls back to the first scoping parameter a node without resource/operation declares', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.httpRequest', {
+				method: 'POST',
+				url: 'https://example.com/v4/sheets',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.httpRequest:https://example.com/v4/sheets');
+		// `mode` precedes `url` in the fallback order, so a node declaring both is scoped by mode.
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.set', { mode: 'manual', url: 'https://x' }),
+		).toBe('nodes:execute:n8n-nodes-base.set:manual');
+	});
+
+	it('refuses a key a fallback parameter would push past the column width', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.graphql', { query: 'q'.repeat(600) }),
+		).toBeNull();
+	});
+
+	it('keeps the key at the node type when nothing scopes the call', () => {
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter', { conditions: {} })).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter')).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
 	});
 });
 
