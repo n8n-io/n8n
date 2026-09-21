@@ -13,7 +13,10 @@ import type { TypeAvailabilityPolicyRepository } from '../database/repositories/
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
 import type { PolicyRule } from '../policy-rule.types';
-import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
+import {
+	LOCAL_READ_MAX_ENTRIES,
+	TypeAvailabilityPolicyService,
+} from '../type-availability-policy.service';
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
@@ -75,6 +78,13 @@ describe('TypeAvailabilityPolicyService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// One service instance serves the whole file, and its memo outlives a mock reset.
+		service.resetLocalCaches();
+		// `clearAllMocks` keeps implementations, so without this a test that stubbed a cache
+		// call as never settling leaves every later test waiting on it.
+		cacheService.get.mockResolvedValue(undefined);
+		cacheService.set.mockResolvedValue(undefined);
+		cacheService.deleteMany.mockResolvedValue(undefined);
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
 		// The real repository always answers with an array; an unstubbed mock answers undefined.
 		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
@@ -1220,7 +1230,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	describe('the evaluation read cache', () => {
 		const INSTANCE_KEY = 'type-availability-policy:scope:node-types:instance';
 		const TYPE = 'n8n-nodes-base.slack';
-		const THIRTY_SECONDS = 30_000;
+		const TEN_MINUTES = 600_000;
 
 		it('caches an unconfigured scope as its allow-all object, not as an absent value', async () => {
 			cacheService.get.mockResolvedValue(undefined);
@@ -1231,7 +1241,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(cacheService.set).toHaveBeenCalledWith(
 				INSTANCE_KEY,
 				expect.objectContaining({ scopeId: null, defaultAction: 'allow', version: 0 }),
-				THIRTY_SECONDS,
+				TEN_MINUTES,
 			);
 		});
 
@@ -1347,6 +1357,317 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(scopeRepository.findScopeKeysByIds).not.toHaveBeenCalled();
 			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+		});
+
+		it('drops the invalidated keys a second time, after the fill window', async () => {
+			vi.useFakeTimers();
+			try {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+					makeScope({ defaultAction: 'allow', version: 4 }),
+				);
+				scopeRepository.updateDefaultAction.mockResolvedValue(
+					makeScope({ defaultAction: 'deny', version: 5 }),
+				);
+
+				await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
+				expect(cacheService.deleteMany).toHaveBeenCalledTimes(1);
+
+				await vi.advanceTimersByTimeAsync(1_000);
+
+				expect(cacheService.deleteMany).toHaveBeenCalledTimes(2);
+				expect(cacheService.deleteMany).toHaveBeenLastCalledWith([INSTANCE_KEY]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('cancels a pending repeat delete when the local state is reset', async () => {
+			vi.useFakeTimers();
+			try {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+					makeScope({ defaultAction: 'allow', version: 4 }),
+				);
+				scopeRepository.updateDefaultAction.mockResolvedValue(
+					makeScope({ defaultAction: 'deny', version: 5 }),
+				);
+
+				await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
+				service.resetLocalCaches();
+				await vi.advanceTimersByTimeAsync(1_000);
+
+				expect(cacheService.deleteMany).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	/**
+	 * A decision runs for each execution, each sub-execution and each credential decryption, so
+	 * a burst of them arrives together on a cold entry. These pin that the burst costs one read.
+	 */
+	describe('coalescing concurrent reads', () => {
+		const INSTANCE_KEY = 'type-availability-policy:scope:node-types:instance';
+		const TYPE = 'n8n-nodes-base.slack';
+
+		/** A store read that finishes only once the test opens it. */
+		function gate() {
+			let open!: () => void;
+			const gated = new Promise<void>((resolve) => {
+				open = resolve;
+			});
+
+			return { open, gated };
+		}
+
+		const decide = async (projectId: string | null = null) =>
+			await service.evaluateComposedTypesFor(KIND, projectId, [TYPE]);
+
+		beforeEach(() => {
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+		});
+
+		it('reads the store once for many decisions that miss the same scope', async () => {
+			const { open, gated } = gate();
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
+				await gated;
+				return makeScope({ defaultAction: 'deny', version: 7 });
+			});
+
+			const decisions = Array.from({ length: 50 }, async () => await decide());
+			open();
+			const results = await Promise.all(decisions);
+
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(1);
+			expect(cacheService.get).toHaveBeenCalledTimes(1);
+			expect(cacheService.set).toHaveBeenCalledTimes(1);
+			expect(results.every((result) => result.verdicts[0].action === 'deny')).toBe(true);
+		});
+
+		it('coalesces each scope on its own, so one project decision reads two', async () => {
+			const { open, gated } = gate();
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) => {
+				await gated;
+				return makeScope({ projectId, defaultAction: 'allow', version: 7 });
+			});
+
+			const decisions = Array.from({ length: 50 }, async () => await decide('project-1'));
+			open();
+			await Promise.all(decisions);
+
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(2);
+			expect(cacheService.set).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not keep a failed read, so the next decision retries', async () => {
+			scopeRepository.findScopeByKindAndProject.mockRejectedValueOnce(new Error('db is down'));
+
+			await expect(decide()).rejects.toThrow('db is down');
+
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 7 }),
+			);
+
+			expect((await decide()).verdicts[0].action).toBe('deny');
+		});
+
+		it('does not publish a fill that an invalidation overtook', async () => {
+			const { open, gated } = gate();
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'allow', version: 4 }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockImplementation(async () => {
+				await gated;
+				return [];
+			});
+			scopeRepository.updateDefaultAction.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 5 }),
+			);
+
+			const decision = decide();
+			await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
+			open();
+			await decision;
+
+			expect(cacheService.deleteMany).toHaveBeenCalledWith([INSTANCE_KEY]);
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * A read slower than the repeat delete could `set` its snapshot after both deletes of a
+		 * write that committed on another process, which this one cannot see.
+		 */
+		it('does not publish a read that outlived the repeat delete', async () => {
+			// Only `Date` is faked, because faking `setTimeout` would hang the cache timeout.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				const { open, gated } = gate();
+				scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
+					await gated;
+					return makeScope({ defaultAction: 'deny', version: 7 });
+				});
+
+				const decision = decide();
+				vi.setSystemTime(Date.now() + 1_001);
+				open();
+
+				expect((await decision).verdicts[0].action).toBe('deny');
+				expect(cacheService.set).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		/**
+		 * `clearPolicyCache()` in the integration suites resets this state after truncating the
+		 * tables, so a read in flight must not put the pre-truncation rows back.
+		 */
+		it('does not publish a read that a reset overtook', async () => {
+			const { open, gated } = gate();
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
+				await gated;
+				return makeScope({ defaultAction: 'deny', version: 7 });
+			});
+
+			const decision = decide();
+			service.resetLocalCaches();
+			open();
+
+			expect((await decision).verdicts[0].action).toBe('deny');
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		it('keeps the read that replaced a failed one', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				const failing = gate();
+				const replacing = gate();
+				scopeRepository.findScopeByKindAndProject
+					.mockImplementationOnce(async () => {
+						await failing.gated;
+						throw new Error('db is down');
+					})
+					.mockImplementationOnce(async () => {
+						await replacing.gated;
+						return makeScope({ defaultAction: 'deny', version: 7 });
+					});
+
+				const first = decide();
+				vi.setSystemTime(Date.now() + 1_001);
+				const second = decide();
+
+				failing.open();
+				await expect(first).rejects.toThrow('db is down');
+
+				// Must share the second read rather than start a third.
+				const third = decide();
+				replacing.open();
+				await Promise.all([second, third]);
+
+				expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	/**
+	 * The memo is what keeps a warm decision off the shared cache — a Redis round trip and a
+	 * parse of every rule, for each decision.
+	 */
+	describe('the in-process memo', () => {
+		const TYPE = 'n8n-nodes-base.slack';
+		const CACHED_DENY = {
+			scopeId: 'scope-1',
+			kind: KIND,
+			projectId: null,
+			defaultAction: 'deny' as const,
+			version: 3,
+			rules: [],
+			attachments: [],
+		};
+
+		const decide = async () => await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+		it('answers a repeat decision without a cache call', async () => {
+			cacheService.get.mockResolvedValue(CACHED_DENY);
+
+			await decide();
+			const result = await decide();
+
+			expect(cacheService.get).toHaveBeenCalledTimes(1);
+			expect(result.verdicts[0].action).toBe('deny');
+		});
+
+		it('reads the cache again once the memo expires', async () => {
+			// Only `Date` is faked, because faking `setTimeout` would hang the cache timeout.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				cacheService.get.mockResolvedValue(CACHED_DENY);
+
+				await decide();
+				vi.setSystemTime(Date.now() + 1_001);
+				await decide();
+
+				expect(cacheService.get).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		/**
+		 * The cap has to drop the scope nobody has read for longest, not the one that happens to
+		 * have been inserted first — a busy scope is re-read every window and would otherwise be
+		 * evicted while a quiet one survives.
+		 */
+		it('evicts the least recently read scope when it reaches the cap', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				cacheService.get.mockResolvedValue(CACHED_DENY);
+				const decideFor = async (projectId: string) =>
+					await service.evaluateComposedTypesFor(KIND, projectId, [TYPE]);
+
+				// Fill to the cap: the instance scope, one busy project, and quiet ones for the rest.
+				const quietScopes = LOCAL_READ_MAX_ENTRIES - 2;
+
+				await decideFor('busy');
+				vi.setSystemTime(Date.now() + 600);
+				for (let index = 0; index < quietScopes; index++) await decideFor(`quiet-${index}`);
+
+				// Past the busy scope's window, so it is read again, which is the case that used
+				// to leave it at the front of the map.
+				vi.setSystemTime(Date.now() + 401);
+				await decideFor('busy');
+
+				// One over the cap, so exactly one entry is evicted.
+				await decideFor('straw');
+
+				cacheService.get.mockClear();
+				await decideFor('busy');
+				expect(cacheService.get).not.toHaveBeenCalled();
+
+				await decideFor('quiet-0');
+				expect(cacheService.get).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('is dropped by a write, so the process that wrote sees its own change at once', async () => {
+			cacheService.get.mockResolvedValue(CACHED_DENY);
+			await decide();
+
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 4 }),
+			);
+			scopeRepository.updateDefaultAction.mockResolvedValue(
+				makeScope({ defaultAction: 'allow', version: 5 }),
+			);
+			await service.setDefaultAction(KIND, null, 'allow', 4, 'user-1');
+			cacheService.get.mockResolvedValue({ ...CACHED_DENY, defaultAction: 'allow', version: 5 });
+
+			expect((await decide()).verdicts[0].action).toBe('allow');
+			expect(cacheService.get).toHaveBeenCalledTimes(2);
 		});
 	});
 });

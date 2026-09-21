@@ -25,11 +25,7 @@ export interface LangTracerCreateCaseBody {
 	/** `attach` is declared, not just tolerated: the turn shape is the push contract,
 	 *  and leaving it off let a hand-off case type-check while losing its attachment.
 	 *  Carrying it end-to-end needs lang-tracer #119 deployed. */
-	conversation?: Array<{
-		role: 'user' | 'assistant';
-		text: string;
-		attach?: { workflow: string };
-	}>;
+	conversation?: NonNullable<EvalTestCaseInput['conversation']>;
 	evalComplexity: 'simple' | 'medium' | 'complex';
 	evalTags: string[];
 	evalTriggerType?: string;
