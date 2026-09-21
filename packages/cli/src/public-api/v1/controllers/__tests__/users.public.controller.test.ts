@@ -124,18 +124,5 @@ describe('UsersPublicController', () => {
 				publicApi: true,
 			});
 		});
-
-		it('throws NotFoundError when the user does not exist', async () => {
-			userService.getUser.mockResolvedValue(null);
-
-			await expect(
-				controller.getUser(
-					caller,
-					mock<Response>(),
-					'missing-id',
-					mock<GetUserQueryDto>({ includeRole: false }),
-				),
-			).rejects.toThrow('Could not find user with id: missing-id');
-		});
 	});
 });

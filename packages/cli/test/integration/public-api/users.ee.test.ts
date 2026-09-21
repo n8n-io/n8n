@@ -201,7 +201,11 @@ describe('With license unlimited quota:users', () => {
 		test('should return 404 for non-existing id ', async () => {
 			const owner = await createOwnerWithApiKey();
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
-			await authOwnerAgent.get(`/users/${uuid()}`).expect(404);
+			const missingId = uuid();
+
+			const response = await authOwnerAgent.get(`/users/${missingId}`).expect(404);
+
+			expect(response.body).toStrictEqual({ message: `Could not find user with id: ${missingId}` });
 		});
 
 		test('should return a pending user', async () => {
