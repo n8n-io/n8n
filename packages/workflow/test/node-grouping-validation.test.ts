@@ -83,16 +83,34 @@ function validateGrouping({
 	nodes,
 	connectionsBySourceNode,
 	nodeTypes = { 'n8n-nodes-base.set': makeNodeType() },
+	relaxNodeGroupRules,
 }: {
 	nodes: INode[];
 	connectionsBySourceNode: IConnections;
 	nodeTypes?: Record<string, INodeTypeDescription>;
+	relaxNodeGroupRules?: boolean;
 }) {
 	return validateNodeSelectionForGrouping({
 		nodes,
 		connectionsBySourceNode,
 		getNodeType: (node) => nodeTypes[node.type],
+		relaxNodeGroupRules,
 	});
+}
+
+const triggerNodeTypes = {
+	'n8n-nodes-base.manualTrigger': makeNodeType({
+		name: 'n8n-nodes-base.manualTrigger',
+		group: ['trigger'],
+	}),
+	'n8n-nodes-base.set': makeNodeType(),
+};
+
+/** A linear graph whose first node is a trigger. */
+function makeTriggeredGraph() {
+	const graph = makeLinearGraph();
+	graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';
+	return graph;
 }
 
 describe('node grouping validation', () => {
@@ -159,22 +177,58 @@ describe('node grouping validation', () => {
 	});
 
 	it('returns trigger-selected when the selection contains a trigger', () => {
-		const graph = makeLinearGraph();
-		graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';
+		const graph = makeTriggeredGraph();
 
 		const result = validateGrouping({
 			nodes: [graph.nodes[0], graph.nodes[1]],
 			connectionsBySourceNode: graph.connections,
-			nodeTypes: {
-				'n8n-nodes-base.manualTrigger': makeNodeType({
-					name: 'n8n-nodes-base.manualTrigger',
-					group: ['trigger'],
-				}),
-				'n8n-nodes-base.set': makeNodeType(),
-			},
+			nodeTypes: triggerNodeTypes,
 		});
 
 		expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
+	});
+
+	describe('with relaxNodeGroupRules on', () => {
+		it('accepts a trigger together with the nodes that follow it', () => {
+			const graph = makeTriggeredGraph();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: triggerNodeTypes,
+				relaxNodeGroupRules: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects a non-main connection that crosses the group boundary', () => {
+			const graph = makeTriggeredGraph();
+			const model = makeNode({ id: 'model', name: 'Model' });
+			const connectionsBySourceNode: IConnections = {
+				...graph.connections,
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							{ node: 'C', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						],
+					],
+				},
+			};
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], model],
+				connectionsBySourceNode,
+				nodeTypes: triggerNodeTypes,
+				relaxNodeGroupRules: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('non-main-boundary');
+			}
+		});
 	});
 
 	it('returns invalid-subgraph when selected nodes skip an intermediate node', () => {
@@ -795,6 +849,29 @@ describe('validateWorkflowGroups', () => {
 				message: 'Node group "Group" cannot contain trigger nodes: Trigger.',
 			},
 		]);
+	});
+
+	it('accepts a group containing a trigger node when relaxNodeGroupRules is on', () => {
+		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		const connections: IConnections = {
+			Trigger: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+			...graph.connections,
+		};
+
+		const result = validateWorkflowGroups({
+			nodes: [...graph.nodes, trigger],
+			connectionsBySourceNode: connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }],
+			getNodeType,
+			relaxNodeGroupRules: true,
+		});
+
+		expect(result.valid).toBe(true);
 	});
 
 	it('reports a group crossing a non-main connection boundary', () => {

@@ -159,6 +159,7 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 		node: TNode,
 		nodeType: INodeTypeDescription,
 	) => Array<NodeConnectionType | INodeOutputConfiguration>;
+	relaxNodeGroupRules?: boolean;
 };
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
@@ -320,6 +321,7 @@ export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 	 * Pass `null` to run basic checks only.
 	 */
 	getNodeType: ((node: TNode) => INodeTypeDescription | null | undefined) | null;
+	relaxNodeGroupRules?: boolean;
 };
 
 export type WorkflowGroupsValidationResult =
@@ -372,12 +374,14 @@ export function validateWorkflowGroups<TNode extends INode>({
 	connectionsBySourceNode,
 	nodeGroups,
 	getNodeType,
+	relaxNodeGroupRules,
 }: WorkflowGroupsValidationInput<TNode>): WorkflowGroupsValidationResult {
 	const result = validateWorkflowGroupsWithGroupIdentity({
 		nodes,
 		connectionsBySourceNode,
 		nodeGroups,
 		getNodeType,
+		relaxNodeGroupRules,
 	});
 
 	if (result.valid) return { valid: true };
@@ -397,6 +401,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	connectionsBySourceNode,
 	nodeGroups,
 	getNodeType,
+	relaxNodeGroupRules,
 }: WorkflowGroupsValidationInput<TNode>):
 	| { valid: true }
 	| {
@@ -482,6 +487,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 				connectionsBySourceNode: connections,
 				getNodeType,
 				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
+				relaxNodeGroupRules,
 			});
 			if (!result.valid) {
 				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
@@ -598,11 +604,15 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
+	relaxNodeGroupRules,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
-	const triggers = nodes.filter((node) => {
-		const nodeType = getNodeType(node);
-		return nodeType ? isTriggerNode(nodeType) : false;
-	});
+	// A flexible group may hold its own trigger, together with the nodes that follow it.
+	const triggers = relaxNodeGroupRules
+		? []
+		: nodes.filter((node) => {
+				const nodeType = getNodeType(node);
+				return nodeType ? isTriggerNode(nodeType) : false;
+			});
 	if (triggers.length > 0) {
 		return {
 			valid: false,
