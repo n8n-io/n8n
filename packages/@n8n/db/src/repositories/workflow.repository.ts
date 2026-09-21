@@ -537,28 +537,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		>();
 		for (const chunk of chunkIds([...new Set(workflowIds)])) {
 			const workflows = await this.createQueryBuilder('workflow')
-				.select('workflow.id', 'id')
-				.addSelect('workflow.isArchived', 'isArchived')
+				.select(['workflow.id', 'workflow.isArchived'])
 				.leftJoin('workflow.shared', 'shared', 'shared.role = :role', {
 					role: 'workflow:owner',
 				})
-				.addSelect('shared.projectId', 'projectId')
+				.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
 				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
-				.getRawMany<{
-					id: string;
-					isArchived: boolean | number | string;
-					projectId: string | null;
-				}>();
+				.getMany();
 			for (const workflow of workflows) {
 				if (rowsById.has(workflow.id)) continue;
 				rowsById.set(workflow.id, {
 					id: workflow.id,
-					projectId: workflow.projectId ?? null,
-					isArchived:
-						workflow.isArchived === true ||
-						workflow.isArchived === 1 ||
-						workflow.isArchived === '1' ||
-						workflow.isArchived === 'true',
+					projectId: workflow.shared?.[0]?.projectId ?? null,
+					isArchived: workflow.isArchived,
 				});
 			}
 		}
