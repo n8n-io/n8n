@@ -20,6 +20,7 @@ import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
+import type { ExecutionResponseChannel } from '../response-channel';
 import { createEngineServer } from '../server';
 
 export interface EngineRuntimeOptions {
@@ -30,6 +31,12 @@ export interface EngineRuntimeOptions {
 	identityVerifier: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */
 	logger?: EngineLogger;
+	/**
+	 * Where an execution's responses go. The host owns it, because whoever waits
+	 * for a response subscribes to the same channel. No default: a host that
+	 * listens to nothing says so with `noopResponseTransport`.
+	 */
+	responseChannel: ExecutionResponseChannel;
 	/**
 	 * Builds the capabilities the engine does not own. It receives the engine's
 	 * stores, because a `v1-node` executor reads step data through them and the
@@ -65,6 +72,7 @@ export function createEngineRuntime({
 	admittance,
 	identityVerifier,
 	logger = createConsoleLogger(),
+	responseChannel,
 	externalDependencies,
 }: EngineRuntimeOptions): EngineRuntime {
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
@@ -91,6 +99,7 @@ export function createEngineRuntime({
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
+			responseChannel,
 		),
 	);
 	const stepWorker = new StepWorker(

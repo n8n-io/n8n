@@ -61,6 +61,17 @@ function isVendorLlmSubNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
 }
 
+/** `embeddings*` nodes bake the vendor base URL into the SDK, exactly as `lm*` do. */
+function isVendorEmbeddingsSubNode(nodeType: string): boolean {
+	return nodeType.startsWith('@n8n/n8n-nodes-langchain.embeddings');
+}
+
+/** Sub-nodes the HTTP mock never sees: only a credential URL rewrite intercepts them. */
+export function isVendorSdkSubNode(nodeType: string | undefined): boolean {
+	if (!nodeType) return false;
+	return isVendorLlmSubNode(nodeType) || isVendorEmbeddingsSubNode(nodeType);
+}
+
 /** MCP registry nodes talk via the MCP SDK's own transport, not n8n's HTTP helper — the mock can't reach them, so their root must stay pinned. */
 function isMcpRegistryNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/mcp-registry.');
@@ -291,6 +302,7 @@ export function detectBinaryDependencies(
 export type AutoPinReason =
 	| 'protocol_binary'
 	| 'unsupported_vendor_llm'
+	| 'unsupported_vendor_embeddings'
 	| 'unsafe_baseurl_override'
 	| 'shared_vendor_llm_subnode';
 
@@ -516,7 +528,7 @@ function trackSharedSupportedSubNodes(
  * Return the auto-pin reason for a sub-node, or null if it's safe to intercept.
  * Order: protocol-binary (HTTP can't reach it) → shared (attribution ambiguous) →
  * supported-vendor-with-baseURL-override (SDK bypasses the rewrite) → unsupported
- * vendor LLM (no URL-rewrite mapping yet).
+ * vendor LLM or embeddings (no URL-rewrite mapping yet).
  */
 function categorizeSubNodeIncompatibility(
 	sourceNode: INode,
@@ -529,6 +541,12 @@ function categorizeSubNodeIncompatibility(
 		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
 	}
 	if (isVendorLlmSubNode(sourceNode.type)) return 'unsupported_vendor_llm';
+	// No `EVAL_PROVIDER_URL_FIELD` entry rewrites an embeddings credential, so
+	// `applyServerUrlRewrite` hands back the original one and the SDK reaches
+	// the real provider on real credentials. The un-intercepted warning is
+	// raised only after that request, which is too late to stop the spend.
+	// Pin the root until `/v1/embeddings` has a wire-server route.
+	if (isVendorEmbeddingsSubNode(sourceNode.type)) return 'unsupported_vendor_embeddings';
 	return null;
 }
 
