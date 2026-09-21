@@ -90,19 +90,15 @@ export class InstanceReportingService {
 	 * would stretch one interval and skew the whole series.
 	 *
 	 * The license certificate is the credential: the receiver accepts a report
-	 * only from an instance that holds a certificate n8n issued. It is read fresh
-	 * for every report, so a renewed license is sent as soon as it is stored.
+	 * only from an instance that holds a certificate n8n issued.
 	 *
 	 * @throws when delivery fails, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
-		// Checked before anything is measured or persisted: without a certificate
-		// the receiver rejects every attempt, so a pending row would only burn its
-		// retry budget for nothing.
 		const licenseCert = await this.license.loadCertStr();
 		if (!licenseCert) {
 			this.logger.warn(
-				'Skipping the instance report because this instance has no license certificate. Set N8N_LICENSE_CERT or activate a license.',
+				'Skipping the instance report because this instance has no license certificate.',
 			);
 			return;
 		}
@@ -137,9 +133,6 @@ export class InstanceReportingService {
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
 			n8nVersion: N8N_VERSION,
 			dataPoints: report.dataPoints,
-			// In the body rather than a header: a certificate is several KB and
-			// grows with the license, which is more than common proxies allow per
-			// header. The receiver verifies it, then drops it; it is never stored.
 			licenseCert,
 		};
 

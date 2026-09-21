@@ -95,9 +95,7 @@ export class InstanceReportingModule implements ModuleInterface {
 
 	/**
 	 * The license certificate is the credential the receiver checks, so an
-	 * unlicensed (community) instance cannot report. Read the raw string rather
-	 * than asking whether the license is valid: an expired certificate is still
-	 * accepted by the receiver.
+	 * unlicensed (community) instance cannot report.
 	 */
 	private async hasLicenseCert(): Promise<boolean> {
 		const { License } = await import('@/license.js');
