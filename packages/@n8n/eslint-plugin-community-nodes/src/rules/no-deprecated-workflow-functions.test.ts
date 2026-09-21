@@ -64,6 +64,21 @@ async function getData(context: IExecuteFunctions) {
 				{
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestOAuth2',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(context: IExecuteFunctions) {
+	return await context.helpers.httpRequestWithAuthentication('google', options);
+}`,
+						},
+					],
 				},
 			],
 		},
@@ -79,6 +94,21 @@ async function getData(ctx: IExecuteFunctions) {
 				{
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestOAuth2',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(ctx: IExecuteFunctions) {
+	return await ctx.helpers.httpRequestWithAuthentication('google', options);
+}`,
+						},
+					],
 				},
 			],
 		},
@@ -95,6 +125,22 @@ async function getData(this: IExecuteFunctions) {
 				{
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestOAuth2',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(this: IExecuteFunctions) {
+	const { helpers } = this;
+	return await helpers.httpRequestWithAuthentication('google', options);
+}`,
+						},
+					],
 				},
 			],
 		},
