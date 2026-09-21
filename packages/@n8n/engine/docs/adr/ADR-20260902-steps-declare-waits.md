@@ -54,11 +54,17 @@ deadline, or accept a resume request, or do both.
 3. **A resume re-dispatches the step.** A resume moves the step back to
    `queued`. The engine records what ended the wait on the row, with the
    payload when a request ended it. The step then takes the normal worker path.
-   For a request resume, the shim runs the node's resume method with the
-   payload. For a deadline resume, the engine emits the outputs that the
-   declaration holds. Those outputs are the node's pass-through output, as in
-   v1. The engine never runs the node's execute method again. No component
-   completes a waiting step directly.
+   For a deadline resume, the engine emits what the declaration captured in
+   `outputsAtDeadline`. The Wait node returns its input unchanged, so those
+   outputs are the step's input passed through, as in v1. For a request
+   resume, the control plane runs the node's resume method, because that
+   method reads the request and writes the response, and it must answer inside
+   the request. A re-dispatch through the queue answers too late. The control
+   plane sends what the method produced to the data plane, which records it as
+   the resume payload and moves the step to `queued`. The worker that takes
+   the step emits that payload as the step's outputs. The engine never runs
+   the node's execute method again. No component completes a waiting step
+   directly.
 4. **An engine-internal sweep fires the time waits.** The sweep resumes the
    waiting steps whose deadline has passed, with the same status-conditioned
    update that every other transition uses. It selects no deadline that is still
@@ -159,6 +165,9 @@ into a different step type.
   memory. To refuse one, the converter must mark the step, and what that mark
   looks like is a later decision. Nothing needs it until a mode that cannot
   hold a wait exists.
+- The node's resume method runs on the control plane, so its credentials
+  resolve there. A Wait node that authenticates a resume request needs nothing
+  from credential support in the data plane.
 - A waiting step does not settle. The completion count must treat the step as
   expected but not yet settled, or the execution finishes while a step still
   owes an outcome. The planning rules read the same status, so a waiting step
