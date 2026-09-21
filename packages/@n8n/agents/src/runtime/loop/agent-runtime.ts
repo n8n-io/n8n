@@ -62,7 +62,11 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
+import {
+	supportsMidConversationSystemMessages,
+	supportsSplitSystemMessages,
+	type FetchFn,
+} from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -937,9 +941,14 @@ export class AgentRuntime {
 				.map((value) => value?.trim())
 				.filter((value): value is string => Boolean(value))
 				.join('\n\n');
+			// Skill content changes only on activation. Where the model allows it,
+			// each skill goes into `messages` right after the call that activated
+			// it, so the tool block, system prompt and earlier conversation keep
+			// their cache entries. Otherwise it joins the system prompt, and every
+			// activation rewrites that prefix.
+			const skillsInMessages = supportsMidConversationSystemMessages(this.config.model);
 			const { system, messages } = list.forLlm(
-				// Skill content changes only on activation. Keep it cached when memory compacts.
-				[effectiveInstructions, this.activeSkills?.instructions()]
+				[effectiveInstructions, skillsInMessages ? undefined : this.activeSkills?.instructions()]
 					.filter(Boolean)
 					.join('\n\n'),
 				instructionProviderOptions,
@@ -950,7 +959,9 @@ export class AgentRuntime {
 			// only — never persisted back to the message list or tool set.
 			const cached = applyRuntimeCacheBreakpoints({
 				system,
-				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
+				messages:
+					this.activeSkills?.modelMessages(messages, list, { inMessages: skillsInMessages }) ??
+					messages,
 				aiTools,
 				promptCaching: this.config.promptCaching,
 				modelId: this.modelIdString,

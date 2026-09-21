@@ -74,6 +74,20 @@ splitting fragments by stability:
   sees the instruction the moment the tool loads, just outside the cached
   prefix.
 
+Runtime skills follow the same principle. On models that accept a
+`{ role: 'system' }` message inside `messages`
+(`supportsMidConversationSystemMessages`: Opus 4.8, Opus 5, Fable, Mythos),
+`ActiveSkills.modelMessages()` inserts each active skill as a system message
+directly after the tool result that activated it. The activating call is
+stamped with `activatedSkillIds` on its tool-call block, so the anchor
+persists and compacts with the message; anchors that fall out of the visible
+window re-anchor after the first user message. The prompt therefore only
+grows on activation and every prefix before the new skill — tool block,
+system prompt, earlier conversation — keeps its cache entry. Models without
+that support (Sonnet 5, other providers) get the skills joined into the
+top-level system prompt as `<active_skills>`, which rewrites the prefix on
+each activation.
+
 Other prefix-stability hygiene, already true or verified: tool ordering is
 append-only (`getCurrentTools()` only ever appends), and none of the current
 built-in `systemInstruction` sources (`delegate_subagent`, `write_todos`,

@@ -176,6 +176,112 @@ describe('active skills', () => {
 		expect(active.instructions()).toBeUndefined();
 	});
 
+	it('anchors the first activation to its tool call and places the skill after that result', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		await active.restore(list, scope);
+		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Build it' }] }]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'inspect_node',
+						toolCallId: 'inspect-1',
+						input: {},
+						state: 'pending',
+					},
+				],
+			},
+		]);
+
+		await active.load('builder', { toolCallId: 'inspect-1' });
+		list.setToolCallResult('inspect-1', { node: 'model' });
+		// A repeat load must not move the anchor.
+		await active.load('builder', { toolCallId: 'inspect-2' });
+
+		const [assistant] = list.messages().filter((message) => message.role === 'assistant');
+		expect(assistant.content[0]).toMatchObject({ activatedSkillIds: ['builder'] });
+
+		const inSystem = active.modelMessages(list.forLlm('').messages, list);
+		expect(JSON.stringify(inSystem)).not.toContain('Build one workflow.');
+
+		const inMessages = active.modelMessages(list.forLlm('').messages, list, { inMessages: true });
+		expect(inMessages.map((message) => message.role)).toEqual([
+			'user',
+			'assistant',
+			'tool',
+			'system',
+		]);
+		expect(inMessages[3]).toMatchObject({
+			role: 'system',
+			content: expect.stringContaining('Build one workflow.'),
+		});
+		// The skill stays out of the top-level system prompt in this mode; the
+		// caller decides that by not joining `instructions()` into it.
+		expect(active.instructions()).toContain('Build one workflow.');
+	});
+
+	it('places a skill whose anchor is outside the visible window after the first user message', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder']);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		await active.restore(list, scope);
+		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Continue' }] }]);
+		list.addResponse([{ role: 'assistant', content: [{ type: 'text', text: 'Sure.' }] }]);
+
+		const placed = active.modelMessages(list.forLlm('').messages, list, { inMessages: true });
+
+		expect(placed.map((message) => message.role)).toEqual(['user', 'system', 'assistant']);
+		expect(placed[1]).toMatchObject({
+			role: 'system',
+			content: expect.stringContaining('Build one workflow.'),
+		});
+	});
+
+	it('uses a recorded load_skill call as the anchor for history without a stamp', async () => {
+		const memory = new InMemoryMemory();
+		const list = new AgentMessageList();
+		list.addHistory([
+			{ role: 'user', content: [{ type: 'text', text: 'Build it' }] },
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'old-load',
+						input: { skillId: 'builder' },
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'Build one workflow.' }] },
+					},
+				],
+			},
+			{ role: 'assistant', content: [{ type: 'text', text: 'Loaded.' }] },
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		await active.restore(list, scope);
+
+		const placed = active.modelMessages(list.forLlm('').messages, list, { inMessages: true });
+
+		expect(placed.map((message) => message.role)).toEqual([
+			'user',
+			'assistant',
+			'tool',
+			'system',
+			'assistant',
+		]);
+		// The recorded load result is collapsed, and the current body follows it.
+		expect(JSON.stringify(placed[2])).toContain('"active":true');
+		expect(placed[3]).toMatchObject({
+			role: 'system',
+			content: expect.stringContaining('Build one workflow.'),
+		});
+	});
+
 	it('records concurrent loads without dropping either skill', async () => {
 		const memory = new InMemoryMemory();
 		const active = new ActiveSkills(source, 'assistant', memory.skillState);

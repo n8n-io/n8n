@@ -149,6 +149,29 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
 }
 
+/**
+ * Anthropic models that accept a `{ role: 'system' }` message inside
+ * `messages` (the `mid-conversation-system` beta the AI SDK adds on demand).
+ * Sonnet 5 and older families reject it and take the top-level `system` field.
+ */
+const ANTHROPIC_MID_CONVERSATION_SYSTEM = /claude-(?:opus-(?:4-8|5)|fable-5|mythos-5)/;
+
+/**
+ * Whether a model accepts new system instructions partway through `messages`.
+ * Appending there leaves the cached prefix (tools, system, earlier messages)
+ * untouched, unlike an edit to the top-level `system` field.
+ */
+export function supportsMidConversationSystemMessages(model: ModelConfig): boolean {
+	const modelId = getModelIdString(model);
+	switch (modelId.split('/')[0]) {
+		case 'anthropic':
+		case 'google-vertex-anthropic':
+			return ANTHROPIC_MID_CONVERSATION_SYSTEM.test(modelId);
+		default:
+			return false;
+	}
+}
+
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 	switch (getModelIdString(model).split('/')[0]) {

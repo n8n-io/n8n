@@ -2,6 +2,7 @@ import type { Tool as AiSdkTool } from 'ai';
 import { z } from 'zod';
 
 import { isCancellation } from '../../sdk/cancellation';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import {
 	type BuiltProviderTool,
 	type BuiltTool,
@@ -100,6 +101,14 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	return result;
 }
 
+function bindSkillLoaderAnchor(
+	loadSkill: RuntimeSkillLoader | undefined,
+	toolCallId: string | undefined,
+): RuntimeSkillLoader | undefined {
+	if (!loadSkill || !toolCallId) return loadSkill;
+	return async (skillId, anchor) => await loadSkill(skillId, anchor ?? { toolCallId });
+}
+
 /**
  * Execute a tool call by finding its handler and running it.
  * For tools with suspend/resume schemas, passes an InterruptibleToolContext
@@ -113,6 +122,9 @@ export async function executeTool(
 	toolCallId?: string,
 	executionContext: ToolExecutionContext = {},
 ): Promise<unknown> {
+	// Anchor skill activations to this call so the runtime can place the skill
+	// text right after its result in the prompt instead of in the system block.
+	const loadSkill = bindSkillLoaderAnchor(executionContext.loadSkill, toolCallId);
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}
@@ -139,7 +151,7 @@ export async function executeTool(
 			toolCallId,
 			toolName: builtTool.name,
 			runId: executionContext.runId,
-			...(executionContext.loadSkill ? { loadSkill: executionContext.loadSkill } : {}),
+			...(loadSkill ? { loadSkill } : {}),
 			persistence: executionContext.persistence,
 			emitEvent: executionContext.emitEvent,
 			abortSignal: executionContext.abortSignal,
@@ -156,7 +168,7 @@ export async function executeTool(
 		toolCallId,
 		toolName: builtTool.name,
 		runId: executionContext.runId,
-		...(executionContext.loadSkill ? { loadSkill: executionContext.loadSkill } : {}),
+		...(loadSkill ? { loadSkill } : {}),
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
 		abortSignal: executionContext.abortSignal,

@@ -572,6 +572,11 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).toBe(
 			`Follow the active ${skillId} skill instructions.`,
 		);
+		// The guidance must point at the activated skill, not at an inline copy.
+		expect(result.postBuildFlow?.guidance).toContain(
+			`Follow the active ${skillId} skill instructions in your system prompt now`,
+		);
+		expect(result.postBuildFlow?.guidance).not.toContain('in `instructions` now');
 	});
 
 	it.each(['default', 'progressive'] as const)(

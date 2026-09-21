@@ -7522,6 +7522,133 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
+	it('delivers skills as mid-conversation system messages after their activating call on supporting models', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+			{
+				id: 'post-build',
+				name: 'post-build',
+				description: 'Verify workflows.',
+				instructions: 'Verify the workflow before publishing.',
+			},
+		]);
+		const buildTool: BuiltTool = {
+			name: 'build_workflow',
+			description: 'Build a workflow.',
+			inputSchema: z.object({}),
+			handler: async (_input, ctx) => {
+				await ctx.loadSkill?.('post-build');
+				return { built: true };
+			},
+		};
+		const memory = new InMemoryMemory();
+		const options = {
+			name: 'skills-agent',
+			model: 'anthropic/claude-opus-4-8',
+			instructions: 'You are a test assistant.',
+			memory,
+			skillSource: source,
+			tools: [...createRuntimeSkillTools(source), buildTool],
+		};
+		const runtime = new AgentRuntime(options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateWithToolCall('build-1', 'build_workflow', {}))
+			.mockResolvedValueOnce(makeGenerateSuccess('Built and verified.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const roles = (index: number) => capturedCall(index).messages.map((message) => message.role);
+		const systemAt = (index: number, position: number) =>
+			JSON.stringify(capturedCall(index).messages[position]);
+
+		// The top-level system prompt never changes across the run.
+		for (const index of [0, 1, 2]) {
+			expect(flattenInstructions(capturedCall(index).instructions)).not.toContain(
+				'<active_skills>',
+			);
+			expect(capturedCall(index).instructions).toEqual(capturedCall(0).instructions);
+		}
+		// First activation: the skill follows the load_skill result.
+		expect(roles(1)).toEqual(['user', 'assistant', 'tool', 'system']);
+		expect(systemAt(1, 3)).toContain('Wait for a real execution');
+		// Second activation appends after the build result; the first stays put.
+		expect(roles(2)).toEqual([
+			'user',
+			'assistant',
+			'tool',
+			'system',
+			'assistant',
+			'tool',
+			'system',
+		]);
+		expect(systemAt(2, 3)).toContain('Wait for a real execution');
+		expect(systemAt(2, 6)).toContain('Verify the workflow before publishing.');
+		expect(capturedCall(2).messages.slice(0, 4)).toEqual(capturedCall(1).messages);
+
+		// A later turn restores the same placement from the persisted anchors.
+		const next = new AgentRuntime(options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Still here.'));
+		await next.generate('Continue', { persistence: PERSISTENCE });
+		await next.dispose();
+		expect(roles(3)).toEqual([
+			'user',
+			'assistant',
+			'tool',
+			'system',
+			'assistant',
+			'tool',
+			'system',
+			'assistant',
+			'user',
+		]);
+		expect(systemAt(3, 3)).toContain('Wait for a real execution');
+		expect(systemAt(3, 6)).toContain('Verify the workflow before publishing.');
+		expect(flattenInstructions(capturedCall(3).instructions)).not.toContain('<active_skills>');
+	});
+
+	it('keeps skills in the top-level system prompt for models without mid-conversation system support', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const runtime = new AgentRuntime({
+			name: 'skills-agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			memory: new InMemoryMemory(),
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		expect(flattenInstructions(capturedCall(1).instructions)).toContain('<active_skills>');
+		expect(capturedCall(1).messages.map((message) => message.role)).toEqual([
+			'user',
+			'assistant',
+			'tool',
+		]);
+	});
+
 	it.each(['load_skill', 'inspect_node'])(
 		'activates skill tool dependencies after %s and restores them on the next turn',
 		async (activationTool) => {

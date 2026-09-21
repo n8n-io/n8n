@@ -1,6 +1,10 @@
 import type { LanguageModel } from 'ai';
 
-import { createEmbeddingModel, createModel } from '../model/model-factory';
+import {
+	createEmbeddingModel,
+	createModel,
+	supportsMidConversationSystemMessages,
+} from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
@@ -1009,5 +1013,32 @@ describe('createEmbeddingModel', () => {
 		expect(model.modelId).toBe('text-embedding-3-small');
 		expect(model.apiKey).toBe('sk-test');
 		expect(model.baseURL).toBe('https://custom.example/v1');
+	});
+});
+
+describe('supportsMidConversationSystemMessages', () => {
+	it.each([
+		'anthropic/claude-opus-4-8',
+		'anthropic/claude-opus-5',
+		'anthropic/claude-fable-5-1',
+		'anthropic/claude-mythos-5',
+		'google-vertex-anthropic/claude-opus-4-8@20260101',
+	])('accepts a system message inside messages for %s', (model) => {
+		expect(supportsMidConversationSystemMessages(model)).toBe(true);
+	});
+
+	it.each([
+		'anthropic/claude-sonnet-5',
+		'anthropic/claude-sonnet-4-5',
+		'anthropic/claude-haiku-4-5',
+		'anthropic/claude-opus-4-7',
+		'openai/gpt-5.1',
+		'openrouter/anthropic/claude-opus-4-8',
+	])('falls back to the top-level system field for %s', (model) => {
+		expect(supportsMidConversationSystemMessages(model)).toBe(false);
+	});
+
+	it('reads the model id from object configs', () => {
+		expect(supportsMidConversationSystemMessages({ id: 'anthropic/claude-opus-4-8' })).toBe(true);
 	});
 });
