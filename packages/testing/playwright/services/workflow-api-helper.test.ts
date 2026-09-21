@@ -148,11 +148,17 @@ describe('WorkflowApiHelper.assertLatestExecutionRoutedToEngine', () => {
 	}
 
 	test('rejects a legacy id on the latest execution when the stack routes to engine 2.0', async () => {
-		const { api } = apiListing(['1783'], { workflowSettings: { engineType: 'v2' } });
+		const { api, get } = apiListing(['1783'], { workflowSettings: { engineType: 'v2' } });
 
 		await expect(
 			new WorkflowApiHelper(api).assertLatestExecutionRoutedToEngine('wf-1'),
 		).rejects.toThrow(/1783[\s\S]*settings\.engineType/);
+
+		// The one-row limit is what makes the row the latest execution of that workflow.
+		const [url, { params }] = get.mock.calls[0] as [string, { params: URLSearchParams }];
+		expect(url).toBe('/rest/executions');
+		expect(params.get('filter')).toBe(JSON.stringify({ workflowId: 'wf-1' }));
+		expect(params.get('limit')).toBe('1');
 	});
 
 	test('throws when the workflow has no execution to check', async () => {
