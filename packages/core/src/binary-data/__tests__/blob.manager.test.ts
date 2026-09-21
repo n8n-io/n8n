@@ -208,4 +208,15 @@ describe('deletion', () => {
 		);
 		expect(reported.cause).toBe(failure);
 	});
+
+	it('deleteMany resolves and warns for each prefix when every one fails', async () => {
+		const prefixStore = mock<ByteStore>();
+		prefixStore.deletePrefix = vi.fn().mockRejectedValue(new Error('ENOTEMPTY'));
+		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
+		const other = { type: 'execution', workflowId, executionId: '1000' } as const;
+
+		await expect(prefixManager.deleteMany([location, other])).resolves.toBeUndefined();
+
+		expect(errorReporter.warn).toHaveBeenCalledTimes(2);
+	});
 });
