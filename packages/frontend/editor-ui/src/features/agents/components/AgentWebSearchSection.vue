@@ -520,7 +520,7 @@ function onCreateFallbackCredential() {
 }
 
 .credentialSelect {
-	max-width: 220px;
+	max-width: 260px;
 	flex-shrink: 0;
 }
 
