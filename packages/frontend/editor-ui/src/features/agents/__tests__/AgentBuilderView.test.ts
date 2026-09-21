@@ -1724,6 +1724,22 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(preview.props('initialPrompt')).toBeUndefined();
 	});
 
+	it('clears selected task instructions when the active agent changes', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('preview-task', 'Test these instructions');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt')).toBe(
+			'Test these instructions',
+		);
+
+		routeParams.agentId = 'a2';
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt')).toBeUndefined();
+	});
+
 	it('opens the preview dock with the latest thread when prior sessions exist', async () => {
 		fetchedSessionThreads.push(
 			{ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' },

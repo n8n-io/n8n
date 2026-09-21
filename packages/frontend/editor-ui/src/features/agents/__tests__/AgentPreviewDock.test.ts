@@ -488,6 +488,7 @@ describe('AgentPreviewChatPage', () => {
 					AgentChatPanel: {
 						name: 'AgentChatPanel',
 						template: '<div />',
+						emits: ['initial-consumed'],
 						methods: { sendMessageFromOutside },
 					},
 				},
@@ -497,6 +498,9 @@ describe('AgentPreviewChatPage', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
 		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 
 		await wrapper.setProps({ visible: false });

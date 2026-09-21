@@ -283,6 +283,16 @@ const executionSummary = computed(() => {
 	});
 });
 
+const scheduleSummary = computed(() => {
+	if (!scheduleDescription.value) return executionSummary.value;
+	return i18n.baseText('agents.builder.tasks.schedule.summary', {
+		interpolate: {
+			description: scheduleDescription.value,
+			execution: executionSummary.value,
+		},
+	});
+});
+
 const objectiveError = computed(() => {
 	if (!objective.value.trim()) {
 		return i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
@@ -603,10 +613,9 @@ async function onSave() {
 							/>
 						</N8nSelect>
 					</div>
-					<div v-if="executionSummary" :class="$style.scheduleSummary">
+					<div v-if="scheduleSummary" :class="$style.scheduleSummary">
 						<N8nText :class="$style.help" size="small">
-							<span v-if="scheduleDescription">{{ scheduleDescription }} · </span>
-							{{ executionSummary }}
+							{{ scheduleSummary }}
 						</N8nText>
 						<N8nTooltip
 							v-if="showRepublishHint"

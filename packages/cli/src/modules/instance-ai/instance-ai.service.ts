@@ -2420,6 +2420,7 @@ export class InstanceAiService {
 			nodeUsageEnabled,
 			folderExplorationEnabled,
 			aiPreferencesEnabled,
+			instanceContextEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
@@ -2445,6 +2446,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
@@ -2578,11 +2580,10 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
-		// preserved) so every derived skill source inherits the exclusion.
+		// Hide disabled skills in each derived source. Keep the cached source unchanged.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
-			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
+			instanceContextEnabled,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
@@ -2746,6 +2747,7 @@ export class InstanceAiService {
 			orchestrationContext,
 			conversationHistory,
 			aiPreferencesEnabled,
+			instanceContextEnabled,
 		};
 	}
 
@@ -3810,6 +3812,7 @@ export class InstanceAiService {
 				orchestrationContext,
 				conversationHistory,
 				aiPreferencesEnabled,
+				instanceContextEnabled,
 			} = environment;
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
@@ -3984,6 +3987,7 @@ export class InstanceAiService {
 				isMachineFollowUp:
 					checkpoint?.isCheckpointFollowUp === true ||
 					plannedBuild?.isPlannedBuildFollowUp === true,
+				enabled: instanceContextEnabled,
 			});
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {

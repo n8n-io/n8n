@@ -18,8 +18,12 @@ configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
-			options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.builder.tasks.schedule.summary') {
+				return `${options?.interpolate?.description} · ${options?.interpolate?.execution}`;
+			}
+			return options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key;
+		},
 	};
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
@@ -457,6 +461,16 @@ describe('AgentTaskModal', () => {
 
 			// 08:00 Tokyo on 2 Jan, in Tokyo time — not the viewer's, not the instance's.
 			expectNextRun(getByText, '2026-01-01T23:00:00.000Z', 'Asia/Tokyo');
+		});
+
+		it('uses the localized custom schedule summary', () => {
+			const { getByText } = renderModal({
+				task: makeTask({ cronExpression: '*/15 * * * *', timezone: 'UTC' }),
+			});
+
+			expect(
+				getByText(/Every 15 minutes · agents\.builder\.tasks\.schedule\.nextOccurrence/),
+			).toBeInTheDocument();
 		});
 
 		it('previews a task saved without a timezone in the instance timezone', () => {

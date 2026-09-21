@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError } from 'n8n-workflow';
 
-import { findSessionExpiredError } from '../../../utils/oauth2-token-provider';
+import { findSessionExpiredError } from '../oauth2-token-provider';
 
 /**
  * Databricks error bodies are `{ error_code, message }`. The OpenAI client only

@@ -97,12 +97,14 @@ export class N8NCheckpointStorage {
 				throw new UnexpectedError('Agent checkpoint is owned by a different agent');
 			}
 			existing.state = JSON.stringify(state);
+			existing.threadId = state.persistence?.threadId ?? null;
 			existing.expired = false;
 			await this.agentCheckpointRepository.save(existing);
 		} else {
 			const checkpoint = this.agentCheckpointRepository.create({
 				runId: key,
 				agentId,
+				threadId: state.persistence?.threadId ?? null,
 				state: JSON.stringify(state),
 				expired: false,
 			});
@@ -164,7 +166,7 @@ export class N8NCheckpointStorage {
 		agentId: string,
 		threadId: string,
 	): Promise<SerializableAgentState | null> {
-		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
+		const rows = await this.agentCheckpointRepository.findActiveForThread(agentId, threadId);
 		for (const row of rows) {
 			const checkpoint = this.parseSuspendedState(row.state, threadId);
 			if (checkpoint) return checkpoint;
@@ -177,13 +179,13 @@ export class N8NCheckpointStorage {
 		threadId: string,
 	): SerializableAgentState | null {
 		if (!state) return null;
-		let parsed: SerializableAgentState;
+		let parsed: SerializableAgentState | null;
 		try {
-			parsed = jsonParse<SerializableAgentState>(state);
+			parsed = jsonParse<SerializableAgentState | null>(state);
 		} catch {
 			return null;
 		}
-		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
+		if (parsed?.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
 		if (parsed.persistence?.threadId !== threadId) return null;
 		return parsed;
 	}

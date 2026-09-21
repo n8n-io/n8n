@@ -51,7 +51,6 @@ watch(
 	([prompt, panel]) => {
 		if (!prompt || !panel) return;
 		panel.sendMessageFromOutside(prompt);
-		emit('initial-consumed');
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -83,6 +82,7 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:can-send-to-assistant="canSendToAssistant"
 				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
