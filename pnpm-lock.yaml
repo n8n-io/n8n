@@ -3623,6 +3623,9 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
     devDependencies:
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../eslint-plugin-community-nodes

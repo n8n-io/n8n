@@ -282,6 +282,7 @@ async function createOciEgressHttpClient(
 					? {}
 					: {
 							timeoutOptions: {
+								connectTimeout: requestTimeout,
 								headersTimeout: requestTimeout,
 								bodyTimeout: requestTimeout,
 							},
@@ -354,6 +355,8 @@ const inferenceClientInFlight = new Map<
 	string,
 	Promise<genaiInference.GenerativeAiInferenceClient>
 >();
+let egressFilterCacheIds = new WeakMap<NodeEgressFilter, number>();
+let nextEgressFilterCacheId = 1;
 
 export type OciGenAiSearchModel = {
 	id: string;
@@ -652,6 +655,7 @@ async function createOciGenAiClientInternal(
 // Cache only non-secret identity and routing settings; model and compartment are request-specific.
 async function getInferenceClientCacheKey(
 	credentials: OciGenAiCredentials,
+	egressFilter: NodeEgressFilter | undefined,
 	requestTimeout?: number,
 ): Promise<string> {
 	// Private key and passphrase stay out of cache keys. The fingerprint identifies
@@ -665,8 +669,28 @@ async function getInferenceClientCacheKey(
 		authenticationIdentity,
 		credentials.regionId.trim().toLowerCase(),
 		endpoint,
+		getEgressFilterCacheIdentity(egressFilter),
 		requestTimeout,
 	]);
+}
+
+/**
+ * Keeps clients with different policy-bound transports out of the same cache entry.
+ * n8n supplies stable, instance-owned filter objects, so this retains cache reuse
+ * without allowing a client created for one egress policy to serve another.
+ */
+function getEgressFilterCacheIdentity(
+	egressFilter: NodeEgressFilter | undefined,
+): number | undefined {
+	if (egressFilter === undefined) return undefined;
+
+	let identity = egressFilterCacheIds.get(egressFilter);
+	if (identity === undefined) {
+		identity = nextEgressFilterCacheId++;
+		egressFilterCacheIds.set(egressFilter, identity);
+	}
+
+	return identity;
 }
 
 // Agent tool calls rebuild LangChain wrappers, so reuse OCI client initialization across wrappers.
@@ -676,7 +700,7 @@ async function getCachedOciGenAiClient(
 	requestTimeout?: number,
 ): Promise<genaiInference.GenerativeAiInferenceClient> {
 	const now = Date.now();
-	const key = await getInferenceClientCacheKey(credentials, requestTimeout);
+	const key = await getInferenceClientCacheKey(credentials, egressFilter, requestTimeout);
 	const cachedClient = inferenceClientCache.get(key);
 	if (cachedClient) {
 		if (cachedClient.expiresAt > now) {
@@ -752,6 +776,8 @@ export function clearOciGenAiCachesForTesting(): void {
 	inferenceClientCache.clear();
 	inferenceClientInFlight.clear();
 	modelCatalogCache.clear();
+	egressFilterCacheIds = new WeakMap<NodeEgressFilter, number>();
+	nextEgressFilterCacheId = 1;
 	ociSdkPromise = undefined;
 }
 

@@ -214,6 +214,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/backend-network": "workspace:*",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@typescript-eslint/typescript-estree": "catalog:",

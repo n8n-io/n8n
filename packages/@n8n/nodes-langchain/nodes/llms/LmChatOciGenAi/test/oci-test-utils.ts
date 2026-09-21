@@ -1,6 +1,5 @@
 import { OciGenAiGenericChat } from '@oracle/langchain-oci';
-import { createResultOk } from '@n8n/utils/result';
-import { lookup } from 'node:dns';
+import { passthroughEgressFilter } from '@n8n/backend-network/egress';
 import { ConfigFileReader } from 'oci-common';
 import type { NodeEgressFilter } from 'n8n-workflow';
 
@@ -14,14 +13,6 @@ import {
 export const runOciIntegrationTests = process.env.N8N_OCI_INTEGRATION_TESTS === '1';
 export const OCI_INTEGRATION_REQUEST_TIMEOUT_MS = 45_000;
 export const OCI_TIMEOUT_INTEGRATION_REQUEST_TIMEOUT_MS = 100;
-
-// Mirrors n8n's no-policy egress filter so the live test exercises the same proxy transport path.
-const passthroughEgressFilter: NodeEgressFilter = {
-	validateUrl: async () => await Promise.resolve(createResultOk(undefined)),
-	validateConnectionHost: () => createResultOk(undefined),
-	createSecureLookup: () => lookup,
-	validateRedirectSync: () => {},
-};
 
 function requiredEnv(name: string): string {
 	const value = process.env[name];

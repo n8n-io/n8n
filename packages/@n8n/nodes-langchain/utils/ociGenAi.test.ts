@@ -353,7 +353,11 @@ describe('OCI input validation', () => {
 			expect(proxyFetch).toHaveBeenCalledWith(
 				expect.objectContaining({
 					egressFilter: secureEgressFilter,
-					timeoutOptions: { headersTimeout: 60000, bodyTimeout: 60000 },
+					timeoutOptions: {
+						connectTimeout: 60000,
+						headersTimeout: 60000,
+						bodyTimeout: 60000,
+					},
 				}),
 			);
 		});
@@ -384,6 +388,22 @@ describe('OCI input validation', () => {
 
 			expect(secondClient).toBe(firstClient);
 			expect(generativeAiInferenceClient).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not reuse an inference client across different egress filters', async () => {
+			const credentials = {
+				...ociCredentials,
+				userId: 'ocid1.user.oc1..inference-client-egress-filter-test',
+			};
+			const differentEgressFilter: NodeEgressFilter = {
+				...secureEgressFilter,
+			};
+
+			const firstClient = await createOciGenAiClient(credentials, secureEgressFilter);
+			const secondClient = await createOciGenAiClient(credentials, differentEgressFilter);
+
+			expect(secondClient).not.toBe(firstClient);
+			expect(generativeAiInferenceClient).toHaveBeenCalledTimes(2);
 		});
 
 		it.each(['instancePrincipal', 'resourcePrincipal'] as const)(
