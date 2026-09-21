@@ -143,6 +143,8 @@ export interface AgentsChatMessage {
 	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
+	createdAt?: number;
 }
 
 export type ChatMessage = AgentsChatMessage;

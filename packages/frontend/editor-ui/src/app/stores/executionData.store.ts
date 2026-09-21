@@ -613,6 +613,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 									items.find((item) => item.redaction?.redacted)?.redaction?.reason ??
 									'workflow_redaction_policy',
 								canReveal: false,
+								provisional: true,
 							};
 							break;
 						}

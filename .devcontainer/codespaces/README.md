@@ -79,6 +79,10 @@ the Actions tab: give it a PR number and `up`, `refresh` or `down`.
 `pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
 needs `gh` with the codespace scope, the same as `pnpm session`.
 
+- **Watch it come up on the PR.** The comment appears before the box work starts
+  and updates about once a minute with a checklist of the phases, so you can see
+  which step a slow preview is on. `pnpm preview up <pr>` prints the same phases as
+  plain progress — the markers the comment reads are `--json` only.
 - **Sign in with one click** at `<url>/preview-signin`. It logs you in as the
   seeded owner and sends you to the editor. The credentials are
   `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is
@@ -89,7 +93,13 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   present. `preview:debug` sets `N8N_LOG_LEVEL=debug`. Adding or removing one
   re-serves the box; it never creates or deletes one. From a laptop the labels
   apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
-  toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
+  toggles are defined in `scripts/codespace-preview/preview-labels.mjs`; add new ones there.
+- **Configure the instance from a webhook.** A preview also reads extra
+  environment from an n8n webhook, so a value can change without a commit. It
+  needs the `CODESPACE_ENV_URL`, `CODESPACE_ENV_USER` and `CODESPACE_ENV_PASSWORD`
+  codespace secrets. Every key the webhook returns becomes an environment
+  variable, so editing that workflow runs code in the box. Without the secrets
+  the preview serves as usual. See [WORKFLOWS.md](../../.github/WORKFLOWS.md).
 - **A preview sleeps after 2 hours** of no use and GitHub deletes it after 24
   hours. A box that slept serves nothing and its port is private again, so wake
   it with `pnpm preview up <pr>` or a manual run of
@@ -98,7 +108,7 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   builds a new one.
 - **A PR from a fork gets no preview.** A codespace's token is scoped to
   `n8n-io/n8n`, so it cannot check out a fork head.
-- **A PR that predates this tooling has no `scripts/preview-serve.mjs`.** The
+- **A PR that predates this tooling has no `scripts/codespace-preview/preview-serve.mjs`.** The
   serve step says so and stops; rebase the PR on master and retry.
 
 ## Agent worker (drive a session from n8n)

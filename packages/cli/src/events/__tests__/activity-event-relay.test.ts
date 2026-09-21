@@ -204,6 +204,7 @@ describe('ActivityEventRelay', () => {
 						credentialType: 'slackApi',
 						credentialId: 'credential1',
 						credentialName: 'Team Slack',
+						credentialDescriptionLength: 0,
 						publicApi: false,
 						projectId: 'project1',
 					}),
@@ -224,6 +225,7 @@ describe('ActivityEventRelay', () => {
 						credentialType: 'slackApi',
 						credentialId: 'credential1',
 						credentialName: 'Team Slack',
+						credentialDescriptionLength: 0,
 					}),
 				{
 					category: 'credential',
@@ -313,6 +315,7 @@ describe('ActivityEventRelay', () => {
 				credentialType: 'slackApi',
 				credentialId: 'credential1',
 				credentialName: 'Team Slack',
+				credentialDescriptionLength: 0,
 				publicApi: true,
 				projectId: undefined,
 			});
@@ -543,6 +546,7 @@ describe('ActivityEventRelay', () => {
 				credentialType: 'slackApi',
 				credentialId: 'credential1',
 				credentialName: 'Instance chat model',
+				credentialDescriptionLength: 0,
 			});
 			await flushPromises();
 

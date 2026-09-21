@@ -360,12 +360,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result).toBe(3);
 		});
 
-		it('should return 0 on error', async () => {
-			client.eval.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the cleanup script fails', async () => {
+			const error = new Error('timeout');
+			client.eval.mockRejectedValueOnce(error);
 
-			const result = await storage.cleanupStaleMembers();
-
-			expect(result).toBe(0);
+			await expect(storage.cleanupStaleMembers()).rejects.toBe(error);
 		});
 	});
 });

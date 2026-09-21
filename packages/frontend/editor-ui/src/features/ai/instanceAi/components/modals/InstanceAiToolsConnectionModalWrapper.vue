@@ -37,8 +37,6 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { iconForTool } from '../../toolIcons';
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { BROWSER_USE_CONNECTION_TYPE, COMPUTER_USE_CONNECTION_TYPE } from '../../constants';
 
 interface ServiceConnectionDefinition {
@@ -68,18 +66,14 @@ const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
-const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
-const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
 
 const isMcpEnabled = computed(
 	() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled,
 );
-const isComputerUseEnabled = computed(
-	() => isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin,
-);
-const isBrowserUseEnabled = computed(
-	() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
-);
+// The store owns Computer Use availability, so every entry point and the message
+// payload report the same thing.
+const isComputerUseEnabled = computed(() => settingsStore.isComputerUseAvailable);
+const isBrowserUseEnabled = computed(() => settingsStore.isBrowserUseAvailable);
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
 	const value = (data as Record<string, unknown>).connectionId;

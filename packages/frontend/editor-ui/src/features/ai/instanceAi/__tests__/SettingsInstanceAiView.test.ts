@@ -14,6 +14,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
+import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -103,18 +104,6 @@ function setModuleSettings(
 ) {
 	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
 }
-
-const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
 
 describe('SettingsInstanceAiView', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;
@@ -643,9 +632,25 @@ describe('SettingsInstanceAiView', () => {
 	describe('Permissions groups', () => {
 		it('renders a row per permission group', () => {
 			const { getByTestId } = renderComponent();
-			for (const group of ['workflows', 'folders', 'dataTables', 'credentials', 'system', 'web']) {
+			for (const group of [
+				'workflows',
+				'nodes',
+				'folders',
+				'dataTables',
+				'credentials',
+				'system',
+				'web',
+			]) {
 				expect(getByTestId(`n8n-agent-permission-group-${group}`)).toBeVisible();
 			}
+		});
+
+		it('shows the Execute a node permission when the Nodes group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.nodes'));
+
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeNode')).toBeVisible());
 		});
 
 		it('summarises non-default permissions as exceptions', () => {

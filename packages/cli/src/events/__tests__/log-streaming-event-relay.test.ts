@@ -1282,6 +1282,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1349,6 +1350,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
 				credentialName: 'Rotated token',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user808',
 					email: 'updatecred@example.com',

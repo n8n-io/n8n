@@ -208,7 +208,7 @@ describe('WorkflowIndexService Integration', () => {
 						nodeId: 'node-1',
 						nodeVersion: 1,
 					},
-					indexVersionId: 1,
+					indexVersionId: 2,
 				});
 			});
 		});

@@ -7,6 +7,7 @@ import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availabili
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { clearPolicyCache } from './shared/policy-cache';
 
@@ -241,7 +242,7 @@ describe('node type policy store reads', () => {
 			expect(await slackVerdict(null)).toBe('deny');
 			expect(await slackVerdict(project.id)).toBe('deny');
 
-			await service.updatePolicyDocument(policy.id, [], policy.version, 'user-1');
+			await service.updatePolicyDocument(KIND, policy.id, [], policy.version, 'user-1');
 
 			expect(await slackVerdict(null)).toBe('allow');
 			expect(await slackVerdict(project.id)).toBe('allow');
@@ -262,5 +263,49 @@ describe('node type policy store reads', () => {
 		);
 
 		expect(count).toBe(6);
+	});
+
+	/**
+	 * A burst is the normal shape here: `credentialDecrypt` runs for each credential fetch, and
+	 * an HTTP Request node fetches one for each item.
+	 */
+	describe('a burst of decisions on a cold entry', () => {
+		test('costs what one decision costs', async () => {
+			const project = await createTeamProject();
+			await configureScope(null, true);
+			await configureScope(project.id, true);
+			await clearPolicyCache();
+
+			const count = await countQueries(
+				async () =>
+					await Promise.all(Array.from({ length: 100 }, async () => await decide(project.id))),
+			);
+
+			expect(count).toBe(6);
+		});
+
+		test('leaves the same verdict for every caller', async () => {
+			await configureScope(null, true);
+			await clearPolicyCache();
+
+			const results = await Promise.all(
+				Array.from({ length: 100 }, async () => await decide(null)),
+			);
+
+			expect(results.every(({ verdicts }) => verdicts[0].action === 'deny')).toBe(true);
+		});
+	});
+
+	test('a warm decision costs no cache call either, not just no query', async () => {
+		const project = await createTeamProject();
+		await configureScope(null, true);
+		await clearPolicyCache();
+
+		await decide(project.id);
+		const reads = vi.spyOn(Container.get(CacheService), 'get');
+		await decide(project.id);
+
+		expect(reads).not.toHaveBeenCalled();
+		reads.mockRestore();
 	});
 });

@@ -5,8 +5,9 @@ import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 /**
- * Response shapes for the public node type policy routes. Request bodies reuse the internal
- * DTOs (`PutInstancePolicyDto`, `PutProjectPolicyDto`, …) so validation is identical on both
+ * Response shapes for the public policy routes, shared by every policy `kind` (node types
+ * today, credential types later). Request bodies reuse the internal DTOs
+ * (`PutInstancePolicyDto`, `PutProjectPolicyDto`, …) so validation is identical on both
  * surfaces; only the responses need a public allowlist.
  */
 
@@ -28,10 +29,10 @@ const effectivePolicySchema = z.object({
 });
 
 /** `GET` of a scope's composed policy. */
-export class NodeTypePolicyEffectivePublicDto extends Z.class(effectivePolicySchema.shape) {}
+export class PolicyEffectivePublicDto extends Z.class(effectivePolicySchema.shape) {}
 
 /** `PUT` of a scope's composed policy: the new state plus shadowing warnings. */
-export class NodeTypePolicyEffectiveWriteResultPublicDto extends Z.class({
+export class PolicyEffectiveWriteResultPublicDto extends Z.class({
 	...effectivePolicySchema.shape,
 	warnings: z.array(shadowWarningSchema),
 }) {}
@@ -48,15 +49,15 @@ const policyDocumentSchema = z.object({
 });
 
 /** One reusable policy document. */
-export class NodeTypePolicyDocumentPublicDto extends Z.class(policyDocumentSchema.shape) {}
+export class PolicyDocumentPublicDto extends Z.class(policyDocumentSchema.shape) {}
 
 /** Create or update of a policy document: the document plus shadowing warnings. */
-export class NodeTypePolicyDocumentWriteResultPublicDto extends Z.class({
+export class PolicyDocumentWriteResultPublicDto extends Z.class({
 	policy: policyDocumentSchema,
 	warnings: z.array(shadowWarningSchema),
 }) {}
 
-export class NodeTypePolicyDocumentListPublicDto extends Z.class({
+export class PolicyDocumentListPublicDto extends Z.class({
 	data: z.array(policyDocumentSchema),
 	nextCursor: z.string().nullable(),
 }) {}
@@ -74,7 +75,7 @@ const policyAttachmentSchema = z.object({
 });
 
 /** The attachments on one scope after a replace, with the scope's bumped version. */
-export class NodeTypePolicyAttachmentsPublicDto extends Z.class({
+export class PolicyAttachmentsPublicDto extends Z.class({
 	attachments: z.array(policyAttachmentSchema),
 	version: z.number().int().positive(),
 }) {}

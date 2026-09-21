@@ -19,6 +19,7 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import {
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
@@ -70,7 +71,10 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
-import { WorkflowDependency } from './workflow-dependency-entity';
+import {
+	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
@@ -133,6 +137,7 @@ export {
 	CredentialsEntity,
 	type CredentialUsageScope,
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
 	EvaluationCollection,
@@ -160,6 +165,7 @@ export {
 	TagEntity,
 	User,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,

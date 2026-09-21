@@ -151,6 +151,12 @@ export class MemoryOrchestrator {
 	/** In-flight background mid-run observer task; `result` set on settlement. */
 	private midRunObserverTask: MidRunObserverTask | undefined;
 
+	/**
+	 * Set when a mid-run observer advanced the cursor this run. The post-turn
+	 * gate reads the masked window, so the tail must be observed unconditionally.
+	 */
+	private cursorAdvancedThisRun = false;
+
 	/** Consecutive mid-run observer attempts that did not advance the cursor. */
 	private midRunNonAdvancingAttempts = 0;
 
@@ -302,6 +308,23 @@ export class MemoryOrchestrator {
 		// (e.g. resources sharing a thread on fast back-to-back runs).
 		if (observations.length > 0) {
 			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
+		}
+	}
+
+	async discardRejectedInput(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		const messageIds = list.inputDelta().map((message) => message.id);
+		list.removeInput();
+		if (!this.config.memory || !options?.persistence || messageIds.length === 0) return;
+		try {
+			await this.config.memory.deleteMessages(messageIds);
+		} catch (error) {
+			logger.warn('Failed to remove rejected input', {
+				error,
+				threadId: options.persistence.threadId,
+			});
 		}
 	}
 
@@ -475,10 +498,12 @@ export class MemoryOrchestrator {
 
 	/** Reset per-run observation state on generate and resume entry. */
 	private resetRunState(): void {
+		this.midRunObserverTask = undefined;
 		this.midRunNonAdvancingAttempts = 0;
 		this.lastPersistedTurnKeyset = undefined;
 		this.visibleTokenEstimates.clear();
 		this.visibleTokenEstimateTotal = 0;
+		this.cursorAdvancedThisRun = false;
 	}
 
 	/**
@@ -492,6 +517,7 @@ export class MemoryOrchestrator {
 	): boolean {
 		if (didAdvanceCursor(result)) {
 			this.midRunNonAdvancingAttempts = 0;
+			this.cursorAdvancedThisRun = true;
 			return true;
 		}
 		this.midRunNonAdvancingAttempts += 1;
@@ -695,12 +721,6 @@ export class MemoryOrchestrator {
 
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
-
-		// A mid-run task still in flight for this scope already covers the
-		// messages persisted at its boundary: join it instead of queueing a
-		// second observer behind it — the post-boundary tail waits for the next
-		// turn's gate. A task that settled after the last boundary was never
-		// activated; the run is over, so drop it and let the gauge decide.
 		const midRunTask = this.midRunObserverTask;
 		if (midRunTask?.result) this.midRunObserverTask = undefined;
 		if (
@@ -708,9 +728,21 @@ export class MemoryOrchestrator {
 			!midRunTask.result &&
 			midRunTask.handle.observationScopeId === scope.observationScopeId
 		) {
+			// A mid-run task still in flight only covers up to its boundary.
+			// Queue the tail observer behind it on the per-scope runner instead
+			// of joining and dropping the post-boundary tail.
 			void midRunTask.handle.done.then(() => {
 				if (this.midRunObserverTask === midRunTask) this.midRunObserverTask = undefined;
 			});
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+		} else if (
+			this.cursorAdvancedThisRun ||
+			(midRunTask?.result !== undefined && didAdvanceCursor(midRunTask.result))
+		) {
+			// Mid-run advanced the cursor this run — either activated at a boundary
+			// or settled after the last one: observe the tail regardless of the
+			// visible-window budget, which the mask shrank below threshold.
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
 		} else if (await this.shouldScheduleObserver(list, persistence.threadId)) {
 			this.scheduleObserverTask(persistence, executionCounter, telemetry);
 		}

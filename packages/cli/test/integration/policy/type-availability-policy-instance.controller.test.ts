@@ -2,8 +2,12 @@ import { testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { NodeLoader } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -16,9 +20,21 @@ const testServer = utils.setupTestServer({
 let owner: User;
 let member: User;
 
+const OTHER_KIND_RULE = {
+	id: 'other-r1',
+	action: 'deny' as const,
+	selector: { kind: 'name' as const, value: 'other.thing' },
+};
+
 beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
+
+	// A `package` rule is rejected at write time unless the package is actually loaded — see
+	// `n8n-nodes-base` used as a stand-in for "an installed package" below.
+	Container.get(LoadNodesAndCredentials).loaders = {
+		'n8n-nodes-base': mock<NodeLoader>({ known: { nodes: {}, credentials: {} } }),
+	};
 });
 
 afterEach(async () => {
@@ -158,7 +174,9 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.put('/node-type-policies/instance')
 			.send({
-				rules: [{ id: 'r2', action: 'allow', selector: { kind: 'package', value: 'x' } }],
+				rules: [
+					{ id: 'r2', action: 'allow', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+				],
 				defaultAction: 'deny',
 				version: first.body.data.version,
 			});
@@ -221,6 +239,52 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.get(`/node-type-policies/policies/${policyId}`);
 		expect(missing.statusCode).toBe(404);
+	});
+
+	test('a document of another kind is not reachable by id, and survives untouched', async () => {
+		const policyRepo = Container.get(TypeAvailabilityPolicyRepository);
+		const other = await policyRepo.createPolicy(
+			{ kind: 'other-kind', rules: [OTHER_KIND_RULE], updatedBy: owner.id },
+			{},
+		);
+		const agent = testServer.authAgentFor(owner);
+
+		const fetched = await agent.get(`/node-type-policies/policies/${other.id}`);
+		expect(fetched.statusCode).toBe(404);
+
+		const updated = await agent
+			.patch(`/node-type-policies/policies/${other.id}`)
+			.send({ rules: [], version: other.version });
+		expect(updated.statusCode).toBe(404);
+
+		const deleted = await agent.delete(`/node-type-policies/policies/${other.id}`);
+		expect(deleted.statusCode).toBe(404);
+
+		const list = await agent.get('/node-type-policies/policies');
+		expect(list.body.data).toEqual([]);
+
+		expect(await policyRepo.findByIdAndKind(other.id, 'other-kind', {})).toMatchObject({
+			kind: 'other-kind',
+			rules: [OTHER_KIND_RULE],
+			version: other.version,
+		});
+	});
+
+	test('PUT /scopes/:scopeId/attachments refuses a document of another kind', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const instance = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		const other = await Container.get(TypeAvailabilityPolicyRepository).createPolicy(
+			{ kind: 'other-kind', rules: [OTHER_KIND_RULE], updatedBy: owner.id },
+			{},
+		);
+
+		const response = await agent
+			.put(`/node-type-policies/scopes/${instance.body.data.scopeId}/attachments`)
+			.send({ attachments: [{ policyId: other.id, priority: 0, isFloor: false }] });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('PATCH /policies/:policyId with a stale version returns 409 and writes nothing', async () => {
