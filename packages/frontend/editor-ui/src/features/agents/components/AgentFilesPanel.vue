@@ -9,7 +9,7 @@ import {
 	N8nBadge,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { ElSkeletonItem } from 'element-plus';
 import { ALLOWED_AGENT_FILE_EXTENSIONS, type AgentFileDto } from '@n8n/api-types';
 
