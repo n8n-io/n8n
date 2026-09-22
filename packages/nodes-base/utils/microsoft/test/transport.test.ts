@@ -985,6 +985,20 @@ describe('Microsoft Graph transport kernel', () => {
 				}
 			});
 
+			// The app-only copy, not the `delegated` one: under SP the hint text is read from the
+			// wrapped `NodeApiError`, so the delegated assertion below cannot cover this path.
+			it('applies the app-only copy of a hint that also carries a delegated copy', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(403, 'Forbidden', roleText),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error.message).toBe('App-only permission message');
+				expect(error.description).toBe('App-only permission description');
+				expect(JSON.stringify(error)).not.toContain('request-id');
+			});
+
 			it('keeps the generic 403 copy when no hint matches', async () => {
 				mockRequestWithAuthentication.mockRejectedValue(
 					wrappedGraphError(403, 'Forbidden', `Insufficient privileges. ${rawLeak}`),
