@@ -1,0 +1,60 @@
+operationId: listDataTableColumns
+tags:
+  - DataTable
+summary: List columns of a data table
+description: Retrieve all columns for a specific data table.
+x-required-scope: dataTableColumn:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Column ID
+              name:
+                type: string
+                description: Column name
+              type:
+                type: string
+                description: Column data type
+                enum:
+                  - string
+                  - number
+                  - boolean
+                  - date
+              index:
+                type: integer
+                description: Column position
+              dataTableId:
+                type: string
+                description: ID of the data table this column belongs to
+            required:
+              - id
+              - name
+              - type
+              - index
+              - dataTableId
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

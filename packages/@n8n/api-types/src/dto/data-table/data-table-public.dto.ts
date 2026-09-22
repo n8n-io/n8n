@@ -3,10 +3,12 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	createDataTableColumnFieldDocs,
 	createDataTableFieldDocs,
 	dataTableColumnFieldDocs,
 	dataTableFieldDocs,
 	dataTableListFieldDocs,
+	updateDataTableColumnFieldDocs,
 	updateDataTableFieldDocs,
 } from './data-table-public.openapi';
 import {
@@ -56,3 +58,27 @@ export class CreateDataTablePublicDto extends Z.class({
 export class UpdateDataTablePublicDto extends Z.class({
 	name: dataTableNameSchema.openapi(updateDataTableFieldDocs.name),
 }) {}
+
+const dataTableColumnFullPublicSchema = dataTableColumnPublicSchema.extend({
+	dataTableId: z.string().openapi(dataTableColumnFieldDocs.dataTableId),
+});
+
+export class DataTableColumnPublicDto extends Z.class(dataTableColumnFullPublicSchema.shape) {}
+
+export class DataTableColumnListPublicDto extends Z.array(dataTableColumnFullPublicSchema) {}
+
+export class CreateDataTableColumnPublicDto extends Z.class({
+	name: dataTableColumnNameSchema.openapi(createDataTableColumnFieldDocs.name),
+	type: dataTableColumnTypeSchema.openapi(createDataTableColumnFieldDocs.type),
+	index: z.number().int().min(0).openapi(createDataTableColumnFieldDocs.index).optional(),
+}) {}
+
+// Legacy `updateColumnRequest.yml` requires at least one of `name`/`index` (an `anyOf`), which a
+// `Z.class` shape can't express. The controller rejects an empty body at runtime instead.
+export class UpdateDataTableColumnPublicDto extends Z.class(
+	{
+		name: dataTableColumnNameSchema.openapi(updateDataTableColumnFieldDocs.name).optional(),
+		index: z.number().int().min(0).openapi(updateDataTableColumnFieldDocs.index).optional(),
+	},
+	{ strict: true },
+) {}

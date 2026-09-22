@@ -6,19 +6,23 @@ properties:
   name:
     type: string
     description: Column name
-  dataTableId:
-    type: string
-    description: ID of the data table this column belongs to
   type:
     type: string
-    enum: [string, number, boolean, date]
     description: Column data type
+    enum:
+      - string
+      - number
+      - boolean
+      - date
   index:
     type: integer
     description: Column position
+  dataTableId:
+    type: string
+    description: ID of the data table this column belongs to
 required:
   - id
   - name
-  - dataTableId
   - type
   - index
+  - dataTableId

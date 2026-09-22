@@ -57,6 +57,10 @@ export const dataTableIdParamSchema = z
 	.string()
 	.regex(/^[A-Za-z0-9]{16}$/, 'must match format "nanoid"')
 	.openapi({ format: 'nanoid', param: { description: 'The ID of the data table' } });
+export const columnIdParamSchema = z
+	.string()
+	.regex(/^[A-Za-z0-9]{16}$/, 'must match format "nanoid"')
+	.openapi({ format: 'nanoid', param: { description: 'The ID of the column' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',

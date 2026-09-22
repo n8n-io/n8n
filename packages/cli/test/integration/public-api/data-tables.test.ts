@@ -2131,6 +2131,25 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 		testWithAPIKey('get', '/data-tables/123/columns', 'abcXYZ'),
 	);
 
+	test('should reject listing without dataTableColumn:read', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-columns-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.get(`/data-tables/${dataTable.id}/columns`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent.get('/data-tables/not-a-nanoid/columns');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should list columns for a data table', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'columns-test',
@@ -2151,6 +2170,9 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 		expect(response.body[0]).toHaveProperty('type');
 		expect(response.body[0]).toHaveProperty('index');
 		expect(response.body[0]).toHaveProperty('dataTableId', dataTable.id);
+		// The entity carries these, but the public contract does not.
+		expect(response.body[0]).not.toHaveProperty('createdAt');
+		expect(response.body[0]).not.toHaveProperty('updatedAt');
 	});
 
 	test('should return 404 for non-existing data table', async () => {
@@ -2183,6 +2205,38 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 		testWithAPIKey('post', '/data-tables/123/columns', 'abcXYZ'),
 	);
 
+	test('should reject creating without dataTableColumn:create', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-add-column-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent
+			.post(`/data-tables/${dataTable.id}/columns`)
+			.send({ name: 'newcol', type: 'string' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent
+			.post('/data-tables/not-a-nanoid/columns')
+			.send({ name: 'newcol', type: 'string' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent
+			.post(`/data-tables/${nonExistentId}/columns`)
+			.send({ name: 'newcol', type: 'string' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
 	test('should add a column', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'add-column-test',
@@ -2199,6 +2253,9 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 		expect(response.body).toHaveProperty('name', 'email');
 		expect(response.body).toHaveProperty('type', 'string');
 		expect(response.body).toHaveProperty('index', 1);
+		// The entity carries these, but the public contract does not.
+		expect(response.body).not.toHaveProperty('createdAt');
+		expect(response.body).not.toHaveProperty('updatedAt');
 
 		const listResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
 		expect(listResponse.body).toHaveLength(2);
@@ -2272,6 +2329,52 @@ describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 		testWithAPIKey('delete', '/data-tables/123/columns/456', 'abcXYZ'),
 	);
 
+	test('should reject deleting without dataTableColumn:delete', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-delete-column-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.delete(`/data-tables/${dataTable.id}/columns/${columnId}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent.delete(
+			'/data-tables/not-a-nanoid/columns/AAAAAAAAAAAAAAAA',
+		);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should reject a malformed column id', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'malformed-column-id-delete-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.delete(
+			`/data-tables/${dataTable.id}/columns/not-a-nanoid`,
+		);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent.delete(
+			`/data-tables/${nonExistentId}/columns/AAAAAAAAAAAAAAAA`,
+		);
+
+		expect(response.statusCode).toBe(404);
+	});
+
 	test('should delete a column', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'delete-col-test',
@@ -2340,6 +2443,83 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 		testWithAPIKey('patch', '/data-tables/123/columns/456', 'abcXYZ'),
 	);
 
+	test('should reject updating without dataTableColumn:update', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-update-column-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+			.send({ name: 'blocked' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent
+			.patch('/data-tables/not-a-nanoid/columns/AAAAAAAAAAAAAAAA')
+			.send({ name: 'whatever' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should reject a malformed column id', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'malformed-column-id-update-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/not-a-nanoid`)
+			.send({ name: 'whatever' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${nonExistentId}/columns/AAAAAAAAAAAAAAAA`)
+			.send({ name: 'whatever' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for non-existing column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'update-missing-col',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/AAAAAAAAAAAAAAAA`)
+			.send({ name: 'whatever' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should reject an unknown field', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'unknown-field-column-test',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+			.send({ name: 'still_name', type: 'number' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should rename a column', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'rename-column-test',
@@ -2359,6 +2539,9 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 		expect(response.body).toHaveProperty('id', columnId);
 		expect(response.body).toHaveProperty('name', 'new_name');
 		expect(response.body).toHaveProperty('index', 0);
+		// The entity carries these, but the public contract does not.
+		expect(response.body).not.toHaveProperty('createdAt');
+		expect(response.body).not.toHaveProperty('updatedAt');
 	});
 
 	test('should move a column', async () => {

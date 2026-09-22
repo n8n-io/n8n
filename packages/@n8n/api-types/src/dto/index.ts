@@ -398,9 +398,13 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
+	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
+	DataTableColumnPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
+	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
 	dataTablePublicSchema,
 	type DataTablePublic,
