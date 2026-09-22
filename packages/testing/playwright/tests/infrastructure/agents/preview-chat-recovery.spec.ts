@@ -48,6 +48,8 @@ test.describe(
 	'Agent preview recovery @mode:multi-main',
 	{ annotation: [{ type: 'owner', description: 'AI' }] },
 	() => {
+		test.skip(!!process.env.CI, 'This topology check runs only outside CI.');
+
 		test('recovers through another main and stops only the accepted execution', async ({
 			api,
 			mainUrls,
