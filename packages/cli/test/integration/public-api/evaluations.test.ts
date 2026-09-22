@@ -158,7 +158,7 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 	});
 });
 
-describe('GET /workflows/:id/test-runs/:runId', () => {
+describe('GET /workflows/:workflowId/test-runs/:runId', () => {
 	test('should return a single test run summary with finalResult', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, {
@@ -189,9 +189,20 @@ describe('GET /workflows/:id/test-runs/:runId', () => {
 
 		await authOwnerAgent.get(`/workflows/${workflowA.id}/test-runs/${runB.id}`).expect(404);
 	});
+
+	test('should return 404 for an unknown workflow', async () => {
+		// A member holds no global workflow scope, so the scope check has to look the workflow up.
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		const response = await memberAgent.get('/workflows/does-not-exist/test-runs/some-run');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
+	});
 });
 
-describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
+describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 	test('should return per-case results with sanitized fields', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, { status: 'completed' });
@@ -250,6 +261,58 @@ describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
 		await authOwnerAgent
 			.get(`/workflows/${workflowA.id}/test-runs/${runB.id}/test-cases`)
 			.expect(404);
+	});
+
+	test('should return 404 for an unknown workflow', async () => {
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		const response = await memberAgent.get(
+			'/workflows/does-not-exist/test-runs/some-run/test-cases',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
+	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`)
+			.query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should return 400 for a lastId-form cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+		const lastIdCursor = Buffer.from(JSON.stringify({ lastId: 'abc', limit: 10 })).toString(
+			'base64',
+		);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`)
+			.query({ cursor: lastIdCursor });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should clamp a limit above 250', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+		await createTestCaseExecution(testRun.id, { status: 'success' });
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`)
+			.query({ limit: 300 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
 	});
 });
 
