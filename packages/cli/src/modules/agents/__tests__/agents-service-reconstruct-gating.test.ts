@@ -816,7 +816,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
 
-		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1', 'project-1');
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
 	});
 });
