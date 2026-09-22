@@ -60,7 +60,7 @@ export class AgentThreadsController {
 		const access: AgentSessionPreviewAccess = {
 			canContinueInPreview: canContinueThreadInPreview(result.thread, req.user.id, source),
 		};
-		return { ...result, thread: { ...thread, ...access } };
+		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

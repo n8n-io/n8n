@@ -98,7 +98,15 @@ describe('useAgentSessionsStore', () => {
 		expect(listPreviewThreads).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'project-1', 'agent-1', {
 			limit: 20,
 			previewOnly: true,
+			filters: { status: 'all', origin: 'preview', startDate: '', endDate: '' },
 		});
+
+		store.upsertThread(thread('private'));
+		for (const source of ['mcp', 'instance-ai']) {
+			store.upsertThread({ ...thread(source), source });
+		}
+		expect(store.previewThreads.map(({ id }) => id)).toEqual(['private']);
+		expect(store.threads.map(({ id }) => id)).toEqual(['shared', 'private', 'mcp', 'instance-ai']);
 	});
 
 	it('keeps the latest Preview request in control after switching agents or resetting', async () => {

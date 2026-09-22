@@ -5,6 +5,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
@@ -74,7 +75,7 @@ describe('AgentThreadsController session details', () => {
 		{ accessScope: 'project' as const, parentThreadId: null, expected: false },
 		{ accessScope: 'user' as const, parentThreadId: 'parent', expected: false },
 	])(
-		'returns Preview eligibility for $accessScope sessions with parent $parentThreadId',
+		'returns origin and Preview eligibility for $accessScope sessions with parent $parentThreadId',
 		async ({ accessScope, parentThreadId, expected }) => {
 			const service = mock<AgentExecutionService>();
 			const controller = new AgentThreadsController(
@@ -90,7 +91,11 @@ describe('AgentThreadsController session details', () => {
 					accessScope,
 					parentThreadId,
 				}),
-				executions: [],
+				executions: [
+					mock<AgentExecution>({ source: null }),
+					mock<AgentExecution>({ source: 'mcp' }),
+					mock<AgentExecution>({ source: 'chat' }),
+				],
 			});
 			const result = await controller.getThread(
 				mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
@@ -100,6 +105,7 @@ describe('AgentThreadsController session details', () => {
 			);
 
 			expect(result.thread.canContinueInPreview).toBe(expected);
+			expect(result.thread.source).toBe('mcp');
 			expect(result.thread).not.toHaveProperty('ownerId');
 			expect(result.thread).not.toHaveProperty('accessScope');
 		},

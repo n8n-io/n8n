@@ -62,6 +62,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
 			limit: ITEMS_PER_PAGE,
 			previewOnly: true,
+			filters: { ...defaultAgentSessionFilters(), origin: 'preview' },
 		});
 		if (requestId !== latestPreviewRequestId) return;
 		previewThreads.value = page.threads;
@@ -193,7 +194,11 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 			threads.value.splice(index, 1, thread);
 		}
 		previewThreads.value = previewThreads.value.filter(({ id }) => id !== thread.id);
-		if (thread.canContinueInPreview) {
+		if (
+			thread.canContinueInPreview &&
+			!thread.taskId &&
+			['', 'chat', 'n8n_chat'].includes(thread.source?.trim().toLowerCase() ?? '')
+		) {
 			previewThreads.value.push(thread);
 			previewThreads.value.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 		}
