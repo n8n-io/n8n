@@ -60,7 +60,10 @@ import {
 import type { InstanceAiMessageAuthorship } from './prefills';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
-import { useResourceRegistry } from './useResourceRegistry';
+import {
+	useResourceRegistry,
+	type TransientWorkflowArtifactReference,
+} from './useResourceRegistry';
 import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -522,6 +525,15 @@ export function createThreadRuntime(
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
 	}
+	const transientWorkflowReferences = reactive(
+		new Map<string, TransientWorkflowArtifactReference>(),
+	);
+	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
+		transientWorkflowReferences.set(reference.referenceId, { ...reference });
+	}
+	function removeTransientWorkflowReference(referenceId: string): void {
+		transientWorkflowReferences.delete(referenceId);
+	}
 
 	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
 	// thread runtime so it survives the preview canvas unmounting on a tab switch
@@ -574,6 +586,7 @@ export function createThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		() => pendingWorkflowAttachment.value ?? undefined,
+		() => [...transientWorkflowReferences.values()],
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -1339,6 +1352,7 @@ export function createThreadRuntime(
 		seenEventIds.clear();
 		activeArtifactId.value = undefined;
 		pendingWorkflowAttachment.value = null;
+		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1841,6 +1855,9 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
+		transientWorkflowReferences,
+		upsertTransientWorkflowReference,
+		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,

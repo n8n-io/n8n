@@ -1088,6 +1088,28 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('resource attachment auto-open', () => {
+		test('opens the parent workflow from an attached node mention', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders');
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Orders',
+							sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
 		test('opens attached agent when no active tab is set', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
@@ -1221,6 +1243,7 @@ describe('useCanvasPreview', () => {
 
 			// Tab should remain set — guard skips when tabs are empty
 			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
 	describe('tab picked by the user during a run', () => {

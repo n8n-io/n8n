@@ -172,7 +172,12 @@ export function useCanvasPreview({
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
+	const isPreviewVisible = computed(
+		() =>
+			isPreviewOpen.value &&
+			activeTabId.value !== undefined &&
+			allArtifactTabs.value.some((tab) => tab.id === activeTabId.value),
+	);
 
 	// --- Resource attachments (workflow or agent hand-offs) ---
 	// A workflow or agent attached to a message surfaces as an artifact tab via the
@@ -182,6 +187,7 @@ export function useCanvasPreview({
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
 				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+				if (attachment.type === 'nodes' && attachment.workflowName) return attachment.workflowId;
 			}
 		}
 		return undefined;

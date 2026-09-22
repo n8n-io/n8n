@@ -11,9 +11,19 @@ import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
+	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	type InstanceAiAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
+import { useAssistantAtMentions } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
+import type {
+	AssistantMentionArtifactReference,
+	AssistantMentionItem,
+	AssistantMentionSelection,
+	WorkflowArtifactReference,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { instanceAiResponseNow } from '../instanceAi.responseTiming';
@@ -90,6 +100,11 @@ const props = withDefaults(
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
+		mentionsEnabled?: boolean;
+		mentionProjectId?: string;
+		mentionArtifacts?: readonly WorkflowArtifactReference[];
+		mentionActiveWorkflowId?: string;
+		reservedAttachmentCount?: number;
 	}>(),
 	{
 		isStreaming: false,
@@ -105,6 +120,11 @@ const props = withDefaults(
 		submitLabel: undefined,
 		submitActiveRequiresFocus: false,
 		contextChip: null,
+		mentionsEnabled: false,
+		mentionProjectId: undefined,
+		mentionArtifacts: () => [],
+		mentionActiveWorkflowId: undefined,
+		reservedAttachmentCount: 0,
 	},
 );
 
@@ -119,10 +139,14 @@ const emit = defineEmits<{
 		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
 		responseStartedAtEpochMs: number,
+		acceptDraft: () => void,
 	];
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
+	'mention-reference-added': [reference: AssistantMentionArtifactReference];
+	'mention-reference-removed': [referenceId: string];
+	'mention-workflow-open': [workflowId: string];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	// Fires when the composer goes between empty and non-empty so the split
 	// empty state can pause its cycling placeholders only once the user types
@@ -131,12 +155,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+const mentionPickerRef = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
+const composerRef = ref<HTMLElement | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
@@ -189,9 +216,11 @@ function focus() {
 
 function appendText(text: string) {
 	inputText.value += text;
+	void mentions.handleTextChange(inputText.value, inputText.value.length);
 }
 
 function setText(text: string) {
+	mentions.close();
 	inputText.value = text;
 }
 
@@ -252,6 +281,220 @@ watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
+const shouldShowMentions = computed(
+	() => props.mentionsEnabled && Boolean(props.mentionProjectId) && !props.isAwaitingPlanReview,
+);
+const canUseMentions = computed(
+	() => shouldShowMentions.value && !isBusy.value && !isGatedBySetup.value,
+);
+const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
+const mentions = useAssistantAtMentions({
+	text: inputText,
+	enabled: canUseMentions,
+	getInputElement: () => inputElement.value ?? undefined,
+});
+const mentionMenuOpen = mentions.menuOpen;
+const mentionQuery = mentions.query;
+
+interface SelectedMentionRecord {
+	item: AssistantMentionItem;
+	referenceId: string;
+}
+
+let mentionReferenceSequence = 0;
+const selectedMentionRecords = new Map<string, SelectedMentionRecord>();
+const ownedMentionRecords = new Map<string, SelectedMentionRecord>();
+
+onBeforeUnmount(() => {
+	for (const record of ownedMentionRecords.values()) releaseMentionReference(record);
+});
+
+function addMentionReference(item: AssistantMentionItem): SelectedMentionRecord {
+	const record = {
+		item,
+		referenceId: `${item.key}:${++mentionReferenceSequence}`,
+	};
+	selectedMentionRecords.set(item.key, record);
+	ownedMentionRecords.set(record.referenceId, record);
+	emit('mention-reference-added', {
+		referenceId: record.referenceId,
+		workflowId: item.workflowId,
+		workflowName: item.workflowName,
+	});
+	return record;
+}
+
+function releaseMentionReference(record: SelectedMentionRecord): void {
+	if (!ownedMentionRecords.delete(record.referenceId)) return;
+	emit('mention-reference-removed', record.referenceId);
+}
+
+function setMatchesMention(
+	set: Extract<InstanceAiResourceAttachment, { type: 'nodes' }>['sets'][number],
+	item: AssistantMentionItem,
+): boolean {
+	if (item.kind === 'node') {
+		return set.nodes.length === 1 && set.nodes[0]?.id === item.entityId;
+	}
+	return item.kind === 'group' && set.canvasGroupId === item.entityId;
+}
+
+function attachmentContainsMention(item: AssistantMentionItem): boolean {
+	if (item.kind === 'workflow') {
+		return attachedResources.value.some(
+			(attachment) => attachment.type === 'workflow' && attachment.id === item.workflowId,
+		);
+	}
+
+	return attachedResources.value.some(
+		(attachment) =>
+			attachment.type === 'nodes' &&
+			attachment.workflowId === item.workflowId &&
+			attachment.sets.some((set) => setMatchesMention(set, item)),
+	);
+}
+
+function reconcileSelectedMentionRecords(): void {
+	for (const [mentionKey, record] of selectedMentionRecords) {
+		if (attachmentContainsMention(record.item)) continue;
+		selectedMentionRecords.delete(mentionKey);
+		releaseMentionReference(record);
+	}
+}
+
+function attachmentAddsResource(attachment: InstanceAiResourceAttachment): boolean {
+	if (attachment.type === 'workflow') {
+		return !attachedResources.value.some(
+			(current) => current.type === 'workflow' && current.id === attachment.id,
+		);
+	}
+	if (attachment.type === 'nodes') {
+		return !attachedResources.value.some(
+			(current) => current.type === 'nodes' && current.workflowId === attachment.workflowId,
+		);
+	}
+	return true;
+}
+
+function addMentionAttachment(attachment: InstanceAiResourceAttachment): void {
+	if (attachment.type === 'workflow') {
+		if (
+			attachedResources.value.some(
+				(current) => current.type === 'workflow' && current.id === attachment.id,
+			)
+		)
+			return;
+		attachedResources.value = [...attachedResources.value, attachment];
+		return;
+	}
+
+	if (attachment.type === 'nodes') {
+		const index = attachedResources.value.findIndex(
+			(current) => current.type === 'nodes' && current.workflowId === attachment.workflowId,
+		);
+		if (index !== -1) {
+			const current = attachedResources.value[index];
+			if (current.type !== 'nodes') return;
+			attachedResources.value[index] = {
+				...current,
+				workflowName: attachment.workflowName ?? current.workflowName,
+				sets: mergeNodeSets(current.sets, attachment.sets),
+			};
+			return;
+		}
+	}
+
+	attachedResources.value = [...attachedResources.value, attachment];
+}
+
+async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
+	const existingRecord = selectedMentionRecords.get(selection.item.key);
+	if (!existingRecord) {
+		const addsResource = attachmentAddsResource(selection.attachment);
+		if (
+			addsResource &&
+			attachedFiles.value.length + attachedResources.value.length + props.reservedAttachmentCount >=
+				MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE
+		) {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
+				i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
+			);
+			return;
+		}
+
+		addMentionAttachment(selection.attachment);
+		if (!attachmentContainsMention(selection.item)) {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
+				i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
+			);
+			return;
+		}
+		addMentionReference(selection.item);
+		if (selection.truncated) {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.nodeContext.truncated.message')),
+				i18n.baseText('instanceAi.nodeContext.truncated.title'),
+			);
+		}
+	}
+
+	emit('mention-workflow-open', selection.item.workflowId);
+	await mentions.replaceActiveRange(selection.item.label);
+}
+
+function handleMentionResourceUpdate(
+	index: number,
+	attachment: Extract<InstanceAiResourceAttachment, { type: 'nodes' }>,
+): void {
+	attachedResources.value[index] = attachment;
+	reconcileSelectedMentionRecords();
+}
+
+function clearMentionContextForProjectChange(): void {
+	const records = [...selectedMentionRecords.values()];
+	if (records.length === 0) return;
+
+	const nextResources: InstanceAiResourceAttachment[] = [];
+	for (const attachment of attachedResources.value) {
+		if (attachment.type === 'workflow') {
+			if (
+				!records.some(({ item }) => item.kind === 'workflow' && item.workflowId === attachment.id)
+			) {
+				nextResources.push(attachment);
+			}
+			continue;
+		}
+		if (attachment.type !== 'nodes') {
+			nextResources.push(attachment);
+			continue;
+		}
+
+		const matchingRecords = records.filter(
+			({ item }) => item.workflowId === attachment.workflowId && item.kind !== 'workflow',
+		);
+		const sets = attachment.sets.filter(
+			(set) => !matchingRecords.some(({ item }) => setMatchesMention(set, item)),
+		);
+		if (sets.length > 0) nextResources.push({ ...attachment, sets });
+	}
+	attachedResources.value = nextResources;
+
+	selectedMentionRecords.clear();
+	for (const record of records) releaseMentionReference(record);
+	mentions.close();
+}
+
+watch(
+	() => props.mentionProjectId,
+	(projectId, previousProjectId) => {
+		if (previousProjectId !== undefined && projectId !== previousProjectId) {
+			clearMentionContextForProjectChange();
+		}
+	},
+);
+
 const canSubmit = computed(() =>
 	canSubmitMessage(
 		inputText.value.trim(),
@@ -337,9 +580,18 @@ function emitSubmittedMessage(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs: number,
+	acceptDraft: () => void,
 ) {
 	previewPrompt.value = null;
-	emit('submit', message, attachments, restoreDraft, authorship, responseStartedAtEpochMs);
+	emit(
+		'submit',
+		message,
+		attachments,
+		restoreDraft,
+		authorship,
+		responseStartedAtEpochMs,
+		acceptDraft,
+	);
 }
 
 /**
@@ -417,6 +669,34 @@ function restoreSubmittedDraft(
 	return true;
 }
 
+function detachSubmittedMentionRecords(): SelectedMentionRecord[] {
+	const records = [...selectedMentionRecords.values()];
+	for (const record of records) {
+		if (selectedMentionRecords.get(record.item.key) === record) {
+			selectedMentionRecords.delete(record.item.key);
+		}
+	}
+	return records;
+}
+
+function acceptSubmittedMentionRecords(records: readonly SelectedMentionRecord[]): void {
+	for (const record of records) releaseMentionReference(record);
+}
+
+function restoreSubmittedMentionRecords(records: readonly SelectedMentionRecord[]): void {
+	for (const record of records) {
+		if (selectedMentionRecords.has(record.item.key)) {
+			releaseMentionReference(record);
+			continue;
+		}
+		if (attachmentContainsMention(record.item)) {
+			selectedMentionRecords.set(record.item.key, record);
+		} else {
+			releaseMentionReference(record);
+		}
+	}
+}
+
 /**
  * `prefill` is the snapshot its caller took when it read the message, not live
  * state: `handleSubmit` awaits file conversion in between, and the composer can
@@ -427,6 +707,10 @@ function submitComposerMessage(
 	attachments: InstanceAiAttachment[] | undefined,
 	prefill: ActivePrefill | null,
 	responseStartedAtEpochMs = instanceAiResponseNow(),
+	draftSnapshot?: {
+		files: File[];
+		resources: InstanceAiResourceAttachment[];
+	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
@@ -446,6 +730,7 @@ function submitComposerMessage(
 			() => restorePlanFeedbackDraft(message),
 			USER_TYPED_MESSAGE,
 			responseStartedAtEpochMs,
+			() => {},
 		);
 		resetDraftComposer({ keepAttachments: true });
 		return;
@@ -453,14 +738,20 @@ function submitComposerMessage(
 
 	trackSelectedSuggestionSubmitted(message);
 
-	const submittedFiles = [...attachedFiles.value];
-	const submittedResources = [...attachedResources.value];
+	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
+	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
+	const submittedMentionRecords = detachSubmittedMentionRecords();
 	emitSubmittedMessage(
 		message,
 		attachments,
-		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
+		() => {
+			const restored = restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill);
+			restoreSubmittedMentionRecords(submittedMentionRecords);
+			return restored;
+		},
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
+		() => acceptSubmittedMentionRecords(submittedMentionRecords),
 	);
 	resetDraftComposer();
 }
@@ -489,6 +780,7 @@ async function handleSubmit() {
 	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
+	mentions.close();
 	const responseStartedAtEpochMs = instanceAiResponseNow();
 
 	// Plan feedback carries no attachments, so skip encoding the staged files.
@@ -497,26 +789,30 @@ async function handleSubmit() {
 		return;
 	}
 
-	const fileAttachments: InstanceAiAttachment[] = attachedFiles.value.length
-		? (await Promise.all(attachedFiles.value.map(convertFileToBinaryData))).map((b) => ({
+	const submittedFiles = [...attachedFiles.value];
+	const submittedResources = [...attachedResources.value];
+	const fileAttachments: InstanceAiAttachment[] = submittedFiles.length
+		? (await Promise.all(submittedFiles.map(convertFileToBinaryData))).map((b) => ({
 				type: 'file' as const,
 				data: b.data,
 				mimeType: b.mimeType,
 				fileName: b.fileName ?? 'unnamed',
 			}))
 		: [];
-	const attachments = [...fileAttachments, ...attachedResources.value];
+	const attachments = [...fileAttachments, ...submittedResources];
 
 	submitComposerMessage(
 		text,
 		attachments.length ? attachments : undefined,
 		prefill,
 		responseStartedAtEpochMs,
+		{ files: submittedFiles, resources: submittedResources },
 	);
 }
 
 function removeResource(index: number) {
 	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
+	reconcileSelectedMentionRecords();
 }
 
 watch(
@@ -533,6 +829,7 @@ watch(
 				);
 				if (existing) {
 					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
+					existing.workflowName = attachment.workflowName ?? existing.workflowName;
 					continue;
 				}
 			}
@@ -543,7 +840,26 @@ watch(
 );
 
 function handleStop() {
+	mentions.close();
 	emit('stop');
+}
+
+function handleComposerKeydown(event: KeyboardEvent): void {
+	if (!mentionMenuOpen.value) return;
+	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
+	if (
+		!handled &&
+		event.key === 'Enter' &&
+		!event.shiftKey &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.altKey &&
+		!event.isComposing &&
+		event.keyCode !== 229
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
 }
 
 function handleTabAutocomplete() {
@@ -672,10 +988,18 @@ const resizable = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.composer">
+	<div
+		ref="composerRef"
+		:class="$style.composer"
+		@keydown.capture="handleComposerKeydown"
+		@pointerdown.capture="mentions.saveSelection"
+		@click.capture="mentions.handleCaretMove"
+		@keyup.capture="mentions.handleCaretMove"
+		@select.capture="mentions.handleCaretMove"
+	>
 		<ChatInputBase
 			ref="chatInputRef"
-			v-model="inputText"
+			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
 			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
@@ -689,6 +1013,7 @@ const resizable = computed(() => {
 			:show-attach="!props.isAwaitingPlanReview"
 			:show-attach-button="false"
 			:attached-encoded-bytes="attachedEncodedBytes"
+			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
@@ -731,7 +1056,7 @@ const resizable = computed(() => {
 						:attachment="attachment"
 						:is-removable="true"
 						@remove-resource="removeResource(index)"
-						@update:attachment="attachedResources[index] = $event"
+						@update:attachment="handleMentionResourceUpdate(index, $event)"
 					/>
 				</div>
 				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
@@ -749,6 +1074,21 @@ const resizable = computed(() => {
 					:disabled="isBusy || isGatedBySetup"
 					:thread-id="props.currentThreadId || undefined"
 					@attach-files="chatInputRef?.openFilePicker()"
+				/>
+			</template>
+			<template v-if="shouldShowMentions" #right-actions>
+				<AssistantAtMentionPicker
+					ref="mentionPickerRef"
+					v-model="mentionMenuOpen"
+					:query="mentionQuery"
+					:project-id="props.mentionProjectId"
+					:artifacts="props.mentionArtifacts"
+					:active-workflow-id="props.mentionActiveWorkflowId"
+					:input-element="inputElement"
+					:reference="composerRef"
+					:disabled="isBusy || isGatedBySetup"
+					@update:model-value="mentions.handleMenuOpenChange"
+					@select="handleMentionSelection"
 				/>
 			</template>
 		</ChatInputBase>

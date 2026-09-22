@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, reactive } from 'vue';
+import { defineComponent, h, nextTick, provide, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -90,15 +90,67 @@ describe('InstanceAiConversation', () => {
 	// doesn't re-emit the child's events, so DOM-only assertions use it, while emit
 	// assertions mount a small host directly with `@vue/test-utils` and read the
 	// child wrapper's own `emitted()`.
-	function mountConversation() {
+	function mountConversation(
+		props: { mentionsEnabled?: boolean } = {},
+		openWorkflowPreview = vi.fn(),
+	) {
 		const Host = defineComponent({
 			setup() {
 				provideThread(thread);
-				return () => h(InstanceAiConversation);
+				provide('openWorkflowPreview', openWorkflowPreview);
+				return () => h(InstanceAiConversation, props);
 			},
 		});
 		return mount(Host, { global: { stubs: { InstanceAiInput: InstanceAiInputStub } } });
 	}
+
+	it('routes mention references and workflow opening through the thread host', async () => {
+		thread.producedArtifacts.set('wf-1', {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'Orders',
+		});
+		const openWorkflowPreview = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, openWorkflowPreview);
+		const input = wrapper.findComponent(InstanceAiInputStub);
+		const reference = {
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		};
+
+		input.vm.$emit('mention-reference-added', reference);
+		input.vm.$emit('mention-workflow-open', 'wf-1');
+		await nextTick();
+
+		expect(thread.upsertTransientWorkflowReference).toHaveBeenCalledWith({
+			...reference,
+			projectId: 'thread-project',
+		});
+		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
+		expect(input.props('mentionArtifacts')).toEqual([{ id: 'wf-1', name: 'Orders' }]);
+
+		input.vm.$emit('mention-reference-removed', 'draft-1');
+		expect(thread.removeTransientWorkflowReference).toHaveBeenCalledWith('draft-1');
+	});
+
+	it('accepts the submitted mention draft only after the message is admitted', async () => {
+		const wrapper = mountConversation();
+		const input = wrapper.findComponent(InstanceAiInputStub);
+		const acceptDraft = vi.fn();
+
+		input.vm.$emit(
+			'submit',
+			'Compare orders',
+			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
+			vi.fn(),
+			USER_TYPED_MESSAGE,
+			Date.now(),
+			acceptDraft,
+		);
+		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+		await vi.waitFor(() => expect(acceptDraft).toHaveBeenCalledOnce());
+	});
 
 	it('renders visible messages from the thread', () => {
 		thread.messages = [
