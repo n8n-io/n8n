@@ -86,7 +86,7 @@ describe('observeSystemTaskRun', () => {
 		expect(span.setAttribute).toHaveBeenCalledWith('n8n.system_task.result', 'success');
 	});
 
-	it('opens a root span in memory and a child span in durable mode', async () => {
+	it('opens a root span for a run from a timer and a child span for a durable run', async () => {
 		const inMemory = setupTracing();
 		const durable = setupTracing();
 
