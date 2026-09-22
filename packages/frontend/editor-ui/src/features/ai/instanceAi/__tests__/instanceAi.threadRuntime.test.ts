@@ -361,6 +361,98 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
+	test('preferences-applied SSE events replace the applied payload, empty included', () => {
+		const runtime = activeRuntime(registry);
+		expect(runtime.appliedPreferences).toBeNull();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'pref-1', scope: 'user' }],
+					renderedLength: 40,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+			}),
+		);
+		// An empty payload is an answer: the turn applied none.
+		expect(runtime.appliedPreferences).toEqual({
+			preferences: [],
+			renderedLength: 0,
+			injectedThisTurn: false,
+		});
+	});
+
+	test('the applied payload survives thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 40,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-0',
+			},
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+		expect(runtime.appliedPreferences?.carriedFromRunId).toBe('run-0');
+	});
+
+	test('a live payload that arrived during restore is not overwritten by the persisted one', async () => {
+		let resolveMessages!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveMessages = resolve;
+			}),
+		);
+		// The SSE mock is wired to the active thread, so hydrate that one.
+		const runtime = activeRuntime(registry);
+		const hydration = runtime.loadHistoricalMessages();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-9',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'live', scope: 'user' }],
+					renderedLength: 12,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		resolveMessages({
+			threadId: activeThreadId,
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'stale', scope: 'user' }],
+				renderedLength: 12,
+				injectedThisTurn: true,
+			},
+		});
+		await hydration;
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['live']);
+	});
+
 	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
 		mockFetchThreadMessages.mockResolvedValueOnce({
 			threadId: 'thread-restore',

@@ -615,7 +615,8 @@ replaying all SSE events.
 - **`GET /instance-ai/threads/:threadId/messages`** — returns rich
   `InstanceAiMessage[]` with full agent trees, tool calls, and reasoning.
   Includes a `nextEventId` field indicating the SSE cursor position at the
-  time of response.
+  time of response, and `appliedPreferences`, the payload of the thread's latest
+  `preferences-applied` fact, when a turn has published one.
 
 - **`GET /instance-ai/threads/:threadId/status`** — returns the thread's
   current activity state:
