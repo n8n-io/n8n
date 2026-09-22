@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.ts
+  s_9a16f0431c271f::t_effd86de4e1ed9 197-199
+  s_9a16f0431c271f::t_0e9890ad6724fa 96-105,107-115,117
+  s_9a16f0431c271f::t_d1a4bab639ebab 217
+  s_9a16f0431c271f::t_7286e904c23174 106,116
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.test.ts
+  s_9a16f0431c271f::t_33fc9ea4df9784 130-141,167,304-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d16c874098837a387e9c8306e72c7bab200bd4e5",
+  "prompts": {},
+  "sessions": {
+    "s_9a16f0431c271f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0e20f95-5db0-4d03-820f-863f58602bd5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
