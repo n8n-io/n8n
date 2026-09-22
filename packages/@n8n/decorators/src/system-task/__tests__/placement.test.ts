@@ -1,5 +1,17 @@
 import type { SystemTaskPlacement } from '../system-task-placement';
 
+it('should let an instance-scoped placement name the instance types that run the task', () => {
+	const placement: SystemTaskPlacement = { scope: 'instance', instanceTypes: ['main', 'worker'] };
+
+	expect(placement.scope).toBe('instance');
+});
+
+it('should let a cluster-scoped placement be durable and run on takeover', () => {
+	const placement: SystemTaskPlacement = { scope: 'cluster', durable: true, runOnTakeover: true };
+
+	expect(placement.scope).toBe('cluster');
+});
+
 it('should not let a placement name an instance type a cluster-scoped task never reaches', () => {
 	const placement: SystemTaskPlacement = {
 		scope: 'cluster',
