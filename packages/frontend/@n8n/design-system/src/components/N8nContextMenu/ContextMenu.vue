@@ -110,9 +110,17 @@ provide(contextMenuStateKey, menuState);
 </template>
 
 <style module lang="scss">
-@use './context-menu' as context-menu;
+@use '@n8n/design-system/css/mixins/popover' as popover;
 
 .content {
-	@include context-menu.panel;
+	@include popover.popover-surface;
+	@include popover.popover-placement-offsets;
+
+	display: flex;
+	flex-direction: column;
+	width: var(--context-menu--width, fit-content);
+	min-width: var(--spacing--4xl);
+	max-width: var(--context-menu--width, 24rem);
+	max-height: var(--reka-context-menu-content-available-height);
 }
 </style>
