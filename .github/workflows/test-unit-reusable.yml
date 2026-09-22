@@ -300,6 +300,8 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
+    # Every frontend package with scoped tests is a dependency of n8n-editor-ui.
+    if: inputs.affectedPackages == '' || contains(format(' {0} ', inputs.affectedPackages), ' n8n-editor-ui ')
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
