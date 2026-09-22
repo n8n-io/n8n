@@ -1215,6 +1215,32 @@ the same question again.
 
 ---
 
+## `save_user_preference` *(conditional)*
+
+Save a durable preference for the current user. Present only when saved AI
+preferences are enabled for the user (the adapter wires `aiPreferenceService`).
+Always loaded, because a user can state a preference at any point in a
+conversation.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | yes | The preference in the user's own terms, at most `AI_PREFERENCE_CONTENT_MAX_LENGTH` characters |
+| `scope` | `'user'` | yes | Only `user` exists in this version |
+
+The tool does not suspend. It writes the row at once and returns
+`{ ok: true, preference: { id, content, scope } }`, which the chat renders as a
+card the user can edit or undo. It returns
+`{ ok: false, reason, message }` for `blocked_by_admin`, `too_long`,
+`scope_full`, `duplicate`, `not_permitted` or `failed`, and writes nothing in
+those cases. The model relays a rejection in its own words and never says
+"saved" without an `ok: true` result.
+
+The system prompt carries the judgment of *when* to call it (see
+`getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
+carries *what* it does.
+
+---
+
 ## Filesystem Tools (dynamic, conditional)
 
 Only registered when a `localMcpServer` (computer-use gateway) is connected.

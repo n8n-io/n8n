@@ -79,6 +79,8 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
+	InstanceAiPreferenceService,
+	InstanceAiPreferenceWriteRejection,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -142,7 +144,9 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
@@ -171,6 +175,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -319,6 +324,21 @@ function toTelemetryReason(
 	}
 }
 
+/** The tool package cannot import cli error classes, so the boundary speaks in
+ *  reasons. Only `scope: 'user'` reaches the service from here, so the one
+ *  BadRequestError it can raise is the per-scope cap. The three mapped classes
+ *  carry user-facing text, so their message passes through; anything else is
+ *  an unexpected fault, so its message stays internal (the caller logs it). */
+function toPreferenceWriteRejection(error: unknown): {
+	reason: InstanceAiPreferenceWriteRejection;
+	message: string;
+} {
+	if (error instanceof ConflictError) return { reason: 'duplicate', message: error.message };
+	if (error instanceof BadRequestError) return { reason: 'scope_full', message: error.message };
+	if (error instanceof ForbiddenError) return { reason: 'not_permitted', message: error.message };
+	return { reason: 'failed', message: 'The preference could not be saved.' };
+}
+
 // Credential types are loaded once at boot, so the derived host index is
 // process-global and safe to memoize across users.
 let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
@@ -413,6 +433,9 @@ export class InstanceAiAdapterService {
 		// Optional for the same positional-construction reason as above.
 		// See `teamProjectsLicensed()` for the absent case.
 		private readonly licenseState?: LicenseState,
+		// Optional for the same reason as the other services above: existing tests
+		// construct this class positionally, and this must stay the last parameter.
+		private readonly aiPreferenceService?: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -456,6 +479,9 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
+			 *  `save_user_preference` tool. */
+			aiPreferencesEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -475,6 +501,7 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			aiPreferencesEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -519,6 +546,7 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
+			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -665,6 +693,30 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/** `source` is chosen here, never by the model: this is the assistant's write. */
+	private createPreferenceAdapter(user: User): InstanceAiPreferenceService {
+		const aiPreferenceService = this.aiPreferenceService;
+		if (!aiPreferenceService) throw new UnexpectedError('AI preference service is not available');
+
+		return {
+			create: async ({ content, scope }) => {
+				try {
+					const dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
+					return { ok: true, preference: { id: dto.id, content: dto.content, scope } };
+				} catch (error) {
+					const rejection = toPreferenceWriteRejection(error);
+					// The three mapped classes are expected outcomes with their own
+					// user-facing text. Anything else is a real fault whose message stays
+					// internal, so it must not go unlogged.
+					if (rejection.reason === 'failed') {
+						this.logger.error('Saving an AI preference from the assistant failed', { error });
+					}
+					return { ok: false, ...rejection };
+				}
+			},
 		};
 	}
 
