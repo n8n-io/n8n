@@ -287,6 +287,18 @@ describe('TypeAvailabilityPolicyService', () => {
 			});
 		});
 
+		it('tags the audit event with the credential-types kind for a credential policy write', async () => {
+			const created = makePolicy({ kind: CREDENTIAL_TYPES_KIND });
+			policyRepository.createPolicy.mockResolvedValue(created);
+
+			await service.createPolicyDocument(CREDENTIAL_TYPES_KIND, [RULE], 'user-1');
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'node-type-policy-document-created',
+				expect.objectContaining({ kind: CREDENTIAL_TYPES_KIND }),
+			);
+		});
+
 		it('surfaces shadow-lint warnings without rejecting the write', async () => {
 			policyRepository.createPolicy.mockResolvedValue(makePolicy());
 			const shadowed: PolicyRule = {
@@ -549,6 +561,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		it('rejects a duplicate policyId before any repository call', async () => {
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'scope-1',
 					[
 						{ policyId: 'p1', priority: 0, isFloor: false },
@@ -558,13 +571,14 @@ describe('TypeAvailabilityPolicyService', () => {
 				),
 			).rejects.toThrow('Duplicate policyId');
 
-			expect(scopeRepository.findScopeById).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByIdAndKind).not.toHaveBeenCalled();
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
 		it('rejects a duplicate (isFloor, priority) pair before any repository call', async () => {
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'scope-1',
 					[
 						{ policyId: 'p1', priority: 0, isFloor: false },
@@ -578,10 +592,11 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('throws NotFoundError when the scope does not exist', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(null);
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
 
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'missing',
 					[{ policyId: 'p1', priority: 0, isFloor: false }],
 					'user-1',
@@ -589,22 +604,42 @@ describe('TypeAvailabilityPolicyService', () => {
 			).rejects.toThrow(NotFoundError);
 		});
 
+		it('throws NotFoundError when the scope belongs to another kind, even with no attachments to check', async () => {
+			// A scope of another kind must read as "not found" here, the same way a foreign-kind
+			// policy document does — an empty attachment list would otherwise sail past
+			// `assertAttachableToScope`, which only compares an attached document's kind to the
+			// scope's, and never learns the caller's own intended kind.
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
+
+			await expect(
+				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 'user-1'),
+			).rejects.toThrow(NotFoundError);
+
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(
+				'scope-1',
+				CREDENTIAL_TYPES_KIND,
+				ROOT,
+				true,
+			);
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
 		it('replaces attachments, bumps the version, and emits once', async () => {
 			const scope = makeScope({ version: 1 });
-			scopeRepository.findScopeById
-				.mockResolvedValueOnce(scope)
-				.mockResolvedValueOnce(makeScope({ version: 2 }));
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(makeScope({ version: 2 }));
 			attachmentRepository.listAttachmentsForScope
 				.mockResolvedValueOnce([])
 				.mockResolvedValueOnce([{ policyId: 'p1', rules: [RULE], priority: 0, isFloor: false }]);
 
 			const result = await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
 				'user-1',
 			);
 
-			expect(scopeRepository.findScopeById).toHaveBeenNthCalledWith(1, scope.id, ROOT, true);
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, KIND, ROOT, true);
 			expect(attachmentRepository.replaceAttachmentsForScope).toHaveBeenCalledWith(
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
@@ -628,10 +663,12 @@ describe('TypeAvailabilityPolicyService', () => {
 
 		it('falls back to computing the version when the re-read finds no row', async () => {
 			const scope = makeScope({ version: 1 });
-			scopeRepository.findScopeById.mockResolvedValueOnce(scope).mockResolvedValueOnce(null);
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(null);
 			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
 
 			const result = await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
 				'user-1',
@@ -641,7 +678,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('rejects attaching a document with a delegate rule to a project scope, and writes nothing', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(makeScope({ projectId: 'project-1' }));
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ projectId: 'project-1' }));
 			policyRepository.findManyByIds.mockResolvedValue([
 				makePolicy({ id: 'p1', rules: [RULE] }),
 				makePolicy({ id: 'p2', rules: [DELEGATE_RULE] }),
@@ -649,6 +686,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'scope-1',
 					[
 						{ policyId: 'p1', priority: 0, isFloor: false },
@@ -666,10 +704,11 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('does not inspect the documents when attaching to instance scope', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(makeScope({ projectId: null }));
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ projectId: null }));
 			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
 
 			await service.replaceAttachments(
+				KIND,
 				'scope-1',
 				[{ policyId: 'p-delegating', priority: 0, isFloor: false }],
 				'user-1',

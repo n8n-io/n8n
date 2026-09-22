@@ -13,6 +13,25 @@ export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
 export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
+export { default as N8nContextMenu } from './N8nContextMenu/ContextMenu.vue';
+export { default as N8nContextMenuItem } from './N8nContextMenu/ContextMenuItem.vue';
+export type {
+	ContextMenuId,
+	ContextMenuItem,
+	ContextMenuRadio,
+	ContextMenuCheckbox,
+	ContextMenuGroup,
+	ContextMenuSubmenu,
+	ContextMenuRadioGroup,
+	ContextMenuNode,
+	ContextMenuLeaf,
+	ContextMenuProps,
+	ContextMenuEmits,
+	ContextMenuSlots,
+	ContextMenuItemProps,
+	ContextMenuItemEmits,
+	ContextMenuItemSlots,
+} from './N8nContextMenu/ContextMenu.types';
 export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
 export type {
 	AiModelSelectorMenuItem,
@@ -24,6 +43,8 @@ export type {
 	DropdownMenuSlots,
 	DropdownMenuItemSlots,
 	DropdownMenuEmits,
+	DropdownMenuExposed,
+	DropdownMenuSearchMode,
 	DropdownMenuTrigger,
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';

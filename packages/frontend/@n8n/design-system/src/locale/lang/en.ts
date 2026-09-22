@@ -57,6 +57,7 @@ export default {
 	'selectedItemsInfo.selectedOne': '{count} row selected',
 	'selectedItemsInfo.selectedMany': '{count} rows selected',
 	'selectedItemsInfo.clearSelection': 'Clear selection',
+	'contextMenu.noItems': 'No items',
 	'codeDiff.couldNotReplace': 'Could not replace code',
 	'codeDiff.codeReplaced': 'Code replaced',
 	'codeDiff.replaceMyCode': 'Replace my code',

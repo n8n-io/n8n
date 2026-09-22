@@ -12,7 +12,7 @@ export * from './uuid';
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',
-	NODE_TYPE_POLICIES: 'feat:nodeTypePolicies',
+	TYPE_AVAILABILITY_POLICIES: 'feat:typeAvailabilityPolicies',
 	SAML: 'feat:saml',
 	OIDC: 'feat:oidc',
 	MFA_ENFORCEMENT: 'feat:mfaEnforcement',
