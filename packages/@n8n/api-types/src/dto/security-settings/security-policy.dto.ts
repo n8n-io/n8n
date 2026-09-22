@@ -77,5 +77,3 @@ export class UpdateSecurityPolicyDto extends Z.class(updateSecurityPolicySchema.
 }) {
 	static schema = updateSecurityPolicySchema;
 }
-
-export type SecurityPolicyResponse = SecurityPolicyPublicDto;

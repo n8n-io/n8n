@@ -444,7 +444,6 @@ export {
 	SecurityPolicyPublicDto,
 	UpdateSecurityPolicyDto,
 	securityPolicyPublicSchema,
-	type SecurityPolicyResponse,
 } from './security-settings/security-policy.dto';
 
 export { UpdateProjectPoolSettingsDto } from './worker-pools/update-project-pool-settings.dto';
