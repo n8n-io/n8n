@@ -1,12 +1,26 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import { assertSessionAccess, type AgentSessionAccess } from '../utils/agent-thread-access';
 
 @Service()
-export class AgentChatAttachmentRepository extends Repository<AgentChatAttachment> {
-	constructor(dataSource: DataSource) {
-		super(AgentChatAttachment, dataSource.manager);
+export class AgentChatAttachmentRepository extends BaseRepository<AgentChatAttachment> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentChatAttachment, dataSource.manager, transactionRunner);
+	}
+
+	async saveForSession(
+		attachment: AgentChatAttachment,
+		session: AgentSessionAccess,
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment> {
+		const manager = this.managerFor(ctx);
+		const thread = await manager.findOneBy(AgentExecutionThread, { id: session.threadId });
+		assertSessionAccess(thread, session);
+		return await manager.save(attachment);
 	}
 
 	/** Scoped lookup for hydration: the reference must belong to the requesting conversation. */

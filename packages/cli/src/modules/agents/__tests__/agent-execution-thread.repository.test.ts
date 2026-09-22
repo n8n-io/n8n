@@ -35,13 +35,10 @@ describe('AgentExecutionThreadRepository', () => {
 			save: vi.fn().mockResolvedValue(saved),
 		});
 
-		it('assigns the project-scoped session number inside a serializable transaction', async () => {
+		it('assigns the project-scoped session number with the supplied context', async () => {
 			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
 			const scopedRepository = makeScopedRepository(saved);
-			const trx = { getRepository: vi.fn().mockReturnValue(scopedRepository) };
-			entityManager.transaction.mockImplementationOnce(async (_isolation, callback) => {
-				return await callback(trx as never);
-			});
+			entityManager.getRepository.mockReturnValue(scopedRepository as never);
 
 			const result = await repository.findOrCreate(
 				'thread-1',
@@ -49,10 +46,10 @@ describe('AgentExecutionThreadRepository', () => {
 				'Support agent',
 				'project-1',
 				access,
+				{},
 			);
 
-			expect(entityManager.transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.any(Function));
-			expect(trx.getRepository).toHaveBeenCalledWith(AgentExecutionThread);
+			expect(entityManager.getRepository).toHaveBeenCalledWith(AgentExecutionThread);
 			expect(scopedRepository.create).toHaveBeenCalledWith({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -71,15 +68,27 @@ describe('AgentExecutionThreadRepository', () => {
 		it('stores subagent origin metadata when creating a thread', async () => {
 			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
 			const scopedRepository = makeScopedRepository(saved);
-			const trx = { getRepository: vi.fn().mockReturnValue(scopedRepository) };
-			entityManager.transaction.mockImplementationOnce(async (_isolation, callback) => {
-				return await callback(trx as never);
+			const parent = mock<AgentExecutionThread>({
+				id: 'parent-thread-1',
+				projectId: 'project-1',
+				agentId: 'parent-agent-1',
+				...access,
 			});
+			scopedRepository.findOneBy.mockResolvedValueOnce(parent).mockResolvedValueOnce(null);
+			entityManager.getRepository.mockReturnValue(scopedRepository as never);
 
-			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', access, {
-				parentThreadId: 'parent-thread-1',
-				parentAgentId: 'parent-agent-1',
-			});
+			await repository.findOrCreate(
+				'thread-1',
+				'agent-1',
+				'Support agent',
+				'project-1',
+				access,
+				{},
+				{
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
+				},
+			);
 
 			expect(scopedRepository.create).toHaveBeenCalledWith({
 				id: 'thread-1',
@@ -98,10 +107,7 @@ describe('AgentExecutionThreadRepository', () => {
 		it('stores the published task snapshot version when supplied', async () => {
 			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
 			const scopedRepository = makeScopedRepository(saved);
-			const trx = { getRepository: vi.fn().mockReturnValue(scopedRepository) };
-			entityManager.transaction.mockImplementationOnce(async (_isolation, callback) => {
-				return await callback(trx as never);
-			});
+			entityManager.getRepository.mockReturnValue(scopedRepository as never);
 
 			await repository.findOrCreate(
 				'thread-1',
@@ -109,6 +115,7 @@ describe('AgentExecutionThreadRepository', () => {
 				'Support agent',
 				'project-1',
 				access,
+				{},
 				undefined,
 				'task-1',
 				'version-1',
@@ -120,31 +127,6 @@ describe('AgentExecutionThreadRepository', () => {
 					taskVersionId: 'version-1',
 				}),
 			);
-		});
-
-		it('retries transient serialization failures before assigning a session number', async () => {
-			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
-			const scopedRepository = makeScopedRepository(saved);
-			const trx = { getRepository: vi.fn().mockReturnValue(scopedRepository) };
-			const serializationError = Object.assign(new Error('serialization failure'), {
-				driverError: { code: '40001' },
-			});
-			entityManager.transaction
-				.mockRejectedValueOnce(serializationError)
-				.mockImplementationOnce(async (_isolation, callback) => {
-					return await callback(trx as never);
-				});
-
-			const result = await repository.findOrCreate(
-				'thread-1',
-				'agent-1',
-				'Support agent',
-				'project-1',
-				access,
-			);
-
-			expect(entityManager.transaction).toHaveBeenCalledTimes(2);
-			expect(result).toEqual({ thread: saved, created: true });
 		});
 	});
 });

@@ -197,6 +197,13 @@ function makeService(sandboxEnabled = false) {
 	Container.set(AgentWakeService, wakeService);
 
 	executionService.canUseDraftThread.mockResolvedValue(true);
+	executionService.findThreadById.mockResolvedValue({
+		id: 'thread-1',
+		projectId,
+		agentId,
+		accessScope: 'project',
+		ownerId: null,
+	} as never);
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
@@ -446,7 +453,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			await expect(collect(fixtures.stream)).rejects.toBe(error);
 
 			expect(fixtures.sdkStart).not.toHaveBeenCalled();
-			expect(fixtures.executionService.startExecutionRecording).not.toHaveBeenCalled();
+			if (operation === 'start') {
+				expect(fixtures.executionService.startExecutionRecording).toHaveBeenCalledOnce();
+				expect(fixtures.executionService.finalizeExecution).toHaveBeenCalledOnce();
+			} else {
+				expect(fixtures.executionService.startExecutionRecording).not.toHaveBeenCalled();
+			}
 			expect(fixtures.runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledExactlyOnceWith(
 				fixtures.runtime.agent,
 			);
@@ -945,6 +957,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				persistence: {
 					threadId: 'thread-1',
 					resourceId: 'resource-1',
+					hostRunId: 'execution-1',
 					hostMetadata: expect.objectContaining(
 						encodeAgentSandboxHostMetadata({
 							projectId,
@@ -1349,7 +1362,8 @@ describe('AgentExecutionOrchestratorService', () => {
 	it.each([false, true])(
 		'installs a captured context before starting, including when metadata writes fail: %s',
 		async (writeFails) => {
-			const { service, runtimeCacheService, integrationMessageContextService } = makeService();
+			const { service, runtimeCacheService, integrationMessageContextService, executionService } =
+				makeService();
 			const runtime = makeRuntime();
 			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			if (writeFails)
@@ -1375,6 +1389,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect.objectContaining({
 					persistence: {
 						...memory,
+						hostRunId: 'execution-1',
 						hostMetadata: {
 							...encodeAgentSandboxHostMetadata({ projectId, principalHash: taskPrincipalHash }),
 							...encodeIntegrationMessageContext(selectedContext),
@@ -1395,6 +1410,9 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(integrationMessageContextService.setLatest.mock.invocationCallOrder[1]).toBeLessThan(
 				runtime.agent.stream.mock.invocationCallOrder[0],
 			);
+			expect(
+				integrationMessageContextService.setLatest.mock.invocationCallOrder[0],
+			).toBeGreaterThan(executionService.startExecutionRecording.mock.invocationCallOrder[0]);
 		},
 	);
 

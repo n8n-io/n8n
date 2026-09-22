@@ -1017,7 +1017,7 @@ export class AgentRuntimeReconstructionService {
 		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
 		// is an FK to `agents`, and a synthetic inline id has no entity row.
 		if (runtimeProfile !== 'inline' && !agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId, projectId));
 		}
 
 		// Attachment lookups are agent-scoped, so a synthetic inline id would

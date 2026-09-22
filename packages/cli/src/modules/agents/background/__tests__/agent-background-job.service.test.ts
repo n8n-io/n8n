@@ -11,8 +11,10 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
+import type { AgentSessionLock } from '../../agent-session-lock.service';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import {
 	AgentBackgroundJobService,
 	MAX_RUNNING_JOBS_PER_THREAD,
@@ -69,10 +71,13 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
 	const updateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+	const threadRepository = mock<AgentExecutionThreadRepository>();
+	const sessionLock = mock<AgentSessionLock>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
+	sessionLock.run.mockImplementation(async (_projectId, fn) => await fn({}));
 
 	jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(0);
 	jobRepository.insertJob.mockResolvedValue(undefined);
@@ -92,6 +97,8 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		logger,
 		agentsConfig,
 		updateBroadcaster,
+		threadRepository,
+		sessionLock,
 	);
 	return {
 		service,
@@ -101,10 +108,13 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		publisher,
 		logger,
 		updateBroadcaster,
+		threadRepository,
+		sessionLock,
 	};
 }
 
 const registerParams = {
+	projectId: 'project-1',
 	id: 'job-1',
 	parentAgentId: 'agent-1',
 	parentThreadId: 'thread-1',
@@ -246,7 +256,15 @@ describe('registerSubAgentJob', () => {
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
+		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith('thread-1', {});
+	});
+
+	it('does not register a job after its parent session is deleted', async () => {
+		const { service, jobRepository, threadRepository } = setup();
+		threadRepository.assertSessionExists.mockRejectedValue(new Error('Session not found'));
+
+		await expect(service.registerSubAgentJob(registerParams)).rejects.toThrow('Session not found');
+		expect(jobRepository.insertJob).not.toHaveBeenCalled();
 	});
 });
 
@@ -628,6 +646,7 @@ describe('reconcile', () => {
 
 describe('registerWorkflowJob', () => {
 	const workflowParams = {
+		projectId: 'project-1',
 		id: 'wf-job-1',
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
@@ -654,6 +673,7 @@ describe('registerWorkflowJob', () => {
 				childExecutionId: 'exec-1',
 				workflowId: 'workflow-1',
 			}),
+			{},
 		);
 		// No timeout: the execution's own lifecycle governs how long it may wait.
 		expect(jobRepository.insertWorkflowJobOrGetExisting.mock.calls[0][0]).not.toHaveProperty(

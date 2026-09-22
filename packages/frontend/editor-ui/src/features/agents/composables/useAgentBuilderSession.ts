@@ -102,6 +102,10 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 		selectSession(crypto.randomUUID(), true);
 	}
 
+	function markSessionCreated(sessionId: string) {
+		if (ephemeralSessionId.value === sessionId) ephemeralSessionId.value = null;
+	}
+
 	return {
 		activeChatSessionId,
 		continueSessionId,
@@ -111,6 +115,7 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 		clearContinueSessionParam,
 		onSessionPick,
 		onNewChat,
+		markSessionCreated,
 	};
 }
 

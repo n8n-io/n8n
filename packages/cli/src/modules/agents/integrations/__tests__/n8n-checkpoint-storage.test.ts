@@ -7,6 +7,7 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
+import type { AgentSessionLock } from '../../agent-session-lock.service';
 import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
 import {
@@ -31,49 +32,34 @@ const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'use
 
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
+	const sessionLock = mock<AgentSessionLock>();
+	sessionLock.run.mockImplementation(async (_projectId, fn) => await fn({}));
 	const service = new N8NCheckpointStorage(
 		repository,
 		mockLogger(),
 		mock<AgentsConfig>({ checkpointTtlSeconds: 60 }),
+		sessionLock,
 	);
 
-	return { service, repository };
+	return { service, repository, sessionLock };
 }
 
 describe('N8NCheckpointStorage', () => {
 	it('creates new checkpoints with the storage agent as owner', async () => {
 		const { service, repository } = makeService();
-		const checkpoint = {
-			runId: 'run-1',
-			agentId: 'agent-1',
-			expired: false,
-			state: JSON.stringify(suspendedState),
-		} as AgentCheckpoint;
-		repository.findByRunId.mockResolvedValue(null);
-		repository.create.mockReturnValue(checkpoint);
 
 		await service.getStorage('agent-1').save('run-1', suspendedState);
 
-		expect(repository.create).toHaveBeenCalledWith({
+		expect(repository.saveCheckpoint).toHaveBeenCalledWith({
 			runId: 'run-1',
 			agentId: 'agent-1',
 			threadId: 'thread-1',
-			expired: false,
 			state: JSON.stringify(suspendedState),
 		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
 	});
 
-	it.each(['thread-1', undefined])('replaces the saved thread key with %s', async (threadId) => {
+	it.each(['thread-1', undefined])('saves the current thread key as %s', async (threadId) => {
 		const { service, repository } = makeService();
-		const checkpoint = {
-			runId: 'run-1',
-			agentId: 'agent-1',
-			threadId: 'previous-thread',
-			expired: true,
-			state: null,
-		} as AgentCheckpoint;
-		repository.findByRunId.mockResolvedValue(checkpoint);
 		const state = {
 			...suspendedState,
 			persistence: threadId ? { threadId, resourceId: 'resource-1' } : undefined,
@@ -81,32 +67,59 @@ describe('N8NCheckpointStorage', () => {
 
 		await service.getStorage('agent-1').save('run-1', state);
 
-		expect(checkpoint).toMatchObject({
+		expect(repository.saveCheckpoint).toHaveBeenCalledWith({
+			runId: 'run-1',
 			agentId: 'agent-1',
 			threadId: threadId ?? null,
-			expired: false,
 			state: JSON.stringify(state),
 		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
 	});
 
-	it.each(['agent-2', null])(
-		'rejects overwriting a checkpoint owned by %s',
-		async (existingAgentId) => {
-			const { service, repository } = makeService();
-			repository.findByRunId.mockResolvedValue({
-				runId: 'run-1',
-				agentId: existingAgentId,
-				expired: false,
-				state: JSON.stringify(suspendedState),
-			} as AgentCheckpoint);
+	it('guards a session checkpoint with its admitted execution', async () => {
+		const { service, repository, sessionLock } = makeService();
+		const state = {
+			...suspendedState,
+			persistence: { ...suspendedState.persistence!, hostRunId: 'execution-1' },
+		};
 
-			await expect(service.getStorage('agent-1').save('run-1', suspendedState)).rejects.toThrow(
-				'owned by a different agent',
-			);
-			expect(repository.save).not.toHaveBeenCalled();
-		},
-	);
+		await service.getStorage('agent-1', 'project-1').save('run-1', state);
+
+		expect(sessionLock.run).toHaveBeenCalledWith('project-1', expect.any(Function));
+		expect(repository.saveForRunningExecution).toHaveBeenCalledWith(
+			{
+				runId: 'run-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				state: JSON.stringify(state),
+				projectId: 'project-1',
+				executionId: 'execution-1',
+			},
+			{},
+		);
+	});
+
+	it('preserves sessionless checkpoints for project-scoped runtimes', async () => {
+		const { service, repository, sessionLock } = makeService();
+		const state = { ...suspendedState, persistence: undefined };
+		const storage = service.getStorage('agent-1', 'project-1');
+
+		await storage.save('run-1', state);
+		repository.findByRunIdAndAgentId.mockResolvedValue({
+			runId: 'run-1',
+			expired: false,
+			state: JSON.stringify(state),
+		} as AgentCheckpoint);
+
+		await expect(storage.load('run-1')).resolves.toEqual(state);
+		expect(repository.saveCheckpoint).toHaveBeenCalledWith({
+			runId: 'run-1',
+			agentId: 'agent-1',
+			threadId: null,
+			state: JSON.stringify(state),
+		});
+		expect(sessionLock.run).not.toHaveBeenCalled();
+		expect(repository.sessionExists).not.toHaveBeenCalled();
+	});
 
 	it('loads only a checkpoint owned by the storage agent', async () => {
 		const { service, repository } = makeService();

@@ -70,6 +70,7 @@ const {
 	isDeletingSession,
 	onSessionPick,
 	onNewChat,
+	markSessionCreated,
 	deleteSession,
 } = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
@@ -415,12 +416,14 @@ function viewPreviewTrace() {
 				:local-config="localConfig"
 				:connected-triggers="[]"
 				:effective-session-id="effectiveSessionId"
+				:new-session="currentSessionIsEphemeral"
 				:can-delete-session="canDeleteSession"
 				:is-deleting-session="isDeletingSession"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
 				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
+				@session-created="markSessionCreated"
 				@close="togglePreview"
 			/>
 		</div>

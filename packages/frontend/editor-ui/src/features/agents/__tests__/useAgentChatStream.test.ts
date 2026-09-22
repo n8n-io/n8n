@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, reactive, nextTick, effectScope } from 'vue';
+import { ref, reactive, nextTick, effectScope, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import {
 	APPROVAL_TOOL_NAME,
@@ -161,7 +161,10 @@ afterEach(() => {
 	for (const scope of hookScopes.splice(0)) scope.stop();
 });
 
-function buildHook(continueSessionId?: string) {
+function buildHook(
+	continueSessionId?: string,
+	options: { newSession?: Ref<boolean>; onSessionCreated?: (sessionId: string) => void } = {},
+) {
 	const scope = effectScope();
 	hookScopes.push(scope);
 	return scope.run(() =>
@@ -169,6 +172,7 @@ function buildHook(continueSessionId?: string) {
 			projectId: ref('p1'),
 			agentId: ref('a1'),
 			...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
+			...options,
 		}),
 	)!;
 }
@@ -2150,6 +2154,20 @@ describe('useAgentChatStream — loadHistory', () => {
 		expect(msg.interactive?.runId).toBe('run-continued');
 		expect(msg.status).toBe('awaitingUser');
 	});
+
+	it('marks a client-minted session as created when persisted history exists', async () => {
+		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		const newSession = ref(true);
+		const onSessionCreated = vi.fn(() => {
+			newSession.value = false;
+		});
+		const hook = buildHook('thread-new', { newSession, onSessionCreated });
+
+		await hook.loadHistory();
+
+		expect(onSessionCreated).toHaveBeenCalledOnce();
+		expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
+	});
 });
 
 describe('useAgentChatStream — done executionId', () => {
@@ -2168,6 +2186,39 @@ describe('useAgentChatStream — done executionId', () => {
 		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
 		expect(assistant?.content).toBe('Hello');
 		expect(assistant?.executionId).toBe('exec-live-1');
+	});
+
+	it('stops sending creation intent after the first turn is admitted', async () => {
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+			makeSseResponse([
+				{ type: 'start-step' },
+				{ type: 'error', message: 'The turn failed after admission' },
+			]),
+		);
+		globalThis.fetch = fetchMock as typeof fetch;
+		const newSession = ref(true);
+		const onSessionCreated = vi.fn(() => {
+			newSession.value = false;
+		});
+		const hook = buildHook('thread-new', {
+			newSession,
+			onSessionCreated,
+		});
+
+		await hook.sendMessage('hi');
+		await hook.sendMessage('try again');
+
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+			message: 'hi',
+			sessionId: 'thread-new',
+			newSession: true,
+		});
+		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+			message: 'try again',
+			sessionId: 'thread-new',
+		});
+		expect(onSessionCreated).toHaveBeenCalledOnce();
+		expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
 	});
 });
 

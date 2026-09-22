@@ -2,13 +2,14 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
@@ -17,9 +18,13 @@ import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
 } from '../utils/delegated-child-checkpoints';
-import { PREVIEW_THREAD_SOURCES } from '../utils/agent-thread-access';
+import {
+	AgentSessionNotFoundError,
+	PREVIEW_THREAD_SOURCES,
+	assertSessionAccess,
+	type AgentSessionMode,
+} from '../utils/agent-thread-access';
 
-const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 const CHECKPOINT_BATCH_SIZE = 400;
 
 export interface AgentExecutionThreadMetadata {
@@ -53,90 +58,51 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		agentName: string,
 		projectId: string,
 		access: AgentThreadAccess,
+		ctx: OperationContext,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
+		sessionMode: AgentSessionMode = 'new',
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
-		for (let attempt = 0; ; attempt++) {
-			try {
-				return await this.findOrCreateInSerializableTransaction(
-					threadId,
-					agentId,
-					agentName,
-					projectId,
-					access,
-					metadata,
-					taskId,
-					taskVersionId,
-				);
-			} catch (error) {
-				if (attempt >= SESSION_NUMBER_RETRY_ATTEMPTS - 1 || !isRetriableWriteError(error)) {
-					throw error;
-				}
+		const manager = this.managerFor(ctx);
+		const repository = manager.getRepository(AgentExecutionThread);
+		if (metadata?.parentThreadId) {
+			const parent = await repository.findOneBy({ id: metadata.parentThreadId });
+			if (!parent || parent.projectId !== projectId || parent.agentId !== metadata.parentAgentId) {
+				throw new AgentSessionNotFoundError();
 			}
+			access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
 		}
-	}
+		if (access.accessScope === 'user' && !access.ownerId) throw new AgentSessionNotFoundError();
 
-	private async findOrCreateInSerializableTransaction(
-		threadId: string,
-		agentId: string,
-		agentName: string,
-		projectId: string,
-		access: AgentThreadAccess,
-		metadata?: AgentExecutionThreadMetadata,
-		taskId?: string | null,
-		taskVersionId?: string | null,
-	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
-		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
-			const repository = entityManager.getRepository(AgentExecutionThread);
-			if (metadata?.parentThreadId) {
-				const parent = await repository.findOneBy({ id: metadata.parentThreadId });
-				if (parent) {
-					if (parent.projectId !== projectId || parent.agentId !== metadata.parentAgentId) {
-						throw new UserError('Session not found');
-					}
-					access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
-				}
-			}
-			if (access.accessScope === 'user' && !access.ownerId) {
-				throw new UserError('Session not found');
-			}
-			const existing = await repository.findOneBy({ id: threadId });
-			if (existing) {
-				if (
-					existing.projectId !== projectId ||
-					existing.agentId !== agentId ||
-					existing.accessScope !== access.accessScope ||
-					existing.ownerId !== access.ownerId
-				) {
-					throw new UserError('Session not found');
-				}
-				return { thread: existing, created: false };
-			}
-
-			const maxResult = await repository
-				.createQueryBuilder('t')
-				.select('MAX(t.sessionNumber)', 'max')
-				.where('t.projectId = :projectId', { projectId })
-				.getRawOne<{ max: number | null }>();
-
-			const sessionNumber = (maxResult?.max ?? 0) + 1;
-
-			const thread = repository.create({
-				id: threadId,
-				agentId,
-				agentName,
-				projectId,
-				...access,
-				taskId: taskId ?? null,
-				taskVersionId: taskVersionId ?? null,
-				sessionNumber,
-				parentThreadId: metadata?.parentThreadId ?? null,
-				parentAgentId: metadata?.parentAgentId ?? null,
-			});
-			const saved = await repository.save(thread);
-			return { thread: saved, created: true };
+		const existing = await repository.findOneBy({ id: threadId });
+		assertSessionAccess(existing, {
+			threadId,
+			agentId,
+			projectId,
+			access,
+			sessionMode,
 		});
+		if (existing) return { thread: existing, created: false };
+
+		const maxResult = await repository
+			.createQueryBuilder('t')
+			.select('MAX(t.sessionNumber)', 'max')
+			.where('t.projectId = :projectId', { projectId })
+			.getRawOne<{ max: number | null }>();
+		const thread = repository.create({
+			id: threadId,
+			agentId,
+			agentName,
+			projectId,
+			...access,
+			taskId: taskId ?? null,
+			taskVersionId: taskVersionId ?? null,
+			sessionNumber: (maxResult?.max ?? 0) + 1,
+			parentThreadId: metadata?.parentThreadId ?? null,
+			parentAgentId: metadata?.parentAgentId ?? null,
+		});
+		return { thread: await repository.save(thread), created: true };
 	}
 
 	/**
@@ -301,8 +267,20 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
-	async bumpUpdatedAt(threadId: string): Promise<void> {
-		await this.update(threadId, { updatedAt: new Date() });
+	async bumpUpdatedAt(threadId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });
+	}
+
+	async assertSessionExists(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const exists = await this.managerFor(ctx).exists(AgentExecutionThread, {
+			where: { id: threadId, projectId, agentId },
+		});
+		if (!exists) throw new AgentSessionNotFoundError();
 	}
 
 	/** Atomically increment token and cost counters on a thread in a single UPDATE. */
@@ -344,7 +322,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		threadId: string,
 		userId: string,
 		ctx: OperationContext,
-	): Promise<AgentSessionDeletionRefs | null> {
+	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
 			where: [
@@ -353,6 +331,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			],
 		});
 		if (!thread) return null;
+		const linkedThreadIds = await this.findLinkedThreadIds(manager, projectId, threadId);
+		const hasRunningWork =
+			(await manager.exists(AgentExecution, {
+				where: { threadId: In(linkedThreadIds), status: 'running' },
+			})) ||
+			(await manager.exists(AgentBackgroundJob, {
+				where: { parentThreadId: In(linkedThreadIds), status: 'running' },
+			}));
+		if (hasRunningWork) return { status: 'busy' };
 
 		const { attachments, executionLogs } = await this.findExternalRefs(
 			manager,
@@ -371,9 +358,42 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 		await manager.delete(AgentExecutionThread, { id: threadId });
 		return {
-			executionLogs,
-			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+			status: 'deleted',
+			refs: {
+				executionLogs,
+				attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+			},
 		};
+	}
+
+	private async findLinkedThreadIds(
+		manager: EntityManager,
+		projectId: string,
+		rootThreadId: string,
+	): Promise<string[]> {
+		const rows = await manager.find(AgentExecutionThread, {
+			select: ['id', 'parentThreadId'],
+			where: { projectId },
+		});
+		const children = new Map<string, string[]>();
+		for (const row of rows) {
+			if (!row.parentThreadId) continue;
+			const siblings = children.get(row.parentThreadId) ?? [];
+			siblings.push(row.id);
+			children.set(row.parentThreadId, siblings);
+		}
+		const visited = new Set([rootThreadId]);
+		const pending = [rootThreadId];
+		for (let index = 0; index < pending.length; index++) {
+			const parentId = pending[index];
+			if (!parentId) continue;
+			for (const childId of children.get(parentId) ?? []) {
+				if (visited.has(childId)) continue;
+				visited.add(childId);
+				pending.push(childId);
+			}
+		}
+		return [...visited];
 	}
 
 	private async findSessionCheckpointRunIds(
@@ -468,18 +488,4 @@ function collectUnvisitedChildCheckpoints(
 
 function checkpointKey(agentId: string, runId: string): string {
 	return `${agentId}\0${runId}`;
-}
-
-function isRetriableWriteError(error: unknown): boolean {
-	if (!(error instanceof Error) || !('driverError' in error)) return false;
-	const { driverError } = error;
-	if (typeof driverError !== 'object' || driverError === null || !('code' in driverError)) {
-		return false;
-	}
-
-	const { code } = driverError;
-	return (
-		typeof code === 'string' &&
-		(code === '40001' || code === '40P01' || code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED')
-	);
 }

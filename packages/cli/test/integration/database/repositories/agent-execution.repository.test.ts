@@ -36,12 +36,14 @@ import {
 } from '@/modules/agents/agent-sandbox-principal';
 import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
+import { AgentSessionLock } from '@/modules/agents/agent-session-lock.service';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
 import type { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
@@ -118,7 +120,7 @@ describe('AgentExecutionRepository', () => {
 			mock<ErrorReporter>(),
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
-			Container.get(TransactionRunner),
+			Container.get(AgentSessionLock),
 		);
 		return {
 			executionService,
@@ -280,7 +282,12 @@ describe('AgentExecutionRepository', () => {
 			userMessage: 'Start',
 		};
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
-		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
+		const storage = new N8NCheckpointStorage(
+			checkpointRepo,
+			mockLogger(),
+			new AgentsConfig(),
+			Container.get(AgentSessionLock),
+		);
 		const { action, makeAgent } = createApprovalAgentFactory(threadId, user?.id, approvals);
 		const common = {
 			toolRegistry: new Map(),
@@ -347,9 +354,10 @@ describe('AgentExecutionRepository', () => {
 		}).initialize();
 		try {
 			const otherStorage = new N8NCheckpointStorage(
-				new AgentCheckpointRepository(secondConnection),
+				new AgentCheckpointRepository(secondConnection, Container.get(TransactionRunner)),
 				mockLogger(),
 				new AgentsConfig(),
+				Container.get(AgentSessionLock),
 			);
 			const bothLoaded = createDeferredPromise<boolean>();
 			let loaded = 0;
@@ -569,6 +577,206 @@ describe('AgentExecutionRepository', () => {
 		expect(executionLogStore.delete).not.toHaveBeenCalled();
 	});
 
+	it('keeps a session when admission wins a concurrent deletion', async () => {
+		const thread = await createThread();
+		const { executionService, turns } = recordingServices();
+		const params = {
+			access: { accessScope: 'project' as const, ownerId: null },
+			threadId: thread.id,
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			userMessage: 'Continue',
+			sessionMode: 'existing' as const,
+		};
+		const recorder = new ExecutionRecorder();
+		const admitted = createDeferredPromise();
+		const releaseAdmission = createDeferredPromise();
+		const saveInContext = repository.saveInContext.bind(repository);
+		const saveSpy = vi
+			.spyOn(repository, 'saveInContext')
+			.mockImplementationOnce(async (execution, ctx) => {
+				const saved = await saveInContext(execution, ctx);
+				admitted.resolve();
+				await releaseAdmission.promise;
+				return saved;
+			});
+		const deleteSpy = vi.spyOn(threadRepo, 'deleteSession');
+
+		try {
+			const start = turns.startExecution(params, recorder.startedAt);
+			await admitted.promise;
+			const deletion = executionService.deleteThread(projectId, agentId, thread.id, uuid());
+			const deletionRejected = expect(deletion).rejects.toThrow('active work');
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			expect(deleteSpy).not.toHaveBeenCalled();
+			releaseAdmission.resolve();
+			const executionId = await start;
+			await deletionRejected;
+			expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
+
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+			await turns.finalizeExecution({
+				executionId,
+				executionStarted: true,
+				params: { ...params, record: recorder.getMessageRecord() },
+			});
+		} finally {
+			releaseAdmission.resolve();
+			saveSpy.mockRestore();
+			deleteSpy.mockRestore();
+		}
+	});
+
+	it('rejects a continuation when concurrent deletion wins admission', async () => {
+		const thread = await createThread();
+		const { executionService, turns } = recordingServices();
+		const deleted = createDeferredPromise();
+		const releaseDeletion = createDeferredPromise();
+		const deleteSession = threadRepo.deleteSession.bind(threadRepo);
+		const deleteSpy = vi
+			.spyOn(threadRepo, 'deleteSession')
+			.mockImplementationOnce(async (...args) => {
+				const result = await deleteSession(...args);
+				deleted.resolve();
+				await releaseDeletion.promise;
+				return result;
+			});
+		const admissionSpy = vi.spyOn(threadRepo, 'findOrCreate');
+
+		try {
+			const deletion = executionService.deleteThread(projectId, agentId, thread.id, uuid());
+			await deleted.promise;
+			const continuation = turns.startExecution(
+				{
+					access: { accessScope: 'project', ownerId: null },
+					threadId: thread.id,
+					agentId,
+					agentName: 'Test Agent',
+					projectId,
+					userMessage: 'Continue',
+					sessionMode: 'existing',
+				},
+				new Date(),
+			);
+			const deletionCompleted = expect(deletion).resolves.toBe(true);
+			const continuationRejected = expect(continuation).rejects.toMatchObject({
+				phase: 'create',
+				cause: expect.objectContaining({ message: 'Session not found' }),
+			});
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			expect(admissionSpy).not.toHaveBeenCalled();
+			releaseDeletion.resolve();
+			await deletionCompleted;
+			await continuationRejected;
+			expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+			expect(await repository.findByThreadIdOrdered(thread.id)).toEqual([]);
+		} finally {
+			releaseDeletion.resolve();
+			deleteSpy.mockRestore();
+			admissionSpy.mockRestore();
+		}
+	});
+
+	it('blocks parent deletion while a descendant execution is running', async () => {
+		const parent = await createThread();
+		const child = await createThread({
+			id: uuid(),
+			sessionNumber: 2,
+			parentThreadId: parent.id,
+			parentAgentId: agentId,
+		});
+		const execution = await createExecution({ threadId: child.id, status: 'running' });
+		const { executionService } = recordingServices();
+
+		await expect(
+			executionService.deleteThread(projectId, agentId, parent.id, uuid()),
+		).rejects.toThrow('active work');
+		await repository.update(execution.id, { status: 'success' });
+		expect(await executionService.deleteThread(projectId, agentId, parent.id, uuid())).toBe(true);
+		expect(await threadRepo.findOneBy({ id: child.id })).not.toBeNull();
+	});
+
+	it('blocks deletion only while a background job is running', async () => {
+		const thread = await createThread();
+		const jobs = Container.get(AgentBackgroundJobRepository);
+		const jobId = uuid();
+		await jobs.insertJob({
+			id: jobId,
+			kind: 'subagent',
+			parentAgentId: agentId,
+			parentThreadId: thread.id,
+			parentResourceId: 'resource-1',
+			parentPrincipalHash: 'principal-hash',
+			title: 'Research',
+			subAgentId: agentId,
+			childThreadId: uuid(),
+			timeoutAt: new Date(Date.now() + 60_000),
+		});
+		const { executionService } = recordingServices();
+
+		await expect(
+			executionService.deleteThread(projectId, agentId, thread.id, uuid()),
+		).rejects.toThrow('active work');
+		await jobs.settleIfRunning(jobId, { status: 'completed' });
+		expect(await executionService.deleteThread(projectId, agentId, thread.id, uuid())).toBe(true);
+		await jobs.delete({ id: jobId });
+	});
+
+	it('does not restore a deleted session from a delayed checkpoint save', async () => {
+		const thread = await createThread();
+		const execution = await createExecution({ threadId: thread.id, status: 'running' });
+		const checkpointRepo = Container.get(AgentCheckpointRepository);
+		const storage = Container.get(N8NCheckpointStorage);
+		const runId = uuid();
+		const state: SerializableAgentState = {
+			status: 'suspended',
+			persistence: {
+				threadId: thread.id,
+				resourceId: 'resource-1',
+				hostRunId: execution.id,
+			},
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+		};
+		await storage.save(runId, state, agentId, projectId);
+		await repository.update(execution.id, { status: 'success' });
+		const { executionService } = recordingServices();
+		expect(await executionService.deleteThread(projectId, agentId, thread.id, uuid())).toBe(true);
+
+		await expect(storage.save(runId, state, agentId, projectId)).rejects.toThrow(
+			'no longer active',
+		);
+		expect(await checkpointRepo.findByRunId(runId)).toBeNull();
+		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+	});
+
+	it('rejects attachment metadata for a deleted session', async () => {
+		const thread = await createThread();
+		const { executionService } = recordingServices();
+		expect(await executionService.deleteThread(projectId, agentId, thread.id, uuid())).toBe(true);
+		const attachment = buildAttachment(thread.id);
+
+		await expect(
+			Container.get(AgentSessionLock).run(
+				projectId,
+				async (ctx) =>
+					await attachmentRepo.saveForSession(
+						attachment,
+						{
+							threadId: thread.id,
+							agentId,
+							projectId,
+							access: { accessScope: 'project', ownerId: null },
+							sessionMode: 'existing',
+						},
+						ctx,
+					),
+			),
+		).rejects.toThrow('Session not found');
+		expect(await attachmentRepo.findOneBy({ id: attachment.id })).toBeNull();
+	});
+
 	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
 		const fixture = await startSuspendedApprovalRun();
 		const { outcomes, onResumeClaimed } = await resumeApprovalFromSeparateConnections(fixture);
@@ -663,27 +871,14 @@ describe('AgentExecutionRepository', () => {
 				expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
 				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 				expect(
-					await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id),
-				).toBe(true);
-
-				const resumed = await resume(owner);
-				const next = resumed.find((chunk) => chunk.type === 'tool-call-suspended');
-				if (!next || next.type !== 'tool-call-suspended')
-					throw new Error('Expected next suspension');
-				await resume(owner, next.runId, next.toolCallId);
-				expect(fixture.action).toHaveBeenCalledTimes(2);
-				expect(await threadRepo.findOneByOrFail({ id: threadId })).toMatchObject({
-					accessScope: 'user',
-					ownerId: owner.id,
-				});
-				const continued = await repository.findByThreadIdOrdered(threadId);
-				expect(continued).toHaveLength(2);
-				for (const execution of continued) {
-					expect(execution.status).toBe('success');
-					expect(execution.timeline).toContainEqual(
-						expect.objectContaining({ type: 'hitl-response' }),
-					);
-				}
+					await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id, {
+						previewChat: true,
+						sessionMode: 'existing',
+					}),
+				).toBe(false);
+				await expect(resume(owner)).rejects.toThrow('does not belong to this chat');
+				expect(fixture.action).not.toHaveBeenCalled();
+				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 			} finally {
 				await runtime.close();
 			}
@@ -786,6 +981,7 @@ describe('AgentExecutionRepository', () => {
 			'Test Agent',
 			projectId,
 			access,
+			{},
 		);
 		await threadRepo.update(thread.id, { updatedAt: new Date('2026-01-03T00:00:00Z') });
 		const shared = await createThread({
@@ -835,11 +1031,11 @@ describe('AgentExecutionRepository', () => {
 			{ accessScope: 'project' as const, ownerId: null },
 		]) {
 			await expect(
-				threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, incompatible),
+				threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, incompatible, {}),
 			).rejects.toThrow('Session not found');
 		}
 		expect(
-			await threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, access),
+			await threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, access, {}),
 		).toMatchObject({ created: false, thread: access });
 		const child = await threadRepo.findOrCreate(
 			uuid(),
@@ -847,6 +1043,7 @@ describe('AgentExecutionRepository', () => {
 			'Test Agent',
 			projectId,
 			{ accessScope: 'user', ownerId: null },
+			{},
 			{ parentThreadId: thread.id, parentAgentId: agentId },
 		);
 		expect(child.thread).toMatchObject(access);
@@ -859,6 +1056,7 @@ describe('AgentExecutionRepository', () => {
 			'Test Agent',
 			projectId,
 			{ accessScope: 'user', ownerId: null },
+			{},
 			{ parentThreadId: shared.id, parentAgentId: agentId },
 		);
 		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });

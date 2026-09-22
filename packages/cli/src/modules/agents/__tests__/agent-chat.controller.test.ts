@@ -417,7 +417,7 @@ describe('AgentChatController SSE done payload', () => {
 					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 					res,
 					'agent-1',
-					{ message: 'hi', sessionId: 'thread-1' } as never,
+					{ message: 'hi', sessionId: 'thread-1', newSession: true } as never,
 				),
 			done: { type: 'done', sessionId: 'thread-1', executionId: 'exec-99' },
 		},
@@ -437,7 +437,11 @@ describe('AgentChatController SSE done payload', () => {
 
 	it('does not start a chat after the response closes during preparation', async () => {
 		const { controller, agentTestRunService, agentExecutionOrchestratorService } = makeController();
-		let resolvePreparation = (_value: { status: 'ready'; sessionId: string }) => {};
+		let resolvePreparation = (_value: {
+			status: 'ready';
+			sessionId: string;
+			sessionMode: 'new';
+		}) => {};
 		const prepareDraftRun = vi.spyOn(agentTestRunService, 'prepareDraftRun').mockReturnValue(
 			new Promise((resolve) => {
 				resolvePreparation = resolve;
@@ -454,43 +458,48 @@ describe('AgentChatController SSE done payload', () => {
 		await vi.waitFor(() => expect(prepareDraftRun).toHaveBeenCalled());
 
 		(res as unknown as EventEmitter).emit('close');
-		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
+		resolvePreparation({ status: 'ready', sessionId: 'thread-1', sessionMode: 'new' });
 		await request;
 
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
-	it.each(operations)('sends done after the $name settles', async ({ method, start, done }) => {
-		const { controller, agentExecutionOrchestratorService } = makeController();
-		const finalization = createDeferredPromise();
-		const finalizationStarted = createDeferredPromise();
-		let receivedSignal: AbortSignal | undefined;
-		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
-			receivedSignal = config.abortSignal;
-			yield { type: 'finish', finishReason: 'stop' };
-			finalizationStarted.resolve();
-			await finalization.promise;
-			config.onExecutionRecorded?.('exec-99');
-		});
+	it.each(operations)(
+		'sends done after the $name settles',
+		async ({ name, method, start, done }) => {
+			const { controller, agentExecutionService, agentExecutionOrchestratorService } =
+				makeController();
+			if (name === 'new chat') agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+			const finalization = createDeferredPromise();
+			const finalizationStarted = createDeferredPromise();
+			let receivedSignal: AbortSignal | undefined;
+			agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
+				receivedSignal = config.abortSignal;
+				yield { type: 'finish', finishReason: 'stop' };
+				finalizationStarted.resolve();
+				await finalization.promise;
+				config.onExecutionRecorded?.('exec-99');
+			});
 
-		const writes: string[] = [];
-		const res = makeSseResponse(writes);
-		const request = start(controller, res);
-		await finalizationStarted.promise;
-		expect(res.end).not.toHaveBeenCalled();
-		expect(writes.some((line) => line.includes('"done"'))).toBe(false);
-		finalization.resolve();
-		await request;
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			const request = start(controller, res);
+			await finalizationStarted.promise;
+			expect(res.end).not.toHaveBeenCalled();
+			expect(writes.some((line) => line.includes('"done"'))).toBe(false);
+			finalization.resolve();
+			await request;
 
-		const events = writes
-			.filter((line) => line.startsWith('data: '))
-			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+			const events = writes
+				.filter((line) => line.startsWith('data: '))
+				.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
 
-		expect(events).toContainEqual(done);
-		expect(res.end).toHaveBeenCalledOnce();
-		res.emit('close');
-		expect(receivedSignal?.aborted).toBe(false);
-	});
+			expect(events).toContainEqual(done);
+			expect(res.end).toHaveBeenCalledOnce();
+			res.emit('close');
+			expect(receivedSignal?.aborted).toBe(false);
+		},
+	);
 
 	it.each(operations)('does not send done for a suspended $name', async ({ method, start }) => {
 		const { controller, agentExecutionOrchestratorService } = makeController();

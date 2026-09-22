@@ -73,6 +73,7 @@ export class SubAgentBackgroundRunner {
 		const childThreadId = uuid();
 
 		const receipt = await this.jobService.registerSubAgentJob({
+			projectId: context.projectId,
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,

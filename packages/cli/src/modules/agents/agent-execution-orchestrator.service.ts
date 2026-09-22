@@ -21,6 +21,7 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
+import type { AgentSessionMode } from './utils/agent-thread-access';
 import {
 	draftChatMemoryResourceId,
 	isTaskRunMemoryResourceId,
@@ -82,6 +83,7 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	sessionMode?: AgentSessionMode;
 	/** Stored attachments to include as file parts on the user turn. */
 	attachments?: StoredAttachmentRef[];
 	/** Identifies the surface that started the draft test run. */
@@ -111,6 +113,7 @@ export interface ExecuteForChatPublishedConfig {
 	author?: AgentMessageAuthor;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	sessionMode?: AgentSessionMode;
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
@@ -243,6 +246,8 @@ export interface StreamChatResponseConfig {
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	sessionMode?: AgentSessionMode;
+	onAdmitted?: () => Promise<void>;
 }
 
 /**
@@ -268,6 +273,10 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
 	) {}
+
+	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
+		return await this.agentExecutionService.getSessionMode(threadId);
+	}
 
 	/**
 	 * Return user-visible conversation history for a persisted chat thread.
@@ -389,7 +398,7 @@ export class AgentExecutionOrchestratorService {
 					projectId,
 					agentId,
 					user.id,
-					{ previewChat },
+					{ previewChat, sessionMode: 'existing' },
 				))
 			) {
 				throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
@@ -399,10 +408,10 @@ export class AgentExecutionOrchestratorService {
 			const thread = await this.agentExecutionService.findThreadById(memoryScope.threadId);
 			if (
 				userIdFromDraftChatMemoryResourceId(memoryScope.resourceId) ||
-				(thread &&
-					(thread.projectId !== projectId ||
-						thread.agentId !== agentId ||
-						thread.accessScope !== 'project'))
+				!thread ||
+				thread.projectId !== projectId ||
+				thread.agentId !== agentId ||
+				thread.accessScope !== 'project'
 			) {
 				throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
 			}
@@ -471,7 +480,15 @@ export class AgentExecutionOrchestratorService {
 						...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 						previewChat: config.previewChat,
 					},
-					{ threadId, userMessage: null, source, onExecutionRecorded, abortSignal, access },
+					{
+						threadId,
+						userMessage: null,
+						source,
+						onExecutionRecorded,
+						abortSignal,
+						access,
+						sessionMode: 'existing',
+					},
 				),
 			(runtime) =>
 				this.turnExecutionService.execute({
@@ -546,6 +563,7 @@ export class AgentExecutionOrchestratorService {
 								agentName: runtime.agent.name,
 								projectId,
 								userMessage: null,
+								sessionMode: 'existing',
 								...(executionSource !== undefined ? { source: executionSource } : {}),
 								telemetry: {
 									userId: user?.id,
@@ -572,6 +590,7 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			source,
 			previewChat,
+			sessionMode = 'new',
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
@@ -589,7 +608,7 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				agentId,
 				user.id,
-				{ previewChat },
+				{ previewChat, sessionMode },
 			))
 		) {
 			throw new UserError('Session not found');
@@ -614,6 +633,7 @@ export class AgentExecutionOrchestratorService {
 						source,
 						onExecutionRecorded,
 						abortSignal,
+						sessionMode,
 					},
 				),
 			async (runtime) => {
@@ -624,12 +644,6 @@ export class AgentExecutionOrchestratorService {
 					interactingUserId: user.id,
 					updatedAt: new Date().toISOString(),
 				};
-				await this.integrationMessageContextService.setLatest(
-					memory.threadId,
-					memory.resourceId,
-					messageContext,
-				);
-
 				return this.streamChatResponse({
 					access,
 					messageContext,
@@ -651,6 +665,13 @@ export class AgentExecutionOrchestratorService {
 					abortSignal,
 					includeHitlToolDetails: true,
 					sandboxPrincipalHash,
+					sessionMode,
+					onAdmitted: async () =>
+						await this.integrationMessageContextService.setLatest(
+							memory.threadId,
+							memory.resourceId,
+							messageContext,
+						),
 				});
 			},
 		);
@@ -674,6 +695,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			attachments,
 			sandboxPrincipalHash,
+			sessionMode = 'new',
 		} = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
@@ -696,6 +718,7 @@ export class AgentExecutionOrchestratorService {
 						attachments,
 						source: integrationType,
 						access: { accessScope: 'project', ownerId: null },
+						sessionMode,
 					},
 				),
 			async (runtime) => {
@@ -705,12 +728,17 @@ export class AgentExecutionOrchestratorService {
 						messageContext,
 						await this.integrationMessageContextService.getLatestForIncoming(memory.threadId),
 					);
-					await this.integrationMessageContextService.installIncoming(
-						messageContext,
-						memory,
-						config.contextConversation,
-					);
 				}
+				const conversation = config.contextConversation;
+				const onAdmitted =
+					messageContext && conversation
+						? async () =>
+								await this.integrationMessageContextService.installIncoming(
+									messageContext,
+									memory,
+									conversation,
+								)
+						: undefined;
 				return this.streamChatResponse({
 					messageContext,
 					access: { accessScope: 'project', ownerId: null },
@@ -730,6 +758,8 @@ export class AgentExecutionOrchestratorService {
 						configuration: runtime.telemetryConfiguration,
 					},
 					sandboxPrincipalHash,
+					sessionMode,
+					onAdmitted,
 				});
 			},
 		);
@@ -857,6 +887,7 @@ export class AgentExecutionOrchestratorService {
 					projectId,
 					agentId,
 					identity.user.id,
+					{ sessionMode: 'existing' },
 				)))
 		) {
 			throw new UserError('Session not found');
@@ -887,6 +918,7 @@ export class AgentExecutionOrchestratorService {
 						source: integrationType,
 						abortSignal,
 						access,
+						sessionMode: 'existing',
 					},
 				),
 			(runtime) =>
@@ -912,6 +944,7 @@ export class AgentExecutionOrchestratorService {
 						sandboxPrincipalHash: identity.principalHash,
 						hideUserMessageFromTranscript: true,
 						isWakeRun: true,
+						sessionMode: 'existing',
 						backgroundJobSignal: config.backgroundJobSignal,
 					}),
 					abortSignal,
@@ -1000,6 +1033,8 @@ export class AgentExecutionOrchestratorService {
 			hideUserMessageFromTranscript,
 			isWakeRun,
 			backgroundJobSignal,
+			sessionMode,
+			onAdmitted,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -1009,6 +1044,7 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions,
 			context: { projectId, agentId, threadId },
 			backgroundJobSignal,
+			onAdmitted,
 			includeHitlToolDetails,
 			onExecutionRecorded,
 			onSettled: isWakeRun
@@ -1059,6 +1095,7 @@ export class AgentExecutionOrchestratorService {
 						agentName: agentInstance.name,
 						projectId,
 						userMessage: hideUserMessageFromTranscript ? null : message,
+						sessionMode,
 						author,
 						attachments,
 						source,
@@ -1107,6 +1144,7 @@ export class AgentExecutionOrchestratorService {
 			| 'taskId'
 			| 'taskVersionId'
 			| 'access'
+			| 'sessionMode'
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;

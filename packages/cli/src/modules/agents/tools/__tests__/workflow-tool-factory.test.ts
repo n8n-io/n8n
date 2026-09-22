@@ -926,6 +926,7 @@ describe('workflow tool → background job handoff', () => {
 			note: expect.stringContaining('check_background_jobs'),
 		});
 		expect(jobService.registerWorkflowJob).toHaveBeenCalledWith({
+			projectId: 'p1',
 			id: expect.any(String),
 			parentAgentId: 'agent-1',
 			parentThreadId: 'thread-1',

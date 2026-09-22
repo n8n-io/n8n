@@ -28,7 +28,8 @@ import {
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentExecutionService } from './agent-execution.service';
-import { threadBelongsTo } from './utils/agent-thread-access';
+import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
+import { threadBelongsTo, type AgentSessionMode } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
@@ -64,8 +65,10 @@ export class AgentChatController {
 		projectId: string;
 		threadId: string;
 		resourceId: string;
+		access: AgentThreadAccess;
+		sessionMode: AgentSessionMode;
 	}): Promise<StoredAttachmentRef[] | undefined> {
-		const { attachments, agentId, projectId, threadId, resourceId } = params;
+		const { attachments, agentId, projectId, threadId, resourceId, access, sessionMode } = params;
 		if (!attachments?.length) return undefined;
 
 		const stored: StoredAttachmentRef[] = [];
@@ -91,6 +94,8 @@ export class AgentChatController {
 					fileName: attachment.fileName,
 					mimeType,
 					data,
+					access,
+					sessionMode,
 				});
 				stored.push({
 					id: row.id,
@@ -117,7 +122,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, attachments } = payload;
+		const { message, sessionId, newSession, attachments } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -136,6 +141,7 @@ export class AgentChatController {
 				user: req.user,
 				sessionId,
 				previewChat: true,
+				newSession,
 				credentialProvider,
 			});
 			if (abortSignal.aborted) return;
@@ -160,6 +166,8 @@ export class AgentChatController {
 				projectId,
 				threadId,
 				resourceId: draftChatMemoryResourceId(req.user.id),
+				access: { accessScope: 'user', ownerId: req.user.id },
+				sessionMode: prepared.sessionMode,
 			});
 			abortSignal.throwIfAborted();
 
@@ -170,6 +178,7 @@ export class AgentChatController {
 				attachments: storedAttachments,
 				user: req.user,
 				sessionId: threadId,
+				sessionMode: prepared.sessionMode,
 				previewChat: true,
 				errorMode: 'forward',
 				onChunk,

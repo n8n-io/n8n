@@ -177,6 +177,9 @@ describe('useAgentBuilderSession', () => {
 		route.query.continueSessionId = newSessionId;
 		await nextTick();
 		expect(session.currentSessionIsEphemeral.value).toBe(true);
+		if (!newSessionId) throw new Error('Expected a new session ID');
+		session.markSessionCreated(newSessionId);
+		expect(session.currentSessionIsEphemeral.value).toBe(false);
 
 		route.query.continueSessionId = 'history-session';
 		await nextTick();

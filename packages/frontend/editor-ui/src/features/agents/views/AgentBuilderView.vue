@@ -505,6 +505,7 @@ const {
 	clearContinueSessionParam,
 	onSessionPick,
 	onNewChat,
+	markSessionCreated,
 	deleteSession,
 } = useAgentBuilderSession({
 	routeBacked: computed(() => !isArtifactMode.value),
@@ -2431,9 +2432,11 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
+					:new-session="currentSessionIsEphemeral"
 					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
+					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
 				/>
@@ -2526,6 +2529,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:local-config="localConfig"
 						:connected-triggers="connectedTriggers"
 						:effective-session-id="effectiveSessionId"
+						:new-session="currentSessionIsEphemeral"
 						:initial-prompt="taskPreviewPrompt"
 						:can-delete-session="canDeletePreviewSession"
 						:is-deleting-session="isDeletingSession"
@@ -2537,6 +2541,7 @@ function onSwitchAgent(nextAgentId: string) {
 						@session-select="onSessionPick"
 						@close="closePreviewDock"
 						@continue-loaded="onContinueLoaded"
+						@session-created="markSessionCreated"
 						@send-to-assistant="onSendPreviewToAssistant"
 						@initial-consumed="taskPreviewPrompt = undefined"
 					/>

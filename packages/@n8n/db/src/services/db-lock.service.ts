@@ -22,6 +22,7 @@ export const enum DbLock {
 	INSTANCE_AI_SETTINGS = 1007,
 	DATA_ENCRYPTION_KEY_SEED = 1008,
 	INSIGHTS_COMPACTION = 1009,
+	AGENT_SESSION_WRITE = 1010,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -180,7 +181,7 @@ export class DbLockService {
 	async withLockContext<T>(
 		lockId: DbLock,
 		fn: (ctx: OperationContext) => Promise<T>,
-		options?: { timeoutMs?: number },
+		options?: { timeoutMs?: number; subKey?: number },
 	): Promise<T> {
 		return await this.withLock(lockId, async (_manager, ctx) => await fn(ctx), options);
 	}

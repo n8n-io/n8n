@@ -713,6 +713,7 @@ async function backgroundWaitingExecution(
 	try {
 		const jobService = Container.get(AgentBackgroundJobService);
 		const receipt = await jobService.registerWorkflowJob({
+			projectId: context.projectId,
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
