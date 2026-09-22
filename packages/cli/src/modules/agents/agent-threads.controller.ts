@@ -28,6 +28,7 @@ export class AgentThreadsController {
 		return await this.agentExecutionService.getThreads(
 			req.params.projectId,
 			req.params.agentId,
+			req.user.id,
 			limit,
 			cursor,
 			filters,
@@ -43,11 +44,18 @@ export class AgentThreadsController {
 			req.params.threadId,
 			req.params.projectId,
 			req.params.agentId,
+			req.user.id,
 		);
 		if (!result) {
 			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
 		}
-		return result;
+		const {
+			ownerId: _ownerId,
+			accessScope: _accessScope,
+			owner: _owner,
+			...thread
+		} = result.thread;
+		return { ...result, thread };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')
@@ -70,7 +78,12 @@ export class AgentThreadsController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
-		const deleted = await this.agentExecutionService.deleteThread(projectId, agentId, threadId);
+		const deleted = await this.agentExecutionService.deleteThread(
+			projectId,
+			agentId,
+			threadId,
+			req.user.id,
+		);
 		if (!deleted) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}

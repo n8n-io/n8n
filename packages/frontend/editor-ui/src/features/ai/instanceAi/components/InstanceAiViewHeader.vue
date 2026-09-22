@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nIcon, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -24,7 +24,7 @@ const props = withDefaults(
 		};
 	}>(),
 	{
-		showThreadHistoryLabel: false,
+		showThreadHistoryLabel: true,
 		threadId: undefined,
 		threadList: undefined,
 	},
@@ -83,17 +83,14 @@ function handleThreadSelect(threadId: string) {
 					<N8nButton
 						variant="ghost"
 						size="small"
-						:class="[
-							$style.threadHistoryButton,
-							{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
-						]"
+						icon="history"
+						icon-size="large"
+						:icon-only="!props.showThreadHistoryLabel"
+						:class="$style.threadHistoryButton"
 						data-test-id="instance-ai-sidebar-toggle"
 						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
 					>
-						<template #icon>
-							<N8nIcon icon="history" size="large" />
-						</template>
-						<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
+						<span v-if="props.showThreadHistoryLabel" :class="$style.threadHistoryLabel">
 							{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 						</span>
 					</N8nButton>
@@ -135,7 +132,7 @@ function handleThreadSelect(threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--background--surface);
+	background-color: var(--n8n-ia-header--background, var(--background--surface));
 }
 
 .headerActions {

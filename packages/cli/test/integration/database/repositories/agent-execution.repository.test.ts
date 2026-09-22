@@ -3,19 +3,38 @@ import type {
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
-import { Agent as RuntimeAgent, Tool, type StreamChunk } from '@n8n/agents';
+import {
+	Agent as RuntimeAgent,
+	Tool,
+	type SerializableAgentState,
+	type StreamChunk,
+} from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, AiConfig } from '@n8n/config';
+import { TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
+import chunk from 'lodash/chunk';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
+import type { ExternalHooks } from '@/external-hooks';
+import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
+import type { AgentRunTracingService } from '@/modules/agents/agent-run-tracing.service';
+import type { AgentSandboxRuntimeService } from '@/modules/agents/agent-sandbox-runtime.service';
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '@/modules/agents/agent-sandbox-principal';
+import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
@@ -26,19 +45,24 @@ import type { AgentWakeService } from '@/modules/agents/background/agent-wake.se
 import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
 import type { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
+import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+
+import { createMember, createAdmin } from '../../shared/db/users';
 
 describe('AgentExecutionRepository', () => {
 	let repository: AgentExecutionRepository;
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
+	let attachmentRepo: AgentChatAttachmentRepository;
 	let projectId: string;
 	let agentId: string;
 
@@ -48,6 +72,7 @@ describe('AgentExecutionRepository', () => {
 		repository = Container.get(AgentExecutionRepository);
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
+		attachmentRepo = Container.get(AgentChatAttachmentRepository);
 	});
 
 	beforeEach(async () => {
@@ -76,23 +101,62 @@ describe('AgentExecutionRepository', () => {
 		await testDb.terminate();
 	});
 
-	function recordingServices() {
+	function recordingServices(memoryBackend: ReturnType<N8nMemory['getImplementation']> = mock()) {
+		const memory = mock<N8nMemory>();
+		memory.getImplementation.mockReturnValue(memoryBackend);
+		const attachmentService = mock<AgentChatAttachmentService>();
+		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
 			mockLogger(),
 			repository,
 			threadRepo,
-			mock<N8nMemory>(),
+			memory,
 			mock<Telemetry>(),
-			mock<AgentChatAttachmentService>(),
-			mock<AgentExecutionLogStore>(),
+			attachmentService,
+			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
 			mock<ErrorReporter>(),
 			mock<AgentExecutionUpdateBroadcaster>(),
+			Container.get(N8NCheckpointStorage),
+			Container.get(TransactionRunner),
 		);
 		return {
 			executionService,
+			attachmentService,
+			executionLogStore,
 			turns: new AgentTurnExecutionService(mockLogger(), executionService),
 		};
+	}
+
+	function buildAttachment(threadId: string) {
+		return attachmentRepo.create({
+			id: generateNanoId(),
+			agentId,
+			projectId,
+			threadId,
+			binaryDataId: `attachment:${uuid()}`,
+			fileName: 'attachment.txt',
+			mimeType: 'text/plain',
+			fileSizeBytes: 1,
+			source: 'chat',
+		});
+	}
+
+	function insertAttachmentAfterSnapshot(attachment: AgentChatAttachment) {
+		const find = EntityManager.prototype.find;
+		const spy = vi.spyOn(EntityManager.prototype, 'find').mockImplementation(async function (
+			this: EntityManager,
+			target,
+			options,
+		) {
+			const rows = await find.call(this, target, options);
+			if (target === AgentChatAttachment) {
+				spy.mockRestore();
+				await this.save(AgentChatAttachment, attachment);
+			}
+			return rows;
+		});
+		return spy;
 	}
 
 	async function collect(stream: AsyncIterable<StreamChunk>) {
@@ -101,7 +165,43 @@ describe('AgentExecutionRepository', () => {
 		return chunks;
 	}
 
-	function createApprovalAgentFactory(threadId: string) {
+	function checkpointStateWithChildren(
+		state: string,
+		threadId: string,
+		children: Array<{ runId: string; agentId: string; threadId: string }>,
+	): string {
+		const checkpoint = jsonParse<SerializableAgentState>(state);
+		const pendingToolCalls = Object.fromEntries(
+			children.map((child, index) => [
+				`delegated-${index}`,
+				{
+					toolCallId: `delegated-${index}`,
+					toolName: 'delegate_subagent',
+					input: {},
+					suspended: true,
+					runId: `parent-${index}`,
+					resumeSchema: { type: 'object' },
+					suspendPayload: { type: 'approval' },
+					continuation: {
+						runId: child.runId,
+						toolCallId: `child-${index}`,
+						taskPath: `/root/child_${index}`,
+						subAgentId: child.agentId,
+						childCount: index,
+						threadId: child.threadId,
+						resumeContext: { agentId: child.agentId },
+					},
+				},
+			]),
+		);
+		return JSON.stringify({
+			...checkpoint,
+			persistence: { ...checkpoint.persistence, threadId },
+			pendingToolCalls: { ...checkpoint.pendingToolCalls, ...pendingToolCalls },
+		});
+	}
+
+	function createApprovalAgentFactory(threadId: string, ownerId?: string, approvals = 1) {
 		type ModelStreamPart = Awaited<
 			ReturnType<MockLanguageModelV3['doStream']>
 		>['stream'] extends ReadableStream<infer Part>
@@ -113,7 +213,14 @@ describe('AgentExecutionRepository', () => {
 			modelId: 'recorded-turn',
 			doStream: async () => {
 				expect(await repository.existsRunningByThread(threadId)).toBe(true);
-				const first = modelCalls++ === 0;
+				if (ownerId) {
+					expect(await threadRepo.findOneByOrFail({ id: threadId })).toMatchObject({
+						accessScope: 'user',
+						ownerId,
+					});
+				}
+				const call = modelCalls++;
+				const first = call < approvals;
 				return {
 					stream: convertArrayToReadableStream<ModelStreamPart>([
 						{ type: 'stream-start', warnings: [] },
@@ -121,7 +228,7 @@ describe('AgentExecutionRepository', () => {
 							? [
 									{
 										type: 'tool-call' as const,
-										toolCallId: 'approval-1',
+										toolCallId: `approval-${call + 1}`,
 										toolName: 'approve',
 										input: '{}',
 									},
@@ -159,10 +266,13 @@ describe('AgentExecutionRepository', () => {
 		return { action, makeAgent };
 	}
 
-	async function startSuspendedApprovalRun() {
-		const { turns } = recordingServices();
+	async function startSuspendedApprovalRun(user?: User, approvals = 1) {
+		const { turns, executionService } = recordingServices();
 		const threadId = uuid();
 		const recording = {
+			access: user
+				? { accessScope: 'user' as const, ownerId: user.id }
+				: { accessScope: 'project' as const, ownerId: null },
 			threadId,
 			agentId,
 			agentName: 'Test Agent',
@@ -171,7 +281,7 @@ describe('AgentExecutionRepository', () => {
 		};
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
 		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
-		const { action, makeAgent } = createApprovalAgentFactory(threadId);
+		const { action, makeAgent } = createApprovalAgentFactory(threadId, user?.id, approvals);
 		const common = {
 			toolRegistry: new Map(),
 			mcpServerAttributions: new Map(),
@@ -185,7 +295,23 @@ describe('AgentExecutionRepository', () => {
 				prepare: async () => ({
 					type: 'start',
 					input: 'Start',
-					options: { persistence: { threadId, resourceId: 'user-1' } },
+					options: {
+						persistence: {
+							threadId,
+							resourceId: user ? `draft-chat:${user.id}` : 'user-1',
+							...(user
+								? {
+										hostMetadata: encodeAgentSandboxHostMetadata({
+											projectId,
+											principalHash: hashAgentSandboxPrincipal({
+												type: 'n8n-user',
+												userId: user.id,
+											}),
+										}),
+									}
+								: {}),
+						},
+					},
 					recording,
 				}),
 			}),
@@ -199,6 +325,7 @@ describe('AgentExecutionRepository', () => {
 
 		return {
 			action,
+			executionService,
 			checkpointRepo,
 			common,
 			makeAgent,
@@ -272,6 +399,176 @@ describe('AgentExecutionRepository', () => {
 		}
 	}
 
+	it('removes retained and delegated checkpoints without deleting child history', async () => {
+		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
+		const { executionService } = recordingServices();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const retainedRunId = uuid();
+		const childRunId = uuid();
+		const nestedRunId = uuid();
+		const otherThreadRunId = uuid();
+		const otherAgentRunId = uuid();
+		const otherAgent = await agentRepo.save(
+			agentRepo.create({
+				id: uuid(),
+				name: 'Other Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+				skills: {},
+			}),
+		);
+		const childThread = await createThread({
+			id: uuid(),
+			agentId: otherAgent.id,
+			agentName: otherAgent.name,
+			sessionNumber: 2,
+			parentThreadId: threadId,
+			parentAgentId: agentId,
+		});
+		const childExecution = await createExecution({
+			threadId: childThread.id,
+			userMessage: 'Child task',
+		});
+		const parentState = checkpointStateWithChildren(state, threadId, [
+			{ runId: childRunId, agentId: otherAgent.id, threadId: childThread.id },
+		]);
+		const childState = checkpointStateWithChildren(state, childThread.id, [
+			{ runId: nestedRunId, agentId: otherAgent.id, threadId: childThread.id },
+			{ runId: suspension.runId, agentId, threadId },
+		]);
+		await checkpointRepo.update({ runId: suspension.runId }, { state: parentState });
+		await checkpointRepo.insert([
+			{ runId: retainedRunId, agentId, threadId, expired: true, state: parentState },
+			{
+				runId: childRunId,
+				agentId: otherAgent.id,
+				threadId: childThread.id,
+				expired: false,
+				state: childState,
+			},
+			{
+				runId: nestedRunId,
+				agentId: otherAgent.id,
+				threadId: childThread.id,
+				expired: true,
+				state,
+			},
+			{ runId: otherThreadRunId, agentId, threadId: uuid(), expired: false, state },
+			{ runId: otherAgentRunId, agentId: otherAgent.id, threadId, expired: false, state },
+		]);
+		const before = await checkpointRepo.find({ order: { runId: 'ASC' } });
+		const otherProject = await createTeamProject();
+		const userId = uuid();
+
+		expect(await executionService.deleteThread(projectId, otherAgent.id, threadId, userId)).toBe(
+			false,
+		);
+		expect(await executionService.deleteThread(otherProject.id, agentId, threadId, userId)).toBe(
+			false,
+		);
+		expect(await checkpointRepo.find({ order: { runId: 'ASC' } })).toEqual(before);
+		expect(await executionService.deleteThread(projectId, agentId, threadId, userId)).toBe(true);
+
+		for (const runId of [suspension.runId, retainedRunId, childRunId, nestedRunId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toBeNull();
+		}
+		for (const runId of [otherThreadRunId, otherAgentRunId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toEqual(
+				before.find((row) => row.runId === runId),
+			);
+		}
+		expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+		expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
+		expect(await threadRepo.findOneBy({ id: childThread.id })).toMatchObject({
+			id: childThread.id,
+		});
+		expect(await repository.findOneBy({ id: childExecution.id })).toMatchObject({
+			id: childExecution.id,
+			threadId: childThread.id,
+		});
+		expect(await storage.getStatus(suspension.runId, agentId)).toEqual({ status: 'not-found' });
+	});
+
+	it('removes a large batch of delegated checkpoints', async () => {
+		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
+		const { executionService } = recordingServices();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const childThreadId = uuid();
+		const children = Array.from({ length: 1_000 }, () => ({
+			runId: uuid(),
+			agentId,
+			threadId: childThreadId,
+		}));
+
+		await checkpointRepo.update(
+			{ runId: suspension.runId },
+			{ state: checkpointStateWithChildren(state, threadId, children) },
+		);
+		const childCheckpoints = children.map(({ runId }) => ({
+			runId,
+			agentId,
+			threadId: childThreadId,
+			expired: false,
+			state,
+		}));
+		for (const batch of chunk(childCheckpoints, 400)) await checkpointRepo.insert(batch);
+
+		expect(await executionService.deleteThread(projectId, agentId, threadId, uuid())).toBe(true);
+		expect(await checkpointRepo.findByRunId(suspension.runId)).toBeNull();
+		expect(await checkpointRepo.find({ where: { threadId: childThreadId } })).toEqual([]);
+	});
+
+	it.each([0, 1])('keeps attachments added after reading %i attachment rows', async (count) => {
+		const thread = await createThread();
+		const otherThread = await createThread({ sessionNumber: 2 });
+		const captured = Array.from({ length: count }, () => buildAttachment(thread.id));
+		const late = buildAttachment(thread.id);
+		const unrelated = buildAttachment(otherThread.id);
+		await attachmentRepo.save([...captured, unrelated]);
+		const { executionService, attachmentService } = recordingServices();
+		const interceptor = insertAttachmentAfterSnapshot(late);
+
+		try {
+			expect(await executionService.deleteThread(projectId, agentId, thread.id, uuid())).toBe(true);
+		} finally {
+			interceptor.mockRestore();
+		}
+
+		expect(await attachmentRepo.findByThread(thread.id, { projectId })).toMatchObject([
+			{ id: late.id, binaryDataId: late.binaryDataId },
+		]);
+		expect(await attachmentRepo.findOneBy({ id: unrelated.id })).toEqual(unrelated);
+		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+		expect(attachmentService.deleteStoredData).toHaveBeenCalledExactlyOnceWith(
+			captured.map(({ binaryDataId }) => binaryDataId),
+			{ threadId: thread.id },
+		);
+	});
+
+	it('rolls back session database cleanup when memory cleanup fails', async () => {
+		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
+		const attachment = await attachmentRepo.save(buildAttachment(threadId));
+		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
+		memoryBackend.deleteThread.mockRejectedValue(new Error('Memory cleanup failed'));
+		const { executionService, attachmentService, executionLogStore } =
+			recordingServices(memoryBackend);
+		const executionsBefore = await repository.findByThreadIdOrdered(threadId);
+
+		await expect(
+			executionService.deleteThread(projectId, agentId, threadId, uuid()),
+		).rejects.toThrow('Memory cleanup failed');
+
+		expect(await checkpointRepo.findByRunId(suspension.runId)).not.toBeNull();
+		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
+		expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executionsBefore);
+		expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+		expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
+		expect(executionLogStore.delete).not.toHaveBeenCalled();
+	});
+
 	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
 		const fixture = await startSuspendedApprovalRun();
 		const { outcomes, onResumeClaimed } = await resumeApprovalFromSeparateConnections(fixture);
@@ -296,9 +593,107 @@ describe('AgentExecutionRepository', () => {
 		});
 	});
 
+	it.each([false, true])(
+		'keeps a preview resume unchanged for another caller with sandbox=%s',
+		async (sandboxEnabled) => {
+			const owner = await createMember();
+			const other = await createAdmin();
+			const fixture = await startSuspendedApprovalRun(owner, 2);
+			const { storage, checkpointRepo, executionService, turns, threadId, suspension } = fixture;
+			const runtimeCache = mock<AgentRuntimeCacheService>();
+			const runtime = fixture.makeAgent(storage.getStorage(agentId));
+			runtimeCache.getRuntime.mockResolvedValue({
+				agent: runtime,
+				toolRegistry: new Map(),
+				mcpServerAttributions: new Map(),
+				projectId,
+				agentId,
+				toolAccessCheckedAt: Date.now(),
+				telemetryConfiguration: {
+					model: 'mock',
+					channels: [],
+					tool_types: [],
+					tool_count: 0,
+					num_skills: 0,
+					memory_type: 'none',
+				},
+			});
+			const orchestrator = new AgentExecutionOrchestratorService(
+				mockLogger(),
+				storage,
+				executionService,
+				turns,
+				mock<Telemetry>(),
+				runtimeCache,
+				mock<IntegrationMessageContextService>(),
+				mock<AgentRunTracingService>(),
+				mock<ExternalHooks>(),
+				mock<AgentSandboxRuntimeService>({ isEnabled: () => sandboxEnabled }),
+				agentRepo,
+				new AiConfig(),
+			);
+			const resume = async (
+				user: User,
+				runId = suspension.runId,
+				toolCallId = suspension.toolCallId,
+			) =>
+				await collect(
+					orchestrator.resumeForChat({
+						agentId,
+						projectId,
+						runId,
+						toolCallId,
+						resumeData: { approved: true },
+						user,
+						usePublishedVersion: false,
+					}),
+				);
+			try {
+				const checkpoint = await checkpointRepo.findByRunId(suspension.runId);
+				const executions = await repository.findByThreadIdOrdered(threadId);
+				await expect(resume(other)).rejects.toThrow('does not belong to this chat');
+				expect(await checkpointRepo.findByRunId(suspension.runId)).toEqual(checkpoint);
+				expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executions);
+				expect(runtimeCache.getRuntime).not.toHaveBeenCalled();
+				expect(fixture.action).not.toHaveBeenCalled();
+
+				await threadRepo.delete({ id: threadId });
+				await expect(resume(other)).rejects.toThrow('does not belong to this chat');
+				expect(await checkpointRepo.findByRunId(suspension.runId)).toEqual(checkpoint);
+				expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
+				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+				expect(
+					await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id),
+				).toBe(true);
+
+				const resumed = await resume(owner);
+				const next = resumed.find((chunk) => chunk.type === 'tool-call-suspended');
+				if (!next || next.type !== 'tool-call-suspended')
+					throw new Error('Expected next suspension');
+				await resume(owner, next.runId, next.toolCallId);
+				expect(fixture.action).toHaveBeenCalledTimes(2);
+				expect(await threadRepo.findOneByOrFail({ id: threadId })).toMatchObject({
+					accessScope: 'user',
+					ownerId: owner.id,
+				});
+				const continued = await repository.findByThreadIdOrdered(threadId);
+				expect(continued).toHaveLength(2);
+				for (const execution of continued) {
+					expect(execution.status).toBe('success');
+					expect(execution.timeline).toContainEqual(
+						expect.objectContaining({ type: 'hitl-response' }),
+					);
+				}
+			} finally {
+				await runtime.close();
+			}
+		},
+	);
+
 	it('recovers a failed finalization from the saved timeline and rejects a later terminal update', async () => {
 		const { executionService, turns } = recordingServices();
 		const params = {
+			access: { accessScope: 'project' as const, ownerId: null },
 			threadId: uuid(),
 			agentId,
 			agentName: 'Test Agent',
@@ -359,6 +754,7 @@ describe('AgentExecutionRepository', () => {
 
 	const createThread = async (overrides: Partial<AgentExecutionThread> = {}) => {
 		const thread = threadRepo.create({
+			accessScope: 'project',
 			id: uuid(),
 			agentId,
 			agentName: 'Test Agent',
@@ -378,6 +774,123 @@ describe('AgentExecutionRepository', () => {
 		} as Partial<AgentExecution>);
 		return await repository.save(execution);
 	};
+
+	it('filters private sessions before pagination and preserves their owner on reuse', async () => {
+		const owner = await createMember();
+		const other = await createAdmin();
+		const { executionService } = recordingServices();
+		const access = { accessScope: 'user' as const, ownerId: owner.id };
+		const { thread } = await threadRepo.findOrCreate(
+			uuid(),
+			agentId,
+			'Test Agent',
+			projectId,
+			access,
+		);
+		await threadRepo.update(thread.id, { updatedAt: new Date('2026-01-03T00:00:00Z') });
+		const shared = await createThread({
+			sessionNumber: 2,
+			updatedAt: new Date('2026-01-01T00:00:00Z'),
+		});
+		await createThread({
+			accessScope: 'user',
+			ownerId: other.id,
+			sessionNumber: 3,
+			updatedAt: new Date('2026-01-02T00:00:00Z'),
+		});
+		await createThread({
+			accessScope: 'user',
+			ownerId: null,
+			sessionNumber: 4,
+			updatedAt: new Date('2026-01-04T00:00:00Z'),
+		});
+		await createExecution({ threadId: thread.id, userMessage: 'Private message' });
+
+		const first = await executionService.getThreads(projectId, agentId, owner.id, 1);
+		const second = await executionService.getThreads(
+			projectId,
+			agentId,
+			owner.id,
+			1,
+			first.nextCursor ?? undefined,
+		);
+		expect(first.threads.map(({ id }) => id)).toEqual([thread.id]);
+		expect(first.threads[0]).not.toHaveProperty('ownerId');
+		expect(first.threads[0]).not.toHaveProperty('accessScope');
+		expect(second.threads.map(({ id }) => id)).toEqual([shared.id]);
+		expect(second.nextCursor).toBeNull();
+		expect(
+			(await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id))?.executions,
+		).toHaveLength(1);
+		await expect(
+			executionService.getThreadDetail(thread.id, projectId, agentId, other.id),
+		).resolves.toBeNull();
+		expect(await executionService.deleteThread(projectId, agentId, thread.id, other.id)).toBe(
+			false,
+		);
+		for (const incompatible of [
+			{ accessScope: 'user' as const, ownerId: other.id },
+			{ accessScope: 'project' as const, ownerId: null },
+		]) {
+			await expect(
+				threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, incompatible),
+			).rejects.toThrow('Session not found');
+		}
+		expect(
+			await threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, access),
+		).toMatchObject({ created: false, thread: access });
+		const child = await threadRepo.findOrCreate(
+			uuid(),
+			agentId,
+			'Test Agent',
+			projectId,
+			{ accessScope: 'user', ownerId: null },
+			{ parentThreadId: thread.id, parentAgentId: agentId },
+		);
+		expect(child.thread).toMatchObject(access);
+		const sharedChild = await threadRepo.findOrCreate(
+			uuid(),
+			agentId,
+			'Test Agent',
+			projectId,
+			{ accessScope: 'user', ownerId: null },
+			{ parentThreadId: shared.id, parentAgentId: agentId },
+		);
+		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });
+	});
+
+	it.each(['custom', 'legacy'])('uses persisted ownership for a %s preview ID', async (format) => {
+		const owner = await createMember();
+		const other = await createAdmin();
+		const memory = Container.get(N8nMemory).getImplementation(agentId);
+		const { executionService } = recordingServices(memory);
+		const threadId = format === 'legacy' ? `test-${agentId}:${other.id}` : 'test-demo';
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+			true,
+		);
+		await memory.saveThread({ id: threadId, resourceId: `draft-chat:${owner.id}` });
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+			true,
+		);
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, other.id)).toBe(
+			false,
+		);
+		await createThread({ id: threadId, accessScope: 'user', ownerId: owner.id });
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+			true,
+		);
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, other.id)).toBe(
+			false,
+		);
+		await threadRepo.update(threadId, { ownerId: null });
+		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+			false,
+		);
+		expect(await memory.getThread(threadId)).toMatchObject({
+			resourceId: `draft-chat:${owner.id}`,
+		});
+		expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
+	});
 
 	describe('findFirstUserMessageByThreadIds', () => {
 		// The repository builds a raw SQL fragment referencing camelCase columns.
@@ -584,9 +1097,16 @@ describe('AgentExecutionRepository', () => {
 
 			const idsFor = async (status: AgentSessionStatus) =>
 				(
-					await threadRepo.findByProjectIdPaginated(projectId, agentId, 20, undefined, {
-						status,
-					})
+					await threadRepo.findByProjectIdPaginated(
+						projectId,
+						agentId,
+						'00000000-0000-4000-8000-000000000001',
+						20,
+						undefined,
+						{
+							status,
+						},
+					)
 				).threads.map(({ id }) => id);
 
 			expect(await idsFor('running')).toEqual([running.id]);
@@ -647,6 +1167,7 @@ describe('AgentExecutionRepository', () => {
 				const result = await threadRepo.findByProjectIdPaginated(
 					projectId,
 					agentId,
+					'00000000-0000-4000-8000-000000000001',
 					20,
 					undefined,
 					{ origin },
@@ -675,6 +1196,7 @@ describe('AgentExecutionRepository', () => {
 			const firstPage = await threadRepo.findByProjectIdPaginated(
 				projectId,
 				agentId,
+				'00000000-0000-4000-8000-000000000001',
 				1,
 				undefined,
 				filters,
@@ -682,6 +1204,7 @@ describe('AgentExecutionRepository', () => {
 			const secondPage = await threadRepo.findByProjectIdPaginated(
 				projectId,
 				agentId,
+				'00000000-0000-4000-8000-000000000001',
 				1,
 				firstPage.nextCursor ?? undefined,
 				filters,

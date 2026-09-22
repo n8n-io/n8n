@@ -152,6 +152,11 @@ export class TypeAvailabilityPolicyInstanceController {
 		@Param('scopeId') scopeId: string,
 		@Body dto: ReplaceAttachmentsDto,
 	) {
-		return await this.service.replaceAttachments(scopeId, dto.attachments, req.user.id);
+		return await this.service.replaceAttachments(
+			NODE_TYPES_KIND,
+			scopeId,
+			dto.attachments,
+			req.user.id,
+		);
 	}
 }

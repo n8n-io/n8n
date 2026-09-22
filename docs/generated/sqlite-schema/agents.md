@@ -164,6 +164,7 @@ erDiagram
   boolean expired
   varchar_255_ runId PK
   TEXT state
+  TEXT threadId
   datetime_3_ updatedAt
 }
 "agent_credential_dependency" {
@@ -184,11 +185,13 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
   varchar_128_ id PK
+  varchar ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK
