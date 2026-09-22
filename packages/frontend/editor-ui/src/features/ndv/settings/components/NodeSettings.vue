@@ -716,7 +716,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="node && nodeValid && isRestricted"
 			:node-type-name="nodeType?.displayName ?? node.type"
 			:scope="restrictionScope"
-			:show-replace="!isEmbeddedInCanvas"
+			:show-replace="!isEmbeddedInCanvas && !readOnly"
 			@replace-node="emit('replaceNode', node.id)"
 		/>
 

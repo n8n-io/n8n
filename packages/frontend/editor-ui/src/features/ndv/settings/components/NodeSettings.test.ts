@@ -345,6 +345,16 @@ describe('NodeSettings', () => {
 			expect(emitted('replaceNode')).toEqual([[httpNode.id]]);
 		});
 
+		it('offers no replace action while the canvas is read-only', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: true },
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toBeInTheDocument();
+			expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
+		});
+
 		it('locks the embedded header and offers no replace action', async () => {
 			const { findByTestId, getByTestId, queryByTestId } = renderNodeSettings({
 				...restricted,
