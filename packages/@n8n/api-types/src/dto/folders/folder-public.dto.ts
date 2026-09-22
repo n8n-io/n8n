@@ -147,11 +147,13 @@ export class UpdateFolderPublicDto implements UpdateFolderPublic {
 
 /**
  * Strict so an undocumented query parameter still answers 400, as the legacy spec-driven
- * validator did.
+ * validator did. An empty `transferToFolderId` is present, not omitted: `min(1)` rejects it,
+ * because `deleteFolder` treats `""` as no target and archives the folder contents.
  */
 export class DeleteFolderQueryPublicDto extends Z.class(
 	{
 		transferToFolderId: folderIdSchema
+			.min(1, 'must not be empty')
 			.optional()
 			.openapi(deleteFolderQueryFieldDocs.transferToFolderId),
 	},

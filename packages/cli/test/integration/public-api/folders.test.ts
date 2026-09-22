@@ -561,6 +561,28 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should return 400 when transferToFolderId is empty', async () => {
+		testServer.license.enable('feat:folders');
+		const { agent, personalProject } = await createDeleteScopedAgent();
+
+		const folder = await createFolder(personalProject, { name: 'Folder' });
+
+		const response = await agent
+			.delete(`/projects/${personalProject.id}/folders/${folder.id}`)
+			.query({ transferToFolderId: '' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: 'request/query/transferToFolderId must not be empty',
+		});
+
+		const stillThere = await Container.get(FolderService).findFolderInProjectOrFail(
+			folder.id,
+			personalProject.id,
+		);
+		expect(stillThere.id).toBe(folder.id);
+	});
+
 	test('should return 400 for invalid transferToFolderId query format', async () => {
 		testServer.license.enable('feat:folders');
 		const { agent, personalProject } = await createDeleteScopedAgent();

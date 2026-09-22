@@ -22,6 +22,7 @@ parameters:
     in: path
   - schema:
       type: string
+      minLength: 1
       maxLength: 36
       description: Optional target folder ID to move workflows and sub-folders into before deleting.
     required: false
