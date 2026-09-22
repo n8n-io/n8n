@@ -26,6 +26,7 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		bodyScrollable?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -40,6 +41,7 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		bodyScrollable: true,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -172,7 +174,11 @@ function onOpenAutoFocus(event: Event) {
 			<span hidden aria-hidden="true" />
 		</FocusScope>
 
-		<div ref="body" :class="$style.body" data-testid="agent-modal-body">
+		<div
+			ref="body"
+			:class="[$style.body, !props.bodyScrollable && $style.bodyNotScrollable]"
+			data-testid="agent-modal-body"
+		>
 			<slot />
 		</div>
 
@@ -294,6 +300,10 @@ function onOpenAutoFocus(event: Event) {
 
 .body :global(.n8n-markdown) {
 	@include scrollbar-mixins.scroll-bar;
+}
+
+.bodyNotScrollable {
+	overflow-y: hidden;
 }
 
 .footer {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DialogSize } from '@n8n/design-system';
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import AgentModal from './AgentModal.vue';
 
@@ -45,6 +45,7 @@ const emit = defineEmits<{
 	interactOutside: [event: Event];
 }>();
 
+const isPickerStep = computed(() => props.step === 'select' || props.step === 'list');
 const stepChanged = ref(false);
 watch(
 	() => props.step,
@@ -67,6 +68,7 @@ watch(
 		:show-back="showBack"
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
+		:body-scrollable="!isPickerStep"
 		:busy="busy"
 		:size="size"
 		:stacked="stacked"

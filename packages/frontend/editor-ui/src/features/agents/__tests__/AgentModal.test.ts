@@ -112,6 +112,30 @@ describe('AgentModal', () => {
 		expect(wrapper.get('footer').text()).toContain('Save');
 	});
 
+	it.each(['select', 'list'])('keeps the outer modal body fixed for the %s picker step', (step) => {
+		const wrapper = mount(AgentModalMultiStep, {
+			props: {
+				open: true,
+				step,
+				title: 'Add asset',
+			},
+		});
+
+		expect(wrapper.getComponent(AgentModal).props('bodyScrollable')).toBe(false);
+	});
+
+	it('keeps the outer modal body scrollable for configuration steps', () => {
+		const wrapper = mount(AgentModalMultiStep, {
+			props: {
+				open: true,
+				step: 'configure',
+				title: 'Configure asset',
+			},
+		});
+
+		expect(wrapper.getComponent(AgentModal).props('bodyScrollable')).toBe(true);
+	});
+
 	it('edits the title and focuses the first body field', async () => {
 		const wrapper = mountModal({ editableTitle: true });
 		await flushPromises();
