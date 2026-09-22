@@ -23,5 +23,12 @@ pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-p
 Use turbo and not `pnpm --filter`: this package reads its platform dependencies from source,
 and on a cold tree turbo builds them first.
 
+`useNodeTypeRestriction(type)` turns the store answer into `isRestricted` and `restrictionScope`
+for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes. The
+shell reads restriction through these and never through the store directly.
+
+`ContactInstanceAdminModal` lists the instance owners with a mail link. The shell renders it where
+a restricted node needs a contact action; the module owns its copy and behaviour.
+
 `packages/@n8n/module-cli/frontend-module-guide.md` holds the descriptor contract, the
 registration points, the import boundaries and the setup a module needs to render UI.

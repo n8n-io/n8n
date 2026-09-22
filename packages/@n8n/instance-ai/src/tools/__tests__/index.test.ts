@@ -43,6 +43,10 @@ vi.mock('../nodes.tool', () => ({
 	})),
 }));
 
+vi.mock('../search-models.tool', () => ({
+	createSearchModelsTool: vi.fn(() => ({ id: 'searchModels' })),
+}));
+
 vi.mock('../n8n-docs.tool', () => ({
 	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
 }));
@@ -139,6 +143,7 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
+			searchModels: { id: 'searchModels' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
@@ -147,10 +152,17 @@ describe('domain tool construction', () => {
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
+		const { createSearchModelsTool } = await import('../search-models.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
 		expect(createNodesTool).toHaveBeenCalledWith(context);
+		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+	});
+
+	it('makes model catalog search discoverable without loading it for every turn', () => {
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('searchModels');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(false);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

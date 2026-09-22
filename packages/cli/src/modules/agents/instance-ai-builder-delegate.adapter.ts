@@ -127,7 +127,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 	createDelegate(
 		user: User,
 		projectId: string,
-		credentialProvider: CredentialProvider,
+		// Built per build/resume turn from the concrete target agent id, not once
+		// up front: in the build-new-agent flow the agent does not exist when the
+		// delegate is created, so a provider captured here would tag Gateway spend
+		// with an undefined agent id.
+		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: InstanceAiCredentialService,
 		options: { useEvalModelCatalog?: boolean } = {},
 	): InstanceAiBuilderDelegate {
@@ -166,7 +170,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						agentId,
 						projectId,
 						message,
-						credentialProvider,
+						credentialProviderFor(agentId),
 						credentialService,
 						user,
 						this.buildSubAgentSession(
@@ -189,7 +193,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.runId,
 						resume.toolCallId,
 						resume.resumeData,
-						credentialProvider,
+						credentialProviderFor(agentId),
 						credentialService,
 						user,
 						this.buildSubAgentSession(
