@@ -154,9 +154,9 @@ of the two ends the wait.
   therefore cannot make such a wait durable, cancel it, or report it: to the
   engine the step is only slow. Those waits behave on engine v2 exactly as they
   do on engine v1, including being lost if the worker stops while one sleeps.
-  That 65-second minimum is the floor, and it
-  applies to the `timeInterval` and `specificTime` modes only. A `webhook` wait
-  and a `form` wait return earlier in the node, and no floor applies to them.
+  That 65-second minimum is the floor, and it applies to the `timeInterval` and
+  `specificTime` modes only. A `webhook` wait and a `form` wait return earlier
+  in the node, and no floor applies to them.
 - A wait with a `limitWaitTime` can fire up to one sweep interval after its
   limit. That parameter has no minimum. The limit can therefore fall due before
   the next pass of the sweep, and the sweep finds it on that pass. Every other
@@ -184,9 +184,8 @@ of the two ends the wait.
   move the workflow, unshare a credential, or remove access. The unshared
   credential matters once a resumed step can use one, which is CAT-2880. The
   resume path reads no control-plane state, so it cannot detect these changes.
-  Whether a
-  resume must fail for these reasons is a product decision. To apply that
-  decision, the engine needs a cross-plane check. This design has no such
+  Whether a resume must fail for these reasons is a product decision. To apply
+  that decision, the engine needs a cross-plane check. This design has no such
   check.
 - Data-plane pruning must exclude the waiting executions. By age, a paused
   execution looks the same as a finished one. If the engine prunes a paused
