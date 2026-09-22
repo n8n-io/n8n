@@ -1,5 +1,10 @@
 import type { Project } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -52,6 +57,7 @@ export class CredentialsPermissionChecker {
 		private readonly nodeTypes: NodeTypes,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	/**
@@ -188,7 +194,6 @@ export class CredentialsPermissionChecker {
 		const ownerProjects =
 			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
 
-		const projectIdSet = new Set(projectIds);
 		const personalOwnerProjectIds = [
 			...new Set(
 				[...ownerProjects.values()]
@@ -196,24 +201,31 @@ export class CredentialsPermissionChecker {
 					.map((project) => project.id),
 			),
 		];
+		if (personalOwnerProjectIds.length === 0) return [];
 
-		const ownerIsMemberByProjectId = new Map(
-			await Promise.all(
-				personalOwnerProjectIds.map(async (ownerProjectId): Promise<[string, boolean]> => {
-					const owner = await this.ownershipService.getPersonalProjectOwnerCached(ownerProjectId);
-					const ownerRelations = owner
-						? await this.projectService.getProjectRelationsForUser(owner)
-						: [];
-					return [
-						ownerProjectId,
-						ownerRelations.some((relation) => projectIdSet.has(relation.projectId)),
-					];
-				}),
+		const owners = await Promise.all(
+			personalOwnerProjectIds.map(
+				async (id) => await this.ownershipService.getPersonalProjectOwnerCached(id),
 			),
 		);
+		const ownerUserIdByProjectId = new Map<string, string>();
+		personalOwnerProjectIds.forEach((projectId, index) => {
+			const owner = owners[index];
+			if (owner) ownerUserIdByProjectId.set(projectId, owner.id);
+		});
 
+		const memberProjectIdsByUserId = await this.projectRelationRepository.findProjectIdsByUserIds([
+			...new Set(ownerUserIdByProjectId.values()),
+		]);
+
+		const projectIdSet = new Set(projectIds);
 		return [...ownerProjects]
-			.filter(([, project]) => ownerIsMemberByProjectId.get(project.id))
+			.filter(([, ownerProject]) => {
+				const ownerUserId = ownerUserIdByProjectId.get(ownerProject.id);
+				if (!ownerUserId) return false;
+				const memberProjectIds = memberProjectIdsByUserId.get(ownerUserId);
+				return memberProjectIds?.some((id) => projectIdSet.has(id)) ?? false;
+			})
 			.map(([credentialId]) => credentialId);
 	}
 
