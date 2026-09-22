@@ -32,6 +32,7 @@ requestBody:
             example: Renamed Folder
           parentFolderId:
             type: string
+            description: ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.
             example: abc123
         additionalProperties: false
         minProperties: 1

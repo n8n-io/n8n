@@ -71,5 +71,10 @@ export const folderContentCountFieldDocs = {
  */
 export const updateFolderFieldDocs = {
 	name: { type: 'string', example: 'Renamed Folder' },
-	parentFolderId: { type: 'string', example: 'abc123' },
+	parentFolderId: {
+		type: 'string',
+		description:
+			'ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.',
+		example: 'abc123',
+	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
