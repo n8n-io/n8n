@@ -12,24 +12,16 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	}
 
 	/**
-	 * Today's report, if one was already generated and never reached the receiver.
+	 * Return the newest report, of any status, or `null` when the table is empty.
 	 *
-	 * Resending it — same `batchId`, same data points — is what keeps a retry from
-	 * re-measuring: the cumulative series is only comparable day to day while its
-	 * sampling interval stays a fixed 24 hours.
-	 *
-	 * Scoped to `now`'s UTC day on purpose: an older undelivered report measured a
-	 * different day, so it must not stand in for today's. It stays as it is, a
-	 * record of a report that never landed, and its days are covered again by the
-	 * next report.
-	 *
-	 * A report that ran out of attempts is not pending, so it is never resent.
+	 * The caller resends this report only while its status is `pending`. Read the
+	 * newest row, not the newest `pending` row. An old `pending` row below a newer
+	 * `delivered` row is an orphan. The newer report covers its day. A resend of
+	 * the orphan sends that day two times.
 	 */
-	async findTodaysPending(now: Date): Promise<InstanceMonitoringReport | null> {
-		return await this.findOne({
-			where: { status: 'pending', createdAt: MoreThanOrEqual(startOfUtcDay(now)) },
-			order: { createdAt: 'DESC' },
-		});
+	async findLatest(): Promise<InstanceMonitoringReport | null> {
+		const [latest] = await this.find({ order: { createdAt: 'DESC' }, take: 1 });
+		return latest ?? null;
 	}
 
 	/**

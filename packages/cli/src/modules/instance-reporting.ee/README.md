@@ -50,7 +50,7 @@ five minutes since the last attempt before trying again — otherwise a crash lo
 would spend the whole budget in seconds. `InstanceReportingScheduler` keeps no
 attempt state of its own.
 
-The same-day retry above and the missed-day backfill are two separate
+The delivery retry above and the missed-day backfill are two separate
 mechanisms. [RETRIES.md](./RETRIES.md) explains each one, how they connect,
 and where the logic lives.
 

@@ -7,6 +7,7 @@ import { strict } from 'node:assert';
 
 import { EventService } from '@/events/event.service';
 
+import type { InstanceMonitoringReport } from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
@@ -137,16 +138,33 @@ export class InstanceReportingScheduler {
 	}
 
 	/**
-	 * Report when this day's slot has passed and the day is not settled yet. Both
-	 * conditions are re-checked here rather than inferred from the timer having
-	 * fired, so an early fire (a backward clock jump) reports nothing and a
-	 * duplicate fire is a no-op.
+	 * Send the report when it is due.
+	 *
+	 * A pending report is a retry. Resend it now, also after midnight; it holds
+	 * frozen data, so the slot does not apply to it. But once its own next slot
+	 * has passed, its cycle is over: stop trying and let a new report cover its
+	 * day. A new report waits for the slot, which makes sure the day is complete
+	 * before the code measures it.
 	 */
 	private async reportIfDue(reportTime: string): Promise<'sent' | 'skipped' | 'failed'> {
 		const now = new Date();
+		const latest = await this.reportRepository.findLatest();
+
+		if (latest?.status === 'pending') {
+			if (pendingIsStale(latest, reportTime, now)) {
+				await this.reportRepository.markSkipped(latest.id);
+			} else {
+				return await this.trySend();
+			}
+		}
+
+		// A new report waits for the slot and runs only when the day is not settled.
 		if (now.getTime() < slotOn(reportTime, now)) return 'skipped';
 		if (await this.reportRepository.hasSettledToday(now)) return 'skipped';
+		return await this.trySend();
+	}
 
+	private async trySend(): Promise<'sent' | 'failed'> {
 		try {
 			await this.reportingService.sendReport();
 			return 'sent';
@@ -161,6 +179,17 @@ export class InstanceReportingScheduler {
 
 		this.timeout = setTimeout(async () => await this.tick(), delayMs);
 	}
+}
+
+/**
+ * Whether a pending row sat unsent past its own next slot. Its cycle is then
+ * over, so a new report covers its day instead of a late resend.
+ */
+function pendingIsStale(report: InstanceMonitoringReport, reportTime: string, now: Date): boolean {
+	const nextSlot =
+		slotOn(reportTime, report.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+	return now.getTime() >= nextSlot;
 }
 
 /** Epoch ms of `reportTime` on `now`'s UTC day. */

@@ -87,7 +87,7 @@ export class InstanceReportingService {
 	 * `batchId`, so a redelivery reuses the row instead of measuring the day again,
 	 * and only a delivered report crosses its days off.
 	 *
-	 * A retry resends today's pending report exactly as measured instead of taking
+	 * A retry resends the pending report exactly as measured instead of taking
 	 * fresh numbers. The cumulative point is a lifetime total sampled at this
 	 * instance's report time, so its day-to-day difference only lines up with the
 	 * daily point while every sample sits 24 hours apart; re-measuring hours later
@@ -97,7 +97,8 @@ export class InstanceReportingService {
 	 */
 	async sendReport(): Promise<void> {
 		const now = new Date();
-		let report = await this.reportRepository.findTodaysPending(now);
+		const latest = await this.reportRepository.findLatest();
+		let report = latest?.status === 'pending' ? latest : null;
 
 		// A crash between recording a failure and skipping the report leaves an
 		// exhausted row pending, so the budget is re-checked before sending rather
@@ -191,7 +192,8 @@ export class InstanceReportingService {
 	 * seconds.
 	 */
 	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const pending = await this.reportRepository.findTodaysPending(now);
+		const latest = await this.reportRepository.findLatest();
+		const pending = latest?.status === 'pending' ? latest : null;
 		if (!pending?.lastAttemptAt) return 0;
 
 		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();

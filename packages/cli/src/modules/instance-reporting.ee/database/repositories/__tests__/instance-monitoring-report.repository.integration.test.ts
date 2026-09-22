@@ -42,45 +42,46 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 	});
 
-	describe('findTodaysPending', () => {
+	describe('findLatest', () => {
 		test('returns nothing when no report was generated yet', async () => {
-			await expect(repository.findTodaysPending(new Date())).resolves.toBeNull();
+			await expect(repository.findLatest()).resolves.toBeNull();
 		});
 
-		test("returns today's undelivered report with the numbers it measured", async () => {
+		test('returns the pending report with the numbers it measured', async () => {
 			const created = await repository.createPending(DATA_POINTS);
 
-			const pending = await repository.findTodaysPending(new Date());
+			const latest = await repository.findLatest();
 
-			expect(pending?.id).toBe(created.id);
-			expect(pending?.dataPoints).toEqual(DATA_POINTS);
+			expect(latest?.id).toBe(created.id);
+			expect(latest?.status).toBe('pending');
+			expect(latest?.dataPoints).toEqual(DATA_POINTS);
 		});
 
-		test("returns nothing once today's report was delivered", async () => {
+		test('returns the latest row whatever its status', async () => {
 			const created = await repository.createPending(DATA_POINTS);
 			await repository.markDelivered(created.id, new Date());
 
-			await expect(repository.findTodaysPending(new Date())).resolves.toBeNull();
-		});
-
-		test("ignores an earlier day's undelivered report, leaving it untouched", async () => {
-			const stale = await repository.createPending(DATA_POINTS);
-
-			const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-			await expect(repository.findTodaysPending(tomorrow)).resolves.toBeNull();
-			// The stale report keeps the numbers it measured; only backfill may touch it.
-			await expect(repository.findOneByOrFail({ id: stale.id })).resolves.toMatchObject({
-				dataPoints: DATA_POINTS,
-				deliveredAt: null,
+			// The repository returns the newest row. The caller decides what to do.
+			await expect(repository.findLatest()).resolves.toMatchObject({
+				id: created.id,
+				status: 'delivered',
 			});
 		});
 
-		test('returns nothing once the report ran out of attempts, so it is not resent', async () => {
-			const created = await repository.createPending(DATA_POINTS);
-			await repository.markSkipped(created.id);
+		test('returns the newest row, not an older one beneath it', async () => {
+			const older = await repository.createPending(DATA_POINTS);
+			await repository.update(
+				{ id: older.id },
+				{ createdAt: new Date('2026-03-20T07:42:00.000Z') },
+			);
+			await repository.markDelivered(older.id, new Date());
+			const newer = await repository.createPending(DATA_POINTS);
+			await repository.update(
+				{ id: newer.id },
+				{ createdAt: new Date('2026-03-25T07:42:00.000Z') },
+			);
 
-			await expect(repository.findTodaysPending(new Date())).resolves.toBeNull();
+			await expect(repository.findLatest()).resolves.toMatchObject({ id: newer.id });
 		});
 
 		test('carries the last attempt time, so the wait between attempts survives a restart', async () => {
@@ -88,9 +89,9 @@ describe('InstanceMonitoringReportRepository', () => {
 			const failedAt = new Date('2026-03-26T07:42:00.000Z');
 			await repository.recordFailure(created.id, 'Network error', failedAt);
 
-			const pending = await repository.findTodaysPending(new Date());
+			const latest = await repository.findLatest();
 
-			expect(pending?.lastAttemptAt?.toISOString()).toBe(failedAt.toISOString());
+			expect(latest?.lastAttemptAt?.toISOString()).toBe(failedAt.toISOString());
 		});
 	});
 
