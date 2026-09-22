@@ -293,12 +293,13 @@ describe('PromotionSelectModal', () => {
 			},
 		};
 		const applyChanges = vi.fn(() => ({ data: changesBody(mockChanges) }));
+		const publishing = { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 };
 		const applyPackage = vi.fn((_schema: unknown, request: Request) => ({
 			receivedBody: JSON.parse(request.requestBody),
 			connectionId: 'connection-1',
 			configId: 'config-1',
 			status: 'applied',
-			counts: { workflows: { created: 1, updated: 1, archived: 0, deleted: 0 } },
+			counts: { workflows: { created: 1, updated: 1, archived: 0, deleted: 0, publishing } },
 			warnings: [],
 			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
 		}));
@@ -356,6 +357,44 @@ describe('PromotionSelectModal', () => {
 			// A closed modal has no list to refresh; the open views learn about the apply instead.
 			expect(applyChanges).toHaveBeenCalledTimes(1);
 			expect(applied).toHaveBeenCalledWith('applied');
+		});
+
+		it('should warn when applied workflows could not be published', async () => {
+			server.post('/api/v1/promotions/connections/connection-1/apply', () => ({
+				connectionId: 'connection-1',
+				configId: 'config-1',
+				status: 'applied',
+				counts: {
+					workflows: {
+						created: 2,
+						updated: 0,
+						archived: 0,
+						deleted: 0,
+						publishing: { ...publishing, published: 0, blocked: 1, failed: 1 },
+					},
+				},
+				warnings: [],
+				git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+			}));
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'warning',
+						title: 'Changes applied',
+						message: '2 created, 0 updated, 0 archived, 0 deleted. 2 could not be published.',
+					}),
+				),
+			);
+			// The import went through, so the views still refresh and the modal closes.
+			expect(applied).toHaveBeenCalledWith('applied');
+			await waitFor(() =>
+				expect(useUIStore().closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY),
+			);
 		});
 
 		it.each([

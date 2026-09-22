@@ -8806,6 +8806,7 @@
 	"promotions.modal.incoming.confirm.confirmButtonText": "Apply",
 	"promotions.modal.incoming.applied.title": "Changes applied",
 	"promotions.modal.incoming.applied.message": "{created} created, {updated} updated, {archived} archived, {deleted} deleted.",
+	"promotions.modal.incoming.applied.notPublished": "{count} could not be published.",
 	"promotions.modal.incoming.applyError": "Could not apply the changes",
 	"promotions.modal.incoming.paused.title": "Apply paused",
 	"promotions.modal.incoming.paused.blocked": "Some credentials or variables are not set up on this instance yet. Nothing was changed.",

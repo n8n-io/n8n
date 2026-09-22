@@ -8,14 +8,16 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 
 import PromotionBanners from './PromotionBanners.vue';
 import { invalidatePromotionConnection } from '../composables/usePromotionConnection';
 import { promotionEventBus } from '../promotions.eventBus';
+import * as settingsApi from '../promotionsSettings.api';
 
 const renderComponent = createComponentRenderer(PromotionBanners);
 
@@ -165,10 +167,94 @@ describe('PromotionBanners', () => {
 		await findByTestId('promotion-banner');
 		await findByTestId('promotion-incoming-banner');
 
+		const renamed = createTestProject({ id: 'project-1', name: 'Renamed' });
+		projectsStore.fetchProject.mockResolvedValue(renamed);
+
 		promotionEventBus.emit('applied');
 
 		await waitFor(() => expect(promoteChanges).toHaveBeenCalledTimes(2));
 		await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+		// The header shows the project name, which the package may have changed.
+		await waitFor(() => expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(renamed));
+	});
+
+	it('keeps the project the user moved to while the refetch was pending', async () => {
+		let resolveProject: (project: Project) => void = () => {};
+		projectsStore.fetchProject.mockReturnValue(
+			new Promise<Project>((resolve) => {
+				resolveProject = resolve;
+			}),
+		);
+		server.get('/api/v1/promotions/connections', () =>
+			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
+		);
+		server.get('/rest/promotions/:projectId/changes/apply', () =>
+			oneChange('Incoming workflow', 'new'),
+		);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('promotion-incoming-banner');
+
+		promotionEventBus.emit('applied');
+		await waitFor(() => expect(projectsStore.fetchProject).toHaveBeenCalledWith('project-1'));
+		projectsStore.currentProject = createTestProject({
+			id: 'project-2',
+			scopes: ['project:export'],
+		});
+		resolveProject(createTestProject({ id: 'project-1', name: 'Renamed' }));
+		await waitAllPromises();
+
+		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
+	});
+
+	it('still refetches the counts when the applied package removed the project', async () => {
+		projectsStore.fetchProject.mockRejectedValue(new Error('gone'));
+		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
+		server.get('/api/v1/promotions/connections', () =>
+			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
+		);
+		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('promotion-incoming-banner');
+
+		promotionEventBus.emit('applied');
+
+		await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+	});
+
+	it('retries a failed connection lookup on the next project', async () => {
+		const lookup = vi
+			.spyOn(settingsApi, 'fetchPromotionConnections')
+			.mockRejectedValueOnce(new Error('offline'));
+		const connectionsRequest = vi.fn(() =>
+			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
+		);
+		server.get('/api/v1/promotions/connections', connectionsRequest);
+		server.get('/rest/promotions/project-2/changes/apply', () =>
+			oneChange('Incoming workflow', 'new'),
+		);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+		});
+		const { findByTestId, queryByTestId } = renderComponent();
+		await waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
+		// Let the rejection settle, a switch while the lookup is in flight joins the same request.
+		await waitAllPromises();
+		expect(connectionsRequest).not.toHaveBeenCalled();
+		expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument();
+
+		projectsStore.currentProject = createTestProject({
+			id: 'project-2',
+			scopes: ['project:export'],
+		});
+
+		expect(await findByTestId('promotion-incoming-banner')).toHaveTextContent('1 incoming change');
+		expect(connectionsRequest).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps the incoming changes entry visible when the check fails', async () => {

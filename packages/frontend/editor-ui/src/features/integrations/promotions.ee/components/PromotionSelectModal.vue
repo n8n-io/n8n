@@ -146,18 +146,25 @@ async function onApplyAll() {
 		);
 		if (result.status === 'applied') {
 			promotionEventBus.emit('applied');
-			const { counts } = result;
+			const { workflows } = result.counts;
+			const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
+			const summary = i18n.baseText('promotions.modal.incoming.applied.message', {
+				interpolate: {
+					created: String(workflows.created),
+					updated: String(workflows.updated),
+					archived: String(workflows.archived),
+					deleted: String(workflows.deleted),
+				},
+			});
+			// A workflow can be imported and still fail to publish, so success alone would mislead.
 			toast.showMessage({
 				title: i18n.baseText('promotions.modal.incoming.applied.title'),
-				message: i18n.baseText('promotions.modal.incoming.applied.message', {
-					interpolate: {
-						created: String(counts.workflows.created),
-						updated: String(counts.workflows.updated),
-						archived: String(counts.workflows.archived),
-						deleted: String(counts.workflows.deleted),
-					},
-				}),
-				type: 'success',
+				message: notPublished
+					? `${summary} ${i18n.baseText('promotions.modal.incoming.applied.notPublished', {
+							interpolate: { count: String(notPublished) },
+						})}`
+					: summary,
+				type: notPublished ? 'warning' : 'success',
 			});
 			onClose();
 			return;

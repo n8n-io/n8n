@@ -54,8 +54,8 @@ const showIncomingBanner = computed(
 );
 
 watch(
-	canPreviewChanges,
-	async (canPreview) => {
+	[canPreviewChanges, currentProjectId],
+	async ([canPreview]) => {
 		if (canPreview) await loadConnection();
 	},
 	{ immediate: true },
@@ -71,9 +71,21 @@ const {
 	refetch: refetchIncoming,
 } = usePromotionChangeCount(currentProjectId, 'apply', showIncomingBanner);
 
-// An apply changes both counts: the instance now matches the source it applied.
+// An apply changes both counts and can rename the project, so the header shows the new name.
 async function onPromotionApplied() {
-	await Promise.all([refetchPromotable(), refetchIncoming()]);
+	await Promise.all([refetchPromotable(), refetchIncoming(), refetchProject()]);
+}
+
+async function refetchProject() {
+	const projectId = currentProjectId.value;
+	if (!projectId) return;
+	try {
+		const project = await projectsStore.fetchProject(projectId);
+		// The user may have moved to another project while this one loaded.
+		if (currentProjectId.value === projectId) projectsStore.setCurrentProject(project);
+	} catch {
+		// The applied package removed this project, the workflows view leaves the page.
+	}
 }
 
 onMounted(() => {
