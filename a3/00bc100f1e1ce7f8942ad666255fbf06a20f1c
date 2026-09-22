@@ -31,6 +31,7 @@ packages/frontend/@n8n/i18n/src/locales/en.json
   s_6eb65a1ac12acf::t_faa4998d7cd8ba 8843-8844,8848,8851-8855,8858-8861,8863-8881
   s_bd2c88dec3f0fd::t_586f46643e17f2 8856-8857
   s_6eb65a1ac12acf::t_740efadf19cfe8 8845-8847,8849-8850,8862
+  s_f70599bfc29ca2::t_b058f29e5c32e0 8882
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
   s_430d91f2c0a128::t_c39a0802979fbf 136-155
   s_6eb65a1ac12acf::t_4e33adf5cbc74b 1
@@ -69,6 +70,14 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.t
         "tool": "claude",
         "id": "93d554e7-f4cd-494d-9895-86b01a92e630",
         "model": "claude-fable-5-1"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_f70599bfc29ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d7ed18d-40fc-48a8-be02-4171111ef3d3",
+        "model": "claude-opus-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
