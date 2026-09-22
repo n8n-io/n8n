@@ -2,6 +2,11 @@
 @use '../../design-system/src/css/reset.scss';
 @use '../../design-system/src/css/index.scss';
 
+// Hug the story content. A block root places inline components on a text line and adds space.
+#storybook-root {
+	display: inline-flex;
+}
+
 .sbdocs.sbdocs-content {
 	:is(h1, h2, h3, h4, h5, h6):not(:where(.sb-unstyled, .sb-unstyled *)) {
 		border-bottom: none;
