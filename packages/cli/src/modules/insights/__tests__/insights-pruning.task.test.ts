@@ -16,7 +16,7 @@ describe('InsightsPruningTask', () => {
 			intervalSeconds: insightsConfig.pruneCheckIntervalHours * 3600,
 		});
 		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: false });
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 		expect(task.retryDelaySeconds).toBe(1);
 	});
 

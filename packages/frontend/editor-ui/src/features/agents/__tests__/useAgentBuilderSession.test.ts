@@ -7,6 +7,9 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 
 interface ThreadStub {
 	id: string;
+	projectId: string;
+	agentId: string;
+	canContinueInPreview: boolean;
 	title: string | null;
 	firstMessage?: string | null;
 	updatedAt?: string;
@@ -20,6 +23,7 @@ const { confirm, replace, route, sessionsStore, showError, showMessage } = vi.ho
 	},
 	sessionsStore: {
 		threads: [] as ThreadStub[],
+		previewThreads: [] as ThreadStub[],
 		deleteThread: vi.fn(),
 	},
 	showError: vi.fn(),
@@ -62,6 +66,7 @@ describe('useAgentBuilderSession', () => {
 		vi.clearAllMocks();
 		route.query = {};
 		sessionsStore.threads = [];
+		sessionsStore.previewThreads = [];
 		confirm.mockResolvedValue(MODAL_CONFIRM);
 		sessionsStore.deleteThread.mockResolvedValue(undefined);
 	});
@@ -111,6 +116,9 @@ describe('useAgentBuilderSession', () => {
 		});
 
 		session.onNewChat();
+		const newSessionId = session.activeChatSessionId.value!;
+		session.onSessionPick(newSessionId);
+		expect(session.currentSessionIsEphemeral.value).toBe(true);
 		expect(replace).toHaveBeenLastCalledWith({
 			query: {
 				keep: 'value',
@@ -193,6 +201,9 @@ describe('useAgentBuilderSession', () => {
 		sessionsStore.threads = [
 			{
 				id: 'thread-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				canContinueInPreview: true,
 				title: 'Session title',
 			},
 		];
@@ -205,9 +216,12 @@ describe('useAgentBuilderSession', () => {
 	});
 
 	it('exposes each session title and update time to the history menu', () => {
-		sessionsStore.threads = [
+		sessionsStore.previewThreads = [
 			{
 				id: 'thread-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				canContinueInPreview: true,
 				title: 'Session title',
 				updatedAt: '2026-09-17T10:00:00.000Z',
 			},
@@ -218,6 +232,20 @@ describe('useAgentBuilderSession', () => {
 			title: 'Session title',
 			updatedAt: '2026-09-17T10:00:00.000Z',
 		});
+	});
+
+	it('uses only Preview sessions for the selector and current title', () => {
+		const base = { projectId: 'project-1', agentId: 'agent-1', title: 'Session' };
+		sessionsStore.threads = [
+			{ ...base, id: 'shared', canContinueInPreview: false },
+			{ ...base, id: 'child', canContinueInPreview: false },
+		];
+		sessionsStore.previewThreads = [{ ...base, id: 'private', canContinueInPreview: true }];
+		const { session } = createSession();
+		session.onSessionPick('private');
+		expect(session.sessionMenu.value.map(({ id }) => id)).toEqual(['private']);
+		expect(session.currentSessionHasMessages.value).toBe(true);
+		expect(session.currentSessionTitle.value).toBe('Session');
 	});
 
 	it('deletes the active session and starts a new one', async () => {

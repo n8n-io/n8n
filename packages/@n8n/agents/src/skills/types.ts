@@ -137,7 +137,15 @@ export interface RuntimeSkillContent extends RuntimeSkillIndexEntry {
 	linkedFiles?: RuntimeSkillLinkedFiles;
 }
 
-export type RuntimeSkillLoader = (skillId: string) => Promise<RuntimeSkillContent | null>;
+export type RuntimeSkillLoader = (
+	skillId: string,
+	/**
+	 * Tool result the activation rides on. The skill body is appended to this
+	 * result so the top-level system prompt stays byte-identical (no cache
+	 * invalidation). Defaults to the calling tool's own result when omitted.
+	 */
+	anchor?: { toolCallId: string },
+) => Promise<RuntimeSkillContent | null>;
 
 export interface RuntimeSkillFileContent {
 	skillId: string;

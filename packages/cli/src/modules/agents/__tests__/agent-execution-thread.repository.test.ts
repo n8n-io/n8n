@@ -7,6 +7,8 @@ import { mockEntityManager } from '@test/mocking';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 
+const access = { accessScope: 'project' as const, ownerId: null };
+
 const entityManager = mockEntityManager(AgentExecutionThread);
 const mockDataSource = { manager: entityManager };
 
@@ -46,6 +48,7 @@ describe('AgentExecutionThreadRepository', () => {
 				'agent-1',
 				'Support agent',
 				'project-1',
+				access,
 			);
 
 			expect(entityManager.transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.any(Function));
@@ -55,6 +58,7 @@ describe('AgentExecutionThreadRepository', () => {
 				agentId: 'agent-1',
 				agentName: 'Support agent',
 				projectId: 'project-1',
+				...access,
 				taskId: null,
 				taskVersionId: null,
 				sessionNumber: 8,
@@ -72,7 +76,7 @@ describe('AgentExecutionThreadRepository', () => {
 				return await callback(trx as never);
 			});
 
-			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', {
+			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', access, {
 				parentThreadId: 'parent-thread-1',
 				parentAgentId: 'parent-agent-1',
 			});
@@ -82,6 +86,7 @@ describe('AgentExecutionThreadRepository', () => {
 				agentId: 'agent-1',
 				agentName: 'Support agent',
 				projectId: 'project-1',
+				...access,
 				taskId: null,
 				taskVersionId: null,
 				sessionNumber: 8,
@@ -103,6 +108,7 @@ describe('AgentExecutionThreadRepository', () => {
 				'agent-1',
 				'Support agent',
 				'project-1',
+				access,
 				undefined,
 				'task-1',
 				'version-1',
@@ -134,6 +140,7 @@ describe('AgentExecutionThreadRepository', () => {
 				'agent-1',
 				'Support agent',
 				'project-1',
+				access,
 			);
 
 			expect(entityManager.transaction).toHaveBeenCalledTimes(2);
