@@ -73,6 +73,21 @@ ruleTester.run('package-name-convention', PackageNameConventionRule, {
 	],
 	invalid: [
 		{
+			// CE-2133: Published community nodes must use a single-package repository.
+			name: 'package published from a monorepo',
+			filename: 'package.json',
+			code: `{
+				"name": "@example/n8n-nodes-service",
+				"version": "1.0.0",
+				"repository": {
+					"type": "git",
+					"url": "https://github.com/example/packages.git",
+					"directory": "packages/n8n-nodes-service"
+				}
+			}`,
+			errors: 1,
+		},
+		{
 			name: 'invalid package name - generic',
 			filename: 'package.json',
 			code: '{ "name": "my-package", "version": "1.0.0" }',
