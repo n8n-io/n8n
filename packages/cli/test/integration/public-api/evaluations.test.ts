@@ -302,7 +302,7 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 		expect(response.body.message).toBe('An invalid cursor was provided');
 	});
 
-	test('should clamp a limit above 250', async () => {
+	test('should accept a limit above 250', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, { status: 'completed' });
 		await createTestCaseExecution(testRun.id, { status: 'success' });
