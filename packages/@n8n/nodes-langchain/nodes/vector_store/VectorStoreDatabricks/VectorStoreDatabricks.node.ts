@@ -94,6 +94,28 @@ const sharedFields: INodeProperties[] = [
 				description:
 					'Columns to return in document metadata. Defaults to all columns except the key, content and vector columns. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
+			{
+				displayName: 'Search Mode',
+				name: 'searchMode',
+				type: 'options',
+				default: 'ANN',
+				options: [
+					{ name: 'Vector', value: 'ANN' },
+					{ name: 'Hybrid', value: 'HYBRID' },
+				],
+				description:
+					'Vector ranks purely by semantic similarity. Hybrid adds keyword matching on top, using the search text. Sent as query_type ANN or HYBRID.',
+			},
+			{
+				displayName: 'Metadata Filter',
+				name: 'searchFilterJson',
+				type: 'json',
+				typeOptions: { rows: 5 },
+				default: '{}',
+				validateType: 'object',
+				description:
+					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json.',
+			},
 		],
 	},
 ];
@@ -173,6 +195,9 @@ async function createStore(
 		(value): value is string => typeof value === 'string',
 		node,
 	);
+	const searchMode = ctx.getNodeParameter('options.searchMode', itemIndex, 'ANN');
+	assertParamIsString('options.searchMode', searchMode, node);
+	const queryType = searchMode === 'HYBRID' ? 'HYBRID' : 'ANN';
 
 	let index = indexes.get(indexName);
 	if (!index) {
@@ -190,6 +215,7 @@ async function createStore(
 		indexName,
 		contentColumn,
 		metadataColumns,
+		queryType,
 		filter,
 		index: await index,
 	});

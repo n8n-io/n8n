@@ -6501,7 +6501,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			credentialIdAllowlist: [],
+			getCredentialIdAllowlist: () => [],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(

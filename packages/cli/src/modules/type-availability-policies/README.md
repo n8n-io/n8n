@@ -13,7 +13,7 @@ Notion for why the substrate looks the way it does.
 
 Two gates, both required:
 
-1. The license feature `feat:nodeTypePolicies`. Without it, `init()` never runs, so the
+1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
    controllers are not mounted and no check is registered.
 2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
 
