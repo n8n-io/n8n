@@ -174,13 +174,13 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			await retryUntil(
 				async () => {
 					expect((await taskRepo.findOneByOrFail({ id: heldBack.id })).status).toBe('missed');
+					expect(emit).toHaveBeenCalledWith('system-task-run-skipped', {
+						name: SYSTEM_TASK_NAME,
+						reason: 'overlap',
+					});
 				},
 				{ intervalMs: 100, timeoutMs: 20_000 },
 			);
-			expect(emit).toHaveBeenCalledWith('system-task-run-skipped', {
-				name: SYSTEM_TASK_NAME,
-				reason: 'overlap',
-			});
 		} finally {
 			emit.mockRestore();
 		}
