@@ -1398,7 +1398,37 @@ describe('Promote a project selection', () => {
 		expect(onBranch).toContain(workflows[0].id);
 	});
 
-	it('rejects a selection with a workflow from another project and pushes nothing', async () => {
+	it('drops a workflow that moved to another project from the branch as a deletion', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project: orders, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		// Move w1 to Billing. Orders no longer owns it, so its change list shows it
+		// as a deletion. The branch still holds it under Orders from the full promote.
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: workflows[0].id, role: 'workflow:owner' },
+			{ projectId: billing.id },
+		);
+
+		await service.promoteProjectSelection(orders.id, owner, {
+			workflowIds: [workflows[0].id],
+			canExportVariableValues: true,
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
+		expect(onBranch).not.toContain(workflows[0].id);
+		expect(onBranch).toContain(workflows[1].id);
+	});
+
+	it('rejects a selection with a workflow that belongs to another project on the branch and pushes nothing', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
@@ -1411,12 +1441,14 @@ describe('Promote a project selection', () => {
 		});
 		const headBefore = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
 
+		// b1 belongs to Billing, so Orders classifies it as a deletion. The branch
+		// holds it under Billing, so assertDeletionsOnBranch refuses it before any write.
 		await expect(
 			service.promoteProjectSelection(orders.id, owner, {
 				workflowIds: [billingWorkflows[0].id],
 				canExportVariableValues: true,
 			}),
-		).rejects.toThrow('does not belong to project');
+		).rejects.toThrow('do not belong to the selected project');
 
 		expect((await simpleGit(remote.bareDir).revparse(['main'])).trim()).toBe(headBefore);
 	});

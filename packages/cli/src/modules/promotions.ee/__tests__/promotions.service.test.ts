@@ -999,22 +999,29 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('rejects a selection that includes a workflow from another project', async () => {
+		it('pushes a workflow this project no longer owns as a deletion', async () => {
+			// w9 moved to another project, so p1 no longer owns it. The change list
+			// shows it as a deletion for p1, so the promote drops it from the branch.
+			// assertDeletionsOnBranch rejects it later if the branch does not hold it.
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([
 					['w1', mock<Project>({ id: 'p1' })],
 					['w9', mock<Project>({ id: 'other' })],
 				]),
 			);
-			const promoteSelectionResolved = spyPromoteSelectionResolved();
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
 
-			await expect(
-				service.promoteProjectSelection('p1', actor, {
-					workflowIds: ['w1', 'w9'],
-					canExportVariableValues: false,
-				}),
-			).rejects.toThrow(BadRequestError);
-			expect(promoteSelectionResolved).not.toHaveBeenCalled();
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1', 'w9'],
+				canExportVariableValues: false,
+			});
+
+			expect(promoteSelectionResolved).toHaveBeenCalledWith(
+				promoteInput(),
+				actor,
+				expect.anything(),
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+			);
 		});
 
 		it('rejects a selection with duplicate workflow ids', async () => {

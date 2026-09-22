@@ -388,8 +388,8 @@ export class PromotionsService {
 	/**
 	 * Promotes a client-chosen set of a project's workflows. The client sends ids
 	 * only; the server reads each one now, so the push carries the current state.
-	 * Live and archived workflows export, only missing ones leave the branch, and
-	 * an id from another project rejects the whole request before any write.
+	 * Live and archived workflows export; an id this project no longer owns (gone,
+	 * or moved to another project) leaves the branch, matching the change list.
 	 */
 	async promoteProjectSelection(
 		projectId: string,
@@ -419,8 +419,11 @@ export class PromotionsService {
 
 	/**
 	 * Splits selected ids into pushes and deletions, using the current instance
-	 * state. A live or archived workflow exports; only an id whose workflow is
-	 * gone leaves the branch. An id from another project rejects the whole request.
+	 * state. A live or archived workflow this project owns exports; an id it no
+	 * longer owns — gone from the instance, or moved to another project — leaves
+	 * the branch. This matches the change list, which shows both as deletions.
+	 * assertDeletionsOnBranch rejects a deletion the branch does not hold under
+	 * this project, so a foreign id never writes.
 	 */
 	private async classifySelection(
 		projectId: string,
@@ -432,17 +435,12 @@ export class PromotionsService {
 		const live: string[] = [];
 		const deleted: string[] = [];
 		for (const id of workflowIds) {
-			const ownerProject = ownerProjects.get(id);
-			// Gone from the instance: promote it as a deletion. It must exist on the
-			// branch, or assertDeletionsOnBranch rejects the request.
-			if (!ownerProject) {
+			// This project does not own the workflow: it is gone, or it moved to
+			// another project. Either way the project has dropped it, so promote it
+			// as a deletion.
+			if (ownerProjects.get(id)?.id !== projectId) {
 				deleted.push(id);
 				continue;
-			}
-			if (ownerProject.id !== projectId) {
-				throw new BadRequestError(
-					`Workflow ${id} does not belong to project ${projectId} and cannot be promoted from it`,
-				);
 			}
 			// Archived workflows travel like live ones, so the branch keeps them
 			// archived instead of removing them, matching a full promote.
