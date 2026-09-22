@@ -64,3 +64,17 @@ export const folderContentCountFieldDocs = {
 	totalSubFolders: { description: 'Total number of sub-folders (recursive).' },
 	totalWorkflows: { description: 'Total number of workflows (recursive).' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+/**
+ * Copied from the hand-written `folder.update.yml`. Both fields carry `type` because the runtime
+ * schemas behind them are refinements, which alone would not document as a plain `string`.
+ */
+export const updateFolderFieldDocs = {
+	name: { type: 'string', example: 'Renamed Folder' },
+	parentFolderId: {
+		type: 'string',
+		description:
+			'ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.',
+		example: 'abc123',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;

@@ -6,9 +6,11 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { Databricks } from '../Databricks.node';
 import { DatabricksTrigger } from '../DatabricksTrigger.node';
+import { getJobs } from '../methods/listSearch';
 
-const authenticationProperty = (node: INodeType) =>
-	node.description.properties.find((property) => property.name === 'authentication');
+const property = (node: INodeType, name: string) =>
+	node.description.properties.find((candidate) => candidate.name === name);
+const authenticationProperty = (node: INodeType) => property(node, 'authentication');
 
 describe('DatabricksTrigger', () => {
 	const trigger = new DatabricksTrigger();
@@ -70,7 +72,77 @@ describe('DatabricksTrigger', () => {
 		expect(manifest.n8n.nodes).toContain('dist/nodes/Databricks/DatabricksTrigger.node.js');
 	});
 
-	it('should emit nothing when polled', async () => {
-		await expect(trigger.poll.call(mockDeep<IPollFunctions>())).resolves.toBeNull();
+	it('should recommend a service principal right after the authentication selector', () => {
+		const names = trigger.description.properties.map((p) => p.name);
+
+		expect(names.indexOf('servicePrincipalNotice')).toBe(names.indexOf('authentication') + 1);
+		expect(property(trigger, 'servicePrincipalNotice')).toEqual({
+			displayName: expect.stringContaining('service principal'),
+			name: 'servicePrincipalNotice',
+			type: 'notice',
+			default: '',
+		});
+	});
+
+	it('should offer the job resource', () => {
+		expect(property(trigger, 'resource')).toEqual({
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			noDataExpression: true,
+			options: [{ name: 'Job', value: 'job', description: 'Watch the runs of a job' }],
+			default: 'job',
+		});
+	});
+
+	it('should pick the job with the locator modes of the action node', () => {
+		const jobId = property(trigger, 'jobId');
+
+		expect(jobId).toMatchObject({
+			displayName: 'Job',
+			type: 'resourceLocator',
+			required: true,
+			default: { mode: 'list', value: '' },
+			description: 'The job whose runs start the workflow',
+			displayOptions: { show: { resource: ['job'] } },
+		});
+		expect(jobId?.modes?.map((mode) => mode.name)).toEqual(['list', 'id', 'url']);
+		expect(jobId?.modes).toBe(property(action, 'jobId')?.modes);
+		expect(trigger.methods?.listSearch?.getJobs).toBe(getJobs);
+	});
+
+	it('should subscribe to failed and succeeded runs by default', () => {
+		expect(property(trigger, 'events')).toMatchObject({
+			type: 'multiOptions',
+			required: true,
+			displayOptions: { show: { resource: ['job'] } },
+			options: [{ value: 'runFailed' }, { value: 'runStarted' }, { value: 'runSucceeded' }],
+			default: ['runFailed', 'runSucceeded'],
+		});
+	});
+
+	it('should simplify the output by default', () => {
+		expect(property(trigger, 'simplify')).toEqual({
+			displayName: 'Simplify',
+			name: 'simplify',
+			type: 'boolean',
+			default: true,
+			description: 'Whether to return a simplified version of the response instead of the raw data',
+		});
+	});
+
+	it('should hand the poll to the job run watcher', async () => {
+		const context = mockDeep<IPollFunctions>();
+		const staticData = {};
+		context.getMode.mockReturnValue('trigger');
+		context.getWorkflowStaticData.mockReturnValue(staticData);
+		context.getNodeParameter.mockImplementation((name, fallback) =>
+			name === 'events' ? ['runFailed'] : name === 'jobId' ? '281874479417551' : fallback,
+		);
+
+		await expect(trigger.poll.call(context)).resolves.toBeNull();
+
+		expect(staticData).toMatchObject({ jobId: 281874479417551 });
+		expect(context.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
 	});
 });

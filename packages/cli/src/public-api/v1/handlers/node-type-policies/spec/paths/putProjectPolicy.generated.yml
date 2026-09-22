@@ -82,7 +82,7 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/nodeTypePolicyEffectiveWriteResultPublicDto.generated.yml
+          $ref: ../../../../shared/spec/schemas/policyEffectiveWriteResultPublicDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

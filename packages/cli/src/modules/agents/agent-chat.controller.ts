@@ -26,6 +26,7 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream } from './agent-sse-stream';
@@ -176,6 +177,7 @@ export class AgentChatController {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
+			if (error instanceof AgentExecutionRecordingError) executionId ??= error.executionId;
 			// No execution recorded means nothing references this turn's attachments —
 			// remove them so failed turns can't accumulate orphans. Best-effort, and
 			// deliberately also on aborted turns.

@@ -213,6 +213,12 @@ function getExecutionWorkflowPermissions(
 	return getResourcePermissions(execution.scopes).workflow;
 }
 
+function getExecutionPermissions(
+	execution: ExecutionSummaryWithScopes,
+): PermissionsRecord['execution'] {
+	return getResourcePermissions(execution.scopes).execution;
+}
+
 function getWorkflowName(workflowId: string): string | undefined {
 	return workflows.value.find((data: IWorkflowDb) => data.id === workflowId)?.name;
 }
@@ -428,6 +434,7 @@ const goToUpgrade = () => {
 							:execution="execution"
 							:workflow-name="getExecutionWorkflowName(execution)"
 							:workflow-permissions="getExecutionWorkflowPermissions(execution)"
+							:execution-permissions="getExecutionPermissions(execution)"
 							:selected="selectedItems[execution.id] || allExistingSelected"
 							:concurrency-cap="settingsStore.concurrency"
 							:is-cloud-deployment="settingsStore.isCloudDeployment"

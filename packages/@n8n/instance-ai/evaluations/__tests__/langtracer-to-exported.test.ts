@@ -107,6 +107,26 @@ describe('diskCaseToLangTracerCreate', () => {
 });
 
 describe('unsupportedPushReason', () => {
+	it.each([null, 'Production reports'])(
+		'refuses description %s until the case-write API preserves it',
+		(description) => {
+			const input = diskCase({ credentials: [{ type: 'httpHeaderAuth', description }] });
+			expect(unsupportedPushReason(input)).toContain('description');
+			const body = diskCaseToLangTracerCreate(input, 'description-case', {
+				suiteId: 8,
+				setKind: 'regression',
+				synthetic: true,
+			});
+			expect(body.credentials).toEqual(input.credentials);
+		},
+	);
+
+	it('allows credentials without descriptions', () => {
+		expect(
+			unsupportedPushReason(diskCase({ credentials: [{ type: 'httpHeaderAuth' }] })),
+		).toBeNull();
+	});
+
 	it('refuses a case whose prompt version would be lost', () => {
 		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
 			'promptVersion',
@@ -330,6 +350,42 @@ describe('attach round-trip: write → export → reparse', () => {
 		);
 
 		expect(parsed.conversation?.[0].attach).toEqual({ workflow: WORKFLOW_ID });
+	});
+
+	it('carries an Agent attachment through create, export, and reparse', () => {
+		const agentId = 'AgentMcpRepairSeed01';
+		const agentCase = diskCase({
+			conversation: [{ role: 'user', text: '', attach: { agent: agentId } }],
+			seed: {
+				mode: 'inline',
+				messages: [],
+				workflows: [],
+				dataTables: [],
+				folders: [],
+				projects: [],
+				agents: [
+					{
+						id: agentId,
+						config: {
+							name: 'Notion research',
+							model: 'anthropic/claude-sonnet-4-5',
+							instructions: 'Research company notes.',
+						},
+					},
+				],
+			},
+		} as Partial<EvalTestCaseInput>);
+		const body = diskCaseToLangTracerCreate(agentCase, 'agent-handoff', {
+			suiteId: 1,
+			setKind: 'regression',
+			synthetic: true,
+		});
+
+		const parsed = EvalTestCaseSchema.parse(
+			normalizeExportedCase(exportedFrom(body.conversation, body.seed)),
+		);
+
+		expect(parsed.conversation?.[0].attach).toEqual({ agent: agentId });
 	});
 
 	it('fails at load when the deployment stripped attach, instead of running as a find-it case', () => {
