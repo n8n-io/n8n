@@ -30,6 +30,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'project:read',
 	'project:write',
 	'tag:read',
+	'communityPackage:install',
 	'aiPreference:read',
 ] as const;
 
