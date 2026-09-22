@@ -1,3 +1,5 @@
+import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
@@ -40,11 +42,11 @@ describe('save_user_preference tool', () => {
 		expect(createSaveUserPreferenceTool(makeContext()).name).toBe('save_user_preference');
 	});
 
-	it('throws plainly when preferences are not enabled on the instance', async () => {
+	it('throws an UnexpectedError when the tool runs without the preference service', async () => {
 		const context = makeContext({ aiPreferenceService: undefined });
 		await expect(
 			executeTool(createSaveUserPreferenceTool(context), { content: 'x', scope: 'user' }),
-		).rejects.toThrow('Saved preferences are not enabled on this instance.');
+		).rejects.toThrow(UnexpectedError);
 	});
 
 	it('returns blocked_by_admin without calling the service', async () => {
@@ -63,7 +65,7 @@ describe('save_user_preference tool', () => {
 	it('returns too_long for text over the cap without calling the service', async () => {
 		const context = makeContext();
 		const result = await executeTool(createSaveUserPreferenceTool(context), {
-			content: 'x'.repeat(2001),
+			content: 'x'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH + 1),
 			scope: 'user',
 		});
 		expect(result).toMatchObject({ ok: false, reason: 'too_long' });
