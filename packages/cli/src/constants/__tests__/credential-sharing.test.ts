@@ -1,8 +1,14 @@
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
 
 describe('isCredSharingEnabled', () => {
-	afterEach(() => {
-		delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+	const originalEnv = process.env;
+
+	beforeEach(() => {
+		process.env = { ...originalEnv };
+	});
+
+	afterAll(() => {
+		process.env = originalEnv;
 	});
 
 	it('should return true when N8N_ENV_FEAT_CRED_SHARING is "true"', () => {
@@ -12,6 +18,8 @@ describe('isCredSharingEnabled', () => {
 	});
 
 	it('should return false when N8N_ENV_FEAT_CRED_SHARING is unset', () => {
+		delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+
 		expect(isCredSharingEnabled()).toBe(false);
 	});
 
