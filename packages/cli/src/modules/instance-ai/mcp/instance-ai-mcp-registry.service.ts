@@ -1,4 +1,5 @@
 import { type BuiltTool, McpClient } from '@n8n/agents';
+import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
 import type {
 	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
@@ -34,10 +35,8 @@ import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { createAuthFetch, getBearerTokenRevision } from '@/utils/auth-fetch';
 
-import type {
-	InstanceAiMcpRegistryConnection,
-	InstanceAiMcpToolFilter,
-} from '../entities/instance-ai-mcp-registry-connection.entity';
+import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 interface ResolvedRegistryServer {
@@ -63,41 +62,23 @@ function buildServerName(serverSlug: string, sequence: number): string {
 	return `${baseName.slice(0, maxBaseLength)}${suffix}`;
 }
 
-function normalizeTools(tools: string[] | undefined): string[] {
-	if (!tools) {
-		return [];
-	}
-
-	return [...new Set(tools.filter((tool) => tool.length > 0))];
-}
-
-function resolveToolFilter(
-	payload: InstanceAiMcpUpdateConnectionRequestDto,
-	current: InstanceAiMcpToolFilter | null,
-): InstanceAiMcpToolFilter | null {
-	if (payload.inclusionMode === undefined) {
-		return current;
-	}
-
-	if (payload.inclusionMode === 'all') {
-		return null;
-	}
-
-	if (payload.inclusionMode === 'selected') {
-		return { mode: 'allow', tools: normalizeTools(payload.selectedTools) };
-	}
-
-	return { mode: 'exclude', tools: normalizeTools(payload.excludedTools) };
-}
-
 function stripMcpServerPrefix(toolName: string, serverName: string): string {
 	const prefix = `${serverName}_`;
 	return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
 }
 
-function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConnectionToolResponse {
+function toToolResponse(
+	tool: BuiltTool,
+	serverName: string,
+	registryTool?: McpRegistryServer['tools'][number],
+): InstanceAiMcpConnectionToolResponse {
+	const name = tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName);
 	const response: InstanceAiMcpConnectionToolResponse = {
-		name: tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName),
+		name,
+		category: classifyMcpTool({
+			name,
+			annotations: registryTool?.annotations,
+		}),
 	};
 	if (tool.description) response.description = tool.description;
 	return response;
@@ -124,6 +105,7 @@ export class InstanceAiMcpRegistryService {
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly instanceAiSettingsService: InstanceAiSettingsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -183,6 +165,7 @@ export class InstanceAiMcpRegistryService {
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
+			toolPermissions: this.instanceAiSettingsService.getMcpToolPermissions(),
 		});
 
 		try {
@@ -233,7 +216,7 @@ export class InstanceAiMcpRegistryService {
 			await this.swapCredential(user, connection, payload.credentialId, server);
 		}
 
-		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
+		if (payload.toolPermissions) connection.toolPermissions = payload.toolPermissions;
 		return await this.connectionRepository.save(connection);
 	}
 
@@ -318,7 +301,14 @@ export class InstanceAiMcpRegistryService {
 		]);
 
 		try {
-			const tools = (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
+			const tools = (await client.listTools()).map((tool) => {
+				const toolName = tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName);
+				return toToolResponse(
+					tool,
+					serverName,
+					server.tools.find((registryTool) => registryTool.name === toolName),
+				);
+			});
 			if (client.getConnectionFailures().length > 0) {
 				return disconnectedToolsResponse(connection.id, failureReason);
 			}
@@ -384,8 +374,8 @@ export class InstanceAiMcpRegistryService {
 				name: buildServerName(resolvedServer.serverSlug, nextCount),
 				url: resolvedServer.connection.endpointUrl,
 				transport: toAgentMcpTransport(resolvedServer.connection.transport),
-				cacheKey: `registry-connection:${connection.id}`,
-				toolFilter: connection.toolFilter ?? undefined,
+				cacheKey: `registry-connection:${connection.id}:${connection.credentialId}`,
+				toolPermissions: connection.toolPermissions,
 				metadata: {
 					connectionId: connection.id,
 					serverSlug: resolvedServer.serverSlug,

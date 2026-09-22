@@ -37,6 +37,12 @@ const isOpen = ref(false);
 const searchQuery = ref('');
 const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
 
+function open(): void {
+	if (props.item.status !== 'connecting') isOpen.value = true;
+}
+
+defineExpose({ open });
+
 const selectedCredentialIds = computed(() =>
 	props.credentials.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
 );

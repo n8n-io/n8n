@@ -67,7 +67,7 @@ const {
 				serverSlug: string;
 				credentialId: string;
 				status: 'connecting' | 'connected' | 'disconnected';
-				toolFilter: null;
+				toolPermissions: ToolConnectionSettings;
 			}>,
 			catalog: [] as Array<{
 				slug: string;
@@ -210,9 +210,8 @@ const connectedLinearItem: McpServerConnectionItem = {
 };
 
 const toolSettings: ToolConnectionSettings = {
-	inclusionMode: 'selected',
-	selectedTools: ['search'],
-	excludedTools: [],
+	categories: { read: 'allow', write: 'ask' },
+	tools: { search: 'allow' },
 };
 
 let modalListeners: Record<string, unknown> = {};
@@ -221,7 +220,7 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: ['open', 'detailItem', 'detailMode', 'items'],
+	props: ['open', 'detailItem', 'detailMode', 'hideBackButton', 'items'],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
@@ -317,19 +316,16 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		expect(getByText('instanceAi.connections.modal.suggestion.action')).toBeInTheDocument();
 	});
 
-	it('keeps the modal open after saving settings opened from the tools list', async () => {
+	it('closes the modal after saving settings opened from the tools list', async () => {
 		renderComponent();
 
 		emitSave(toolSettings);
 		await flushPromises();
 
 		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
-			inclusionMode: 'selected',
-			selectedTools: ['search'],
-			excludedTools: [],
+			toolPermissions: toolSettings,
 		});
-		expect(telemetryMock.trackToolFilterSettingsUpdated).toHaveBeenCalledWith('linear', 'selected');
-		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
 	});
 
 	it('closes the modal after saving settings opened directly', async () => {
@@ -359,7 +355,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			status: 'disconnected' as const,
-			toolFilter: null,
+			toolPermissions: { categories: { read: 'allow' as const, write: 'ask' as const } },
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
@@ -373,6 +369,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			status: 'disconnected',
 		});
 		expect(modalProps.detailMode).toBe('settings');
+		expect(modalProps.hideBackButton).toBe(true);
 		expect(mcpStoreMock.fetchConnectionToolsLazy).toHaveBeenCalledWith('conn-1');
 	});
 
@@ -384,13 +381,13 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			status: 'connected' as const,
-			toolFilter: null,
+			toolPermissions: { categories: { read: 'allow' as const, write: 'ask' as const } },
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
 
-		const { getByTestId, getByText } = renderComponent({
+		const { getAllByText, getByTestId } = renderComponent({
 			global: {
 				stubs: {
 					ToolsConnectionModal: false,
@@ -399,22 +396,24 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			},
 		});
 		await flushPromises();
-		const inclusionInput = () =>
-			getByTestId('tools-connection-settings-inclusion').querySelector('input')!;
-		await fireEvent.click(inclusionInput());
-		await fireEvent.click(getByText('All Except'));
+		const readPermissionInput = () =>
+			getByTestId('tools-connection-permission-read').querySelector('input')!;
+		await fireEvent.click(readPermissionInput());
+		await fireEvent.click(getAllByText('Block')[0]);
 
 		isLocked.value = true;
 		await nextTick();
 
 		expect(getByTestId('tool-credential-picker-trigger-connecting')).toBeVisible();
-		expect(inclusionInput()).toHaveValue('All Except');
+		expect(readPermissionInput()).toHaveValue('Block');
 
 		isLocked.value = false;
 		await nextTick();
 
 		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeVisible();
-		expect(inclusionInput()).toHaveValue('All Except');
+		expect(readPermissionInput()).toHaveValue('Block');
+		expect(() => getByTestId('tools-connection-settings-tab-settings')).toThrow();
+		expect(() => getByTestId('tools-connection-settings-back')).toThrow();
 	});
 
 	it('keeps a new connection in the detail view while the connection is locked', () => {
@@ -424,15 +423,36 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		renderComponent();
 
 		expect(modalProps.detailItem).toMatchObject({ id: 'linear', status: 'connecting' });
-		expect(modalProps.detailMode).toBe('detail');
+		expect(modalProps.detailMode).toBe('settings');
+	});
+
+	it('does not open the old detail view for an unconnected registry server', async () => {
+		renderComponent();
+
+		const unconnected = (modalProps.items as McpServerConnectionItem[]).find(
+			(item) => item.kind === 'mcp-server' && item.status === 'none',
+		);
+		emitModalEvent('onUpdate:detailItem', unconnected);
+		await nextTick();
+
+		expect(modalProps.detailItem).toBeNull();
 	});
 
 	it('hides and restores the selected connection while editing a credential', async () => {
-		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'linear' };
+		const connection = {
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
+			status: 'connected' as const,
+			toolPermissions: toolSettings,
+		};
+		mcpStoreMock.connections = [connection];
+		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
 		renderComponent();
 
 		expect(modalProps.open).toBe(true);
-		expect(modalProps.detailItem).toMatchObject({ id: 'linear' });
+		expect(modalProps.detailItem).toMatchObject({ id: 'conn-1' });
 
 		uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
 		await nextTick();
@@ -444,7 +464,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		await nextTick();
 
 		expect(modalProps.open).toBe(true);
-		expect(modalProps.detailItem).toMatchObject({ id: 'linear' });
+		expect(modalProps.detailItem).toMatchObject({ id: 'conn-1' });
 
 		emitModalEvent('onUpdate:open', false);
 		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');

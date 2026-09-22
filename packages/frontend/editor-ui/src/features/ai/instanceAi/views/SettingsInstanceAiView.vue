@@ -21,7 +21,12 @@ import {
 	type DropdownMenuItemProps,
 	type EmptyStateIconCards,
 } from '@n8n/design-system';
-import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
+import type {
+	InstanceAiPermissions,
+	InstanceAiPermissionMode,
+	McpToolCategory,
+	McpToolPermission,
+} from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -165,11 +170,6 @@ const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'blocked',
 ];
 
-const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
-	'require_approval',
-	'always_allow',
-];
-
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 	require_approval: 'settings.n8nAgent.permissions.needsApproval',
 	always_allow: 'settings.n8nAgent.permissions.alwaysAllow',
@@ -229,27 +229,13 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	},
 ];
 
-const MCP_PERMISSION_GROUP: PermissionGroup = {
-	id: 'mcp',
-	labelKey: 'settings.n8nAgent.permissions.group.mcp',
-	keys: ['executeMcpTool'],
-};
-
-const permissionGroups = computed(() =>
-	isMcpConnectionsExperimentEnabled.value
-		? [...PERMISSION_GROUPS, MCP_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
-
 const expandedGroups = reactive<Record<string, boolean>>({});
 
-function isGroupLocked(group: PermissionGroup) {
-	return isOff.value || (group.id === 'mcp' && !isMcpAccessEnabled.value);
+function isGroupLocked() {
+	return isOff.value;
 }
 
 function groupSummary(group: PermissionGroup) {
-	if (group.id === 'mcp' && !isMcpAccessEnabled.value)
-		return i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled');
 	const exceptions = group.keys.filter(
 		(key) => store.getPermission(key) !== 'require_approval',
 	).length;
@@ -260,9 +246,8 @@ function groupSummary(group: PermissionGroup) {
 	});
 }
 
-function permissionOptionsFor(key: keyof InstanceAiPermissions) {
-	return key === 'executeMcpTool' ? MCP_TOOL_PERMISSION_OPTIONS : PERMISSION_OPTIONS;
-}
+const MCP_TOOL_PERMISSION_OPTIONS: McpToolPermission[] = ['allow', 'ask', 'block'];
+const MCP_TOOL_CATEGORIES: McpToolCategory[] = ['read', 'write'];
 
 /** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
 const activeDialog = ref<InstanceAiConnectionKind | null>(null);
@@ -456,6 +441,12 @@ function handleMcpAccessToggle(value: boolean) {
 
 function handlePermissionChange(key: keyof InstanceAiPermissions, value: InstanceAiPermissionMode) {
 	store.setPermission(key, value);
+	void store.save();
+}
+
+function handleMcpToolPermissionChange(category: McpToolCategory, value: unknown) {
+	if (value !== 'allow' && value !== 'ask' && value !== 'block') return;
+	store.setMcpToolCategoryPermission(category, value);
 	void store.save();
 }
 
@@ -769,17 +760,17 @@ function openAiUsageSettings() {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						v-for="group in permissionGroups"
+						v-for="group in PERMISSION_GROUPS"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
-						:class="{ [$style.dim]: isGroupLocked(group) }"
+						:class="{ [$style.dim]: isGroupLocked() }"
 						:title="i18n.baseText(group.labelKey)"
-						:expandable="!isGroupLocked(group)"
+						:expandable="!isGroupLocked()"
 						:expand-label="groupSummary(group)"
 						:collapse-label="groupSummary(group)"
 						:data-test-id="`n8n-agent-permission-group-${group.id}`"
 					>
-						<template v-if="isGroupLocked(group)" #action>
+						<template v-if="isGroupLocked()" #action>
 							<N8nText size="small" color="text-light">{{ groupSummary(group) }}</N8nText>
 						</template>
 						<template #expanded>
@@ -792,17 +783,67 @@ function openAiUsageSettings() {
 										:class="$style.permissionSelect"
 										:model-value="store.getPermission(key)"
 										size="small"
-										:disabled="store.isSaving || isGroupLocked(group)"
+										:disabled="store.isSaving || isGroupLocked()"
 										:data-test-id="`n8n-agent-permission-${key}`"
 										@update:model-value="
 											handlePermissionChange(key, $event as InstanceAiPermissionMode)
 										"
 									>
 										<N8nOption
-											v-for="option in permissionOptionsFor(key)"
+											v-for="option in PERMISSION_OPTIONS"
 											:key="option"
 											:value="option"
 											:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
+										/>
+									</N8nSelect>
+								</div>
+							</div>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						v-if="isMcpConnectionsExperimentEnabled"
+						v-model="expandedGroups.mcp"
+						:class="{ [$style.dim]: isOff || !isMcpAccessEnabled }"
+						:title="i18n.baseText('settings.n8nAgent.permissions.group.mcp')"
+						:expandable="!isOff && isMcpAccessEnabled"
+						:expand-label="
+							isMcpAccessEnabled
+								? i18n.baseText('settings.n8nAgent.permissions.group.default')
+								: i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled')
+						"
+						data-test-id="n8n-agent-permission-group-mcp"
+					>
+						<template #expanded>
+							<div :class="$style.permissionList">
+								<div
+									v-for="category in MCP_TOOL_CATEGORIES"
+									:key="category"
+									:class="$style.permissionRow"
+								>
+									<N8nText size="small" color="text-dark">
+										{{
+											i18n.baseText(
+												`tools.connection.permissions.${category}.title` as BaseTextKey,
+											)
+										}}
+									</N8nText>
+									<N8nSelect
+										:class="$style.permissionSelect"
+										:model-value="store.getMcpToolCategoryPermission(category)"
+										size="small"
+										:disabled="store.isSaving || isOff || !isMcpAccessEnabled"
+										:data-test-id="`n8n-agent-mcp-permission-${category}`"
+										@update:model-value="handleMcpToolPermissionChange(category, $event)"
+									>
+										<N8nOption
+											v-for="option in MCP_TOOL_PERMISSION_OPTIONS"
+											:key="option"
+											:value="option"
+											:label="
+												i18n.baseText(
+													`tools.connection.permissions.${option}` as BaseTextKey,
+												)
+											"
 										/>
 									</N8nSelect>
 								</div>

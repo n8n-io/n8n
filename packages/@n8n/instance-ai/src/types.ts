@@ -25,6 +25,7 @@ import type {
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
 	McpTool,
+	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
@@ -1870,7 +1871,7 @@ export interface McpServerConfig {
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
-	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
+	toolPermissions?: McpToolPermissions;
 	fetch?: typeof fetch;
 	/**
 	 * Optional cache discriminator used by `McpClientManager` when a server's

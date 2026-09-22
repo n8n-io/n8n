@@ -464,30 +464,31 @@ describe('McpClientManager', () => {
 		});
 	});
 
-	describe('tool approval', () => {
-		const configs = [{ name: 'a', url: 'https://a.example.com/' }];
-
-		it('marks every server config as requiring approval by default', async () => {
+	describe('tool permissions', () => {
+		it('configures permissions from live tool annotations', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools(configs, mockLogger);
-			expect(mockedMcpClient).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ requireApproval: true })]),
+			await manager.getRegularTools(
+				[
+					{
+						name: 'a',
+						url: 'https://a.example.com/',
+						toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+					},
+				],
+				mockLogger,
 			);
-		});
 
-		it('propagates requireApproval=false onto every server config', async () => {
-			const manager = new McpClientManager();
-			await manager.getRegularTools(configs, mockLogger, false);
-			expect(mockedMcpClient).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ requireApproval: false })]),
-			);
-		});
-
-		it('caches separately per approval mode', async () => {
-			const manager = new McpClientManager();
-			await manager.getRegularTools(configs, mockLogger, true);
-			await manager.getRegularTools(configs, mockLogger, false);
-			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+			const [nativeConfigs] = mockedMcpClient.mock.lastCall ?? [];
+			const configureTools = nativeConfigs[0].configureTools;
+			expect(
+				configureTools([
+					{ name: 'lookup', annotations: { readOnlyHint: true } },
+					{ name: 'change', annotations: { readOnlyHint: false } },
+				]),
+			).toEqual({
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: ['change'],
+			});
 		});
 	});
 

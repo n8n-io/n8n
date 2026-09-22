@@ -276,15 +276,12 @@ describe('ToolsConnectionModal', () => {
 			status: 'none' as const,
 			settings: undefined,
 		};
-		const { queryByTestId, queryByText, queryAllByTestId } = renderWith({
+		const { queryByTestId, queryByText } = renderWith({
 			detailItem: unconnectedMcp,
 		});
 
 		expect(queryByTestId('tools-connection-detail')).toBeTruthy();
-		const chips = queryAllByTestId('tools-connection-detail-tool');
-		expect(chips.length).toBeGreaterThan(0);
-		expect(queryByText('search')).toBeTruthy();
-		expect(queryByText('create-pages')).toBeTruthy();
+		expect(queryByText(connectedMcpFixture.longDescription ?? '')).toBeTruthy();
 		expect(queryByTestId('tools-connection-search')).toBeNull();
 	});
 
@@ -300,7 +297,7 @@ describe('ToolsConnectionModal', () => {
 	it('renders the slotted settings body when a consumer supplies #settings-body', () => {
 		const { queryByTestId } = renderWithMcpSettingsSlot(connectedMcpFixture);
 		expect(queryByTestId('tools-connection-settings')).toBeTruthy();
-		expect(queryByTestId('tools-connection-settings-inclusion')).toBeTruthy();
+		expect(queryByTestId('tools-connection-permission-read')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-save')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-remove')).toBeTruthy();
 	});

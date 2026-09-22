@@ -17,8 +17,12 @@ export type McpRegistryServerIconResponse = {
 export type McpRegistryServerToolResponse = {
 	name: string;
 	title?: string;
+	category: 'read' | 'write';
 	annotations?: {
 		readOnlyHint?: boolean;
+		destructiveHint?: boolean;
+		idempotentHint?: boolean;
+		openWorldHint?: boolean;
 	};
 };
 

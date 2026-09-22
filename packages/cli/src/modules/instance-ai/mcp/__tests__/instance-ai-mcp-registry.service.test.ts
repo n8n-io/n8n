@@ -17,6 +17,7 @@ import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-regi
 import type { OauthService } from '@/oauth/oauth.service';
 
 import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
+import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
 
@@ -111,6 +112,10 @@ describe('InstanceAiMcpRegistryService', () => {
 		transport.asCustomFetch.mockReturnValue(proxyFetch);
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(transport);
+		const instanceAiSettingsService = mock<InstanceAiSettingsService>();
+		instanceAiSettingsService.getMcpToolPermissions.mockReturnValue({
+			categories: { read: 'allow', write: 'ask' },
+		});
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -122,6 +127,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
+			instanceAiSettingsService,
 		);
 
 		return {
@@ -132,6 +138,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsFinderService,
 			credentialsService,
 			credentialTypes,
+			instanceAiSettingsService,
 			oauthService,
 			eventService,
 			outboundHttp,
@@ -174,15 +181,30 @@ describe('InstanceAiMcpRegistryService', () => {
 			'cred-3': { id: 'cred-3', name: 'MCP OAuth2 #3', type: 'mcpOAuth2Api' } as CredentialsEntity,
 		};
 		connectionRepository.findBy.mockResolvedValue([
-			{ id: '2', userId: user.id, serverSlug: 'linear', credentialId: 'cred-2' },
+			{
+				id: '2',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-2',
+				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+			},
 			{
 				id: '1',
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolFilter: { mode: 'allow', tools: ['issues'] },
+				toolPermissions: {
+					categories: { read: 'block', write: 'block' },
+					tools: { issues: 'allow' },
+				},
 			},
-			{ id: '3', userId: user.id, serverSlug: 'notion', credentialId: 'cred-3' },
+			{
+				id: '3',
+				userId: user.id,
+				serverSlug: 'notion',
+				credentialId: 'cred-3',
+				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+			},
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
 			makeRegistryServer('linear', {
@@ -208,8 +230,11 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_linear',
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
-				cacheKey: 'registry-connection:1',
-				toolFilter: { mode: 'allow', tools: ['issues'] },
+				cacheKey: 'registry-connection:1:cred-1',
+				toolPermissions: {
+					categories: { read: 'block', write: 'block' },
+					tools: { issues: 'allow' },
+				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '1', serverSlug: 'linear', userId: user.id },
 			}),
@@ -219,8 +244,8 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_linear_2',
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
-				cacheKey: 'registry-connection:2',
-				toolFilter: undefined,
+				cacheKey: 'registry-connection:2:cred-2',
+				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
 				fetch: expect.any(Function),
 				metadata: { connectionId: '2', serverSlug: 'linear', userId: user.id },
 			}),
@@ -230,8 +255,8 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_notion',
 				url: 'https://notion.example.com/sse',
 				transport: 'sse',
-				cacheKey: 'registry-connection:3',
-				toolFilter: undefined,
+				cacheKey: 'registry-connection:3:cred-3',
+				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
 				fetch: expect.any(Function),
 				metadata: { connectionId: '3', serverSlug: 'notion', userId: user.id },
 			}),
@@ -606,9 +631,13 @@ describe('InstanceAiMcpRegistryService', () => {
 				id: 'conn-1',
 				status: 'connected',
 				tools: [
-					{ name: 'search', description: 'Search Linear issues' },
-					{ name: 'create_issue', description: 'Create a Linear issue' },
-					{ name: 'no_description' },
+					{ name: 'search', description: 'Search Linear issues', category: 'read' },
+					{
+						name: 'create_issue',
+						description: 'Create a Linear issue',
+						category: 'write',
+					},
+					{ name: 'no_description', category: 'write' },
 				],
 			});
 			expect(mcpClientCloseMock).toHaveBeenCalledTimes(1);
@@ -633,7 +662,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(result).toEqual({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'read file', description: 'Read a file' }],
+				tools: [{ name: 'read file', description: 'Read a file', category: 'read' }],
 			});
 		});
 
@@ -998,81 +1027,51 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('updateConnection', () => {
-		it('updates toolFilter to null when inclusionMode is all', async () => {
+		it('updates tool permissions when provided', async () => {
 			const { service, connectionRepository } = createService();
-			const row = {
+			const row = mock<InstanceAiMcpRegistryConnection>({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolFilter: { mode: 'allow', tools: ['search'] },
-			} as InstanceAiMcpRegistryConnection;
+				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+			});
 			connectionRepository.findOneBy.mockResolvedValue(row);
 			connectionRepository.save.mockImplementation(async (entity) => entity as never);
 
-			const result = await service.updateConnection(user, 'conn-1', { inclusionMode: 'all' });
+			const toolPermissions = {
+				categories: { read: 'block' as const, write: 'allow' as const },
+				tools: { search: 'ask' as const },
+			};
+			const result = await service.updateConnection(user, 'conn-1', {
+				toolPermissions,
+			});
 
-			expect(result.toolFilter).toBeNull();
+			expect(result.toolPermissions).toEqual(toolPermissions);
 			expect(connectionRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ toolFilter: null }),
+				expect.objectContaining({ toolPermissions }),
 			);
 		});
 
-		it('maps selected mode to allow filter and normalizes tools', async () => {
+		it('keeps the existing permissions when an update omits them', async () => {
 			const { service, connectionRepository } = createService();
-			const row = {
+			const toolPermissions = {
+				categories: { read: 'allow' as const, write: 'ask' as const },
+				tools: { delete: 'block' as const },
+			};
+			const row = mock<InstanceAiMcpRegistryConnection>({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolFilter: null,
-			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
-
-			const result = await service.updateConnection(user, 'conn-1', {
-				inclusionMode: 'selected',
-				selectedTools: ['search', '', 'search', 'create'],
+				toolPermissions,
 			});
-
-			expect(result.toolFilter).toEqual({ mode: 'allow', tools: ['search', 'create'] });
-		});
-
-		it('maps except mode to exclude filter', async () => {
-			const { service, connectionRepository } = createService();
-			const row = {
-				id: 'conn-1',
-				userId: user.id,
-				serverSlug: 'linear',
-				credentialId: 'cred-1',
-				toolFilter: null,
-			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
-
-			const result = await service.updateConnection(user, 'conn-1', {
-				inclusionMode: 'except',
-				excludedTools: ['delete', 'update'],
-			});
-
-			expect(result.toolFilter).toEqual({ mode: 'exclude', tools: ['delete', 'update'] });
-		});
-
-		it('keeps the existing filter when inclusionMode is omitted', async () => {
-			const { service, connectionRepository } = createService();
-			const row = {
-				id: 'conn-1',
-				userId: user.id,
-				serverSlug: 'linear',
-				credentialId: 'cred-1',
-				toolFilter: { mode: 'exclude', tools: ['delete'] },
-			} as InstanceAiMcpRegistryConnection;
 			connectionRepository.findOneBy.mockResolvedValue(row);
 			connectionRepository.save.mockImplementation(async (entity) => entity as never);
 
 			const result = await service.updateConnection(user, 'conn-1', {});
 
-			expect(result.toolFilter).toEqual({ mode: 'exclude', tools: ['delete'] });
+			expect(result.toolPermissions).toEqual(toolPermissions);
 		});
 
 		it('throws NotFoundError when the connection does not belong to the user', async () => {

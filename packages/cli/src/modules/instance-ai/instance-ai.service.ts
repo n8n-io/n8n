@@ -888,7 +888,6 @@ export class InstanceAiService {
 				});
 			});
 		});
-
 		this.liveness.start();
 	}
 
@@ -4814,7 +4813,10 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		messageGroupId?: string,
 	): Promise<McpServerConfig[]> {
-		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers).map((server) => ({
+			...server,
+			toolPermissions: this.settingsService.getMcpToolPermissions(),
+		}));
 		const registryMcpServers = this.settingsService.isMcpAccessEnabled()
 			? await this.instanceAiErrorReporter.withBoundary(
 					'instance-ai-mcp-setup',

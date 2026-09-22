@@ -8,6 +8,10 @@ import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
+import {
+	mcpToolPermissionsSchema,
+	type McpToolPermissions,
+} from './mcp-tool-permissions.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -2073,7 +2077,6 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
-	executeMcpTool: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2100,7 +2103,13 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
-	executeMcpTool: 'require_approval',
+};
+
+export const DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS: McpToolPermissions = {
+	categories: {
+		read: 'allow',
+		write: 'ask',
+	},
 };
 
 /**
@@ -2211,6 +2220,7 @@ export interface InstanceAiEnvManagedFields {
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
+	mcpToolPermissions: McpToolPermissions;
 	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
@@ -2315,6 +2325,7 @@ export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSche
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
+	mcpToolPermissions: mcpToolPermissionsSchema.optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),
@@ -2418,19 +2429,15 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
-	toolFilter: InstanceAiMcpConnectionToolFilterResponse | null;
+	toolPermissions: McpToolPermissions;
 	createdAt: string;
 	updatedAt: string;
-}
-
-export interface InstanceAiMcpConnectionToolFilterResponse {
-	mode: 'allow' | 'exclude';
-	tools: string[];
 }
 
 export interface InstanceAiMcpConnectionToolResponse {
 	name: string;
 	description?: string;
+	category: 'read' | 'write';
 }
 
 export type InstanceAiMcpConnectionFailureReason =

@@ -2248,28 +2248,34 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
-	describe('executeMcpTool permission', () => {
+	describe('MCP tool permissions', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 		});
 
-		it('defaults to require_approval', async () => {
-			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe(
-				'require_approval',
-			);
+		it('defaults read tools to allow and write tools to ask', async () => {
+			expect((await service.getAdminSettings()).mcpToolPermissions).toEqual({
+				categories: { read: 'allow', write: 'ask' },
+			});
 		});
 
 		it('persists and reflects an update', async () => {
 			const result = await service.updateAdminSettings({
-				permissions: { executeMcpTool: 'always_allow' },
+				mcpToolPermissions: { categories: { read: 'block', write: 'allow' } },
 			});
 
-			expect(result.permissions.executeMcpTool).toBe('always_allow');
-			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe('always_allow');
+			expect(result.mcpToolPermissions).toEqual({
+				categories: { read: 'block', write: 'allow' },
+			});
+			expect((await service.getAdminSettings()).mcpToolPermissions).toEqual({
+				categories: { read: 'block', write: 'allow' },
+			});
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
-					value: expect.stringContaining('"executeMcpTool":"always_allow"'),
+					value: expect.stringContaining(
+						'"mcpToolPermissions":{"categories":{"read":"block","write":"allow"}}',
+					),
 				}),
 				['key'],
 			);

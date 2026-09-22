@@ -2,25 +2,13 @@
 import { computed } from 'vue';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { McpServerConnectionItem, McpServerTool } from './types';
+import type { McpServerConnectionItem } from './types';
 
 const props = defineProps<{
 	item: McpServerConnectionItem;
 }>();
 
 const i18n = useI18n();
-
-const readTools = computed<McpServerTool[]>(() =>
-	props.item.availableTools.filter((tool) => tool.category === 'read'),
-);
-
-const writeTools = computed<McpServerTool[]>(() =>
-	props.item.availableTools.filter((tool) => tool.category === 'write'),
-);
-
-const otherTools = computed<McpServerTool[]>(() =>
-	props.item.availableTools.filter((tool) => tool.category === undefined),
-);
 
 const hasMetadata = computed(
 	() => Boolean(props.item.publisher) || Boolean(props.item.version) || Boolean(props.item.docsUrl),
@@ -75,63 +63,6 @@ const hasMetadata = computed(
 		</div>
 
 		<div v-if="hasMetadata" :class="$style.divider" />
-
-		<section v-if="readTools.length > 0" :class="$style.toolsSection">
-			<div :class="$style.toolsHeader">
-				<N8nText :class="$style.toolsLabel" size="small" color="text-light" bold>
-					{{ i18n.baseText('tools.connection.detail.readTools') }}
-				</N8nText>
-				<span :class="$style.toolsCount">{{ readTools.length }}</span>
-			</div>
-			<div :class="$style.chipList" data-test-id="tools-connection-detail-read-tools">
-				<span
-					v-for="tool in readTools"
-					:key="tool.id"
-					:class="$style.chip"
-					data-test-id="tools-connection-detail-tool"
-				>
-					{{ tool.name }}
-				</span>
-			</div>
-		</section>
-
-		<section v-if="writeTools.length > 0" :class="$style.toolsSection">
-			<div :class="$style.toolsHeader">
-				<N8nText :class="$style.toolsLabel" size="small" color="text-light" bold>
-					{{ i18n.baseText('tools.connection.detail.writeTools') }}
-				</N8nText>
-				<span :class="$style.toolsCount">{{ writeTools.length }}</span>
-			</div>
-			<div :class="$style.chipList" data-test-id="tools-connection-detail-write-tools">
-				<span
-					v-for="tool in writeTools"
-					:key="tool.id"
-					:class="$style.chip"
-					data-test-id="tools-connection-detail-tool"
-				>
-					{{ tool.name }}
-				</span>
-			</div>
-		</section>
-
-		<section v-if="otherTools.length > 0" :class="$style.toolsSection">
-			<div :class="$style.toolsHeader">
-				<N8nText :class="$style.toolsLabel" size="small" color="text-light" bold>
-					{{ i18n.baseText('tools.connection.detail.otherTools') }}
-				</N8nText>
-				<span :class="$style.toolsCount">{{ otherTools.length }}</span>
-			</div>
-			<div :class="$style.chipList" data-test-id="tools-connection-detail-other-tools">
-				<span
-					v-for="tool in otherTools"
-					:key="tool.id"
-					:class="$style.chip"
-					data-test-id="tools-connection-detail-tool"
-				>
-					{{ tool.name }}
-				</span>
-			</div>
-		</section>
 	</div>
 </template>
 
@@ -180,53 +111,5 @@ const hasMetadata = computed(
 .divider {
 	height: 1px;
 	background: var(--color--foreground--shade-1);
-}
-
-.toolsSection {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.toolsHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.toolsLabel {
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	font-size: 11px;
-}
-
-.toolsCount {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 22px;
-	height: 18px;
-	padding: 0 var(--spacing--4xs);
-	border-radius: 9px;
-	background: var(--color--foreground--shade-1);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-}
-
-.chipList {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.chip {
-	display: inline-flex;
-	align-items: center;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius--3xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-	background: var(--color--background--light-1);
 }
 </style>

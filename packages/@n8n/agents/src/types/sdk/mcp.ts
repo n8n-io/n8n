@@ -10,6 +10,24 @@ export interface McpToolCallSettledEvent {
 	success: boolean;
 }
 
+export interface McpToolDescriptor {
+	name: string;
+	annotations?: {
+		readOnlyHint?: boolean;
+		destructiveHint?: boolean;
+		idempotentHint?: boolean;
+		openWorldHint?: boolean;
+	};
+}
+
+export type McpToolFilter = { mode: 'allow' | 'exclude'; tools: string[] };
+export type McpRequireApproval = string[] | boolean;
+
+export interface McpToolConfiguration {
+	toolFilter?: McpToolFilter;
+	requireApproval?: McpRequireApproval;
+}
+
 /**
  * Emitted when an MCP server connection (transport start or MCP initialize)
  * fails. The server's tools are skipped for the run, but the run continues with
@@ -61,7 +79,13 @@ export interface McpServerConfig {
 	 *   require approval; all other tools from the server run without interruption.
 	 * - `false` / omitted — no approval requirement.
 	 */
-	requireApproval?: string[] | boolean;
+	requireApproval?: McpRequireApproval;
+
+	/**
+	 * Configure filtering and approval after the server returns its tool list.
+	 * This callback runs once for each tool listing before tools are resolved.
+	 */
+	configureTools?: (tools: McpToolDescriptor[]) => McpToolConfiguration;
 
 	/**
 	 * Custom fetch implementation used by URL-based transports (SSE,
@@ -86,5 +110,5 @@ export interface McpServerConfig {
 	 * anything. This matches the JSON-config semantics ("no filter applied"
 	 * is expressed by omitting the field).
 	 */
-	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
+	toolFilter?: McpToolFilter;
 }

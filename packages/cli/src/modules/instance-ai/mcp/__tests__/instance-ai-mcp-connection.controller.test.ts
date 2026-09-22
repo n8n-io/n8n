@@ -172,7 +172,11 @@ describe('InstanceAiMcpConnectionController', () => {
 		it('returns tool statuses for the authenticated user’s connections', async () => {
 			const { controller, service } = createController();
 			const tools = [
-				{ id: 'conn-1', status: 'connected' as const, tools: [{ name: 'search' }] },
+				{
+					id: 'conn-1',
+					status: 'connected' as const,
+					tools: [{ name: 'search', category: 'read' as const }],
+				},
 				{
 					id: 'conn-2',
 					status: 'disconnected' as const,
@@ -197,8 +201,10 @@ describe('InstanceAiMcpConnectionController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			mcpRegistryService.get.mockResolvedValue(linearServer);
 			const payload = {
-				inclusionMode: 'except' as const,
-				excludedTools: ['t1'],
+				toolPermissions: {
+					categories: { read: 'allow' as const, write: 'ask' as const },
+					tools: { t1: 'block' as const },
+				},
 			};
 
 			const result = await controller.update(authedRequest(), {} as never, 'conn-1', payload);

@@ -33,6 +33,8 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
+	McpToolCategory,
+	McpToolPermission,
 	InstanceAiModelCatalogResponse,
 	ToolCategory,
 	InstanceAiVerifyModelRequest,
@@ -364,6 +366,28 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return settings.value?.permissions?.[key] ?? 'require_approval';
 	}
 
+	function setMcpToolCategoryPermission(
+		category: McpToolCategory,
+		value: McpToolPermission,
+	): void {
+		const current = draft.mcpToolPermissions ??
+			settings.value?.mcpToolPermissions ?? {
+				categories: { read: 'allow' as const, write: 'ask' as const },
+			};
+		draft.mcpToolPermissions = {
+			...current,
+			categories: { ...current.categories, [category]: value },
+		};
+	}
+
+	function getMcpToolCategoryPermission(category: McpToolCategory): McpToolPermission {
+		return (
+			draft.mcpToolPermissions?.categories[category] ??
+			settings.value?.mcpToolPermissions.categories[category] ??
+			(category === 'read' ? 'allow' : 'ask')
+		);
+	}
+
 	// ── Gateway status fetch ──────────────────────────────────────────────
 
 	async function fetchGatewayStatus(): Promise<void> {
@@ -655,6 +679,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setField,
 		setPermission,
 		getPermission,
+		setMcpToolCategoryPermission,
+		getMcpToolCategoryPermission,
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,

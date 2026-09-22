@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto';
+
 import {
 	McpClient,
 	type BuiltTool,
 	type McpServerConfig as NativeMcpServerConfig,
-	type McpToolCallSettledEvent as NativeMcpToolCallSettledEvent,
 } from '@n8n/agents';
+import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
@@ -21,6 +23,10 @@ import { createToolRegistry, createToolRegistryFromTools } from '../tool-registr
 import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
+
+function mcpConfigCacheKey(configs: McpServerConfig[]): string {
+	return createHash('sha256').update(JSON.stringify(configs)).digest('hex');
+}
 
 /** Per-server connection failures recorded while listing tools for one config. */
 type McpConnectionFailure = { server: McpServerConfig; error: string };
@@ -61,22 +67,29 @@ export interface SsrfUrlValidator {
 
 function buildNativeMcpConfigs(
 	configs: McpServerConfig[],
-	requireApproval: boolean,
 	onToolCallSettled?: McpClientManagerOptions['onToolCallSettled'],
 ): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
-		const baseConfig = {
+		const toolPermissions = server.toolPermissions;
+		const baseConfig: NativeMcpServerConfig = {
 			name: server.name,
-			toolFilter: server.toolFilter,
-			requireApproval,
-			...(onToolCallSettled
-				? {
-						onToolCallSettled: ({ toolName, success }: NativeMcpToolCallSettledEvent) =>
-							onToolCallSettled({ server, toolName, success }),
-					}
-				: {}),
 		};
+		if (toolPermissions) {
+			baseConfig.configureTools = (tools) =>
+				compileMcpToolPermissions(
+					toolPermissions,
+					tools.map((tool) => ({
+						name: tool.name,
+						...(tool.annotations ? { annotations: tool.annotations } : {}),
+					})),
+				);
+		}
+		if (onToolCallSettled) {
+			baseConfig.onToolCallSettled = ({ toolName, success }) =>
+				onToolCallSettled({ server, toolName, success });
+		}
+
 		if (server.url) {
 			servers.push({
 				...baseConfig,
@@ -175,27 +188,18 @@ export class McpClientManager {
 	async getRegularTools(
 		configs: McpServerConfig[],
 		logger: Logger,
-		requireApproval = true,
 	): Promise<McpRegularToolsResult> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
-		// Approval mode is part of the cache key: the same servers wrapped with vs
-		// without an approval gate are distinct tool sets.
-		const key = JSON.stringify({ configs: safeConfigs, requireApproval });
+		const key = mcpConfigCacheKey(safeConfigs);
 		return await this.getOrLoad(
 			this.regularToolsByKey,
 			this.inFlightRegularByKey,
 			key,
 			async () => {
 				await this.validateConfigs(safeConfigs);
-				return await this.connectAndListTools(
-					safeConfigs,
-					key,
-					requireApproval,
-					logger,
-					'external MCP',
-				);
+				return await this.connectAndListTools(safeConfigs, key, logger, 'external MCP');
 			},
 		);
 	}
@@ -265,13 +269,10 @@ export class McpClientManager {
 	private async connectAndListTools(
 		configs: McpServerConfig[],
 		clientKey: string,
-		requireApproval: boolean,
 		logger: Logger,
 		source: string,
 	): Promise<McpRegularToolsResult> {
-		const client = new McpClient(
-			buildNativeMcpConfigs(configs, requireApproval, this.options.onToolCallSettled),
-		);
+		const client = new McpClient(buildNativeMcpConfigs(configs, this.options.onToolCallSettled));
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());
