@@ -583,36 +583,35 @@ describe('instance reporting retries', () => {
 		expect(new Set(dates).size).toBe(dates.length);
 	});
 
-	test('resumes at once after long downtime near the next slot, without a day-long wait', async () => {
-		await setReportTime('23:55');
+	test('caps the retry to the slot, so a failure at the end of the day backfills the same night', async () => {
+		await setReportTime('23:58');
 
 		await seedDeliveredReport('2026-03-23');
 		await seedDailyExecutions({ '2026-03-24': 4, '2026-03-25': 6 });
 
-		// The 03-25 23:55 slot made this row for 03-24, its first attempt failed there,
+		// The 03-25 23:58 slot made this row for 03-24, its first attempt failed there,
 		// then the instance was down for almost a day.
 		const stale = await seedPendingReport('2026-03-24', {
 			attempts: 1,
-			lastAttemptAt: new Date('2026-03-25T23:55:00.000Z'),
-			createdAt: new Date('2026-03-25T23:55:00.000Z'),
+			lastAttemptAt: new Date('2026-03-25T23:58:00.000Z'),
+			createdAt: new Date('2026-03-25T23:58:00.000Z'),
 		});
 
-		// Back up two minutes before the next slot, ~24 h after the last attempt.
-		vi.setSystemTime(new Date('2026-03-26T23:53:00.000Z'));
+		// Back up two minutes before tonight's slot, at the very end of the UTC day.
+		vi.setSystemTime(new Date('2026-03-26T23:56:00.000Z'));
 
 		const harness = makeHarness([unreachable(), accepted()]);
 		harness.scheduler.start();
 		await armed(harness, 1);
 
-		// The retry fires at once — the last attempt is a day old, so no 5-minute
-		// pause applies. It re-sends the same row, then arms the next attempt.
+		// The resume fails; the next attempt is capped to the slot, two minutes away,
+		// rather than a full five minutes that would cross midnight.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		expect(sentPayload(harness, 0).batchId).toBe(stale.id);
-		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-		// Five minutes later the slot has passed, so the row is given up and a fresh
-		// report covers the gap that same night — not a day later.
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+		// Two minutes later, at the slot, the row is given up and a fresh report goes
+		// out the same night — not deferred to the next day's slot.
+		await vi.advanceTimersByTimeAsync(2 * Time.minutes.toMilliseconds);
 		await armed(harness, 2);
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
@@ -625,7 +624,7 @@ describe('instance reporting retries', () => {
 			{ date: '2026-03-24', value: 4 },
 			{ date: '2026-03-25', value: 6 },
 		]);
-		expectArmedFor(harness, '2026-03-27T23:55:00.000Z');
+		expectArmedFor(harness, '2026-03-27T23:58:00.000Z');
 	});
 
 	test('skips a stale row and sends a fresh report in the same pass, after the slot', async () => {

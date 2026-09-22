@@ -113,9 +113,14 @@ export class InstanceReportingScheduler {
 		try {
 			const reportTime = await this.settingsService.getReportTime();
 
-			// An attempt too soon after the last one arms for the remainder rather
-			// than falling through, which would sleep until tomorrow and drop the retry.
-			const waitMs = await this.reportingService.msUntilRetryAllowed(new Date());
+			// Wait out the gap between retries, but never past the pending row's own
+			// next slot — at that slot it is skipped, not retried. A wait that reaches
+			// the slot collapses to zero, so this pass falls through to reportIfDue,
+			// which skips the stale row and sends a fresh report.
+			const waitMs = Math.min(
+				await this.reportingService.msUntilRetryAllowed(new Date()),
+				await this.msUntilNextSlot(reportTime),
+			);
 			if (waitMs > 0) {
 				this.scheduleNext(waitMs);
 				return;
@@ -124,7 +129,7 @@ export class InstanceReportingScheduler {
 			// A failed delivery retries; the row decides when the attempts run out,
 			// after which the day reads as settled and this waits for the next slot.
 			if ((await this.reportIfDue(reportTime)) === 'failed') {
-				this.scheduleNext(RETRY_DELAY_MS);
+				this.scheduleNext(Math.min(RETRY_DELAY_MS, await this.msUntilNextSlot(reportTime)));
 				return;
 			}
 
@@ -162,6 +167,22 @@ export class InstanceReportingScheduler {
 		if (now.getTime() < slotOn(reportTime, now)) return 'skipped';
 		if (await this.reportRepository.hasSettledToday(now)) return 'skipped';
 		return await this.trySend();
+	}
+
+	/**
+	 * Milliseconds until the pending row's own next slot, or `Infinity` when no row
+	 * is pending. Capping a retry sleep with this keeps the timer from sleeping past
+	 * the slot, where the row is skipped and a fresh report takes over — otherwise a
+	 * slot near the end of the UTC day would defer the next report by almost a day.
+	 */
+	private async msUntilNextSlot(reportTime: string): Promise<number> {
+		const latest = await this.reportRepository.findLatest();
+		if (latest?.status !== 'pending') return Number.POSITIVE_INFINITY;
+
+		const nextSlot =
+			slotOn(reportTime, latest.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+		return nextSlot - Date.now();
 	}
 
 	private async trySend(): Promise<'sent' | 'failed'> {

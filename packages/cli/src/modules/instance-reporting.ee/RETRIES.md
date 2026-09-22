@@ -22,7 +22,7 @@ Each pass makes one choice, from `findLatest()` — the newest row:
 ```mermaid
 flowchart TD
     S(["start(): server-started / leader takeover"]) --> T
-    T["tick()"] --> P{"still pausing between retries?<br/>(&lt; 5 min since last try)"}
+    T["tick()"] --> P{"waiting between retries?<br/>(up to 5 min, but not past its slot)"}
     P -- yes --> ARM
     P -- no --> L["report = findLatest()"]
     L --> Q1{"report?.status === 'pending'?"}
