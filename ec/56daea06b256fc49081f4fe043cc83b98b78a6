@@ -1,0 +1,73 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_e9a3c424242179::t_2d7f3fe74f07cd 333-337,339-340,345,349-351,356,359
+  s_fec212e9e7afdb::t_cf3e6dc1f6f1f3 303,332
+  s_fec212e9e7afdb::t_3ae8f0ae765c12 603-604
+  s_3042f24426bf01::t_7e131edd28b0f4 126,139,289-295,304-309,316,321-324,360-361,377-379,429-432,436,605-606
+  s_f5b38753d5c593::t_ca7aedc4f1d445 327-329
+  s_fec212e9e7afdb::t_a618ea8db85a6d 338,341-344,346-348,352-355,357-358
+  s_f5b38753d5c593::t_aec4a74db560e3 296-299
+  s_3042f24426bf01::t_1bf38f913c88d7 317-320
+  s_f5b38753d5c593::t_75a5bbc2dc2b41 380-384
+  s_f5b38753d5c593::t_b537a4a03b56bd 393,437
+  s_fec212e9e7afdb::t_587960a1c857da 389,405-407
+  s_fec212e9e7afdb::t_9e0ff1cf6c9264 399
+  s_f5b38753d5c593::t_935edefa9e1127 394-398
+  s_fec212e9e7afdb::t_cc752d55e86aea 300-302,388,390-392,400-404,408-410,415-416
+  s_3042f24426bf01::t_b4146f76d27719 330-331
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_3042f24426bf01::t_0bad02f6c95187 248-339,341-368,370-377,399-430,432-462,603-604
+  s_f5b38753d5c593::t_2e649fdc8ceae0 463-513,523-526,528,532-536,602
+  s_fec212e9e7afdb::t_cf3e6dc1f6f1f3 378-382,384-389,391-398
+  s_fec212e9e7afdb::t_0c266f7344f27c 383
+  s_fec212e9e7afdb::t_54ebf4ac382712 390
+  s_f5b38753d5c593::t_d6db10c96f1743 4,15,23,65
+  s_fec212e9e7afdb::t_5f56e24b23318d 340
+  s_f5b38753d5c593::t_a1f9790d05be0f 514-522,527,529-531,537-601
+  s_fec212e9e7afdb::t_dc45461222f126 2,62-63,431
+  s_fec212e9e7afdb::t_3ec3fa67cb242d 369
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_f5b38753d5c593::t_f635593af22be7 44
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_f5b38753d5c593::t_3498bcba3ea201 387-413
+  s_3042f24426bf01::t_0bad02f6c95187 56-58,172,178-218,242-245,247,249,358-372,383-386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec56daea06b256fc49081f4fe043cc83b98b78a6",
+  "prompts": {},
+  "sessions": {
+    "s_3042f24426bf01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cc36894-8a92-4e59-89b9-661a32187244",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e9a3c424242179": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c3f4-3357-7311-9d6f-7dee05e4bf79",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_f5b38753d5c593": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e436e513-5ee9-4500-a3e8-b4ab35bed4aa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_fec212e9e7afdb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c425-323a-7eb3-95f9-a9e6acb1c70a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
