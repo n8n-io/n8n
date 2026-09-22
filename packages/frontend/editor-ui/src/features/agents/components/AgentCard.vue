@@ -26,7 +26,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
-import { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
+import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
 	agent: AgentResource;
