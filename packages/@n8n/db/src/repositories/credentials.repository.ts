@@ -2,7 +2,7 @@ import { assertClearedFor, credentialContentSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { UserError } from 'n8n-workflow';
@@ -102,7 +102,10 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	async findStartingWith(credentialName: string) {
 		return await this.find({
 			select: ['name'],
-			where: { name: Like(`${credentialName}%`), usageScope: 'project' },
+			where: this.excludePendingAuthorization({
+				name: Like(`${credentialName}%`),
+				usageScope: 'project',
+			}),
 		});
 	}
 
@@ -306,8 +309,28 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	private onlyProjectCredentials(
 		findManyOptions: FindManyOptions<CredentialsEntity>,
 	): FindManyOptions<CredentialsEntity> {
-		findManyOptions.where = { ...findManyOptions.where, usageScope: 'project' };
+		findManyOptions.where = this.excludePendingAuthorization({
+			...findManyOptions.where,
+			usageScope: 'project',
+		});
 		return findManyOptions;
+	}
+
+	/**
+	 * Narrows a list filter to credentials the user has finished authorizing. A
+	 * credential created for an in-flight OAuth popup exists only so the callback
+	 * can write to it; lookups by id still find it, lists must not.
+	 */
+	excludePendingAuthorization(
+		where: FindOptionsWhere<CredentialsEntity>,
+	): FindOptionsWhere<CredentialsEntity> {
+		return { ...where, pendingAuthorizationExpiresAt: IsNull() };
+	}
+
+	/** Deletes credentials whose OAuth authorization was never completed in time. */
+	async deleteExpiredPendingAuthorizations(now: Date): Promise<number> {
+		const result = await this.delete({ pendingAuthorizationExpiresAt: LessThan(now) });
+		return result.affected ?? 0;
 	}
 
 	private toFindManyOptions(listQueryOptions?: CredentialsListQueryOptions) {
@@ -555,6 +578,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
 		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
+		qb.andWhere('credential.pendingAuthorizationExpiresAt IS NULL');
 
 		if (options.filters?.dependency) {
 			addCredentialDependencyExistsFilter(qb, options.filters.dependency);

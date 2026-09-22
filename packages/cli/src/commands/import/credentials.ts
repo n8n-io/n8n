@@ -64,7 +64,7 @@ const flagsSchema = z.object({
 
 type ImportableCredentialProperty = Exclude<
 	Extract<keyof CredentialsEntity, string>,
-	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
+	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate' | 'pendingAuthorizationExpiresAt'
 >;
 
 const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>

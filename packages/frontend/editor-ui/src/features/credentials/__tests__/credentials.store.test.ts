@@ -438,6 +438,26 @@ describe('credentials.store', () => {
 	});
 
 	describe('createNewCredential', () => {
+		it('passes pendingAuthorization through to the API', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(
+				mock<ICredentialsResponse>({ id: 'pending-1' }),
+			);
+
+			await store.createNewCredential(
+				{ id: '', name: 'Pending account', type: 'slackOAuth2Api', data: {} },
+				'project-123',
+				undefined,
+				{ skipStoreUpdate: true, pendingAuthorization: true },
+			);
+
+			expect(credentialsApi.createNewCredential).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ pendingAuthorization: true }),
+			);
+			expect(store.getCredentialById('pending-1')).toBeUndefined();
+		});
+
 		it('should pass isGlobal parameter to API when creating credential', async () => {
 			const store = useCredentialsStore();
 

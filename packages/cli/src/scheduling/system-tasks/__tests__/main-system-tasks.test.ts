@@ -1,6 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import { PendingAuthorizationCleanupTask } from '@/credentials/pending-authorization-cleanup.task';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { ExecutionPruningSoftDeleteTask } from '@/services/pruning/execution-pruning-soft-delete.task';
@@ -24,6 +25,7 @@ it('should return every main task when all features are on', async () => {
 		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryCompactionTrimTask,
+		PendingAuthorizationCleanupTask,
 		ExecutionPruningSoftDeleteTask,
 		WorkflowPublicationOutboxCleanupTask,
 	]);

@@ -137,7 +137,7 @@ export class CredentialsFinderService {
 		}
 
 		const credentials = await this.credentialsRepository.find({
-			where,
+			where: this.credentialsRepository.excludePendingAuthorization(where),
 			relations: { shared: true },
 		});
 

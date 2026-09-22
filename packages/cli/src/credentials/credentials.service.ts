@@ -1,5 +1,6 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import {
 	Project,
 	TransactionRunner,
@@ -149,6 +150,13 @@ type UpdateOptions = {
 type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
+
+/**
+ * How long a credential created for an OAuth popup may stay unauthorized before
+ * the cleanup task deletes it. Well above the editor's own flow timeout, so only
+ * flows the editor could not finish (reload, closed tab) reach the sweep.
+ */
+export const PENDING_AUTHORIZATION_GRACE_MS = 1 * Time.hours.toMilliseconds;
 
 type InstanceCredentialWriteOptions = {
 	/** Set when the caller already ran the external hooks before its transaction. */
@@ -2058,6 +2066,9 @@ export class CredentialsService {
 			...encryptedCredential,
 			isManaged: opts.isManaged,
 			isResolvable: opts.isResolvable ?? false,
+			pendingAuthorizationExpiresAt: opts.pendingAuthorization
+				? new Date(Date.now() + PENDING_AUTHORIZATION_GRACE_MS)
+				: null,
 		});
 
 		const persist =

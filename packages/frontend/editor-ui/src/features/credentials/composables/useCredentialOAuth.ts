@@ -457,7 +457,9 @@ export function useCredentialOAuth() {
 				},
 				options.projectId ?? projectsStore.currentProject?.id,
 				undefined,
-				{ skipStoreUpdate: true },
+				// The server hides the credential from lists and deletes it if the
+				// popup never completes, so a reload mid-flow leaves nothing behind.
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 
 			telemetry.track('User created credentials', {

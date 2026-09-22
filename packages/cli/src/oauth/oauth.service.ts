@@ -415,8 +415,11 @@ export class OauthService {
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		await credentials.updateData(toUpdate, toDelete);
+		// Only a token ends the pending state: dynamic client registration writes
+		// client data through here before the user has seen the consent screen.
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
+			...(toUpdate.oauthTokenData !== undefined && { pendingAuthorizationExpiresAt: null }),
 			updatedAt: new Date(),
 		});
 	}

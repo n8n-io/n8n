@@ -918,7 +918,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -941,7 +941,7 @@ describe('useCredentialOAuth', () => {
 				},
 				'workflow-project',
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				workflowId: 'setup-workflow',
@@ -981,7 +981,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
