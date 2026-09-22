@@ -3,6 +3,7 @@ import {
 	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
 	GLOBAL_CUSTOM_ROLE_SCOPES,
 	isMandatoryInstanceOption,
+	BASELINE_INSTANCE_SCOPES,
 	MANDATORY_INSTANCE_SCOPES,
 	PROJECT_CUSTOM_ROLE_SCOPES,
 	withMandatoryInstanceScopes,
@@ -50,11 +51,13 @@ describe('custom role scope whitelists', () => {
 		expect(CUSTOM_ROLE_SCOPE_WHITELIST.global).toBe(GLOBAL_CUSTOM_ROLE_SCOPES);
 	});
 
-	it('includes Chat scopes in the settings.Manage bundle', () => {
-		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
+	it('keeps chatHub:manage in the settings.Manage bundle and chatHub:message in the baseline', () => {
+		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage as readonly string[];
 
 		expect(bundle).toContain('chatHub:manage');
-		expect(bundle).toContain('chatHub:message');
+		// Every role can message Chat, so the scope is baseline rather than part of Manage.
+		expect(bundle).not.toContain('chatHub:message');
+		expect(BASELINE_INSTANCE_SCOPES).toContain('chatHub:message');
 	});
 
 	it('exposes n8n Assistant and n8n Agent scopes as their own use/manage options', () => {
@@ -173,8 +176,13 @@ describe('custom role scope whitelists', () => {
 });
 
 describe('mandatory instance options', () => {
-	it('resolves to the user and tag view scopes', () => {
-		expect(MANDATORY_INSTANCE_SCOPES).toEqual(['user:list', 'tag:read', 'tag:list']);
+	it('resolves to the user and tag view scopes plus the baseline scopes', () => {
+		expect(MANDATORY_INSTANCE_SCOPES).toEqual([
+			'user:list',
+			'tag:read',
+			'tag:list',
+			...BASELINE_INSTANCE_SCOPES,
+		]);
 	});
 
 	it('stays inside the global custom-role whitelist', () => {
@@ -202,7 +210,12 @@ describe('mandatory instance options', () => {
 	});
 
 	it('withMandatoryInstanceScopes adds the mandatory scopes to an empty list', () => {
-		expect(withMandatoryInstanceScopes([])).toEqual(['user:list', 'tag:read', 'tag:list']);
+		expect(withMandatoryInstanceScopes([])).toEqual([
+			'user:list',
+			'tag:read',
+			'tag:list',
+			...BASELINE_INSTANCE_SCOPES,
+		]);
 	});
 
 	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
@@ -218,6 +231,7 @@ describe('mandatory instance options', () => {
 			'user:list',
 			'tag:read',
 			'tag:list',
+			...BASELINE_INSTANCE_SCOPES,
 		]);
 	});
 
@@ -226,5 +240,41 @@ describe('mandatory instance options', () => {
 		expect(result).toContain('insights:read');
 		expect(result).toContain('insights:list');
 		expect(result).toEqual(expect.arrayContaining([...MANDATORY_INSTANCE_SCOPES]));
+	});
+});
+
+describe('baseline instance scopes', () => {
+	it('lists the read scopes Member holds that have no option of their own', () => {
+		expect([...BASELINE_INSTANCE_SCOPES].sort()).toEqual([
+			'chatHub:message',
+			'credentialResolver:list',
+			'dataTable:list',
+			'eventBusDestination:list',
+			'eventBusDestination:test',
+		]);
+	});
+
+	it('stays within GLOBAL_MEMBER_SCOPES', () => {
+		// Added to every custom instance role, so they must never exceed Member.
+		for (const scope of BASELINE_INSTANCE_SCOPES) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
+		}
+	});
+
+	it('is not part of any option bundle', () => {
+		// Every role holds them, so counting them toward an option would render
+		// that option half-checked for a role that holds nothing else of it.
+		const optionScopes = Object.values(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap((optionMap) =>
+			Object.values<readonly string[]>(optionMap).flat(),
+		);
+		for (const scope of BASELINE_INSTANCE_SCOPES) {
+			expect(optionScopes).not.toContain(scope);
+		}
+	});
+
+	it('stays inside the global custom-role whitelist', () => {
+		for (const scope of BASELINE_INSTANCE_SCOPES) {
+			expect(GLOBAL_CUSTOM_ROLE_SCOPES.has(scope)).toBe(true);
+		}
 	});
 });
