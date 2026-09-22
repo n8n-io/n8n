@@ -1,9 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse, ExecutionResponseReceiver } from '@n8n/engine';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import {
 	EngineV2WebhookResponder,
 	MAX_PENDING_WEBHOOKS,
@@ -133,6 +136,41 @@ describe('EngineV2WebhookResponder', () => {
 		);
 
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
+	});
+
+	it('resolves the response promise when the Respond node answers', async () => {
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		const pending = responder.waitForResponse(createExecutionIdV2(), responsePromise);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+
+		await expect(responsePromise.promise).resolves.toMatchObject({ body: { ok: true } });
+	});
+
+	it('rejects the response promise when the response fails', async () => {
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		const pending = responder.waitForResponse(createExecutionIdV2(), responsePromise);
+
+		deliver({
+			type: 'failure',
+			executionId: pending.executionId,
+			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+
+		await expect(responsePromise.promise).rejects.toThrow('The response is too large.');
+	});
+
+	it('stands the response promise down when the Respond node never ran', async () => {
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		const pending = responder.waitForResponse(createExecutionIdV2(), responsePromise);
+
+		deliver(endedResponse(pending.executionId));
+
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
 	});
 
 	it('reports a failure with the node that caused it', async () => {

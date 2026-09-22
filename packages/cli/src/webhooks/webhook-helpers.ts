@@ -1169,7 +1169,10 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2) {
 			const engineExecutionId = createExecutionIdV2();
-			pending = Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
+			pending = Container.get(EngineV2WebhookResponder).waitForResponse(
+				engineExecutionId,
+				responsePromise,
+			);
 			runData.engineExecutionId = engineExecutionId;
 		}
 

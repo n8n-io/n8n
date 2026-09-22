@@ -7,10 +7,13 @@ import type {
 	ExecutionResponseReceiver,
 	Unsubscribe,
 } from '@n8n/engine';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 /** A request that is still open, and the subscription that feeds its answer. */
 type PendingWebhook = { response: PendingWebhookResponse; unsubscribe: Unsubscribe };
@@ -55,7 +58,11 @@ export class EngineV2WebhookResponder {
 	 * instead would hold its request open until the response timeout, and the
 	 * answer it was waiting for would arrive with nobody to take it.
 	 */
-	waitForResponse(executionId: ExecutionIdV2): PendingWebhookResponse {
+	waitForResponse(
+		executionId: ExecutionIdV2,
+		/** Set for `responseNode`: what the Respond node's answer resolves. */
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
@@ -73,30 +80,55 @@ export class EngineV2WebhookResponder {
 			onRelease: (id) => this.release(id),
 		});
 		const unsubscribe = receiver.receive(executionId, (received) =>
-			this.handle(received, response),
+			this.handle(received, response, responsePromise),
 		);
 		this.pendingWebhooks.set(executionId, { response, unsubscribe });
 
 		return response;
 	}
 
-	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
+	private handle(
+		received: ExecutionResponse,
+		response: PendingWebhookResponse,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): void {
 		try {
-			if (received.type === 'failure') {
-				response.resolve({
-					status: 'failed',
-					error: { name: received.error.code, message: received.error.message },
-				});
-				return;
-			}
-
-			this.onEnded(received, response);
+			this.route(received, response, responsePromise);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
 				executionId: received.executionId,
 				type: received.type,
 				error,
 			});
+		}
+	}
+
+	private route(
+		received: ExecutionResponse,
+		response: PendingWebhookResponse,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): void {
+		switch (received.type) {
+			case 'failure':
+				responsePromise?.reject(new Error(received.error.message));
+				response.resolve({
+					status: 'failed',
+					error: { name: received.error.code, message: received.error.message },
+				});
+				return;
+
+			case 'response':
+				// Opaque on the channel by design: only this plane knows a v1 response.
+				responsePromise?.resolve(received.payload as unknown as IN8nHttpFullResponse);
+				return;
+
+			case 'ended':
+				// A run that never reached the Respond node still has to answer. The
+				// sentinel tells `setupResponseNodePromise` to stand down, so the
+				// handler decides instead. Resolving a settled promise is a no-op.
+				responsePromise?.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
+				this.onEnded(received, response);
+				return;
 		}
 	}
 

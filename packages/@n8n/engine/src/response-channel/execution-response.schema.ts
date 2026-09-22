@@ -19,6 +19,11 @@ export const executionResponseSchema = z.discriminatedUnion('type', [
 		}),
 	}),
 	z.object({
+		type: z.literal('response'),
+		executionId: z.string().min(1),
+		payload: jsonValueSchema.optional(),
+	}),
+	z.object({
 		type: z.literal('ended'),
 		executionId: z.string().min(1),
 		workflowId: z.string().min(1),
