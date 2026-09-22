@@ -32,3 +32,13 @@ export class DummySystemTask implements SystemTask {
 export class OtherDummySystemTask extends DummySystemTask {
 	name = 'other-dummy';
 }
+
+@SystemTask()
+export class PerInstanceDummySystemTask extends DummySystemTask {
+	name = 'per-instance-dummy';
+
+	placement: SystemTaskPlacement = {
+		scope: 'instance',
+		instanceTypes: ['main', 'worker', 'webhook'],
+	};
+}

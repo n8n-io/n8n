@@ -7,10 +7,10 @@
  */
 
 /**
- * What drives a system task's occurrences: the in-memory timer of the leader,
- * or the durable scheduler.
+ * What drives a system task's occurrences: the leader-gated timer, a timer in
+ * every eligible instance, or the durable scheduler.
  */
-export type SystemTaskMode = 'leader_timer' | 'durable';
+export type SystemTaskMode = 'leader_timer' | 'instance_timer' | 'durable';
 
 /**
  * How a run settled. A rejection after the run's abort signal fired is the task

@@ -87,14 +87,22 @@ describe('observeSystemTaskRun', () => {
 	});
 
 	it('opens a root span for a run from a timer and a child span for a durable run', async () => {
-		const inMemory = setupTracing();
+		const leaderTimer = setupTracing();
+		const perInstance = setupTracing();
 		const durable = setupTracing();
 
 		await observeSystemTaskRun(
 			mock<EventService>(),
-			inMemory.tracing,
+			leaderTimer.tracing,
 			taskThat(resolves),
 			'leader_timer',
+			new AbortController().signal,
+		);
+		await observeSystemTaskRun(
+			mock<EventService>(),
+			perInstance.tracing,
+			taskThat(resolves),
+			'instance_timer',
 			new AbortController().signal,
 		);
 		await observeSystemTaskRun(
@@ -105,7 +113,8 @@ describe('observeSystemTaskRun', () => {
 			new AbortController().signal,
 		);
 
-		expect(inMemory.opened[0].root).toBe(true);
+		expect(leaderTimer.opened[0].root).toBe(true);
+		expect(perInstance.opened[0].root).toBe(true);
 		expect(durable.opened[0].root).toBe(false);
 	});
 
