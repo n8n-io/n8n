@@ -55,21 +55,23 @@ export class AgentChatExecutionService {
 	}
 
 	async admitAutomaticContinuation<T>(
+		threadId: string,
 		agentId: string,
 		runId: string,
 		createAndClaim: () => Promise<T>,
 	): Promise<T> {
-		return await this.withAdmissionLease(
-			`agent-preview-resume:${agentId}:${runId}`,
-			async (signal) => {
-				const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
-				if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') {
-					throw new AgentTurnAlreadyRunningError();
-				}
-				signal.throwIfAborted();
-				return await createAndClaim();
-			},
-		);
+		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
+			const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
+			if (
+				checkpoint.status !== 'active' ||
+				checkpoint.checkpoint.status !== 'suspended' ||
+				checkpoint.checkpoint.persistence?.threadId !== threadId
+			) {
+				throw new AgentTurnAlreadyRunningError();
+			}
+			signal.throwIfAborted();
+			return await createAndClaim();
+		});
 	}
 
 	private async withAdmissionLease<T>(

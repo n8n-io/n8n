@@ -160,6 +160,7 @@ export class AgentTurnExecutionService {
 			let stream: ReadableStream<StreamChunk>;
 			if (previewControl && config.automaticPreviewContinuation && preparedTurn.type === 'resume') {
 				stream = await this.chatExecutionService.admitAutomaticContinuation(
+					config.context.threadId,
 					config.context.agentId,
 					preparedTurn.options.runId,
 					async () => await startAcceptedTurn(await recordStart()),
@@ -393,6 +394,7 @@ export class AgentTurnExecutionService {
 		};
 		if (options.previewChat && options.automaticContinuationRunId) {
 			await this.chatExecutionService.admitAutomaticContinuation(
+				params.threadId,
 				params.agentId,
 				options.automaticContinuationRunId,
 				async () => await recordFailure(await recordStart()),

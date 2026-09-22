@@ -88,7 +88,7 @@ function makeService() {
 
 beforeEach(() => Container.reset());
 
-it('rejects competing admission without queuing and releases the lease after creation', async () => {
+it('serializes thread admission without queuing and releases the lease after creation', async () => {
 	const { service, repository } = makeService();
 	const entered = createDeferredPromise();
 	const created = createDeferredPromise();
@@ -111,6 +111,24 @@ it('rejects competing admission without queuing and releases the lease after cre
 	repository.existsRunningByThread.mockResolvedValue(false);
 	await service.admit(context.threadId, competing);
 	expect(competing).toHaveBeenCalledOnce();
+
+	const automaticEntered = createDeferredPromise();
+	const automaticCreated = createDeferredPromise();
+	const automaticAdmission = service.admitAutomaticContinuation(
+		context.threadId,
+		context.agentId,
+		'run-1',
+		async () => {
+			automaticEntered.resolve();
+			await automaticCreated.promise;
+		},
+	);
+	await automaticEntered.promise;
+	await expect(service.admit(context.threadId, competing)).rejects.toBeInstanceOf(
+		AgentTurnAlreadyRunningError,
+	);
+	automaticCreated.resolve();
+	await automaticAdmission;
 });
 
 it.each([
