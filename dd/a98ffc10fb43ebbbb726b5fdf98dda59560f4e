@@ -44,6 +44,7 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
   s_a52facf53351c5::t_549a622c80c85b 752
   s_a52facf53351c5::t_7681da313dc5ea 660-662
   s_a52facf53351c5::t_007a8045240381 687,879
+  s_a52facf53351c5::t_f1ba3667ae146e 14,111-113,118-121
 packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
   s_3aaa503f47ada7::t_825190ca2b3fc9 72-78
   s_3aaa503f47ada7::t_eedea0f434eb45 79-81
@@ -59,6 +60,7 @@ packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
   s_a52facf53351c5::t_7856ab19d92385 1171-1173
   s_a52facf53351c5::t_fdf6f7d991f051 17,22-23,32,74,107,115,140,186,232,448,537,976,1054,1080,1097,1137,1156,1166-1167,1207,1230,1241
   s_a52facf53351c5::t_a9dc5b6d4d79a8 640,675
+  s_a52facf53351c5::t_8a619a1b98dec8 1214
 packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
   s_3aaa503f47ada7::t_55da3ee667b856 392-394
   s_3aaa503f47ada7::t_a9ef755e3ffd16 360,369-371,375-385,389,398,401,404
@@ -111,6 +113,7 @@ packages/cli/src/modules/agents/agent-execution.service.ts
   s_a52facf53351c5::t_76bd5e0694bf9d 702-703
   s_a52facf53351c5::t_79cb8704f09080 15,31-33,75,135,391,581,589,629,632-635,694-701,704-708
   s_a52facf53351c5::t_dd4a04751fc343 709-710
+  s_a52facf53351c5::t_8a619a1b98dec8 529
 packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
   s_3aaa503f47ada7::t_55da3ee667b856 459-469,471,595-605,607-613,803-810,818,870-878,886,1125-1139,1141-1143
   s_3aaa503f47ada7::t_9fd56ecddd9fc2 45,679,747,1092-1093,1105-1108,1110-1111,1115-1117,1119-1122,1124,1140
@@ -162,6 +165,7 @@ packages/@n8n/db/src/migrations/sqlite/1789736885838-AddAgentThreadOwnership.ts
 packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
   s_a52facf53351c5::t_53e857d42d36c2 54,66,84,91-102,105,110-112,129,149
   s_a52facf53351c5::t_7856ab19d92385 12-15,106-109,157-160
+  s_a52facf53351c5::t_8a619a1b98dec8 7,317,321-325
 packages/cli/src/modules/agents/agent-chat-attachment.service.ts
   s_a52facf53351c5::t_dc8bc690e274d6 13,19,72,121,124,126-129,133-136
   s_a52facf53351c5::t_7856ab19d92385 14-18,130-132,137-138
