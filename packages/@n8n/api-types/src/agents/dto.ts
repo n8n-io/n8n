@@ -225,6 +225,7 @@ const agentChatMessageShape = {
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
 	sessionId: z.string().min(1).optional(),
+	newSession: z.literal(true).optional(),
 	attachments: z
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)

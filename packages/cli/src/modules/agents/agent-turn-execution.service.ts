@@ -90,6 +90,10 @@ export class AgentTurnExecutionService {
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
+	async getSessionMode(threadId: string): Promise<'new' | 'existing'> {
+		return await this.agentExecutionService.getSessionMode(threadId);
+	}
+
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
 		let executionId: string | undefined;
 		let turn: AgentTurnRequest | undefined;

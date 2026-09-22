@@ -11,7 +11,7 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import { TransactionRunner, type User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -20,6 +20,7 @@ import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import chunk from 'lodash/chunk';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { createRequire } from 'node:module';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -58,11 +59,17 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 
 import { createMember, createAdmin } from '../../shared/db/users';
 
+// Share the transaction class loaded by the built BaseRepository.
+const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
+	'@n8n/db/dist/services/typeorm-transaction',
+) as typeof import('@n8n/db/dist/services/typeorm-transaction');
+
 describe('AgentExecutionRepository', () => {
 	let repository: AgentExecutionRepository;
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
 	let attachmentRepo: AgentChatAttachmentRepository;
+	let peer: DataSource;
 	let projectId: string;
 	let agentId: string;
 
@@ -73,6 +80,14 @@ describe('AgentExecutionRepository', () => {
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
 		attachmentRepo = Container.get(AgentChatAttachmentRepository);
+		peer = await new DataSource({
+			...repository.manager.connection.options,
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+			logger: 'simple-console',
+			logging: false,
+		}).initialize();
 	});
 
 	beforeEach(async () => {
@@ -98,18 +113,30 @@ describe('AgentExecutionRepository', () => {
 	});
 
 	afterAll(async () => {
+		if (peer?.isInitialized) await peer.destroy();
 		await testDb.terminate();
 	});
 
-	function recordingServices(memoryBackend: ReturnType<N8nMemory['getImplementation']> = mock()) {
+	function recordingServices(
+		memoryBackend: ReturnType<N8nMemory['getImplementation']> = mock(),
+		connection?: DataSource,
+	) {
+		const txRunner = new TypeOrmTransactionRunner(
+			connection ?? repository.manager.connection,
+			mockLogger(),
+		);
+		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
+		const threads = connection
+			? new AgentExecutionThreadRepository(connection, txRunner)
+			: threadRepo;
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
 			mockLogger(),
-			repository,
-			threadRepo,
+			executions,
+			threads,
 			memory,
 			mock<Telemetry>(),
 			attachmentService,
@@ -118,14 +145,41 @@ describe('AgentExecutionRepository', () => {
 			mock<ErrorReporter>(),
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
-			Container.get(TransactionRunner),
+			txRunner,
 		);
 		return {
+			txRunner,
+			threads,
 			executionService,
 			attachmentService,
 			executionLogStore,
 			turns: new AgentTurnExecutionService(mockLogger(), executionService),
 		};
+	}
+
+	function observePeerTransaction() {
+		const started = createDeferredPromise();
+		const querySpy = vi.spyOn(peer.logger, 'logQuery').mockImplementation((query) => {
+			if (query === 'START TRANSACTION' || query === 'BEGIN IMMEDIATE TRANSACTION') {
+				started.resolve();
+			}
+		});
+		return { started: started.promise, restore: () => querySpy.mockRestore() };
+	}
+
+	async function waitForPeerLock(ctx: OperationContext) {
+		if (peer.options.type !== 'postgres') return;
+		const transaction = ctx.trx;
+		if (!(transaction instanceof TypeOrmTransaction)) throw new Error('Expected a transaction');
+		await vi.waitFor(async () => {
+			const rows = await transaction.getEntityManager().query<Array<{ blocked: boolean }>>(
+				`SELECT EXISTS (
+					SELECT 1 FROM pg_stat_activity
+					WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))
+				) AS blocked`,
+			);
+			expect(rows).toEqual([{ blocked: true }]);
+		});
 	}
 
 	function buildAttachment(threadId: string) {
@@ -381,7 +435,7 @@ describe('AgentExecutionRepository', () => {
 									toolCallId: suspension.toolCallId,
 									onResumeClaimed,
 								},
-								recording: { ...recording, userMessage: null },
+								recording: { ...recording, userMessage: null, sessionMode: 'existing' },
 							}),
 						}),
 					);
@@ -569,6 +623,188 @@ describe('AgentExecutionRepository', () => {
 		expect(executionLogStore.delete).not.toHaveBeenCalled();
 	});
 
+	it('keeps session data when admission wins deletion on another connection', async () => {
+		const thread = await createThread();
+		const attachment = await attachmentRepo.save(buildAttachment(thread.id));
+		const checkpointRepo = Container.get(AgentCheckpointRepository);
+		const checkpoint = await checkpointRepo.save({
+			runId: uuid(),
+			agentId,
+			threadId: thread.id,
+			state: '{}',
+			expired: false,
+		});
+		const { turns } = recordingServices();
+		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
+		const { executionService, attachmentService, executionLogStore } = recordingServices(
+			memoryBackend,
+			peer,
+		);
+		const params = {
+			access: { accessScope: 'project' as const, ownerId: null },
+			threadId: thread.id,
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			userMessage: 'Continue',
+			sessionMode: 'existing' as const,
+		};
+		const recorder = new ExecutionRecorder();
+		const admitted = createDeferredPromise<OperationContext>();
+		const releaseAdmission = createDeferredPromise();
+		const saveInContext = repository.saveInContext.bind(repository);
+		const saveSpy = vi
+			.spyOn(repository, 'saveInContext')
+			.mockImplementationOnce(async (execution, ctx) => {
+				const saved = await saveInContext(execution, ctx);
+				admitted.resolve(ctx);
+				await releaseAdmission.promise;
+				return saved;
+			});
+		const competing = observePeerTransaction();
+		try {
+			const start = turns.startExecution(params, recorder.startedAt);
+			const ctx = await admitted.promise;
+			const deletion = executionService.deleteThread(projectId, agentId, thread.id, uuid());
+			const rejected = expect(deletion).rejects.toMatchObject({ httpStatusCode: 409 });
+			await competing.started;
+			await waitForPeerLock(ctx);
+			releaseAdmission.resolve();
+			const executionId = await start;
+			await rejected;
+
+			expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
+			expect(await repository.findByThreadIdOrdered(thread.id)).toEqual([
+				expect.objectContaining({ id: executionId, status: 'running' }),
+			]);
+			expect(await checkpointRepo.findByRunId(checkpoint.runId)).toEqual(checkpoint);
+			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
+			expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
+			expect(executionLogStore.delete).not.toHaveBeenCalled();
+
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+			await turns.finalizeExecution({
+				executionId,
+				executionStarted: true,
+				params: { ...params, record: recorder.getMessageRecord() },
+			});
+		} finally {
+			releaseAdmission.resolve();
+			saveSpy.mockRestore();
+			competing.restore();
+		}
+	});
+
+	it('rejects a continuation before SDK execution when deletion on another connection wins', async () => {
+		const thread = await createThread();
+		const { executionService } = recordingServices();
+		const { turns } = recordingServices(mock(), peer);
+		const agent = mock<RuntimeAgent>();
+		const deleted = createDeferredPromise<OperationContext>();
+		const releaseDeletion = createDeferredPromise();
+		const deleteSession = threadRepo.deleteSession.bind(threadRepo);
+		const deleteSpy = vi
+			.spyOn(threadRepo, 'deleteSession')
+			.mockImplementationOnce(async (...args) => {
+				const result = await deleteSession(...args);
+				deleted.resolve(args[4]);
+				await releaseDeletion.promise;
+				return result;
+			});
+		const competing = observePeerTransaction();
+		try {
+			const deletion = executionService.deleteThread(projectId, agentId, thread.id, uuid());
+			const ctx = await deleted.promise;
+			const continuation = collect(
+				turns.execute({
+					agentInstance: agent,
+					toolRegistry: new Map(),
+					mcpServerAttributions: new Map(),
+					context: { projectId, agentId, threadId: thread.id },
+					prepare: async () => ({
+						type: 'start',
+						input: 'Continue',
+						options: {},
+						recording: {
+							access: { accessScope: 'project', ownerId: null },
+							threadId: thread.id,
+							agentId,
+							agentName: 'Test Agent',
+							projectId,
+							userMessage: 'Continue',
+							sessionMode: 'existing',
+						},
+					}),
+				}),
+			);
+			const rejected = expect(continuation).rejects.toMatchObject({
+				phase: 'create',
+				cause: expect.objectContaining({ message: 'Session not found' }),
+			});
+			await competing.started;
+			await waitForPeerLock(ctx);
+			releaseDeletion.resolve();
+			expect(await deletion).toBe(true);
+			await rejected;
+			expect(agent.stream).not.toHaveBeenCalled();
+			expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+			expect(await repository.findByThreadIdOrdered(thread.id)).toEqual([]);
+		} finally {
+			releaseDeletion.resolve();
+			deleteSpy.mockRestore();
+			competing.restore();
+		}
+	});
+
+	it('converges concurrent creation of the same session without changing ownership', async () => {
+		const { txRunner } = recordingServices();
+		const { txRunner: peerRunner, threads: peerThreads } = recordingServices(mock(), peer);
+		const threadId = uuid();
+		const access = { accessScope: 'project' as const, ownerId: null };
+		const inserted = createDeferredPromise<OperationContext>();
+		const releaseInsert = createDeferredPromise();
+		const competing = observePeerTransaction();
+		try {
+			const first = txRunner.run({}, async (ctx) => {
+				const result = await threadRepo.findOrCreate(
+					threadId,
+					agentId,
+					'Test Agent',
+					projectId,
+					access,
+					ctx,
+				);
+				inserted.resolve(ctx);
+				await releaseInsert.promise;
+				return result;
+			});
+			const ctx = await inserted.promise;
+			const second = peerRunner.run(
+				{},
+				async (peerCtx) =>
+					await peerThreads.findOrCreate(
+						threadId,
+						agentId,
+						'Other request name',
+						projectId,
+						access,
+						peerCtx,
+					),
+			);
+			await competing.started;
+			await waitForPeerLock(ctx);
+			releaseInsert.resolve();
+			const results = await Promise.all([first, second]);
+			expect(results.map(({ created }) => created)).toEqual([true, false]);
+			expect(results[1].thread).toEqual(results[0].thread);
+			expect(await threadRepo.countBy({ id: threadId })).toBe(1);
+		} finally {
+			releaseInsert.resolve();
+			competing.restore();
+		}
+	});
+
 	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
 		const fixture = await startSuspendedApprovalRun();
 		const { outcomes, onResumeClaimed } = await resumeApprovalFromSeparateConnections(fixture);
@@ -663,27 +899,14 @@ describe('AgentExecutionRepository', () => {
 				expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
 				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 				expect(
-					await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id),
-				).toBe(true);
-
-				const resumed = await resume(owner);
-				const next = resumed.find((chunk) => chunk.type === 'tool-call-suspended');
-				if (!next || next.type !== 'tool-call-suspended')
-					throw new Error('Expected next suspension');
-				await resume(owner, next.runId, next.toolCallId);
-				expect(fixture.action).toHaveBeenCalledTimes(2);
-				expect(await threadRepo.findOneByOrFail({ id: threadId })).toMatchObject({
-					accessScope: 'user',
-					ownerId: owner.id,
-				});
-				const continued = await repository.findByThreadIdOrdered(threadId);
-				expect(continued).toHaveLength(2);
-				for (const execution of continued) {
-					expect(execution.status).toBe('success');
-					expect(execution.timeline).toContainEqual(
-						expect.objectContaining({ type: 'hitl-response' }),
-					);
-				}
+					await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id, {
+						previewChat: true,
+						sessionMode: 'existing',
+					}),
+				).toBe(false);
+				await expect(resume(owner)).rejects.toThrow('does not belong to this chat');
+				expect(fixture.action).not.toHaveBeenCalled();
+				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 			} finally {
 				await runtime.close();
 			}
@@ -778,14 +1001,23 @@ describe('AgentExecutionRepository', () => {
 	it('filters private sessions before pagination and preserves their owner on reuse', async () => {
 		const owner = await createMember();
 		const other = await createAdmin();
-		const { executionService } = recordingServices();
+		const otherProject = await createTeamProject();
+		const otherAgent = await agentRepo.save(
+			agentRepo.create({
+				id: uuid(),
+				name: 'Other agent',
+				projectId,
+				integrations: [],
+				tools: {},
+				skills: {},
+			}),
+		);
+		const { executionService, txRunner } = recordingServices();
 		const access = { accessScope: 'user' as const, ownerId: owner.id };
-		const { thread } = await threadRepo.findOrCreate(
-			uuid(),
-			agentId,
-			'Test Agent',
-			projectId,
-			access,
+		const { thread } = await txRunner.run(
+			{},
+			async (ctx) =>
+				await threadRepo.findOrCreate(uuid(), agentId, 'Test Agent', projectId, access, ctx),
 		);
 		await threadRepo.update(thread.id, { updatedAt: new Date('2026-01-03T00:00:00Z') });
 		const shared = await createThread({
@@ -831,35 +1063,62 @@ describe('AgentExecutionRepository', () => {
 			false,
 		);
 		for (const incompatible of [
-			{ accessScope: 'user' as const, ownerId: other.id },
-			{ accessScope: 'project' as const, ownerId: null },
+			{ agentId, projectId, access: { accessScope: 'user' as const, ownerId: other.id } },
+			{ agentId, projectId, access: { accessScope: 'project' as const, ownerId: null } },
+			{ agentId: otherAgent.id, projectId, access },
+			{ agentId, projectId: otherProject.id, access },
 		]) {
 			await expect(
-				threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, incompatible),
+				txRunner.run(
+					{},
+					async (ctx) =>
+						await threadRepo.findOrCreate(
+							thread.id,
+							incompatible.agentId,
+							'Test Agent',
+							incompatible.projectId,
+							incompatible.access,
+							ctx,
+						),
+				),
 			).rejects.toThrow('Session not found');
 		}
 		expect(
-			await threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, access),
+			await txRunner.run(
+				{},
+				async (ctx) =>
+					await threadRepo.findOrCreate(thread.id, agentId, 'Test Agent', projectId, access, ctx),
+			),
 		).toMatchObject({ created: false, thread: access });
-		const child = await threadRepo.findOrCreate(
-			uuid(),
-			agentId,
-			'Test Agent',
-			projectId,
-			{ accessScope: 'user', ownerId: null },
-			{ parentThreadId: thread.id, parentAgentId: agentId },
+		const child = await txRunner.run(
+			{},
+			async (ctx) =>
+				await threadRepo.findOrCreate(
+					uuid(),
+					agentId,
+					'Test Agent',
+					projectId,
+					{ accessScope: 'user', ownerId: null },
+					ctx,
+					{ parentThreadId: thread.id, parentAgentId: agentId },
+				),
 		);
 		expect(child.thread).toMatchObject(access);
 		expect(
 			await executionService.canUseDraftThread(child.thread.id, projectId, agentId, owner.id),
 		).toBe(false);
-		const sharedChild = await threadRepo.findOrCreate(
-			uuid(),
-			agentId,
-			'Test Agent',
-			projectId,
-			{ accessScope: 'user', ownerId: null },
-			{ parentThreadId: shared.id, parentAgentId: agentId },
+		const sharedChild = await txRunner.run(
+			{},
+			async (ctx) =>
+				await threadRepo.findOrCreate(
+					uuid(),
+					agentId,
+					'Test Agent',
+					projectId,
+					{ accessScope: 'user', ownerId: null },
+					ctx,
+					{ parentThreadId: shared.id, parentAgentId: agentId },
+				),
 		);
 		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });
 	});

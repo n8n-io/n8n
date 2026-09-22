@@ -499,12 +499,14 @@ const {
 	currentSessionHasMessages,
 	currentSessionTitle,
 	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
 	sessionMenu,
 	isDeletingSession,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
 	onNewChat,
+	markSessionCreated,
 	deleteSession,
 } = useAgentBuilderSession({
 	routeBacked: computed(() => !isArtifactMode.value),
@@ -515,7 +517,7 @@ const previewSessionsLoading = computed(
 	() => sessionsStore.loading || sessionsStore.previewLoading,
 );
 const previewSessionReady = computed(
-	() => currentSessionIsEphemeral.value || currentSession.value?.canContinueInPreview === true,
+	() => currentSessionIsLocallyMinted.value || currentSession.value?.canContinueInPreview === true,
 );
 
 // Config
@@ -2154,7 +2156,7 @@ function isNotFoundError(error: unknown): boolean {
 
 const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {
-	if (previewSessionsLoading.value || currentSessionIsEphemeral.value) return;
+	if (previewSessionsLoading.value || currentSessionIsLocallyMinted.value) return;
 	if (currentSession.value) {
 		if (!currentSession.value.canContinueInPreview) acceptPreviewSession(currentSession.value);
 		return;
@@ -2431,9 +2433,11 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
+					:new-session="currentSessionIsEphemeral"
 					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
+					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
 				/>
@@ -2526,6 +2530,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:local-config="localConfig"
 						:connected-triggers="connectedTriggers"
 						:effective-session-id="effectiveSessionId"
+						:new-session="currentSessionIsEphemeral"
 						:initial-prompt="taskPreviewPrompt"
 						:can-delete-session="canDeletePreviewSession"
 						:is-deleting-session="isDeletingSession"
@@ -2537,6 +2542,7 @@ function onSwitchAgent(nextAgentId: string) {
 						@session-select="onSessionPick"
 						@close="closePreviewDock"
 						@continue-loaded="onContinueLoaded"
+						@session-created="markSessionCreated"
 						@send-to-assistant="onSendPreviewToAssistant"
 						@initial-consumed="taskPreviewPrompt = undefined"
 					/>
