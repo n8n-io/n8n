@@ -185,16 +185,24 @@ function onConfirm() {
 						</div>
 
 						<div :class="$style.actions">
-							<button
+							<N8nButton
 								v-if="agent.added"
-								type="button"
+								variant="ghost"
+								size="xsmall"
 								:class="$style.addedTrigger"
+								:aria-label="
+									i18n.baseText('agents.builder.subAgents.modal.selectAgent', {
+										interpolate: { name: agent.name },
+									})
+								"
 								data-testid="agent-sub-agents-modal-added"
 								@click="onSelectAgent(agent)"
 							>
-								<N8nIcon icon="check" :size="14" :class="$style.addedIcon" aria-hidden="true" />
+								<template #icon>
+									<N8nIcon icon="check" :size="14" :class="$style.addedIcon" aria-hidden="true" />
+								</template>
 								{{ i18n.baseText('agents.builder.subAgents.modal.added' as BaseTextKey) }}
-							</button>
+							</N8nButton>
 							<N8nButton
 								v-else
 								variant="subtle"
@@ -288,8 +296,6 @@ function onConfirm() {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/focus';
-
 .content {
 	display: flex;
 	flex-direction: column;
@@ -351,25 +357,9 @@ function onConfirm() {
 }
 
 .addedTrigger {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--3xs);
-	border: 0;
-	border-radius: var(--radius--2xs);
-	background: none;
-	color: var(--color--text--tint-1);
-	font-family: inherit;
-	font-size: var(--font-size--2xs);
+	--button--color: var(--color--text--tint-1);
+
 	font-weight: var(--font-weight--regular);
-	white-space: nowrap;
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--background--light-1);
-	}
-
-	@include focus.focus-visible-ring;
 }
 
 .addedIcon {
