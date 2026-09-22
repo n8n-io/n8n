@@ -94,7 +94,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	ASSISTANT_SAVED_PREFERENCE: {
 		name: 'Assistant saved preference',
 		description:
-			'An AI surface created or updated a preference on the user behalf, after the user accepted it. Kept apart from the UI events so an assistant write is never counted as a person writing in settings.',
+			'An AI surface created or updated a preference on the user behalf. The assistant writes first and the chat card is the confirmation, so this fires with the write, before the user has said anything. Kept apart from the UI events so an assistant write is never counted as a person writing in settings.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			scope_type: scopeType,
@@ -108,7 +108,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_CONFIRMATION_SHOWN: {
 		name: 'Preference confirmation shown',
 		description:
-			'The assistant proposed a preference and the confirmation card was shown. Fires when the card appears, whatever the user does next.',
+			'The assistant saved a preference and the card that lets the user edit or undo it was shown. Fires with the write, whatever the user does next.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			scope_type: scopeType.describe('Scope the assistant offered'),
@@ -119,12 +119,14 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_CONFIRMATION_RESOLVED: {
 		name: 'Preference confirmation resolved',
 		description:
-			'The user answered a preference confirmation. A high `rejected` share means the assistant proposes the wrong preferences, and no other number shows that.',
+			'How a preference the assistant saved was settled. `accepted` fires with the write itself: the assistant writes first and silence is agreement, so it is not a user answer. `accepted_after_edit` is the explicit user action, an edit from the card. A removal from the card is `User deleted preferences` with source `rejected`. A high share of edits and removals means the assistant saves the wrong preferences, and no other number shows that.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			outcome: z
 				.enum(['accepted', 'accepted_after_edit', 'rejected'])
-				.describe('`accepted_after_edit` means the user changed the text before accepting'),
+				.describe(
+					'`accepted` is implicit, fired with the write. `accepted_after_edit` means the user changed the text from the card. `rejected` is reserved for a surface that asks before it writes',
+				),
 			scope_type: scopeType.describe(
 				'Scope the preference was saved with, or the offered scope on a rejection',
 			),

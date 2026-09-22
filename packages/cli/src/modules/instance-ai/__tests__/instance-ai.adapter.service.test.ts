@@ -6747,6 +6747,31 @@ describe('createContext: aiPreferenceService', () => {
 		}
 	});
 
+	// The row is committed before any event fires, so a telemetry fault must not turn
+	// a saved preference into a failed one that the model retries into a duplicate.
+	it('still reports the write as saved when telemetry throws afterwards', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+		expect(aiPreferenceService.create).toHaveBeenCalledTimes(1);
+	});
+
 	it('fires shown, resolved(accepted), scope_accepted and saved on a successful write', async () => {
 		const { service, aiPreferenceService, telemetry } = buildService();
 		aiPreferenceService.create.mockResolvedValue({
