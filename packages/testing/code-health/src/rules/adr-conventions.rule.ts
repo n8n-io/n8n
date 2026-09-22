@@ -25,6 +25,21 @@ import {
 const ALLOWED_STATUSES = new Set(['Active', 'Superseded', 'Deprecated']);
 const MAX_PARAGRAPH_LINE_LENGTH = 100;
 
+/**
+ * Enforces these ADR rules:
+ * - Store ADRs in a root or workspace package `docs/adr` directory.
+ * - Use a unique `ADR-YYYYMMDD-kebab-case-title.md` file name.
+ * - Start with one H1 title that matches the file name.
+ * - Use the required H2 sections once and in the required order.
+ * - Add nonempty content and exact blank-line spacing to each section.
+ * - Add ordered Date, Status, and Decision Owner metadata.
+ * - Use a valid date, an allowed status, and an allowed owner.
+ * - Add optional metadata in order and omit empty optional fields.
+ * - Use full ADR IDs in supersession metadata.
+ * - Add the required RFC, Documentation, and Related ADRs link fields.
+ * - Resolve local ADR references and allow references in external URLs.
+ * - Limit paragraph lines to 100 characters.
+ */
 export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'adr-conventions';
 	readonly name = 'ADR Conventions';
