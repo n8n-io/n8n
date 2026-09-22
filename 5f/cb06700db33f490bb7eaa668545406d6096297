@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Zendesk/Zendesk.node.ts
+  s_eb9c59cce09aff::t_b17a8c46c2719e 26-27,72-97
+packages/nodes-base/nodes/Zendesk/ZendeskTrigger.node.ts
+  s_eb9c59cce09aff::t_b17a8c46c2719e 24-25,76-101
+packages/nodes-base/credentials/ZendeskApi.credentials.ts
+  s_eb9c59cce09aff::t_2a5184bc4a95b0 18-23
+  s_eb9c59cce09aff::t_be6db1aac22c92 17
+packages/nodes-base/nodes/Zendesk/__tests__/ZendeskVersioning.test.ts
+  s_eb9c59cce09aff::t_9e7f7974df5cc5 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5fcb06700db33f490bb7eaa668545406d6096297",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_eb9c59cce09aff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8647f294-002d-4179-a3e7-b07210ec03ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

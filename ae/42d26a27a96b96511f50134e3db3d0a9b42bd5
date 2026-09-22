@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_2650408fe128d0 37-44
+  s_2ed659fa6b1ae7::t_ef5dfc0c6a6f5e 48,50-60
+  s_2ed659fa6b1ae7::t_2aabc22d63c183 6-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ae42d26a27a96b96511f50134e3db3d0a9b42bd5",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
