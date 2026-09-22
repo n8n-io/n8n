@@ -726,7 +726,7 @@ Cancel a running execution.
 
 ## `credentials` (6 actions)
 
-The instance PostHog flag `115_credential_descriptions` controls description
+The instance PostHog flag `120_credential_descriptions` controls description
 fields and selection guidance. Only boolean `true` enables them. When the flag
 is false or missing, `list` and `get` omit `description`, including managed entries.
 
