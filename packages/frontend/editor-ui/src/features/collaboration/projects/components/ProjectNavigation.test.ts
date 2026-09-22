@@ -1,5 +1,8 @@
+import { nextTick } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createProjectListItem, createTestProject } from '../__tests__/utils';
@@ -134,6 +137,29 @@ describe('ProjectsNavigation', () => {
 				},
 			});
 		}).not.toThrow();
+	});
+
+	it('should reload the projects after a package was applied', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		// The listener registers once the users are fetched.
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('applied', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
+	});
+
+	it('should reload the projects after a package removed one', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('projectRemoved', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
 	});
 
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {

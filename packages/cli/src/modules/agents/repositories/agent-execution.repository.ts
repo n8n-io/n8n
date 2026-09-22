@@ -29,7 +29,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
-		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
+		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {
