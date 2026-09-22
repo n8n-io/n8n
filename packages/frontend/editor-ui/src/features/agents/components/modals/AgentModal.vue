@@ -59,7 +59,9 @@ const slots = useSlots();
 const i18n = useI18n();
 const body = useTemplateRef<HTMLElement>('body');
 const hasFooter = computed(
-	() => props.showFooter ?? Boolean(slots.footer || slots.footerLeft || slots.footerActions),
+	() =>
+		props.showFooter ??
+		Boolean(slots.footer || slots.footerLeft || slots.footerBeforeCancel || slots.footerActions),
 );
 
 function onOpenChange(open: boolean) {
@@ -180,7 +182,8 @@ function onOpenAutoFocus(event: Event) {
 					<div :class="$style.footerLeft">
 						<slot name="footerLeft" />
 					</div>
-					<div :class="$style.footerActions">
+					<div :class="$style.footerActions" data-testid="agent-modal-footer-actions">
+						<slot name="footerBeforeCancel" />
 						<N8nButton
 							v-if="props.showCancel"
 							variant="outline"

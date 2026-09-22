@@ -638,13 +638,16 @@ async function onSave() {
 				{{ i18n.baseText('agents.builder.tasks.delete') }}
 			</N8nButton>
 		</template>
-		<template #footerActions>
+		<template #footerBeforeCancel>
 			<AgentPreviewButton
 				:is-runnable="props.data.isRunnable === true"
 				:validation-issues="props.data.validationIssues ?? []"
+				variant="ghost"
 				test-id="agent-task-preview"
 				@open-preview="onPreview"
 			/>
+		</template>
+		<template #footerActions>
 			<N8nButton
 				variant="solid"
 				:disabled="saving"

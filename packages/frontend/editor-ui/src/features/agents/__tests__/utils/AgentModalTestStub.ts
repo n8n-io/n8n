@@ -9,6 +9,7 @@ export const AgentModalTestStub = defineComponent({
 		editableTitle: { type: Boolean, default: false },
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
+		showCancel: { type: Boolean, default: true },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -52,12 +53,26 @@ export const AgentModalTestStub = defineComponent({
 			<footer
 				v-if="
 					showFooter === true ||
-					(showFooter !== false && ($slots.footerLeft || $slots.footerActions || $slots.footer))
+					(showFooter !== false &&
+						($slots.footerLeft ||
+							$slots.footerBeforeCancel ||
+							$slots.footerActions ||
+							$slots.footer))
 				"
 			>
-				<slot name="footerLeft" />
-				<slot name="footerActions" />
-				<slot name="footer" />
+				<slot name="footer">
+					<slot name="footerLeft" />
+					<div data-testid="agent-modal-footer-actions">
+						<slot name="footerBeforeCancel" />
+						<button
+							v-if="showCancel"
+							data-testid="agent-modal-cancel"
+							:disabled="busy"
+							@click="$emit('update:open', false)"
+						>Cancel</button>
+						<slot name="footerActions" />
+					</div>
+				</slot>
 			</footer>
 		</section>
 	`,
@@ -73,6 +88,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		editableTitle: { type: Boolean, default: false },
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
+		showCancel: { type: Boolean, default: true },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -90,6 +106,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			<template #headerActions><slot name="headerActions" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
+			<template #footerBeforeCancel><slot name="footerBeforeCancel" /></template>
 			<template #footerActions><slot name="footerActions" /></template>
 			<template #footer><slot name="footer" /></template>
 		</AgentModalTestStub>

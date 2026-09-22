@@ -70,6 +70,9 @@ Normal configuration has a Cancel button before the primary action. Cancel,
 Close, Escape, and outside click discard changes. Back discards the current
 step and returns to the preserved picker.
 
+Put a non-destructive secondary action before Cancel. For schedules, use the
+order `Preview`, `Cancel`, `Save`, and use the ghost variant for Preview.
+
 Save stays enabled until a request starts. An invalid Save shows inline errors.
 Successful Save, Add, and Remove actions close silently. Use a toast for a
 server error. Keep a warning toast when the warning contains information that

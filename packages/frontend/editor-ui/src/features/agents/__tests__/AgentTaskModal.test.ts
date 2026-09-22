@@ -137,10 +137,10 @@ const stubs = {
 			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
 	AgentPreviewButton: {
-		props: ['isRunnable', 'testId', 'validationIssues'],
+		props: ['isRunnable', 'testId', 'validationIssues', 'variant'],
 		emits: ['open-preview'],
 		template:
-			'<button :data-testid="testId" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
+			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -588,7 +588,13 @@ describe('AgentTaskModal', () => {
 		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
 		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
 		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
+		expect(getByTestId('agent-task-preview')).toHaveAttribute('data-variant', 'ghost');
 		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');
+		expect(
+			Array.from(getByTestId('agent-modal-footer-actions').querySelectorAll('button')).map(
+				(button) => button.dataset.testid,
+			),
+		).toEqual(['agent-task-preview', 'agent-modal-cancel', 'agent-task-save']);
 		expect(queryByTestId('agent-task-run')).not.toBeInTheDocument();
 
 		await rerender({
