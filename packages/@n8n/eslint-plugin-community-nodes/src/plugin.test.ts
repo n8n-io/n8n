@@ -35,6 +35,11 @@ describe('recommended config', () => {
 		);
 
 		// CE-2133: Published community nodes must use a single-package repository.
-		expect(messages).toHaveLength(1);
+		expect(messages).toEqual([
+			expect.objectContaining({
+				severity: 2,
+				message: expect.stringMatching(/monorepo|single-package repository/i),
+			}),
+		]);
 	});
 });
