@@ -672,6 +672,33 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	return service;
 }
 
+describe('InstanceAiService — MCP connections availability', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{ moduleActive: true, accessEnabled: true, expected: true },
+		{ moduleActive: false, accessEnabled: true, expected: false },
+		{ moduleActive: true, accessEnabled: false, expected: false },
+	])(
+		'returns $expected when moduleActive=$moduleActive and accessEnabled=$accessEnabled',
+		({ moduleActive, accessEnabled, expected }) => {
+			const service = Object.create(InstanceAiService.prototype) as unknown as {
+				areMcpConnectionsAvailable: () => boolean;
+				settingsService: { isMcpAccessEnabled: Mock };
+			};
+			service.settingsService = { isMcpAccessEnabled: vi.fn(() => accessEnabled) };
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				if (token === ModuleRegistry) return { isActive: () => moduleActive };
+				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+			});
+
+			expect(service.areMcpConnectionsAvailable()).toBe(expected);
+		},
+	);
+});
+
 describe('InstanceAiService — runtime workspace setup', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -697,8 +724,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	const snapshotModes = ['off', 'seeded', 'read failure'];
-	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
+	const environmentGates = ['off', 'seeded', 'read failure'].flatMap((snapshotMode) =>
+		[true, false].map((instanceContextEnabled) => ({ snapshotMode, instanceContextEnabled })),
+	);
+	it.each(environmentGates)('starts with gates %j', async (gates) => {
+		const { snapshotMode, instanceContextEnabled } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -706,6 +736,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				runId: string,
 				abortSignal: AbortSignal,
 			) => Promise<{
+				instanceContextEnabled: boolean;
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
@@ -772,7 +803,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			areMcpConnectionsAvailable: Mock;
 		};
+		service.areMcpConnectionsAvailable = vi.fn(() => true);
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -792,11 +825,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
-				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
+				instanceContextEnabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -876,7 +909,16 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'run-1',
 			new AbortController().signal,
 		);
+		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ instanceContextEnabled }),
+		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
 			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
@@ -1092,7 +1134,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			areMcpConnectionsAvailable: Mock;
 		};
+		service.areMcpConnectionsAvailable = vi.fn(() => false);
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1112,7 +1156,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
-				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
@@ -4814,9 +4857,9 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 	});
 });
 
-describe('InstanceAiService setup panel Execute input', () => {
+describe('InstanceAiService run input gates', () => {
 	it.each([true, false])(
-		'forwards the Execute target only with the panel enabled: %s',
+		'forwards the setup panel target and the shared instance gate: %s',
 		async (enabled) => {
 			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 			vi.mocked(streamAgentRun).mockResolvedValueOnce({
@@ -4825,7 +4868,9 @@ describe('InstanceAiService setup panel Execute input', () => {
 				text: Promise.resolve(''),
 				workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
 			});
+			const buildBlock = vi.fn().mockResolvedValue(undefined);
 			const environment = {
+				instanceContextEnabled: enabled,
 				context: { setupItemsEmitter: enabled ? {} : undefined },
 				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
 				taskStorage: { get: vi.fn(async () => undefined) },
@@ -4837,7 +4882,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				createProxyRunConfig: vi.fn(async () => ({})),
 				browserSessionService: { getExtensionTraceContext: vi.fn() },
 				readThreadProvenance: vi.fn(async () => ({})),
-				instanceContext: { buildBlock: vi.fn().mockResolvedValue(undefined) },
+				instanceContext: { buildBlock },
 				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
 					throw error;
 				}),
@@ -4877,6 +4922,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				{ source: 'setup-panel-execute', workflowId: 'wf-target' },
 			);
 
+			expect(buildBlock).toHaveBeenCalledWith(expect.objectContaining({ enabled }));
 			expect(streamAgentRun).toHaveBeenCalled();
 			const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
 			expect(input).toEqual(expect.any(String));
