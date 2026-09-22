@@ -13,6 +13,12 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		return await this.find();
 	}
 
+	async findByManagedBy(
+		managedBy: SecretsProviderConnection['managedBy'],
+	): Promise<SecretsProviderConnection[]> {
+		return await this.find({ where: { managedBy } });
+	}
+
 	async findIdByProviderKey(providerKey: string): Promise<string | null> {
 		const connection = await this.findOne({
 			select: ['id'],

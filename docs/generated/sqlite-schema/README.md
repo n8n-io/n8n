@@ -114,7 +114,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_job](scheduled_job.md) | 23 |  | table |
 | [scheduled_task](scheduled_task.md) | 18 |  | table |
 | [scope](scope.md) | 3 |  | table |
-| [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
+| [secrets_provider_connection](secrets_provider_connection.md) | 8 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
@@ -1441,6 +1441,7 @@ erDiagram
   TEXT encryptedSettings
   INTEGER id
   boolean isEnabled
+  VARCHAR_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   datetime_3_ updatedAt
