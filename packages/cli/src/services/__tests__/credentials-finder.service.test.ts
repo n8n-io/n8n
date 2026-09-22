@@ -37,6 +37,7 @@ describe('CredentialsFinderService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		credentialsRepository.excludePendingAuthorization.mockImplementation((where) => where);
 
 		// Setup manager mock for global credentials fetching
 
