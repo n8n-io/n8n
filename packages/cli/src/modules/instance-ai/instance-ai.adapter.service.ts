@@ -17,7 +17,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -410,6 +410,9 @@ export class InstanceAiAdapterService {
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
 		private readonly executeNodeService?: ExecuteNodeService,
+		// Optional for the same positional-construction reason as above.
+		// See `teamProjectsLicensed()` for the absent case.
+		private readonly licenseState?: LicenseState,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -517,7 +520,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
-			workspaceService: this.createWorkspaceAdapter(user),
+			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -786,6 +789,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	/** Team projects are a quota, not a feature flag, so the read goes through `LicenseState`. */
+	private teamProjectsLicensed(): boolean {
+		return this.licenseState?.isTeamProjectsLicensed() ?? true;
+	}
+
 	private buildLicenseHints(): string[] {
 		const hints: string[] = [];
 		if (!this.license.isLicensed('feat:namedVersions')) {
@@ -796,6 +804,11 @@ export class InstanceAiAdapterService {
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
 				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+			);
+		}
+		if (!this.teamProjectsLicensed()) {
+			hints.push(
+				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -3770,7 +3783,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createWorkspaceAdapter(user: User): InstanceAiWorkspaceService {
+	private createWorkspaceAdapter(user: User, boundProjectId?: string): InstanceAiWorkspaceService {
 		const {
 			projectService,
 			folderService,
@@ -3783,6 +3796,7 @@ export class InstanceAiAdapterService {
 		} = this;
 		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
 		const { assertProjectScope } = this.createProjectScopeHelpers(user);
+		const teamProjectsLicensed = this.teamProjectsLicensed();
 
 		const adapter: InstanceAiWorkspaceService = {
 			async getProject(projectId: string): Promise<ProjectSummary | null> {
@@ -3793,11 +3807,18 @@ export class InstanceAiAdapterService {
 
 			async listProjects(): Promise<ProjectSummary[]> {
 				const projects = await projectService.getAccessibleProjects(user);
-				return projects.map((p) => ({
+				const summaries = projects.map((p) => ({
 					id: p.id,
 					name: p.name,
 					type: p.type,
 				}));
+				if (teamProjectsLicensed) return summaries;
+				// An instance that loses its team-project license keeps its projects, and
+				// an admin still reads all of them. The user cannot work in those
+				// projects, so list only their own personal project and the project this
+				// conversation is bound to.
+				const personalProjectId = (await projectService.getPersonalProject(user))?.id;
+				return summaries.filter((p) => p.id === personalProjectId || p.id === boundProjectId);
 			},
 
 			...(this.license.isLicensed('feat:folders')
