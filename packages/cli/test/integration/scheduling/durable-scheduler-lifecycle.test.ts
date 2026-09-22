@@ -139,7 +139,6 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('reports an overlap skip for a system task occurrence its limit held back', async () => {
 		const SYSTEM_TASK_NAME = 'lifecycle-overlap';
 		const systemTaskType = `system:${SYSTEM_TASK_NAME}`;
-		const emit = vi.spyOn(Container.get(EventService), 'emit');
 		const job = await jobRepo.save(
 			jobRepo.create({
 				name: systemTaskType,
@@ -162,24 +161,29 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			claimedBy: 'other-main',
 			leaseExpiresAt: new Date(Date.now() + 60_000),
 			leaseEpoch: 1,
+			startedAt: new Date(Date.now() - 60_000),
 		});
 		const heldBack = await seedDueTask(taskRepo, systemTaskType, job.id);
 		await taskRepo.update(heldBack.id, { missedAfter: new Date(Date.now() - 1000) });
 
-		scheduler = buildScheduler({ enabled: true });
-		scheduler.start();
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		try {
+			scheduler = buildScheduler({ enabled: true });
+			scheduler.start();
 
-		await retryUntil(
-			async () => {
-				expect((await taskRepo.findOneByOrFail({ id: heldBack.id })).status).toBe('missed');
-			},
-			{ intervalMs: 100, timeoutMs: 20_000 },
-		);
-		expect(emit).toHaveBeenCalledWith('system-task-run-skipped', {
-			name: SYSTEM_TASK_NAME,
-			reason: 'overlap',
-		});
-		emit.mockRestore();
+			await retryUntil(
+				async () => {
+					expect((await taskRepo.findOneByOrFail({ id: heldBack.id })).status).toBe('missed');
+				},
+				{ intervalMs: 100, timeoutMs: 20_000 },
+			);
+			expect(emit).toHaveBeenCalledWith('system-task-run-skipped', {
+				name: SYSTEM_TASK_NAME,
+				reason: 'overlap',
+			});
+		} finally {
+			emit.mockRestore();
+		}
 	}, 30_000);
 
 	it('stays disabled on a worker even with the flag on', async () => {
