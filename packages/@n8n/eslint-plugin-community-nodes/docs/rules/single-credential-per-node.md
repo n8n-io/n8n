@@ -1,4 +1,4 @@
-# Ensure a node uses only one credential at a time (`@n8n/community-nodes/single-credential-per-node`)
+# Ensure a regular node uses only one credential at a time (`@n8n/community-nodes/single-credential-per-node`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
@@ -6,7 +6,9 @@
 
 ## Rule Details
 
-This rule prevents a node from using multiple credentials at the same time. A node can declare multiple authentication methods when mutually exclusive `displayOptions.show` conditions let the user select only one credential.
+This rule prevents a regular node from using multiple credentials at the same time. A node can declare multiple authentication methods when mutually exclusive `displayOptions.show` conditions on a single-value property let the user select only one credential.
+
+The rule does not check trigger nodes. A trigger can use separate credentials for outbound requests and webhook validation.
 
 Use a node property or collection for configuration that does not authenticate requests. Node properties support expressions.
 
