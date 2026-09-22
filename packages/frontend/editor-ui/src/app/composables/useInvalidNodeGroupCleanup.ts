@@ -1,15 +1,15 @@
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { validateNodeSelectionForGrouping } from 'n8n-workflow';
 import { escapeHtml } from 'xss';
 
-import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
-
-import type { INodeUi } from '@/Interface';
+import { useFlexibleGroups } from '@/app/composables/useFlexibleGroups';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@n8n/composables/useToast';
+import type { INodeUi } from '@/Interface';
 
 /**
  * Removes node groups that this instance's backend would reject on save
@@ -24,6 +24,7 @@ import { useToast } from '@n8n/composables/useToast';
 export function useInvalidNodeGroupCleanup() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
+	const { isEnabled: isFlexibleGroupsEnabled } = useFlexibleGroups();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -49,6 +50,7 @@ export function useInvalidNodeGroupCleanup() {
 			connectionsBySourceNode: store.connectionsBySourceNode,
 			getNodeType: (node) => nodeTypesStore.getNodeType(node.type, node.typeVersion),
 			existingNodeGroups: allGroups.filter((other) => other.id !== group.id),
+			relaxNodeGroupRules: isFlexibleGroupsEnabled.value,
 		}).valid;
 	}
 

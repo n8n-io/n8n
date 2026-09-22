@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
+import type { IConnections, INode, INodeTypeDescription, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { shallowRef } from 'vue';
 
 import { useInvalidNodeGroupCleanup } from './useInvalidNodeGroupCleanup';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -20,6 +22,11 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: showMessageSpy }),
+}));
+
+const flexibleGroupsEnabled = shallowRef(false);
+vi.mock('@/app/composables/useFlexibleGroups', () => ({
+	useFlexibleGroups: () => ({ isEnabled: flexibleGroupsEnabled }),
 }));
 
 const WORKFLOW_ID = 'test-workflow';
@@ -46,10 +53,55 @@ function setupDocumentStore({
 	return store;
 }
 
+/** A trigger and the node after it, grouped together. */
+function setupTriggeredGroup() {
+	const store = setupDocumentStore({
+		nodes: [
+			createTestNode({ id: 'node-a', name: 'Node A', type: 'n8n-nodes-base.manualTrigger' }),
+			createTestNode({ id: 'node-b', name: 'Node B' }),
+		],
+		connections: createConnection('Node A', 'Node B'),
+		nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b'] }],
+	});
+
+	// `getNodeType` is a Pinia computed exposed as a getter on the store proxy.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	vi.spyOn(useNodeTypesStore() as any, 'getNodeType', 'get').mockReturnValue(
+		(type: string) =>
+			({
+				group: type === 'n8n-nodes-base.manualTrigger' ? ['trigger'] : ['transform'],
+			}) as unknown as INodeTypeDescription,
+	);
+
+	return store;
+}
+
 describe('useInvalidNodeGroupCleanup', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		flexibleGroupsEnabled.value = false;
+	});
+
+	it('removes a group that holds a trigger while the flag is off', () => {
+		const store = setupTriggeredGroup();
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed).toHaveLength(1);
+		expect(showMessageSpy).toHaveBeenCalled();
+	});
+
+	it('keeps a group that holds a trigger while the flag is on', () => {
+		flexibleGroupsEnabled.value = true;
+		const store = setupTriggeredGroup();
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed).toEqual([]);
+		expect(showMessageSpy).not.toHaveBeenCalled();
 	});
 
 	it('keeps valid groups and shows no toast', () => {
