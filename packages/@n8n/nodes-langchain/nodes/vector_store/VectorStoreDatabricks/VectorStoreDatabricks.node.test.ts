@@ -127,6 +127,18 @@ describe('VectorStoreDatabricks', () => {
 			);
 			expect(metadataColumns?.type).toBe('multiOptions');
 			expect(metadataColumns?.typeOptions?.loadOptionsMethod).toBe('getIndexColumns');
+
+			const searchMode = (options?.options as INodeProperties[]).find(
+				(o) => o.name === 'searchMode',
+			);
+			expect(searchMode?.type).toBe('options');
+			expect(searchMode?.default).toBe('ANN');
+			expect(searchMode?.options?.map((o) => 'value' in o && o.value)).toEqual(['ANN', 'HYBRID']);
+
+			const searchFilterJson = (options?.options as INodeProperties[]).find(
+				(o) => o.name === 'searchFilterJson',
+			);
+			expect(searchFilterJson?.type).toBe('json');
 		});
 	});
 
@@ -152,6 +164,7 @@ describe('VectorStoreDatabricks', () => {
 				indexName: 'cat.sch.idx',
 				contentColumn: 'text',
 				metadataColumns: ['source'],
+				queryType: 'ANN',
 				filter: { source: 'hr' },
 				index: indexInfo,
 			});
@@ -287,6 +300,28 @@ describe('VectorStoreDatabricks', () => {
 			expect(mockedDescribeIndex).toHaveBeenCalledTimes(1);
 			expect(getDatabricksTokenProvider).toHaveBeenCalledTimes(1);
 			expect(ctx.getCredentials).toHaveBeenCalledTimes(1);
+		});
+
+		it('reaches the class with the configured search mode, metadata filter and limit', async () => {
+			const store = { similaritySearchWithScore: vi.fn().mockResolvedValue([]) };
+			mockedFromExistingIndex.mockResolvedValue(store as unknown as DatabricksVectorStore);
+			const ctx = setupContext<IExecuteFunctions>({
+				...baseParams,
+				mode: 'load',
+				prompt: 'what is up',
+				topK: 3,
+				options: { searchMode: 'HYBRID', searchFilterJson: { source: 'hr' } },
+			});
+
+			await node.execute.call(ctx);
+
+			expect(mockedFromExistingIndex).toHaveBeenCalledWith(
+				embeddings,
+				expect.objectContaining({ queryType: 'HYBRID' }),
+			);
+			expect(store.similaritySearchWithScore).toHaveBeenCalledWith('what is up', 3, {
+				source: 'hr',
+			});
 		});
 	});
 
