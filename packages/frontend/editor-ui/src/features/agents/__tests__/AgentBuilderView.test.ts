@@ -163,6 +163,7 @@ const sessionThreads = reactive<SessionThread[]>([]);
 const fetchedSessionThreads: SessionThread[] = [];
 const previewSessionThreads = reactive<SessionThread[]>([]);
 const fetchedPreviewThreads: SessionThread[] = [];
+const previewSessionsLoading = ref(false);
 
 async function fetchSessionThreads(projectId: string, agentId: string) {
 	const normalize = (thread: SessionThread) => ({
@@ -345,7 +346,9 @@ vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
 		previewThreads: previewSessionThreads,
-		previewLoading: false,
+		get previewLoading() {
+			return previewSessionsLoading.value;
+		},
 		loading: false,
 		fetchThreads: fetchSessionThreadsMock,
 		getThreadDetail: getSessionThreadDetailMock,
@@ -738,6 +741,7 @@ function resetViewMocks() {
 	fetchedSessionThreads.length = 0;
 	previewSessionThreads.length = 0;
 	fetchedPreviewThreads.length = 0;
+	previewSessionsLoading.value = false;
 	history.replaceState({}, '');
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
@@ -1488,6 +1492,11 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialized')).toBe(false);
+		previewSessionsLoading.value = true;
+		await nextTick();
+		previewSessionsLoading.value = false;
+		await nextTick();
+		expect(getSessionThreadDetailMock).toHaveBeenCalledTimes(1);
 		detail.resolve({ thread: olderThread, executions: [] });
 		await vi.waitFor(() => expect(upsertSessionThreadMock).toHaveBeenCalledWith(olderThread));
 		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });

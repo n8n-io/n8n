@@ -2152,9 +2152,8 @@ function isNotFoundError(error: unknown): boolean {
 	);
 }
 
-let latestPreviewValidationId = 0;
+const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {
-	const requestId = ++latestPreviewValidationId;
 	if (previewSessionsLoading.value || currentSessionIsEphemeral.value) return;
 	if (currentSession.value) {
 		if (!currentSession.value.canContinueInPreview) acceptPreviewSession(currentSession.value);
@@ -2162,8 +2161,10 @@ async function ensurePreviewSessionAvailable(sessionId: string) {
 	}
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
+	const validationKey = JSON.stringify([targetProjectId, targetAgentId, sessionId]);
+	if (pendingPreviewValidations.has(validationKey)) return;
+	pendingPreviewValidations.add(validationKey);
 	const isCurrent = () =>
-		requestId === latestPreviewValidationId &&
 		isPreviewActive.value &&
 		!isStaleAgentTarget(targetProjectId, targetAgentId) &&
 		effectiveSessionId.value === sessionId;
@@ -2181,6 +2182,8 @@ async function ensurePreviewSessionAvailable(sessionId: string) {
 		} else {
 			showError(error, locale.baseText('agentSessions.showError.load'));
 		}
+	} finally {
+		pendingPreviewValidations.delete(validationKey);
 	}
 }
 
