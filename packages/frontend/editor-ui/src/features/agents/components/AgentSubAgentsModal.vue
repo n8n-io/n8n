@@ -152,10 +152,6 @@ function onConfirm() {
 		</template>
 
 		<div v-show="!selectedAgent" :class="$style.content">
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.subAgents.modal.description') }}
-			</N8nText>
-
 			<N8nInput
 				v-if="hasAgents"
 				v-model="searchQuery"
@@ -278,7 +274,7 @@ function onConfirm() {
 		</div>
 
 		<template v-if="selectedAgent && selectedAgentIsAdded && data.onRemove" #footerLeft>
-			<N8nButton variant="subtle" data-testid="agent-sub-agents-modal-remove" @click="onRemove">
+			<N8nButton variant="ghost" data-testid="agent-sub-agents-modal-remove" @click="onRemove">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.subAgents.modal.remove') }}
 			</N8nButton>

@@ -8236,7 +8236,6 @@
 	"agents.builder.subAgents.modelsByDifficulty.high.description": "Complex tasks that need deeper reasoning or detailed synthesis.",
 	"agents.builder.subAgents.modelsByDifficulty.clear": "Use parent model",
 	"agents.builder.subAgents.modal.title": "Sub-agents",
-	"agents.builder.subAgents.modal.description": "Select agents from this project to let this agent delegate work to them.",
 	"agents.builder.subAgents.modal.selectAgent": "Select {name}",
 	"agents.builder.subAgents.modal.empty.title": "No agents to add",
 	"agents.builder.subAgents.modal.empty.description": "Other agents from this project show here.",

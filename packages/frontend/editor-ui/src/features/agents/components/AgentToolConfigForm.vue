@@ -369,18 +369,10 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 
 <style lang="scss" module>
 .contentWrapper {
-	--agent-tool-config-content-max-height: min(
-		calc(var(--spacing--5xl) * 2),
-		calc(70dvh - var(--spacing--5xl))
-	);
-
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	max-height: var(--agent-tool-config-content-max-height);
 	overflow-x: hidden;
-	overflow-y: auto;
-	padding: var(--spacing--md) 0;
 
 	:global(.ndv-connection-hint-notice) {
 		display: none;
@@ -388,8 +380,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 }
 
 .codeContentWrapper {
-	height: var(--agent-tool-config-content-max-height);
-	padding-bottom: 0;
+	height: min(calc(var(--spacing--5xl) * 2), calc(70dvh - var(--spacing--5xl)));
 	overflow: hidden;
 }
 

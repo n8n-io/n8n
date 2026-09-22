@@ -34,6 +34,11 @@ vi.mock('@n8n/design-system', async () => {
 		N8nDialogHeader: defineComponent({ template: '<header><slot /></header>' }),
 		N8nDialogFooter: defineComponent({ template: '<footer><slot /></footer>' }),
 		N8nDialogTitle: defineComponent({ template: '<div><slot /></div>' }),
+		N8nButton: defineComponent({
+			props: ['disabled'],
+			emits: ['click'],
+			template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+		}),
 		N8nInlineTextEdit: defineComponent({
 			props: ['modelValue', 'disabled'],
 			emits: ['update:modelValue'],

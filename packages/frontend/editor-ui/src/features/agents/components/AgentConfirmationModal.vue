@@ -56,6 +56,7 @@ async function onOpenChange(open: boolean) {
 		:open="modalOpen"
 		:title="props.data.title"
 		:busy="submitting"
+		:show-cancel="false"
 		size="large"
 		data-testid="agent-confirmation-modal"
 		@update:open="onOpenChange"

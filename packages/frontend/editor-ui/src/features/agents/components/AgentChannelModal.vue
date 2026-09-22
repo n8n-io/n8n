@@ -591,7 +591,7 @@ watch(
 
 		<template v-if="showFooterActions" #footerLeft>
 			<N8nButton
-				variant="subtle"
+				variant="ghost"
 				size="medium"
 				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
 				:disabled="actionInFlight || !selectedChannelType"

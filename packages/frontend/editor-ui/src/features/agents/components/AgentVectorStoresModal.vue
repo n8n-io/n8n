@@ -603,7 +603,7 @@ onMounted(() => {
 		</div>
 
 		<template v-if="selectedProvider && isEditing && data.onRemove" #footerLeft>
-			<N8nButton variant="subtle" data-testid="agent-vector-stores-modal-remove" @click="onRemove">
+			<N8nButton variant="ghost" data-testid="agent-vector-stores-modal-remove" @click="onRemove">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.vectorStores.modal.remove') }}
 			</N8nButton>

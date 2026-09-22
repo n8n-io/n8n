@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	N8nDialog,
+	N8nButton,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -24,6 +25,7 @@ const props = withDefaults(
 		titleError?: string;
 		showBack?: boolean;
 		showFooter?: boolean;
+		showCancel?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -37,6 +39,7 @@ const props = withDefaults(
 		titleError: '',
 		showBack: false,
 		showFooter: undefined,
+		showCancel: true,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -178,6 +181,15 @@ function onOpenAutoFocus(event: Event) {
 						<slot name="footerLeft" />
 					</div>
 					<div :class="$style.footerActions">
+						<N8nButton
+							v-if="props.showCancel"
+							variant="outline"
+							:disabled="props.busy"
+							data-testid="agent-modal-cancel"
+							@click="close"
+						>
+							{{ i18n.baseText('generic.cancel') }}
+						</N8nButton>
 						<slot name="footerActions" />
 					</div>
 				</div>

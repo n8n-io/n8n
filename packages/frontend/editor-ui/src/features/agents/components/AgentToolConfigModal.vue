@@ -96,7 +96,7 @@ function handleRemove() {
 		/>
 
 		<template v-if="data.onRemove" #footerLeft>
-			<N8nButton variant="subtle" data-testid="agent-tool-config-remove" @click="handleRemove">
+			<N8nButton variant="ghost" data-testid="agent-tool-config-remove" @click="handleRemove">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ removeLabel }}
 			</N8nButton>

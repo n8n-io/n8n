@@ -264,7 +264,7 @@ function onRemove() {
 		</div>
 
 		<template v-if="isEditing && data.onRemove" #footerLeft>
-			<N8nButton variant="subtle" data-testid="agent-skill-remove" @click="onRemove">
+			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.skills.remove') }}
 			</N8nButton>

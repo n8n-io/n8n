@@ -833,7 +833,7 @@ function addActionLabel(item: ToolConnectionItem): string {
 		return i18n.baseText('agents.builder.tools.mcp.add' as BaseTextKey);
 	}
 	if (item.kind === 'workflow') return i18n.baseText('workflows.add');
-	return i18n.baseText('agents.builder.tools.add');
+	return i18n.baseText('node.addNode');
 }
 
 function handleRowActivate(item: ToolConnectionItem) {
@@ -960,7 +960,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		/>
 
 		<template v-if="configData?.onRemove" #footerLeft>
-			<N8nButton variant="subtle" data-testid="agent-tool-config-remove" @click="removeConfig">
+			<N8nButton variant="ghost" data-testid="agent-tool-config-remove" @click="removeConfig">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ removeLabel }}
 			</N8nButton>

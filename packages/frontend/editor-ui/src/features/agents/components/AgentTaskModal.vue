@@ -629,7 +629,7 @@ async function onSave() {
 
 		<template v-if="isEditing" #footerLeft>
 			<N8nButton
-				variant="subtle"
+				variant="ghost"
 				:loading="deleting"
 				data-testid="agent-task-delete"
 				@click="onDelete"

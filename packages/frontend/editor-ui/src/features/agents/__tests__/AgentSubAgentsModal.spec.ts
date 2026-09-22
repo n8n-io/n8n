@@ -11,7 +11,6 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			({
 				'agents.builder.subAgents.modal.title': 'Sub-agents',
-				'agents.builder.subAgents.modal.description': 'Select published agents',
 				'agents.builder.subAgents.modal.selectAgent': `Select ${options?.interpolate?.name ?? ''}`,
 				'agents.builder.subAgents.modal.empty.title': 'No agents to add',
 				'agents.builder.subAgents.modal.empty.description': 'Published agents show here',

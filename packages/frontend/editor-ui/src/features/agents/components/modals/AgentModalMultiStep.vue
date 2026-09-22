@@ -15,6 +15,7 @@ const props = withDefaults(
 		titleError?: string;
 		showBack?: boolean;
 		showFooter?: boolean;
+		showCancel?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -28,6 +29,7 @@ const props = withDefaults(
 		titleError: '',
 		showBack: false,
 		showFooter: undefined,
+		showCancel: true,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -64,6 +66,7 @@ watch(
 		:title-error="titleError"
 		:show-back="showBack"
 		:show-footer="showFooter"
+		:show-cancel="showCancel"
 		:busy="busy"
 		:size="size"
 		:stacked="stacked"
@@ -98,7 +101,12 @@ watch(
 @use '@n8n/design-system/css/mixins/motion';
 
 .step {
-	min-height: min(60dvh, calc(var(--height--5xl) * 5));
+	min-height: 0;
+
+	&[data-step='select'],
+	&[data-step='list'] {
+		min-height: min(60dvh, calc(var(--height--5xl) * 5));
+	}
 }
 
 .stepChanged {

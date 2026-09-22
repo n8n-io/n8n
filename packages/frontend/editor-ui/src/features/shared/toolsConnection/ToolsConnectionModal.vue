@@ -468,6 +468,11 @@ function handleOpenChange(value: boolean) {
 		height: min(60dvh, calc(var(--height--5xl) * 5));
 		max-height: 100%;
 	}
+
+	.searchInput {
+		margin-top: var(--spacing--2xs);
+		margin-bottom: var(--spacing--lg);
+	}
 }
 
 .searchInput {
