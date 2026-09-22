@@ -2,6 +2,7 @@ import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
@@ -357,7 +358,7 @@ describe('AgentWorkflowExecutionService', () => {
 	});
 
 	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
-		'returns workflow output when %s fails',
+		'reports required persistence failures from %s',
 		async (recordingOperation) => {
 			const { service, agentRepository, reconstructionService, executionService } = makeService();
 			const runtime = makeRuntime([
@@ -366,41 +367,90 @@ describe('AgentWorkflowExecutionService', () => {
 			]);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-			executionService[recordingOperation].mockRejectedValue(new Error('recording unavailable'));
+			const cause = new Error('recording unavailable');
+			executionService[recordingOperation].mockRejectedValue(cause);
+			const creationFailed = recordingOperation === 'startExecutionRecording';
 
 			await expect(
 				service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
-			).resolves.toMatchObject({ response: 'answer' });
+			).rejects.toMatchObject({
+				phase: creationFailed ? 'create' : 'finalize',
+				executionStarted: !creationFailed,
+				cause,
+				...(!creationFailed ? { executionId: 'execution-1' } : {}),
+			});
+			expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+			if (creationFailed) {
+				expect(runtime.agent.stream).not.toHaveBeenCalled();
+				expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+			}
 		},
 	);
 
-	it('retries initial recording after a workflow stream failure', async () => {
+	it('records a workflow initialization failure without invoking the SDK', async () => {
 		const { service, agentRepository, reconstructionService, executionService } = makeService();
-		const runtime = makeRuntime();
-		runtime.agent.stream.mockResolvedValue({
-			stream: makeFailingStream(new Error('stream failed')),
-		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording
-			.mockRejectedValueOnce(new Error('recording unavailable'))
-			.mockResolvedValueOnce('retry-execution');
+		reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+			new Error('runtime setup failed'),
+		);
 
 		await expect(
 			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
-		).rejects.toThrow('stream failed');
+		).rejects.toThrow('runtime setup failed');
 
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
-			'retry-execution',
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
-					assistantResponse: 'partial answer',
-					error: 'stream failed',
+					error: 'Failed to compile agent: runtime setup failed',
 					finishReason: 'error',
 				}),
 			}),
 		);
 	});
+
+	it.each(['successful', 'unsuccessful'])(
+		'keeps existing-session intent through agent lookup when compilation is %s',
+		async (compilation) => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const lookupStarted = createDeferredPromise();
+			const agentLookup = createDeferredPromise<Agent>();
+			const runtime = makeRuntime();
+			const cause = new UserError('Session not found');
+			executionService.getSessionMode.mockResolvedValue('existing');
+			agentRepository.findByIdAndProjectId.mockImplementation(async () => {
+				lookupStarted.resolve();
+				return await agentLookup.promise;
+			});
+			executionService.startExecutionRecording.mockImplementation(async ({ sessionMode }) => {
+				if (sessionMode === 'existing') throw cause;
+				return 'execution-1';
+			});
+			if (compilation === 'successful') {
+				reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			} else {
+				reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+					new Error('runtime setup failed'),
+				);
+			}
+
+			const execution = service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+			await lookupStarted.promise;
+			// Deletion finishes while the agent lookup is pending.
+			executionService.getSessionMode.mockResolvedValue('new');
+			agentLookup.resolve(makeAgent());
+
+			await expect(execution).rejects.toMatchObject({ phase: 'create', cause });
+			expect(runtime.agent.stream).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		},
+	);
 
 	it('records a null input for a tool-result with no matching tool-call', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();

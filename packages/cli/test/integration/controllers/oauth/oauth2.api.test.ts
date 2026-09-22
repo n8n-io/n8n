@@ -347,7 +347,7 @@ describe('OAuth2 API', () => {
 			const fakeState = {
 				token: 'forged-token',
 				createdAt: Date.now(),
-				data: oauthService['cipher'].encrypt(
+				data: oauthService['cipher'].encryptWithInstanceKey(
 					JSON.stringify({
 						cid: credential.id,
 						origin: 'static-credential',

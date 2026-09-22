@@ -39,7 +39,13 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { partitionTypesByAction } from '@/modules/type-availability-policies/policy-evaluator';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
+import { packageResolverFor } from '@/modules/type-availability-policies/package-resolver';
+import {
+	partitionTypesByAction,
+	type PackageResolver,
+} from '@/modules/type-availability-policies/policy-evaluator';
 import type {
 	PolicyAction,
 	PolicyRule,
@@ -109,15 +115,17 @@ function countRuleActions(rules: readonly PolicyRule[]) {
 const MAX_LISTED_POLICY_TYPES = 100;
 
 /**
- * What a saved policy makes of every node type this instance knows. Runs the same evaluation
- * the node panel runs, once per save rather than once per workflow open.
+ * What a saved policy makes of every type this instance knows, within the policy's own kind
+ * (node types or credential types). Runs the same evaluation the node panel runs, once per
+ * save rather than once per workflow open.
  */
 function summarizeTypeAvailability(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
 	typeNames: readonly string[],
+	resolvePackage: PackageResolver,
 ) {
-	const partition = partitionTypesByAction(rules, defaultAction, typeNames);
+	const partition = partitionTypesByAction(rules, defaultAction, typeNames, resolvePackage);
 
 	return {
 		evaluated_type_count: typeNames.length,
@@ -175,6 +183,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {
 		super(eventService);
 	}
@@ -550,24 +559,29 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
-		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
-			...policyActor(updatedBy),
-			kind,
-			...policyScope(projectId),
-			default_action: after.defaultAction,
-			previous_default_action: before?.defaultAction ?? null,
-			is_first_write: before === null,
-			...countRuleActions(rulesAfter),
-			...countSelectorKinds(rulesAfter),
-			...summarizeTypeAvailability(
-				rulesAfter,
-				after.defaultAction,
-				Object.keys(this.nodeTypes.getKnownTypes()),
-			),
-			previous_rule_count: rulesBefore?.length ?? null,
-			shadow_warning_count: warningCount,
-			version: after.version,
-		});
+		const typeNames =
+			kind === CREDENTIAL_TYPES_KIND
+				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
+				: Object.keys(this.nodeTypes.getKnownTypes());
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+
+		this.telemetry.track(
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+			{
+				...policyActor(updatedBy),
+				kind,
+				...policyScope(projectId),
+				default_action: after.defaultAction,
+				previous_default_action: before?.defaultAction ?? null,
+				is_first_write: before === null,
+				...countRuleActions(rulesAfter),
+				...countSelectorKinds(rulesAfter),
+				...summarizeTypeAvailability(rulesAfter, after.defaultAction, typeNames, resolvePackage),
+				previous_rule_count: rulesBefore?.length ?? null,
+				shadow_warning_count: warningCount,
+				version: after.version,
+			},
+		);
 	}
 
 	/**
@@ -619,7 +633,7 @@ export class TelemetryEventRelay extends EventRelay {
 		if (!isPolicyKind(kind)) return;
 
 		this.telemetry.track(
-			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 			{
 				...policyActor(updatedBy),
 				kind,
@@ -642,7 +656,7 @@ export class TelemetryEventRelay extends EventRelay {
 		if (!isPolicyKind(kind)) return;
 
 		this.telemetry.track(
-			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 			{
 				...policyActor(updatedBy),
 				kind,
@@ -860,6 +874,8 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialType,
 		credentialId,
+		credentialDescriptionLength,
+		publicApi,
 		projectId,
 		projectType,
 		uiContext,
@@ -869,11 +885,15 @@ export class TelemetryEventRelay extends EventRelay {
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
-		this.telemetry.track('User created credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
+			source: 'backend',
+			public_api: publicApi,
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			has_description: credentialDescriptionLength > 0,
+			description_length: credentialDescriptionLength,
 			project_id: projectId,
 			project_type: projectType,
 			uiContext,
@@ -908,17 +928,21 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		credentialDescriptionLength,
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
-		this.telemetry.track('User updated credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
+			source: 'backend',
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			has_description: credentialDescriptionLength > 0,
+			description_length: credentialDescriptionLength,
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,

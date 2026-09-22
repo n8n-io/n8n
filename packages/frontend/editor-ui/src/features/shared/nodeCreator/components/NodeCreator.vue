@@ -19,11 +19,13 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
 // elements that should not trigger onClickOutside
 const OUTSIDE_CLICK_WHITELIST = [
 	// different modals
 	'.el-overlay-dialog',
+	// reka-ui overlays (N8nPopover, N8nDialog) teleport to body
+	OVERLAY_LAYER_SELECTOR,
 ];
 
 export interface Props {

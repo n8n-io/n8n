@@ -15,6 +15,7 @@ import type {
 } from './liveness-policy';
 import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
+import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
 	runId: string;
@@ -59,6 +60,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	};
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
+	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
+	instanceContext?: SuspendedInstanceContext;
 }
 
 /**
@@ -157,6 +160,8 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+
+	private readonly threadObserverThresholds = new Map<string, number>();
 	private readonly threadPromptSelections = new Map<
 		string,
 		{ version: string; metadata?: InstanceAiPromptConfiguration }
@@ -521,6 +526,16 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadBuildModes.get(threadId);
 	}
 
+	/** Per-thread observer threshold; an omitted value clears it. */
+	setObserverThresholdTokens(threadId: string, tokens: number | undefined): void {
+		if (tokens === undefined) this.threadObserverThresholds.delete(threadId);
+		else this.threadObserverThresholds.set(threadId, tokens);
+	}
+
+	getObserverThresholdTokens(threadId: string): number | undefined {
+		return this.threadObserverThresholds.get(threadId);
+	}
+
 	setPromptVersion(threadId: string, version: string | undefined): void {
 		if (version === undefined) this.threadPromptSelections.delete(threadId);
 		else this.threadPromptSelections.set(threadId, { version });
@@ -690,6 +705,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.delete(threadId);
 		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadObserverThresholds.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -741,6 +757,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.clear();
 		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
+		this.threadObserverThresholds.clear();
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();

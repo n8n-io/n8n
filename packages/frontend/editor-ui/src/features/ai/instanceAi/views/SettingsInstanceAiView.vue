@@ -38,7 +38,6 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -63,8 +62,6 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
-	useInstanceAiMcpConnectionsExperiment();
 const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
@@ -226,6 +223,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		id: 'web',
 		labelKey: 'settings.n8nAgent.permissions.group.web',
 		keys: ['fetchUrl', 'webSearch'],
+	},
+	{
+		id: 'mcp',
+		labelKey: 'settings.n8nAgent.permissions.group.mcp',
+		keys: ['executeMcpTool'],
 	},
 ];
 
@@ -731,7 +733,6 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				v-if="isMcpConnectionsExperimentEnabled"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>

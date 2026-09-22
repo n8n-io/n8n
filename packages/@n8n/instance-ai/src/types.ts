@@ -339,6 +339,7 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 }
 
 export interface CredentialDetail extends CredentialSummary {

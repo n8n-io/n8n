@@ -207,6 +207,23 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return [...latest.entries()].map(([workflowId, items]) => ({ workflowId, items }));
 	}
 
+	/**
+	 * The run that sent the ai-preferences block the conversation still carries, from the
+	 * thread's latest `preferences-applied` fact: an injecting turn names itself, a carrying
+	 * turn names the run it carried from. `undefined` when no turn has reported preferences
+	 * (which includes a block injected before the event existed).
+	 */
+	async getLastPreferencesInjectionRunId(threadId: string): Promise<string | undefined> {
+		const row = await this.findOne({
+			where: { threadId, type: 'preferences-applied' },
+			order: { seq: 'DESC' },
+		});
+		if (!row) return undefined;
+		const event = this.toEvent(row);
+		if (event.type !== 'preferences-applied') return undefined;
+		return event.payload.injectedThisTurn ? event.runId : event.payload.carriedFromRunId;
+	}
+
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
 	async lastFactAt(threadId: string, runId: string): Promise<Date | null> {
 		const row = await this.createQueryBuilder('e')

@@ -72,10 +72,12 @@ who wrote it is still looking at it.
 Nothing bounds the rendered block itself, and that is the number to watch. One scope at the
 cap renders about 100,000 characters, and the block adds a group for every project the
 caller can read, so a caller in ten full projects renders about 1.3 million characters,
-which is past every context window. The MCP read reports `rendered_length` on its tool
-event, and `PREFERENCES_APPLIED_TO_TURN` carries the same number once CONTEXT-139 fires it.
-Review the caps, and bound the block, if the 95th percentile of a rendered block passes
-8,000 characters, which is about 2,000 tokens.
+which is past every context window. The MCP read reports the unwrapped text length as
+`rendered_length` on its tool event, and `PREFERENCES_APPLIED_TO_TURN` reports the block
+length on every assistant turn that runs the preferences path. The two differ by the
+tags and the replacement sentence, not by the content, so one 95th percentile covers
+both. Review the caps, and
+bound the block, if that percentile passes 8,000 characters, which is about 2,000 tokens.
 
 ## What the AI surfaces receive
 
@@ -101,7 +103,14 @@ at column 0.
 A failed read costs the preferences, not the turn. Every AI surface treats the read as
 best effort.
 
-## What one turn reports
+## What one turn reads, and what it reports
+
+The n8n Assistant rebuilds the block on every user turn, so a preference saved anywhere —
+another session, the settings area, an MCP client — reaches an open thread on its next
+turn. The turn re-sends the block only when its text differs from the last block in the
+thread's persisted messages: the earlier copy travels with the history on every request,
+so an unchanged conversation carries exactly one copy. The block says it replaces the
+earlier copies, and when every preference is gone a constant cleared block says so once.
 
 A turn publishes `preferences-applied` with the preferences it carried, the rendered
 length, and whether it sent a new block. The event is the answer to "which preferences

@@ -62,13 +62,7 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const {
-	mcpConnectionsExperimentMock,
-	computerUseExperimentMock,
-	browserUseExperimentMock,
-	routerPushMock,
-} = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
+const { computerUseExperimentMock, browserUseExperimentMock, routerPushMock } = vi.hoisted(() => ({
 	browserUseExperimentMock: vi.fn(),
 	computerUseExperimentMock: vi.fn(),
 	routerPushMock: vi.fn(),
@@ -77,10 +71,6 @@ const {
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
-}));
-
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
@@ -124,7 +114,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
@@ -647,15 +636,6 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(setPermission).toHaveBeenCalledWith('write', 'block');
 			expect(save).toHaveBeenCalled();
-		});
-
-		it('hides the MCP settings card when the connections experiment is disabled', () => {
-			mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-group-mcp')).toBeNull();
 		});
 	});
 

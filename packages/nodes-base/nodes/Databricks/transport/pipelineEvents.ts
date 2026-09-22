@@ -11,7 +11,7 @@ import {
 import { clampPageSize, collectPages, toPage, type Page, type PageLimits } from './pagination';
 
 export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 1000;
-const PIPELINE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 
 export const PIPELINE_EVENT_LEVELS = ['INFO', 'WARN', 'ERROR', 'METRICS'] as const;
@@ -68,7 +68,10 @@ export interface ListPipelineEventsParams {
 type PipelineEventsResponse = { events?: PipelineEvent[]; next_page_token?: string };
 
 function isPipelineEventsResponse(value: unknown): value is PipelineEventsResponse {
-	return isRecord(value) && (value.events === undefined || Array.isArray(value.events));
+	return (
+		isRecord(value) &&
+		(value.events === undefined || (Array.isArray(value.events) && value.events.every(isRecord)))
+	);
 }
 
 export function isPipelineEventLevel(level: string): level is PipelineEventLevel {
@@ -126,7 +129,7 @@ async function fetchPipelineEventsPage(
 	host: string,
 	params: ListPipelineEventsParams,
 ): Promise<Page<PipelineEvent>> {
-	if (!PIPELINE_ID_PATTERN.test(params.pipelineId)) {
+	if (!UUID_PATTERN.test(params.pipelineId)) {
 		throw new NodeOperationError(context.getNode(), 'Pipeline ID must be a UUID');
 	}
 	const response: unknown = await databricksApiRequest(context, credentialType, {

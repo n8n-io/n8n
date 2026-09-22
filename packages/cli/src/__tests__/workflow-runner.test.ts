@@ -44,6 +44,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
@@ -479,9 +480,73 @@ describe('processError', () => {
 		expect(findSingleExecution.mock.calls.length).toBeLessThan(10);
 		expect(finalizeExecution).toHaveBeenCalledWith(
 			execution.id,
-			expect.objectContaining({ status: 'error' }),
+			expect.objectContaining({ status: 'crashed' }),
 		);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
+	test('processError runs the after hook with a crashed run when a stalled-count error claims the execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+		await Container.get(ActiveExecutions).add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'new' },
+		);
+		const claim = vi
+			.spyOn(Container.get(ExecutionCrashService), 'markAsCrashedWithoutCounting')
+			.mockResolvedValue([
+				{
+					id: execution.id,
+					workflowId: workflow.id,
+					mode: 'webhook',
+					startedAt: null,
+					stoppedAt: new Date(),
+				},
+			]);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(claim).toHaveBeenCalledExactlyOnceWith(execution.id, 'stall');
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'crashed',
+				data: expect.objectContaining({
+					resultData: expect.objectContaining({
+						error: expect.objectContaining({ name: 'MaxStalledCountError' }),
+					}),
+				}),
+			}),
+		);
+	});
+
+	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		vi.spyOn(
+			Container.get(ExecutionCrashService),
+			'markAsCrashedWithoutCounting',
+		).mockResolvedValue([]);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
 	});
 
 	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
@@ -597,7 +662,7 @@ describe('processError', () => {
 			expect(findSingleExecution).toHaveBeenCalledTimes(1);
 			expect(finalizeExecution).toHaveBeenCalledWith(
 				execution.id,
-				expect.objectContaining({ status: 'error' }),
+				expect.objectContaining({ status: 'crashed' }),
 			);
 			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		},

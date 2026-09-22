@@ -88,6 +88,17 @@ describe('PackageDirectoryInventoryReader', () => {
 		]);
 	});
 
+	it('retains project metadata from the package', async () => {
+		const metadata = {
+			...project('p1'),
+			icon: { type: 'icon', value: '' },
+			description: '',
+			customTelemetryTags: [{ key: ' team ', value: ' Sales ' }],
+		};
+		const inventory = await reader.read(sourceOf({ 'projects/p1/project.json': metadata }));
+		expect(inventory.projects).toEqual([{ path: 'projects/p1', ...metadata }]);
+	});
+
 	it('returns an empty inventory for a directory without entity files', async () => {
 		expect(await reader.read(sourceOf({ 'manifest.json': '{}' }))).toEqual({
 			projects: [],
