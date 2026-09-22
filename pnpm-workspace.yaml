@@ -394,7 +394,7 @@ overrides:
   pdfjs-dist: 'catalog:'
   tmp: 0.2.7
   nodemailer: 8.0.10
-  validator: 13.15.26
+  validator: 'catalog:'
   zod: 3.25.76
   # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
   'knip>zod': catalog:zod-v4

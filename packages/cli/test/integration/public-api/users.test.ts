@@ -102,6 +102,27 @@ describe('Users in Public API', () => {
 			});
 		});
 
+		it('should reject an invalid cursor', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/users')
+				.query({ cursor: 'not-a-cursor' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+		});
+
 		it('should return users with roles', async () => {
 			/**
 			 * Arrange
