@@ -1,28 +1,27 @@
 <script setup lang="ts">
-import { useI18n } from '@n8n/i18n';
-import { N8nButton } from '@n8n/design-system';
-interface Props {
+import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
+
+export interface SelectedItemsInfoProps {
+	/** Number of selected items. The component renders nothing when it is 0 */
 	selectedCount: number;
 }
 
-const props = withDefaults(defineProps<Props>(), {});
+defineOptions({ name: 'N8nSelectedItemsInfo' });
+const props = defineProps<SelectedItemsInfoProps>();
 
 const emit = defineEmits<{
 	deleteSelected: [];
 	clearSelection: [];
 }>();
 
-const i18n = useI18n();
+const { t } = useI18n();
 
 const getSelectedText = () => {
-	return i18n.baseText('generic.list.selected', {
-		adjustToNumber: props.selectedCount,
-		interpolate: { count: `${props.selectedCount}` },
-	});
-};
+	const key =
+		props.selectedCount === 1 ? 'selectedItemsInfo.selectedOne' : 'selectedItemsInfo.selectedMany';
 
-const getClearSelectionText = () => {
-	return i18n.baseText('generic.list.clearSelection');
+	return t(key, { count: `${props.selectedCount}` });
 };
 
 const handleDeleteSelected = () => {
@@ -35,11 +34,7 @@ const handleClearSelection = () => {
 </script>
 
 <template>
-	<div
-		v-if="selectedCount > 0"
-		:class="$style.selectionOptions"
-		:data-test-id="`selected-items-info`"
-	>
+	<div v-if="selectedCount > 0" :class="$style.selectionOptions" data-test-id="selected-items-info">
 		<span>
 			{{ getSelectedText() }}
 		</span>
@@ -48,7 +43,7 @@ const handleClearSelection = () => {
 			<N8nButton
 				variant="subtle"
 				data-test-id="delete-selected-button"
-				:label="i18n.baseText('generic.delete')"
+				:label="t('generic.delete')"
 				:class="$style.button"
 				@click="handleDeleteSelected"
 			/>
@@ -56,7 +51,7 @@ const handleClearSelection = () => {
 		<N8nButton
 			variant="subtle"
 			data-test-id="clear-selection-button"
-			:label="getClearSelectionText()"
+			:label="t('selectedItemsInfo.clearSelection')"
 			:class="$style.button"
 			@click="handleClearSelection"
 		/>
