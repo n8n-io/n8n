@@ -15,7 +15,7 @@ import {
 const renderRow = createComponentRenderer(ToolRow);
 
 function render(item: McpServerConnectionItem | NodeConnectionItem | WorkflowConnectionItem) {
-	return renderRow({ props: { item }, pinia: createTestingPinia() });
+	return renderRow({ props: { item }, global: { plugins: [createTestingPinia()] } });
 }
 
 /** Mirrors a consumer that manages credentials inline, such as Instance AI. */
@@ -24,8 +24,8 @@ function renderWithAdapter(
 ) {
 	return renderRow({
 		props: { item },
-		pinia: createTestingPinia(),
 		global: {
+			plugins: [createTestingPinia()],
 			provide: {
 				[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: {
 					getCredentialsByType: () => [{ id: 'cred-1', name: 'Prod', type: 'mcpOAuth2Api' }],

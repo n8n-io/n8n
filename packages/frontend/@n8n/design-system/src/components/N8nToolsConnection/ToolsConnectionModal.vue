@@ -103,7 +103,7 @@ const containerProps = computed(() =>
 				open: props.open,
 				size: props.size,
 				...fixedProps,
-				'aria-label': isDefaultView ? modalTitle.value : props.detailItem?.title,
+				'aria-label': isDefaultView.value ? modalTitle.value : props.detailItem?.title,
 			},
 );
 const searchPlaceholder = computed(
@@ -380,9 +380,9 @@ const activeToolAnnouncement = computed(() => {
 	if (!activeListRow.value) return '';
 
 	const title =
-		activeListRow.value.key === 'create-workflow'
-			? (props.createAction?.label ?? '')
-			: activeListRow.value.item.title;
+		'item' in activeListRow.value
+			? activeListRow.value.item.title
+			: (props.createAction?.label ?? '');
 
 	return i18n.baseText('tools.connection.search.activeItem', {
 		interpolate: {
@@ -412,7 +412,7 @@ function handleNavigateListIndex(delta: number) {
 function activateActiveListRow() {
 	if (!activeListRow.value) return;
 
-	if (activeListRow.value.key === 'create-workflow') {
+	if (!('item' in activeListRow.value)) {
 		if (props.createActionLoading) return;
 		emit('create');
 		return;

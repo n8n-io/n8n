@@ -24,7 +24,7 @@ const i18n = useI18n();
 <template>
 	<button
 		type="button"
-		:class="[$style.row, { [$style.selectedToolRow]: dataActive }]"
+		:class="$style.row"
 		:disabled="loading"
 		:aria-busy="loading"
 		:data-test-id="testId ?? 'tools-connection-create-workflow'"
@@ -89,9 +89,5 @@ const i18n = useI18n();
 	flex: 1 1 0;
 	min-width: 0;
 	font-weight: var(--font-weight--medium);
-}
-
-.row.selectedToolRow {
-	background: var(--background--hover);
 }
 </style>

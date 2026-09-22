@@ -115,7 +115,9 @@ function renderWith(
 		slots: {
 			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
 		},
-		pinia: createTestingPinia(),
+		global: {
+			plugins: [createTestingPinia()],
+		},
 	});
 }
 
@@ -144,7 +146,9 @@ function renderWithMcpSettingsSlot(detailItem: ToolConnectionItem) {
 	};
 	return render(Host, {
 		props: { detailItem },
-		pinia: createTestingPinia(),
+		global: {
+			plugins: [createTestingPinia()],
+		},
 	});
 }
 
@@ -548,7 +552,9 @@ describe('ToolsConnectionModal', () => {
 			},
 		};
 		const { getByPlaceholderText, getByRole } = render(Host, {
-			pinia: createTestingPinia(),
+			global: {
+				plugins: [createTestingPinia()],
+			},
 		});
 
 		await fireEvent.keyDown(getByRole('dialog'), { key: 'Backspace' });

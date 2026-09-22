@@ -13,7 +13,7 @@ import type {
 const renderBody = createComponentRenderer(DefaultDetailBody);
 
 function render(item: ToolConnectionItem) {
-	return renderBody({ props: { item }, pinia: createTestingPinia() });
+	return renderBody({ props: { item }, global: { plugins: [createTestingPinia()] } });
 }
 
 const workflowItem: WorkflowConnectionItem = {
