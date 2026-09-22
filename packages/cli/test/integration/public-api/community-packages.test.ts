@@ -217,9 +217,11 @@ describe('Community packages (Public API)', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body.packageName).toBe(pkg.packageName);
+			// No version requested, so install() pins the latest vetted version:
+			// the same catalog lookup provides both it and the checksum.
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
-				undefined,
+				mockedVettedPackage.npmVersion,
 				mockedVettedPackage.checksum,
 			);
 		});

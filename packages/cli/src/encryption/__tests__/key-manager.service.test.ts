@@ -3,13 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import {
-	Cipher,
-	CipherAes256CBC,
-	CipherAes256GCM,
-	type EncryptionKeyProxy,
-	InstanceSettings,
-} from 'n8n-core';
+import { Cipher, type EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -703,12 +697,7 @@ describe('KeyManagerService', () => {
 		// A real Cipher, so every legacy value is produced by real encryption and the
 		// re-wrap round-trips for real. Only the repository is mocked.
 		const realCipher = (encryptionKey: string) =>
-			new Cipher(
-				mock<InstanceSettings>({ encryptionKey }),
-				new CipherAes256GCM(),
-				new CipherAes256CBC(),
-				mock<EncryptionKeyProxy>(),
-			);
+			new Cipher(mock<InstanceSettings>({ encryptionKey }), mock<EncryptionKeyProxy>());
 
 		const makeRepairService = (encryptionKey = randomBytes(24).toString('base64')) => {
 			const repo = mock<DeploymentKeyRepository>();

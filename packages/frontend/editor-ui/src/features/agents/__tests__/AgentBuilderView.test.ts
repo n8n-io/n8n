@@ -556,6 +556,7 @@ const commonStubs = {
 			'continue-loaded',
 			'open-build',
 			'send-to-assistant',
+			'initial-consumed',
 		],
 	},
 	AgentVersionHistoryPanel: {
@@ -1700,6 +1701,45 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
 		expect(routerPush).not.toHaveBeenCalled();
+	});
+
+	it('opens Preview with the selected task instructions', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('preview-task', 'Test these instructions');
+		await flushPromises();
+
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		expect(preview.props()).toEqual(
+			expect.objectContaining({
+				isOpen: true,
+				initialPrompt: 'Test these instructions',
+			}),
+		);
+
+		preview.vm.$emit('initial-consumed');
+		await nextTick();
+
+		expect(preview.props('initialPrompt')).toBeUndefined();
+	});
+
+	it('clears selected task instructions when the active agent changes', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('preview-task', 'Test these instructions');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt')).toBe(
+			'Test these instructions',
+		);
+
+		routeParams.agentId = 'a2';
+		await flushPromises();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt'),
+		).toBeUndefined();
 	});
 
 	it('opens the preview dock with the latest thread when prior sessions exist', async () => {

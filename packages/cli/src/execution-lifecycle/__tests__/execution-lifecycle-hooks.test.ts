@@ -467,6 +467,8 @@ describe('Execution Lifecycle Hooks', () => {
 	const statisticsTests = () => {
 		describe('statistics events', () => {
 			it('workflowExecuteAfter should emit workflowExecutionCompleted statistics event', async () => {
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
@@ -1657,20 +1659,63 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(executionMetadataService.save).not.toHaveBeenCalled();
 			});
 
-			it('should still update execution data in scaling worker mode', async () => {
+			it('should still update execution data in scaling worker mode, guarded against overwriting a canceled execution', async () => {
 				const lifecycleHooks = createHooks('trigger');
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
-				// Worker should save execution data but not metadata, and without update conditions
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						finished: true,
 						status: 'success',
 					}),
+					{ requireNotCanceled: true },
+				);
+			});
+
+			it('should update execution data without a guard condition when the worker itself reports canceled', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRunWithMetadata, {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						finished: false,
+						status: 'canceled',
+					}),
 					undefined,
 				);
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
+					workflowData,
+					fullRunData: canceledRunWithMetadata,
+				});
+			});
+
+			it('should not emit workflowExecutionCompleted when the guarded update is blocked', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(workflowStatisticsService.emit).not.toHaveBeenCalledWith(
+					'workflowExecutionCompleted',
+					expect.anything(),
+				);
+			});
+
+			it('should still emit workflowExecutionCompleted when the update succeeds', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
+					workflowData,
+					fullRunData: successfulRunWithMetadata,
+				});
 			});
 		});
 

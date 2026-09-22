@@ -350,7 +350,13 @@ const parameterOptions = computed(() => {
 	// the unsupported-action notice instead of showing a blank dropdown.
 	const paramName = props.parameter.name;
 	if (paramName !== 'resource' && paramName !== 'operation') return displayableOptions;
-	if (shortPath.value !== paramName) return displayableOptions;
+	// Filter only the top-level resource/operation param (not one nested in a
+	// collection). The path root is 'parameters' in the NDV and empty in the
+	// standalone tool-config form, so accept both roots instead of relying on the
+	// stripped `shortPath`, which is empty when there is no root segment.
+	if (props.path !== paramName && props.path !== `parameters.${paramName}`) {
+		return displayableOptions;
+	}
 
 	const currentValue = isResourceLocatorValue(props.modelValue)
 		? props.modelValue.value

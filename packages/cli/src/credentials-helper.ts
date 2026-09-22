@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	isEntityNotFoundError,
+	SecretsProviderConnectionRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
@@ -343,7 +343,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				type,
 			});
 		} catch (error) {
-			if (error instanceof EntityNotFoundError) {
+			if (isEntityNotFoundError(error)) {
 				throw new CredentialNotFoundError(nodeCredential.id, type);
 			}
 

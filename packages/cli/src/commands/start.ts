@@ -43,6 +43,7 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -268,6 +269,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
 			this.logger.debug('Auth roles service init complete');
+
+			// The role sync above and data migrations write role scopes straight to the
+			// database, outside RoleService. In queue mode the role cache lives in Redis
+			// and survives a restart, so rebuild it once the sync has committed and
+			// before this main serves requests.
+			await Container.get(RoleCacheService).refreshCache();
+			this.logger.debug('Role cache refreshed');
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');

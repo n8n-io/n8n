@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line import-x/order
 import {
@@ -22,6 +23,7 @@ export class AuthRolesService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly dbLockService: DbLockService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private async syncScopes(tx: EntityManager) {
@@ -142,9 +144,26 @@ export class AuthRolesService {
 	}
 
 	/**
+	 * Canvas-only mode lets an operator take some scopes away from the personal
+	 * owner role through `N8N_CANVAS_ONLY_PERSONAL_SPACE_SCOPE_DENY_LIST`.
+	 * The config already limits the list to the scopes that may be removed.
+	 */
+	private removeCanvasOnlyPersonalOwnerScopes(scopes: string[]) {
+		const { enabled, personalSpaceScopeDenyList } = this.globalConfig.canvasOnly;
+		if (!enabled || personalSpaceScopeDenyList.length === 0) return scopes;
+
+		this.logger.debug(
+			`Canvas-only mode - removing ${personalSpaceScopeDenyList.join(', ')} scopes from ${PROJECT_OWNER_ROLE_SLUG} role`,
+		);
+		const denied: readonly string[] = personalSpaceScopeDenyList;
+		return scopes.filter((slug) => !denied.includes(slug));
+	}
+
+	/**
 	 * Modifies the expected scopes for a role based on settings.
 	 * Uses a "closed first" approach: certain scopes are not in the base definition
-	 * and are added when the corresponding setting is enabled.
+	 * and are added when the corresponding setting is enabled. Canvas-only mode
+	 * can also remove scopes from the personal owner role through config.
 	 */
 	private async updateScopesBasedOnSettings(
 		roleSlug: string,
@@ -155,6 +174,7 @@ export class AuthRolesService {
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
+			return this.removeCanvasOnlyPersonalOwnerScopes(scopes);
 		}
 
 		return scopes;

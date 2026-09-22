@@ -56,6 +56,10 @@ const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+const executionPermissions = computed(
+	() =>
+		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).execution,
+);
 const executionId = computed(() => route.params.executionId as string);
 const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
@@ -484,7 +488,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				<N8nIconButton
 					variant="subtle"
 					:title="locale.baseText('executionDetails.deleteExecution')"
-					:disabled="!workflowPermissions.update"
+					:disabled="!executionPermissions.delete"
 					icon="trash-2"
 					size="medium"
 					data-test-id="execution-preview-delete-button"

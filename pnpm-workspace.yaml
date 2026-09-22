@@ -193,6 +193,7 @@ catalog:
   consola: ^3.4.2
   cron: 4.4.0
   cron-parser: 5.6.1
+  cronstrue: ^3.27.0
   cross-env: ^7.0.3
   csv-parse: 7.0.2
   dotenv: 17.2.3

@@ -38,6 +38,10 @@ import {
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
 import type { McpPostSaveMetricsService } from '../../mcp-post-save-metrics.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -52,6 +56,18 @@ import {
 } from '@/workflow-helpers';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+export type CreateWorkflowFromCodeToolOptions = {
+	/**
+	 * Reports which of the workflow's node types are verified community nodes
+	 * that are not installed here, so creation can warn that the workflow will
+	 * not run yet. Supplied only on surfaces that offer community-node
+	 * discovery, which keeps this tool independent of the node catalog.
+	 */
+	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+	/** Whether this session can call the install tool; steers the warning text. */
+	installToolAvailable?: boolean;
+};
 
 function normalizeWorkflowDescription(description?: string) {
 	if (!description) return { description: undefined, truncated: false };
@@ -311,6 +327,7 @@ export const createCreateWorkflowFromCodeTool = (
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
+	options: CreateWorkflowFromCodeToolOptions = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<typeof inputSchema> => ({
@@ -524,7 +541,17 @@ export const createCreateWorkflowFromCodeTool = (
 
 			const ceilingWarning = topLevelItemsWarning(savedWorkflow);
 
-			const warnings = ceilingWarning ? [...result.warnings, ceilingWarning] : result.warnings;
+			const uninstalledWarnings = await buildUninstalledNodeWarnings(
+				savedWorkflow.nodes,
+				options.findUninstalledNodeTypes,
+				options.installToolAvailable,
+			);
+
+			const warnings = [
+				...result.warnings,
+				...(ceilingWarning ? [ceilingWarning] : []),
+				...uninstalledWarnings,
+			];
 			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
 
 			// The response is fully built above. Side effects below (telemetry,
