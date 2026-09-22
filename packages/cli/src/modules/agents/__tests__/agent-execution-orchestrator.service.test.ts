@@ -196,7 +196,7 @@ function makeService(sandboxEnabled = false) {
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
 
-	executionService.canUsePreviewThread.mockResolvedValue(true);
+	executionService.canUseDraftThread.mockResolvedValue(true);
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
@@ -1088,7 +1088,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		'rejects an inaccessible draft %s before runtime acquisition',
 		async (operation) => {
 			const { service, executionService, runtimeCacheService } = makeService();
-			executionService.canUsePreviewThread.mockResolvedValue(false);
+			executionService.canUseDraftThread.mockResolvedValue(false);
 			const result =
 				operation === 'chat'
 					? collect(
