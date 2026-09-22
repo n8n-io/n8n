@@ -21,7 +21,11 @@ import {
 	type DropdownMenuItemProps,
 	type EmptyStateIconCards,
 } from '@n8n/design-system';
-import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiPermissions,
+	type InstanceAiPermissionMode,
+} from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -255,8 +259,11 @@ function isGroupLocked(group: PermissionGroup) {
 function groupSummary(group: PermissionGroup) {
 	if (group.id === 'mcp' && !isMcpAccessEnabled.value)
 		return i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled');
+	// Each key has its own default, so compare against that one. Comparing
+	// against `require_approval` counts an untouched Preferences group, whose
+	// default is `always_allow`, as an exception.
 	const exceptions = group.keys.filter(
-		(key) => store.getPermission(key) !== 'require_approval',
+		(key) => store.getPermission(key) !== DEFAULT_INSTANCE_AI_PERMISSIONS[key],
 	).length;
 	if (exceptions === 0) return i18n.baseText('settings.n8nAgent.permissions.group.default');
 	if (exceptions === 1) return i18n.baseText('settings.n8nAgent.permissions.group.exception');

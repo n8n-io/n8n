@@ -691,6 +691,16 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
 		});
 
+		it('summarises the untouched Preferences group as the default', () => {
+			// createPreference defaults to always_allow. A summary that compares
+			// against require_approval would read the untouched group as an
+			// exception.
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-permission-group-preferences').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
 		it('persists a permission change from an expanded group', async () => {
 			const setPermission = vi.spyOn(store, 'setPermission');
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
