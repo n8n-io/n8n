@@ -3,6 +3,8 @@ import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import type { InstanceAiSetupItem } from '@n8n/api-types';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { SetupPanelGroup } from '../setupPanelGroups';
 import type { SetupPanelRow } from './useSetupPanelState';
 import type { SetupCredentialItem, SetupPanelApplyResult } from './useSetupPanelActions';
@@ -13,6 +15,9 @@ export type SetupPanelConnectionMethod = InferTelemetryProps<
 type DismissReason = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED
 >['reason'];
+type SavedSetupItem = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED
+>['items'][number];
 
 function createTelemetryState() {
 	return {
@@ -37,6 +42,12 @@ export function useSetupPanelTelemetry(options: {
 	groups: MaybeRefOrGetter<SetupPanelGroup[]>;
 	shownItemIds: MaybeRefOrGetter<string[]>;
 	ready: MaybeRefOrGetter<boolean>;
+	getNodeByName: (name: string) => INodeUi | undefined;
+	isItemDone: (
+		item: InstanceAiSetupItem,
+		readNode: (name: string) => INodeUi | undefined,
+	) => boolean;
+	isAgentBuilding: MaybeRefOrGetter<boolean>;
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
@@ -53,6 +64,71 @@ export function useSetupPanelTelemetry(options: {
 		workflow_id: toValue(options.workflowId),
 		thread_id: options.thread.id,
 	});
+
+	function getItems(rows: SetupPanelRow[], readNode = options.getNodeByName): SavedSetupItem[] {
+		return rows.flatMap<SavedSetupItem>(({ item }) => {
+			if (item.kind === 'credential') {
+				return (item.nodeBindings ?? []).flatMap((binding) => {
+					const node = readNode(binding.nodeName);
+					return node
+						? [
+								{
+									node_id: node.id,
+									node_type: node.type,
+									kind: 'credential' as const,
+									credential_type: item.credentialType,
+									completed: options.isItemDone({ ...item, nodeBindings: [binding] }, readNode),
+								},
+							]
+						: [];
+				});
+			}
+			const node = readNode(item.nodeName);
+			return node
+				? item.parameterNames.map((name) => ({
+						node_id: node.id,
+						node_type: node.type,
+						kind: 'parameter' as const,
+						parameter_name: name,
+						completed: options.isItemDone({ ...item, parameterNames: [name] }, readNode),
+					}))
+				: [];
+		});
+	}
+
+	function trackSaved(workflow: IWorkflowDb) {
+		if (!state.owners.has(owner) || workflow.id !== toValue(options.workflowId)) return;
+		const nodes = new Map(workflow.nodes.map((node) => [node.name, node]));
+		const items = getItems(toValue(options.rows), (name) => nodes.get(name));
+		if (items.length === 0) return;
+		telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED, {
+			...context(),
+			instance_id: rootStore.instanceId,
+			source: 'instance_ai_setup_panel',
+			items,
+			setup_complete: !toValue(options.isAgentBuilding) && items.every((item) => item.completed),
+		});
+	}
+
+	function getChatTelemetryContext() {
+		const groups = toValue(options.groups);
+		if (!isOwner() || !toValue(options.ready) || groups.length === 0) return undefined;
+		return {
+			...context(),
+			pending_credential_count: groups.filter(
+				(group) => group.credential && !group.credential.isDone,
+			).length,
+			pending_parameter_count: groups.reduce(
+				(count, group) =>
+					count +
+					group.parameters.reduce(
+						(total, row) => total + (row.isDone ? 0 : row.item.parameterNames.length),
+						0,
+					),
+				0,
+			),
+		};
+	}
 
 	function trackDismissed(reason: DismissReason) {
 		if (!state.visibleWorkflowId.value) return;
@@ -122,6 +198,10 @@ export function useSetupPanelTelemetry(options: {
 						(count, row) => count + row.item.parameterNames.length,
 						0,
 					),
+					items: getItems([
+						...(group.credential ? [group.credential] : []),
+						...group.parameters,
+					]).map(({ completed, ...item }) => item),
 				});
 			}
 		},
@@ -165,5 +245,11 @@ export function useSetupPanelTelemetry(options: {
 			states.delete(options.thread);
 		}
 	});
-	return { trackConnectionStarted, trackConnectionCompleted, trackDismissed };
+	return {
+		trackConnectionStarted,
+		trackConnectionCompleted,
+		trackDismissed,
+		trackSaved,
+		getChatTelemetryContext,
+	};
 }

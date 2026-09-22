@@ -7,7 +7,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { setupTelemetryProperties } from '../setup-properties';
+import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
@@ -78,6 +78,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			kind: z.enum(['credential', 'parameters', 'details']),
 			credential_type: z.string().optional(),
 			parameter_count: z.number(),
+			items: z.array(z.object(setupItemProperties)).optional(),
 		}),
 	},
 	SETUP_PANEL_DISMISSED: {
@@ -425,6 +426,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
 		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string().optional(),
+			pending_credential_count: z.number().optional(),
+			pending_parameter_count: z.number().optional(),
 			thread_id: z.string(),
 			instance_id: z.string(),
 			is_first_message: z

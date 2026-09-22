@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -43,11 +44,13 @@ interface Harness {
 function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 	const sectionA = makeWorkflowSetupSection({
 		id: 'A:typeA',
+		node: { id: 'node-a' },
 		targetNodeName: 'A',
 		credentialType: 'typeA',
 	});
 	const sectionB = makeWorkflowSetupSection({
 		id: 'B:typeB',
+		node: { id: 'node-b' },
 		targetNodeName: 'B',
 		credentialType: 'typeB',
 	});
@@ -190,6 +193,7 @@ describe('useWorkflowSetupActions', () => {
 				step_count: 2,
 				setup_inputs: [
 					expect.objectContaining({
+						node_ids: ['node-a'],
 						input_type: 'credential',
 						node_type: 'n8n-nodes-base.httpRequest',
 						credential_type: 'typeA',
@@ -351,6 +355,12 @@ describe('useWorkflowSetupActions', () => {
 	it('apply() reports completed sections via partial credential map and tracks telemetry', async () => {
 		const h = setupHarness();
 		h.completedSet.add(h.sectionA.id);
+		h.apply.mockResolvedValueOnce({
+			success: true,
+			partial: true,
+			completedNodes: [{ nodeName: 'A', credentialType: 'typeA' }],
+			nodesStillNeedingSetup: [{ nodeName: 'B', credentialType: 'typeB' }],
+		});
 
 		await h.actions.apply();
 
@@ -362,13 +372,41 @@ describe('useWorkflowSetupActions', () => {
 				outcome: 'completed',
 			}),
 		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED,
+			expect.objectContaining({
+				workflow_id: 'workflow-1',
+				request_id: 'req-1',
+				setup_complete: false,
+				items: [
+					expect.objectContaining({ node_id: 'node-a', credential_type: 'typeA', completed: true }),
+					expect.objectContaining({
+						node_id: 'node-b',
+						credential_type: 'typeB',
+						completed: false,
+					}),
+				],
+			}),
+		);
 	});
 
 	it('tracks both credential and parameter inputs for a completed mixed section', async () => {
 		const h = setupHarness();
 		h.sectionA.parameterNames = ['url', 'method'];
 		h.completedSet.add(h.sectionA.id);
-		h.credentialSelections.value = { A: { typeA: 'cred-id' } };
+		h.completedSet.add(h.sectionB.id);
+		h.credentialSelections.value = { A: { typeA: 'cred-id' }, B: { typeB: 'cred-b' } };
+		h.buildCompletedSetupPayload.mockReturnValueOnce({
+			nodeCredentials: { A: { typeA: 'cred-id' }, B: { typeB: 'cred-b' } },
+			nodeParameters: { A: { url: 'https://example.test', method: 'GET' } },
+		});
+		h.apply.mockResolvedValueOnce({
+			success: true,
+			completedNodes: [
+				{ nodeName: 'A', credentialType: 'typeA', parametersSet: ['url', 'method'] },
+				{ nodeName: 'B', credentialType: 'typeB' },
+			],
+		});
 
 		await h.actions.apply();
 
@@ -391,8 +429,25 @@ describe('useWorkflowSetupActions', () => {
 						options: [],
 						option_chosen: 'true',
 					},
+					{
+						label: 'n8n-nodes-base.httpRequest - typeB',
+						options: [],
+						option_chosen: 'true',
+					},
 				],
 				num_tasks: 2,
+			}),
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED,
+			expect.objectContaining({
+				setup_complete: true,
+				items: [
+					expect.objectContaining({ node_id: 'node-a', kind: 'credential', completed: true }),
+					expect.objectContaining({ node_id: 'node-a', parameter_name: 'url', completed: true }),
+					expect.objectContaining({ node_id: 'node-a', parameter_name: 'method', completed: true }),
+					expect.objectContaining({ node_id: 'node-b', kind: 'credential', completed: true }),
+				],
 			}),
 		);
 	});

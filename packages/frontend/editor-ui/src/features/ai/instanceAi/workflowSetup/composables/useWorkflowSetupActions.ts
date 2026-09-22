@@ -14,7 +14,7 @@ interface WorkflowSetupInputAccessors {
 }
 
 interface ApplyMachine {
-	apply: (payload: WorkflowSetupApplyPayload) => Promise<void>;
+	apply: (payload: WorkflowSetupApplyPayload) => Promise<Record<string, unknown> | undefined>;
 	defer: () => Promise<void>;
 }
 
@@ -94,7 +94,8 @@ export function useWorkflowSetupActions(deps: {
 		const section = deps.activeSection.value;
 		if (section) workflowSetupTelemetry.trackStepHandled(section);
 		workflowSetupTelemetry.trackSetupInput();
-		await deps.applyMachine.apply(deps.inputs.buildCompletedSetupPayload());
+		const result = await deps.applyMachine.apply(deps.inputs.buildCompletedSetupPayload());
+		if (result) workflowSetupTelemetry.trackSetupSaved(result);
 	}
 
 	async function skipCurrentStep(): Promise<void> {
@@ -123,7 +124,8 @@ export function useWorkflowSetupActions(deps: {
 				Object.keys(completedPayload.nodeCredentials ?? {}).length > 0 ||
 				Object.keys(completedPayload.nodeParameters ?? {}).length > 0;
 			if (hasAnyCompleted) {
-				await deps.applyMachine.apply(completedPayload);
+				const result = await deps.applyMachine.apply(completedPayload);
+				if (result) workflowSetupTelemetry.trackSetupSaved(result);
 			} else {
 				await deps.applyMachine.defer();
 			}

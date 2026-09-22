@@ -139,6 +139,7 @@ export function useSetupPanelActions(options: {
 	 * their return value instead.
 	 */
 	onFlushResult?: (result: SetupPanelApplyResult, workflowId: string) => void;
+	onSaved?: (workflow: IWorkflowDb) => void;
 }) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -379,7 +380,10 @@ export function useSetupPanelActions(options: {
 					]),
 				);
 				const outcome = applyDeltaToNodes(nodes, resolvedDelta);
-				if (outcome !== 'changed') return outcome;
+				if (outcome !== 'changed') {
+					if (outcome === 'noop') options.onSaved?.(fresh);
+					return outcome;
+				}
 
 				// The anchor and the agent lock can both move while the fetch was
 				// awaited. A re-anchored panel no longer owns this write — drop it
@@ -399,6 +403,7 @@ export function useSetupPanelActions(options: {
 						expectedChecksum: fresh.checksum,
 					});
 					syncHydratedDocument(workflowId, resolvedDelta, baseline, updated);
+					options.onSaved?.(updated);
 					return 'applied';
 				} catch (error) {
 					const isConflict = error instanceof ResponseError && error.httpStatusCode === 409;

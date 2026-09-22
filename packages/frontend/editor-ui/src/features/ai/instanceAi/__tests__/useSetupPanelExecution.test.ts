@@ -122,14 +122,24 @@ describe('useSetupPanelExecution', () => {
 					pushRef: useRootStore().pushRef,
 				},
 			);
-			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
+			const request = track.mock.calls.find(
+				([event]) => event === TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST,
+			)?.[1];
+			expect(request).toEqual({
 				variant: 'variant',
 				'$feature/118_instance_ai_setup_overhaul': 'variant',
+				test_request_id: expect.any(String),
 				session_id: useRootStore().pushRef,
 				source: 'instance_ai_setup_panel',
 				workflow_id: 'wf-1',
 				thread_id: 'thread-1',
 			});
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED, {
+				...request,
+				execution_id: 'exec-1',
+				status,
+			});
+			expect(track).toHaveBeenCalledTimes(2);
 			expect(handlers.size).toBe(0);
 		},
 	);
@@ -377,6 +387,10 @@ describe('useSetupPanelExecution', () => {
 		).toBeUndefined();
 		expect(handlers.size).toBe(0);
 		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED,
+			expect.objectContaining({ status: 'request_failed' }),
+		);
 	});
 
 	it('does not rerun automatically when the notification fails', async () => {
@@ -387,6 +401,10 @@ describe('useSetupPanelExecution', () => {
 		finish();
 		await expect(pending).resolves.toMatchObject({ status: 'success', notified: false });
 		expect(workflows.runWorkflow).toHaveBeenCalledOnce();
+		expect(track).toHaveBeenLastCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED,
+			expect.objectContaining({ execution_id: 'exec-1', status: 'success' }),
+		);
 	});
 
 	it.each([false, true])('selects an eligible trigger, selected disabled: %s', async (disabled) => {

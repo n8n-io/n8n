@@ -8,6 +8,7 @@ import {
 	type MaybeRefOrGetter,
 } from 'vue';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { v4 as uuidv4 } from 'uuid';
 import { isTerminalExecutionStatus, type TerminalExecutionStatus } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -97,6 +98,14 @@ export function useSetupPanelExecution(options: {
 				return;
 			}
 
+			const testContext = {
+				...getTelemetryPayload(),
+				test_request_id: uuidv4(),
+				session_id: rootStore.pushRef,
+				source: 'instance_ai_setup_panel' as const,
+				workflow_id: workflowId,
+				thread_id: options.thread.id,
+			};
 			let agentExecutionId: string | undefined;
 			for (const message of options.thread.messages) {
 				if (message.agentTree)
@@ -112,10 +121,15 @@ export function useSetupPanelExecution(options: {
 			let startedId: string | undefined;
 			let waitingForWebhook = false;
 			let settled = false;
-			const finish = (id: string, status: TerminalExecutionStatus) => {
+			const finish = (id: string | undefined, status: TerminalExecutionStatus) => {
 				if (settled) return;
 				settled = true;
-				completed.resolve({ workflowId, executionId: id, status });
+				telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED, {
+					...testContext,
+					execution_id: id,
+					status,
+				});
+				completed.resolve(id ? { workflowId, executionId: id, status } : undefined);
 			};
 			const observeId = (id: string) => {
 				executionId = id;
@@ -145,7 +159,7 @@ export function useSetupPanelExecution(options: {
 					waitingForWebhook &&
 					!executionId
 				) {
-					completed.resolve(undefined);
+					finish(undefined, 'canceled');
 					return;
 				}
 				if (event.type === 'testWebhookReceived' && event.data.workflowId === workflowId) {
@@ -183,17 +197,17 @@ export function useSetupPanelExecution(options: {
 				cleanup();
 				completed.resolve(undefined);
 			});
-			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
-				...getTelemetryPayload(),
-				session_id: rootStore.pushRef,
-				source: 'instance_ai_setup_panel',
-				workflow_id: workflowId,
-				thread_id: options.thread.id,
-			});
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, testContext);
 			const response = await runWorkflowApi(
 				{ workflowId, triggerToStartFrom: { name: trigger.name } },
 				executionState.documentId,
-			);
+			).catch((error: unknown) => {
+				telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED, {
+					...testContext,
+					status: 'request_failed',
+				});
+				throw error;
+			});
 			if (disposed) {
 				if (executionState.activeExecutionId === null) {
 					executionState.setActiveExecutionId(undefined);

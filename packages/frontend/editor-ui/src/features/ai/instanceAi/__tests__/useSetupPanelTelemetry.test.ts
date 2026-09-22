@@ -39,7 +39,17 @@ describe('useSetupPanelTelemetry', () => {
 		const scope = effectScope();
 		scopes.push(scope);
 		const telemetry = scope.run(() =>
-			useSetupPanelTelemetry({ workflowId, thread, rows, groups, ready, shownItemIds }),
+			useSetupPanelTelemetry({
+				workflowId,
+				thread,
+				rows,
+				groups,
+				ready,
+				shownItemIds,
+				getNodeByName: () => undefined,
+				isItemDone: () => false,
+				isAgentBuilding: false,
+			}),
 		)!;
 		return { workflowId, rows, groups, ready, shownItemIds, telemetry, scope };
 	}
