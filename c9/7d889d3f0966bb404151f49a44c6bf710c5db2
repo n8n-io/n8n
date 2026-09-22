@@ -20,6 +20,11 @@ packages/cli/src/modules/n8n-packages/io/directory/directory-package-writer.ts
   "git_ai_version": "1.5.2",
   "base_commit_sha": "c97d889d3f0966bb404151f49a44c6bf710c5db2",
   "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
   "sessions": {
     "s_00622278583879": {
       "agent_id": {

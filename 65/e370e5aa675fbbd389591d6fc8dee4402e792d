@@ -20,6 +20,14 @@ packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     },
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_aeecfe178a9b3d": {
       "agent_id": {
         "tool": "claude",

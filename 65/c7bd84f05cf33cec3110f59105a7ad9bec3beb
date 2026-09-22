@@ -1,6 +1,6 @@
 packages/cli/src/modules/git-connections.ee/git-connections.service.ts
-  ai_agent 122,124,131,138,154,158
-  h_9b272a633435fb 27,150
+  ai_agent 122,124,128-129,131,138,154,158
+  h_9b272a633435fb 27,126,134-135,140,144,150
 ---
 {
   "schema_version": "authorship/3.0.0",

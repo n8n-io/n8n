@@ -1,0 +1,106 @@
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/data-science-ticket-updates-and-team-alerts-from-a-table.workflow.ts
+  s_805dfaf49a4974::t_56a7b623ea9778 1-6,16-27,38-110,114-118,122-145,151-165,176-233,237-254,260-267,286-301
+  s_805dfaf49a4974::t_a197ca6ba5c8da 7-15,28-37,111-113,119-121,146-150,166-175,234-236,255-259,268-285
+packages/@n8n/instance-ai/knowledge-base/use-cases/devops.md
+  s_805dfaf49a4974::t_b7487055cbcdbe 5,7,9-12,14,16,19-21,23,25,27-30,32,34,36-39,41,43,45-48,50
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/business-owner-overdue-task-reminders-from-a-database.workflow.ts
+  s_805dfaf49a4974::t_cc113b25d6826c 1-291
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/it-card-statements-from-the-inbox-to-file-storage.workflow.ts
+  s_805dfaf49a4974::t_17d6dc6b276e52 1-6,16-54,59-98,102,108-135
+  s_805dfaf49a4974::t_a197ca6ba5c8da 7-15,55-58,99-101,103-107
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/business-owner-new-client-document-alerts-from-the-crm.workflow.ts
+  s_805dfaf49a4974::t_d1e4f33cac9e7a 1-212
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/data-science-help-desk-ticket-for-each-new-table-request.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 19-28,83-87,96-113
+  s_805dfaf49a4974::t_c6aa92369b2417 1-18,29-82,88-95,114-124
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/business-owner-inbox-summary-by-ai.workflow.ts
+  s_805dfaf49a4974::t_2cec9f528b64e7 1-22,26-266
+  s_805dfaf49a4974::t_a197ca6ba5c8da 23-25
+packages/@n8n/instance-ai/knowledge-base/use-cases/business-owner.md
+  s_805dfaf49a4974::t_cc113b25d6826c 5,7,9-12,14,16,18-21,23,25,27-30,32,34,36-39,41,43,45-48,50
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/it-tasks-from-labeled-mail-into-a-docs-database.workflow.ts
+  s_805dfaf49a4974::t_53c0569efdd919 1-6,17-187,193-196,202-248
+  s_805dfaf49a4974::t_a197ca6ba5c8da 7-16,188-192,197-201
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/data-science-hold-notice-for-requests-assigned-in-the-table.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 6-14,27-36,138-142,152-178
+  s_805dfaf49a4974::t_34c46960fd5e0e 1-5,15-26,37-137,143-151,179-192
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/devops-csv-export-endpoint-for-a-business-system.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 5-13,92-94
+  s_805dfaf49a4974::t_b7487055cbcdbe 1-4,14-91,95-129
+packages/@n8n/instance-ai/knowledge-base/use-cases/rank.sh
+  s_805dfaf49a4974::t_22186a5dc01f74 39,53
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/customer-support-re-engagement-emails-after-sign-up.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 17-19
+  s_805dfaf49a4974::t_623828da3e0551 1-16,20-372
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/devops-audit-submissions-into-a-database-and-a-task-board.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 6-14,62-97,103-109,176-178,200-202
+  s_805dfaf49a4974::t_b2e8e88101c730 1-5,15-61,98-102,110-175,179-199,203-211
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/customer-support-ai-ticket-routing-in-the-help-desk.workflow.ts
+  s_e10488859353e0::t_a8ec749333f0cd 1-75,82-215
+  s_805dfaf49a4974::t_a197ca6ba5c8da 76-81
+packages/@n8n/instance-ai/knowledge-base/use-cases/data-science.md
+  s_805dfaf49a4974::t_c6aa92369b2417 5,7,9-12,14,16,19-21,23,25,27-30,32,34,36-39,41,43,45-48,50
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/business-owner-unread-mail-triage-for-phishing.workflow.ts
+  s_805dfaf49a4974::t_d1e4f33cac9e7a 1-7,17-236
+  s_805dfaf49a4974::t_a197ca6ba5c8da 8-16
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/devops-changed-rows-copy-between-databases.workflow.ts
+  s_805dfaf49a4974::t_b7487055cbcdbe 1-13,17-37,45-58,64-74,120-130
+  s_805dfaf49a4974::t_a197ca6ba5c8da 14-16,38-44,59-63,75-119
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/customer-support-payment-notifications-to-invoices-and-a-ledger.workflow.ts
+  s_805dfaf49a4974::t_0c6f1b490388dc 1-7,17-97,143-196,221-300,364-396,401-417
+  s_805dfaf49a4974::t_a197ca6ba5c8da 8-16,98-142,197-220,301-363,397-400
+packages/@n8n/instance-ai/knowledge-base/use-cases/it.md
+  s_805dfaf49a4974::t_926c300b8809aa 5,7,9-12,14,16,18-21,23,25,27-30,32,34,36-39,41,43,45-48,50
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/devops-campaign-plan-sync-between-spreadsheets.workflow.ts
+  s_805dfaf49a4974::t_3894525844c48a 1-32,43-44,52-64,70-72,80-120,131-140,186-201,212-233
+  s_805dfaf49a4974::t_a197ca6ba5c8da 33-42,45-51,65-69,73-79,121-130,141-185,202-211
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/business-owner-product-listings-feed-to-file-storage.workflow.ts
+  s_805dfaf49a4974::t_cc113b25d6826c 1-136
+packages/@n8n/instance-ai/knowledge-base/use-cases/customer-support.md
+  s_805dfaf49a4974::t_623828da3e0551 5,7,10-12,14,16,18-21,23,25,27-30,32,34,36-39,41,43,45-48,50
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/devops-catalog-sync-per-configuration-entry.workflow.ts
+  s_805dfaf49a4974::t_b2e8e88101c730 1-67
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/data-science-bug-tickets-into-a-triage-table.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 47-58,60-71,73-78,98-102,115-177
+  s_805dfaf49a4974::t_c6aa92369b2417 1-46,59,72,79-97,103-114,178-210
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/customer-support-unassign-form-tickets-in-the-help-desk.workflow.ts
+  s_805dfaf49a4974::t_0c6f1b490388dc 1-80,84-120
+  s_805dfaf49a4974::t_a197ca6ba5c8da 81-83
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/customer-support-knowledge-base-refresh-from-a-table.workflow.ts
+  s_e10488859353e0::t_a8ec749333f0cd 1-14,18-74,87-112,114-117,119-136
+  s_805dfaf49a4974::t_a197ca6ba5c8da 15-17,75-86
+  s_805dfaf49a4974::t_e83a332e6b3a28 113,118
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/it-missing-house-number-check-on-new-orders.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 6-14,56-58,118-122,138-147,149-151
+  s_805dfaf49a4974::t_926c300b8809aa 1-5,15-55,59-117,123-137,148,152-197
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/it-firewall-allow-list-refresh-with-the-current-ip.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 7-15,60-65,107-109,134-138,154-163
+  s_805dfaf49a4974::t_17d6dc6b276e52 1-6,16-59,66-106,110-133,139-153,164-213
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/data-science-creative-preview-refresh-in-a-spreadsheet.workflow.ts
+  s_805dfaf49a4974::t_a197ca6ba5c8da 34-43,65-69,157-166,175-201,218-222
+  s_805dfaf49a4974::t_34c46960fd5e0e 1-33,44-64,70-156,167-174,202-217,223-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4bec627f19140772588aeb6d53264e2294c83501",
+  "prompts": {},
+  "sessions": {
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_e10488859353e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0c7d280-67ef-4851-afbe-f367246fe141",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
