@@ -344,11 +344,25 @@ export function autoImportMissingSdkSymbols(
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
-const ONE_OFF_OPERATIONS_GUIDANCE =
-	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
+/**
+ * Where the follow-up instructions live depends on the branch: an activated
+ * skill is delivered by the runtime (appended to this result on the turn that
+ * activates it, in the system prompt on later turns), an inlined copy sits in
+ * `instructions`.
+ */
+function followInstructionsClause(skillId: string, label: string, activated: boolean): string {
+	return activated
+		? `Follow the active ${skillId} skill instructions now (do NOT call load_skill for it — it is already active)`
+		: `Follow the ${label} instructions in \`instructions\` now (do NOT load the ${skillId} skill — they are the same instructions)`;
+}
 
-const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+function oneOffOperationsGuidance(activated: boolean): string {
+	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID, 'one-off', activated)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
+}
+
+function postBuildFlowGuidance(activated: boolean): string {
+	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, 'post-build', activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`executions(action="list")\` and \`executions(action="get")\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
+}
 
 /** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
 const INLINE_SKIPPED_SECTIONS = [
@@ -409,7 +423,7 @@ async function directPostBuildFlowHandoff(
 			required: true,
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
-			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
+			guidance: oneOffOperationsGuidance(activate !== undefined),
 			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
 		};
 	}
@@ -418,7 +432,7 @@ async function directPostBuildFlowHandoff(
 		required: true,
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
-		guidance: POST_BUILD_FLOW_GUIDANCE,
+		guidance: postBuildFlowGuidance(activate !== undefined),
 		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
 	};
 }

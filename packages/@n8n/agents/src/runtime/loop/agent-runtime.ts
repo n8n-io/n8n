@@ -937,11 +937,12 @@ export class AgentRuntime {
 				.map((value) => value?.trim())
 				.filter((value): value is string => Boolean(value))
 				.join('\n\n');
+			// A skill rides on its activating tool result while that result is in
+			// the visible window; it joins this system block only after
+			// observational memory masked the result — which already rewrote the
+			// prefix. So skills never break a warm cache (see ActiveSkills).
 			const { system, messages } = list.forLlm(
-				// Skill content changes only on activation. Keep it cached when memory compacts.
-				[effectiveInstructions, this.activeSkills?.instructions()]
-					.filter(Boolean)
-					.join('\n\n'),
+				[effectiveInstructions, this.activeSkills?.instructions()].filter(Boolean).join('\n\n'),
 				instructionProviderOptions,
 				combinedVolatileInstructions || undefined,
 				supportsSplitSystemMessages(this.config.model),

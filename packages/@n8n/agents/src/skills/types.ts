@@ -137,7 +137,15 @@ export interface RuntimeSkillContent extends RuntimeSkillIndexEntry {
 	linkedFiles?: RuntimeSkillLinkedFiles;
 }
 
-export type RuntimeSkillLoader = (skillId: string) => Promise<RuntimeSkillContent | null>;
+/**
+ * Loads a skill. When the runtime binds this into a tool call, `anchor` names
+ * the tool call that activated the skill. The active-skills block is frozen
+ * for the run, so the runtime appends the skill text to that call's result.
+ */
+export type RuntimeSkillLoader = (
+	skillId: string,
+	anchor?: { toolCallId: string },
+) => Promise<RuntimeSkillContent | null>;
 
 export interface RuntimeSkillFileContent {
 	skillId: string;

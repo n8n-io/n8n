@@ -7522,6 +7522,92 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
+	it('delivers skills on their activating tool results and keeps the system prompt unchanged while they stay visible', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+			{
+				id: 'post-build',
+				name: 'post-build',
+				description: 'Verify workflows.',
+				instructions: 'Verify the workflow before publishing.',
+			},
+		]);
+		const buildTool: BuiltTool = {
+			name: 'build_workflow',
+			description: 'Build a workflow.',
+			inputSchema: z.object({}),
+			handler: async (_input, ctx) => {
+				await ctx.loadSkill?.('post-build');
+				return { built: true };
+			},
+		};
+		const memory = new InMemoryMemory();
+		const options = {
+			name: 'skills-agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			memory,
+			skillSource: source,
+			tools: [...createRuntimeSkillTools(source), buildTool],
+		};
+		const runtime = new AgentRuntime(options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateWithToolCall('build-1', 'build_workflow', {}))
+			.mockResolvedValueOnce(makeGenerateSuccess('Built and verified.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const roles = (index: number) => capturedCall(index).messages.map((message) => message.role);
+		const toolResultAt = (index: number, position: number) =>
+			JSON.stringify(capturedCall(index).messages[position]);
+
+		// The top-level system prompt never changes across the run.
+		for (const index of [0, 1, 2]) {
+			expect(flattenInstructions(capturedCall(index).instructions)).not.toContain(
+				'<active_skills>',
+			);
+			expect(capturedCall(index).instructions).toEqual(capturedCall(0).instructions);
+		}
+		// First activation: the skill text rides on the collapsed load_skill result.
+		expect(roles(1)).toEqual(['user', 'assistant', 'tool']);
+		expect(toolResultAt(1, 2)).toContain('\\"active\\":true');
+		expect(toolResultAt(1, 2)).toContain('Wait for a real execution');
+		// Second activation rides on the build result; the earlier prefix is unchanged.
+		expect(roles(2)).toEqual(['user', 'assistant', 'tool', 'assistant', 'tool']);
+		expect(capturedCall(2).messages.slice(0, 3)).toEqual(capturedCall(1).messages);
+		expect(toolResultAt(2, 4)).toContain('\\"built\\":true');
+		expect(toolResultAt(2, 4)).toContain('Verify the workflow before publishing.');
+		// Persisted messages carry no appended skill text.
+		const persisted = JSON.stringify(await memory.getMessages(PERSISTENCE.threadId));
+		expect(persisted).not.toContain('Wait for a real execution');
+		expect(persisted).not.toContain('Verify the workflow before publishing.');
+
+		// Next run, nothing masked yet: the recorded load_skill anchor still
+		// carries the builder skill, so the system prompt stays unchanged for it.
+		// The post-build skill was activated through another tool's ctx.loadSkill
+		// (no persisted anchor), so it folds into the block.
+		const next = new AgentRuntime(options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Still here.'));
+		await next.generate('Continue', { persistence: PERSISTENCE });
+		await next.dispose();
+		const block = flattenInstructions(capturedCall(3).instructions);
+		expect(block).toContain('<active_skills>');
+		expect(block).not.toContain('Wait for a real execution');
+		expect(block).toContain('Verify the workflow before publishing.');
+		const nextMessages = JSON.stringify(capturedCall(3).messages);
+		expect(nextMessages).toContain('Wait for a real execution');
+		expect(nextMessages).not.toContain('Verify the workflow before publishing.');
+	});
+
 	it.each(['load_skill', 'inspect_node'])(
 		'activates skill tool dependencies after %s and restores them on the next turn',
 		async (activationTool) => {

@@ -74,6 +74,21 @@ splitting fragments by stability:
   sees the instruction the moment the tool loads, just outside the cached
   prefix.
 
+Runtime skills follow the same principle, keyed to observational memory. As
+long as the tool result that activated a skill (`load_skill`, or any tool that
+calls `ctx.loadSkill`) is inside the visible LLM window,
+`ActiveSkills.modelMessages()` delivers the current skill body as an extra
+text part appended to that result (recorded `load_skill` results are collapsed
+to `{ skillId, active }` first, so an obsolete persisted body is never
+replayed). The `<active_skills>` block in the top-level system prompt does not
+mention the skill at all, so activating and carrying a skill never rewrites
+the cached prefix — within a run or across runs. Only when observational
+memory masks the activating result does `instructions()` fold the skill into
+the block — and observation already rewrote the prefix at that moment (masked
+window, new observation in the system prompt), so the move costs no extra
+cache invalidation. Skills activated through another tool's `ctx.loadSkill`
+have no persisted anchor, so they fold into the block on the next run.
+
 Other prefix-stability hygiene, already true or verified: tool ordering is
 append-only (`getCurrentTools()` only ever appends), and none of the current
 built-in `systemInstruction` sources (`delegate_subagent`, `write_todos`,
