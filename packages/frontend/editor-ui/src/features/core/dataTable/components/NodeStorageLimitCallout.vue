@@ -27,7 +27,7 @@ const calloutType = computed(() => {
 });
 </script>
 <template>
-	<N8nCallout v-if="calloutType" :variant="calloutType" class="mt-xs">
+	<N8nCallout v-if="calloutType" :theme="calloutType" class="mt-xs">
 		<span v-if="calloutType === 'danger'">
 			{{
 				i18n.baseText('dataTable.banner.storageLimitError.message', {

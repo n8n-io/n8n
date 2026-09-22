@@ -6,7 +6,7 @@ const meta = {
 	title: 'Core/Notice',
 	component: N8nNotice,
 	argTypes: {
-		variant: {
+		theme: {
 			control: 'select',
 			options: ['success', 'warning', 'danger', 'info'],
 		},
@@ -33,7 +33,7 @@ export const Default: Story = {
 			'<N8nNotice v-bind="args">This is a notice! Thread carefully from this point forward.</N8nNotice>',
 	}),
 	args: {
-		variant: 'warning',
+		theme: 'warning',
 	},
 };
 
@@ -42,10 +42,10 @@ export const Variants: Story = {
 		components: { N8nNotice },
 		template: `
 			<div style="display: flex; flex-direction: column; gap: 12px;">
-				<N8nNotice variant="warning">This is a warning notice.</N8nNotice>
-				<N8nNotice variant="danger">This is a danger notice.</N8nNotice>
-				<N8nNotice variant="success">This is a success notice.</N8nNotice>
-				<N8nNotice variant="info">This is an info notice.</N8nNotice>
+				<N8nNotice theme="warning">This is a warning notice.</N8nNotice>
+				<N8nNotice theme="danger">This is a danger notice.</N8nNotice>
+				<N8nNotice theme="success">This is a success notice.</N8nNotice>
+				<N8nNotice theme="info">This is an info notice.</N8nNotice>
 			</div>
 		`,
 	}),
@@ -60,7 +60,7 @@ export const Sanitized: Story = {
 		template: '<N8nNotice v-bind="args" />',
 	}),
 	args: {
-		variant: 'warning',
+		theme: 'warning',
 		content:
 			'<script>alert(1)</script> This content contains a script tag and is <strong>sanitized</strong>.',
 	},
@@ -75,7 +75,7 @@ export const FullContent: Story = {
 		template: '<N8nNotice v-bind="args" />',
 	}),
 	args: {
-		variant: 'warning',
+		theme: 'warning',
 		content: 'This is just the summary. <a data-key="toggle-expand">Show more</a>',
 		fullContent:
 			'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ut labore et dolore magna aliqua. <a data-key="show-less">Show less</a>',
@@ -91,7 +91,7 @@ export const HtmlEdgeCase: Story = {
 		template: '<N8nNotice v-bind="args" />',
 	}),
 	args: {
-		variant: 'warning',
+		theme: 'warning',
 		content:
 			'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua. <ul><li>Item 1</li><li>Item 2</li></ul>',
 	},

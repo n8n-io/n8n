@@ -226,7 +226,7 @@ function onRemove() {
 		<template #content>
 			<N8nCallout
 				v-if="openedWithMissingContent"
-				variant="warning"
+				theme="warning"
 				data-testid="agent-skill-missing-content-callout"
 			>
 				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}

@@ -65,7 +65,9 @@ const props = withDefaults(
 		immediateUpdates: false,
 	},
 );
-const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
+const emit = defineEmits<{
+	'update:config': [changes: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+}>();
 
 const i18n = useI18n();
 const instructionsEditorId = useId();
@@ -278,14 +280,20 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	if (deploymentNameChange.modelDeploymentName !== undefined) {
 		deploymentName.value = deploymentNameChange.modelDeploymentName;
 	}
-	emit('update:config', {
-		model,
-		credential: credentialId,
-		...webSearchChanges,
-		...promptCachingChanges,
-		...reasoningChanges,
-		...deploymentNameChange,
-	});
+	emit(
+		'update:config',
+		{
+			model,
+			credential: credentialId,
+			...webSearchChanges,
+			...promptCachingChanges,
+			...reasoningChanges,
+			...deploymentNameChange,
+		},
+		// A pending agent must not be persisted just because a default model was
+		// auto-applied — let the host apply it to the draft without autosaving.
+		source === 'auto' ? { source: 'auto' } : undefined,
+	);
 }
 
 watch(
@@ -401,7 +409,7 @@ function onInstructionsInput(value: string) {
 					/>
 					<N8nCallout
 						v-if="defaultModelHint && !props.disabled"
-						variant="info"
+						theme="info"
 						slim
 						:class="$style.defaultHint"
 						data-testid="agent-default-model-hint"

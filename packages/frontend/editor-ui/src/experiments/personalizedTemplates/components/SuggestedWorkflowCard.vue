@@ -34,7 +34,7 @@ const onTryTemplate = () => {
 
 <template>
 	<N8nCallout
-		variant="secondary"
+		theme="secondary"
 		:iconless="true"
 		:class="$style['suggested-workflow-callout']"
 		:slim="true"

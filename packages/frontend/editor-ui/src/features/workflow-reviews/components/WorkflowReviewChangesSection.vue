@@ -133,7 +133,7 @@ const targetLabel = computed(() =>
 <template>
 	<N8nCallout
 		v-if="isClosedWithoutApproval"
-		variant="info"
+		theme="info"
 		:class="$style.callout"
 		data-test-id="workflow-review-changes-closed-without-approval"
 	>
@@ -141,7 +141,7 @@ const targetLabel = computed(() =>
 	</N8nCallout>
 	<N8nCallout
 		v-else-if="!workflow.pinnedVersion"
-		variant="warning"
+		theme="warning"
 		:class="$style.callout"
 		data-test-id="workflow-review-changes-version-unavailable"
 	>
@@ -149,7 +149,7 @@ const targetLabel = computed(() =>
 	</N8nCallout>
 	<N8nCallout
 		v-else-if="!hasChanges"
-		variant="info"
+		theme="info"
 		:class="$style.callout"
 		data-test-id="workflow-review-changes-no-changes"
 	>

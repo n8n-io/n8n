@@ -133,7 +133,7 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 		:close-on-click-modal="false"
 	>
 		<template v-if="error" #content>
-			<N8nCallout v-if="error" variant="danger">
+			<N8nCallout v-if="error" theme="danger">
 				{{ error.message }}
 			</N8nCallout>
 		</template>

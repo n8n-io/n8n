@@ -29,12 +29,12 @@ export const Variants: StoryFn = () => ({
 	components: { N8nInfoTip },
 	template: `
 		<div style="display: flex; flex-direction: column; gap: 12px;">
-			<n8n-info-tip variant="info">Info tip</n8n-info-tip>
-			<n8n-info-tip variant="info-light">Info light tip</n8n-info-tip>
-			<n8n-info-tip variant="warning">Warning tip</n8n-info-tip>
-			<n8n-info-tip variant="warning-light">Warning light tip</n8n-info-tip>
-			<n8n-info-tip variant="danger">Danger tip</n8n-info-tip>
-			<n8n-info-tip variant="success">Success tip</n8n-info-tip>
+			<n8n-info-tip theme="info">Info tip</n8n-info-tip>
+			<n8n-info-tip theme="info-light">Info light tip</n8n-info-tip>
+			<n8n-info-tip theme="warning">Warning tip</n8n-info-tip>
+			<n8n-info-tip theme="warning-light">Warning light tip</n8n-info-tip>
+			<n8n-info-tip theme="danger">Danger tip</n8n-info-tip>
+			<n8n-info-tip theme="success">Success tip</n8n-info-tip>
 			<n8n-info-tip type="tooltip" tooltip-placement="right">Tooltip tip</n8n-info-tip>
 		</div>
 	`,

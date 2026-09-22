@@ -21,6 +21,7 @@ import {
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { extractPlaceholderLabels, isPlaceholderValue } from '@n8n/utils/placeholder';
 import {
 	isResourceLocatorValue,
 	type INode,
@@ -53,7 +54,7 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
-import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/app/utils/expressions';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -160,6 +161,11 @@ const dropdownRef = ref<InstanceType<typeof ResourceLocatorDropdown>>();
 const showSlowLoadNotice = ref(false);
 const longLoadingTimer = ref<NodeJS.Timeout | null>(null);
 
+// Leaving the dropdown's search field does not blur the locator input again.
+watch(resourceDropdownVisible, (visible) => {
+	if (!visible) emit('blur');
+});
+
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
@@ -226,7 +232,20 @@ const credentialsRequiredAndNotSet = computed(() => {
 	return false;
 });
 
+const resourceValue = computed(() =>
+	isResourceLocatorValue(props.modelValue) ? props.modelValue.value : props.modelValue,
+);
+const isValueEmpty = computed(
+	() =>
+		resourceValue.value === '' ||
+		resourceValue.value === null ||
+		resourceValue.value === undefined ||
+		isPlaceholderValue(resourceValue.value),
+);
+
 const inputPlaceholder = computed(() => {
+	const label = extractPlaceholderLabels(resourceValue.value)[0];
+	if (label) return label;
 	if (currentMode.value.placeholder) {
 		return currentMode.value.placeholder;
 	}
@@ -249,6 +268,7 @@ const hasMultipleModes = computed(() => {
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
+	if (isValueEmpty.value) return '';
 	if (typeof props.modelValue !== 'object') {
 		return `${props.modelValue}`;
 	}
@@ -261,6 +281,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 });
 
 const urlValue = computedAsync(async () => {
+	if (isValueEmpty.value) return null;
 	if (isListMode.value && typeof props.modelValue === 'object') {
 		return props.modelValue?.cachedResultUrl ?? null;
 	}
@@ -748,7 +769,9 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 			params.cachedResultUrl = resource.url;
 		}
 	} else {
-		params.value = completeExpressionSyntax(value);
+		// A literal `{{ }}` is never a valid id or url, so a pasted expression
+		// always switches to expression mode, even when it replaces a stored value.
+		params.value = shouldConvertToExpression(value) ? '=' + value : completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
@@ -1080,8 +1103,8 @@ function removeOverride() {
 	>
 		<ResourceLocatorDropdown
 			ref="dropdownRef"
-			:model-value="modelValue"
 			:show="resourceDropdownVisible"
+			:model-value="modelValue"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -1095,6 +1118,7 @@ function removeOverride() {
 			:slow-load-notice="slowLoadNoticeMessage"
 			:show-slow-load-notice="showSlowLoadNotice"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideResourceDropdown()"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
 			@add-resource-click="onAddResourceClicked"
@@ -1120,7 +1144,7 @@ function removeOverride() {
 						</N8nText>
 						<N8nNotice
 							v-if="currentResponse.errorDetails.description"
-							variant="warning"
+							theme="warning"
 							:class="$style.errorDescription"
 						>
 							{{ currentResponse.errorDetails.description }}

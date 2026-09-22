@@ -8,7 +8,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<BaseBanner name="DATA_TABLE_STORAGE_LIMIT_ERROR" :dismissible="true" variant="danger">
+	<BaseBanner name="DATA_TABLE_STORAGE_LIMIT_ERROR" :dismissible="true" theme="danger">
 		<template #mainContent>
 			<span>{{
 				i18n.baseText('dataTable.banner.storageLimitError.message', {

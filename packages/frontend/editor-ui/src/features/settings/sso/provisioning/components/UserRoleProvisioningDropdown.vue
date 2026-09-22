@@ -118,7 +118,7 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 
 		<template v-if="showIdpInfoBox">
 			<div :class="$style.infoBox">
-				<N8nCallout variant="custom" icon="info" :class="$style.callout">
+				<N8nCallout theme="custom" icon="info" :class="$style.callout">
 					<div>
 						{{ idpInfoText }}
 					</div>

@@ -326,6 +326,10 @@ const inputText = computed<string>({
 });
 const isPreparingToSend = ref(false);
 let disposed = false;
+let queuedExternalMessage: string | undefined;
+let submittingQueuedExternalMessage = false;
+
+type SubmitResult = 'sent' | 'busy' | 'rejected';
 
 const RUNTIME_ISSUE_PATH_PREFIXES = [
 	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
@@ -391,6 +395,13 @@ const inputBlockedBySuspension = computed(
 		hasOpenWaitCard.value ||
 		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
+const isSubmissionBlocked = computed(
+	() =>
+		isStreaming.value ||
+		isCancelling.value ||
+		isPreparingToSend.value ||
+		inputBlockedBySuspension.value,
+);
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
 // the user clear the stale pulsing state without reloading the chat.
@@ -433,6 +444,9 @@ const chatPlaceholder = computed(() => {
 });
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(isSubmissionBlocked, (blocked) => {
+	if (!blocked) void submitQueuedExternalMessage();
+});
 watch(
 	() => props.visible,
 	(visible) => {
@@ -440,24 +454,24 @@ watch(
 	},
 );
 
-async function onSubmit() {
+function consumeQueuedExternalMessage(message: string) {
+	if (queuedExternalMessage !== message) return;
+	queuedExternalMessage = undefined;
+	emit('initial-consumed');
+}
+
+async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
 	const files = attachedFiles.value;
-	if (
-		(!text && files.length === 0) ||
-		isStreaming.value ||
-		isCancelling.value ||
-		isPreparingToSend.value ||
-		inputBlockedBySuspension.value
-	) {
-		return;
-	}
+	if (!text && files.length === 0) return 'rejected';
+	if (isSubmissionBlocked.value) return 'busy';
 
 	if (hasOpenInteractiveQuestion.value) {
-		if (!text) return;
+		if (!text) return 'rejected';
 		inputText.value = '';
 		await cancelAndSteer(text);
-		return;
+		consumeQueuedExternalMessage(text);
+		return 'sent';
 	}
 
 	isPreparingToSend.value = true;
@@ -475,17 +489,17 @@ async function onSubmit() {
 		try {
 			await props.beforeSend?.();
 		} catch {
-			return;
+			return 'rejected';
 		}
-		if (!isCurrentTarget()) return;
+		if (!isCurrentTarget()) return 'rejected';
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
-		if (!isCurrentTarget()) return;
+		if (!isCurrentTarget()) return 'rejected';
 		// Keep the draft if a local resume or cancellation started during preparation.
-		if (isStreaming.value || isCancelling.value) return;
+		if (isStreaming.value || isCancelling.value) return 'busy';
 
 		inputText.value = '';
 		attachedFiles.value = [];
@@ -500,6 +514,8 @@ async function onSubmit() {
 		} else {
 			await sendMessage(text);
 		}
+		consumeQueuedExternalMessage(text);
+		return 'sent';
 	} finally {
 		isPreparingToSend.value = false;
 	}
@@ -507,8 +523,31 @@ async function onSubmit() {
 
 function sendMessageFromOutside(message: string) {
 	if (inputBlockedBySuspension.value) return;
+	queuedExternalMessage = message;
 	inputText.value = message;
-	void onSubmit();
+	void submitQueuedExternalMessage();
+}
+
+async function submitQueuedExternalMessage() {
+	const message = queuedExternalMessage;
+	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
+
+	submittingQueuedExternalMessage = true;
+	let result: SubmitResult = 'rejected';
+	try {
+		inputText.value = message;
+		result = await onSubmit();
+	} finally {
+		submittingQueuedExternalMessage = false;
+	}
+
+	if (result === 'rejected' && queuedExternalMessage === message) {
+		queuedExternalMessage = undefined;
+	}
+	if (queuedExternalMessage && !isSubmissionBlocked.value) {
+		await nextTick();
+		void submitQueuedExternalMessage();
+	}
 }
 
 function getConversationMarkdown(): string {
@@ -535,7 +574,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<N8nCallout v-if="fatalError" variant="danger" :class="$style.errorBanner" slim>
+		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
@@ -561,7 +600,7 @@ onBeforeUnmount(() => {
 			:key="`${warning.code ?? 'mcp'}-${index}`"
 			:class="$style.warningBanner"
 		>
-			<N8nCallout variant="warning" slim :data-test-id="`agent-chat-warning-${index}`">
+			<N8nCallout theme="warning" slim :data-test-id="`agent-chat-warning-${index}`">
 				<div :class="$style.warningBannerBody">
 					<span :class="$style.warningBannerTitle">
 						{{ locale.baseText('agents.chat.warning.mcp.title') }}

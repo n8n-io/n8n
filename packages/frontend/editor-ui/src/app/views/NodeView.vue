@@ -98,6 +98,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -201,6 +202,7 @@ const environmentsStore = useEnvironmentsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 
@@ -610,7 +612,7 @@ async function onCopyNodes(ids: string[]) {
 			return;
 		}
 
-		await copyNodes(ids);
+		if (!(await copyNodes(ids))) return;
 
 		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 	};
@@ -1769,6 +1771,23 @@ watch([() => route.name, () => route.params.workflowId], () => {
 	initializeRoute();
 });
 
+const workflowProjectId = computed(
+	() =>
+		workflowDocumentStore?.value?.homeProject?.id ??
+		projectsStore.currentProject?.id ??
+		projectsStore.personalProject?.id,
+);
+
+watch(
+	workflowProjectId,
+	(projectId) => {
+		if (!projectId) return;
+
+		void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
 watch(
 	() => {
 		return (
@@ -2149,7 +2168,7 @@ onBeforeUnmount(() => {
 
 			<N8nCallout
 				v-if="isReadOnlyEnvironment"
-				variant="warning"
+				theme="warning"
 				icon="lock"
 				:class="$style.readOnlyEnvironmentNotification"
 			>
@@ -2191,6 +2210,7 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
+					@replace-node="onClickReplaceNode"
 				/>
 			</Suspense>
 		</WorkflowCanvas>

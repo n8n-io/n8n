@@ -86,7 +86,7 @@ const handleActionClick = (action: SuggestedAction) => {
 						<N8nIcon icon="x" size="large" />
 					</N8nLink>
 				</div>
-				<N8nCallout v-if="notice" variant="warning">{{ notice }}</N8nCallout>
+				<N8nCallout v-if="notice" theme="warning">{{ notice }}</N8nCallout>
 				<div
 					v-for="action in actions"
 					:key="action.id"

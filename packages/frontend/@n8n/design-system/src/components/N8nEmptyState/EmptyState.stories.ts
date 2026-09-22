@@ -10,7 +10,7 @@ export default {
 	title: 'Core/EmptyState',
 	component: N8nEmptyState,
 	argTypes: {
-		calloutVariant: {
+		calloutTheme: {
 			control: {
 				type: 'select',
 			},

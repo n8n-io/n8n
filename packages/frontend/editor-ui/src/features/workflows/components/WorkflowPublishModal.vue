@@ -282,7 +282,7 @@ async function handlePublish() {
 			<div :class="$style.content">
 				<N8nCallout
 					v-if="activeCalloutId === 'noTrigger'"
-					variant="danger"
+					theme="danger"
 					icon="status-error"
 					data-test-id="workflow-publish-callout-no-trigger"
 				>
@@ -290,7 +290,7 @@ async function handlePublish() {
 				</N8nCallout>
 				<N8nCallout
 					v-else-if="activeCalloutId === 'nodeIssues'"
-					variant="danger"
+					theme="danger"
 					icon="status-error"
 					data-test-id="workflow-publish-callout-node-issues"
 				>
@@ -313,14 +313,14 @@ async function handlePublish() {
 				</N8nCallout>
 				<N8nCallout
 					v-else-if="activeCalloutId === 'reattempt'"
-					variant="info"
+					theme="info"
 					data-test-id="workflow-publish-callout-reattempt"
 				>
 					{{ i18n.baseText('workflows.publishModal.reattempt') }}
 				</N8nCallout>
 				<N8nCallout
 					v-else-if="activeCalloutId === 'noChanges'"
-					variant="warning"
+					theme="warning"
 					data-test-id="workflow-publish-callout-no-changes"
 				>
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}

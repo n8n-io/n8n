@@ -175,11 +175,7 @@ function formatJson(value: unknown): string {
 			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
-			<N8nCallout
-				v-if="isQuotaExhausted"
-				variant="warning"
-				data-test-id="instance-ai-out-of-credits"
-			>
+			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
 				{{ i18n.baseText(outOfCreditsTitleKey) }}
 				<template #trailingContent>
 					<N8nButton
@@ -194,7 +190,7 @@ function formatJson(value: unknown): string {
 			</N8nCallout>
 
 			<!-- Run-level error -->
-			<N8nCallout v-else-if="runError" variant="danger">
+			<N8nCallout v-else-if="runError" theme="danger">
 				<div :class="$style.runLevelError">
 					<N8nText bold tag="div">{{ errorTitle }}</N8nText>
 					<N8nText v-if="hasProviderError" tag="div">{{ runError }}</N8nText>

@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
 				:class="$style.textBlock"
 			/>
 
-			<N8nCallout variant="warning">
+			<N8nCallout theme="warning">
 				{{ i18n.baseText('instanceAi.welcomeModal.gateway.warning') }}
 			</N8nCallout>
 

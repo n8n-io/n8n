@@ -45,7 +45,7 @@ function goToUpgrade() {
 			v-if="externalSecretsStore.isEnterpriseExternalSecretsEnabled"
 			data-test-id="external-secrets-content-licensed"
 		>
-			<N8nCallout variant="secondary" class="mt-2xl mb-l">
+			<N8nCallout theme="secondary" class="mt-2xl mb-l">
 				{{ i18n.baseText('settings.externalSecrets.info') }}
 				<a href="https://docs.n8n.io/external-secrets/" target="_blank">
 					{{ i18n.baseText('settings.externalSecrets.info.link') }}

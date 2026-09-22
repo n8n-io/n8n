@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
 				<div v-if="uploaded && !isUploading" :class="$style.columnResults">
 					<N8nCallout
 						v-if="unrecognizedColumns.length > 0 && missingTableColumns.length > 0"
-						variant="danger"
+						theme="danger"
 						data-test-id="import-csv-column-mismatch"
 					>
 						{{
@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
 
 					<N8nCallout
 						v-else-if="unrecognizedColumns.length > 0"
-						variant="danger"
+						theme="danger"
 						data-test-id="import-csv-unrecognized-columns"
 					>
 						{{
@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
 
 					<N8nCallout
 						v-else-if="missingTableColumns.length > 0"
-						variant="info"
+						theme="info"
 						data-test-id="import-csv-missing-columns"
 					>
 						{{
@@ -258,7 +258,7 @@ onBeforeUnmount(() => {
 
 					<N8nCallout
 						v-if="matchedColumns.length === 0 && unrecognizedColumns.length === 0"
-						variant="danger"
+						theme="danger"
 						data-test-id="import-csv-no-matching-columns"
 					>
 						{{ i18n.baseText('dataTable.importCsv.noMatchingColumns') }}

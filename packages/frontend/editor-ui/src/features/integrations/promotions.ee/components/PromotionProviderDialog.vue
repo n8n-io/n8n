@@ -27,7 +27,7 @@ import {
 	fetchPromotionConnections,
 	fetchPromotionProvider,
 	updatePromotionProvider,
-	type PromotionConnection,
+	type PromotionConnectionSummary,
 	type PromotionProvider,
 } from '../promotionsSettings.api';
 import {
@@ -58,7 +58,7 @@ const form = reactive<ProviderFormState>(emptyProviderForm());
 
 const step = ref<'form' | 'key'>('form');
 const current = ref<PromotionProvider | null>(null);
-const usedBy = ref<PromotionConnection[]>([]);
+const usedBy = ref<PromotionConnectionSummary[]>([]);
 const generatedPublicKey = ref<string | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
@@ -304,11 +304,7 @@ async function onDelete() {
 			data-test-id="promotion-provider-form-step"
 			@submit.prevent="submit"
 		>
-			<N8nNotice
-				v-if="isEdit && isInUse"
-				variant="warning"
-				data-test-id="promotion-provider-in-use"
-			>
+			<N8nNotice v-if="isEdit && isInUse" theme="warning" data-test-id="promotion-provider-in-use">
 				{{ i18n.baseText('settings.promotions.provider.inUse.warning') }}
 				{{
 					i18n.baseText('settings.promotions.provider.inUse.connections', {

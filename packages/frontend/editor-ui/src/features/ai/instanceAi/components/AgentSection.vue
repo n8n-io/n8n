@@ -85,7 +85,7 @@ watch(
 		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 	<!-- Error display -->
-	<N8nCallout v-if="isError && props.agentNode.error" variant="danger">
+	<N8nCallout v-if="isError && props.agentNode.error" theme="danger">
 		{{ props.agentNode.error }}
 	</N8nCallout>
 </template>

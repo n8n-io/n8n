@@ -143,7 +143,7 @@ function toggle(entry: HintEntry) {
 		<N8nCallout
 			v-for="entry in entries"
 			:key="entry.key"
-			:variant="entry.theme"
+			:theme="entry.theme"
 			:class="isCollapsible(entry) && isExpanded(entry) ? $style.expandedHint : undefined"
 			data-test-id="node-hint"
 		>

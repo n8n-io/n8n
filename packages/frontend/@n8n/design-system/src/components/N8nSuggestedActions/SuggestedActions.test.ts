@@ -47,8 +47,8 @@ const stubs = {
 		template: '<span>{{ text }}</span>',
 	},
 	N8nCallout: {
-		props: ['variant'],
-		template: '<div data-test-id="n8n-callout" :class="variant"><slot /></div>',
+		props: ['theme'],
+		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
 	},
 	N8nPopover: MockN8nPopover,
 };

@@ -317,7 +317,7 @@ function onBackButton() {
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
 					:content="activeViewStack.info"
-					variant="warning"
+					theme="warning"
 				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />

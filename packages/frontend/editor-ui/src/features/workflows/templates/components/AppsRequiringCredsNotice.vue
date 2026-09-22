@@ -33,7 +33,7 @@ const appNodeCounts = computed(() => {
 </script>
 
 <template>
-	<N8nNotice :class="$style.notice" variant="info">
+	<N8nNotice :class="$style.notice" theme="info">
 		<I18nT tag="span" :keypath="instructionsKey" scope="global">
 			<span v-n8n-html="appNodeCounts" />
 		</I18nT>

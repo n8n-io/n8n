@@ -753,7 +753,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 					</N8nText>
 				</div>
 
-				<N8nCallout v-if="modelConnectionLocked" variant="warning">
+				<N8nCallout v-if="modelConnectionLocked" theme="warning">
 					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 					<N8nLink :to="ENV_DOCS_URL" size="small" new-window>
@@ -921,7 +921,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 					v-if="
 						modelProvider === 'custom' && !modelConnectionLocked && !selectedExistingCredentialId
 					"
-					variant="warning"
+					theme="warning"
 					icon="triangle-alert"
 				>
 					{{ i18n.baseText('instanceAi.onboarding.model.weakModelWarning') }}
@@ -937,7 +937,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 						{{ i18n.baseText('instanceAi.onboarding.sandbox.lede') }}
 					</N8nText>
 				</div>
-				<N8nCallout v-if="sandboxEnvManaged" variant="warning">
+				<N8nCallout v-if="sandboxEnvManaged" theme="warning">
 					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 				</N8nCallout>
@@ -1105,7 +1105,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 						{{ i18n.baseText('instanceAi.onboarding.search.lede') }}
 					</N8nText>
 				</div>
-				<N8nCallout v-if="searchEnvManaged" variant="warning">
+				<N8nCallout v-if="searchEnvManaged" theme="warning">
 					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 				</N8nCallout>
@@ -1291,7 +1291,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 			<Transition name="onboarding-callout">
 				<N8nCallout
 					v-if="success"
-					variant="success"
+					theme="success"
 					icon="circle-check"
 					data-test-id="assistant-verification-success"
 				>
@@ -1302,7 +1302,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 			<Transition name="onboarding-callout">
 				<N8nCallout
 					v-if="failure"
-					variant="danger"
+					theme="danger"
 					icon="circle-x"
 					:data-test-id="
 						surface === 'settings'

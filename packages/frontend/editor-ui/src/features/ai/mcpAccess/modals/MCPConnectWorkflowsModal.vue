@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
 			<div :class="$style.content">
 				<N8nNotice
 					data-test-id="mcp-connect-workflows-info-notice"
-					variant="info"
+					theme="info"
 					:content="
 						i18n.baseText('settings.mcp.connectWorkflows.notice', { interpolate: { docsLink } })
 					"

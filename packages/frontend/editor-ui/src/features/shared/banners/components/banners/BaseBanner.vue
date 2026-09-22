@@ -3,13 +3,13 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import type { CalloutVariant } from '@n8n/design-system';
+import type { CalloutTheme } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system';
 
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
 interface Props {
 	name: BannerName;
-	variant?: CalloutVariant;
+	theme?: CalloutTheme;
 	customIcon?: IconName;
 	iconTooltip?: string;
 	dismissible?: boolean;
@@ -22,7 +22,7 @@ const bannersStore = useBannersStore();
 const slots = useSlots();
 
 const props = withDefaults(defineProps<Props>(), {
-	variant: 'info',
+	theme: 'info',
 	dismissible: true,
 	customIcon: undefined,
 	iconTooltip: undefined,
@@ -48,7 +48,7 @@ async function onCloseClick() {
 <template>
 	<N8nCallout
 		:class="$style.callout"
-		:variant="props.variant"
+		:theme="props.theme"
 		:icon="props.customIcon"
 		:icon-tooltip="props.iconTooltip"
 		icon-size="medium"

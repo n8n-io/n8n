@@ -81,9 +81,11 @@ const state = reactive({
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
 		attemptToConvertTypes: false,
-		// This should always be true if `showTypeConversionOptions` is provided
-		// It's used to avoid accepting any value as string without casting it
-		// Which is the legacy behavior without these type options.
+		// The execution engine no longer reads this. It stays in the saved value so an
+		// older instance that still reads it keeps casting instead of falling back to
+		// the legacy uncast passthrough. `onMounted` sets it to `true` when
+		// `showTypeConversionOptions` is set, but the stored node values spread after
+		// that, so a persisted value survives untouched. No control ever writes it.
 		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
@@ -715,7 +717,7 @@ defineExpose({
 		>
 			<span v-n8n-html="state.emptyFieldsNotice"></span>
 		</N8nNotice>
-		<N8nCallout v-else-if="state.hasStaleFields" variant="info" :iconless="true">
+		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton

@@ -51,7 +51,7 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',
 	},
 	N8nCallout: {
-		props: ['variant'],
+		props: ['theme'],
 		template: '<div v-bind="$attrs"><slot /></div>',
 	},
 	N8nButton: {
@@ -69,10 +69,11 @@ vi.mock('@n8n/design-system', () => ({
 			'<input v-bind="$attrs" :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
 	N8nMarkdownEditor: {
-		props: ['modelValue'],
+		name: 'N8nMarkdownEditor',
+		props: ['modelValue', 'showToolbar'],
 		emits: ['update:modelValue'],
 		template:
-			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<textarea v-bind="$attrs" :value="modelValue" :data-show-toolbar="showToolbar" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nText: { template: '<span><slot /></span>', props: ['size', 'color', 'bold'] },
@@ -105,6 +106,11 @@ describe('AgentSubAgentsModal', () => {
 		await addButtons[1].trigger('click');
 
 		expect(wrapper.find('h2').text()).toBe('Research Agent');
+		expect(
+			wrapper
+				.get('[data-testid="agent-sub-agents-modal-use-when"]')
+				.attributes('data-show-toolbar'),
+		).toBe('floating');
 		const confirmButton = wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]');
 		expect(confirmButton.attributes('disabled')).toBeUndefined();
 

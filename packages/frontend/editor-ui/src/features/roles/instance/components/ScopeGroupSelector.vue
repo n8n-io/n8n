@@ -15,6 +15,7 @@ import {
 	type InstanceResource,
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
+import PersonalSpacePermissions from './PersonalSpacePermissions.vue';
 
 const i18n = useI18n();
 
@@ -79,6 +80,16 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 
 <template>
 	<div :class="$style.cardContainer">
+		<!-- Every user owns a personal project whatever the role grants. Shown first so
+		     nobody reads an empty role as "no access at all". -->
+		<div :class="$style.card" data-test-id="personal-space-card">
+			<div :class="$style.cardTitle">
+				{{ i18n.baseText('instanceRoles.personalSpace.title') }}
+			</div>
+			<div :class="$style.optionList">
+				<PersonalSpacePermissions />
+			</div>
+		</div>
 		<div v-for="group in groups" :key="group.resource" :class="$style.card">
 			<div :class="$style.cardTitle">
 				{{ i18n.baseText(group.labelKey) }}
@@ -119,7 +130,7 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 				</template>
 				<N8nCallout
 					v-if="!readonly && getEscalationWarningKey(group.resource, modelValue)"
-					variant="warning"
+					theme="warning"
 					:class="$style.warning"
 					:data-test-id="`scope-escalation-warning-${group.resource}`"
 				>

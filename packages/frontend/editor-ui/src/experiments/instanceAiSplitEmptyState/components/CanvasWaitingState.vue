@@ -16,7 +16,7 @@ const i18n = useI18n();
 			<N8nText size="small" :class="$style.hint">
 				{{ i18n.baseText('experiments.instanceAiSplitEmptyState.canvas.ready') }}
 			</N8nText>
-			<N8nInfoTip type="note" variant="info" :bold="false" :class="$style.tip">
+			<N8nInfoTip type="note" theme="info" :bold="false" :class="$style.tip">
 				<span :class="$style.tipLabel">{{
 					i18n.baseText('experiments.instanceAiSplitEmptyState.canvas.tipLabel')
 				}}</span>

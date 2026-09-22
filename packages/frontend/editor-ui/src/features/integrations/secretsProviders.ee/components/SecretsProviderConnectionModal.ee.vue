@@ -338,7 +338,7 @@ onMounted(async () => {
 								<!-- Connection State Callouts -->
 								<N8nCallout
 									v-if="modal.connection.connectionState.value === 'connected'"
-									variant="success"
+									theme="success"
 									class="mb-l"
 									data-test-id="connection-success-callout"
 								>

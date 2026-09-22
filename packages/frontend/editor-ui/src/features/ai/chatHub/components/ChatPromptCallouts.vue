@@ -30,7 +30,7 @@ const i18n = useI18n();
 	<N8nCallout
 		v-if="showMissingAgentCallout"
 		icon="info"
-		variant="secondary"
+		theme="secondary"
 		:class="[$style.callout, { [$style.calloutCompact]: compact }]"
 	>
 		<I18nT
@@ -57,7 +57,7 @@ const i18n = useI18n();
 	<N8nCallout
 		v-else-if="showMissingCredentialsCallout"
 		icon="info"
-		variant="secondary"
+		theme="secondary"
 		:class="[$style.callout, { [$style.calloutCompact]: compact }]"
 	>
 		<I18nT
@@ -86,7 +86,7 @@ const i18n = useI18n();
 
 	<N8nCallout
 		v-else-if="showDynamicCredentialsMissingCallout"
-		variant="warning"
+		theme="warning"
 		:class="[$style.callout, { [$style.calloutCompact]: compact }]"
 		data-testid="dynamic-credentials-missing-callout"
 	>
@@ -113,7 +113,7 @@ const i18n = useI18n();
 	<N8nCallout
 		v-else-if="showCreditsClaimedCallout"
 		icon="info"
-		variant="secondary"
+		theme="secondary"
 		:class="[$style.callout, { [$style.calloutCompact]: compact }]"
 	>
 		<N8nText>{{ i18n.baseText('freeAi.credits.callout.success.chatHub.beginning') }}</N8nText>

@@ -169,7 +169,7 @@ watch(isActive, (active, wasActive) => {
 			v-if="showTriggerCallout"
 			:class="$style.callout"
 			data-test-id="trigger-listening-callout"
-			variant="secondary"
+			theme="secondary"
 		>
 			{{ listeningHint }}
 		</N8nCallout>

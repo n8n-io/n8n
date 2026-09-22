@@ -283,7 +283,7 @@ watch(connectionType, () => {
 			v-if="sourceControlStore.isEnterpriseSourceControlEnabled"
 			data-test-id="source-control-content-licensed"
 		>
-			<N8nCallout variant="secondary" icon="info" class="mt-2xl mb-l">
+			<N8nCallout theme="secondary" icon="info" class="mt-2xl mb-l">
 				<I18nT keypath="settings.sourceControl.description" tag="span" scope="global">
 					<template #link>
 						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">

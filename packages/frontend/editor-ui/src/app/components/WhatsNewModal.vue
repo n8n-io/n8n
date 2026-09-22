@@ -144,7 +144,7 @@ modalBus.on('opened', () => {
 				<N8nCallout
 					v-if="versionsStore.hasSignificantUpdates"
 					:class="$style.callout"
-					variant="warning"
+					theme="warning"
 				>
 					<slot name="callout-message">
 						<N8nText size="small">

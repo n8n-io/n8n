@@ -121,7 +121,7 @@ watch(() => props.agentId, load);
 
 		<!-- A dataset whose rows this view cannot read (a connected source). Falling
 		     through to "no test cases yet" would be untrue. -->
-		<N8nCallout v-else-if="dataset" variant="info" data-testid="agent-evals-external-source">
+		<N8nCallout v-else-if="dataset" theme="info" data-testid="agent-evals-external-source">
 			{{ i18n.baseText('agents.builder.agentEvals.external.description') }}
 		</N8nCallout>
 

@@ -634,7 +634,7 @@ onMounted(async () => {
 			</N8nHeading>
 		</div>
 
-		<N8nInfoTip type="note" variant="info" tooltip-placement="right" class="mb-l">
+		<N8nInfoTip type="note" theme="info" tooltip-placement="right" class="mb-l">
 			{{ i18n.baseText('settings.ldap.note') }}
 		</N8nInfoTip>
 		<N8nEmptyState
@@ -655,7 +655,7 @@ onMounted(async () => {
 				</N8nHeading>
 			</div>
 			<div :class="$style.docsInfoTip">
-				<N8nInfoTip variant="info" type="note">
+				<N8nInfoTip theme="info" type="note">
 					<span v-n8n-html="i18n.baseText('settings.ldap.infoTip')"></span>
 				</N8nInfoTip>
 			</div>

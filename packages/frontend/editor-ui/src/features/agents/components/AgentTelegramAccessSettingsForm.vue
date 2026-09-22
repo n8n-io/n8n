@@ -205,7 +205,7 @@ defineExpose({ currentSettings, validationError, isDirty });
 		<N8nCallout
 			v-else
 			:class="$style.warning"
-			variant="warning"
+			theme="warning"
 			slim
 			data-testid="telegram-public-warning"
 		>

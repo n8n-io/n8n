@@ -103,12 +103,12 @@ function closeModal() {
 		<template #content>
 			<div :class="$style.container">
 				<ElRow v-if="activeFilterHint" :class="$style.vertPadding">
-					<N8nCallout variant="info">
+					<N8nCallout theme="info">
 						{{ activeFilterHint }}
 					</N8nCallout>
 				</ElRow>
 				<ElRow v-if="allWorkflowsHint" :class="$style.vertPadding">
-					<N8nCallout variant="warning">
+					<N8nCallout theme="warning">
 						{{ allWorkflowsHint }}
 					</N8nCallout>
 				</ElRow>

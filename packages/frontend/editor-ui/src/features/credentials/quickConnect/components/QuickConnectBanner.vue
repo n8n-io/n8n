@@ -28,7 +28,7 @@ const disclaimerHtml = computed(() => {
 
 <template>
 	<div v-if="text || disclaimer" :class="$style.wrapper" data-test-id="quick-connect-banner">
-		<N8nCallout v-if="text" variant="secondary" iconless>
+		<N8nCallout v-if="text" theme="secondary" iconless>
 			<div v-n8n-html="text"></div>
 		</N8nCallout>
 		<div

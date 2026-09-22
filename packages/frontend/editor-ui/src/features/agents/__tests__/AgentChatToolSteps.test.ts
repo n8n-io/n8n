@@ -42,7 +42,7 @@ vi.mock('@n8n/design-system', () => ({
 			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
 	N8nCallout: {
-		props: ['variant'],
+		props: ['theme'],
 		template: '<div><slot /><slot name="trailingContent" /></div>',
 	},
 	N8nIcon: {

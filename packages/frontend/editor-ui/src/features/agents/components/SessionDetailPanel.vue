@@ -128,6 +128,7 @@ const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
 		(props.item.kind !== 'tool' &&
+			props.item.kind !== 'skill' &&
 			props.item.kind !== 'suspension' &&
 			props.item.kind !== 'hitl-response')
 	) {
@@ -202,6 +203,7 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'background-task-signal')
 		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'skill') return item.skillName ?? toolDisplayName.value;
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
@@ -223,6 +225,7 @@ const headerIcon = computed((): IconName => {
 	if (isSubAgent.value) return 'bot';
 	if (item.kind === 'background-task-signal') return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'skill') return 'book-open';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
@@ -340,7 +343,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</ul>
 					</template>
 					<template v-else-if="item.kind === 'execution-error'">
-						<N8nCallout variant="danger" data-test-id="execution-error-callout">
+						<N8nCallout theme="danger" data-test-id="execution-error-callout">
 							{{ executionErrorMessage(item, i18n) }}
 						</N8nCallout>
 					</template>
@@ -366,7 +369,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<template v-else-if="item.kind === 'workflow'">
 						<N8nCallout
 							v-if="isFailed"
-							variant="danger"
+							theme="danger"
 							data-test-id="workflow-error-callout"
 							:class="$style.errorCallout"
 						>
@@ -410,10 +413,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</div>
 					</template>
 
-					<template v-else-if="item.kind === 'tool'">
+					<template v-else-if="item.kind === 'tool' || item.kind === 'skill'">
 						<N8nCallout
 							v-if="isFailed"
-							variant="danger"
+							theme="danger"
 							data-test-id="tool-error-callout"
 							:class="$style.errorCallout"
 						>
@@ -437,7 +440,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
-						<N8nCallout v-if="errorMessage" variant="danger" data-test-id="node-error-callout">
+						<N8nCallout v-if="errorMessage" theme="danger" data-test-id="node-error-callout">
 							{{ errorMessage }}
 						</N8nCallout>
 						<ToolIoView

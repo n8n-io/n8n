@@ -167,7 +167,7 @@ defineExpose({ markInteracted });
 					<div :class="$style['callout-inner']">
 						<N8nCallout
 							data-test-id="trigger-listening-callout"
-							variant="secondary"
+							theme="secondary"
 							:class="$style.callout"
 						>
 							{{ listeningHint }}

@@ -198,7 +198,7 @@ function onCtaClick() {
 	<BaseBanner
 		v-if="!shouldHideTrialBanner"
 		name="TRIAL"
-		variant="custom"
+		theme="custom"
 		:dismissible="cloudPlanStore.bannerDismissible"
 		dismiss-permanently
 		:custom-icon="bannerIcon"

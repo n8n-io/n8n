@@ -63,7 +63,7 @@ const renderComponent = createComponentRenderer(TrialBanner, {
 					<slot name="mainContent" />
 					<slot name="trailingContent" />
 				</div>`,
-				props: ['name', 'variant', 'dismissible', 'customIcon', 'iconTooltip'],
+				props: ['name', 'theme', 'dismissible', 'customIcon', 'iconTooltip'],
 			},
 		},
 	},

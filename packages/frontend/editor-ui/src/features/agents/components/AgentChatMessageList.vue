@@ -5,6 +5,7 @@ import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
+import { TIME } from '@/app/constants/durations';
 import {
 	buildDisplayGroups,
 	isAssistantGroup,
@@ -32,6 +33,7 @@ import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -147,6 +149,36 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
+
+const formatChatDividerTimestamp = useChatDividerTimestamp();
+
+/**
+ * Divider label by group id: the first user message gets one, and so does any
+ * later user message whose gap since the previous one exceeds the window above.
+ * Messages without a `createdAt` (older history) are skipped and never become
+ * the "previous" reference.
+ */
+const dividerLabels = computed(() => {
+	const labels = new Map<string, string>();
+	let previousUserCreatedAt: number | undefined;
+	for (const group of displayGroups.value) {
+		if (group.kind !== 'message' || group.message.role !== 'user') continue;
+		const createdAt = group.message.createdAt;
+		if (createdAt === undefined) continue;
+		// A new local day always earns a divider, even inside the window: without
+		// it a chat that crosses midnight files today's messages under a
+		// "Yesterday at ..." heading.
+		if (
+			previousUserCreatedAt === undefined ||
+			createdAt - previousUserCreatedAt > TIME.HOUR ||
+			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
+		) {
+			labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		}
+		previousUserCreatedAt = createdAt;
+	}
+	return labels;
+});
 
 /**
  * Dismissing the note silences it for the rest of this preview chat, so a user
@@ -412,6 +444,13 @@ watch(
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
+			<div
+				v-if="dividerLabels.has(group.id)"
+				:class="$style.timestampDivider"
+				data-testid="agent-chat-timestamp-divider"
+			>
+				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
+			</div>
 			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
 				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
 			</div>
@@ -574,7 +613,7 @@ watch(
 					</template>
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
-						variant="info"
+						theme="info"
 						icon="wand-sparkles"
 						slim
 						:class="$style.changeRequestNote"
@@ -688,6 +727,11 @@ watch(
 
 .message {
 	padding-top: var(--spacing--4xs);
+}
+
+.timestampDivider {
+	align-self: center;
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
 }
 
 .content {

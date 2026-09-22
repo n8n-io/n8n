@@ -308,7 +308,7 @@ onMounted(async () => {
 					</N8nCheckbox>
 					<N8nCallout
 						v-if="unShareableCredentials.length && !isTargetPersonalProject"
-						variant="warning"
+						theme="warning"
 						:class="$style.textBlock"
 					>
 						<I18nT
@@ -343,7 +343,7 @@ onMounted(async () => {
 				</N8nText>
 				<N8nCallout
 					v-if="isResolvableCredential"
-					variant="warning"
+					theme="warning"
 					:class="$style.textBlock"
 					data-test-id="project-move-resource-modal-resolvable-warning"
 				>

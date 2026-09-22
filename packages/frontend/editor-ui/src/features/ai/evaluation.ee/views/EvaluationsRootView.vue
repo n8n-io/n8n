@@ -172,7 +172,7 @@ watch(
 					</N8nText>
 				</div>
 
-				<N8nCallout v-if="isProtectedEnvironment" variant="info" icon="info">
+				<N8nCallout v-if="isProtectedEnvironment" theme="info" icon="info">
 					{{ locale.baseText('evaluations.readOnlyNotice') }}
 				</N8nCallout>
 				<div v-else :class="$style.config">

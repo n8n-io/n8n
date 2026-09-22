@@ -336,7 +336,7 @@ function hasActiveToolCall(): boolean {
 
 		<N8nCallout
 			v-if="fixableErrorTexts.length > 0"
-			variant="danger"
+			theme="danger"
 			data-test-id="agent-chat-tool-fix-with-assistant-callout"
 		>
 			<template v-if="fixableErrorTexts.length === 1">

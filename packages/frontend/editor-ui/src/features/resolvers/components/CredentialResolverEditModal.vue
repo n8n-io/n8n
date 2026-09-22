@@ -449,7 +449,7 @@ onMounted(async () => {
 				<div v-if="activeTab === 'configuration'" ref="mainContentRef" :class="$style.mainContent">
 					<N8nCallout
 						v-if="errorMessage"
-						variant="danger"
+						theme="danger"
 						:class="$style.errorAlert"
 						data-test-id="credential-resolver-error-alert"
 					>
@@ -486,7 +486,7 @@ onMounted(async () => {
 
 					<N8nCallout
 						v-if="isEditMode && hasNonNameChanges"
-						variant="warning"
+						theme="warning"
 						:class="$style.warningAlert"
 						data-test-id="credential-resolver-clear-credentials-warning"
 					>

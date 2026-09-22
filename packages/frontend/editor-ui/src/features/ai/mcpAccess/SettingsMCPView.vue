@@ -267,7 +267,7 @@ onMounted(async () => {
 		<template v-else>
 			<N8nNotice
 				v-if="showInstanceCapacityNotice"
-				variant="warning"
+				theme="warning"
 				data-test-id="mcp-instance-capacity-notice"
 				:content="instanceCapacityNoticeContent"
 			/>

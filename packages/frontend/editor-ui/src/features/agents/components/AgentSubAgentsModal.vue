@@ -212,7 +212,7 @@ function onConfirm() {
 			<div v-else :class="[$style.content, $style.configureContent]">
 				<N8nCallout
 					v-if="invalidReasons.length > 0"
-					variant="danger"
+					theme="danger"
 					data-testid="agent-sub-agents-modal-invalid-callout"
 				>
 					<div v-for="reason in invalidReasons" :key="reason">{{ reason }}</div>
@@ -230,6 +230,7 @@ function onConfirm() {
 						:class="$style.useWhenEditor"
 						:model-value="useWhen"
 						:placeholder="i18n.baseText('agents.builder.subAgents.useWhen.placeholder')"
+						show-toolbar="floating"
 						max-height="100%"
 						data-testid="agent-sub-agents-modal-use-when"
 						@update:model-value="useWhen = $event"

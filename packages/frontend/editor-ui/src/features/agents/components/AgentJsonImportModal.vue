@@ -93,7 +93,7 @@ async function onConfirm() {
 					/>
 				</label>
 
-				<N8nCallout v-if="errorMessage" variant="danger" data-testid="agent-json-import-error">
+				<N8nCallout v-if="errorMessage" theme="danger" data-testid="agent-json-import-error">
 					{{ errorMessage }}
 				</N8nCallout>
 			</div>

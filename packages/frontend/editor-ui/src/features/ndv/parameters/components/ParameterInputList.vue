@@ -818,7 +818,7 @@ watch(
 					:icon="(item.parameter.typeOptions?.calloutAction?.icon as IconName) || 'info'"
 					icon-size="large"
 					:class="['parameter-item', item.parameter.typeOptions?.containerClass ?? '']"
-					variant="secondary"
+					theme="secondary"
 				>
 					<N8nText size="small">
 						<N8nText
@@ -996,6 +996,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
@@ -1050,7 +1051,7 @@ watch(
 
 			<N8nNotice
 				v-if="index === aiGatewayUnsupportedNoticeIndex"
-				variant="warning"
+				theme="warning"
 				:class="$style.unsupportedActionNotice"
 				data-test-id="ai-gateway-unsupported-action-notice"
 			>
