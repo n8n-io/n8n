@@ -37,7 +37,7 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						type: 'jsonb',
 						isNullable: true,
 						comment:
-							"What the step waits for, as its executor declared it. The engine reads the deadline and the outputs to emit at it. Why the node waits is the node's business.",
+							'What the step waits for, as its executor declared it. The engine reads three things: the deadline, the outputs the step emits when that deadline fires, and whether a request may end the wait. It does not read what the wait is for: a webhook, a form and an approval all look the same to it.',
 					},
 					{
 						name: 'wait_till',
@@ -52,7 +52,7 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						type: 'jsonb',
 						isNullable: true,
 						comment:
-							"What ended the step's wait, recorded when it is resumed: a deadline, or a request. The engine reads which of the two it was; a request's payload goes unread to the node's resume path.",
+							"What ended the step's wait, recorded when it is resumed: a deadline, or a request. A request carries the outputs the node's resume path produced where the request arrived. The engine emits them and runs no node code.",
 					},
 					{
 						name: 'created_at',

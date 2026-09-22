@@ -15,6 +15,7 @@ import {
 	stepKeyId,
 	isSettledStatus,
 	hasResumeCondition,
+	type ResumeCause,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
@@ -63,14 +64,12 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, and a deadline resume emits what the
-		// declaration captured, so neither needs an executor. Looking one up for
-		// either would fail a step that this worker can serve: a resume is
-		// announced to every worker, including one that carries no shim.
+		// The engine runs a batch step itself, and a resume emits outputs that
+		// already exist, so neither needs an executor. Looking one up for either
+		// would fail a step that this worker can serve: a resume is announced to
+		// every worker, including one that carries no shim.
 		const executor =
-			node.type === 'batch' || step.resumeCause?.kind === 'deadline'
-				? undefined
-				: this.executorFor(step, node);
+			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
 
 		if (execution.status !== 'running') {
 			// The execution is no longer running, so we don't run the step.
@@ -82,8 +81,8 @@ export class StepReadyHandler {
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// A deadline resume emits what the declaration captured. The node does not
-		// run again, so it has no inputs to gather. Every other dispatch gathers.
+		// A resume emits outputs that already exist. The node does not run again,
+		// so it has no inputs to gather. Every other dispatch gathers.
 		//
 		// The gather stays outside the `try` below on purpose. Its errors are the
 		// engine's own bookkeeping, not the node's, so they leave the step
@@ -91,9 +90,9 @@ export class StepReadyHandler {
 		// resolves that:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
-		const dispatch: { kind: 'deadline' } | { kind: 'run'; inputs: StepSlots } =
-			step.resumeCause?.kind === 'deadline'
-				? { kind: 'deadline' }
+		const dispatch: { kind: 'resume'; cause: ResumeCause } | { kind: 'run'; inputs: StepSlots } =
+			step.resumeCause
+				? { kind: 'resume', cause: step.resumeCause }
 				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
 
 		// Only a failure to run the step fails it. A store error propagates instead —
@@ -104,8 +103,8 @@ export class StepReadyHandler {
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
-			if (dispatch.kind === 'deadline') {
-				result = { outputs: capturedDeadlineOutputs(step) };
+			if (dispatch.kind === 'resume') {
+				result = { outputs: resumedOutputs(step, dispatch.cause) };
 			} else if (executor) {
 				result = await this.runStep(step, execution, node, dispatch.inputs, executor);
 			} else {
@@ -175,9 +174,6 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
 			},
-			...(step.resumeCause?.kind === 'request'
-				? { resumeRequest: { payload: step.resumeCause.payload } }
-				: {}),
 		});
 
 		if (result.wait) validateWaitDeclaration(step.id, result.wait);
@@ -377,12 +373,17 @@ function toStepError(error: unknown): StepError {
 }
 
 /**
- * The outputs a deadline resume emits, taken from the declaration on the row.
+ * The outputs a resume emits. No node code runs on a resume: a request's
+ * outputs were produced where the request arrived, and a deadline's were
+ * captured when the step suspended.
+ *
  * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
  * the row disagrees with the contract — and a row is a write from outside the
  * type system.
  */
-function capturedDeadlineOutputs(step: StepRecord): StepSlots {
+function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
+	if (cause.kind === 'request') return cause.outputs;
+
 	const outputs = step.waitDeclaration?.outputsAtDeadline;
 	if (!outputs) {
 		throw new UnexpectedError(

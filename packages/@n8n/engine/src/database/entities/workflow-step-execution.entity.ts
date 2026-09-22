@@ -63,11 +63,10 @@ export class WorkflowStepExecution {
 	waitTill!: Date | null;
 
 	/**
-	 * What ended the wait: a deadline, or a request. It holds no output. The
-	 * engine reads which of the two it was: a deadline resume emits
-	 * `wait_declaration.outputsAtDeadline`, and a request's payload goes unread
-	 * to the node's resume path. What that path returns lands in `outputs`, as
-	 * it does for every step.
+	 * What ended the wait: a deadline, or a request. A deadline carries nothing,
+	 * because `wait_declaration.outputsAtDeadline` already holds what the step
+	 * emits. A request carries the outputs the node's resume path produced where
+	 * the request arrived. Either way the engine emits them and runs no node code.
 	 */
 	@Column('jsonb', { name: 'resume_cause', nullable: true })
 	resumeCause!: ResumeCause | null;

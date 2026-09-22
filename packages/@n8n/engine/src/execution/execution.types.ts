@@ -116,11 +116,12 @@ export type WaitDeclaration =
 	  };
 
 /**
- * What ended a step's wait, recorded on the row when it resumed. The engine
- * emits a deadline's captured outputs itself; only a request reaches an
- * executor, which runs the node's resume path with the payload.
+ * What ended a step's wait, recorded on the row when it resumed. No node code
+ * runs on a resume. A deadline carries nothing: the declaration already holds
+ * the outputs to emit. A request carries the outputs the node's resume path
+ * produced where the request arrived, and the engine emits them unread.
  */
-export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; payload: JsonValue };
+export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
 
 /**
  * A wait with no deadline and no resume request would never end, and would

@@ -458,7 +458,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'waiting',
 			waitDeclaration: wait,
 		});
-		const resume: ResumeCause = { kind: 'request', payload: { body: { approved: true } } };
+		const resume: ResumeCause = { kind: 'request', outputs: [[{ json: { approved: true } }]] };
 
 		expect(await store.resumeStep(id, resume)).toBe(true);
 

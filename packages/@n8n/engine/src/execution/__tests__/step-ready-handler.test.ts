@@ -891,36 +891,29 @@ describe('StepReadyHandler resumes', () => {
 		});
 	});
 
-	it('runs the executor with the resume payload when a request resume dispatches the step', async () => {
-		const openWait: WaitDeclaration = { acceptsResumeRequest: true };
-		const stepStore = makeStepStore(
-			{
-				status: 'running',
-				waitDeclaration: openWait,
-				resumeCause: { kind: 'request', payload: { body: { approved: true } } },
-			},
-			{
-				loadStepsByKeys: vi.fn().mockResolvedValue({
-					[at('trigger')]: stepRow('trigger', 'completed', [{ body: { hello: 'world' } }]),
-				}),
-			},
-		);
-		const executor = makeExecutor({ outputs: [[{ json: { resumed: true } }]] });
-		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
-			v1StepExecutor: executor,
+	it('emits the request outputs when a request resume dispatches the step, in a worker with no v1 executor', async () => {
+		// The node's resume path already ran where the request arrived, and what
+		// it produced is on the row. Nothing runs here, so the worker needs no
+		// shim and gathers no inputs.
+		const requestOutputs = [[{ json: { approved: true } }]];
+		const stepStore = makeStepStore({
+			status: 'running',
+			waitDeclaration: { acceptsResumeRequest: true },
+			resumeCause: { kind: 'request', outputs: requestOutputs },
 		});
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {});
 
 		await handler.handle(event);
 
-		// the payload rides along so the shim can run the node's resume path; the
-		// step's inputs are gathered as on any other dispatch
-		expect(executor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({
-				inputs: [{ body: { hello: 'world' } }],
-				resumeRequest: { payload: { body: { approved: true } } },
-			}),
-		);
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { resumed: true } }]]);
+		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', requestOutputs);
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
 	});
 
 	it('fails the step when a deadline resume finds no captured outputs', async () => {
