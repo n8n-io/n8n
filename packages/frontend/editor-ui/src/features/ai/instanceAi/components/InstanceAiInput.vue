@@ -786,7 +786,7 @@ const resizable = computed(() => {
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>
-			<template v-if="!props.isPlanEditMode && unconfirmedNodesAttachment" #footer-end>
+			<template v-if="!props.isAwaitingPlanReview && unconfirmedNodesAttachment" #footer-end>
 				<N8nTooltip
 					as-child
 					:content="i18n.baseText('instanceAi.nodeContext.unconfirmedTooltip')"
