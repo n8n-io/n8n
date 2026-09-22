@@ -122,6 +122,12 @@ function applyReturnedFact(response: unknown, failureKey: FailureKey): boolean {
 	return true;
 }
 
+/** A close while a request is in flight would hide the refusal it may still return. */
+function onOpenChange(value: boolean) {
+	if (busy.value) return;
+	open.value = value;
+}
+
 /** The server explains a refusal better than a generic line, so prefer its message. */
 function messageOf(error: unknown, fallbackKey: FailureKey): string {
 	if (error instanceof Error && error.message) return error.message;
@@ -136,7 +142,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 		:header="i18n.baseText('instanceAi.preferenceCard.modal.title')"
 		:description="i18n.baseText('instanceAi.preferenceCard.modal.subtitle')"
 		data-test-id="instance-ai-preference-modal"
-		@update:open="open = $event"
+		@update:open="onOpenChange"
 	>
 		<div :class="$style.form">
 			<N8nInputLabel
