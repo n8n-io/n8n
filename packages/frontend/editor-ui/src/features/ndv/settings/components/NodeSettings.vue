@@ -327,6 +327,11 @@ const hasOutputConnection = computed(() => {
 });
 
 const valueChanged = (parameterData: IUpdateInformation) => {
+	// The event bus and the curl import write here too, so hidden inputs alone do not lock the node.
+	if (isRestricted.value) {
+		return;
+	}
+
 	let newValue: NodeParameterValue;
 
 	if (parameterData.hasOwnProperty('value')) {

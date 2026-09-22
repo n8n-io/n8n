@@ -13,6 +13,7 @@ import NodeSettings from './NodeSettings.vue';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -207,7 +208,39 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	return { ...renderResult, workflowDocumentStore };
 };
 
+/** Renders the test id the shared `NodeExecuteButton: true` stub drops, so its absence can be asserted. */
+const nodeExecuteButtonStub = {
+	NodeExecuteButton: { template: '<button data-test-id="node-execute-button" />' },
+};
+
+const urlUpdate = { node: httpNode.name, name: 'parameters.url', value: 'https://example.com' };
+/** The store writes into the node object, so a test that writes must not share the fixture. */
+const freshHttpNode = () => ({ ...httpNode, parameters: {} });
+
 describe('NodeSettings', () => {
+	it('shows the execute button for an executable node', async () => {
+		const { findByTestId } = renderNodeSettings({
+			props: { readOnly: false, executable: true },
+			stubs: nodeExecuteButtonStub,
+		});
+
+		expect(await findByTestId('node-execute-button')).toBeInTheDocument();
+	});
+
+	it('applies a parameter update from the event bus', async () => {
+		const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			props: { readOnly: false },
+		});
+		await findByTestId('tab-params');
+
+		ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBe(
+			'https://example.com',
+		);
+	});
+
 	it('defaults to the Parameters tab when read-only and the active node has execution data', async () => {
 		const runData: IRunData = {
 			[httpNode.name]: [
@@ -327,6 +360,7 @@ describe('NodeSettings', () => {
 			const { findByTestId, queryByTestId } = renderNodeSettings({
 				...restricted,
 				props: { readOnly: false, executable: true },
+				stubs: nodeExecuteButtonStub,
 			});
 
 			expect(await findByTestId('node-restricted-panel')).toHaveTextContent(
@@ -335,6 +369,18 @@ describe('NodeSettings', () => {
 			expect(queryByTestId('node-parameters')).not.toBeInTheDocument();
 			expect(queryByTestId('tab-params')).not.toBeInTheDocument();
 			expect(queryByTestId('node-execute-button')).not.toBeInTheDocument();
+		});
+
+		it('ignores a parameter update from the event bus', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				...restricted,
+				node: freshHttpNode(),
+			});
+			await findByTestId('node-restricted-panel');
+
+			ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+			expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
 		});
 
 		it('re-emits the replace action with the node id', async () => {
