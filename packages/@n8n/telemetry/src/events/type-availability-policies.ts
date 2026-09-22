@@ -41,11 +41,11 @@ const ruleCounts = {
 		.describe('Always 0 at project scope, which rejects the delegate action'),
 };
 
-export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
-	USER_SAVED_NODE_TYPE_POLICY: {
-		name: 'User saved node type policy',
+export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
+	USER_SAVED_TYPE_AVAILABILITY_POLICY: {
+		name: 'User saved type availability policy',
 		description:
-			'A node type availability policy was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy.',
+			'A type availability policy (node types or credential types, per `kind`) was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy.',
 		properties: z.object({
 			user_id: userId,
 			source,
@@ -63,11 +63,13 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 				.boolean()
 				.describe('Whether this write created the scope; an unwritten scope allows every type'),
 			...ruleCounts,
-			name_selector_count: z.number().describe('Rules that target one exact node type name'),
-			package_selector_count: z.number().describe('Rules that target a whole node package'),
+			name_selector_count: z.number().describe('Rules that target one exact type name'),
+			package_selector_count: z.number().describe('Rules that target a whole package'),
 			evaluated_type_count: z
 				.number()
-				.describe('Node types this instance knows, and so the denominator for the counts below'),
+				.describe(
+					"Types this instance knows for the policy's kind, and so the denominator for the counts below",
+				),
 			blocked_type_count: z.number(),
 			allowed_type_count: z.number(),
 			delegated_type_count: z
@@ -76,11 +78,11 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 			blocked_types: z
 				.array(z.string())
 				.describe(
-					'The node types this policy makes unavailable, capped at 100. Node type names, not user data. Compare the length against blocked_type_count to see whether the cap dropped any',
+					'The types this policy makes unavailable, capped at 100. Type names, not user data. Compare the length against blocked_type_count to see whether the cap dropped any',
 				),
 			allowed_types: z
 				.array(z.string())
-				.describe('The node types this policy leaves available, capped at 100 the same way'),
+				.describe('The types this policy leaves available, capped at 100 the same way'),
 			previous_rule_count: z.number().nullable().describe('Null on the first write to this scope'),
 			shadow_warning_count: z
 				.number()
@@ -88,10 +90,10 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 			version: z.number().describe('The scope version after the write'),
 		}),
 	},
-	USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT: {
-		name: 'User updated node type policy document',
+	USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT: {
+		name: 'User updated type availability policy document',
 		description:
-			'A policy document was created, edited, or deleted through the advanced instance-only document API. The composed save that the policy UI uses reports as "User saved node type policy" instead. Rule counts describe the document after the operation, so a delete reports 0 and carries the deleted size in previous_rule_count.',
+			'A policy document was created, edited, or deleted through the advanced instance-only document API. The composed save that the policy UI uses reports as "User saved type availability policy" instead. Rule counts describe the document after the operation, so a delete reports 0 and carries the deleted size in previous_rule_count.',
 		properties: z.object({
 			user_id: userId,
 			source,
@@ -102,8 +104,8 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 			previous_rule_count: z.number().nullable().describe('Null on a created document'),
 		}),
 	},
-	USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS: {
-		name: 'User updated node type policy attachments',
+	USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS: {
+		name: 'User updated type availability policy attachments',
 		description:
 			'The set of policy documents attached to one scope was replaced through the advanced instance-only attachment API. Reports the resulting set, not the individual add or remove.',
 		properties: z.object({
