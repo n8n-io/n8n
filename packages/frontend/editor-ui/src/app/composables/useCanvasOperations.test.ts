@@ -84,7 +84,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { isVNode, nextTick, reactive, ref } from 'vue';
+import { isVNode, nextTick, reactive, ref, shallowRef } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -105,6 +105,13 @@ const mockRoute = reactive({
 });
 
 const mockRouterReplace = vi.fn();
+
+// This file turns every PostHog flag on, so the flexible groups need their own
+// switch: most of these tests describe the strict group rules.
+const flexibleGroupsEnabled = shallowRef(false);
+vi.mock('@/app/composables/useFlexibleGroups', () => ({
+	useFlexibleGroups: () => ({ isEnabled: flexibleGroupsEnabled }),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
@@ -254,6 +261,7 @@ describe('useCanvasOperations', () => {
 		) as WritableDocumentStore;
 
 		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+		flexibleGroupsEnabled.value = false;
 		mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
 			(name) => ({ name, available: true }),
 		);
@@ -2892,6 +2900,33 @@ describe('useCanvasOperations', () => {
 					type: 'info',
 				}),
 			);
+			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
+		it('leaves the group alone when the flexible rules already accept the connection', () => {
+			flexibleGroupsEnabled.value = true;
+			const toast = useToast();
+			const nodeA = createGroupedNode('a', 'A');
+			const nodeB = createGroupedNode('b', 'B');
+			const nodeC = createGroupedNode('c', 'C');
+			const nodeD = createGroupedNode('d', 'D');
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
+				nodes: [nodeA, nodeB, nodeC, nodeD],
+				connections: createConnectionsBySource(
+					workflowConnection(nodeA, nodeB),
+					workflowConnection(nodeB, nodeC),
+					workflowConnection(nodeC, nodeD),
+				),
+				groups: [group],
+			});
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(nodeA, nodeC));
+
+			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
+			expectConnectionAdded(nodeA, nodeC);
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
