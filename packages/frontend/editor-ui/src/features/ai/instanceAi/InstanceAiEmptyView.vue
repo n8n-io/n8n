@@ -6,7 +6,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useChatInputAutoFocus } from '@n8n/design-system';
+import { N8nButton, useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -631,6 +631,26 @@ async function handleSubmit(
 	}
 }
 
+// ponytail: prototype trigger for the seeded onboarding thread. The real entry is a
+// first-landing redirect, not a button.
+async function startOnboardingThread() {
+	if (isStartingThread.value) return;
+	const threadId = uuidv4();
+	isStartingThread.value = true;
+	try {
+		await store.syncThread(threadId, selectedProject.value, {
+			source: 'onboarding',
+			origin: 'internal',
+		});
+	} catch {
+		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
+		return;
+	} finally {
+		isStartingThread.value = false;
+	}
+	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+}
+
 function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
 	void chatInputRef.value?.submitSuggestion(payload);
 }
@@ -754,6 +774,16 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							</div>
 						</template>
 					</InstanceAiInput>
+					<div :class="$style.onboardingTestButtons">
+						<N8nButton
+							type="tertiary"
+							size="small"
+							data-test-id="instance-ai-onboarding-test"
+							:label="i18n.baseText('instanceAi.onboarding.startTest')"
+							:loading="isStartingThread"
+							@click="startOnboardingThread()"
+						/>
+					</div>
 				</div>
 				<Transition name="workflow-preview-fade">
 					<div
@@ -773,6 +803,13 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 </template>
 
 <style lang="scss" module>
+.onboardingTestButtons {
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-self: center;
+	margin-top: var(--spacing--sm);
+}
+
 .inputFooter {
 	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
 	padding-bottom: var(--spacing--2xs);
