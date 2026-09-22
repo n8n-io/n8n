@@ -8818,6 +8818,7 @@
 	"promotions.modal.title": "Promote changes",
 	"promotions.modal.search.placeholder": "Search changes...",
 	"promotions.modal.refresh": "Refresh",
+	"promotions.modal.lastRefreshed": "Last refreshed",
 	"promotions.modal.status.new": "New",
 	"promotions.modal.status.modified": "Modified",
 	"promotions.modal.status.renamed": "Moved / renamed",
