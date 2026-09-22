@@ -12,6 +12,8 @@ import { computed, onMounted, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
@@ -85,8 +87,10 @@ const i18n = useI18n();
 const toast = useToast();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const { createAgent } = useCreateAgent();
 
 const projectIdRef = computed(() => props.projectId);
+const { canCreate: canCreateAgent } = useAgentPermissions(projectIdRef);
 const {
 	list: projectAgents,
 	ensureLoaded: ensureProjectAgentsLoaded,
@@ -405,6 +409,9 @@ async function openSubAgentsModal() {
 					agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(id)}`,
 				};
 			}),
+			onCreateAgent: canCreateAgent.value
+				? () => createAgent('button', props.projectId)
+				: undefined,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
 				const nextRef = toSubAgentRef(agentId, useWhen);
 				if (selectedSubAgentIdSet.value.has(agentId)) {

@@ -91,9 +91,14 @@ Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
 Workflows, and Vector stores.
 
 Keep the picker mounted. Preserve its search query, selected category, and
-scroll position. Put an explicit action in every selectable row. The action
-must name the outcome. Use `Add node`, `Add MCP`, `Add workflow`, or the matching
-asset label.
+scroll position. Always show the search input. Put a create row first when the
+user can create the asset. Workflows use `Create workflow`. Sub-agents use
+`Create agent`.
+
+Put an explicit action in every selectable row. The action must name the
+outcome. Use `Add node`, `Add MCP`, `Add workflow`, or the matching asset label.
+When the list has no items or no search matches, show a centered, asset-specific
+message. Do not use a drop zone or a decorative empty-state icon for a picker.
 Use less space above the embedded search input and more space between the input
 and the tabs.
 
@@ -122,6 +127,8 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 - Confirm Remove is explicit, uses ghost styling, has `trash-2`, and appears only for existing items.
 - Confirm Save is bottom-right and reveals inline errors.
 - Confirm picker state survives Back.
+- Confirm search stays visible and empty copy names the asset.
+- Confirm a permitted create action appears before the list.
 - Confirm success closes silently.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.

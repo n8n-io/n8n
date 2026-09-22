@@ -931,8 +931,21 @@ function handleRowActivate(item: ToolConnectionItem) {
 				isWorkflow ? i18n.baseText('agents.tools.workflow.search.placeholder') : undefined
 			"
 			:detail-item="null"
-			:allow-workflow-creation="isWorkflow && canCreateWorkflow"
-			:workflow-creation-loading="isCreatingWorkflow"
+			:create-action="
+				isWorkflow && canCreateWorkflow
+					? {
+							category: 'workflows',
+							label: i18n.baseText('generic.create.workflow'),
+							description: i18n.baseText('projectRoles.workflow:create.tooltip'),
+							testId: 'tools-connection-create-workflow',
+						}
+					: undefined
+			"
+			:create-action-loading="isCreatingWorkflow"
+			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
+			:no-results-message="
+				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined
+			"
 			:connect-label="addActionLabel"
 			embedded
 			show-connect-actions
@@ -940,7 +953,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			@update:search-query="searchQuery = $event"
 			@connect="handleRowActivate"
 			@open-detail="handleRowActivate"
-			@create-workflow="handleCreateWorkflow"
+			@create="handleCreateWorkflow"
 		>
 			<template #suggestion-footer>
 				<McpRegistrySuggestionFooter

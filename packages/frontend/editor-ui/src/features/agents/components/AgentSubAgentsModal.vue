@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
-	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nIconButton,
-	N8nInput,
 	N8nMarkdownEditor,
-	N8nScrollArea,
 	N8nText,
 } from '@n8n/design-system';
 import { SUB_AGENT_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import type {
+	AgentConnectionItem,
+	ToolConnectionItem,
+} from '@/features/shared/toolsConnection/types';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 export type AgentSubAgentOption = {
@@ -31,6 +33,7 @@ type AgentSubAgentsModalConfirmPayload = { agentId: string; useWhen?: string };
 type AddSubAgentModalData = {
 	agents: AgentSubAgentOption[];
 	selectedAgent?: never;
+	onCreateAgent?: () => void;
 	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
 	onRemove?: (agentId: string) => void;
 };
@@ -57,17 +60,16 @@ const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const availableAgents = computed(() => ('agents' in props.data ? props.data.agents : []));
-const hasAgents = computed(() => availableAgents.value.length > 0);
-const searchQuery = ref('');
-const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase());
-const filteredAgents = computed(() =>
-	normalizedSearchQuery.value
-		? availableAgents.value.filter((agent) =>
-				agent.name.toLowerCase().includes(normalizedSearchQuery.value),
-			)
-		: availableAgents.value,
+const pickerItems = computed<AgentConnectionItem[]>(() =>
+	availableAgents.value.map((agent) => ({
+		id: `agent:${agent.id}`,
+		kind: 'agent',
+		agentId: agent.id,
+		title: agent.name,
+		status: agent.added ? 'connected' : 'none',
+		category: 'agents',
+	})),
 );
-const hasMatchingAgents = computed(() => filteredAgents.value.length > 0);
 const isEditing = computed(() => Boolean(props.data.selectedAgent));
 const selectedAgent = ref<AgentSubAgentOption | null>(props.data.selectedAgent ?? null);
 const selectedAgentIsAdded = computed(() => isEditing.value || Boolean(selectedAgent.value?.added));
@@ -100,6 +102,18 @@ function closeModal() {
 function onSelectAgent(agent: AgentSubAgentOption) {
 	selectedAgent.value = agent;
 	useWhen.value = agent.useWhen ?? '';
+}
+
+function onPickerItemActivate(item: ToolConnectionItem) {
+	if (item.kind !== 'agent') return;
+	const agent = availableAgents.value.find((candidate) => candidate.id === item.agentId);
+	if (agent) onSelectAgent(agent);
+}
+
+function onCreateAgent() {
+	if (!('onCreateAgent' in props.data) || !props.data.onCreateAgent) return;
+	closeModal();
+	props.data.onCreateAgent();
 }
 
 function onBack() {
@@ -151,93 +165,39 @@ function onConfirm() {
 			/>
 		</template>
 
-		<div v-show="!selectedAgent" :class="$style.content">
-			<N8nInput
-				v-if="hasAgents"
-				v-model="searchQuery"
-				:placeholder="i18n.baseText('agents.builder.subAgents.modal.search.placeholder')"
-				clearable
-				data-testid="agent-sub-agents-modal-search"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" :size="16" />
-				</template>
-			</N8nInput>
-
-			<N8nScrollArea v-if="hasAgents && hasMatchingAgents" max-height="420px" type="auto">
-				<div :class="$style.rows">
-					<div
-						v-for="agent in filteredAgents"
-						:key="agent.id"
-						:class="$style.row"
-						role="group"
-						:aria-label="agent.name"
-						data-testid="agent-sub-agents-modal-row"
-					>
-						<div :class="$style.iconWrapper">
-							<N8nIcon icon="bot" :size="24" :class="$style.itemIcon" />
-						</div>
-
-						<div :class="$style.rowBody">
-							<N8nText size="medium" bold color="text-dark" :class="$style.name">
-								{{ agent.name }}
-							</N8nText>
-						</div>
-
-						<div :class="$style.actions">
-							<N8nButton
-								v-if="agent.added"
-								variant="ghost"
-								size="xsmall"
-								:class="$style.addedTrigger"
-								:aria-label="
-									i18n.baseText('agents.builder.subAgents.modal.selectAgent', {
-										interpolate: { name: agent.name },
-									})
-								"
-								data-testid="agent-sub-agents-modal-added"
-								@click="onSelectAgent(agent)"
-							>
-								<template #icon>
-									<N8nIcon icon="check" :size="14" :class="$style.addedIcon" aria-hidden="true" />
-								</template>
-								{{ i18n.baseText('agents.builder.subAgents.modal.added' as BaseTextKey) }}
-							</N8nButton>
-							<N8nButton
-								v-else
-								variant="subtle"
-								size="small"
-								:aria-label="
-									i18n.baseText('agents.builder.subAgents.modal.addAriaLabel' as BaseTextKey, {
-										interpolate: { name: agent.name },
-									})
-								"
-								data-testid="agent-sub-agents-modal-add"
-								@click="onSelectAgent(agent)"
-							>
-								{{ i18n.baseText('agents.builder.subAgents.modal.add') }}
-							</N8nButton>
-						</div>
-					</div>
-				</div>
-			</N8nScrollArea>
-
-			<N8nEmptyState
-				v-else-if="hasAgents && !hasMatchingAgents"
-				:icon="{ type: 'icon', value: 'bot' }"
-				:heading="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
-				:description="i18n.baseText('agents.builder.subAgents.modal.noResults.description')"
-				data-testid="agent-sub-agents-modal-no-results"
-			/>
-
-			<N8nEmptyState
-				v-else
-				:icon="{ type: 'icon', value: 'bot' }"
-				:heading="i18n.baseText('agents.builder.subAgents.modal.empty.title')"
-				:description="i18n.baseText('agents.builder.subAgents.modal.empty.description')"
-				data-testid="agent-sub-agents-modal-empty"
-			/>
-		</div>
+		<ToolsConnectionModal
+			v-show="!selectedAgent"
+			:open="modalOpen"
+			:items="pickerItems"
+			:categories="['agents']"
+			:detail-item="null"
+			:search-placeholder="i18n.baseText('agents.builder.subAgents.modal.search.placeholder')"
+			:empty-message="i18n.baseText('agents.builder.subAgents.modal.empty.title')"
+			:no-results-message="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
+			:create-action="
+				'onCreateAgent' in data && data.onCreateAgent
+					? {
+							category: 'agents',
+							label: i18n.baseText('projects.header.create.agent'),
+							testId: 'agent-sub-agents-modal-create',
+						}
+					: undefined
+			"
+			:connect-label="() => i18n.baseText('agents.builder.subAgents.modal.add')"
+			:connect-aria-label="
+				(item) =>
+					i18n.baseText('agents.builder.subAgents.modal.addAriaLabel' as BaseTextKey, {
+						interpolate: { name: item.title },
+					})
+			"
+			:connected-label="() => i18n.baseText('agents.builder.subAgents.modal.added' as BaseTextKey)"
+			embedded
+			show-connect-actions
+			persistent-scrollbar
+			@connect="onPickerItemActivate"
+			@open-detail="onPickerItemActivate"
+			@create="onCreateAgent"
+		/>
 
 		<div v-if="selectedAgent" :class="[$style.content, $style.configureContent]">
 			<N8nCallout
@@ -304,67 +264,6 @@ function onConfirm() {
 
 .configureContent {
 	gap: var(--spacing--lg);
-}
-
-.rows {
-	display: flex;
-	flex-direction: column;
-	padding-right: var(--spacing--lg);
-}
-
-.row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	flex-shrink: 0;
-	padding-block: var(--spacing--sm);
-}
-
-.iconWrapper {
-	flex-shrink: 0;
-	width: var(--spacing--xl);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.rowBody {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-
-.name {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	line-height: var(--line-height--md);
-	max-width: 100%;
-}
-
-.itemIcon {
-	color: var(--text-color--subtle);
-}
-
-.actions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
-.addedTrigger {
-	--button--color: var(--color--text--tint-1);
-
-	font-weight: var(--font-weight--regular);
-}
-
-.addedIcon {
-	flex-shrink: 0;
-	color: var(--color--success);
 }
 
 .field {

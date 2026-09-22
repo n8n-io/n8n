@@ -12,7 +12,7 @@ vi.mock('@n8n/i18n', () => ({
 			({
 				'agents.builder.subAgents.modal.title': 'Sub-agents',
 				'agents.builder.subAgents.modal.selectAgent': `Select ${options?.interpolate?.name ?? ''}`,
-				'agents.builder.subAgents.modal.empty.title': 'No agents to add',
+				'agents.builder.subAgents.modal.empty.title': 'No sub-agents available',
 				'agents.builder.subAgents.modal.empty.description': 'Published agents show here',
 				'agents.builder.subAgents.modal.search.placeholder': 'Search agents',
 				'agents.builder.subAgents.modal.noResults.title': 'No matching agents',
@@ -21,6 +21,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.modal.added': 'Added',
 				'agents.builder.subAgents.modal.addAriaLabel': `Add ${options?.interpolate?.name ?? ''} as a sub-agent`,
 				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
+				'projects.header.create.agent': 'Create agent',
 				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
 				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
 				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
@@ -42,6 +43,71 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 vi.mock('../components/modals/AgentModalMultiStep.vue', async () => ({
 	default: (await import('./utils/AgentModalTestStub')).AgentModalMultiStepTestStub,
+}));
+
+vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
+	default: {
+		props: [
+			'items',
+			'searchPlaceholder',
+			'emptyMessage',
+			'noResultsMessage',
+			'createAction',
+			'connectLabel',
+			'connectAriaLabel',
+			'connectedLabel',
+		],
+		emits: ['connect', 'open-detail', 'create'],
+		data: () => ({ searchQuery: '' }),
+		computed: {
+			filteredItems(this: {
+				searchQuery: string;
+				items: Array<{ id: string; title: string; status: string }>;
+			}): Array<{ id: string; title: string; status: string }> {
+				const query = this.searchQuery.trim().toLowerCase();
+				if (!query) return this.items;
+				return this.items.filter((item: { title: string }) =>
+					item.title.toLowerCase().includes(query),
+				);
+			},
+		},
+		template: `
+			<div>
+				<input
+					v-model="searchQuery"
+					:data-placeholder="searchPlaceholder"
+					data-testid="agent-sub-agents-modal-search"
+				/>
+				<button
+					v-if="createAction"
+					data-testid="agent-sub-agents-modal-create"
+					@click="$emit('create')"
+				>{{ createAction.label }}</button>
+				<div
+					v-if="filteredItems.length === 0"
+					:data-testid="searchQuery.trim() ? 'agent-sub-agents-modal-no-results' : 'agent-sub-agents-modal-empty'"
+				>{{ searchQuery.trim() ? noResultsMessage : emptyMessage }}</div>
+				<div
+					v-for="item in filteredItems"
+					:key="item.id"
+					data-testid="agent-sub-agents-modal-row"
+				>
+					<span>{{ item.title }}</span>
+					<button
+						v-if="item.status === 'connected'"
+						data-testid="agent-sub-agents-modal-added"
+						@click="$emit('open-detail', item)"
+					>{{ connectedLabel(item) }}</button>
+					<button
+						v-else
+						:aria-label="connectAriaLabel(item)"
+						data-testid="agent-sub-agents-modal-add"
+						@click="$emit('connect', item)"
+					>{{ connectLabel(item) }}</button>
+				</div>
+			</div>
+		`,
+	},
 }));
 
 vi.mock('@n8n/design-system', () => ({

@@ -40,6 +40,15 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: openModalWithDataSpy }),
 }));
 
+const createAgentSpy = vi.fn();
+vi.mock('../composables/useCreateAgent', () => ({
+	useCreateAgent: () => ({ createAgent: createAgentSpy }),
+}));
+
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => ({ canCreate: ref(true) }),
+}));
+
 const showErrorSpy = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),

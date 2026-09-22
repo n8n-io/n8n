@@ -238,8 +238,8 @@ function emitSearch(query: string) {
 }
 
 function emitCreateWorkflow() {
-	const listener = modalAttrs.onCreateWorkflow;
-	if (typeof listener !== 'function') throw new Error('Missing onCreateWorkflow');
+	const listener = modalAttrs.onCreate;
+	if (typeof listener !== 'function') throw new Error('Missing onCreate');
 	(listener as () => void)();
 }
 
@@ -471,7 +471,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.searchPlaceholder ?? modalAttrs['search-placeholder']).toBe(
 			'Search workflows',
 		);
-		expect(modalAttrs.allowWorkflowCreation ?? modalAttrs['allow-workflow-creation']).toBe(true);
+		expect(modalAttrs.createAction ?? modalAttrs['create-action']).toMatchObject({
+			category: 'workflows',
+			label: 'Create workflow',
+		});
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {

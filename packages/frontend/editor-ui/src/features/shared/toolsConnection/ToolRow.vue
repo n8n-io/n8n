@@ -23,6 +23,8 @@ const props = defineProps<{
 	item: ToolConnectionItem;
 	showConnectAction?: boolean;
 	connectLabel?: string;
+	connectAriaLabel?: string;
+	connectedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -234,7 +236,7 @@ function handleConnect() {
 				data-test-id="tools-connection-row-connected"
 			>
 				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
-				{{ i18n.baseText('tools.connection.action.connected') }}
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
 				v-else-if="item.status === 'connecting'"
@@ -265,6 +267,7 @@ function handleConnect() {
 					variant="outline"
 					size="small"
 					:loading="item.installing"
+					:aria-label="connectAriaLabel"
 					:data-test-id="
 						item.communityPreview ? 'tools-connection-row-install' : 'tools-connection-row-connect'
 					"
