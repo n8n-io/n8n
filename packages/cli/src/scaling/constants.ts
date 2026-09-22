@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import type { PubSub } from './pubsub/pubsub.types';
 
 export const JOB_TYPE_NAME = 'job';
@@ -12,10 +14,10 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
 
 /** How often to PING the pubsub subscriber connection. Short enough to keep idle NAT/IPVS flows alive. */
-export const SUBSCRIBER_LIVENESS_INTERVAL_MS = 30_000;
+export const SUBSCRIBER_LIVENESS_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
 
 /** How long to wait for PONG before dropping the subscriber connection so ioredis reconnects. */
-export const SUBSCRIBER_LIVENESS_TIMEOUT_MS = 10_000;
+export const SUBSCRIBER_LIVENESS_TIMEOUT_MS = 10 * Time.seconds.toMilliseconds;
 
 /**
  * Max allowed size in bytes of a message relayed over the pubsub channel. Events
