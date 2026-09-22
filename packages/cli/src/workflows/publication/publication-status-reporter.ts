@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	type TriggerStatusRow,
 } from '@n8n/db';
@@ -42,6 +43,7 @@ export class PublicationStatusReporter {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
+		private readonly retryStateRepository: WorkflowPublicationRetryStateRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly publisher: Publisher,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
@@ -85,7 +87,14 @@ export class PublicationStatusReporter {
 					publishedVersionId: record.publishedVersionId,
 					outboxId: record.id,
 				});
-				await this.outboxRepository.markFailed(record.id, errorMessage);
+				await this.outboxRepository.manager.transaction(async (trx) => {
+					await this.retryStateRepository.suppressRetry(
+						record.workflowId,
+						record.publishedVersionId,
+						trx,
+					);
+					await this.outboxRepository.markFailed(record.id, errorMessage, trx);
+				});
 				await this.pushFailedToActivate(record.workflowId, errorMessage);
 				return;
 			}
@@ -103,6 +112,11 @@ export class PublicationStatusReporter {
 							trx,
 						);
 					}
+					await this.retryStateRepository.suppressRetry(
+						record.workflowId,
+						record.publishedVersionId,
+						trx,
+					);
 					await this.outboxRepository.markFailed(record.id, result.error.message, trx);
 				});
 				// An expected denial, already logged as a warning by the applier — the
@@ -150,6 +164,7 @@ export class PublicationStatusReporter {
 				this.toRows(record, triggerStatuses),
 				trx,
 			);
+			await this.retryStateRepository.clearRetrySuppression(record.workflowId, trx);
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
 		});
 
@@ -267,6 +282,7 @@ export class PublicationStatusReporter {
 					trx,
 				);
 			}
+			await this.retryStateRepository.clearRetrySuppression(record.workflowId, trx);
 			await this.outboxRepository.markCompleted(record.id, trx, warningMessage);
 		});
 		await this.activationErrorsService.deregister(record.workflowId);

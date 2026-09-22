@@ -8,8 +8,9 @@ import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
-	type WorkflowPublicationReason,
+	WorkflowPublicationReason,
 } from '../entities/workflow-publication-outbox';
+import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
@@ -46,6 +47,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * record per workflow without an explicit transaction. Callers only need to
 	 * know the enqueue succeeded, so no row is returned.
 	 *
+	 * An explicit user publication also clears retry suppression in the same
+	 * transaction. Automatic reconciliation enqueues leave suppression intact.
+	 *
 	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
 	 * the enqueue atomic with a `workflow_entity` update.
 	 *
@@ -58,17 +62,30 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		reason: WorkflowPublicationReason,
 		trx?: EntityManager,
 	): Promise<void> {
-		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueWithPostgresUpsert(
-				workflowId,
-				publishedVersionId,
-				reason,
-				trx ?? this.manager,
-			);
+		const enqueueWithManager = async (manager: EntityManager) => {
+			if (reason === WorkflowPublicationReason.Publish) {
+				await manager.delete(WorkflowPublicationRetryState, { workflowId });
+			}
+
+			if (this.globalConfig.database.type === 'postgresdb') {
+				await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, reason, manager);
+				return;
+			}
+
+			await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, reason, manager);
+		};
+
+		if (trx) {
+			await enqueueWithManager(trx);
 			return;
 		}
 
-		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, reason, trx ?? this.manager);
+		if (reason === WorkflowPublicationReason.Publish) {
+			await this.manager.transaction(enqueueWithManager);
+			return;
+		}
+
+		await enqueueWithManager(this.manager);
 	}
 
 	private async enqueueWithPostgresUpsert(

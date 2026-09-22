@@ -3,6 +3,7 @@ import type {
 	EntityManager,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
@@ -25,6 +26,7 @@ describe('PublicationStatusReporter', () => {
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>({
 		manager: mock<EntityManager>(),
 	});
+	const retryStateRepository = mock<WorkflowPublicationRetryStateRepository>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
 	const publisher = mock<Publisher>();
@@ -37,6 +39,7 @@ describe('PublicationStatusReporter', () => {
 		logger,
 		errorReporter,
 		outboxRepository,
+		retryStateRepository,
 		activationErrorsService,
 		publisher,
 		triggerStatusRepository,
@@ -65,6 +68,8 @@ describe('PublicationStatusReporter', () => {
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
 		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);
+		retryStateRepository.suppressRetry.mockResolvedValue(undefined);
+		retryStateRepository.clearRetrySuppression.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
@@ -106,6 +111,7 @@ describe('PublicationStatusReporter', () => {
 			entityManager,
 		);
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith('wf-1', entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith('wf-1');
@@ -284,7 +290,12 @@ describe('PublicationStatusReporter', () => {
 	test('version-missing marks the record failed without reporting an error', async () => {
 		await reporter.report(makeRecord(), { type: 'version-missing' });
 
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'Published version not found');
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith('wf-1', 'v-2', entityManager);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'Published version not found',
+			entityManager,
+		);
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(activationErrorsService.deregister).not.toHaveBeenCalled();
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -315,6 +326,7 @@ describe('PublicationStatusReporter', () => {
 			'registration failed',
 			entityManager,
 		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith('wf-1', 'v-2', entityManager);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{
@@ -427,6 +439,7 @@ describe('PublicationStatusReporter', () => {
 			expectedMessage,
 			entityManager,
 		);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith('wf-1', entityManager);
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
 			'wf-1',
 			[
