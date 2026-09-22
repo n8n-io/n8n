@@ -425,8 +425,10 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
-			/** Eval-only: restrict the credential `list()` view to these IDs. */
-			credentialIdAllowlist?: string[];
+			/** Eval-only: restrict the credential `list()` view to these IDs. A getter,
+			 *  read on every `list()`: the harness appends credentials it creates
+			 *  mid-run, after this context is built. */
+			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -461,7 +463,7 @@ export class InstanceAiAdapterService {
 			pushRef,
 			threadId,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
@@ -481,7 +483,7 @@ export class InstanceAiAdapterService {
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
 		return {
@@ -544,7 +546,7 @@ export class InstanceAiAdapterService {
 									targetAgentId,
 								),
 							credentialService,
-							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
+							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
 						),
 					}
 				: {}),
@@ -2413,7 +2415,7 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
-		credentialIdAllowlist?: string[],
+		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const {
@@ -2846,16 +2848,21 @@ export class InstanceAiAdapterService {
 			},
 		};
 
-		if (!credentialIdAllowlist) return adapter;
+		if (!getCredentialIdAllowlist?.()) return adapter;
 
 		// Eval runs pin each build thread to a declared credential set so
 		// concurrent test cases can't observe each other's credentials. Discovery
 		// only: get/test/delete still resolve explicit IDs the caller already has.
-		const allowed = new Set(credentialIdAllowlist);
+		// Read per call, not snapshotted: a credential the harness creates on a
+		// setup card must show on the next card of the same run.
 		return {
 			...adapter,
-			list: async (options) =>
-				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
+			list: async (options) => {
+				const allowed = new Set(getCredentialIdAllowlist());
+				return allowed.size === 0
+					? []
+					: (await adapter.list(options)).filter((c) => allowed.has(c.id));
+			},
 		};
 	}
 
