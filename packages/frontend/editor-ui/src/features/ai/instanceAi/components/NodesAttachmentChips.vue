@@ -21,8 +21,8 @@ const NODE_BUNDLE_THRESHOLD = 2;
 const props = defineProps<{
 	attachment: InstanceAiNodesAttachment;
 	isRemovable?: boolean;
-	// Greyed-out preview of the current canvas selection: chips render dashed and a
-	// click confirms the whole attachment into a real one instead of removing/expanding.
+	// Greyed-out preview of the current canvas selection: chips render dashed, never
+	// expand, and a click confirms the whole attachment instead of removing/expanding.
 	unconfirmed?: boolean;
 }>();
 const emit = defineEmits<{
@@ -104,7 +104,7 @@ const chips = computed<ChipVM[]>(() => {
 				}),
 				icon: 'layers',
 				setIndex,
-				panel: set.nodes.map((node) => resolveAttachedNode(node)),
+				panel: props.unconfirmed ? undefined : set.nodes.map((node) => resolveAttachedNode(node)),
 			};
 		}
 		const resolved = resolveAttachedNode(set.nodes[0]);
@@ -295,7 +295,7 @@ const totalNodeCount = computed(() =>
 				})
 			"
 			icon="layers"
-			:removable="!unconfirmed && isRemovable"
+			:removable="isRemovable"
 			:unconfirmed="unconfirmed"
 			:expanded="null"
 			@remove="emit('remove-all')"
@@ -315,9 +315,9 @@ const totalNodeCount = computed(() =>
 					:testid="chip.testid"
 					:icon="chip.icon"
 					:node-type="chip.nodeType"
-					:removable="!unconfirmed && isRemovable"
+					:removable="isRemovable"
 					:unconfirmed="unconfirmed"
-					:expanded="!unconfirmed && chip.panel ? expandedSetIndex === chip.setIndex : null"
+					:expanded="chip.panel ? expandedSetIndex === chip.setIndex : null"
 					@remove="removeChip(chip)"
 					@toggle-expand="toggleExpanded(chip.setIndex)"
 					@enter-panel="enterPanel(chip.setIndex)"
@@ -327,7 +327,7 @@ const totalNodeCount = computed(() =>
 				overflow-clipped `.leading` slot, which would otherwise crop the panel. -->
 				<Teleport to="body">
 					<div
-						v-if="!unconfirmed && chip.panel && expandedSetIndex === chip.setIndex"
+						v-if="chip.panel && expandedSetIndex === chip.setIndex"
 						:ref="(el) => (panelRef = el as HTMLElement | null)"
 						:class="$style.panel"
 						:style="panelStyle"

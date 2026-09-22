@@ -305,20 +305,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return staged;
 	}
 
-	// Greyed-out "add canvas selection as context" preview. Mirrors the confirmed
-	// attachment shape (built by the same buildNodesAttachment on the canvas side) so
-	// chip bundling/grouping stays identical; confirming just re-stages its sets.
-	const unconfirmedNodesAttachment = ref<InstanceAiNodesAttachment | null>(null);
+	// Greyed-out "add canvas selection as context" preview, set by the canvas from the
+	// same buildNodesAttachment as a confirmed add so the chips bundle identically.
+	// Confirming is just stageNodeSets on the consumer side.
+	const unconfirmedNodes = ref<{
+		attachment: InstanceAiNodesAttachment;
+		truncated: boolean;
+	} | null>(null);
 
-	function setUnconfirmedNodes(attachment: InstanceAiNodesAttachment | null): void {
-		unconfirmedNodesAttachment.value = attachment;
-	}
-
-	function confirmUnconfirmedNodes(): void {
-		const attachment = unconfirmedNodesAttachment.value;
-		if (!attachment) return;
-		stageNodeSets(attachment.workflowId, attachment.sets);
-		unconfirmedNodesAttachment.value = null;
+	function setUnconfirmedNodes(built: typeof unconfirmedNodes.value): void {
+		unconfirmedNodes.value = built;
 	}
 
 	const composerFocusRequest = ref(0);
@@ -364,9 +360,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		pendingComposerAttachments,
 		stageNodeSets,
 		consumePendingAttachments,
-		unconfirmedNodesAttachment,
+		unconfirmedNodes,
 		setUnconfirmedNodes,
-		confirmUnconfirmedNodes,
 		composerFocusRequest,
 		requestComposerFocus,
 		clearCanvasSelectionRequest,

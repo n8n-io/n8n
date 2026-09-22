@@ -691,34 +691,35 @@ watchDebounced(
 	{ debounce: 500 },
 );
 
-// Group-expanded so a collapsed group (whose members are hidden, not selected)
-// still yields a preview — same ids the confirm path (onAddNodesToChat) uses.
-// Also keyed on isNodeContextEnabled so a gate that resolves after mount (the
-// flag loads async) still builds the preview for an already-selected node.
-watch(
-	[selectedNodeIdsWithGroupMembers, isNodeContextEnabled],
-	([newIds, gateEnabled]) => {
-		if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
-			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
-		}
-		// Instance AI: mirror the selection as a greyed-out "add as context" preview,
-		// built with the same buildNodesAttachment as a confirmed add so the chips
-		// bundle/group identically. Gated on the feature alone (Instance AI never sets
-		// chatPanelStore.isOpen, same gate as the Alt+I add-to-chat path). immediate:
-		// seed from an already-selected node when the editor first loads.
-		if (gateEnabled) {
-			const built = newIds.length
-				? buildNodesAttachment(
-						workflowDocumentStore.value.workflowId,
-						newIds,
-						buildNodeContextWorkflow(),
-					)
-				: null;
-			instanceAiStore.setUnconfirmedNodes(built?.attachment ?? null);
-		}
-	},
-	{ immediate: true },
-);
+watch(selectedNodeIds, (newIds) => {
+	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
+		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
+	}
+});
+
+// Instance AI: mirror the canvas selection as a greyed-out "add as context" preview.
+// Only inside a thread — the main editor's confirm path hands off to a new thread
+// instead, so nothing there would read it. Group-expanded ids, same as the confirm
+// path (onAddNodesToChat). Keyed on the joined ids (not array identity) and
+// debounced so node updates and rubber-band drags don't rebuild it per tick; keyed
+// on the gate too because the flag loads async and may flip after a node is selected.
+if (!instanceAiCapability.openWorkflow) {
+	watchDebounced(
+		() => [selectedNodeIdsWithGroupMembers.value.join(','), isNodeContextEnabled.value] as const,
+		([, enabled]) => {
+			instanceAiStore.setUnconfirmedNodes(
+				enabled
+					? buildNodesAttachment(
+							workflowDocumentStore.value.workflowId,
+							selectedNodeIdsWithGroupMembers.value,
+							buildNodeContextWorkflow(),
+						)
+					: null,
+			);
+		},
+		{ debounce: 150, immediate: true },
+	);
+}
 
 // Surface a selected group so surfaces outside the canvas (logs panel) can sync to it
 const selectedCanvasGroupId = computed(() => {
@@ -1796,9 +1797,7 @@ onUnmounted(() => {
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
-	// Drop the greyed-out preview so a stale canvas selection can't bleed into a
-	// later Instance AI view (the preview lives in a global store). Unconditional:
-	// the gate may have flipped off since the preview was set.
+	// The preview lives in a global store; don't let it outlive the canvas.
 	instanceAiStore.setUnconfirmedNodes(null);
 });
 

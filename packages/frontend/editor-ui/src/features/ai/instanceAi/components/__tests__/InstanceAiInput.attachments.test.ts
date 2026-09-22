@@ -71,9 +71,8 @@ describe('InstanceAiInput — staged node attachments', () => {
 		const store = useInstanceAiStore();
 
 		store.setUnconfirmedNodes({
-			type: 'nodes',
-			workflowId: 'w1',
-			sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+			attachment: { type: 'nodes', workflowId: 'w1', sets: [{ nodes: [{ id: 'n1', name: 'A' }] }] },
+			truncated: false,
 		});
 
 		const chip = await findByTestId('nodes-chip-node');
@@ -81,22 +80,22 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(chip.querySelector('[data-test-id="nodes-chip-remove"]')).toBeNull();
 	});
 
-	it('confirms an unconfirmed chip on click: stages its sets and clears the preview', async () => {
-		const { findByTestId, queryByTestId } = renderComponent();
+	it('confirms an unconfirmed chip on click: stages its sets and hides the preview', async () => {
+		const { findByTestId, queryByTestId, queryAllByTestId } = renderComponent();
 		const store = useInstanceAiStore();
 
 		store.setUnconfirmedNodes({
-			type: 'nodes',
-			workflowId: 'w1',
-			sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+			attachment: { type: 'nodes', workflowId: 'w1', sets: [{ nodes: [{ id: 'n1', name: 'A' }] }] },
+			truncated: false,
 		});
 
 		const chip = await findByTestId('nodes-chip-node');
 		await userEvent.click(chip);
 
-		// Preview cleared, and the set landed in the confirmed (now removable) attachment.
-		expect(store.unconfirmedNodesAttachment).toBeNull();
+		// The set landed in the confirmed (now removable) attachment, and the preview
+		// of that same set is hidden instead of rendering a second chip.
 		await waitFor(() => expect(queryByTestId('nodes-chip-remove')).toBeInTheDocument());
+		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1);
 	});
 
 	it('hides an unconfirmed set that is already confirmed for the same workflow', async () => {
@@ -108,9 +107,8 @@ describe('InstanceAiInput — staged node attachments', () => {
 
 		// Same selection re-offered as an unconfirmed preview → deduped away.
 		store.setUnconfirmedNodes({
-			type: 'nodes',
-			workflowId: 'w1',
-			sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+			attachment: { type: 'nodes', workflowId: 'w1', sets: [{ nodes: [{ id: 'n1', name: 'A' }] }] },
+			truncated: false,
 		});
 
 		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1));
