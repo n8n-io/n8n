@@ -784,6 +784,29 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
+	it('fails the step when the declaration names a deadline but captures no outputs', async () => {
+		// The engine emits `outputsAtDeadline` when the deadline fires, and it never
+		// runs the step again to produce them. Suspending would defer the failure to
+		// the sweep, which finds it with the row already `queued`.
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor({
+				wait: { resumeAt: '2099-01-01T00:00:00.000Z', acceptsResumeRequest: false },
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({
+				message: expect.stringContaining('no outputs to emit at it') as string,
+			}),
+		);
+	});
+
 	it('fails the step when the declaration can never resume', async () => {
 		// No deadline and no resume request means nothing would ever end this
 		// wait, so suspending would strand the execution. The declaration comes

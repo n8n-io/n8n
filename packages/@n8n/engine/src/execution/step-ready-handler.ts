@@ -159,10 +159,11 @@ export class StepReadyHandler {
 		inputs: StepSlots,
 		executor: IStepExecutor,
 	): Promise<StepExecutionResult> {
-		// The result is stored without inspection. Which slots fired is the
-		// settlement handler's concern, and what a wait means is the node's. The
-		// one exception is a wait that nothing could ever end: it would strand the
-		// execution.
+		// The slots are stored without inspection: which ones fired is the
+		// settlement handler's concern. A declaration is not opaque in the same
+		// way. The engine reads three of its fields to suspend and resume the
+		// step, so it checks them here, where the step can still record as
+		// failed. What the wait is for stays the node's.
 		const result = await executor.execute({
 			node,
 			inputs,
@@ -407,6 +408,15 @@ function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
 	if (wait.resumeAt !== undefined && Number.isNaN(Date.parse(wait.resumeAt))) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait with a deadline that is not a date: ${wait.resumeAt}`,
+		);
+	}
+
+	// The engine emits these when the deadline fires, and it never runs the step
+	// again to produce them. Without this check the wait suspends, and the sweep
+	// finds the gap at the deadline instead, with the step already `queued`.
+	if (wait.resumeAt !== undefined && wait.outputsAtDeadline === undefined) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait with a deadline but no outputs to emit at it`,
 		);
 	}
 }
