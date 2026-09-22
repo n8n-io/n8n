@@ -225,6 +225,7 @@ const isPreviewDockResizing = ref(false);
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
+const taskPreviewPrompt = ref<string>();
 const isPreviewActive = computed(function isPreviewActive() {
 	return isStandalonePreview.value || isPreviewDockOpen.value;
 });
@@ -250,6 +251,9 @@ const openedForPendingAgent = ref(isRouteAgentPending.value);
 /** A starter template was applied; latches the intro closed even if a config
  * refetch momentarily restores a blank config. No chip is shown for this. */
 const templateApplied = ref(false);
+watch([projectId, agentId], () => {
+	taskPreviewPrompt.value = undefined;
+});
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
 	// component instance, so `history.state` — just updated by that navigation —
@@ -830,13 +834,19 @@ async function onDeletePreviewSession(sessionId: string) {
 	await deleteSession(sessionId);
 }
 
-async function onOpenPreview() {
-	if (!isBuilt.value) return;
+async function onOpenPreview(expectedTarget?: {
+	projectId: string;
+	agentId: string;
+}): Promise<boolean> {
+	if (!isBuilt.value) return false;
 
 	try {
 		await flushAutosave();
 	} catch {
-		return;
+		return false;
+	}
+	if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
+		return false;
 	}
 	if (isArtifactMode.value) {
 		openArtifactPreview();
@@ -844,6 +854,18 @@ async function onOpenPreview() {
 		await openPreview();
 	}
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
+	return true;
+}
+
+async function onPreviewTask(instructions: string) {
+	const target = { projectId: projectId.value, agentId: agentId.value };
+	if (!(await onOpenPreview(target))) return;
+
+	// Reset first so the same objective can be previewed more than once.
+	taskPreviewPrompt.value = undefined;
+	await nextTick();
+	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
+	taskPreviewPrompt.value = instructions;
 }
 
 function getBuilderQuery() {
@@ -2557,6 +2579,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
+					@preview-task="onPreviewTask"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
@@ -2600,6 +2623,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:local-config="localConfig"
 						:connected-triggers="connectedTriggers"
 						:effective-session-id="effectiveSessionId"
+						:initial-prompt="taskPreviewPrompt"
 						:can-delete-session="canDeletePreviewSession"
 						:is-deleting-session="isDeletingSession"
 						:can-send-to-assistant="instanceAiAvailable"
@@ -2611,6 +2635,7 @@ function onSwitchAgent(nextAgentId: string) {
 						@close="closePreviewDock"
 						@continue-loaded="onContinueLoaded"
 						@send-to-assistant="onSendPreviewToAssistant"
+						@initial-consumed="taskPreviewPrompt = undefined"
 					/>
 				</N8nResizeWrapper>
 			</template>

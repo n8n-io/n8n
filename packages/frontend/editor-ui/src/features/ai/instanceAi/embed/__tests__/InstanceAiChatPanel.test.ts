@@ -488,7 +488,14 @@ describe('InstanceAiChatPanel', () => {
 		expect(emitted('update:threadId')).toBeFalsy();
 	});
 
-	it('mints a new thread when the list emits new', async () => {
+	it('uses the message-circle-plus icon for the new chat button', function () {
+		const { getByRole } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		const button = getByRole('button', { name: 'New chat' });
+
+		expect(button.querySelector('[data-icon="message-circle-plus"]')).toBeInTheDocument();
+	});
+
+	it('mints a new thread when the new chat button is clicked', async function () {
 		const { getByTestId, emitted } = renderPanel({
 			props: { subject, launch, threadId: 't-match' },
 		});

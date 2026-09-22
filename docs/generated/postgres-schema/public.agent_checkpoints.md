@@ -28,7 +28,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_5e31c210f896d539964bf99fe3 | CREATE INDEX "IDX_5e31c210f896d539964bf99fe3" ON public.agent_checkpoints USING btree ("agentId") |
-| IDX_agent_checkpoints_agentId_threadId_expired_updatedAt | CREATE INDEX "IDX_agent_checkpoints_agentId_threadId_expired_updatedAt" ON public.agent_checkpoints USING btree ("agentId", "threadId", expired, "updatedAt") |
+| IDX_agent_checkpoints_thread | CREATE INDEX "IDX_agent_checkpoints_thread" ON public.agent_checkpoints USING btree ("agentId", "threadId", expired, "updatedAt") |
 | PK_50a27cbafa6806c9b162304b5fd | CREATE UNIQUE INDEX "PK_50a27cbafa6806c9b162304b5fd" ON public.agent_checkpoints USING btree ("runId") |
 
 ## Relations
