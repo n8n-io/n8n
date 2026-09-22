@@ -175,8 +175,15 @@ export const createUnsealedEntityWriteRule = (config: SealedEntityWriteConfig) =
 						return;
 					}
 
-					const callPrefix = context.sourceCode.getText(node).split('(', 1)[0];
-					const hasEntityTypeArgument = entityTypeArgument.test(callPrefix);
+					// Only the text between the callee and its arguments is the type argument list.
+					// Cutting the whole call at the first `(` stops inside a receiver such as
+					// `container.get(dataSource)`, which hides the type argument.
+					const callText = context.sourceCode.getText(node);
+					const calleeText = context.sourceCode.getText(callee as never);
+					const afterCallee = callText.startsWith(calleeText)
+						? callText.slice(calleeText.length)
+						: callText;
+					const hasEntityTypeArgument = entityTypeArgument.test(afterCallee.split('(', 1)[0]);
 					const explicitEntityTarget = targetsEntity(node.arguments[0] as never);
 					const updatePayload = explicitEntityTarget ? node.arguments[2] : node.arguments[1];
 					if (

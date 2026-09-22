@@ -65,6 +65,12 @@ ruleTester.run('no-unsealed-credentials-entity-write', NoUnsealedCredentialsEnti
 		{ code: "manager.upsert(CredentialsEntity, credential, ['id']);", errors },
 		{ code: "manager.update(CredentialsEntity, id, { type: 'slackApi' });", errors },
 		{ code: "manager.update<CredentialsEntity>(id, { type: 'slackApi' });", errors },
+		// A call in the receiver must not hide the type argument.
+		{ code: "dataSource.manager.update<CredentialsEntity>(id, { type: 'slackApi' });", errors },
+		{
+			code: "container.get(DataSource).manager.update<CredentialsEntity>(id, { type: 'slackApi' });",
+			errors,
+		},
 		{ code: 'queryBuilder.insert().into(CredentialsEntity);', errors },
 		{
 			code: "manager.createQueryBuilder().update(CredentialsEntity).set({ type: 'slackApi' });",

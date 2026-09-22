@@ -46,6 +46,11 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 		{ code: "manager.upsert(WorkflowEntity, workflow, ['id']);", errors },
 		{ code: 'manager.update(WorkflowEntity, id, { nodes: [] });', errors },
 		{ code: 'manager.update<WorkflowEntity>(id, { nodes: [] });', errors },
+		// A call in the receiver must not hide the type argument.
+		{
+			code: 'container.get(DataSource).manager.update<WorkflowEntity>(id, { nodes: [] });',
+			errors,
+		},
 		{ code: 'queryBuilder.insert().into(WorkflowEntity);', errors },
 		{
 			code: 'manager.createQueryBuilder().update(WorkflowEntity).set({ nodes: [] });',
