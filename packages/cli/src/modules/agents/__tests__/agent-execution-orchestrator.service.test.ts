@@ -12,18 +12,27 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { LockService } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import {
+	AgentChatExecutionService,
+	AgentTurnAlreadyRunningError,
+} from '../agent-chat-execution.service';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -165,6 +174,16 @@ function makeRuntime(
 function makeService(sandboxEnabled = false) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionService = mock<AgentExecutionService>();
+	const executionRepository = mock<AgentExecutionRepository>();
+	const chatExecutionService = new AgentChatExecutionService(
+		Container.get(LockService),
+		executionRepository,
+		executionService,
+		checkpointStorage,
+		mock<Publisher>(),
+		mock<InstanceSettings>(),
+		mock<AgentExecutionUpdateBroadcaster>(),
+	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const contextService = new IntegrationMessageContextService(
@@ -205,7 +224,7 @@ function makeService(sandboxEnabled = false) {
 		mockLogger(),
 		checkpointStorage,
 		executionService,
-		new AgentTurnExecutionService(mockLogger(), executionService),
+		new AgentTurnExecutionService(mockLogger(), executionService, chatExecutionService),
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
@@ -214,10 +233,13 @@ function makeService(sandboxEnabled = false) {
 		agentSandboxRuntimeService,
 		agentRepository,
 		aiConfigMock,
+		chatExecutionService,
 	);
 
 	return {
 		service,
+		chatExecutionService,
+		executionRepository,
 		checkpointStorage,
 		executionService,
 		telemetry,
@@ -280,7 +302,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	describe.each(['start', 'resume'] as const)('%s turn lifecycle', (operation) => {
-		function makeTurn(abortSignal?: AbortSignal) {
+		function makeTurn(abortSignal?: AbortSignal, previewChat = false) {
 			const fixtures = makeService();
 			const runtime = makeRuntime();
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
@@ -289,6 +311,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				checkpoint: makeCheckpoint(),
 			});
 			const onExecutionRecorded = vi.fn();
+			const onExecutionStarted = vi.fn();
 			const stream =
 				operation === 'start'
 					? fixtures.service.executeForChat({
@@ -298,6 +321,8 @@ describe('AgentExecutionOrchestratorService', () => {
 							message: 'hello',
 							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 							onExecutionRecorded,
+							onExecutionStarted,
+							previewChat,
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
@@ -309,6 +334,8 @@ describe('AgentExecutionOrchestratorService', () => {
 							toolCallId: 'tc-1',
 							resumeData: { approved: true },
 							onExecutionRecorded,
+							onExecutionStarted,
+							previewChat,
 							abortSignal,
 						});
 			return {
@@ -316,9 +343,54 @@ describe('AgentExecutionOrchestratorService', () => {
 				runtime,
 				stream,
 				onExecutionRecorded,
+				onExecutionStarted,
 				sdkStart: operation === 'start' ? runtime.agent.stream : runtime.agent.resume,
 			};
 		}
+
+		it('announces the recorded execution before the SDK starts', async () => {
+			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn(undefined, true);
+			onExecutionStarted.mockImplementation(() => {
+				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+				expect(sdkStart).not.toHaveBeenCalled();
+			});
+			await collect(stream);
+			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1');
+		});
+
+		it('rejects a competing preview without creating an execution or claiming a resume', async () => {
+			const {
+				stream,
+				onExecutionStarted,
+				sdkStart,
+				executionService,
+				executionRepository,
+				runtimeCacheService,
+			} = makeTurn(undefined, true);
+			executionRepository.existsRunningByThread.mockResolvedValue(true);
+			await expect(collect(stream)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			expect(onExecutionStarted).not.toHaveBeenCalled();
+			expect(sdkStart).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
+		});
+
+		it('records cancellation when Stop follows acceptance before the SDK starts', async () => {
+			const controller = new AbortController();
+			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn(
+				controller.signal,
+				true,
+			);
+			onExecutionStarted.mockImplementation(() => controller.abort());
+			await expect(collect(stream)).rejects.toMatchObject({ name: 'AbortError' });
+			expect(sdkStart).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+				}),
+			);
+		});
 
 		it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
 			'reports the recording phase when %s fails',
@@ -2037,22 +2109,44 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId, userId }),
-		).resolves.toEqual([
-			{
-				id: 'execution-1:user',
-				executionId: 'execution-1',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hi' }],
-				createdAt: createdAt.toISOString(),
-			},
-			{
-				id: 'execution-1:assistant',
-				executionId: 'execution-1',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Hello' }],
-				createdAt: createdAt.toISOString(),
-			},
-		]);
+		).resolves.toEqual({
+			activeExecutionId: null,
+			messages: [
+				{
+					id: 'execution-1:user',
+					executionId: 'execution-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hi' }],
+					createdAt: createdAt.toISOString(),
+				},
+				{
+					id: 'execution-1:assistant',
+					executionId: 'execution-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hello' }],
+					createdAt: createdAt.toISOString(),
+				},
+			],
+		});
+	});
+
+	it('returns the running execution before it has any recorded output', async () => {
+		const { service, executionService } = makeService();
+		executionService.getThreadDetail.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [
+				{
+					id: 'execution-1',
+					status: 'running',
+					userMessage: null,
+					createdAt: new Date(),
+					timeline: [],
+				},
+			],
+		} as never);
+		await expect(
+			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId, userId }),
+		).resolves.toEqual({ messages: [], activeExecutionId: 'execution-1' });
 	});
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {

@@ -98,6 +98,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	detachStream,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
@@ -462,16 +463,19 @@ function consumeQueuedExternalMessage(message: string) {
 
 async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
-	const files = attachedFiles.value;
+	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
-		inputText.value = '';
-		await cancelAndSteer(text);
+		const result = await cancelAndSteer(text, () => {
+			if (disposed) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			consumeQueuedExternalMessage(text);
+		});
 		consumeQueuedExternalMessage(text);
-		return 'sent';
+		return result === 'busy' ? 'busy' : 'sent';
 	}
 
 	isPreparingToSend.value = true;
@@ -501,20 +505,22 @@ async function onSubmit(): Promise<SubmitResult> {
 		// Keep the draft if a local resume or cancellation started during preparation.
 		if (isStreaming.value || isCancelling.value) return 'busy';
 
-		inputText.value = '';
-		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
 
-		if (files.length > 0) {
-			await sendMessage(text, files);
-		} else {
-			await sendMessage(text);
-		}
+		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			consumeQueuedExternalMessage(text);
+		});
+		isPreparingToSend.value = false;
+		const result = await sending;
 		consumeQueuedExternalMessage(text);
+		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {
 		isPreparingToSend.value = false;
@@ -568,7 +574,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	disposed = true;
-	if (isStreaming.value) void stopGenerating();
+	detachStream();
 });
 </script>
 
@@ -655,12 +661,7 @@ onBeforeUnmount(() => {
 					!isPreparingToSend &&
 					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
-				:disabled="
-					inputBlockedBySuspension ||
-					isCancelling ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
-				"
+				:disabled="inputBlockedBySuspension || isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

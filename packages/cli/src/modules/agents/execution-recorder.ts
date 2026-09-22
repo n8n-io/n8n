@@ -447,6 +447,7 @@ export class ExecutionRecorder {
 				}
 				entry.childTrace ??= emptyChildTrace();
 				applyForwardedChildChunk(entry.childTrace, inner);
+				this.scheduleTimelineSnapshot();
 				break;
 			}
 			case 'tool-result':
@@ -508,6 +509,8 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		clearTimeout(this.timelineSnapshotTimer);
+		this.timelineSnapshotTimer = undefined;
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		return {
@@ -589,6 +592,8 @@ export class ExecutionRecorder {
 					timestamp: this.reasoningStartTime,
 					endTime: now,
 				});
+			} else {
+				this.emitTimelineSnapshot();
 			}
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();

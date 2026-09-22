@@ -1000,67 +1000,91 @@ describe('ExecutionRecorder — subagent-chunk', () => {
 		});
 	});
 
-	it('caps persisted child text at 4000 characters, trimming a delta that straddles it', () => {
-		const recorder = new ExecutionRecorder();
-		recorder.record(makeToolCallChunk('delegate_subagent', {}, 'tc-parent'));
-		// Neither delta lands on the boundary, so the second must be trimmed
-		// rather than persisted whole.
-		recorder.record({
-			type: 'subagent-chunk',
-			taskName: 'research',
-			taskPath: '/root/research_0',
-			parentToolCallId: 'tc-parent',
-			chunk: { type: 'text-delta', id: 't-1', delta: 'a'.repeat(3_000) },
-		} as StreamChunk);
-		recorder.record({
-			type: 'subagent-chunk',
-			taskName: 'research',
-			taskPath: '/root/research_0',
-			parentToolCallId: 'tc-parent',
-			chunk: { type: 'text-delta', id: 't-1', delta: 'b'.repeat(3_000) },
-		} as StreamChunk);
-		recorder.record({
-			type: 'subagent-chunk',
-			taskName: 'research',
-			taskPath: '/root/research_0',
-			parentToolCallId: 'tc-parent',
-			chunk: { type: 'text-delta', id: 't-1', delta: 'over budget' },
-		} as StreamChunk);
-		recorder.record({
-			type: 'subagent-chunk',
-			taskName: 'research',
-			taskPath: '/root/research_0',
-			parentToolCallId: 'tc-parent',
-			chunk: {
-				type: 'tool-input-start',
-				toolCallId: 'child-tc-1',
-				toolName: 'web_search',
-			},
-		} as StreamChunk);
-		recorder.record({
-			type: 'subagent-chunk',
-			taskName: 'research',
-			taskPath: '/root/research_0',
-			parentToolCallId: 'tc-parent',
-			chunk: {
-				type: 'tool-execution-end',
-				toolCallId: 'child-tc-1',
-				toolName: 'web_search',
-				isError: false,
-				endTime: 1,
-			},
-		} as StreamChunk);
+	it.each(['text-delta', 'reasoning-delta'] as const)(
+		'publishes capped child text and %s in snapshots',
+		(type) => {
+			vi.useFakeTimers();
+			const onSnapshot = vi.fn();
+			try {
+				const recorder = new ExecutionRecorder(undefined, onSnapshot);
+				recorder.record(makeToolCallChunk('delegate_subagent', {}, 'tc-parent'));
+				// Neither delta lands on the boundary, so the second must be trimmed
+				// rather than persisted whole.
+				recorder.record({
+					type: 'subagent-chunk',
+					taskName: 'research',
+					taskPath: '/root/research_0',
+					parentToolCallId: 'tc-parent',
+					chunk: { type: 'text-delta', id: 't-1', delta: 'a'.repeat(3_000) },
+				} as StreamChunk);
+				recorder.record({
+					type: 'subagent-chunk',
+					taskName: 'research',
+					taskPath: '/root/research_0',
+					parentToolCallId: 'tc-parent',
+					chunk: { type, id: 't-1', delta: 'b'.repeat(3_000) },
+				} as StreamChunk);
+				recorder.record({
+					type: 'subagent-chunk',
+					taskName: 'research',
+					taskPath: '/root/research_0',
+					parentToolCallId: 'tc-parent',
+					chunk: { type: 'text-delta', id: 't-1', delta: 'over budget' },
+				} as StreamChunk);
+				recorder.record({
+					type: 'subagent-chunk',
+					taskName: 'research',
+					taskPath: '/root/research_0',
+					parentToolCallId: 'tc-parent',
+					chunk: {
+						type: 'tool-input-start',
+						toolCallId: 'child-tc-1',
+						toolName: 'web_search',
+					},
+				} as StreamChunk);
+				recorder.record({
+					type: 'subagent-chunk',
+					taskName: 'research',
+					taskPath: '/root/research_0',
+					parentToolCallId: 'tc-parent',
+					chunk: {
+						type: 'tool-execution-end',
+						toolCallId: 'child-tc-1',
+						toolName: 'web_search',
+						isError: false,
+						endTime: 1,
+					},
+				} as StreamChunk);
 
-		const entry = recorder
-			.getMessageRecord()
-			.timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-parent');
-		expect(entry?.type).toBe('tool-call');
-		if (entry?.type !== 'tool-call') return;
-		expect(entry.childTrace?.text).toHaveLength(4_000);
-		expect(entry.childTrace?.steps).toEqual([
-			{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false },
-		]);
-	});
+				vi.advanceTimersByTime(1_000);
+				expect(onSnapshot).toHaveBeenCalledOnce();
+				expect(onSnapshot.mock.lastCall?.[0][0]).toMatchObject({
+					type: 'tool-call',
+					childTrace: {
+						text: expect.stringContaining('a'.repeat(3_000)),
+						steps: [{ toolCallId: 'child-tc-1', running: false }],
+					},
+				});
+				const entry = recorder
+					.getMessageRecord()
+					.timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-parent');
+				expect(entry?.type).toBe('tool-call');
+				if (entry?.type !== 'tool-call') return;
+				expect(
+					(entry.childTrace?.text ?? '').length +
+						(entry.childTrace?.reasoningSegments.reduce(
+							(total, segment) => total + segment.content.length,
+							0,
+						) ?? 0),
+				).toBe(4_000);
+				expect(entry.childTrace?.steps).toEqual([
+					{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false },
+				]);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
 
 	it('settles child steps when the delegation closes via tool-result alone', () => {
 		const recorder = new ExecutionRecorder();

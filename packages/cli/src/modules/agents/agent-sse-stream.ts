@@ -13,7 +13,7 @@ export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 
-/** Set up preview delivery and request cancellation when the connection closes. */
+/** The abort signal describes delivery. An accepted execution owns its cancellation. */
 export function initSseStream(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -23,43 +23,45 @@ export function initSseStream(res: FlushableResponse) {
 	res.socket?.setTimeout(0);
 	res.socket?.setNoDelay(true);
 	res.socket?.setKeepAlive(true);
-	res.write(':ok\n\n');
-	res.flush?.();
-
-	const heartbeat = setInterval(() => {
-		if (!res.writableEnded && !res.destroyed) {
-			res.write(':ping\n\n');
-			res.flush?.();
-		}
-	}, SSE_HEARTBEAT_INTERVAL_MS);
-	heartbeat.unref();
-	const stopHeartbeat = () => clearInterval(heartbeat);
-	res.once('finish', stopHeartbeat);
-	res.once('close', stopHeartbeat);
-
 	const abortController = new AbortController();
-	const abortOnClose = () => abortController.abort();
-	res.once('close', abortOnClose);
+	const detach = () => {
+		abortController.abort();
+		clearInterval(heartbeat);
+	};
+	const write = (data: string) => {
+		if (abortController.signal.aborted) return;
+		if (res.writableEnded || res.destroyed) return detach();
+		try {
+			res.write(data);
+			res.flush?.();
+		} catch {
+			detach();
+		}
+	};
+	const heartbeat = setInterval(() => write(':ping\n\n'), SSE_HEARTBEAT_INTERVAL_MS);
+	heartbeat.unref();
+	res.once('finish', detach);
+	res.once('close', detach);
+	res.once('error', detach);
+	write(':ok\n\n');
 	const close = () => {
-		res.off('close', abortOnClose);
-		stopHeartbeat();
+		res.off('close', detach);
+		res.off('finish', detach);
+		res.off('error', detach);
+		clearInterval(heartbeat);
 		if (!res.writableEnded && !res.destroyed) res.end();
 	};
 
 	const send = (event: AgentSseEvent) => {
-		if (abortController.signal.aborted) return;
-		res.write(`data: ${JSON.stringify(event)}\n\n`);
-		res.flush?.();
+		write(`data: ${JSON.stringify(event)}\n\n`);
 	};
 
 	const onChunk = (chunk: StreamChunk) => {
 		if (abortController.signal.aborted) return;
 		try {
 			emitChunkEvents(chunk, send);
-		} catch (error) {
-			abortController.abort();
-			close();
-			throw error;
+		} catch {
+			detach();
 		}
 	};
 

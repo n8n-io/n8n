@@ -16,6 +16,7 @@ import type { AgentJsonConfig } from '../types';
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
+const detachStreamMock = vi.fn();
 const loadHistoryMock = vi.fn();
 const refreshMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
@@ -190,6 +191,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			refresh: refreshMock,
 			sendMessage: sendMessageMock,
 			stopGenerating: stopGeneratingMock,
+			detachStream: detachStreamMock,
 			resume: vi.fn(),
 			cancelAndSteer: cancelAndSteerMock,
 			dismissFatalError: vi.fn(),
@@ -684,11 +686,13 @@ describe('AgentChatPanel', () => {
 		resolveBeforeSend();
 		await flushPromises();
 
-		expect(sendMessageMock).toHaveBeenCalledWith('update config');
+		expect(sendMessageMock).toHaveBeenCalledWith('update config', undefined, expect.any(Function));
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
 	it('queues an outside message until the current stream finishes', async () => {
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
 		isStreamingMock.value = true;
 		const wrapper = mountPanel();
 
@@ -706,8 +710,17 @@ describe('AgentChatPanel', () => {
 		isStreamingMock.value = false;
 		await flushPromises();
 
-		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Test these instructions',
+			undefined,
+			expect.any(Function),
+		);
+		sendMessageMock.mock.lastCall?.[2]?.();
+		await nextTick();
 		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+		wrapper.unmount();
+		response.resolve('sent');
+		await flushPromises();
 	});
 
 	it.each([
@@ -799,7 +812,13 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('canSubmit')).toBe(true);
 		chatInput.vm.$emit('submit');
 		await flushPromises();
-		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(draft.trim(), [file]);
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			draft.trim(),
+			[file],
+			expect.any(Function),
+		);
+		sendMessageMock.mock.lastCall?.[2]?.();
+		await nextTick();
 		expect(chatInput.props('modelValue')).toBe('');
 		wrapper.unmount();
 	});
@@ -815,10 +834,53 @@ describe('AgentChatPanel', () => {
 
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 		expect(chatInput.props('modelValue')).toBe('keep this draft');
-		expect(chatInput.props('disabled')).toBe(true);
+		expect(chatInput.props('disabled')).toBe(false);
 		expect(sendMessageMock).not.toHaveBeenCalled();
 		wrapper.unmount();
 	});
+
+	it.each(['sent', 'busy'] as const)(
+		'keeps edits and attachments while a submitted message is %s',
+		async (outcome) => {
+			const response = Promise.withResolvers<'sent' | 'busy'>();
+			sendMessageMock.mockImplementationOnce(() => {
+				isStreamingMock.value = true;
+				return response.promise;
+			});
+			const wrapper = mountPanel();
+			const input = wrapper.findComponent({ name: 'ChatInputBase' });
+			const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+			input.vm.$emit('update:modelValue', 'original draft');
+			input.vm.$emit('files-selected', [file]);
+			input.vm.$emit('submit');
+			await flushPromises();
+			expect(input.props('disabled')).toBe(false);
+			expect(input.props('canSubmit')).toBe(false);
+			input.vm.$emit('update:modelValue', 'edited draft');
+			const nextFile = new File(['more'], 'more.txt', { type: 'text/plain' });
+			input.vm.$emit('files-selected', [nextFile]);
+			messagesMock.value = [
+				{ id: 'snapshot', role: 'assistant', content: 'progress', status: 'streaming' },
+			];
+			if (outcome === 'sent') sendMessageMock.mock.lastCall?.[2]?.();
+			response.resolve(outcome);
+			await flushPromises();
+			expect(input.props('modelValue')).toBe('edited draft');
+			input.vm.$emit('submit');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenCalledOnce();
+			isStreamingMock.value = false;
+			await flushPromises();
+			input.vm.$emit('submit');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenLastCalledWith(
+				'edited draft',
+				outcome === 'busy' ? [file, nextFile] : [nextFile],
+				expect.any(Function),
+			);
+			wrapper.unmount();
+		},
+	);
 
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {
 		messagesMock.value = [openInteractiveMessage()];
@@ -841,8 +903,28 @@ describe('AgentChatPanel', () => {
 		).sendMessageFromOutside('go another direction');
 		await flushPromises();
 
-		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction');
+		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction', expect.any(Function));
 		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps a steering draft after a busy rejection without retrying it', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+		cancelAndSteerMock.mockResolvedValueOnce('busy');
+		const wrapper = mountPanel();
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('keep this direction');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
+			'keep this direction',
+		);
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+		isStreamingMock.value = true;
+		await nextTick();
+		isStreamingMock.value = false;
+		await flushPromises();
+		expect(cancelAndSteerMock).toHaveBeenCalledOnce();
+		wrapper.unmount();
 	});
 
 	it('keeps chat enabled when the interactive card is resolved', () => {
@@ -1001,7 +1083,7 @@ describe('AgentChatPanel', () => {
 		await flushPromises();
 
 		expect(cancelAndSteerMock).not.toHaveBeenCalled();
-		expect(sendMessageMock).toHaveBeenCalledWith('something new');
+		expect(sendMessageMock).toHaveBeenCalledWith('something new', undefined, expect.any(Function));
 	});
 
 	// An abandoned wait card earlier in the thread must not hide a real question
@@ -1037,7 +1119,7 @@ describe('AgentChatPanel', () => {
 		).sendMessageFromOutside('go another direction');
 		await flushPromises();
 
-		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction');
+		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction', expect.any(Function));
 		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
@@ -1174,23 +1256,25 @@ describe('AgentPreviewDock stream lifecycle', () => {
 		);
 	}
 
-	it('stops an in-flight stream when the preview starts a new session', async () => {
+	it('detaches an in-flight stream when the preview starts a new session', async () => {
 		const wrapper = mountPreviewDock();
 
 		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
 		await flushPromises();
 
-		expect(stopGeneratingMock).toHaveBeenCalledOnce();
+		expect(detachStreamMock).toHaveBeenCalledOnce();
+		expect(stopGeneratingMock).not.toHaveBeenCalled();
 		isStreamingMock.value = false;
 		wrapper.unmount();
 	});
 
-	it('stops an in-flight stream when the preview unmounts', async () => {
+	it('detaches an in-flight stream when the preview unmounts', async () => {
 		const wrapper = mountPreviewDock();
 
 		wrapper.unmount();
 		await flushPromises();
 
-		expect(stopGeneratingMock).toHaveBeenCalledOnce();
+		expect(detachStreamMock).toHaveBeenCalledOnce();
+		expect(stopGeneratingMock).not.toHaveBeenCalled();
 	});
 });

@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
+import { AgentChatExecutionService } from './agent-chat-execution.service';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
@@ -44,6 +45,8 @@ interface ExecuteTurnConfig {
 	prepare: () => Promise<AgentTurnRequest>;
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	previewChat?: boolean;
+	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
 }
@@ -52,6 +55,7 @@ interface TurnExecutionState {
 	executionStarted: boolean;
 	executionError?: unknown;
 	receivedFinish: boolean;
+	suspendedRunId?: string;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -88,6 +92,7 @@ export class AgentTurnExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly chatExecutionService: AgentChatExecutionService,
 	) {}
 
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
@@ -103,16 +108,26 @@ export class AgentTurnExecutionService {
 
 		try {
 			turn = await config.prepare();
-			turn.options.abortSignal?.throwIfAborted();
-			executionId = await this.startExecution(
-				{
-					...turn.recording,
-					...(config.backgroundJobSignal
-						? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
-						: {}),
-				},
-				recorder.startedAt,
-			);
+			const preparedTurn = turn;
+			const recordStart = async () => {
+				preparedTurn.options.abortSignal?.throwIfAborted();
+				executionId = await this.startExecution(
+					{
+						...preparedTurn.recording,
+						...(config.backgroundJobSignal
+							? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
+							: {}),
+					},
+					recorder.startedAt,
+				);
+				preparedTurn.options.abortSignal?.throwIfAborted();
+				config.onExecutionStarted?.(executionId, config.context.threadId);
+			};
+			if (config.previewChat) {
+				await this.chatExecutionService.admit(config.context.threadId, recordStart);
+			} else {
+				await recordStart();
+			}
 			turn.options.abortSignal?.throwIfAborted();
 			const stream = await this.startTurn(turn, config, recorder, state);
 			yield* this.streamTurn(stream, turn, config, recorder, state);
@@ -123,7 +138,7 @@ export class AgentTurnExecutionService {
 			throw error;
 		} finally {
 			if (turn && executionId) {
-				await this.finalizeTurn(turn, config, recorder, executionId, state);
+				await this.settleTurn(turn, config, recorder, executionId, state);
 				await config.onSettled?.(recorder.suspended);
 			}
 		}
@@ -167,6 +182,7 @@ export class AgentTurnExecutionService {
 				? withApprovalToolDetails(value, config.toolRegistry)
 				: value;
 			recorder.record(chunk);
+			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
 			if (chunk.type === 'finish') state.receivedFinish = true;
 
@@ -194,6 +210,22 @@ export class AgentTurnExecutionService {
 		}
 	}
 
+	private async settleTurn(
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		executionId: string,
+		state: TurnExecutionState,
+	): Promise<void> {
+		const finalize = async () =>
+			await this.finalizeTurn(turn, config, recorder, executionId, state);
+		if (config.previewChat) {
+			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
+		} else {
+			await finalize();
+		}
+	}
+
 	private async finalizeTurn(
 		turn: AgentTurnRequest,
 		config: ExecuteTurnConfig,
@@ -205,11 +237,9 @@ export class AgentTurnExecutionService {
 		const cancelled =
 			turn.options.abortSignal?.aborted ||
 			(!state.receivedFinish && !recorder.suspended && record.error === null);
-		const hitlStatus = recorder.suspended
-			? 'suspended'
-			: turn.type === 'resume' && state.executionStarted
-				? 'resumed'
-				: undefined;
+		let hitlStatus: RecordMessageParams['hitlStatus'];
+		if (recorder.suspended) hitlStatus = 'suspended';
+		else if (turn.type === 'resume' && state.executionStarted) hitlStatus = 'resumed';
 
 		await this.finalizeExecution({
 			executionId,
@@ -287,11 +317,16 @@ export class AgentTurnExecutionService {
 		params: StartExecutionParams,
 		executionError: unknown,
 		onExecutionRecorded?: (executionId: string) => void,
+		previewChat = false,
 	): Promise<void> {
 		const recorder = this.createRecorder();
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
-		const executionId = await this.startExecution(params, recorder.startedAt, executionError);
+		const recordStart = async () =>
+			await this.startExecution(params, recorder.startedAt, executionError);
+		const executionId = previewChat
+			? await this.chatExecutionService.admit(params.threadId, recordStart)
+			: await recordStart();
 		await this.finalizeExecution({
 			executionId,
 			executionStarted: false,

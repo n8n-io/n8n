@@ -36,6 +36,7 @@ import {
 } from '@/modules/agents/agent-sandbox-principal';
 import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
+import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
@@ -124,7 +125,11 @@ describe('AgentExecutionRepository', () => {
 			executionService,
 			attachmentService,
 			executionLogStore,
-			turns: new AgentTurnExecutionService(mockLogger(), executionService),
+			turns: new AgentTurnExecutionService(
+				mockLogger(),
+				executionService,
+				mock<AgentChatExecutionService>(),
+			),
 		};
 	}
 
@@ -631,6 +636,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentSandboxRuntimeService>({ isEnabled: () => sandboxEnabled }),
 				agentRepo,
 				new AiConfig(),
+				mock<AgentChatExecutionService>(),
 			);
 			const resume = async (
 				user: User,

@@ -372,6 +372,8 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+	/** Running preview turn, including a turn with no recorded output yet. */
+	activeExecutionId?: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {
