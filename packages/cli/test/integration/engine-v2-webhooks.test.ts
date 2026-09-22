@@ -12,13 +12,14 @@ import { GlobalConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createInMemoryResponsePair, ExecutionResponseReceiver } from '@n8n/engine';
 import type { INode } from 'n8n-workflow';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@/services/cache/cache.service';
+import { InMemoryExecutionResponseChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
+import { InMemoryExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import { Telemetry } from '@/telemetry';
@@ -79,9 +80,9 @@ beforeAll(async () => {
 	// The host hands the responder its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
 	// wires the same receiver by hand.
-	const { frameReceiver } = createInMemoryResponsePair();
+	const responseChannel = new InMemoryExecutionResponseChannel();
 	Container.get(EngineV2WebhookResponder).useReceiver(
-		new ExecutionResponseReceiver(frameReceiver, Container.get(Logger)),
+		new InMemoryExecutionResponseReceiver(responseChannel, Container.get(Logger)),
 	);
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.

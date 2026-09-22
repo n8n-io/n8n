@@ -26,8 +26,6 @@ import type {
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
-	IRun,
-	IRunData,
 	IRunExecutionData,
 	IWebhookData,
 	IWebhookResponseData,
@@ -61,7 +59,6 @@ import {
 	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
@@ -86,10 +83,7 @@ import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
-import type {
-	PendingWebhookResponse,
-	WebhookRunOutcome,
-} from '@/services/pending-webhook-response';
+import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -493,54 +487,6 @@ export function setupResponseNodePromise(
 			);
 			responseCallback(error, {});
 		});
-}
-
-/**
- * The data plane's answer, in the shape the v1 response path already reads.
- *
- * A v2 run keeps no control-plane execution, so there is no `IRun` to wait on.
- * Only what answering a webhook needs is filled in: the last node's data, or
- * the error that ended the run.
- */
-async function toEngineV2Run(
-	outcome: Exclude<WebhookRunOutcome, { status: 'timeout' }>,
-	executionMode: WorkflowExecuteMode,
-): Promise<IRun> {
-	const runData: IRunData = {};
-	let lastNodeExecuted = outcome.status === 'failed' ? outcome.nodeName : undefined;
-
-	if (outcome.status === 'completed' && outcome.lastNode) {
-		const { fromStepInputs } = await import('@n8n/node-engine-compatibility');
-		lastNodeExecuted = outcome.lastNode.nodeName;
-		runData[lastNodeExecuted] = [
-			{
-				startTime: Date.now(),
-				executionIndex: 0,
-				source: [],
-				executionTime: 0,
-				executionStatus: 'success',
-				data: { main: fromStepInputs(outcome.lastNode.outputs) },
-			},
-		];
-	}
-
-	return {
-		mode: executionMode,
-		startedAt: new Date(),
-		status: outcome.status === 'failed' ? 'error' : 'success',
-		// The data plane holds the run; this object never reaches a store.
-		storedAt: 'db',
-		data: createRunExecutionData({
-			resultData: {
-				runData,
-				lastNodeExecuted,
-				error:
-					outcome.status === 'failed'
-						? new WorkflowOperationError(outcome.error?.message ?? 'The workflow failed')
-						: undefined,
-			},
-		}),
-	};
 }
 
 /**
@@ -1271,7 +1217,9 @@ export async function executeWebhook(
 		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
 			try {
 				const outcome = await waiting.settled;
-				if (outcome.status !== 'timeout') return await toEngineV2Run(outcome, executionMode);
+				if (outcome.status !== 'timeout') {
+					return await engineV2Webhooks.toRun(outcome, executionMode);
+				}
 
 				Container.get(Logger).warn('No answer arrived for an engine 2.0 webhook run', {
 					executionId,

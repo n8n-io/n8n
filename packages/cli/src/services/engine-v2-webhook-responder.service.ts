@@ -1,19 +1,21 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type {
-	EndedMessage,
-	ExecutionResponse,
-	ExecutionResponseReceiver,
-	Unsubscribe,
-} from '@n8n/engine';
+import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+import type {
+	ExecutionResponseReceiver,
+	UnsubscribeExecutionResponse,
+} from '@/modules/engine-v2/response-channel/execution-response-receiver';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
 
 /** A request that is still open, and the subscription that feeds its answer. */
-type PendingWebhook = { response: PendingWebhookResponse; unsubscribe: Unsubscribe };
+type PendingWebhook = {
+	response: PendingWebhookResponse;
+	unsubscribe: UnsubscribeExecutionResponse;
+};
 
 /**
  * How many runs this replica listens for at once. Every entry has its own

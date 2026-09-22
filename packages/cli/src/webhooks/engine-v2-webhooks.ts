@@ -1,6 +1,8 @@
 import { Service } from '@n8n/di';
 import type {
 	INode,
+	IRun,
+	IRunData,
 	IWebhookResponseData,
 	IWorkflowBase,
 	WebhookResponseMode,
@@ -9,17 +11,20 @@ import type {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	classifyTriggerIdentity,
+	createRunExecutionData,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	UserError,
 	WAIT_NODE_TYPE,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import type { WebhookRunOutcome } from '@/services/pending-webhook-response';
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
@@ -117,11 +122,54 @@ export class EngineV2Webhooks {
 			);
 		}
 
+		// TODO(CAT-4079): Support `responseNode`.
 		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
 				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
+	}
+
+	/** Converts the data plane's answer to the shape the v1 response path reads. */
+	async toRun(
+		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' }>,
+		executionMode: WorkflowExecuteMode,
+	): Promise<IRun> {
+		const runData: IRunData = {};
+		let lastNodeExecuted = outcome.status === 'failed' ? outcome.nodeName : undefined;
+
+		if (outcome.status === 'completed' && outcome.lastNode) {
+			const { fromStepInputs } = await import('@n8n/node-engine-compatibility');
+			lastNodeExecuted = outcome.lastNode.nodeName;
+			runData[lastNodeExecuted] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					source: [],
+					executionTime: 0,
+					executionStatus: 'success',
+					data: { main: fromStepInputs(outcome.lastNode.outputs) },
+				},
+			];
+		}
+
+		return {
+			mode: executionMode,
+			startedAt: new Date(),
+			status: outcome.status === 'failed' ? 'error' : 'success',
+			// The data plane holds the run. This object never reaches a store.
+			storedAt: 'db',
+			data: createRunExecutionData({
+				resultData: {
+					runData,
+					lastNodeExecuted,
+					error:
+						outcome.status === 'failed'
+							? new WorkflowOperationError(outcome.error?.message ?? 'The workflow failed')
+							: undefined,
+				},
+			}),
+		};
 	}
 
 	/**

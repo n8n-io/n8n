@@ -1,9 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
-import type { ExecutionResponse, ExecutionResponseReceiver } from '@n8n/engine';
+import type { ExecutionResponse } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
 import {
 	EngineV2WebhookResponder,
 	MAX_PENDING_WEBHOOKS,

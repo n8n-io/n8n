@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { EndedMessage, ExecutionResponse, ExecutionResponseReceiver } from '@n8n/engine';
+import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
 import type express from 'express';
 import {
 	BinaryDataService,
@@ -12,6 +12,8 @@ import {
 	getHtmlSandboxCSP,
 	isWebhookHtmlSandboxingDisabled,
 } from 'n8n-core';
+
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
 
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
