@@ -1,0 +1,23 @@
+pnpm-workspace.yaml
+  s_e2203a10d11968::t_6cb8bf639fefb8 397
+packages/cli/test/integration/public-api/users.test.ts
+  s_e2203a10d11968::t_39ae209c64f666 105-125
+packages/cli/package.json
+  s_e2203a10d11968::t_65b2bb2fde8f90 282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1efa2375228065213a0c98ceeb338450191f5a3e",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
