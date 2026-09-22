@@ -20,8 +20,9 @@ export class InsightsPruningTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
+	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
 	readonly retryDelaySeconds = 1;
 
 	constructor(

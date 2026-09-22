@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
-import type { ExecutionResponseChannel } from '../../response-channel';
+import type { ExecutionResponseSender } from '../../response-channel';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
@@ -128,9 +128,9 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
-/** A channel fake; tests that care assert on `publish`. */
-function makeResponseChannel() {
-	return { publish: vi.fn() } as unknown as ExecutionResponseChannel;
+/** A response sender fake; tests that care assert on `send`. */
+function makeResponseSender() {
+	return { send: vi.fn() } as unknown as ExecutionResponseSender;
 }
 
 function makeHandler(
@@ -140,7 +140,7 @@ function makeHandler(
 		stepQueue = makeStepQueue(),
 		orchestrationQueue = makeOrchestrationQueue(),
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
-		responseChannel = makeResponseChannel(),
+		responseSender = makeResponseSender(),
 	} = {},
 ) {
 	return {
@@ -150,13 +150,13 @@ function makeHandler(
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
-			responseChannel,
+			responseSender,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
 		lifecycleEventPublisher,
-		responseChannel,
+		responseSender,
 	};
 }
 
@@ -488,7 +488,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
 		);
-		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -496,7 +496,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			type: 'execution:completed',
 			...finished,
 		});
-		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
 			type: 'ended',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
@@ -516,7 +516,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			status: 'failed',
 			error: { name: 'NodeOperationError', message: 'it broke', stack: 'at trace' },
 		});
-		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore);
 
 		await handler.handle(event);
 
@@ -524,7 +524,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			type: 'execution:failed',
 			...finished,
 		});
-		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
 			type: 'ended',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
@@ -546,7 +546,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			{},
 			{ finishExecution: vi.fn().mockResolvedValue(false) },
 		);
-		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(
 			makeStepStore({ status: 'failed' }),
 			{ executionStore },
 		);
@@ -554,7 +554,7 @@ describe('StepSettledHandler lifecycle events', () => {
 		await handler.handle(event);
 
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
-		expect(responseChannel.publish).not.toHaveBeenCalled();
+		expect(responseSender.send).not.toHaveBeenCalled();
 	});
 
 	it('announces nothing while any reachable node is unsettled', async () => {

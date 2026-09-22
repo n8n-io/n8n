@@ -255,6 +255,12 @@ export class DurableEventLog {
 		return await this.repo.getSetupItemsSnapshots(threadId);
 	}
 
+	/** The run that sent the ai-preferences block the thread still carries (see repository). */
+	async getLastPreferencesInjectionRunId(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getLastPreferencesInjectionRunId(threadId);
+	}
+
 	/**
 	 * The thread's still-open streamed segments, read from the coalesce buffers.
 	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous

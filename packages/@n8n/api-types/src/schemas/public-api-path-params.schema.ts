@@ -1,4 +1,5 @@
 import '../openapi-extend';
+import validator from 'validator';
 import { z } from 'zod';
 
 import { promotionDirectionSchema } from '../dto/promotions/promotion-config.dto';
@@ -23,6 +24,12 @@ export const projectIdParamSchema = stringIdParamSchema('The ID of the project.'
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
 export const folderIdParamSchema = stringIdParamSchema('The ID of the folder.');
 export const userIdParamSchema = stringIdParamSchema('The ID of the user.');
+export const userIdentifierParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value) || validator.isEmail(value), {
+		message: 'must be a valid ID or email',
+	})
+	.openapi({ param: { description: 'The ID or email of the user.' } });
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
 export const promotionConnectionIdParamSchema = stringIdParamSchema(
