@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted, shallowRef, watch } from 'vue';
 import { N8nIconButton, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
 import type { ChatIntegrationDescriptor, AgentIntegrationSettings } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -123,6 +123,14 @@ onMounted(async () => {
 	} catch {
 		// Leave the field blank; the rest of the setup screen still works.
 	}
+});
+
+// WhatsApp has no separate "connect" step (see module doc on `steps` above):
+// picking a credential during setup is the whole action, so it has to fire
+// `connect` itself here — the parent modal's save button only exists in edit
+// mode (see `showFooterActions` in AgentChannelModal.vue).
+watch(credentialId, (value) => {
+	if (props.mode === 'setup' && value) emit('connect');
 });
 
 const currentSettings = computed(() => undefined);
