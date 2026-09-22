@@ -85,6 +85,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * Hosts whose agent always exists omit it.
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
+	/**
+	 * Reloads agent-owned state after an API mutation that writes both a sidecar
+	 * resource and the agent config. The reload updates the config hash without
+	 * scheduling a duplicate config write.
+	 */
+	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<void>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
@@ -107,6 +113,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		refreshAgentAfterMutation,
 		validationIssues,
 		telemetry,
 	} = deps;
@@ -433,10 +440,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
-						showMessage({
-							title: locale.baseText('agents.builder.skills.added'),
-							type: 'success',
-						});
 						return;
 					}
 
@@ -475,13 +478,20 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								[skillId]: created,
 							},
 						};
-						scheduleConfigUpdate({
-							skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id: skillId }],
-						});
-						showMessage({
-							title: locale.baseText('agents.builder.skills.added'),
-							type: 'success',
-						});
+						try {
+							await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+						} catch (error) {
+							showError(error, locale.baseText('agents.builder.loadError'));
+						}
+						if (agentId.value === targetAgentId && localConfig.value) {
+							localConfig.value = {
+								...localConfig.value,
+								skills: [
+									...(localConfig.value.skills ?? []).filter((ref) => ref.id !== skillId),
+									{ type: 'skill', id: skillId },
+								],
+							};
+						}
 					})();
 				},
 			},

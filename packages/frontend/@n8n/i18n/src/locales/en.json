@@ -8314,7 +8314,6 @@
 	"agents.builder.skills.references.characterCount": "{count} / {max} characters",
 	"agents.builder.skills.defaultName": "New skill",
 	"agents.builder.skills.create.error": "Could not create skill",
-	"agents.builder.skills.added": "Skill added",
 	"agents.builder.skills.saveError": "Could not save skill",
 	"agents.builder.skills.duplicateName.error": "Agent already has a skill named \"{name}\"",
 	"agents.builder.skills.validation.nameRequired": "Enter a name.",

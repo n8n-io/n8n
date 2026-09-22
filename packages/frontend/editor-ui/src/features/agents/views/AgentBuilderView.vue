@@ -1551,6 +1551,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
@@ -1600,18 +1601,22 @@ function persistMissingPersonalisationGradient() {
 	replaceConfigAndScheduleSave(nextConfig);
 }
 
-async function onConfigUpdated() {
+async function onConfigUpdated(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
-	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
+	agentsEventBus.emit('agentUpdated', { agentId: targetAgentId, source: 'agent-builder' });
 	await Promise.all([
-		fetchAgent(),
-		fetchConfig(projectId.value, agentId.value),
-		refreshConfigValidation(projectId.value, agentId.value),
+		fetchAgent(targetProjectId, targetAgentId),
+		fetchConfig(targetProjectId, targetAgentId),
+		refreshConfigValidation(targetProjectId, targetAgentId),
 	]);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
-	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+	const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
 	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
