@@ -17,15 +17,18 @@ describe('TimeAgo', () => {
 		vi.useRealTimers();
 	});
 
-	it('should age a live label as time passes', async () => {
+	it('should age a live label once per interval', async () => {
 		const { container } = renderComponent({
 			props: { date: new Date().toISOString(), live: true },
 		});
 		expect(container.textContent).toBe('just now');
 
+		vi.advanceTimersByTime(TIME_AGO_LIVE_REFRESH_INTERVAL - 1);
+		await nextTick();
+		expect(container.textContent).toBe('just now');
+
 		vi.advanceTimersByTime(5 * 60 * 1000);
 		await nextTick();
-
 		expect(container.textContent).toBe('5 minutes ago');
 	});
 
@@ -36,21 +39,18 @@ describe('TimeAgo', () => {
 		vi.advanceTimersByTime(5 * 60 * 1000);
 		await nextTick();
 
-		// No `live`, no timer: the label stays as first rendered.
 		expect(container.textContent).toBe('just now');
 	});
 
-	it('should refresh a live label once per interval', async () => {
-		const { container } = renderComponent({
+	it('should read a date set between two ticks as the past', async () => {
+		const { container, rerender } = renderComponent({
 			props: { date: new Date().toISOString(), live: true },
 		});
 
-		vi.advanceTimersByTime(TIME_AGO_LIVE_REFRESH_INTERVAL - 1);
-		await nextTick();
-		expect(container.textContent).toBe('just now');
+		// The reference date trails the clock by up to one tick, so a newer date must not read as the future.
+		vi.advanceTimersByTime(10 * 1000);
+		await rerender({ date: new Date().toISOString(), live: true });
 
-		vi.advanceTimersByTime(60 * 1000);
-		await nextTick();
-		expect(container.textContent).toBe('1 minute ago');
+		expect(container.textContent).toBe('just now');
 	});
 });

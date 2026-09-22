@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/app/utils/typesUtils';
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, watch } from 'vue';
 import { useTimestamp } from '@vueuse/core';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -27,6 +27,14 @@ const now = useTimestamp({
 	interval: TIME_AGO_LIVE_REFRESH_INTERVAL,
 	immediate: props.live,
 });
+
+// The tick trails the clock, so a newer date would read as the future until the next tick.
+if (props.live) {
+	watch(
+		() => props.date,
+		() => (now.value = Date.now()),
+	);
+}
 
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const formatted = computed(() => {

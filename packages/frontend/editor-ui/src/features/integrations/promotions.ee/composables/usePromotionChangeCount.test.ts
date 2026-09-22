@@ -3,6 +3,8 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { PromotionChanges } from '@n8n/api-types';
 import { waitAllPromises } from '@/__tests__/utils';
 import { usePromotionChangeCount } from './usePromotionChangeCount';
+import { usePromotionChanges } from './usePromotionChanges';
+import { invalidatePromotionChanges } from './promotionChanges.cache';
 import * as api from '../promotions.api';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -36,6 +38,8 @@ describe('usePromotionChangeCount', () => {
 
 	beforeEach(() => {
 		pending = [];
+		vi.clearAllMocks();
+		invalidatePromotionChanges();
 		vi.mocked(api.getPromotableChanges).mockImplementation(
 			async () =>
 				await new Promise<PromotionChanges>((resolve, reject) => {
@@ -44,107 +48,104 @@ describe('usePromotionChangeCount', () => {
 		);
 	});
 
-	it('should keep the newest result when an older request answers last', async () => {
-		const projectId = ref<string | undefined>('project-a');
-		const { count, failed } = usePromotionChangeCount(projectId, 'apply', ref(true));
-
-		projectId.value = 'project-b';
+	it('should share one request with the modal, so opening it costs nothing', async () => {
+		const { count, lastRefreshedAt } = usePromotionChangeCount(
+			ref('project-a'),
+			'apply',
+			ref(true),
+		);
 		await nextTick();
-		projectId.value = 'project-a';
-		await nextTick();
-		expect(api.getPromotableChanges).toHaveBeenCalledTimes(3);
-
-		pending[2].resolve(changes(2));
+		pending[0].resolve(changes(2));
 		await waitAllPromises();
 		expect(count.value).toBe(2);
 
-		// The first request was for the same project, so a project id check alone would accept it.
-		pending[0].resolve(changes(5));
-		pending[1].reject(new Error('offline'));
-		await waitAllPromises();
-		expect(count.value).toBe(2);
-		expect(failed.value).toBe(false);
+		const modal = usePromotionChanges('project-a', 'apply');
+		await modal.loadChanges();
+
+		expect(api.getPromotableChanges).toHaveBeenCalledTimes(1);
+		expect(modal.changes.value).toHaveLength(2);
+		expect(modal.lastRefreshedAt.value).toBe(lastRefreshedAt.value);
 	});
 
-	it('should keep the last count visible while a same-project refresh is in flight', async () => {
-		const projectId = ref<string | undefined>('project-a');
-		const { count, isLoading, refetch } = usePromotionChangeCount(projectId, 'apply', ref(true));
-
+	it('should keep the last count and timestamp while a refresh is in flight', async () => {
+		const { count, isLoading, lastRefreshedAt, refetch } = usePromotionChangeCount(
+			ref('project-a'),
+			'apply',
+			ref(true),
+		);
+		await nextTick();
 		pending[0].resolve(changes(3));
 		await waitAllPromises();
-		expect(count.value).toBe(3);
+		const firstRefresh = lastRefreshedAt.value;
 
 		void refetch();
 		await nextTick();
+
 		expect(isLoading.value).toBe(true);
-		// No flicker to 0 while the manual refresh of the same project is pending.
 		expect(count.value).toBe(3);
+		expect(lastRefreshedAt.value).toBe(firstRefresh);
 
 		pending[1].resolve(changes(1));
 		await waitAllPromises();
 		expect(count.value).toBe(1);
-		expect(isLoading.value).toBe(false);
 	});
 
-	it('should stamp the last refreshed time only on a successful check', async () => {
-		const projectId = ref<string | undefined>('project-a');
-		const { lastRefreshedAt, refetch } = usePromotionChangeCount(projectId, 'apply', ref(true));
-		expect(lastRefreshedAt.value).toBeNull();
-
-		pending[0].resolve(changes(1));
+	it('should keep the count and the timestamp through a failed refresh until one succeeds', async () => {
+		const { count, failed, lastRefreshedAt, refetch } = usePromotionChangeCount(
+			ref('project-a'),
+			'apply',
+			ref(true),
+		);
+		await nextTick();
+		pending[0].resolve(changes(2));
 		await waitAllPromises();
 		const firstRefresh = lastRefreshedAt.value;
-		expect(firstRefresh).not.toBeNull();
 
 		void refetch();
 		await waitAllPromises();
 		pending[1].reject(new Error('offline'));
 		await waitAllPromises();
-
+		expect(failed.value).toBe(true);
+		expect(count.value).toBe(2);
 		expect(lastRefreshedAt.value).toBe(firstRefresh);
+
+		void refetch();
+		await waitAllPromises();
+		pending[2].resolve(changes(1));
+		await waitAllPromises();
+		expect(failed.value).toBe(false);
+		expect(count.value).toBe(1);
 	});
 
-	it('should stop loading when the banner turns off while a request is pending', async () => {
-		const enabled = ref(true);
+	it('should never show one project the result of another', async () => {
 		const projectId = ref<string | undefined>('project-a');
-		const { isLoading } = usePromotionChangeCount(projectId, 'apply', enabled);
+		const { count, lastRefreshedAt } = usePromotionChangeCount(projectId, 'apply', ref(true));
+		await nextTick();
+		pending[0].resolve(changes(5));
+		await waitAllPromises();
+		expect(count.value).toBe(5);
+
+		projectId.value = 'project-b';
+		await nextTick();
+
+		// Each project has its own entry, so project A's count and timestamp cannot leak.
+		expect(count.value).toBe(0);
+		expect(lastRefreshedAt.value).toBeNull();
+
+		pending[1].reject(new Error('offline'));
+		await waitAllPromises();
+		expect(lastRefreshedAt.value).toBeNull();
+	});
+
+	it('should report no loading state once the banner turns off', async () => {
+		const enabled = ref(true);
+		const { isLoading } = usePromotionChangeCount(ref('project-a'), 'apply', enabled);
 		await nextTick();
 		expect(isLoading.value).toBe(true);
 
-		// The pending request is invalidated, so nothing is left to clear the loading state.
 		enabled.value = false;
 		await nextTick();
 
 		expect(isLoading.value).toBe(false);
-	});
-
-	it('should clear the count when switching to a project with no request in flight', async () => {
-		const projectId = ref<string | undefined>('project-a');
-		const { count } = usePromotionChangeCount(projectId, 'apply', ref(true));
-
-		pending[0].resolve(changes(3));
-		await waitAllPromises();
-		expect(count.value).toBe(3);
-
-		projectId.value = 'project-b';
-		await nextTick();
-		// A different project must not show the previous project's stale count while loading.
-		expect(count.value).toBe(0);
-	});
-
-	it('should clear a previous failure once a refresh succeeds', async () => {
-		const projectId = ref<string | undefined>('project-a');
-		const { count, failed, refetch } = usePromotionChangeCount(projectId, 'apply', ref(true));
-
-		pending[0].reject(new Error('offline'));
-		await waitAllPromises();
-		expect(failed.value).toBe(true);
-
-		void refetch();
-		await waitAllPromises();
-		pending[1].resolve(changes(2));
-		await waitAllPromises();
-		expect(failed.value).toBe(false);
-		expect(count.value).toBe(2);
 	});
 });

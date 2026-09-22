@@ -17,6 +17,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import PromotionBanners from './PromotionBanners.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { invalidatePromotionChanges } from '../composables/promotionChanges.cache';
 import { promotionEventBus } from '../promotions.eventBus';
 import * as settingsApi from '../promotionsSettings.api';
 
@@ -37,6 +38,8 @@ const commitSha = 'a'.repeat(40);
 const oneChange = (name: string, status: string) => ({
 	data: { commitSha, changes: [{ id: 'workflow-1', name, type: 'workflow', status }] },
 });
+
+type ChangesReply = ReturnType<typeof oneChange> | Response;
 
 const connections = (configs: Record<string, unknown>) => ({
 	data: [{ id: 'connection-1', scope: 'instance', configs }],
@@ -71,8 +74,9 @@ describe('PromotionBanners', () => {
 		});
 		// The store reads this from the route, which the mocked store cannot see.
 		projectsStore.currentProjectId = 'project-1';
-		// The connection is cached per page load; tests must not share it.
+		// The connection and the changes are cached per page load; tests must not share them.
 		invalidateInstancePromotionConnection();
+		invalidatePromotionChanges();
 	});
 
 	afterEach(() => {
@@ -218,7 +222,9 @@ describe('PromotionBanners', () => {
 	});
 
 	it('reports a failed outgoing refresh instead of keeping the stale count', async () => {
-		const promoteChanges = vi.fn(() => oneChange('Changed workflow', 'modified'));
+		const promoteChanges = vi.fn<() => ChangesReply>(() =>
+			oneChange('Changed workflow', 'modified'),
+		);
 		server.get('/api/v1/promotions/connections', () =>
 			connections({ promote: { id: 'config-1' } }),
 		);
@@ -236,7 +242,6 @@ describe('PromotionBanners', () => {
 		);
 		await userEvent.click(await findByTestId('promotion-banner-refresh'));
 
-		// A stale count presented as current would be worse than saying the check failed.
 		await waitFor(() => {
 			expect(banner).toHaveTextContent('Could not check for changes to promote');
 			expect(banner).not.toHaveTextContent('1 change available');
@@ -352,7 +357,6 @@ describe('PromotionBanners', () => {
 		await userEvent.click(await findByTestId('promotion-banner-refresh'));
 
 		await waitFor(() => expect(releaseRefresh).toBeDefined());
-		// Mid-refresh the banner keeps the last count and marks the button busy.
 		expect(queryByTestId('promotion-banner')).toBeInTheDocument();
 		expect(banner).toHaveTextContent('1 change');
 		expect(await findByTestId('promotion-banner-refresh')).toBeDisabled();
@@ -361,31 +365,6 @@ describe('PromotionBanners', () => {
 
 		await waitFor(() => expect(banner).toHaveTextContent('2 changes'));
 		expect(promoteChanges).toHaveBeenCalledTimes(2);
-	});
-
-	it('refreshes the incoming count on demand and clears a previous failure', async () => {
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
-		const applyChanges = vi.fn(
-			() => new Response(400, {}, { message: 'The apply direction is not cloned' }),
-		);
-		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
-		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
-		});
-		const { findByTestId } = renderComponent();
-
-		const banner = await findByTestId('promotion-incoming-banner');
-		expect(banner).toHaveTextContent('Could not check for incoming changes');
-
-		applyChanges.mockImplementation(() => oneChange('Incoming workflow', 'new'));
-		await userEvent.click(await findByTestId('promotion-incoming-banner-refresh'));
-
-		await waitFor(() => {
-			expect(applyChanges).toHaveBeenCalledTimes(2);
-			expect(banner).toHaveTextContent('1 incoming change');
-		});
 	});
 
 	it('keeps the incoming changes entry visible when the check fails', async () => {

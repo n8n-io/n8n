@@ -20,6 +20,7 @@ import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { invalidatePromotionChanges } from '../composables/promotionChanges.cache';
 import {
 	fetchPromotionConnection,
 	fetchPromotionConnections,
@@ -120,8 +121,9 @@ function onProviderDeleted() {
 
 function onConnectionSaved(saved: PromotionConnection) {
 	connection.value = saved;
-	// The project header caches the instance connection per page load.
+	// The project header caches the connection and the change previews, both tied to the old settings.
 	invalidateInstancePromotionConnection();
+	invalidatePromotionChanges();
 }
 
 async function focusProvider(id: string | undefined) {

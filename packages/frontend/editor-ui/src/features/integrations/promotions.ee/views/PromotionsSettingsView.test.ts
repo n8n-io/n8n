@@ -7,6 +7,7 @@ import { getDropdownItems } from '@/__tests__/utils';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionConnection, PromotionProvider } from '../promotionsSettings.api';
+import * as changesCache from '../composables/promotionChanges.cache';
 import PromotionsSettingsView from './PromotionsSettingsView.vue';
 
 const api = vi.hoisted(() => ({
@@ -424,6 +425,7 @@ describe('PromotionsSettingsView', () => {
 			api.fetchPromotionConnections.mockResolvedValue([saved]);
 			api.fetchPromotionConnection.mockResolvedValue(saved);
 			await renderReadyView();
+			const invalidateChanges = vi.spyOn(changesCache, 'invalidatePromotionChanges');
 
 			await selectProvider('Mirror');
 			await save();
@@ -438,6 +440,8 @@ describe('PromotionsSettingsView', () => {
 				),
 			);
 			expect(api.updatePromotionProvider).not.toHaveBeenCalled();
+			// The cached previews belong to the old settings.
+			expect(invalidateChanges).toHaveBeenCalled();
 		});
 
 		it('retries failed settings without repeating successful updates', async () => {

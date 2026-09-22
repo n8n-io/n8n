@@ -15,6 +15,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
 import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
+import { markPromotionChangesStale } from '../composables/promotionChanges.cache';
 import { promotionEventBus } from '../promotions.eventBus';
 import { applyPromotion } from '../promotionsSettings.api';
 
@@ -55,6 +56,7 @@ const {
 	selectedCount,
 	allSelected,
 	someSelected,
+	loadChanges,
 	fetchChanges,
 	toggleSelected,
 	toggleSelectAll,
@@ -127,6 +129,8 @@ async function onRefresh() {
 // asks for a project the package removed.
 async function announceApplied() {
 	const { projectId } = props.data;
+	// Apply rewrites every team project, so every cached preview is out of date.
+	markPromotionChangesStale();
 	try {
 		const project = await projectsStore.fetchProject(projectId);
 		promotionEventBus.emit('applied', { projectId, project });
@@ -210,7 +214,7 @@ async function onApplyAll() {
 }
 
 onMounted(async () => {
-	await fetchChanges();
+	await loadChanges();
 });
 </script>
 

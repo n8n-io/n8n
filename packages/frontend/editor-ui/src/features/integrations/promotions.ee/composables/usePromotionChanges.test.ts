@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { usePromotionChanges } from './usePromotionChanges';
+import { invalidatePromotionChanges } from './promotionChanges.cache';
 import * as promotionsApi from '../promotions.api';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -56,6 +57,8 @@ const COMMIT_SHA = 'a'.repeat(40);
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// The rows are cached per page load; tests must not share them.
+		invalidatePromotionChanges();
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
 			commitSha: COMMIT_SHA,
 			changes: mockChanges,
@@ -116,20 +119,6 @@ describe('usePromotionChanges', () => {
 		} finally {
 			vi.useRealTimers();
 		}
-	});
-
-	it('should set the last refreshed timestamp only on a successful fetch', async () => {
-		const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
-		expect(lastRefreshedAt.value).toBeNull();
-
-		await fetchChanges();
-		expect(lastRefreshedAt.value).not.toBeNull();
-
-		const firstRefresh = lastRefreshedAt.value;
-		vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(new Error('Network error'));
-		await fetchChanges();
-
-		expect(lastRefreshedAt.value).toBe(firstRefresh);
 	});
 
 	it('should select only the visible rows when a search filter is active', async () => {

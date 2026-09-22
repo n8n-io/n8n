@@ -8,6 +8,7 @@ import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
 import { promotionEventBus } from '../promotions.eventBus';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, Response, type Request } from 'miragejs';
+import { invalidatePromotionChanges } from '../composables/promotionChanges.cache';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -77,6 +78,8 @@ describe('PromotionSelectModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		vi.clearAllMocks();
+		// The rows are cached per page load; tests must not share them.
+		invalidatePromotionChanges();
 		server = createServer({ environment: 'test' });
 		server.get('/rest/promotions/project-1/changes/promote', () => ({
 			data: changesBody(mockChanges),
@@ -176,12 +179,12 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
-	it('should show a last refreshed timestamp after loading and keep it on a failed refresh', async () => {
+	it('should show the last refreshed timestamp on load and next to a refresh error', async () => {
 		const { findByTestId, findByText } = renderComponent({
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -196,8 +199,7 @@ describe('PromotionSelectModal', () => {
 		);
 		await userEvent.click(await findByTestId('promotion-refresh'));
 
-		// The timestamp stays on screen next to the error. `usePromotionChanges` owns the value
-		// itself: relative time renders both the old and the new stamp as "just now" here.
+		// Both stamps read "just now" here; the cache tests cover the value itself.
 		await findByTestId('promotion-error');
 		expect(await findByTestId('promotion-last-refreshed')).toHaveTextContent('Last refreshed');
 	});
