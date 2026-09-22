@@ -86,6 +86,28 @@ describe('RunStateRegistry', () => {
 		expect(registry.getBuildMode('thread-1')).toBeUndefined();
 	});
 
+	it('scopes the observer threshold override to its own thread and clears it', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		// A second thread on the same process keeps the instance default.
+		expect(registry.getObserverThresholdTokens('thread-1')).toBe(8000);
+		expect(registry.getObserverThresholdTokens('thread-2')).toBeUndefined();
+
+		registry.setObserverThresholdTokens('thread-1', undefined);
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('drops the observer threshold override when a thread is cleared', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.clearThread('thread-1');
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('drops every observer threshold override on shutdown', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.shutdown();
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
 	it('retains the selected prompt version and metadata until the next explicit selection', () => {
 		const metadata = {
 			version: 'progressive@1',
