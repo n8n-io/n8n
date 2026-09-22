@@ -39,7 +39,8 @@ a process for that reason.
 
 A step execution can return a **wait declaration** in place of outputs. The
 declaration tells the engine when to resume the step. A declaration can name a
-deadline, or accept a resume request, or do both.
+deadline, or accept a resume request, or do both. When it does both, the first
+of the two ends the wait.
 
 1. **The shim produces the declaration.** The v1 node code does not change. The
    shim's execution context receives the node's `putExecutionToWait` call. The
@@ -56,15 +57,16 @@ deadline, or accept a resume request, or do both.
    payload when a request ended it. The step then takes the normal worker path.
    For a deadline resume, the engine emits what the declaration captured in
    `outputsAtDeadline`. The Wait node returns its input unchanged, so those
-   outputs are the step's input passed through, as in v1. For a request
-   resume, the control plane runs the node's resume method, because that
-   method reads the request and writes the response, and it must answer inside
-   the request. A re-dispatch through the queue answers too late. The control
-   plane sends what the method produced to the data plane, which records it as
-   the resume payload and moves the step to `queued`. The worker that takes
-   the step emits that payload as the step's outputs. The engine never runs
-   the node's execute method again. No component completes a waiting step
-   directly.
+   outputs are the step's input passed through, as in v1. Engine v1 also
+   continues past an expired wait limit, and the node offers no setting that
+   fails instead. For a request resume, the control plane runs the node's
+   resume method, because that method reads the request and writes the
+   response, and it must answer inside the request. A re-dispatch through the
+   queue answers too late. The control plane sends what the method produced to
+   the data plane, which records it as the resume payload and moves the step to
+   `queued`. The worker that takes the step emits that payload as the step's
+   outputs. The engine never runs the node's execute method again. No component
+   completes a waiting step directly.
 4. **An engine-internal sweep fires the time waits.** The sweep resumes the
    waiting steps whose deadline has passed, with the same status-conditioned
    update that every other transition uses. It selects no deadline that is still
@@ -73,55 +75,17 @@ deadline, or accept a resume request, or do both.
    interval. The step row holds the deadline in every case, so only the firing
    belongs to the sweep, and another mechanism could replace the sweep without
    moving the deadline off the row.
-5. **The engine does not register wait channels with the control plane.** The
-   design doc gives the control plane a `wait-channels` endpoint, for the engine
-   to register a pause with. A waiting step is discoverable from its own row, so
-   the control plane needs no copy of the wait state. A resume request therefore
-   reaches a data-plane endpoint that always accepts it, and the data plane
-   validates the request against the waiting step. How a request authorizes
-   itself is a separate decision.
+5. **A waiting step is discoverable from its own row.** The control plane keeps
+   no copy of the wait state, and it needs no endpoint to register a pause
+   with. A resume request therefore reaches a data-plane endpoint that always
+   accepts it, and the data plane validates the request against the waiting
+   step. How a request authorizes itself is a separate decision.
 6. **The execution stores a `waiting` status.** An execution reports `waiting`
    when every step it still owes is suspended. It reports `running` when one of
    its steps can still run. The step rows decide the status, and the execution
    row records it. After a step changes state, the engine calculates the status
    from the steps again. A new `step:waiting` lifecycle event shows the paused
    step in the UI.
-
-## How the design doc's model maps onto this one
-
-The detailed design, §3.3, sketches a `WaitStepConfig` with an `until` of four
-kinds, an optional `action`, and a `timeout`. This ADR keeps the intent and
-needs fewer parts.
-
-- **`duration` and `timestamp` both become a deadline.** The shim resolves a
-  duration to an absolute instant, because v1 gives it a `Date` and not a
-  length of time. One field, `resumeAt`, covers both kinds.
-- **`webhook` and `signal` both become a resume request.** In the doc they
-  differ by who registers the wait: a webhook registers a path with the control
-  plane, and a signal hands out an opaque token. Decision 5 registers nothing,
-  so the difference disappears. Every resume request reaches the same resolve
-  endpoint with the execution id. The kind of caller changes
-  the payload only. A webhook client, a form, and a person who approves a
-  message all reach the same endpoint. The resume method of the node reads the
-  payload.
-- **`action` is not needed.** In the doc, the engine performs the action, so the
-  engine needs a vocabulary of actions to perform. Decision 1 runs the node's
-  own code instead, and that code already sends whatever the wait is for: a
-  Slack approval, an email, or a form. The doc calls the `WaitAction` set the
-  largest open question in the design. This decision removes the question. It
-  does not answer it. The answer to that question is deferred until we
-  implement a native wait step.
-- **`timeout` becomes a deadline with a resume request.** A declaration can
-  carry both, and then the first of the two ends the wait. One behaviour does
-  change: the doc makes a timeout fail the step, and this ADR emits the
-  captured outputs instead. Engine v1 continues past an expired wait limit, and
-  the node offers no setting that fails instead: its parameter reads "Whether to
-  limit the time this node should wait for a user response before execution
-  resumes". A failure would be a new behaviour, not a preserved one.
-
-The graph's step types include `wait`, and nothing builds one. A wait enters
-through the step result contract instead, so the converter never turns a node
-into a different step type.
 
 ## Alternatives Considered
 
@@ -170,6 +134,9 @@ into a different step type.
   memory. To refuse one, the converter must mark the step, and what that mark
   looks like is a later decision. Nothing needs it until a mode that cannot
   hold a wait exists.
+- The graph's step types include `wait`, and nothing builds one. A wait enters
+  through the step result contract instead, so the converter never turns a node
+  into a different step type.
 - The node's resume method runs on the control plane, so its credentials
   resolve there. A Wait node that authenticates a resume request needs nothing
   from credential support in the data plane.
