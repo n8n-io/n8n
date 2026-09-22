@@ -1353,6 +1353,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 					claimedBy: HOST_A,
 					leaseExpiresAt: new Date(Date.now() + 60_000),
 					leaseEpoch: 1,
+					startedAt: past(),
 				});
 				const held = await createTask({
 					jobId: limited.id,
@@ -1366,6 +1367,75 @@ describe('ScheduledTaskRepository executor methods', () => {
 					{ id: held.id, jobId: limited.id, taskType: TASK_TYPE },
 				]);
 				expect((await reload(held.id)).status).toBe('missed');
+			});
+
+			it('reports a retired occurrence whose blocking run ended before the sweep', async () => {
+				const limited = await createLimitedJob(1);
+				const deadline = new Date(Date.now() - 30_000);
+				// Held the single slot across the deadline, then finished: by the time the
+				// sweep runs, nothing of this job is running any more.
+				await createTask({
+					jobId: limited.id,
+					status: 'succeeded',
+					startedAt: past(),
+					finishedAt: new Date(deadline.getTime() + 1_000),
+				});
+				const held = await createTask({ jobId: limited.id, missedAfter: deadline });
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.heldByConcurrencyLimit).toEqual([
+					{ id: held.id, jobId: limited.id, taskType: TASK_TYPE },
+				]);
+			});
+
+			it('reports nothing when the job only filled its slot after the deadline', async () => {
+				const limited = await createLimitedJob(1);
+				const deadline = new Date(Date.now() - 30_000);
+				// Started after the deadline, so it is not what kept the row from a claim.
+				await createTask({
+					jobId: limited.id,
+					status: 'running',
+					claimedBy: HOST_A,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+					leaseEpoch: 1,
+					startedAt: new Date(deadline.getTime() + 1_000),
+				});
+				await createTask({ jobId: limited.id, missedAfter: deadline });
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([]);
+			});
+
+			it('never lets two concurrent sweeps report the same retired occurrence', async () => {
+				const limited = await createLimitedJob(1);
+				await createTask({
+					jobId: limited.id,
+					status: 'running',
+					claimedBy: HOST_A,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+					leaseEpoch: 1,
+					startedAt: past(),
+				});
+				const held = await Promise.all([
+					createTask({ jobId: limited.id, missedAfter: new Date(Date.now() - 30_000) }),
+					createTask({ jobId: limited.id, missedAfter: new Date(Date.now() - 20_000) }),
+				]);
+
+				const [a, b] = await Promise.all([
+					taskRepository.retireMissedPending(10),
+					taskRepository.retireMissedPending(10),
+				]);
+
+				expect(a.retired + b.retired).toBe(held.length);
+				const reported = [...a.heldByConcurrencyLimit, ...b.heldByConcurrencyLimit].map(
+					(row) => row.id,
+				);
+				// Each row is reported by the sweep that retired it, and by that one only.
+				expect(reported).toHaveLength(held.length);
+				expect(new Set(reported)).toEqual(new Set(held.map((task) => task.id)));
 			});
 
 			it('reports nothing for a job that still had a free slot', async () => {
