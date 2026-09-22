@@ -687,32 +687,42 @@ describe('useCredentialOAuth', () => {
 			await promise;
 		});
 
-		it('should resolve true via backend verification when the popup reads as closed (COOP)', async () => {
-			const credentialsStore = mockedStore(useCredentialsStore);
-			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
-			// Provider COOP severs the opener relationship: popup.closed reads true
-			// from the first poll tick while the user is still authorizing.
-			mockPopup.closed = true;
-			MockBroadcastChannel.noopEventListener = true;
-			credentialsStore.getCredentialData
-				.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
-				.mockResolvedValue({
-					data: { oauthTokenData: '__n8n_BLANK_VALUE' },
-				} as unknown as ICredentialsResponse);
+		it.each([false, true])(
+			'confirms sign-in after popup isolation, metadata only: %s',
+			async (metadataOnly) => {
+				const credentialsStore = mockedStore(useCredentialsStore);
+				credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+				// Provider COOP severs the opener relationship: popup.closed reads true
+				// from the first poll tick while the user is still authorizing.
+				mockPopup.closed = true;
+				MockBroadcastChannel.noopEventListener = true;
+				credentialsStore.getCredentialData
+					.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
+					.mockResolvedValue(
+						metadataOnly
+							? {
+									...mockCredential,
+									oauthContext: { mode: 'custom', connectionStatus: 'connected' },
+								}
+							: { ...mockCredential, data: { oauthTokenData: '__n8n_BLANK_VALUE' } },
+					);
 
-			vi.useFakeTimers();
-			try {
-				const { authorize } = useCredentialOAuth();
-				const promise = authorize(mockCredential);
+				vi.useFakeTimers();
+				try {
+					const { authorize } = useCredentialOAuth();
+					const promise = authorize(mockCredential);
 
-				await vi.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
 
-				await expect(promise).resolves.toBe(true);
-				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-			} finally {
-				vi.useRealTimers();
-			}
-		});
+					await expect(promise).resolves.toBe(true);
+					expect(mockShowMessage).toHaveBeenCalledWith(
+						expect.objectContaining({ type: 'success' }),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 
 		it('should not treat a pre-existing token as success when reconnecting', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
@@ -1242,6 +1252,31 @@ describe('useCredentialOAuth', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it.each(['success', 'error', 'cancel'])(
+			'reuses an existing credential after %s without deleting it',
+			async (outcome) => {
+				const store = setupSuccessfulOAuthFlow();
+				store.fetchUsableCredentials.mockResolvedValue([]);
+				MockBroadcastChannel.failOauth = outcome === 'error';
+				MockBroadcastChannel.silent = outcome === 'cancel';
+				vi.useFakeTimers();
+				try {
+					const oauth = useCredentialOAuth();
+					const result = oauth.authorizeExistingCredential(createdCredential, { workflowId: 'wf' });
+					await vi.advanceTimersByTimeAsync(100);
+					if (outcome === 'cancel') oauth.cancelAuthorize();
+					await expect(result).resolves.toEqual(outcome === 'success' ? createdCredential : null);
+					expect(store.oAuth2Authorize).toHaveBeenCalledWith(createdCredential);
+					expect(store.createNewCredential).not.toHaveBeenCalled();
+					expect(store.deleteCredential).not.toHaveBeenCalled();
+					if (outcome === 'success')
+						expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {
 			setupSuccessfulOAuthFlow();

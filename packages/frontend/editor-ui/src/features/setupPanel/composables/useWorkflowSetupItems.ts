@@ -322,6 +322,8 @@ export function useWorkflowSetupItems(
 						? credentialsStore.getUsableCredentialById(assigned.id)
 						: undefined) ?? credentialsStore.getCredentialById(assigned.id))
 				: undefined;
+		if (credential?.oauthContext && credential.oauthContext.connectionStatus !== 'connected')
+			return false;
 		return !credential?.isResolvable || credential.connectedByMe !== false;
 	}
 

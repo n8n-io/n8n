@@ -1,6 +1,10 @@
 export { Z, type ZodClass, type ZodArrayClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
+export {
+	credentialOAuthContextSchema,
+	type CredentialOAuthContext,
+} from './schemas/credential-oauth.schema';
 export type * from './push';
 export type * from './scaling';
 export * from './frontend-settings';

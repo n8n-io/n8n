@@ -85,6 +85,7 @@ const { openTopUp } = useAiGatewayTopUp();
 const initialized = ref(false);
 const initializationFailed = ref(false);
 const busy = ref(false);
+const reopenAuthorization = ref<() => void>();
 const createNew = ref(false);
 const hasDraft = ref(false);
 watch(busy, (value) => emit('update:busy', value));
@@ -95,7 +96,6 @@ watch(
 const chooseExisting = ref(false);
 const mode = ref<'credits' | 'own'>('credits');
 const modeChanged = ref(false);
-const usesCustomOAuth = ref(false);
 let active = true;
 
 useSetupPanelDocument({
@@ -144,25 +144,8 @@ const connected = computed(
 	() =>
 		!createNew.value &&
 		!hasDraft.value &&
-		Boolean(binding.value?.id || binding.value?.__aiGatewayManaged),
-);
-watch(
-	() => (isOAuth.value && canQuickConnect.value ? binding.value?.id : undefined),
-	async (id) => {
-		usesCustomOAuth.value = false;
-		if (!id) return;
-		try {
-			const credential = await credentialsStore.getCredentialData({ id });
-			if (!active || binding.value?.id !== id) return;
-			const data = credential?.data;
-			usesCustomOAuth.value = Boolean(
-				typeof data === 'object' && data?.clientId && data?.clientSecret,
-			);
-		} catch {
-			// Shared credentials can be usable without permission to read their data.
-		}
-	},
-	{ immediate: true },
+		Boolean(binding.value?.id || binding.value?.__aiGatewayManaged) &&
+		!needsAuthorization.value,
 );
 const usableCredentials = computed(() =>
 	credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
@@ -175,11 +158,23 @@ const storedCredential = computed(() =>
 			credentialsStore.getCredentialById(binding.value.id))
 		: undefined,
 );
+const usesCustomOAuth = computed(() => storedCredential.value?.oauthContext?.mode === 'custom');
+const needsAuthorization = computed(() =>
+	Boolean(
+		!createNew.value &&
+			storedCredential.value?.oauthContext &&
+			storedCredential.value.oauthContext.connectionStatus !== 'connected',
+	),
+);
 const showExistingPicker = computed(
 	() =>
 		chooseExisting.value ||
 		storedCredential.value?.isResolvable ||
-		(!connected.value && !createNew.value && !hasDraft.value && usableCredentials.value.length > 0),
+		(!connected.value &&
+			!needsAuthorization.value &&
+			!createNew.value &&
+			!hasDraft.value &&
+			usableCredentials.value.length > 0),
 );
 const gatewayAvailable = computed(
 	() =>
@@ -216,6 +211,11 @@ const inlineFields = computed(() => {
 			property.type !== 'hidden' &&
 			property.type !== 'notice' &&
 			!property.typeOptions?.copyButton &&
+			!(
+				props.item.credentialType === 'googlePalmApi' &&
+				property.name === 'host' &&
+				(form.credentialData.value.host ?? property.default) === property.default
+			) &&
 			!DOMAIN_RESTRICTION_FIELDS.some(({ name }) => name === property.name),
 	);
 	const required = fields.filter((property) => property.required);
@@ -257,24 +257,19 @@ const value = computed(() =>
 );
 const useCredits = computed(() => gatewayAvailable.value && mode.value === 'credits');
 const actionLabel = computed(() =>
-	useCredits.value
-		? i18n.baseText('instanceAi.setupPanel.useCredits')
-		: advancedIsPrimary.value
-			? i18n.baseText('instanceAi.setupPanel.advancedSetup')
-			: canQuickConnect.value || useAdvancedForm.value
-				? i18n.baseText('instanceAi.setupPanel.connect')
-				: isOAuth.value
-					? i18n.baseText('instanceAi.setupPanel.saveAndSignIn')
-					: i18n.baseText('generic.save'),
+	needsAuthorization.value
+		? i18n.baseText('credentialEdit.oAuthButton.connectMyAccount')
+		: useCredits.value
+			? i18n.baseText('instanceAi.setupPanel.useCredits')
+			: advancedIsPrimary.value
+				? i18n.baseText('instanceAi.setupPanel.advancedSetup')
+				: canQuickConnect.value || useAdvancedForm.value
+					? i18n.baseText('instanceAi.setupPanel.connect')
+					: isOAuth.value
+						? i18n.baseText('instanceAi.setupPanel.saveAndSignIn')
+						: i18n.baseText('generic.save'),
 );
-const actionDisabled = computed(
-	() =>
-		!initialized.value ||
-		(!useCredits.value &&
-			!canQuickConnect.value &&
-			!useAdvancedForm.value &&
-			!form.requiredPropertiesFilled.value),
-);
+const actionDisabled = computed(() => !initialized.value);
 const redirectUrl = computed(() => {
 	const urls = rootStore.OAuthCallbackUrls;
 	if (form.parentTypes.value.includes('oAuth1Api') || props.item.credentialType === 'oAuth1Api') {
@@ -303,6 +298,11 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 		? [{ id: 'existing', label: i18n.baseText('instanceAi.setupPanel.useExisting') }]
 		: [];
 	if (!connected.value && useCredits.value) return existing;
+	if (needsAuthorization.value)
+		return [
+			{ id: 'edit', label: i18n.baseText('instanceAi.setupPanel.editCredential') },
+			...existing,
+		];
 	if (connected.value && binding.value?.__aiGatewayManaged)
 		return [
 			{ id: 'replace', label: i18n.baseText('instanceAi.setupPanel.useOwnKey') },
@@ -343,6 +343,7 @@ const helpLabel = computed(() => {
 function askForHelp() {
 	if (props.helpDisabled || busy.value) return;
 	emit('askForHelp', {
+		id: binding.value?.id ?? undefined,
 		credentialType: props.item.credentialType,
 		displayName: serviceName.value,
 		nodeName: props.node?.name,
@@ -350,9 +351,17 @@ function askForHelp() {
 		placeholderTitles: isOAuth.value ? undefined : fieldTitles.value,
 		documentationUrl: documentationUrl.value || undefined,
 		oauthRedirectUrl: isOAuth.value ? redirectUrl.value : undefined,
+		oauthContext:
+			storedCredential.value?.oauthContext ??
+			(isOAuth.value
+				? {
+						mode: canQuickConnect.value ? 'managed' : 'custom',
+						connectionStatus: 'disconnected',
+					}
+				: undefined),
 		setupContext: isOAuth.value
 			? [
-					fieldTitles.value.length
+					!needsAuthorization.value && fieldTitles.value.length
 						? i18n.baseText('instanceAi.setupPanel.helpVisibleFields', {
 								interpolate: { fields: fieldTitles.value.join(', ') },
 							})
@@ -394,7 +403,12 @@ function formData(): ICredentialDataDecryptedObject {
 }
 
 function onDataChange(update: IUpdateInformation) {
-	if (form.onDataChange(update)) hasDraft.value = true;
+	if (!form.onDataChange(update)) return;
+	hasDraft.value = true;
+	if (reopenAuthorization.value) {
+		reopenAuthorization.value = undefined;
+		oauth.cancelAuthorize();
+	}
 }
 
 async function saveKey() {
@@ -438,11 +452,33 @@ async function saveKey() {
 }
 
 async function connect() {
+	if (reopenAuthorization.value) {
+		reopenAuthorization.value();
+		return;
+	}
 	if (busy.value || actionDisabled.value) return;
+	if (
+		!needsAuthorization.value &&
+		!useCredits.value &&
+		!canQuickConnect.value &&
+		!useAdvancedForm.value
+	) {
+		form.showValidationWarning.value = true;
+		if (!form.requiredPropertiesFilled.value) return;
+	}
 	busy.value = true;
 	form.authError.value = '';
 	try {
-		if (useCredits.value) {
+		if (needsAuthorization.value && storedCredential.value) {
+			emit('connectStarted', 'oauth');
+			const credential = await oauth.authorizeExistingCredential(storedCredential.value, {
+				workflowId: props.workflowId,
+				onAuthorizationStarted: (reopen) => {
+					reopenAuthorization.value = reopen;
+				},
+			});
+			if (credential) emitBinding(credential.id);
+		} else if (useCredits.value) {
 			emit('connectStarted', 'gateway');
 			emitBinding(AI_GATEWAY_MANAGED_TAG);
 		} else if (useAdvancedForm.value) {
@@ -458,6 +494,9 @@ async function connect() {
 					workflowId: props.workflowId,
 					data: submittedData,
 					name: form.credentialName.value || undefined,
+					onAuthorizationStarted: (reopen) => {
+						reopenAuthorization.value = reopen;
+					},
 				},
 			);
 			if (credential) emitBinding(credential.id, submittedData);
@@ -479,6 +518,7 @@ async function connect() {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
 	} finally {
+		reopenAuthorization.value = undefined;
 		busy.value = false;
 	}
 }
@@ -640,13 +680,13 @@ onScopeDispose(() => {
 		</template>
 		<N8nSetupConnection
 			v-else
-			:connected="connected"
+			:connected="connected && !reopenAuthorization"
 			:value-label="valueLabel"
 			:value="value"
 			:action-label="actionLabel"
-			:actions="actions"
+			:actions="reopenAuthorization ? [] : actions"
 			:action-disabled="actionDisabled"
-			:loading="busy"
+			:loading="busy && !reopenAuthorization"
 			@action="connect"
 			@select="onMenuAction"
 		>
@@ -678,7 +718,8 @@ onScopeDispose(() => {
 					{{ helpLabel }}
 				</N8nButton>
 			</template>
-			<template v-if="!useCredits && !canQuickConnect && !useAdvancedForm">
+			<N8nText v-if="needsAuthorization" size="small">{{ value }}</N8nText>
+			<template v-if="!needsAuthorization && !useCredits && !canQuickConnect && !useAdvancedForm">
 				<label v-if="isOAuth && redirectUrl" :class="$style.redirect">
 					{{ i18n.baseText('instanceAi.setupPanel.redirectUrl') }}
 					<N8nCopyInput
@@ -692,6 +733,7 @@ onScopeDispose(() => {
 					v-if="isTemplated"
 					compact
 					:credential-data="form.credentialData.value"
+					:show-validation-warnings="form.showValidationWarning.value"
 					@update="onDataChange"
 				/>
 				<CredentialInputs
@@ -734,6 +776,7 @@ onScopeDispose(() => {
 
 .help {
 	padding-inline: 0;
+	color: var(--text-color--subtle);
 }
 
 .form .existing {

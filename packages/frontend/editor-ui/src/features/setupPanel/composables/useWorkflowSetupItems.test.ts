@@ -616,6 +616,37 @@ describe('useWorkflowSetupItems', () => {
 		).toBe(false);
 	});
 
+	it.each(['connected', 'disconnected', 'unknown'] as const)(
+		'derives saved OAuth completion after loading a workflow: %s',
+		async (connectionStatus) => {
+			const credential = {
+				id: 'gmail-1',
+				name: 'Gmail account',
+				type: 'gmailOAuth2',
+				oauthContext: { mode: 'custom', connectionStatus },
+			};
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({
+					id: WORKFLOW_ID,
+					nodes: [
+						createTestNode({
+							name: 'Gmail',
+							credentials: { gmailOAuth2: { id: credential.id, name: credential.name } },
+						}),
+					],
+				}),
+			);
+			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+			await flushPromises();
+			expect(
+				state.isItemDone(
+					credentialItem({ credentialType: 'gmailOAuth2', nodeBindings: [{ nodeName: 'Gmail' }] }),
+				),
+			).toBe(connectionStatus === 'connected');
+		},
+	);
+
 	it('does not treat a legacy credential name as a saved binding', () => {
 		const node = createTestNode({ name: 'Slack' });
 		Object.assign(node, { credentials: { slackApi: 'Legacy account' } });

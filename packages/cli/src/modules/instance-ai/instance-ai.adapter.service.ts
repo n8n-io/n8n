@@ -2491,6 +2491,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
+					...(credential.oauthContext ? { oauthContext: credential.oauthContext } : {}),
 				} satisfies CredentialDetail;
 			},
 

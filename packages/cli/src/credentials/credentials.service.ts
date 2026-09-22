@@ -1,4 +1,8 @@
-import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
+import type {
+	CreateCredentialDto,
+	CredentialConnectionStatus,
+	CredentialOAuthContext,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	Project,
@@ -54,6 +58,7 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -233,7 +238,42 @@ export class CredentialsService {
 		private readonly dbLockService: DbLockService,
 		private readonly eventService: EventService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
+
+	/** Read authorization metadata only after the caller has checked credential access. */
+	async getOAuthContext(
+		credential: CredentialsEntity,
+		connectedByMe?: boolean,
+	): Promise<CredentialOAuthContext | undefined> {
+		if (!this.credentialTypes.recognizes(credential.type)) return undefined;
+		const types = [credential.type, ...this.credentialTypes.getParentTypes(credential.type)];
+		const isOAuth2 = types.includes('oAuth2Api');
+		if (!isOAuth2 && !types.includes('oAuth1Api')) return undefined;
+		try {
+			const data = await this.decrypt(credential, true);
+			if (
+				isOAuth2 &&
+				data.grantType &&
+				!['authorizationCode', 'pkce'].includes(String(data.grantType))
+			) {
+				return undefined;
+			}
+			const effectiveData = this.credentialsOverwrites.applyOverwrite(credential.type, data);
+			const clientFields = isOAuth2
+				? ['clientId', 'clientSecret']
+				: ['consumerKey', 'consumerSecret'];
+			const connected = credential.isResolvable ? connectedByMe : Boolean(data.oauthTokenData);
+			return {
+				mode: clientFields.some((field) => effectiveData[field] !== data[field])
+					? 'managed'
+					: 'custom',
+				connectionStatus: connected ? 'connected' : 'disconnected',
+			};
+		} catch {
+			return { mode: 'unknown', connectionStatus: 'unknown' };
+		}
+	}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
 		return await this.connectionStatusProxy.countConnectedUsers(credentialId);
@@ -622,7 +662,7 @@ export class CredentialsService {
 			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
 		>;
 
-		const result = enriched.map((c) => ({
+		const result: WorkflowCredentialResult[] = enriched.map((c) => ({
 			id: c.id,
 			name: c.name,
 			type: c.type,
@@ -638,6 +678,12 @@ export class CredentialsService {
 		}));
 
 		await this.populateConnectedByMe(result, user);
+		await Promise.all(
+			intersection.map(async (credential, index) => {
+				const context = await this.getOAuthContext(credential, result[index].connectedByMe);
+				if (context) result[index].oauthContext = context;
+			}),
+		);
 		return result;
 	}
 
@@ -1598,6 +1644,7 @@ export class CredentialsService {
 			});
 			if (instanceCredential) {
 				const { data: _, ...rest } = instanceCredential;
+				const oauthContext = await this.getOAuthContext(instanceCredential);
 				if (includeDecryptedData) {
 					const decryptedData = await this.decrypt(instanceCredential);
 					// We never want to expose the oauthTokenData to the frontend, but it
@@ -1605,9 +1652,9 @@ export class CredentialsService {
 					if (decryptedData.oauthTokenData) {
 						decryptedData.oauthTokenData = true;
 					}
-					return { data: decryptedData, ...rest };
+					return { data: decryptedData, ...rest, oauthContext };
 				}
-				return { ...rest };
+				return { ...rest, oauthContext };
 			}
 		}
 
@@ -1645,6 +1692,8 @@ export class CredentialsService {
 
 		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.populateConnectedByMe([enriched], user);
+		const oauthContext = await this.getOAuthContext(credential, enriched.connectedByMe);
+		if (oauthContext) enriched.oauthContext = oauthContext;
 
 		if (credential.isResolvable) {
 			enriched.connectedUserCount = await this.countConnectedUsers(credential.id);

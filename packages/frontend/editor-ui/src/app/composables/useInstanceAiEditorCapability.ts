@@ -1,4 +1,5 @@
 import { inject, type InjectionKey } from 'vue';
+import type { CredentialOAuthContext } from '@n8n/api-types';
 
 export type InstanceAiEditorActionSource =
 	| 'canvas_action_button'
@@ -31,6 +32,8 @@ export interface InstanceAiCredentialContext {
 	documentationUrl?: string;
 	/** OAuth redirect/callback URL shown in the modal, when this is an OAuth credential. */
 	oauthRedirectUrl?: string;
+	/** Selected OAuth mode and authorization state, without credential values. */
+	oauthContext?: CredentialOAuthContext;
 	/** Instance-specific setup guidance appended to the help question. */
 	setupContext?: string;
 }

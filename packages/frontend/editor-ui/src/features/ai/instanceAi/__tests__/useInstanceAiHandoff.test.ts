@@ -108,6 +108,26 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
+	it('keeps selected OAuth metadata in credential help', () => {
+		const oauthContext = { mode: 'custom' as const, connectionStatus: 'disconnected' as const };
+		expect(
+			buildInstanceAiCredentialHandoffContext({
+				credentialType: 'gmailOAuth2',
+				displayName: 'Gmail',
+				id: 'gmail-1',
+				oauthContext,
+			}),
+		).toEqual({
+			source: 'credential-modal',
+			credential: {
+				credentialType: 'gmailOAuth2',
+				displayName: 'Gmail',
+				id: 'gmail-1',
+				oauthContext,
+			},
+		});
+	});
+
 	it('builds agent preview handoff context for a full preview session', () => {
 		expect(
 			buildInstanceAiAgentPreviewHandoffContext({

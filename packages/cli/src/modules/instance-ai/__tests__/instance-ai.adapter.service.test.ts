@@ -6562,6 +6562,26 @@ describe('createContext — run model wiring', () => {
 });
 
 describe('createCredentialAdapter', () => {
+	it('includes safe OAuth state in credential metadata', async () => {
+		const oauthContext = { mode: 'custom', connectionStatus: 'disconnected' };
+		const getOne = vi.fn().mockResolvedValue({
+			id: 'cred-1',
+			name: 'Gmail',
+			type: 'gmailOAuth2',
+			oauthContext,
+			data: { clientSecret: 'private-secret' },
+		});
+		const { credentialService } = createNodeAdapterServiceForTests([], {
+			credentialsService: { getOne },
+		});
+		await expect(credentialService.get('cred-1')).resolves.toEqual({
+			id: 'cred-1',
+			name: 'Gmail',
+			type: 'gmailOAuth2',
+			oauthContext,
+		});
+	});
+
 	describe('getCredentialFillState', () => {
 		/** An adapter over a credential type declaring `properties` and holding `data`. */
 		const adapterFor = (

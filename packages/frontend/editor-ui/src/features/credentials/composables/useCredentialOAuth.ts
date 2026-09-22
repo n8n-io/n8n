@@ -239,7 +239,10 @@ export function useCredentialOAuth() {
 
 	async function isConnected(credentialId: string): Promise<boolean> {
 		try {
-			return hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credentialId }));
+			const credential = await credentialsStore.getCredentialData({ id: credentialId });
+			return credential?.oauthContext
+				? credential.oauthContext.connectionStatus === 'connected'
+				: hasOAuthTokenData(credential);
 		} catch {
 			return false;
 		}
@@ -387,10 +390,11 @@ export function useCredentialOAuth() {
 	 * Create a new OAuth credential and run the full authorization flow.
 	 * Returns the credential on success, null on failure (cleans up automatically).
 	 */
-	async function createAndAuthorize(
+	async function connectCredential(
 		credentialTypeName: string,
 		nodeType?: string,
 		options: CreateAndAuthorizeOptions = {},
+		existingCredential?: ICredentialsResponse,
 	): Promise<ICredentialsResponse | null> {
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 		if (!credentialType) {
@@ -443,28 +447,32 @@ export function useCredentialOAuth() {
 		let credential: ICredentialsResponse;
 		try {
 			const name =
+				existingCredential?.name ??
 				options.name ??
 				(await credentialsStore.getNewCredentialName({
 					credentialTypeName,
 					fallbackName: credentialType.displayName,
 				}));
-			credential = await credentialsStore.createNewCredential(
-				{
-					id: '',
-					name,
-					type: credentialTypeName,
-					data,
-				},
-				options.projectId ?? projectsStore.currentProject?.id,
-				undefined,
-				{ skipStoreUpdate: true },
-			);
+			credential =
+				existingCredential ??
+				(await credentialsStore.createNewCredential(
+					{
+						id: '',
+						name,
+						type: credentialTypeName,
+						data,
+					},
+					options.projectId ?? projectsStore.currentProject?.id,
+					undefined,
+					{ skipStoreUpdate: true },
+				));
 
-			telemetry.track('User created credentials', {
-				credential_type: credential.type,
-				credential_id: credential.id,
-				workflow_id: options.workflowId ?? workflowsStore.workflowId,
-			});
+			if (!existingCredential)
+				telemetry.track('User created credentials', {
+					credential_type: credential.type,
+					credential_id: credential.id,
+					workflow_id: options.workflowId ?? workflowsStore.workflowId,
+				});
 		} catch (error) {
 			popup.window.close();
 			oauthAbortController.value = null;
@@ -472,7 +480,7 @@ export function useCredentialOAuth() {
 			return null;
 		}
 
-		pendingCredentialId.value = credential.id;
+		pendingCredentialId.value = existingCredential ? null : credential.id;
 
 		const success = await authorize(credential, controller.signal, { popup }).finally(() => {
 			authorizationFinished = true;
@@ -486,7 +494,7 @@ export function useCredentialOAuth() {
 			workflow_id: options.workflowId ?? workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
 			is_complete: true,
-			is_new: true,
+			is_new: !existingCredential,
 			is_valid: success,
 			uses_external_secrets: false,
 		};
@@ -495,7 +503,7 @@ export function useCredentialOAuth() {
 			trackProperties.node_type = nodeType;
 		}
 
-		telemetry.track('User saved credentials', trackProperties);
+		if (!existingCredential) telemetry.track('User saved credentials', trackProperties);
 
 		if (success) {
 			await publishConnectedCredential(
@@ -507,8 +515,23 @@ export function useCredentialOAuth() {
 			return credential;
 		}
 
-		void credentialsStore.deleteCredential({ id: credential.id });
+		if (!existingCredential) void credentialsStore.deleteCredential({ id: credential.id });
 		return null;
+	}
+
+	async function createAndAuthorize(
+		credentialTypeName: string,
+		nodeType?: string,
+		options: CreateAndAuthorizeOptions = {},
+	) {
+		return await connectCredential(credentialTypeName, nodeType, options);
+	}
+
+	async function authorizeExistingCredential(
+		credential: ICredentialsResponse,
+		options: CreateAndAuthorizeOptions = {},
+	) {
+		return await connectCredential(credential.type, undefined, options, credential);
 	}
 
 	/**
@@ -541,6 +564,7 @@ export function useCredentialOAuth() {
 		authorize,
 		authorizeNewCredential,
 		createAndAuthorize,
+		authorizeExistingCredential,
 		cancelAuthorize,
 	};
 }
