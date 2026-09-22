@@ -63,6 +63,18 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
 	},
+	'execution:read': {
+		displayName: 'View Execution',
+		description: 'Allows viewing executions of workflows the role can view.',
+	},
+	'execution:list': {
+		displayName: 'List Executions',
+		description: 'Allows listing executions of workflows the role can view.',
+	},
+	'execution:delete': {
+		displayName: 'Delete Execution',
+		description: 'Allows deleting executions of workflows in the project.',
+	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
 		description: 'Allows managing which node types are available, on the instance or in a project.',

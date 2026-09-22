@@ -298,6 +298,7 @@ defineExpose({ resetNavigation, highlightFirstItem });
 .content {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 	max-height: inherit;
 }
 

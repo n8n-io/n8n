@@ -60,7 +60,7 @@ const indexInfo = {
 	name: 'cat.sch.idx',
 	primaryKey: 'id',
 	indexType: 'DELTA_SYNC' as const,
-	embeddingSourceColumn: 'text',
+	embedding: { kind: 'managed' as const, sourceColumn: 'text' },
 	schemaColumns: ['id', 'text', 'source'],
 };
 
@@ -84,9 +84,10 @@ describe('VectorStoreDatabricks', () => {
 	};
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 		node = new VectorStoreDatabricks();
 		embeddings = mock<Embeddings>();
+		mockedDescribeIndex.mockResolvedValue(indexInfo);
 		vi.mocked(getDatabricksTokenProvider).mockReturnValue({
 			getToken: vi.fn(async () => 'test-token'),
 			expiredStatus: 403,
@@ -127,6 +128,7 @@ describe('VectorStoreDatabricks', () => {
 			);
 			expect(metadataColumns?.type).toBe('multiOptions');
 			expect(metadataColumns?.typeOptions?.loadOptionsMethod).toBe('getIndexColumns');
+			expect(options?.displayOptions?.show?.mode).toEqual(['load', 'retrieve', 'retrieve-as-tool']);
 
 			const searchMode = (options?.options as INodeProperties[]).find(
 				(o) => o.name === 'searchMode',
@@ -399,6 +401,16 @@ describe('VectorStoreDatabricks', () => {
 			}
 		});
 
+		it('does not let the bearer follow a cross-origin redirect', async () => {
+			setupSearchContext('https://ws.example.com');
+
+			await methods.listSearch.searchIndexes.call(ctx);
+
+			for (const [, options] of httpRequestWithAuthentication.mock.calls) {
+				expect(options.sendCredentialsOnCrossOriginRedirect).toBe(false);
+			}
+		});
+
 		it('applies the substring filter to the name', async () => {
 			setupSearchContext('https://ws.example.com');
 
@@ -434,12 +446,12 @@ describe('VectorStoreDatabricks', () => {
 			return ctx;
 		};
 
-		it('lists the embedding source column first', async () => {
+		it('lists the embedding source column first and hides the primary key', async () => {
 			mockedDescribeIndex.mockResolvedValue({
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DELTA_SYNC',
-				embeddingSourceColumn: 'text',
+				embedding: { kind: 'managed', sourceColumn: 'text' },
 				schemaColumns: ['id', 'text', 'source'],
 			});
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
@@ -456,7 +468,6 @@ describe('VectorStoreDatabricks', () => {
 			});
 			expect(result).toEqual([
 				{ name: 'text', value: 'text', description: 'Embedding source column' },
-				{ name: 'id', value: 'id' },
 				{ name: 'source', value: 'source' },
 			]);
 		});
@@ -466,13 +477,12 @@ describe('VectorStoreDatabricks', () => {
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DIRECT_ACCESS',
-				vectorColumn: 'embedding',
+				embedding: { kind: 'self', vectorColumn: 'embedding' },
 				schemaColumns: ['id', 'text', 'embedding'],
 			});
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
 
 			await expect(methods.loadOptions.getIndexColumns.call(ctx)).resolves.toEqual([
-				{ name: 'id', value: 'id' },
 				{ name: 'text', value: 'text' },
 			]);
 		});
@@ -482,7 +492,7 @@ describe('VectorStoreDatabricks', () => {
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
 				indexType: 'DELTA_SYNC',
-				vectorColumn: 'embedding',
+				embedding: { kind: 'self', vectorColumn: 'embedding' },
 			});
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
 

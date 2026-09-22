@@ -187,5 +187,8 @@
     "z-vue-scan": "^0.0.35",
     "zod": "catalog:"
   },
-  "license": "LicenseRef-n8n-sustainable-use"
+  "license": "LicenseRef-n8n-sustainable-use",
+  "dependencies": {
+    "cronstrue": "catalog:"
+  }
 }

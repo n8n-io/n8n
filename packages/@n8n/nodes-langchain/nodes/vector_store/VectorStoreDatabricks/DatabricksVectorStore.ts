@@ -11,12 +11,12 @@ type Fetch = typeof fetch;
 export type DatabricksIndexInfo = {
 	name: string;
 	primaryKey: string;
+	/** Where rows come from. Gates inserts; independent of who embeds */
 	indexType: 'DELTA_SYNC' | 'DIRECT_ACCESS';
-	/** Set when Databricks embeds server-side, so the index takes `query_text` only */
-	embeddingSourceColumn?: string;
-	embeddingModelEndpoint?: string;
-	/** Set when the client embeds, so the index takes `query_vector` */
-	vectorColumn?: string;
+	/** Who embeds. `managed` takes `query_text` only, `self` takes `query_vector` */
+	embedding:
+		| { kind: 'managed'; sourceColumn: string; modelEndpoint?: string }
+		| { kind: 'self'; vectorColumn: string };
 	/** DIRECT_ACCESS: keys of schema_json. DELTA_SYNC: columns_to_sync, or the Unity Catalog columns */
 	schemaColumns?: string[];
 	sourceTable?: string;
@@ -89,6 +89,18 @@ export function parseIndexInfo(raw: unknown): DatabricksIndexInfo {
 	const spec = deltaSpec ?? directSpec ?? {};
 	const [sourceColumn] = records(spec.embedding_source_columns);
 	const [vectorColumn] = records(spec.embedding_vector_columns);
+	const sourceName = optionalString(sourceColumn?.name);
+	const vectorName = optionalString(vectorColumn?.name);
+	const embedding: DatabricksIndexInfo['embedding'] | undefined = sourceName
+		? {
+				kind: 'managed',
+				sourceColumn: sourceName,
+				modelEndpoint: optionalString(sourceColumn?.embedding_model_endpoint_name),
+			}
+		: vectorName
+			? { kind: 'self', vectorColumn: vectorName }
+			: undefined;
+	if (!embedding) throw new OperationalError('Unexpected Databricks index description');
 
 	let schemaColumns: string[] | undefined;
 	if (typeof directSpec?.schema_json === 'string') {
@@ -108,9 +120,7 @@ export function parseIndexInfo(raw: unknown): DatabricksIndexInfo {
 		name: raw.name,
 		primaryKey: raw.primary_key,
 		indexType,
-		embeddingSourceColumn: optionalString(sourceColumn?.name),
-		embeddingModelEndpoint: optionalString(sourceColumn?.embedding_model_endpoint_name),
-		vectorColumn: optionalString(vectorColumn?.name),
+		embedding,
 		schemaColumns,
 		sourceTable: optionalString(deltaSpec?.source_table),
 	};
@@ -209,7 +219,9 @@ export class DatabricksVectorStore extends VectorStore {
 	) {
 		super(embeddings, config);
 		const { index } = config;
-		const contentColumn = config.contentColumn || index.embeddingSourceColumn;
+		const contentColumn =
+			config.contentColumn ||
+			(index.embedding.kind === 'managed' ? index.embedding.sourceColumn : undefined);
 		if (!contentColumn) {
 			throw new UserError(
 				`Index ${index.name} uses self-managed embeddings. Select a content column`,
@@ -219,7 +231,11 @@ export class DatabricksVectorStore extends VectorStore {
 		this.host = config.host;
 		this.index = index;
 		this.contentColumn = contentColumn;
-		this.reserved = new Set([index.primaryKey, contentColumn, index.vectorColumn]);
+		this.reserved = new Set([
+			index.primaryKey,
+			contentColumn,
+			index.embedding.kind === 'self' ? index.embedding.vectorColumn : undefined,
+		]);
 		this.metadataColumns = config.metadataColumns?.length
 			? config.metadataColumns
 			: (index.schemaColumns ?? []).filter((column) => !this.reserved.has(column));
@@ -232,7 +248,7 @@ export class DatabricksVectorStore extends VectorStore {
 	}
 
 	private get isManaged(): boolean {
-		return this.index.embeddingSourceColumn !== undefined;
+		return this.index.embedding.kind === 'managed';
 	}
 
 	// The factory calls this on load and retrieve-as-tool (searchByText)
@@ -295,6 +311,12 @@ export class DatabricksVectorStore extends VectorStore {
 	): Promise<string[]> {
 		const vectorColumn = this.assertDirectAccess();
 		const { primaryKey, name } = this.index;
+		// The row below would write the document text over its own primary key
+		if (this.contentColumn === primaryKey) {
+			throw new UserError(
+				`Column ${primaryKey} is the primary key of ${name}. Select another content column`,
+			);
+		}
 		const schemaColumns = new Set(this.index.schemaColumns ?? []);
 		const ids = documents.map((doc, i) => options?.ids?.[i] ?? doc.id ?? randomUUID());
 
@@ -327,16 +349,14 @@ export class DatabricksVectorStore extends VectorStore {
 
 	// Databricks enforces `index_type` here; a Delta Sync index rejects upsert-data even when it holds its own vectors
 	private assertDirectAccess(): string {
-		const { indexType, vectorColumn, name } = this.index;
-		if (indexType !== 'DIRECT_ACCESS') {
+		const { indexType, embedding, name } = this.index;
+		// Databricks creates a Direct Access index with a vector column only, so `self` always holds here
+		if (indexType !== 'DIRECT_ACCESS' || embedding.kind !== 'self') {
 			throw new UserError(
 				`Index ${name} syncs from its source table. Use a Direct Access index to insert documents`,
 			);
 		}
-		if (!vectorColumn) {
-			throw new OperationalError('Unexpected Databricks index description');
-		}
-		return vectorColumn;
+		return embedding.vectorColumn;
 	}
 
 	private async query(
@@ -373,16 +393,20 @@ export class DatabricksVectorStore extends VectorStore {
 			: [];
 		if (rows.length === 0) return [];
 
-		const position = (index: number) => {
-			if (index < 0) throw new OperationalError('Unexpected Databricks query response');
-			return index;
+		const requireColumn = (name: string, at = names.indexOf(name)) => {
+			if (at < 0) {
+				throw new OperationalError(`Databricks query response lacks column "${name}"`);
+			}
+			return at;
 		};
-		const contentAt = position(names.indexOf(this.contentColumn));
-		const idAt = position(names.indexOf(primaryKey));
-		// Databricks appends score last, so a user column named score does not shadow it
-		const scoreAt = position(names.lastIndexOf('score'));
+		const contentAt = requireColumn(this.contentColumn);
+		const idAt = requireColumn(primaryKey);
+		// Databricks appends score after the requested columns, so a user column named score
+		// does not shadow it. The API reference does not state the order; Databricks' own LangChain
+		// integration reads the score as the last cell too (databricks_ai_bridge parse_vector_search_response)
+		const scoreAt = requireColumn('score', names.lastIndexOf('score'));
 		const metadataAt = this.metadataColumns.map(
-			(column) => [column, position(names.indexOf(column))] as const,
+			(column) => [column, requireColumn(column)] as const,
 		);
 
 		return rows.map((row) => [
