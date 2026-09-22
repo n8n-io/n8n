@@ -2540,11 +2540,6 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables MCP connections for Instance AI */
-export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
-
-export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
-
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 

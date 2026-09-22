@@ -99,6 +99,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isBrowserUseEnabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
 	);
+	const isMcpAvailable = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.mcpConnectionsAvailable === true,
+	);
 
 	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
 	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
@@ -154,6 +157,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
+			mcpConnectionsAvailable:
+				adminRes.mcpAccessEnabled && (prev?.mcpConnectionsAvailable ?? false),
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
@@ -669,6 +674,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
+		isMcpAvailable,
 		isComputerUseAvailable,
 		isBrowserUseAvailable,
 		computerUseChannels,

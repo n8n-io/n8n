@@ -672,6 +672,33 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	return service;
 }
 
+describe('InstanceAiService — MCP connections availability', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{ moduleActive: true, accessEnabled: true, expected: true },
+		{ moduleActive: false, accessEnabled: true, expected: false },
+		{ moduleActive: true, accessEnabled: false, expected: false },
+	])(
+		'returns $expected when moduleActive=$moduleActive and accessEnabled=$accessEnabled',
+		({ moduleActive, accessEnabled, expected }) => {
+			const service = Object.create(InstanceAiService.prototype) as unknown as {
+				areMcpConnectionsAvailable: () => boolean;
+				settingsService: { isMcpAccessEnabled: Mock };
+			};
+			service.settingsService = { isMcpAccessEnabled: vi.fn(() => accessEnabled) };
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				if (token === ModuleRegistry) return { isActive: () => moduleActive };
+				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+			});
+
+			expect(service.areMcpConnectionsAvailable()).toBe(expected);
+		},
+	);
+});
+
 describe('InstanceAiService — runtime workspace setup', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -776,7 +803,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			areMcpConnectionsAvailable: Mock;
 		};
+		service.areMcpConnectionsAvailable = vi.fn(() => true);
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -796,7 +825,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
-				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
@@ -887,6 +915,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({ instanceContextEnabled }),
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
 			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
@@ -1102,7 +1134,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			areMcpConnectionsAvailable: Mock;
 		};
+		service.areMcpConnectionsAvailable = vi.fn(() => false);
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1122,7 +1156,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
-				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
