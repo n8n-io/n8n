@@ -7,6 +7,7 @@ import { createScheduler } from '@n8n/scheduler';
 import type { InstanceSettings, Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { DurableScheduler } from '../durable-scheduler';
@@ -15,7 +16,6 @@ import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-t
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
-import type { SystemTaskOverlapReporter } from '../system-tasks/system-task-overlap-reporter';
 import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
@@ -57,7 +57,7 @@ describe('DurableScheduler', () => {
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
 		const agentOwner = mock<AgentScheduledJobOwner>();
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
-		const overlapReporter = mock<SystemTaskOverlapReporter>();
+		const eventService = mock<EventService>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -94,7 +94,7 @@ describe('DurableScheduler', () => {
 			workflowOwner,
 			agentOwner,
 			systemTaskOwner,
-			overlapReporter,
+			eventService,
 		);
 		return {
 			scheduler,
@@ -105,7 +105,7 @@ describe('DurableScheduler', () => {
 			workflowOwner,
 			agentOwner,
 			systemTaskOwner,
-			overlapReporter,
+			eventService,
 		};
 	}
 

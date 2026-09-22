@@ -3,24 +3,19 @@ import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
-import { SystemTaskOverlapReporter } from '../system-task-overlap-reporter';
+import { reportSystemTaskOverlaps } from '../system-task-overlap-reporter';
 
-describe('SystemTaskOverlapReporter', () => {
+describe('reportSystemTaskOverlaps', () => {
 	const occurrence = (taskType: string, id = '1'): RetiredTask => ({
 		id,
 		jobId: 3,
 		taskType,
 	});
 
-	const setup = () => {
-		const eventService = mock<EventService>();
-		return { eventService, reporter: new SystemTaskOverlapReporter(eventService) };
-	};
-
 	it('reports one overlap skip for each occurrence, named after its task', () => {
-		const { eventService, reporter } = setup();
+		const eventService = mock<EventService>();
 
-		reporter.report([
+		reportSystemTaskOverlaps(eventService, [
 			occurrence('system:prune-executions', '1'),
 			occurrence('system:prune-executions', '2'),
 		]);
@@ -33,21 +28,21 @@ describe('SystemTaskOverlapReporter', () => {
 	});
 
 	it('ignores an occurrence that is not a system task', () => {
-		const { eventService, reporter } = setup();
+		const eventService = mock<EventService>();
 
-		reporter.report([occurrence('schedule-trigger')]);
+		reportSystemTaskOverlaps(eventService, [occurrence('schedule-trigger')]);
 
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	it('keeps reporting when a listener throws', () => {
-		const { eventService, reporter } = setup();
+		const eventService = mock<EventService>();
 		eventService.emit.mockImplementationOnce(() => {
 			throw new Error('sink down');
 		});
 
 		expect(() =>
-			reporter.report([
+			reportSystemTaskOverlaps(eventService, [
 				occurrence('system:prune-executions', '1'),
 				occurrence('system:prune-executions', '2'),
 			]),
