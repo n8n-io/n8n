@@ -1,0 +1,27 @@
+packages/cli/src/modules/insights/database/repositories/__tests__/insights-by-period.repository.integration.test.ts
+  s_8d63f5eacd2966::t_60c9135b2fe3d0 406,408,412,420-423
+  s_8d63f5eacd2966::t_8e54f5fdff8f22 463
+  s_8d63f5eacd2966::t_67cd47b8711d75 441,451-456,460-462,464,466-470,492,518
+  h_32d8cd6a0d6aad 407,409,465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88f9b9de224f8ce35bbe8a3fea9dff12e0504407",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8d63f5eacd2966": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d37ed0c0-4688-4375-8cbf-1937e54032fd",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
