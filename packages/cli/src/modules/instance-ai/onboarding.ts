@@ -71,7 +71,9 @@ function surveyOf(sourceContext: unknown): Survey {
 /**
  * Split the opening into the steps the card shows and the answers the survey already gave. A
  * shown step that picks its options from a survey-answered step gets them resolved here: the
- * card resolves `optionsByAnswer` only from its own steps.
+ * card resolves `optionsByAnswer` only from its own steps. `{{team}}` in a question text becomes
+ * the survey's team. A value outside the step's options (the survey's "Other") names no team:
+ * texts drop it and dependents keep their fallback options.
  */
 function applySurvey(questions: Question[], survey: Survey) {
 	const answered = new Map<string, string>();
@@ -80,21 +82,29 @@ function applySurvey(questions: Question[], survey: Survey) {
 		const value = key && survey[key]?.trim();
 		if (value) answered.set(question.id, value);
 	}
-	const shown = questions.flatMap((question) => {
+	const known = (id: string) => {
+		const value = answered.get(id);
+		return value && questions.find((question) => question.id === id)?.options?.includes(value)
+			? value
+			: '';
+	};
+	// Without a team the words around the placeholder close up: "in your work".
+	const fill = (text: string) =>
+		text.replace(/\{\{(\w+)\}\}/g, (_, id: string) => known(id)).replace(/ {2,}/g, ' ');
+	const filled = questions.map((question) => ({ ...question, question: fill(question.question) }));
+	const shown = filled.flatMap((question) => {
 		if (answered.has(question.id)) return [];
 		const dependency = question.optionsByAnswer;
-		const dependencyAnswer = dependency && answered.get(dependency.questionId);
-		if (!dependency || !dependencyAnswer) return [question];
-		// An answer outside the list (the survey's "Other") keeps the step's fallback options.
+		if (!dependency || !answered.has(dependency.questionId)) return [question];
 		return [
 			{
 				...question,
-				options: dependency.options[dependencyAnswer] ?? question.options,
+				options: dependency.options[known(dependency.questionId)] ?? question.options,
 				optionsByAnswer: undefined,
 			},
 		];
 	});
-	return { shown, answered };
+	return { questions: filled, shown, answered };
 }
 
 /** `onboarding/cloud-form.yaml` in `@n8n/instance-ai`: the copy shown before the agent's first turn. */
@@ -203,7 +213,10 @@ export class InstanceAiOnboardingService {
 			loadOnboarding(),
 			this.memoryService.getThreadMetadata(userId, row.threadId),
 		]);
-		const { shown, answered } = applySurvey(opening.questions, surveyOf(metadata?.sourceContext));
+		const { questions, shown, answered } = applySurvey(
+			opening.questions,
+			surveyOf(metadata?.sourceContext),
+		);
 		const given = request.kind === 'questions' ? request.answers : [];
 		// One answer per shown step in card order, with the question text like the `ask-user` tool adds.
 		const answerFor = (question: Question): Answer => ({
@@ -226,7 +239,7 @@ export class InstanceAiOnboardingService {
 		// greeting.
 		await this.eventLog.flush(row.threadId);
 		// The card showed only what the survey left open; the agent gets every line, in opening order.
-		const lines = opening.questions.map((question) => {
+		const lines = questions.map((question) => {
 			const fromSurvey = answered.get(question.id);
 			return fromSurvey
 				? { question: question.question, selectedOptions: [fromSurvey] }

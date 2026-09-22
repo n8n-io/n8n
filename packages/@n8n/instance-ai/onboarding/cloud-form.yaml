@@ -24,8 +24,10 @@ questions:
   # The apps the agent itself offered for each team in the September 2026 persona runs,
   # frozen here so the card needs no model turn. Sales and Marketing share the list the
   # agent offered for "Sales & Marketing". `options` shows for a free-text team.
+  # {{team}} becomes the team from the signup survey ("in your Sales work"). Without one the
+  # words close up ("in your work"): no survey team, "Other", or the team step in the card.
   - id: apps
-    question: Which apps do you use?
+    question: Which tools do you use in your {{team}} work?
     type: multi
     required: true
     options: [Gmail, Google Sheets, Slack, Google Calendar, Google Drive, Notion, Microsoft Outlook, Microsoft Teams, HubSpot, Airtable]
