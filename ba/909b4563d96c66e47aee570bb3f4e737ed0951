@@ -47,6 +47,7 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
   s_1f6041c4c88d94::t_407df842614996 820,822,867-870,873-878,884,890,898-900,908-909,916
   s_1f6041c4c88d94::t_e0925b0a349c45 853-855,871-872,879-883,885-889,892-895,896-897,901-907,910-915
   s_1f6041c4c88d94::t_b90fc9bfce336d 917-918
+  s_3aaa503f47ada7::t_994be5557a9a98 891
 packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
   s_3aaa503f47ada7::t_825190ca2b3fc9 72-78
   s_3aaa503f47ada7::t_eedea0f434eb45 79-81
@@ -66,6 +67,7 @@ packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
   s_a52facf53351c5::t_6821ce8ea0e521 13-16,115-118,121,657,659,665-678,685
   s_1f6041c4c88d94::t_407df842614996 1034-1035,1067-1072,1077,1083,1090-1105,1107-1108,1110,1116,1133
   s_1f6041c4c88d94::t_c10532be1943ce 1111-1115,1117,1119-1129,1131-1132,1134-1135
+  s_3aaa503f47ada7::t_994be5557a9a98 1106
 packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
   s_3aaa503f47ada7::t_55da3ee667b856 392-394
   s_3aaa503f47ada7::t_a9ef755e3ffd16 360,369-371,375-385,389,398,401,404
@@ -179,6 +181,7 @@ packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.t
   s_a52facf53351c5::t_53e857d42d36c2 54,66,84,91-102,105,110-112,129,149
   s_a52facf53351c5::t_7856ab19d92385 12-15,106-109,157-160
   s_1f6041c4c88d94::t_76aae812336891 168-180,181,193,199,201-217,220-222,248,259-266
+  s_3aaa503f47ada7::t_994be5557a9a98 167,198,219,223
 packages/cli/src/modules/agents/agent-chat-attachment.service.ts
   s_a52facf53351c5::t_dc8bc690e274d6 13,19,72,121,124,126-129,133-136
   s_a52facf53351c5::t_7856ab19d92385 14-18,130-132,137-138
@@ -194,6 +197,7 @@ packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.tes
 packages/cli/src/modules/agents/utils/agent-thread-access.ts
   s_a52facf53351c5::t_53e857d42d36c2 1-15
   s_1f6041c4c88d94::t_075416638919bf 16-25,27-28
+  s_3aaa503f47ada7::t_994be5557a9a98 26
 packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
   s_a52facf53351c5::t_60252685ff4214 27
   s_a52facf53351c5::t_76af0f4b28572f 29-30
@@ -290,6 +294,7 @@ packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
   s_1f6041c4c88d94::t_91af7b3cddf9fb 2288-2294,2423
   s_1f6041c4c88d94::t_e0925b0a349c45 365
   s_1f6041c4c88d94::t_4a659bf387f9fd 2205
+  s_3aaa503f47ada7::t_711f737b1fc4e8 2518
 packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
   s_1f6041c4c88d94::t_c93ef34c96f496 198-200
   s_1f6041c4c88d94::t_cf50e3fa027104 197,201-202,226,341,366-367,375,392-393
