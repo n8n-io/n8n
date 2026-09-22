@@ -178,9 +178,10 @@ of the two ends the wait.
   registers a handler through `onExecutionCancellation`, which needs an abort
   signal that the shim does not supply yet (CAT-4526). Nothing observes this
   until an execution can be cancelled (CAT-3990).
-- One statement must calculate the status of the execution and write it. Two
-  statements are not enough. A step could change between the read and the
-  write. The write would then store the older status.
+- Because the execution row records a status that the step rows decide, one
+  statement must calculate the status and write it. Two statements are not
+  enough. A step could change between the read and the write. The write would
+  then store the older status.
 - `running` and `waiting` are both live statuses. Only an execution that ended
   stops a step transition. A waiting execution continues when one of its steps
   runs again, so the engine must let that step run. The execution keeps the
