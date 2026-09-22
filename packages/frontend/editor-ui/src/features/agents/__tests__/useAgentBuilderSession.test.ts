@@ -177,14 +177,17 @@ describe('useAgentBuilderSession', () => {
 		route.query.continueSessionId = newSessionId;
 		await nextTick();
 		expect(session.currentSessionIsEphemeral.value).toBe(true);
+		expect(session.currentSessionIsLocallyMinted.value).toBe(true);
 		if (!newSessionId) throw new Error('Expected a new session ID');
 		session.markSessionCreated(newSessionId);
 		expect(session.currentSessionIsEphemeral.value).toBe(false);
+		expect(session.currentSessionIsLocallyMinted.value).toBe(true);
 
 		route.query.continueSessionId = 'history-session';
 		await nextTick();
 		expect(session.effectiveSessionId.value).toBe('history-session');
 		expect(session.currentSessionIsEphemeral.value).toBe(false);
+		expect(session.currentSessionIsLocallyMinted.value).toBe(false);
 	});
 
 	it('only clears the route session when route backing is enabled', () => {

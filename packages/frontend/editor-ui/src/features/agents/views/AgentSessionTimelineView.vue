@@ -65,6 +65,7 @@ const {
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
 	currentSessionTitle,
 	sessionMenu,
 	isDeletingSession,
@@ -82,7 +83,7 @@ const {
  */
 const isPreviewSessionStale = computed(
 	() =>
-		currentSessionIsEphemeral.value &&
+		currentSessionIsLocallyMinted.value &&
 		effectiveSessionId.value !== undefined &&
 		effectiveSessionId.value !== threadId.value,
 );
@@ -197,7 +198,7 @@ const totalTokens = computed(() => {
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const canPreviewSession = computed(
 	() =>
-		currentSessionIsEphemeral.value ||
+		currentSessionIsLocallyMinted.value ||
 		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
