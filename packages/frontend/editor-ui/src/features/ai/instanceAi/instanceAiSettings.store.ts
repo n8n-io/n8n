@@ -134,7 +134,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
-	const { isEnabled: isInstanceAiSetupPanelEnabled } = useInstanceAiSetupPanelExperiment();
+	const { isEnabled: isSetupPanelVariant } = useInstanceAiSetupPanelExperiment();
+	const isInstanceAiSetupPanelEnabled = computed(
+		() =>
+			settingsStore.moduleSettings?.['instance-ai']?.instanceAiSetupPanelEnabled === true ||
+			isSetupPanelVariant.value,
+	);
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,

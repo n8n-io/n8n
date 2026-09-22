@@ -35,7 +35,7 @@ export interface WorkflowSetupContext {
 	projectId: ComputedRef<string | undefined>;
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	isActionPending: Ref<boolean>;
-	setCredential: (section: WorkflowSetupSection, credId: string | null) => void;
+	setCredential: ReturnType<typeof useWorkflowSetupInputs>['setCredential'];
 	setParameterValue: (section: WorkflowSetupSection, parameterName: string, value: unknown) => void;
 	getDisplayNode: (section: WorkflowSetupSection) => INodeUi;
 	isSectionComplete: (section: WorkflowSetupSection) => boolean;

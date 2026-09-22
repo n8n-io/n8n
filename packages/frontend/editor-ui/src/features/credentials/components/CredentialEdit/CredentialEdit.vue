@@ -2,7 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
+import type {
+	CredentialConnectionEvent,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from '../../credentials.types';
 
 import type {
 	CredentialInformation,
@@ -173,9 +177,11 @@ const pendingAuthType = ref<string | null>(null);
 // Pending OAuth connect flow; aborted on re-click and on unmount so its
 // listeners and backend polling don't outlive the modal.
 const oauthFlowAbortController = ref<AbortController | null>(null);
-onBeforeUnmount(() => {
+const dialogAbortController = new AbortController();
+dialogAbortController.signal.addEventListener('abort', () => {
 	oauthFlowAbortController.value?.abort();
 });
+onBeforeUnmount(() => dialogAbortController.abort());
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
 // The credential editor can open outside the workflow editor (e.g. the
@@ -294,6 +300,17 @@ const connectionObserver = computed<NewCredentialsModal['onConnectionEvent']>(()
 	const state = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(state) ? state.onConnectionEvent : undefined;
 });
+
+// Keep delayed results attached to the modal that started the connection.
+const notifyConnection = connectionObserver.value;
+let connectionAttemptActive = !!notifyConnection;
+watch(connectionObserver, () => dialogAbortController.abort(), { flush: 'sync' });
+
+function observeConnection(event: CredentialConnectionEvent) {
+	if (dialogAbortController.signal.aborted) return;
+	connectionAttemptActive = event.type === 'started';
+	notifyConnection?.(event);
+}
 
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
@@ -493,7 +510,8 @@ async function beforeClose() {
 	}
 
 	if (!keepEditing) {
-		connectionObserver.value?.({ type: 'cancelled', reason: 'dialog_closed' });
+		if (connectionAttemptActive) observeConnection({ type: 'cancelled', reason: 'dialog_closed' });
+		dialogAbortController.abort();
 		pendingAuthType.value = null;
 		uiStore.activeCredentialType = null;
 		return true;
@@ -665,6 +683,10 @@ function scrollToBottom() {
 }
 
 async function saveCredential(): Promise<ICredentialsResponse | null> {
+	const signal = oauthFlowAbortController.value?.signal;
+	const isCurrent = () => !dialogAbortController.signal.aborted && !signal?.aborted;
+	const onCreated = onCredentialCreated.value;
+	if (!isCurrent()) return null;
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
 		scrollToTop();
@@ -719,7 +741,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		pendingAuthType.value = null;
 	}
 
-	connectionObserver.value?.({ type: 'started', method: 'advanced' });
+	observeConnection({ type: 'started', method: 'advanced' });
 	let credential: ICredentialsResponse | null = null;
 
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
@@ -729,7 +751,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			credentialDetails.usageScope = presetUsageScope.value;
 		}
 		credential = await createCredential(credentialDetails, homeProject.value);
-		if (credential) onCredentialCreated.value?.(credential);
+		if (!isCurrent()) return null;
+		if (credential) onCreated?.(credential);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -742,6 +765,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			const confirmAction = await confirmModal('sharedFieldsChanged', {
 				credentialName: credentialName.value,
 			});
+			if (!isCurrent()) return null;
 			if (confirmAction !== MODAL_CONFIRM) {
 				isSaving.value = false;
 				return null;
@@ -751,8 +775,9 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		credential = await updateCredential(credentialDetails);
 	}
 
+	if (!isCurrent()) return null;
 	isSaving.value = false;
-	if (!credential) connectionObserver.value?.({ type: 'failed', errorType: 'save' });
+	if (!credential) observeConnection({ type: 'failed', errorType: 'save' });
 	if (credential) {
 		credentialId.value = credential.id;
 		// The save response omits the encrypted `data` (see credentials.controller.ts),
@@ -767,6 +792,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
 		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
 			await loadCurrentCredential(credential.id);
+			if (!isCurrent()) return null;
 			setCredentialPropertyDefaults();
 		}
 
@@ -778,9 +804,10 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			credentialDetails.id = credentialId.value;
 
 			await testCredential(credentialDetails);
+			if (!isCurrent()) return null;
 			isTesting.value = false;
 
-			connectionObserver.value?.(
+			observeConnection(
 				testedSuccessfully.value
 					? { type: 'completed', credentialId: credential.id }
 					: { type: 'failed', errorType: 'validation' },
@@ -792,8 +819,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			authError.value = '';
 			testedSuccessfully.value = false;
 
-			if (!isOAuthType.value)
-				connectionObserver.value?.({ type: 'completed', credentialId: credential.id });
+			if (!isOAuthType.value) observeConnection({ type: 'completed', credentialId: credential.id });
 			if (!isOAuthType.value && closeOnSave.value) {
 				closeDialog();
 			}
@@ -1067,7 +1093,11 @@ async function deleteCredential() {
 }
 
 async function oAuthCredentialAuthorize() {
-	connectionObserver.value?.({ type: 'started', method: 'advanced' });
+	if (dialogAbortController.signal.aborted) return;
+	oauthFlowAbortController.value?.abort();
+	const abortController = new AbortController();
+	oauthFlowAbortController.value = abortController;
+	observeConnection({ type: 'started', method: 'advanced' });
 	let url;
 
 	credentialsStore.pendingOAuthRefresh = true;
@@ -1085,9 +1115,12 @@ async function oAuthCredentialAuthorize() {
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
 		);
-		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
+		observeConnection({ type: 'failed', errorType: 'connection' });
 		return;
 	}
+
+	// Closing during save or authorization must stop this flow too.
+	abortController.signal.addEventListener('abort', () => oauthPopup.close(), { once: true });
 
 	// Editors persist any blueprint changes before connecting. Connect-only users
 	// (e.g. on a private credential they can't edit) have nothing to save, so
@@ -1095,9 +1128,10 @@ async function oAuthCredentialAuthorize() {
 	// aborts the flow — connect to the stored credential directly instead.
 	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
 	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
+	if (abortController.signal.aborted) return;
 	if (!credential) {
 		oauthPopup.close();
-		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
+		observeConnection({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1119,6 +1153,7 @@ async function oAuthCredentialAuthorize() {
 			}
 		}
 	} catch (error) {
+		if (abortController.signal.aborted) return;
 		oauthPopup.close();
 		toast.showError(
 			error,
@@ -1130,17 +1165,18 @@ async function oAuthCredentialAuthorize() {
 			},
 		);
 
-		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
+		observeConnection({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
+	if (abortController.signal.aborted) return;
 	if (url === undefined || url === '') {
 		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
 		);
-		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
+		observeConnection({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1154,7 +1190,7 @@ async function oAuthCredentialAuthorize() {
 				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
 			);
-			connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
+			observeConnection({ type: 'failed', errorType: 'connection' });
 			return;
 		}
 	} catch {
@@ -1163,7 +1199,7 @@ async function oAuthCredentialAuthorize() {
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
 		);
-		connectionObserver.value?.({ type: 'failed', errorType: 'connection' });
+		observeConnection({ type: 'failed', errorType: 'connection' });
 		return;
 	}
 
@@ -1181,7 +1217,7 @@ async function oAuthCredentialAuthorize() {
 	};
 
 	const handleOAuthResult = (successfullyConnected: boolean) => {
-		connectionObserver.value?.(
+		observeConnection(
 			successfullyConnected
 				? { type: 'completed', credentialId: credential.id }
 				: { type: 'failed', errorType: 'connection' },
@@ -1215,6 +1251,7 @@ async function oAuthCredentialAuthorize() {
 
 			void credentialsStore.fetchAllCredentials().then((credentials) => {
 				nodeHelpers.updateNodesCredentialsIssues();
+				if (abortController.signal.aborted) return;
 				// The account just connected is only known server-side, so pick it up
 				// from the refresh rather than guessing at who the user is. Read this
 				// request's own response, not the store: any other credentials fetch
@@ -1232,15 +1269,6 @@ async function oAuthCredentialAuthorize() {
 			}
 		}
 	};
-
-	// Supersede any previous pending flow so a re-click doesn't leave a second
-	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
-	oauthFlowAbortController.value?.abort();
-	const abortController = new AbortController();
-	// Close the popup on teardown/supersession so it isn't left orphaned.
-	// No-op when the provider's COOP policy severed the opener relationship.
-	abortController.signal.addEventListener('abort', () => oauthPopup.close(), { once: true });
-	oauthFlowAbortController.value = abortController;
 
 	const outcome = await waitForOAuthCallback({
 		popup: oauthPopup,

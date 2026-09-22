@@ -578,14 +578,11 @@ export class TestWebhooks implements IWebhookManager {
 
 	async cancelWebhook(workflowId: string) {
 		let foundWebhook = false;
+		const cancelledRequests = new Set<string>();
 
-		const allWebhookKeys = await this.registrations.getAllKeys();
+		const registrations = await this.registrations.getRegistrationsHash();
 
-		for (const key of allWebhookKeys) {
-			const registration = await this.registrations.get(key);
-
-			if (!registration) continue;
-
+		for (const [key, registration] of Object.entries(registrations ?? {})) {
 			const { pushRef, workflowEntity } = registration;
 
 			const workflow = this.toWorkflow(workflowEntity);
@@ -602,13 +599,15 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
+			const request = registration.telemetryMetadata?.setupTestRequest;
+			if (request && !cancelledRequests.has(request.test_request_id)) {
+				cancelledRequests.add(request.test_request_id);
+				Container.get(EventService).emit('instance-ai-setup-test-cancelled', {
+					workflowId,
+					request,
+				});
+			}
 			if (!foundWebhook) {
-				const request = registration.telemetryMetadata?.setupTestRequest;
-				if (request)
-					Container.get(EventService).emit('instance-ai-setup-test-cancelled', {
-						workflowId,
-						request,
-					});
 				// As it removes all webhooks of the workflow execute only once
 				void (async () => {
 					await workflow.expression.acquireIsolate();

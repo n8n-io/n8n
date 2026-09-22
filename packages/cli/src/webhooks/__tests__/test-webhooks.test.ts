@@ -1,3 +1,5 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { EventService } from '@/events/event.service';
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
@@ -749,17 +751,51 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('cancelWebhook()', () => {
+		it('records every setup request once when cancelling multiple registrations', async () => {
+			const events = mockInstance(EventService);
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockResolvedValue();
+			const request = {
+				test_request_id: 'request-1',
+				thread_id: 'thread-1',
+				session_id: 'session-1',
+			};
+			const second = { ...request, test_request_id: 'request-2' };
+			const registration = { version: 1 as const, workflowEntity, webhook };
+			registrations.getRegistrationsHash.mockResolvedValue({
+				ordinary: registration,
+				first: { ...registration, telemetryMetadata: { setupTestRequest: request } },
+				sameRequest: { ...registration, telemetryMetadata: { setupTestRequest: request } },
+				second: { ...registration, telemetryMetadata: { setupTestRequest: second } },
+				otherWorkflow: {
+					...registration,
+					workflowEntity: { ...workflowEntity, id: 'other' },
+					telemetryMetadata: { setupTestRequest: { ...request, test_request_id: 'other' } },
+				},
+			});
+
+			expect(await testWebhooks.cancelWebhook(workflowEntity.id)).toBe(true);
+			await flushMicrotasks();
+			expect(events.emit.mock.calls).toEqual([
+				['instance-ai-setup-test-cancelled', { workflowId: workflowEntity.id, request }],
+				['instance-ai-setup-test-cancelled', { workflowId: workflowEntity.id, request: second }],
+			]);
+			expect(testWebhooks.deactivateWebhooks).toHaveBeenCalledTimes(1);
+		});
+
 		test('acquires and releases isolate around deactivateWebhooks', async () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
 
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
-			registrations.getAllKeys.mockResolvedValue(['key1']);
-			registrations.get.mockResolvedValue({
-				version: 1,
-				workflowEntity,
-				webhook,
-			} as TestWebhookRegistration);
+			registrations.getRegistrationsHash.mockResolvedValue({
+				key1: {
+					version: 1,
+					workflowEntity,
+					webhook,
+				} as TestWebhookRegistration,
+			});
 			const deactivateSpy = vi
 				.spyOn(testWebhooks, 'deactivateWebhooks')
 				.mockResolvedValue(undefined);
@@ -782,12 +818,13 @@ describe('TestWebhooks', () => {
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
 
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
-			registrations.getAllKeys.mockResolvedValue(['key1']);
-			registrations.get.mockResolvedValue({
-				version: 1,
-				workflowEntity,
-				webhook,
-			} as TestWebhookRegistration);
+			registrations.getRegistrationsHash.mockResolvedValue({
+				key1: {
+					version: 1,
+					workflowEntity,
+					webhook,
+				} as TestWebhookRegistration,
+			});
 			const error = new Error('boom');
 			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(error);
 

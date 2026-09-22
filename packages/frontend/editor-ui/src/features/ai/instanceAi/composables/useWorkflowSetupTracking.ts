@@ -116,6 +116,20 @@ export function useWorkflowSetupTracking(options: {
 		attempts.delete(key);
 	}
 
+	function trackValidation(key: string, validation: Promise<boolean | undefined> | undefined) {
+		// Selection completes before background validation. Retain its original attempt for the result.
+		const payloads = (attempts.get(key) ?? []).filter((payload) => payload.method === 'existing');
+		if (!payloads.length || !validation) return;
+		void validation.then((success) => {
+			if (success !== false) return;
+			for (const payload of payloads)
+				telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_FAILED_CREDENTIAL_CONNECTION, {
+					...payload,
+					error_type: 'validation',
+				});
+		});
+	}
+
 	function parameterStarted(node: Pick<INodeUi, 'id' | 'type'>, parameterName: string) {
 		const payload = context();
 		if (!payload.workflow_id) return;
@@ -143,6 +157,7 @@ export function useWorkflowSetupTracking(options: {
 		complete,
 		fail,
 		cancel,
+		trackValidation,
 		parameterStarted,
 		hasAttempt: (key: string) => attempts.has(key),
 	};

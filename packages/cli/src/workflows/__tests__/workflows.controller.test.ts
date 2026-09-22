@@ -1,3 +1,8 @@
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { AuthService } from '@/auth/auth.service';
+import type { EventService } from '@/events/event.service';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 import type { Mock } from 'vitest';
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -30,6 +35,35 @@ describe('WorkflowsController', () => {
 		controller.outboundHttp = outboundHttp;
 		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(httpClient);
+	});
+
+	it.each([
+		undefined,
+		{
+			test_request_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			thread_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+			session_id: 'session',
+		},
+	])('emits a start failure with the submitted request %j', async (setupTestRequest) => {
+		const workflowRepository = mock<WorkflowRepository>();
+		const workflowExecutionService = mock<WorkflowExecutionService>();
+		const eventService = mock<EventService>();
+		Object.assign(controller, {
+			workflowRepository,
+			workflowExecutionService,
+			eventService,
+			authService: mock<AuthService>(),
+		});
+		workflowRepository.get.mockResolvedValue(mock<WorkflowEntity>({ id: 'workflow' }));
+		workflowExecutionService.executeManually.mockRejectedValue(new Error('Cannot start'));
+		const request = mock<WorkflowRequest.ManualRun>();
+		request.params = { workflowId: 'workflow' };
+		request.body = { triggerToStartFrom: { name: 'Start' }, setupTestRequest };
+		await expect(controller.runManually(request)).rejects.toThrow('Cannot start');
+		expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+			'instance-ai-setup-test-start-failed',
+			{ workflowId: 'workflow', request: setupTestRequest },
+		);
 	});
 
 	describe('getFromUrl', () => {

@@ -530,8 +530,10 @@ export class WorkflowsController {
 		const result = await this.workflowExecutionService
 			.executeManually(dbWorkflow, body, req.user, req.headers['push-ref'], n8nAuthCookie)
 			.catch((error: unknown) => {
-				if (!body.setupTestRequest)
-					this.eventService.emit('instance-ai-setup-test-start-failed', { workflowId });
+				this.eventService.emit('instance-ai-setup-test-start-failed', {
+					workflowId,
+					request: body.setupTestRequest,
+				});
 				throw error;
 			});
 

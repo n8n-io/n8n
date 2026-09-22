@@ -31,7 +31,7 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
-const rollouts = { computerUse: true, browserUse: true };
+const rollouts = { computerUse: true, browserUse: true, setupPanel: false };
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: () => ({
@@ -46,7 +46,7 @@ vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 }));
 
 vi.mock('@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment', () => ({
-	useInstanceAiSetupPanelExperiment: () => ({ isEnabled: computed(() => false) }),
+	useInstanceAiSetupPanelExperiment: () => ({ isEnabled: computed(() => rollouts.setupPanel) }),
 }));
 
 const mockFetchSettings = vi.fn();
@@ -133,6 +133,7 @@ describe('useInstanceAiSettingsStore', () => {
 		vi.clearAllMocks();
 		rollouts.computerUse = true;
 		rollouts.browserUse = true;
+		rollouts.setupPanel = false;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -160,6 +161,20 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 		});
 	});
+
+	it.each([
+		{ override: undefined, variant: false, enabled: false },
+		{ override: false, variant: false, enabled: false },
+		{ override: false, variant: true, enabled: true },
+		{ override: true, variant: false, enabled: true },
+	])(
+		'uses the setup panel override $override with variant $variant',
+		({ override, variant, enabled }) => {
+			rollouts.setupPanel = variant;
+			setModuleSettings(settingsStore, { instanceAiSetupPanelEnabled: override });
+			expect(store.isInstanceAiSetupPanelEnabled).toBe(enabled);
+		},
+	);
 
 	describe('isInstanceAiDisabled', () => {
 		it('returns true when module settings has enabled=false', () => {

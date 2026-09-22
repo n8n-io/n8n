@@ -384,6 +384,10 @@ describe('useSetupPanelExecution', () => {
 		const { executeWorkflow, workflows, thread } = harness();
 		workflows.runWorkflow.mockRejectedValueOnce(new Error('Start failed'));
 		await expect(executeWorkflow()).rejects.toThrow('Start failed');
+		expect(track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED,
+			expect.anything(),
+		);
 		expect(
 			useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1')).activeExecutionId,
 		).toBeUndefined();
@@ -437,6 +441,10 @@ describe('useSetupPanelExecution', () => {
 				nodes: reason === 'missing' ? [] : [{ ...workflow.nodes[0], disabled: true }],
 			});
 			await expect(executeWorkflow()).rejects.toThrow(/trigger node/i);
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED,
+				expect.objectContaining({ status: 'start_failed' }),
+			);
 			expect(workflows.runWorkflow).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 		},

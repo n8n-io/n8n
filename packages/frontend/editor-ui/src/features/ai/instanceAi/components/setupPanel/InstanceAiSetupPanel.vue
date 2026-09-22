@@ -666,7 +666,10 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 			? credentialsStore.getUsableCredentialById(credentialId)
 			: undefined) ?? credentialsStore.getCredentialById(credentialId);
 	if (!credential) return;
-	void testCredentialInBackground(credential.id, credential.name, item.credentialType);
+	panelTelemetry.trackConnectionValidation(
+		item,
+		testCredentialInBackground(credential.id, credential.name, item.credentialType),
+	);
 	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });
 	await notifyApplyResult(result, workflowId);
 	panelTelemetry.trackConnectionCompleted(item, credential.id, result);

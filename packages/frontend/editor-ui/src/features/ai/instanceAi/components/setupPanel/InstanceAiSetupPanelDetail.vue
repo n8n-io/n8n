@@ -88,7 +88,8 @@ function onParameterValueChanged(update: IUpdateInformation) {
 	const next = deepCopy(displayParameters.value);
 	setParameterValueByPath(next, parameterName, update.value);
 	const changes = getSetupParameterChanges(displayParameters.value, next);
-	if (changes.length) emit('parameterStarted', parameterName.split(/[.[\]]/)[0]);
+	if (changes.length && !update.isCleanup)
+		emit('parameterStarted', parameterName.split(/[.[\]]/)[0]);
 	parameterChanges.value = mergeSetupParameterChanges(parameterChanges.value, changes);
 }
 

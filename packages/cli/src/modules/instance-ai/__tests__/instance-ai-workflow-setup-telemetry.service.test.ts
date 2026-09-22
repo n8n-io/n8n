@@ -10,7 +10,7 @@ import {
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service';
 import type { PostHogClient } from '@/posthog';
 import type { Telemetry } from '@/telemetry';
 
@@ -38,6 +38,7 @@ describe('InstanceAiWorkflowSetupTelemetryService', () => {
 	const workflowService = mock<InstanceAiWorkflowService>();
 	const context = mock<InstanceAiContext>({ workflowService });
 	const adapter = mockInstance(InstanceAiAdapterService);
+	const events = new EventService();
 	const service = new InstanceAiWorkflowSetupTelemetryService(
 		repository,
 		threads,
@@ -45,7 +46,7 @@ describe('InstanceAiWorkflowSetupTelemetryService', () => {
 		mock<WorkflowDependencyRepository>(),
 		telemetry,
 		mock<Logger>(),
-		mock<EventService>(),
+		events,
 		posthog,
 	);
 	let state: WorkflowSetupTelemetryState | undefined;
@@ -53,6 +54,7 @@ describe('InstanceAiWorkflowSetupTelemetryService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		state = undefined;
+		posthog.getFeatureFlags.mockResolvedValue({});
 		adapter.createContext.mockReturnValue(context);
 		workflowService.getAsWorkflowJSON.mockResolvedValue({
 			id: 'workflow-1',
@@ -68,6 +70,26 @@ describe('InstanceAiWorkflowSetupTelemetryService', () => {
 		repository.updateObservation.mockImplementation(async (_workflowId, update) => {
 			state = await update(state);
 		});
+	});
+
+	it.each([
+		undefined,
+		{ test_request_id: 'request-1', thread_id: 'thread-2', session_id: 'session-2' },
+	])('records authoritative start failures with request %j', async (request) => {
+		await service.observe(user, 'thread-1', 'workflow-1', true);
+		events.emit('instance-ai-setup-test-start-failed', { workflowId: 'workflow-1', request });
+		await vi.waitFor(() =>
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED,
+				expect.objectContaining({
+					...request,
+					workflow_id: 'workflow-1',
+					source: request ? 'instance_ai_setup_panel' : 'canvas',
+					status: 'start_failed',
+					error_type: 'start',
+				}),
+			),
+		);
 	});
 
 	it.each(['control', 'variant', undefined, false])(

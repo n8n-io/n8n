@@ -22,6 +22,18 @@ describe('useCredentialTestInBackground', () => {
 			});
 		});
 
+		it.each(['success', 'error'] as const)(
+			'returns an in-flight validation result: %s',
+			async (status) => {
+				credentialsStore.credentialTestResults.set('cred-1', 'pending');
+				const { testCredentialInBackground } = useCredentialTestInBackground();
+				const result = testCredentialInBackground('cred-1', 'Account', 'slackApi');
+				credentialsStore.credentialTestResults.set('cred-1', status);
+				await expect(result).resolves.toBe(status === 'success');
+				expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+			},
+		);
+
 		it('records a passing result when the credential data cannot be read', async () => {
 			credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
 			const { testCredentialInBackground } = useCredentialTestInBackground();
@@ -45,7 +57,9 @@ describe('useCredentialTestInBackground', () => {
 			credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
 			const { testCredentialInBackground } = useCredentialTestInBackground();
 
-			await testCredentialInBackground('cred-1', 'My credential', 'slackApi');
+			await expect(testCredentialInBackground('cred-1', 'My credential', 'slackApi')).resolves.toBe(
+				false,
+			);
 
 			expect(credentialsStore.credentialTestResults.get('cred-1')).toBe('error');
 		});

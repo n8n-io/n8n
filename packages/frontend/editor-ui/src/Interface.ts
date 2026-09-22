@@ -185,6 +185,7 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 	node?: string;
 	oldValue?: string | number;
 	type?: 'optionsOrderChanged';
+	isCleanup?: boolean;
 }
 
 export interface INodeUpdatePropertiesInformation {

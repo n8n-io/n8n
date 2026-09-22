@@ -277,6 +277,15 @@ test.describe(
 						pending_credential_count: 0,
 						pending_parameter_count: 0,
 					});
+				await expect
+					.poll(() =>
+						tracking.events.filter(
+							(event) =>
+								event.name ===
+								TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION.name,
+						),
+					)
+					.toHaveLength(1);
 				const starts = tracking.events.filter(
 					(event) =>
 						event.name === TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION.name,

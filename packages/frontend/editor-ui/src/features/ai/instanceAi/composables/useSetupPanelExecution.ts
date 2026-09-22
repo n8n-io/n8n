@@ -71,7 +71,6 @@ export function useSetupPanelExecution(options: {
 		let cleanup = () => {};
 		const testRequestId = uuid();
 		let requestSent = false;
-		let executionStarted = false;
 		try {
 			if (!pushStore.isConnected)
 				throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
@@ -215,7 +214,6 @@ export function useSetupPanelExecution(options: {
 				}
 				return;
 			}
-			executionStarted = Boolean(response.executionId || response.waitingForWebhook);
 			waitingForWebhook = response.waitingForWebhook === true;
 			executionState.setExecutionWaitingForWebhook(waitingForWebhook);
 			if (response.executionId) observeId(response.executionId);
@@ -247,13 +245,12 @@ export function useSetupPanelExecution(options: {
 			);
 			return { ...result, notified };
 		} catch (error) {
-			if (!executionStarted)
+			if (!requestSent)
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED, {
 					...getTelemetryPayload(),
 					session_id: rootStore.pushRef,
 					workflow_id: workflowId,
 					thread_id: options.thread.id,
-					...(requestSent ? { test_request_id: testRequestId } : {}),
 					source: 'instance_ai_setup_panel',
 					initiated_by: 'user',
 					status: 'start_failed',

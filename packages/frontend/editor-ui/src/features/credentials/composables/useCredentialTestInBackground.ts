@@ -1,4 +1,5 @@
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { until } from '@vueuse/core';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export function useCredentialTestInBackground() {
@@ -14,14 +15,14 @@ export function useCredentialTestInBackground() {
 	/**
 	 * Tests a saved credential in the background.
 	 * Fetches the credential's redacted data first so the backend can unredact and test.
-	 * Skips if the credential is already tested OK or has a test in flight.
+	 * Reuses a successful result or waits for a test in flight.
 	 * The result is tracked automatically in the credentials store as a side effect of testCredential.
 	 */
 	async function testCredentialInBackground(
 		credentialId: string,
 		credentialName: string,
 		credentialType: string,
-	) {
+	): Promise<boolean | undefined> {
 		if (!isCredentialTypeTestable(credentialType)) {
 			return;
 		}
@@ -30,7 +31,8 @@ export function useCredentialTestInBackground() {
 			credentialsStore.isCredentialTestedOk(credentialId) ||
 			credentialsStore.isCredentialTestPending(credentialId)
 		) {
-			return;
+			await until(() => credentialsStore.isCredentialTestPending(credentialId)).toBe(false);
+			return credentialsStore.isCredentialTestedOk(credentialId);
 		}
 
 		let credentialData: ICredentialDataDecryptedObject | string | undefined;
@@ -46,7 +48,8 @@ export function useCredentialTestInBackground() {
 			credentialsStore.isCredentialTestedOk(credentialId) ||
 			credentialsStore.isCredentialTestPending(credentialId)
 		) {
-			return;
+			await until(() => credentialsStore.isCredentialTestPending(credentialId)).toBe(false);
+			return credentialsStore.isCredentialTestedOk(credentialId);
 		}
 
 		if (!credentialData || typeof credentialData === 'string') {
@@ -57,7 +60,7 @@ export function useCredentialTestInBackground() {
 			if (!credentialsStore.credentialTestResults.has(credentialId)) {
 				credentialsStore.credentialTestResults.set(credentialId, 'success');
 			}
-			return;
+			return credentialsStore.isCredentialTestedOk(credentialId);
 		}
 
 		const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialData;
@@ -66,7 +69,7 @@ export function useCredentialTestInBackground() {
 		// means the OAuth flow completed successfully, which is the equivalent of a passing test.
 		if (oauthTokenData) {
 			credentialsStore.credentialTestResults.set(credentialId, 'success');
-			return;
+			return true;
 		}
 
 		try {
@@ -79,6 +82,7 @@ export function useCredentialTestInBackground() {
 		} catch {
 			// The store records the failed result as a side effect
 		}
+		return credentialsStore.isCredentialTestedOk(credentialId);
 	}
 
 	function hydrateCredentialTestResults(results: Array<{ id: string; success: boolean }>) {

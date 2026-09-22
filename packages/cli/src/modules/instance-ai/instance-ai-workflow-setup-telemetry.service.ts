@@ -45,9 +45,10 @@ export class InstanceAiWorkflowSetupTelemetryService {
 				status: 'canceled',
 			});
 		});
-		events.on('instance-ai-setup-test-start-failed', ({ workflowId }) => {
+		events.on('instance-ai-setup-test-start-failed', ({ workflowId, request }) => {
 			void this.recordTestResult(workflowId, {
-				source: 'canvas',
+				...request,
+				source: request ? 'instance_ai_setup_panel' : 'canvas',
 				initiated_by: 'user',
 				status: 'start_failed',
 				error_type: 'start',

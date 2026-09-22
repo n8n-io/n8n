@@ -21,6 +21,10 @@ vi.mock('../../../composables/useSetupPanelTelemetry', () => ({
 	useSetupPanelTelemetry: () => ({
 		trackConnectionStarted: vi.fn(),
 		trackConnectionCompleted: vi.fn(),
+		trackConnectionValidation: vi.fn(),
+		trackConnectionFailed: vi.fn(),
+		trackConnectionCancelled: vi.fn(),
+		trackParameterStarted: vi.fn(),
 		trackDismissed: vi.fn(),
 	}),
 }));
@@ -581,6 +585,7 @@ describe('InstanceAiSetupPanel', () => {
 		expect(oauthMock.createAndAuthorize).toHaveBeenCalledWith('notionApi', undefined, {
 			projectId: 'p1',
 			workflowId: 'wf1',
+			onOutcome: expect.any(Function),
 		});
 		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
 		expect(queryByRole('dialog')).toBeNull();

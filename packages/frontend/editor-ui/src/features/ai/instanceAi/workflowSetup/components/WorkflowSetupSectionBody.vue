@@ -234,12 +234,13 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (data && typeof data !== 'string') {
 		credId = data.__aiGatewayManaged === true ? AI_GATEWAY_MANAGED_TAG : (data.id ?? null);
 	}
-	ctx.setCredential(props.section, credId);
+	tracking.trackValidation(props.section.id, ctx.setCredential(props.section, credId));
 }
 
 function onParameterValueChanged(update: IUpdateInformation) {
 	const parameterName = update.name.replace(/^parameters\./, '');
-	tracking.parameterStarted(props.section.node, getRootParameterName(parameterName));
+	if (!update.isCleanup)
+		tracking.parameterStarted(props.section.node, getRootParameterName(parameterName));
 	ctx.setParameterValue(props.section, parameterName, update.value);
 	revealParameterIssues(getRootParameterName(parameterName));
 }

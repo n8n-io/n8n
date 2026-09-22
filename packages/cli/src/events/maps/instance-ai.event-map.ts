@@ -3,7 +3,10 @@ import type { InstanceAiSetupTestRequest, InstanceAiRunLimitReason } from '@n8n/
 export type InstanceAiEventMap = {
 	'instance-ai-setup-test-cancelled': { workflowId: string; request: InstanceAiSetupTestRequest };
 
-	'instance-ai-setup-test-start-failed': { workflowId: string };
+	'instance-ai-setup-test-start-failed': {
+		workflowId: string;
+		request?: InstanceAiSetupTestRequest;
+	};
 
 	/** One durable-log batch persisted by the writer's per-thread drain. */
 	'instance-ai-durable-log-drained': {

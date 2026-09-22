@@ -1,6 +1,8 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { effectScope, nextTick, ref } from 'vue';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { useWorkflowSetupTracking } from '../composables/useWorkflowSetupTracking';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -27,7 +29,7 @@ describe('useSetupPanelTelemetry', () => {
 	afterEach(() => {
 		scopes.splice(0).forEach((scope) => scope.stop());
 	});
-	function setup(thread = { id: 'thread' }) {
+	function setup(thread = { id: 'thread' }, getNodeByName?: () => undefined) {
 		const workflowId = ref('wf');
 		const rows = ref<SetupPanelRow[]>([{ item, isDone: true }]);
 		const groups = ref<SetupPanelGroup[]>([]);
@@ -36,7 +38,15 @@ describe('useSetupPanelTelemetry', () => {
 		const scope = effectScope();
 		scopes.push(scope);
 		const telemetry = scope.run(() =>
-			useSetupPanelTelemetry({ workflowId, thread, rows, groups, ready, shownItemIds }),
+			useSetupPanelTelemetry({
+				workflowId,
+				thread,
+				rows,
+				groups,
+				ready,
+				shownItemIds,
+				getNodeByName,
+			}),
 		)!;
 		return { workflowId, rows, groups, ready, shownItemIds, telemetry, scope };
 	}
@@ -60,6 +70,52 @@ describe('useSetupPanelTelemetry', () => {
 			}
 		},
 	);
+
+	it.each(['instance_ai_setup_panel', 'instance_ai_setup_wizard'] as const)(
+		'keeps delayed validation on its original attempt in %s',
+		async (source) => {
+			const workflowId = ref('wf');
+			const tracking = useWorkflowSetupTracking({ workflowId, threadId: 'thread', source });
+			const validation = createDeferredPromise<boolean>();
+			tracking.start('item', 'slackApi', 'existing', [{ id: 'node', type: 'slack' }]);
+			const attempt = track.mock.calls.at(-1)?.[1];
+			tracking.trackValidation('item', validation.promise);
+			tracking.complete('item', 'credential', 'queued');
+			workflowId.value = 'next-workflow';
+			tracking.start('item', 'slackApi', 'existing', [{ id: 'other', type: 'slack' }]);
+			validation.resolve(false);
+			await validation.promise;
+
+			expect(track).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_FAILED_CREDENTIAL_CONNECTION,
+				{ ...attempt, error_type: 'validation' },
+			);
+			expect(tracking.hasAttempt('item')).toBe(true);
+		},
+	);
+
+	it('records an unresolved visible row once', async () => {
+		const state = setup({ id: 'thread' }, () => undefined);
+		const row = {
+			item: { id: 'parameters', kind: 'parameters', nodeName: 'Missing', parameterNames: ['url'] },
+			isDone: false,
+		} satisfies SetupPanelRow;
+		state.rows.value = [row];
+		state.groups.value = [{ id: 'details', parameters: [row] }];
+		state.ready.value = true;
+		await nextTick();
+		expect(track).toHaveBeenCalledWith(
+			shown,
+			expect.objectContaining({
+				kind: 'details',
+				item_ids: [],
+				parameter_count: 1,
+			}),
+		);
+		state.groups.value = [...state.groups.value];
+		await nextTick();
+		expect(track.mock.calls.filter(([event]) => event === shown)).toHaveLength(1);
+	});
 
 	it('shares impressions across overlapping views without a false navigation dismissal', async () => {
 		const thread = { id: 'thread' };

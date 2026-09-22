@@ -143,7 +143,6 @@ export function useSetupPanelTelemetry(options: {
 							: [];
 					}),
 				];
-				if (options.getNodeByName && itemIds.length === 0) continue;
 				shownRows.add(rowKey);
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_ITEM_SHOWN, {
 					...context(),
@@ -199,6 +198,10 @@ export function useSetupPanelTelemetry(options: {
 			tracking.fail(item.id, error),
 		trackConnectionCancelled: (item: SetupCredentialItem, reason: SetupConnectionCancellation) =>
 			tracking.cancel(item.id, reason),
+		trackConnectionValidation: (
+			item: SetupCredentialItem,
+			validation: Promise<boolean | undefined>,
+		) => tracking.trackValidation(item.id, validation),
 		trackParameterStarted: tracking.parameterStarted,
 	};
 }
