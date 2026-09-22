@@ -40,12 +40,19 @@ export interface ReadableUsageSummary {
 	metadata: unknown;
 }
 
+export interface ParsedActiveSkillDisplay {
+	name: string;
+	content: string;
+}
+
 export interface ParsedSystemPromptDisplay {
 	systemBlocks: ReadableContentBlock[];
 	observations: string | null;
+	skills: ParsedActiveSkillDisplay[];
 }
 
 const OBSERVATIONS_BLOCK_PATTERN = /<observations>([\s\S]*?)<\/observations>/i;
+const ACTIVE_SKILLS_BLOCK_PATTERN = /<active_skills>([\s\S]*?)<\/active_skills>/i;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -383,29 +390,86 @@ export function extractObservationsBlock(text: string): {
 	};
 }
 
-function extractObservationsFromBlock(block: ReadableContentBlock): {
+function parseSkillEnvelopeName(raw: string): string {
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (typeof parsed === 'string' && parsed.length > 0) return parsed;
+	} catch {
+		// Envelope names are JSON strings; older or hand-written snapshots may not be.
+	}
+	return raw;
+}
+
+function parseActiveSkillsInner(inner: string): ParsedActiveSkillDisplay[] {
+	// Runtime envelope from `formatActiveSkill`: `[Skill: "<name>"]`.
+	const matches = [...inner.matchAll(/\[Skill: ("(?:\\.|[^"\\])*"|[^\]]+)\]/g)];
+	if (matches.length === 0) return [];
+
+	return matches.map((match, index) => {
+		const start = match.index ?? 0;
+		const end = matches[index + 1]?.index ?? inner.length;
+		return {
+			name: parseSkillEnvelopeName(match[1] ?? 'skill'),
+			content: inner.slice(start, end).trim(),
+		};
+	});
+}
+
+export function extractActiveSkillsBlock(text: string): {
+	withoutActiveSkills: string;
+	skills: ParsedActiveSkillDisplay[];
+} {
+	const match = text.match(ACTIVE_SKILLS_BLOCK_PATTERN);
+	if (!match) {
+		return { withoutActiveSkills: text, skills: [] };
+	}
+
+	return {
+		withoutActiveSkills: text.replace(ACTIVE_SKILLS_BLOCK_PATTERN, '').trim(),
+		skills: parseActiveSkillsInner(match[1] ?? ''),
+	};
+}
+
+function extractSystemPromptSections(text: string): {
+	remaining: string;
+	observations: string | null;
+	skills: ParsedActiveSkillDisplay[];
+} {
+	const { observations } = extractObservationsBlock(text);
+	const { skills } = extractActiveSkillsBlock(text);
+	const remaining = text
+		.replace(OBSERVATIONS_BLOCK_PATTERN, '')
+		.replace(ACTIVE_SKILLS_BLOCK_PATTERN, '')
+		.trim();
+	return { remaining, observations, skills };
+}
+
+function extractSystemPromptSectionsFromBlock(block: ReadableContentBlock): {
 	block: ReadableContentBlock;
 	observations: string | null;
+	skills: ParsedActiveSkillDisplay[];
 } {
 	if (block.segments?.length) {
 		let observations: string | null = null;
+		const skills: ParsedActiveSkillDisplay[] = [];
 		const segments: ReadableSegment[] = block.segments.flatMap((segment): ReadableSegment[] => {
 			if (segment.type !== 'text') {
 				return [segment];
 			}
 
-			const extracted = extractObservationsBlock(segment.text);
+			const extracted = extractSystemPromptSections(segment.text);
 			if (extracted.observations) {
 				observations = observations
 					? `${observations}\n\n${extracted.observations}`
 					: extracted.observations;
 			}
+			skills.push(...extracted.skills);
 
-			if (extracted.withoutObservations.trim().length === 0) {
+			if (extracted.remaining.trim().length === 0) {
 				return [];
 			}
 
-			return [{ ...segment, text: extracted.withoutObservations }];
+			return [{ ...segment, text: extracted.remaining }];
 		});
 
 		return {
@@ -415,19 +479,19 @@ function extractObservationsFromBlock(block: ReadableContentBlock): {
 				segments: segments.length > 0 ? segments : undefined,
 			},
 			observations,
+			skills,
 		};
 	}
 
-	const extracted = extractObservationsBlock(block.content);
+	const extracted = extractSystemPromptSections(block.content);
 	return {
 		block: {
 			...block,
-			content: extracted.withoutObservations,
-			segments: extracted.withoutObservations
-				? [{ type: 'text', text: extracted.withoutObservations }]
-				: undefined,
+			content: extracted.remaining,
+			segments: extracted.remaining ? [{ type: 'text', text: extracted.remaining }] : undefined,
 		},
 		observations: extracted.observations,
+		skills: extracted.skills,
 	};
 }
 
@@ -444,13 +508,15 @@ export function stepInstructions(input: Record<string, unknown> | undefined): un
 export function parseSystemPromptForDisplay(system: unknown): ParsedSystemPromptDisplay {
 	const blocks = parseSystemBlocks(system);
 	const observationsParts: string[] = [];
+	const skills: ParsedActiveSkillDisplay[] = [];
 	const systemBlocks: ReadableContentBlock[] = [];
 
 	for (const block of blocks) {
-		const extracted = extractObservationsFromBlock(block);
+		const extracted = extractSystemPromptSectionsFromBlock(block);
 		if (extracted.observations) {
 			observationsParts.push(extracted.observations);
 		}
+		skills.push(...extracted.skills);
 		if (extracted.block.content.trim().length > 0 || extracted.block.segments?.length) {
 			systemBlocks.push(extracted.block);
 		}
@@ -459,6 +525,7 @@ export function parseSystemPromptForDisplay(system: unknown): ParsedSystemPrompt
 	return {
 		systemBlocks,
 		observations: observationsParts.length > 0 ? observationsParts.join('\n\n') : null,
+		skills,
 	};
 }
 

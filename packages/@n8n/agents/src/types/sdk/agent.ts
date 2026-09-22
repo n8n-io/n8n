@@ -235,6 +235,11 @@ export interface ExecutionOptions {
 	 * persistence-backed CheckpointStore; recover via `crashResume()`.
 	 */
 	stepCheckpoints?: boolean;
+	/**
+	 * Skill ids to activate before the first model call, as if the model had
+	 * already called `load_skill` for them. Unknown ids are ignored.
+	 */
+	preloadSkillIds?: string[];
 }
 
 export interface PersistedExecutionOptions {

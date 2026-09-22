@@ -31,6 +31,7 @@ import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
 import type * as EvalAgentsMod from './utils/eval-agents';
+import type * as PreflightMod from './preflight/preflight';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
@@ -131,6 +132,7 @@ const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
+const loadPreflight = lazyModule(() => require('./preflight/preflight') as typeof PreflightMod);
 const loadAgentTree = lazyModule(() => require('./utils/agent-tree') as typeof AgentTreeMod);
 const loadBuilderTemplatesService = lazyModule(
 	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
@@ -406,6 +408,13 @@ export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = lazyFunctio
 );
 export const generateTitleForRun: typeof TitleUtilsMod.generateTitleForRun = lazyFunction(
 	() => loadTitleUtils().generateTitleForRun,
+);
+export type { PreflightResult } from './preflight/preflight';
+export const runPreflight: typeof PreflightMod.runPreflight = lazyFunction(
+	() => loadPreflight().runPreflight,
+);
+export const createJevPreflightClient: typeof PreflightMod.createJevPreflightClient = lazyFunction(
+	() => loadPreflight().createJevPreflightClient,
 );
 export type McpClientManager = McpClientManagerMod.McpClientManager;
 export const McpClientManager: typeof McpClientManagerMod.McpClientManager = lazyClass(

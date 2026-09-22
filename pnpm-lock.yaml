@@ -488,6 +488,9 @@ catalogs:
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
+    '@typesafe-ai/sdk':
+      specifier: 0.6.0
+      version: 0.6.0
     '@typescript-eslint/eslint-plugin':
       specifier: 8.70.0
       version: 8.70.0
@@ -2861,6 +2864,9 @@ importers:
       '@thednp/dommatrix':
         specifier: ^3.1.1
         version: 3.1.1
+      '@typesafe-ai/sdk':
+        specifier: 'catalog:'
+        version: 0.6.0
       ai:
         specifier: 'catalog:'
         version: 7.0.74(zod@3.25.76)
@@ -14755,6 +14761,10 @@ packages:
 
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
+
+  '@typesafe-ai/sdk@0.6.0':
+    resolution: {integrity: sha512-IddX+Q0XM+VagOUZFeP7wZjaO4SHMdvnh2zEBdrZZnXedWI3BNK1lKhMx3ayrkFWvVLbVcUHJy6AVZlY+e6Jaw==}
+    engines: {node: '>=20'}
 
   '@typescript-eslint/eslint-plugin@8.70.0':
     resolution: {integrity: sha512-/v8HZt6RlyIZxB3ntehELOcUcfxKPVGWXnQdJuHRmzrqgF8nQypcC/oxGW+Ot4VGKDq81XugPKxx0n5PBtf9PA==}
@@ -33402,6 +33412,8 @@ snapshots:
     dependencies:
       '@types/node': 20.19.41
     optional: true
+
+  '@typesafe-ai/sdk@0.6.0': {}
 
   '@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:

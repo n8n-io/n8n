@@ -286,6 +286,7 @@ catalog:
   zod-to-json-schema: 3.23.3
   knip: ^6.35.1
   openapi-types: 12.1.3
+  '@typesafe-ai/sdk': 0.6.0
 
 catalogMode: strict
 

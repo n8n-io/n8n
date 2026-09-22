@@ -85,6 +85,9 @@ import {
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
+	runPreflight,
+	createJevPreflightClient,
+	type PreflightResult,
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
@@ -1200,6 +1203,64 @@ export class InstanceAiService {
 
 	isRunDebugEnabled(): boolean {
 		return this.instanceAiConfig.runDebugEnabled;
+	}
+
+	/**
+	 * Opening-turn preflight: one Jev decision call that, when confident,
+	 * preloads the builder skill and hands the model a node shortlist plus the
+	 * credential map. Best-effort — no API key or any failure means the turn
+	 * runs exactly as it would without preflight.
+	 */
+	private async runOpeningTurnPreflight(
+		message: string,
+		context: InstanceAiContext,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<PreflightResult | undefined> {
+		const client = await createJevPreflightClient().catch(() => undefined);
+		if (!client) return undefined;
+		const preflightRun = tracing
+			? await tracing.startChildRun(tracing.messageRun, {
+					name: 'prepare: preflight',
+					canonicalName: 'instance-ai.preflight',
+					tags: ['prompt'],
+					metadata: { agent_role: 'preflight' },
+					inputs: { message },
+				})
+			: undefined;
+		try {
+			const result = await runPreflight({
+				message,
+				client,
+				nodeService: context.nodeService,
+				credentialService: context.credentialService,
+				logger: this.logger,
+			});
+			if (preflightRun && tracing) {
+				await tracing.finishRun(preflightRun, {
+					outputs: result
+						? {
+								skillId: result.skillId,
+								intentConfidence: result.intentConfidence,
+								nodes: result.nodes.map(({ node, probability }) => ({
+									name: node.name,
+									probability,
+								})),
+								model: result.model,
+								usage: result.usage,
+								block: result.block,
+							}
+						: { skipped: true },
+					metadata: { final_status: 'completed' },
+				});
+			}
+			return result ?? undefined;
+		} catch (error) {
+			this.logger.debug('Instance AI preflight failed; continuing without it', { error });
+			if (preflightRun && tracing) {
+				await tracing.failRun(preflightRun, error, { final_status: 'error' });
+			}
+			return undefined;
+		}
 	}
 
 	private buildOrchestratorAgentStreamOptions(
@@ -4029,9 +4090,12 @@ export class InstanceAiService {
 				resumeReason === undefined
 					? buildThreadArtifactsBlock(threadArtifacts, contextAttachments)
 					: '';
-			const [boundProject, pastConversationsSection] = await Promise.all([
+			const [boundProject, pastConversationsSection, preflight] = await Promise.all([
 				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
+				isOpeningTurn && resumeReason === undefined && message
+					? this.runOpeningTurnPreflight(message, context, tracing)
+					: undefined,
 			]);
 			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
 			const aiPreferencesBlock =
@@ -4046,6 +4110,7 @@ export class InstanceAiService {
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,
 				aiPreferencesBlock,
+				preflight?.block,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 			]);
 			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
@@ -4140,7 +4205,10 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = {
+				...this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal),
+				...(preflight?.skillId ? { preloadSkillIds: [preflight.skillId] } : {}),
+			};
 
 			streamReached = true;
 			// Stored here, not where the block was built: the SDK persists the input on receipt, so

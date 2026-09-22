@@ -32,6 +32,7 @@ const parsedSystemPrompt = computed(() =>
 );
 const systemBlocks = computed(() => parsedSystemPrompt.value.systemBlocks);
 const systemObservations = computed(() => parsedSystemPrompt.value.observations);
+const systemSkills = computed(() => parsedSystemPrompt.value.skills);
 const messageBlocks = computed(() => parseMessageBlocks(props.input?.messages));
 const inputExtras = computed(() => parseInputExtras(props.input));
 const outputDisplayBlocks = computed(() => parseOutputDisplayBlocks(props.output));
@@ -50,6 +51,7 @@ const hasInputContent = computed(
 	() =>
 		systemBlocks.value.length > 0 ||
 		Boolean(systemObservations.value) ||
+		systemSkills.value.length > 0 ||
 		messageBlocks.value.length > 0 ||
 		Boolean(inputExtras.value),
 );
@@ -138,6 +140,27 @@ defineExpose({ scrollToOutput });
 						<p :class="$style.text">{{ systemObservations }}</p>
 					</div>
 				</article>
+
+				<template v-if="systemSkills.length > 0">
+					<N8nText size="small" color="text-light" :class="$style.stackLabel">
+						{{ i18n.baseText('instanceAi.debug.runDebug.skills') }}
+					</N8nText>
+					<details
+						v-for="(skill, index) in systemSkills"
+						:key="`skill-${index}-${skill.name}`"
+						:class="[$style.card, $style.cardSkill, $style.expandableCard]"
+					>
+						<summary :class="$style.cardHeader">
+							<span :class="$style.roleLabel">{{ skill.name }}</span>
+							<span :class="$style.headerMeta">
+								<span :class="$style.metaLabel">{{ formatCharCount(skill.content.length) }}</span>
+							</span>
+						</summary>
+						<div :class="$style.cardBody">
+							<p :class="$style.text">{{ skill.content }}</p>
+						</div>
+					</details>
+				</template>
 
 				<template v-if="messageBlocks.length > 0">
 					<N8nText size="small" color="text-light" :class="$style.stackLabel">
@@ -327,6 +350,10 @@ defineExpose({ scrollToOutput });
 
 .cardObservations {
 	border-left: 2px solid color-mix(in srgb, var(--color--primary) 35%, transparent);
+}
+
+.cardSkill {
+	border-left: 2px solid color-mix(in srgb, var(--color--secondary) 45%, transparent);
 }
 
 .cardUser {
