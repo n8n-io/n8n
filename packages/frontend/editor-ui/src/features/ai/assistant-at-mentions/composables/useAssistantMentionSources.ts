@@ -76,10 +76,7 @@ export function createWorkflowMentionSourceProvider(options: {
 					includeScopes: false,
 				},
 			});
-			const artifactWorkflowIds = new Set(toValue(options.artifactWorkflowIds));
-			return workflows
-				.filter((workflow) => !artifactWorkflowIds.has(workflow.id))
-				.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+			return workflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
 		},
 	};
 }
@@ -92,6 +89,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 	const isSearching = ref(false);
 	const browseItemsByProvider = new Map<MentionSourceProvider['id'], AssistantMentionItem[]>();
 	const searchItemsByProvider = new Map<MentionSourceProvider['id'], AssistantMentionItem[]>();
+	const providerRequestGenerations = new Map<MentionSourceProvider['id'], number>();
 	let requestGeneration = 0;
 	let currentQuery = '';
 	let currentMode: 'browse' | 'search' | undefined;
@@ -123,18 +121,35 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 		providerErrors.value = new Map(providerErrors.value).set(providerId, error);
 	}
 
+	function nextProviderRequestGeneration(providerId: MentionSourceProvider['id']): number {
+		const generation = (providerRequestGenerations.get(providerId) ?? 0) + 1;
+		providerRequestGenerations.set(providerId, generation);
+		return generation;
+	}
+
 	async function loadBrowseProvider(
 		provider: MentionSourceProvider,
 		generation: number,
 	): Promise<void> {
+		const providerGeneration = nextProviderRequestGeneration(provider.id);
 		try {
 			const items = await provider.browse();
-			if (disposed || generation !== requestGeneration) return;
+			if (
+				disposed ||
+				generation !== requestGeneration ||
+				providerGeneration !== providerRequestGenerations.get(provider.id)
+			)
+				return;
 			browseItemsByProvider.set(provider.id, items);
 			clearProviderError(provider.id);
 			updateBrowseSections();
 		} catch (error) {
-			if (disposed || generation !== requestGeneration) return;
+			if (
+				disposed ||
+				generation !== requestGeneration ||
+				providerGeneration !== providerRequestGenerations.get(provider.id)
+			)
+				return;
 			browseItemsByProvider.set(provider.id, []);
 			setProviderError(provider.id, error);
 			updateBrowseSections();
@@ -162,14 +177,27 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 		query: string,
 		generation: number,
 	): Promise<void> {
+		const providerGeneration = nextProviderRequestGeneration(provider.id);
 		try {
 			const items = await provider.search(query);
-			if (disposed || generation !== requestGeneration || query !== currentQuery) return;
+			if (
+				disposed ||
+				generation !== requestGeneration ||
+				query !== currentQuery ||
+				providerGeneration !== providerRequestGenerations.get(provider.id)
+			)
+				return;
 			searchItemsByProvider.set(provider.id, items);
 			clearProviderError(provider.id);
 			updateSearchResults(query);
 		} catch (error) {
-			if (disposed || generation !== requestGeneration || query !== currentQuery) return;
+			if (
+				disposed ||
+				generation !== requestGeneration ||
+				query !== currentQuery ||
+				providerGeneration !== providerRequestGenerations.get(provider.id)
+			)
+				return;
 			searchItemsByProvider.set(provider.id, []);
 			setProviderError(provider.id, error);
 			updateSearchResults(query);

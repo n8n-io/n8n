@@ -100,7 +100,7 @@ describe('createWorkflowMentionSourceProvider', () => {
 				includeScopes: false,
 			},
 		});
-		expect(results.map(({ workflowId }) => workflowId)).toEqual(['result']);
+		expect(results.map(({ workflowId }) => workflowId)).toEqual(['artifact', 'result']);
 	});
 
 	it('does not issue unscoped browse or search requests', async () => {
@@ -299,6 +299,70 @@ describe('useAssistantMentionSources', () => {
 		await vi.waitFor(() => expect(sources.searchResults.value).toEqual([first, second]));
 
 		expect(stableSearch).toHaveBeenCalledTimes(1);
+		scope.stop();
+	});
+
+	it('ignores a provider response superseded by its revision refresh', async () => {
+		const revision = ref(0);
+		const staleResponse = deferred<AssistantMentionItem[]>();
+		const freshItem = buildWorkflowMentionItem(makeWorkflow('fresh', 'Orders fresh'), 'artifacts');
+		const staleItem = buildWorkflowMentionItem(makeWorkflow('stale', 'Orders stale'), 'artifacts');
+		const revisedProvider: MentionSourceProvider = {
+			id: 'artifacts',
+			revision,
+			browse: async () => [],
+			search: vi
+				.fn<(query: string) => Promise<AssistantMentionItem[]>>()
+				.mockReturnValueOnce(staleResponse.promise)
+				.mockResolvedValueOnce([freshItem]),
+		};
+		const scope = effectScope();
+		let sources!: ReturnType<typeof useAssistantMentionSources>;
+		scope.run(() => {
+			sources = useAssistantMentionSources([revisedProvider]);
+		});
+
+		const pending = sources.search('orders');
+		revision.value++;
+		await nextTick();
+		await vi.waitFor(() => expect(sources.searchResults.value).toEqual([freshItem]));
+
+		staleResponse.resolve([staleItem]);
+		await pending;
+		expect(sources.searchResults.value).toEqual([freshItem]);
+		scope.stop();
+	});
+
+	it('refreshes browse roots when unloaded artifacts are added or removed', async () => {
+		const artifacts = ref([{ id: '1', name: 'Workflow 1' }]);
+		const scope = effectScope();
+		let sources!: ReturnType<typeof useAssistantMentionSources>;
+		scope.run(() => {
+			const artifactIndex = useArtifactMentionIndex({
+				artifacts,
+				fetchWorkflow: async (workflowId) => makeWorkflow(workflowId, `Workflow ${workflowId}`),
+				getActiveWorkflow: () => undefined,
+			});
+			sources = useAssistantMentionSources([
+				createArtifactMentionSourceProvider({ artifacts, artifactIndex }),
+			]);
+		});
+
+		await sources.browse();
+		artifacts.value = [{ id: '1', name: 'Renamed workflow' }];
+		await vi.waitFor(() =>
+			expect(sources.browseSections.value[0].items[0].label).toBe('Renamed workflow'),
+		);
+
+		artifacts.value = [...artifacts.value, { id: '2', name: 'Workflow 2' }];
+		await vi.waitFor(() => expect(sources.browseSections.value[0].items).toHaveLength(2));
+
+		artifacts.value = [{ id: '2', name: 'Workflow 2' }];
+		await vi.waitFor(() =>
+			expect(sources.browseSections.value[0].items.map(({ workflowId }) => workflowId)).toEqual([
+				'2',
+			]),
+		);
 		scope.stop();
 	});
 

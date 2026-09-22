@@ -283,15 +283,23 @@ export function useArtifactMentionIndex(options: UseArtifactMentionIndexOptions)
 	}
 
 	watch(
-		() => [...artifactById.value.keys()],
-		(workflowIds, previousWorkflowIds = []) => {
-			const nextIds = new Set(workflowIds);
-			for (const workflowId of previousWorkflowIds) {
+		() => toValue(options.artifacts).map(({ id, name }) => [id, name] as const),
+		(artifacts, previousArtifacts = []) => {
+			const artifactsChanged =
+				artifacts.length !== previousArtifacts.length ||
+				artifacts.some(
+					([workflowId, name], index) =>
+						workflowId !== previousArtifacts[index]?.[0] || name !== previousArtifacts[index]?.[1],
+				);
+			const revisionBeforeChange = revision.value;
+			const nextIds = new Set(artifacts.map(([workflowId]) => workflowId));
+			for (const [workflowId] of previousArtifacts) {
 				if (nextIds.has(workflowId)) continue;
 				nextGeneration(workflowId);
 				pendingLoads.delete(workflowId);
 				removeEntry(workflowId);
 			}
+			if (artifactsChanged && revision.value === revisionBeforeChange) revision.value++;
 		},
 		{ immediate: true },
 	);

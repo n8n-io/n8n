@@ -7,7 +7,7 @@ import {
 	buildMentionKey,
 } from './buildMentionItems';
 
-function makeIndex(nodeCount = 3) {
+function makeIndex(nodeCount = 3, groupedNodeCount = 2) {
 	return projectWorkflowArtifact({
 		id: 'workflow-1',
 		name: 'Order processing',
@@ -22,7 +22,10 @@ function makeIndex(nodeCount = 3) {
 			{
 				id: 'group-1',
 				name: 'Fulfilment',
-				nodeIds: ['node-2', 'node-3'],
+				nodeIds: Array.from(
+					{ length: Math.min(groupedNodeCount, Math.max(0, nodeCount - 1)) },
+					(_, index) => `node-${index + 2}`,
+				),
 			},
 		],
 	});
@@ -72,7 +75,7 @@ describe('buildMentionItems', () => {
 	});
 
 	it('limits artifact roots and each visible child menu to ten rows', () => {
-		const index = makeIndex(15);
+		const index = makeIndex(26, 14);
 		const artifacts = Array.from({ length: 15 }, (_, itemIndex) => ({
 			id: `workflow-${itemIndex + 1}`,
 			name: `Workflow ${itemIndex + 1}`,
@@ -84,6 +87,7 @@ describe('buildMentionItems', () => {
 		expect(items).toHaveLength(10);
 		expect(items[0].children).toHaveLength(10);
 		expect(items[0].children?.[0]).toMatchObject({ kind: 'group', label: 'Fulfilment' });
+		expect(items[0].children?.[0].children).toHaveLength(10);
 	});
 
 	it('keeps artifact roots browseable before their compact index loads', () => {
