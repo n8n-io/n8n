@@ -333,16 +333,6 @@ describe('InsightsByPeriodRepository', () => {
 				]);
 				const dataSource = Container.get(DataSource);
 				const insightsRawRepository = Container.get(InsightsRawRepository);
-				const otherInstance = new DataSource(Container.get(DbConnectionOptions).getOptions());
-				await otherInstance.initialize();
-				const runners = [
-					Container.get(InsightsByPeriodRepository),
-					new InsightsByPeriodRepository(
-						otherInstance,
-						Container.get(SharedWorkflowRepository),
-						new DbLockService(otherInstance, Container.get(DatabaseConfig)),
-					),
-				];
 				const project = await createTeamProject();
 				const workflow = await createWorkflow({ nodes: [] }, project);
 				await createMetadata(workflow);
@@ -354,6 +344,16 @@ describe('InsightsByPeriodRepository', () => {
 						timestamp: hour.plus({ minute }),
 					});
 				}
+				const otherInstance = new DataSource(Container.get(DbConnectionOptions).getOptions());
+				await otherInstance.initialize();
+				const runners = [
+					Container.get(InsightsByPeriodRepository),
+					new InsightsByPeriodRepository(
+						otherInstance,
+						Container.get(SharedWorkflowRepository),
+						new DbLockService(otherInstance, Container.get(DatabaseConfig)),
+					),
+				];
 				const compact = async (repository: InsightsByPeriodRepository) =>
 					await repository.compactSourceDataIntoInsightPeriod({
 						sourceBatchQuery: insightsRawRepository.getRawInsightsBatchQuery(500),

@@ -24,6 +24,17 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		return await this.delete({ createdAt: LessThan(date) });
 	}
 
+	async findVersionSummaries(
+		workflowId: string,
+		versionIds: string[],
+	): Promise<Array<{ versionId: string; name: string | null; createdAt: Date }>> {
+		return await this.find({
+			where: { workflowId, versionId: In(versionIds) },
+			select: ['versionId', 'name', 'createdAt'],
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	/**
 	 * Name and optionally describe a single version. Scoped by `workflowId` too
 	 * so a version of another workflow can never be touched, and returns the

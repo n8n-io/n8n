@@ -68,7 +68,10 @@ export interface ListPipelineEventsParams {
 type PipelineEventsResponse = { events?: PipelineEvent[]; next_page_token?: string };
 
 function isPipelineEventsResponse(value: unknown): value is PipelineEventsResponse {
-	return isRecord(value) && (value.events === undefined || Array.isArray(value.events));
+	return (
+		isRecord(value) &&
+		(value.events === undefined || (Array.isArray(value.events) && value.events.every(isRecord)))
+	);
 }
 
 export function isPipelineEventLevel(level: string): level is PipelineEventLevel {

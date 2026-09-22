@@ -230,16 +230,6 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		await this.delete({ threadId });
 	}
 
-	/** Blob-stored log refs for every run in a thread — for log cleanup on thread delete. */
-	async findBlobRefsByThreadId(
-		threadId: string,
-	): Promise<Array<Pick<AgentExecution, 'id' | 'storedAt'>>> {
-		return await this.find({
-			select: ['id', 'storedAt'],
-			where: { threadId, storedAt: Not('db') },
-		});
-	}
-
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */
 	async findBlobRefsByAgentId(
 		agentId: string,

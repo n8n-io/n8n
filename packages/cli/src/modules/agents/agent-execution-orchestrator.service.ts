@@ -1,6 +1,4 @@
 import {
-	INLINE_SUB_AGENT_ID,
-	parseDelegateSubAgentContinuation,
 	type Agent as RuntimeAgent,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -15,7 +13,6 @@ import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -56,6 +53,7 @@ import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -237,50 +235,6 @@ export interface StreamChatResponseConfig {
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
-}
-
-function getDelegatedChildCheckpoints(
-	checkpoint: SerializableAgentState,
-	parentAgentId: string,
-): Array<{ runId: string; agentId: string }> {
-	const childCheckpoints: Array<{ runId: string; agentId: string }> = [];
-	const seen = new Set<string>();
-
-	for (const pendingToolCall of Object.values(checkpoint.pendingToolCalls)) {
-		if (!pendingToolCall.suspended) continue;
-		const childCheckpoint = parseDelegateSubAgentContinuation(pendingToolCall.continuation);
-		if (!childCheckpoint) continue;
-
-		let ownerAgentId: string;
-		if (childCheckpoint.resumeContext === undefined) {
-			if (childCheckpoint.subAgentId !== INLINE_SUB_AGENT_ID) continue;
-			ownerAgentId = parentAgentId;
-		} else {
-			if (
-				!isRecord(childCheckpoint.resumeContext) ||
-				typeof childCheckpoint.resumeContext.agentId !== 'string' ||
-				childCheckpoint.resumeContext.agentId.length === 0 ||
-				(childCheckpoint.resumeContext.versionId !== undefined &&
-					(typeof childCheckpoint.resumeContext.versionId !== 'string' ||
-						childCheckpoint.resumeContext.versionId.length === 0))
-			) {
-				continue;
-			}
-			const expectedOwnerAgentId =
-				childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID
-					? parentAgentId
-					: childCheckpoint.subAgentId;
-			if (childCheckpoint.resumeContext.agentId !== expectedOwnerAgentId) continue;
-			ownerAgentId = expectedOwnerAgentId;
-		}
-
-		const identity = `${ownerAgentId}\0${childCheckpoint.runId}`;
-		if (seen.has(identity)) continue;
-		seen.add(identity);
-		childCheckpoints.push({ runId: childCheckpoint.runId, agentId: ownerAgentId });
-	}
-
-	return childCheckpoints;
 }
 
 /**

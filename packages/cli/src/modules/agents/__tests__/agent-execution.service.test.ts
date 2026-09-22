@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -67,6 +68,7 @@ describe('AgentExecutionService', () => {
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
+	const txRunner = mock<TransactionRunner>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -84,6 +86,7 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -96,6 +99,7 @@ describe('AgentExecutionService', () => {
 			storageConfig,
 			errorReporter,
 			executionUpdateBroadcaster,
+			txRunner,
 		);
 	});
 
@@ -432,6 +436,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				txRunner,
 			);
 
 			const record = makeMessageRecord({
@@ -519,6 +524,7 @@ describe('AgentExecutionService', () => {
 					storageConfig,
 					errorReporter,
 					executionUpdateBroadcaster,
+					txRunner,
 				);
 
 				const record = makeMessageRecord({
@@ -954,6 +960,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				txRunner,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -1176,38 +1183,32 @@ describe('AgentExecutionService', () => {
 
 	describe('deleteThread', () => {
 		it('deletes thread memory, attachments, and the execution thread', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
-				id: 'thread-1',
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			} as AgentExecutionThread);
-			agentExecutionRepository.findBlobRefsByThreadId.mockResolvedValue([]);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				attachmentBinaryDataIds: ['binary-1'],
+				executionLogs: [],
+			});
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
 			expect(result).toBe(true);
-			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'thread-1',
-				projectId: 'project-1',
-				agentId: 'agent-1',
-			});
+			expect(agentExecutionThreadRepository.deleteSession).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				'thread-1',
+				{},
+			);
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
-			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
-			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1', {
-				projectId: 'project-1',
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1', {});
+			expect(agentChatAttachmentService.deleteStoredData).toHaveBeenCalledWith(['binary-1'], {
+				threadId: 'thread-1',
 			});
-			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
 		it('deletes blob-stored logs when deleting a thread', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
-				id: 'thread-1',
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			} as AgentExecutionThread);
-			agentExecutionRepository.findBlobRefsByThreadId.mockResolvedValue([
-				{ id: 'execution-1', storedAt: 'fs' },
-			] as AgentExecution[]);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				attachmentBinaryDataIds: [],
+				executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+			});
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
@@ -1215,23 +1216,17 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
 			]);
-			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
 		it('does not clean SDK memory when the execution thread is not found', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue(null);
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
 			expect(result).toBe(false);
-			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'thread-1',
-				projectId: 'project-1',
-				agentId: 'agent-1',
-			});
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
-			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
+			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
 		});
 	});
 
