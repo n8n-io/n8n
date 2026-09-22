@@ -1,10 +1,8 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import { createVectorStoreNode, proxyFetch } from '@n8n/ai-utilities';
-import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
 	assertParamIsArray,
 	assertParamIsString,
-	NodeOperationError,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
@@ -18,6 +16,7 @@ import {
 	type DatabricksFetchContext,
 } from '@utils/databricks/auth-fetch';
 import { assertHttpsHost } from '@utils/databricks/constants';
+import { listDatabricksPages } from '@utils/databricks/list-pages';
 import {
 	DATABRICKS_CREDENTIAL_TYPE,
 	type DatabricksOAuth2Credential,
@@ -210,48 +209,20 @@ async function searchIndexes(
 	assertHttpsHost(this, credentials.host);
 	const host = credentials.host.replace(/\/$/, '');
 
-	const listPages = async <T>(
-		url: string,
-		qs: Record<string, string>,
-		pick: (page: ListPage) => T[] | undefined,
-	): Promise<T[]> => {
-		let items: T[] = [];
-		let pageToken: string | undefined;
-		let pages = 0;
-		do {
-			// Guard against a host or proxy that echoes the same next_page_token back
-			if (++pages > 50) {
-				throw new NodeOperationError(this.getNode(), 'Vector search list exceeded 50 pages');
-			}
-			const page: ListPage = await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				DATABRICKS_CREDENTIAL_TYPE,
-				{
-					method: 'GET',
-					url,
-					qs: { ...qs, page_token: pageToken },
-					headers: { Accept: 'application/json', 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
-					json: true,
-				},
-			);
-			items = items.concat(pick(page) ?? []);
-			pageToken = page.next_page_token;
-		} while (pageToken);
-		return items;
-	};
-
-	const endpoints = await listPages(
+	const endpoints = await listDatabricksPages(
+		this,
 		`${host}/api/2.0/vector-search/endpoints`,
 		{},
-		(page) => page.endpoints,
+		(page: ListPage) => page.endpoints,
 	);
 	const results = (
 		await Promise.all(
 			endpoints.map(async (endpoint) => {
-				const indexes = await listPages(
+				const indexes = await listDatabricksPages(
+					this,
 					`${host}/api/2.0/vector-search/indexes`,
 					{ endpoint_name: endpoint.name },
-					(page) => page.vector_indexes,
+					(page: ListPage) => page.vector_indexes,
 				);
 				// The type tells the user which indexes accept inserts
 				return indexes.map((index) => ({

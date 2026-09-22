@@ -364,6 +364,16 @@ describe('VectorStoreDatabricks', () => {
 			}
 		});
 
+		it('does not let the bearer follow a cross-origin redirect', async () => {
+			setupSearchContext('https://ws.example.com');
+
+			await methods.listSearch.searchIndexes.call(ctx);
+
+			for (const [, options] of httpRequestWithAuthentication.mock.calls) {
+				expect(options.sendCredentialsOnCrossOriginRedirect).toBe(false);
+			}
+		});
+
 		it('applies the substring filter to the name', async () => {
 			setupSearchContext('https://ws.example.com');
 
