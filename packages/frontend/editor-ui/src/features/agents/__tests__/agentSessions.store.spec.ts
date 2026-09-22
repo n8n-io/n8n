@@ -98,12 +98,11 @@ describe('useAgentSessionsStore', () => {
 		expect(listPreviewThreads).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'project-1', 'agent-1', {
 			limit: 20,
 			previewOnly: true,
-			filters: { status: 'all', origin: 'preview', startDate: '', endDate: '' },
 		});
 
 		store.upsertThread(thread('private'));
 		for (const source of ['mcp', 'instance-ai']) {
-			store.upsertThread({ ...thread(source), source });
+			store.upsertThread({ ...thread(source), canContinueInPreview: false, source });
 		}
 		expect(store.previewThreads.map(({ id }) => id)).toEqual(['private']);
 		expect(store.threads.map(({ id }) => id)).toEqual(['shared', 'private', 'mcp', 'instance-ai']);
@@ -134,7 +133,7 @@ describe('useAgentSessionsStore', () => {
 		expect(store.previewLoading).toBe(false);
 	});
 
-	it('keeps Preview pending until a failed initial request succeeds', async () => {
+	it('clears Preview loading after a failed request', async () => {
 		listThreads.mockResolvedValue(page([], null));
 		listPreviewThreads
 			.mockRejectedValueOnce(new Error('Unavailable'))
@@ -142,7 +141,7 @@ describe('useAgentSessionsStore', () => {
 		const store = useAgentSessionsStore();
 
 		await expect(store.fetchThreads('project-1', 'agent-1')).rejects.toThrow('Unavailable');
-		expect(store.previewLoading).toBe(true);
+		expect(store.previewLoading).toBe(false);
 		await store.refreshThreads('project-1', 'agent-1');
 
 		expect(store.previewLoading).toBe(false);

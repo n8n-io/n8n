@@ -17,6 +17,7 @@ import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
 } from '../utils/delegated-child-checkpoints';
+import { PREVIEW_THREAD_SOURCES } from '../utils/agent-thread-access';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 const CHECKPOINT_BATCH_SIZE = 400;
@@ -220,7 +221,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		query
 			.andWhere("thread.accessScope = 'user'")
 			.andWhere('thread.parentThreadId IS NULL')
-			.andWhere(`${this.normalizedFirstSource(query)} NOT IN ('subagent', 'sub-agent')`);
+			.andWhere('thread.taskId IS NULL')
+			.andWhere(`${this.normalizedFirstSource(query)} IN (:...previewThreadSources)`, {
+				previewThreadSources: [...PREVIEW_THREAD_SOURCES],
+			});
 	}
 
 	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
@@ -276,7 +280,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		} else if (origin === 'schedule') {
 			query.andWhere(isSchedule);
 		} else if (origin === 'preview') {
-			query.andWhere(`${isDirect} AND ${normalizedSource} IN ('', 'chat', 'n8n_chat')`);
+			query.andWhere(`${isDirect} AND ${normalizedSource} IN (:...previewThreadSources)`, {
+				previewThreadSources: [...PREVIEW_THREAD_SOURCES],
+			});
 		} else {
 			query.andWhere(`${isDirect} AND ${normalizedSource} = :sessionOrigin`, {
 				sessionOrigin: origin,

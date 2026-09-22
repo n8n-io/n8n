@@ -71,7 +71,9 @@ describe('AgentThreadsController route access scopes', () => {
 
 describe('AgentThreadsController session details', () => {
 	it.each([
-		['private root', 'user', null, 'mcp', true],
+		['private root', 'user', null, 'chat', true],
+		['MCP root', 'user', null, 'mcp', false],
+		['Instance AI root', 'user', null, 'instance-ai', false],
 		['shared root', 'project', null, 'mcp', false],
 		['child', 'user', 'parent', 'mcp', false],
 		['legacy sub-agent', 'user', null, 'subagent', false],
@@ -92,6 +94,7 @@ describe('AgentThreadsController session details', () => {
 					ownerId: 'user-1',
 					accessScope,
 					parentThreadId,
+					taskId: null,
 				}),
 				executions: [mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
 			});

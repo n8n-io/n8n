@@ -58,15 +58,17 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		previewTarget = target;
 		const requestId = ++latestPreviewRequestId;
 		previewLoading.value = true;
-		const rootStore = useRootStore();
-		const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
-			limit: ITEMS_PER_PAGE,
-			previewOnly: true,
-			filters: { ...defaultAgentSessionFilters(), origin: 'preview' },
-		});
-		if (requestId !== latestPreviewRequestId) return;
-		previewThreads.value = page.threads;
-		previewLoading.value = false;
+		try {
+			const rootStore = useRootStore();
+			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit: ITEMS_PER_PAGE,
+				previewOnly: true,
+			});
+			if (requestId !== latestPreviewRequestId) return;
+			previewThreads.value = page.threads;
+		} finally {
+			if (requestId === latestPreviewRequestId) previewLoading.value = false;
+		}
 	}
 
 	async function fetchHistoryThreads(
@@ -194,11 +196,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 			threads.value.splice(index, 1, thread);
 		}
 		previewThreads.value = previewThreads.value.filter(({ id }) => id !== thread.id);
-		if (
-			thread.canContinueInPreview &&
-			!thread.taskId &&
-			['', 'chat', 'n8n_chat'].includes(thread.source?.trim().toLowerCase() ?? '')
-		) {
+		if (thread.canContinueInPreview) {
 			previewThreads.value.push(thread);
 			previewThreads.value.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 		}

@@ -864,7 +864,7 @@ describe('AgentExecutionRepository', () => {
 		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });
 	});
 
-	it('finds the latest private root behind newer shared and sub-agent sessions', async () => {
+	it('finds the latest Preview root behind other private sessions', async () => {
 		const owner = await createMember();
 		const { executionService } = recordingServices();
 		const privateThread = await createThread({
@@ -888,11 +888,29 @@ describe('AgentExecutionRepository', () => {
 			sessionNumber: 23,
 		});
 		await createExecution({ threadId: legacyChild.id, source: ' Sub-Agent ' });
+		const mcpThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 24,
+		});
+		await createExecution({ threadId: mcpThread.id, source: 'mcp' });
+		const instanceAiThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 25,
+		});
+		await createExecution({ threadId: instanceAiThread.id, source: 'instance-ai' });
+		const taskThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 26,
+			taskId: 'task-1',
+		});
 		const ordinaryThread = await createThread({
 			id: `test-${agentId}`,
 			accessScope: 'user',
 			ownerId: owner.id,
-			sessionNumber: 24,
+			sessionNumber: 27,
 			updatedAt: new Date('2025-12-01T00:00:00Z'),
 		});
 
@@ -913,6 +931,11 @@ describe('AgentExecutionRepository', () => {
 			expect(
 				await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id),
 			).not.toBeNull();
+		}
+		for (const thread of [mcpThread, instanceAiThread, taskThread]) {
+			expect(
+				await executionService.canUsePreviewThread(thread.id, projectId, agentId, owner.id),
+			).toBe(true);
 		}
 	});
 

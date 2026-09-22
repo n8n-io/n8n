@@ -30,7 +30,11 @@ import { AgentExecutionLogStore } from './execution-log/agent-execution-log-stor
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { canContinueThreadInPreview, threadBelongsTo } from './utils/agent-thread-access';
+import {
+	canContinueThreadInPreview,
+	canUseDraftThread,
+	threadBelongsTo,
+} from './utils/agent-thread-access';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
@@ -704,7 +708,7 @@ export class AgentExecutionService {
 		if (thread) {
 			if (!threadBelongsTo(thread, projectId, agentId, userId)) return false;
 			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
+			return canUseDraftThread(thread, userId, sources.get(threadId));
 		}
 		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
