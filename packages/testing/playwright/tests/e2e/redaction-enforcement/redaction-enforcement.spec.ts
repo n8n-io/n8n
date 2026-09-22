@@ -403,7 +403,7 @@ test.describe(
 				expect(executionData.data).not.toContain(execution.secret);
 			});
 
-			test('redacts execution data served via the public API @engine:v2', async ({ api }) => {
+			test('redacts execution data served via the public API', async ({ api }) => {
 				const execution = await runProductionExecution(api);
 
 				// Assert on the execution payload (`data`), not the whole body: the
