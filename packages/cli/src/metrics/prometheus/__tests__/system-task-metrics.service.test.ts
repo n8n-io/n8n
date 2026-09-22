@@ -1,6 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -19,7 +18,6 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		prefix: 'n8n_',
 		includeSystemTaskMetrics: true,
 	});
-	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 	const eventService = mock<EventService>();
 
 	let service: PrometheusSystemTaskMetricsService;
@@ -65,7 +63,6 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 		Object.assign(config, { prefix: 'n8n_', includeSystemTaskMetrics: true });
-		Object.assign(instanceSettings, { instanceType: 'main' });
 		instancesByName.clear();
 		// Replace the auto-mocked classes (whose instances share one prototype method)
 		// with fake classes, so each construction yields its own methods and a test
@@ -76,7 +73,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			Histogram: fake('Histogram'),
 		});
 
-		service = new PrometheusSystemTaskMetricsService(config, instanceSettings, eventService);
+		service = new PrometheusSystemTaskMetricsService(config, eventService);
 	});
 
 	afterEach(() => {
@@ -94,17 +91,12 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	}
 
 	describe('enabled', () => {
-		it('is true when opted in and the instance is main', () => {
+		it('is true when opted in', () => {
 			expect(service.enabled).toBe(true);
 		});
 
 		it('is false when not opted in', () => {
 			config.includeSystemTaskMetrics = false;
-			expect(service.enabled).toBe(false);
-		});
-
-		it('is false on a non-main instance', () => {
-			Object.assign(instanceSettings, { instanceType: 'worker' });
 			expect(service.enabled).toBe(false);
 		});
 	});
