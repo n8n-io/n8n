@@ -1302,19 +1302,30 @@ describe('SystemTaskRunner', () => {
 			expect(perInstance.runCount).toBe(1);
 		});
 
-		it('does not abort an instance-scoped run in flight on a stepdown', async () => {
+		it('does not abort or await an instance-scoped run in flight on a stepdown', async () => {
 			const { runner, metadata } = setup();
-			let seenSignal: AbortSignal | undefined;
+			let runSignal: AbortSignal | undefined;
+			let releaseRun = () => {};
 			perInstance.onRun = async (signal) => {
-				seenSignal = signal;
+				runSignal = signal;
+				await new Promise<void>((resolve) => {
+					releaseRun = resolve;
+				});
 			};
 			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(runSignal?.aborted).toBe(false);
 
 			await runner.stopTimers();
 
-			expect(seenSignal?.aborted).toBe(false);
+			expect(runSignal?.aborted).toBe(false);
+			expect(perInstance.runCount).toBe(1);
+
+			releaseRun();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(perInstance.runCount).toBe(2);
 		});
 
 		it('stops an instance-scoped task on shutdown', async () => {
