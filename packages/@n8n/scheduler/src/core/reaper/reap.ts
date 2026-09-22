@@ -10,7 +10,7 @@ export interface ReapResult {
 	reclaimed: number;
 	/** Tasks failed terminally (no attempts left). */
 	deadLettered: number;
-	/** Occurrences retired as `missed`: past their deadline, never claimed. */
+	/** Tasks retired as `missed`: past their deadline, never claimed. */
 	missed: number;
 }
 
@@ -23,7 +23,7 @@ export interface ExpiredLeaseRef {
 /**
  * One expired-lease row the sweep decides on. It carries the full claimed-task
  * shape plus `dispatchedAt`, the effect-boundary marker: `null` means the owner
- * was lost before dispatch, so the occurrence's effect never happened. The storage
+ * was lost before dispatch, so the task's effect never happened. The storage
  * layer's full task row has these and more, so it fits without adapting.
  */
 export interface ExpiredLeaseRow extends ClaimedTask {
@@ -63,7 +63,7 @@ export interface ReaperTaskStore {
 	 */
 	completeExpired(ref: ExpiredLeaseRef): Promise<number>;
 	/**
-	 * Retire up to `limit` `pending` occurrences past their `missedAfter` as `missed`.
+	 * Retire up to `limit` `pending` tasks past their `missedAfter` as `missed`.
 	 * One statement rather than a row at a time: there is no per-row decision to make.
 	 */
 	retireMissedPending(limit: number): Promise<RetireMissedResult>;
@@ -149,7 +149,7 @@ async function retireStale(
  * reapers on every main are safe. A row that throws is skipped (reported via
  * `hooks.onRowError`), not allowed to abort the rest of the pass.
  *
- * A pass also retires up to `batchSize` `pending` occurrences past their
+ * A pass also retires up to `batchSize` `pending` tasks past their
  * `missedAfter`, so they reach a terminal status and fall to retention.
  *
  * One pass resolves up to `batchSize` expired-lease tasks, splitting first on the
@@ -211,7 +211,7 @@ export async function reap(
 				// remain, so record the terminal failure. Guarded and epoch-fenced, and fenced
 				// on `dispatchedAt` still being null: a marker that landed during the sweep
 				// turns this into a benign no-op (the next sweep then completes the row) instead
-				// of failing a dispatched occurrence. A lost race (0 rows) likewise means
+				// of failing a dispatched task. A lost race (0 rows) likewise means
 				// another actor already resolved it.
 				const affected = await store.deadLetterExpired(ref, LEASE_EXPIRED_MESSAGE);
 				deadLettered += affected;
