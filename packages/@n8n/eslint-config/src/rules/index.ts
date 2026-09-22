@@ -30,7 +30,6 @@ import { RequirePublicApiControllerRule } from './require-public-api-controller.
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
-import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 
 export const rules = {
@@ -65,6 +64,5 @@ export const rules = {
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
-	'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 } satisfies Record<string, AnyRuleModule>;

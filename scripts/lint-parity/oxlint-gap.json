@@ -50,20 +50,6 @@
 		"replacement": "Wait for the upstream emitDecoratorMetadata option, or use an approved shim that suppresses decorated files.",
 		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
 	},
-	"n8n-local-rules/no-unsealed-workflow-entity-write": {
-		"layer": "base",
-		"native": null,
-		"reason": "Needs type information. oxlint gives jsPlugin rules a frozen empty `parserServices`, so `ESLintUtils.getParserServices` throws and the rule reports `Error running JS plugin` on any file that calls a checked method. It is in `localRulesPlugin.configs.recommended`, so this is a base-layer gap, not a backend-only one.",
-		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
-	"n8n-local-rules/no-deployment-key-delete": {
-		"layer": "backend",
-		"native": null,
-		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot identify DeploymentKey repository receivers.",
-		"impact": "Deployment-key deletion is not guarded by an Oxlint-only package.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",
 		"native": null,

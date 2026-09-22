@@ -4,12 +4,15 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadAccess,
+} from '../entities/agent-execution-thread.entity';
 import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
@@ -48,6 +51,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
@@ -59,6 +63,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 					agentId,
 					agentName,
 					projectId,
+					access,
 					metadata,
 					taskId,
 					taskVersionId,
@@ -76,14 +81,35 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
 			const repository = entityManager.getRepository(AgentExecutionThread);
+			if (metadata?.parentThreadId) {
+				const parent = await repository.findOneBy({ id: metadata.parentThreadId });
+				if (parent) {
+					if (parent.projectId !== projectId || parent.agentId !== metadata.parentAgentId) {
+						throw new UserError('Session not found');
+					}
+					access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
+				}
+			}
+			if (access.accessScope === 'user' && !access.ownerId) {
+				throw new UserError('Session not found');
+			}
 			const existing = await repository.findOneBy({ id: threadId });
 			if (existing) {
+				if (
+					existing.projectId !== projectId ||
+					existing.agentId !== agentId ||
+					existing.accessScope !== access.accessScope ||
+					existing.ownerId !== access.ownerId
+				) {
+					throw new UserError('Session not found');
+				}
 				return { thread: existing, created: false };
 			}
 
@@ -100,6 +126,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				agentId,
 				agentName,
 				projectId,
+				...access,
 				taskId: taskId ?? null,
 				taskVersionId: taskVersionId ?? null,
 				sessionNumber,
@@ -119,6 +146,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	async findByProjectIdPaginated(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		limit: number,
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
@@ -126,6 +154,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
+			.andWhere(
+				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
+				{ userId },
+			)
 			.orderBy('thread.updatedAt', 'DESC')
 			.take(limit + 1);
 
@@ -282,13 +314,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		projectId: string,
 		agentId: string,
 		threadId: string,
+		userId: string,
 		ctx: OperationContext,
 	): Promise<AgentSessionDeletionRefs | null> {
 		const manager = this.managerFor(ctx);
-		const thread = await manager.findOneBy(AgentExecutionThread, {
-			id: threadId,
-			projectId,
-			agentId,
+		const thread = await manager.findOne(AgentExecutionThread, {
+			where: [
+				{ id: threadId, projectId, agentId, accessScope: 'project' },
+				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+			],
 		});
 		if (!thread) return null;
 
