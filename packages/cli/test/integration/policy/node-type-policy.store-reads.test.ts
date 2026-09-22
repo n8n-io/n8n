@@ -100,7 +100,7 @@ describe('node type policy store reads', () => {
 
 		if (withAttachment) {
 			await service.replaceAttachments(
-				KIND,
+				kind,
 				scope.id,
 				[{ policyId: policy.id, priority: 1, isFloor: false }],
 				'user-1',

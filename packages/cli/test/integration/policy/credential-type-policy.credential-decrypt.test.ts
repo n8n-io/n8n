@@ -14,6 +14,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { denyRule, putCredentialTypePolicy } from './shared/credential-type-policy';
 import { clearPolicyCache } from './shared/policy-cache';
@@ -25,13 +26,14 @@ const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
 
 const SLACK_API = 'slackApi';
 
-utils.setupTestServer({
+const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
+let ownerAgent: SuperAgentTest;
 let additionalData: IWorkflowExecuteAdditionalData;
 
 /** Only `node` is read: the helper passes it on as the check's consumer. */
@@ -55,7 +57,7 @@ async function decryptAskingAs(nodeType?: string, credentialType = SLACK_API) {
 }
 
 const denySlackAtInstanceScope = async () =>
-	await putCredentialTypePolicy(null, { rules: [denyRule('deny-slack', SLACK_API)] });
+	await putCredentialTypePolicy(ownerAgent, null, { rules: [denyRule('deny-slack', SLACK_API)] });
 
 const expectedViolation = {
 	kind: 'credential-type-unavailable',
@@ -76,6 +78,7 @@ beforeAll(async () => {
 	expect(registeredIds).toContain(CHECK_ID);
 
 	owner = await createOwner();
+	ownerAgent = testServer.authAgentFor(owner);
 
 	const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,

@@ -1,36 +1,35 @@
 import type { PolicyAction, PolicyRule } from '@n8n/api-types';
-import { Container } from '@n8n/di';
 
-import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
-import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
+import type { SuperAgentTest } from '../../shared/types';
 
 /**
- * Seeds a credential type policy through the service rather than over HTTP, because this
- * kind's REST routes are a separate ticket. The suites here judge what the check decides on
- * the real host paths, so the write route is not what they pin — swap this one helper for
- * `PUT /credential-type-policies/...` once those routes land.
+ * Writes a credential type policy over the same routes an admin uses. The suites here judge
+ * what the check decides, not the write path, but going through HTTP means a route wired to
+ * the wrong kind shows up as a failing enforcement case rather than passing quietly.
  */
 export async function putCredentialTypePolicy(
+	agent: SuperAgentTest,
 	projectId: string | null,
 	{
 		rules,
 		defaultAction = 'allow',
 		version = 0,
-		updatedBy = 'test',
-	}: {
-		rules: PolicyRule[];
-		defaultAction?: PolicyAction;
-		version?: number;
-		updatedBy?: string;
-	},
+	}: { rules: PolicyRule[]; defaultAction?: PolicyAction; version?: number },
 ) {
-	return await Container.get(TypeAvailabilityPolicyService).setEffectivePolicy(
-		CREDENTIAL_TYPES_KIND,
-		projectId,
-		{ rules, defaultAction },
-		version,
-		updatedBy,
-	);
+	const path =
+		projectId === null
+			? '/credential-type-policies/instance'
+			: `/projects/${projectId}/credential-type-policies/project`;
+
+	const response = await agent.put(path).send({ rules, defaultAction, version });
+
+	if (response.statusCode !== 200) {
+		throw new Error(
+			`Could not write the policy: ${response.statusCode} ${JSON.stringify(response.body)}`,
+		);
+	}
+
+	return response.body as { version: number };
 }
 
 export const denyRule = (id: string, credentialType: string): PolicyRule => ({

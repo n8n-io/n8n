@@ -53,7 +53,7 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'activeWorkflows', 'type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
 	enabledFeatures: [
-		LICENSE_FEATURES.NODE_TYPE_POLICIES,
+		LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES,
 		LICENSE_FEATURES.SHARING,
 		LICENSE_FEATURES.ADVANCED_PERMISSIONS,
 	],
@@ -126,7 +126,7 @@ const credentialsFor = async (options: CredentialOwner) =>
 	) as Record<string, string>;
 
 const denyBlockedAtInstanceScope = async () =>
-	await putCredentialTypePolicy(null, { rules: [denyRule('deny-github', BLOCKED)] });
+	await putCredentialTypePolicy(ownerAgent, null, { rules: [denyRule('deny-github', BLOCKED)] });
 
 beforeAll(async () => {
 	// Asserted by id, not by importing the class: the import would register the check itself,
@@ -374,7 +374,9 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			},
 			otherProject,
 		);
-		await putCredentialTypePolicy(project.id, { rules: [denyRule('deny-github', BLOCKED)] });
+		await putCredentialTypePolicy(adminAgent, project.id, {
+			rules: [denyRule('deny-github', BLOCKED)],
+		});
 
 		const response = await adminAgent
 			.put(`/workflows/${workflow.id}/transfer`)
@@ -396,7 +398,9 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			},
 			otherProject,
 		);
-		await putCredentialTypePolicy(otherProject.id, { rules: [denyRule('deny-github', BLOCKED)] });
+		await putCredentialTypePolicy(adminAgent, otherProject.id, {
+			rules: [denyRule('deny-github', BLOCKED)],
+		});
 
 		await adminAgent
 			.put(`/workflows/${workflow.id}/transfer`)

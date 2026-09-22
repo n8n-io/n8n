@@ -175,7 +175,8 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	private async checkTypes(types: string[], projectId: string | null): Promise<PolicyCheckResult> {
 		// An expired license stops enforcing, matching the `@Licensed` routes that author the
 		// policy: a customer who cannot edit the policy must not keep being blocked by it.
-		if (!this.licenseState.isLicensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)) return NO_VIOLATIONS;
+		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES))
+			return NO_VIOLATIONS;
 
 		if (types.length === 0) return NO_VIOLATIONS;
 

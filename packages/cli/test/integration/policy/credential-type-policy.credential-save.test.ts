@@ -25,7 +25,7 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials', 'type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
 	enabledFeatures: [
-		LICENSE_FEATURES.NODE_TYPE_POLICIES,
+		LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES,
 		LICENSE_FEATURES.SHARING,
 		LICENSE_FEATURES.ADVANCED_PERMISSIONS,
 	],
@@ -36,7 +36,7 @@ let ownerAgent: SuperAgentTest;
 let credentialsRepository: CredentialsRepository;
 
 const denyGithubAtInstanceScope = async () =>
-	await putCredentialTypePolicy(null, { rules: [denyRule('deny-github', BLOCKED)] });
+	await putCredentialTypePolicy(ownerAgent, null, { rules: [denyRule('deny-github', BLOCKED)] });
 
 const violationFor = (credentialType: string, scope: 'instance' | 'project', ruleId: string) => ({
 	kind: 'credential-type-unavailable',
@@ -101,7 +101,9 @@ describe('POST /credentials', () => {
 
 	test('judges a credential created in a project against that project', async () => {
 		const project = await createTeamProject('Policy project', owner);
-		await putCredentialTypePolicy(project.id, { rules: [denyRule('deny-github', BLOCKED)] });
+		await putCredentialTypePolicy(ownerAgent, project.id, {
+			rules: [denyRule('deny-github', BLOCKED)],
+		});
 
 		const response = await ownerAgent
 			.post('/credentials')
