@@ -151,7 +151,7 @@ watch(
 		@leave="leave"
 	>
 		<slot />
-		<div v-for="item in elements" :key="item.uuid">
+		<div v-for="(item, index) in elements" :key="item.uuid">
 			<div v-if="renderedItems.includes(item)">
 				<CategorizedItemsRenderer
 					v-if="item.type === 'section'"
@@ -174,7 +174,7 @@ watch(
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid && highlightActiveItem,
 						[$style.iteratorItem]: !communityNode,
-						[$style.view]: item.type === 'command',
+						[$style.withSeparator]: item.type === 'command' && index > 0 && !activeViewStack.search,
 						[$style[item.type]]: true,
 						[$style.preview]: isPreview,
 						// Borderless is only applied to views
@@ -275,7 +275,8 @@ watch(
 	}
 }
 
-.view {
+.view,
+.withSeparator {
 	position: relative;
 
 	&:last-child {
@@ -293,9 +294,6 @@ watch(
 			border-top: 1px solid var(--color--foreground);
 		}
 	}
-}
-.command {
-	@extend .view;
 }
 .link {
 	position: relative;

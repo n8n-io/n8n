@@ -267,20 +267,12 @@ describe('viewsData', () => {
 	});
 
 	describe('TriggerView', () => {
-		it('offers the group command for an empty workflow', () => {
-			const result = TriggerView([], true);
+		it('offers the group command', () => {
+			const result = TriggerView();
 			const groupItem = result.items.at(-1);
 
 			expect(groupItem?.key).toBe(ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
 			expect(groupItem?.type).toBe('command');
-		});
-
-		it('does not offer the group command for a non-empty workflow', () => {
-			const result = TriggerView([]);
-
-			expect(result.items.some((item) => item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM)).toBe(
-				false,
-			);
 		});
 	});
 });
