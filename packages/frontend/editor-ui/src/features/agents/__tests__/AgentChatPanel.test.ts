@@ -78,6 +78,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
 	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
+	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
+		.useDropdownSearch,
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
@@ -686,6 +688,28 @@ describe('AgentChatPanel', () => {
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
+	it('queues an outside message until the current stream finishes', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Test these instructions');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
+			'Test these instructions',
+		);
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		isStreamingMock.value = false;
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+	});
+
 	it.each([
 		[
 			'the session changes',
@@ -793,6 +817,7 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('modelValue')).toBe('keep this draft');
 		expect(chatInput.props('disabled')).toBe(true);
 		expect(sendMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
 	});
 
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {

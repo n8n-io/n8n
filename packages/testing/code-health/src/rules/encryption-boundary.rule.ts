@@ -19,12 +19,7 @@ import {
 const DEFAULT_TRIGGER_DEPENDENCIES = ['n8n-core', '@n8n/db'];
 
 /** The rules `encryptionBoundaryConfig` enables, without the plugin prefix. */
-const DEFAULT_GUARDED_RULES = [
-	'no-legacy-cipher-methods',
-	'no-misplaced-cipher-primitives',
-	'no-deployment-key-delete',
-	'no-encryption-guardrail-disable',
-];
+const DEFAULT_GUARDED_RULES = ['no-deployment-key-delete', 'no-encryption-guardrail-disable'];
 
 const BOUNDARY_CONFIG_PATH = 'packages/@n8n/eslint-config/src/configs/encryption-boundary.ts';
 

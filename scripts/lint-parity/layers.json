@@ -26,6 +26,7 @@
 		"packages/@n8n/ai-workflow-builder.ee",
 		"packages/@n8n/backend-common",
 		"packages/@n8n/backend-network",
+		"packages/@n8n/backend-services",
 		"packages/@n8n/backend-test-utils",
 		"packages/@n8n/benchmark",
 		"packages/@n8n/blob-storage",

@@ -56,6 +56,7 @@ export class CanvasComposer {
 		// Wait for the editor's loading overlay to clear before subsequent header
 		// interactions; nodes can report visible while the overlay still blocks clicks.
 		await this.n8n.canvas.waitForCanvasReady();
+		await expect(this.n8n.workflowMenu.getTrigger()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}

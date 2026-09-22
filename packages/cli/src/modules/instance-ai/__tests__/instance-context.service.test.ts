@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
 import type {
 	ActivityEvent,
 	ActivityEventRepository,
@@ -43,6 +42,7 @@ const MCP_BOUND: InstanceContextScope = {
 	surface: 'mcp',
 	projectId: PROJECT_ID,
 	credentialGranted: true,
+	executionGranted: true,
 };
 
 function entry(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
@@ -84,7 +84,7 @@ describe('InstanceContextService', () => {
 
 	beforeEach(() => userHasScopes.mockResolvedValue(true));
 
-	function serviceWith(enabled = true) {
+	function serviceWith() {
 		activityEventRepository = mock<ActivityEventRepository>();
 		executionRepository = mock<ExecutionRepository>();
 		workflowRepository = mock<WorkflowRepository>();
@@ -101,7 +101,6 @@ describe('InstanceContextService', () => {
 
 		return new InstanceContextService(
 			logger,
-			mock<GlobalConfig>({ instanceAi: { instanceContextEnabled: enabled } }),
 			activityEventRepository,
 			executionRepository,
 			workflowRepository,
@@ -112,9 +111,17 @@ describe('InstanceContextService', () => {
 
 	describe('buildBlock', () => {
 		it('builds nothing with the flag off, and reads nothing either', async () => {
-			const service = serviceWith(false);
+			const service = serviceWith();
 
-			expect(await service.buildBlock({ user: USER, cursor: null, now: NOW })).toBeNull();
+			expect(
+				await service.buildBlock({
+					enabled: false,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				}),
+			).toBeNull();
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 		});
@@ -127,8 +134,9 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				isMachineFollowUp: true,
 				now: NOW,
@@ -157,8 +165,9 @@ describe('InstanceContextService', () => {
 			userHasScopes.mockResolvedValue(false);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -183,7 +192,18 @@ describe('InstanceContextService', () => {
 		it('builds nothing, and reads nothing, when the conversation is bound to no project', async () => {
 			const service = serviceWith();
 
-			expect(await service.buildBlock({ user: USER, cursor: null, now: NOW })).toBeNull();
+			// A conversation with no project, which is the point of this case — not `BOUND`.
+			const unboundConversation: InstanceContextScope = { surface: 'conversation' };
+
+			expect(
+				await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: unboundConversation,
+					cursor: null,
+					now: NOW,
+				}),
+			).toBeNull();
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
@@ -194,8 +214,9 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor: null,
 					now: NOW,
 				}),
@@ -211,8 +232,9 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -230,8 +252,9 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -247,8 +270,9 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -264,8 +288,9 @@ describe('InstanceContextService', () => {
 			);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -280,8 +305,9 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 1 }), entry({ id: 2 })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -297,8 +323,9 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor: null,
 					now: NOW,
 				}),
@@ -313,8 +340,9 @@ describe('InstanceContextService', () => {
 			});
 
 			await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -325,12 +353,52 @@ describe('InstanceContextService', () => {
 			expect(executionRepository.summariseRunsForProjects).toHaveBeenCalledWith(
 				expect.objectContaining({ projectIds: [PROJECT_ID] }),
 			);
-			expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith([PROJECT_ID], 8);
+			expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith([PROJECT_ID], 8, {
+				mcpVisibleOnly: false,
+			});
 		});
 
 		describe('deltas', () => {
+			it('does not repeat entries after the seen-id limit is reached', async () => {
+				const service = serviceWith();
+				const table: ActivityEvent[] = [];
+				activityEventRepository.findFeed.mockImplementation(async (query) =>
+					table
+						.filter((row) => row.id > (query.afterId ?? 0))
+						.filter((row) => query.beforeId === undefined || row.id < query.beforeId)
+						.slice(0, query.limit),
+				);
+				let carried: InstanceContextCursor | null = null;
+				for (let id = 1; id <= 201; id++) {
+					table.unshift(entry({ id }));
+					const built = await service.buildBlock({
+						enabled: true,
+						user: USER,
+						scope: BOUND,
+						cursor: carried,
+						now: NOW,
+					});
+					expect(built?.block.match(/^\[\d+\]/gm)).toEqual([`[${id}]`]);
+					carried = built!.cursor;
+				}
+
+				for (let turn = 0; turn < 2; turn++) {
+					expect(
+						await service.buildBlock({
+							enabled: true,
+							user: USER,
+							scope: BOUND,
+							cursor: carried,
+							now: NOW,
+						}),
+					).toBeNull();
+				}
+			});
+
 			const cursor: InstanceContextCursor = {
 				activityMark: 500,
+				activityFloor: 400,
+				activityCategories: ['workflow', 'credential'],
 				activitySeen: [500, 499],
 				runsThrough: new Date(NOW.getTime() - 10 * 60_000).toISOString(),
 			};
@@ -340,8 +408,9 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -351,23 +420,19 @@ describe('InstanceContextService', () => {
 				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
 			});
 
-			/**
-			 * The correctness property: ids are an ordering key, not a watermark, so a delta reads
-			 * below the mark and de-duplicates rather than trusting `> mark`.
-			 */
 			it('reads the band below the mark and shows an entry that committed behind it', async () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed
 					.mockResolvedValueOnce([]) // arrivals above the mark
-					// 499 is inside the band and already in `activitySeen`; 498 is not.
 					.mockResolvedValueOnce([
 						entry({ id: 499, resourceName: 'Shown already' }),
 						entry({ id: 498, resourceName: 'Committed late' }),
 					]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -376,16 +441,205 @@ describe('InstanceContextService', () => {
 					1,
 					expect.objectContaining({ afterId: 500 }),
 				);
-				// The band is bounded by its own width and closed at the mark.
 				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
 					2,
-					expect.objectContaining({ afterId: 300, beforeId: 500, limit: 200 }),
+					expect.objectContaining({ afterId: 400, beforeId: 500, limit: 200 }),
 				);
 				expect(built?.block).toContain('[498]');
-				// The band deliberately re-reads what the mark already covered, so de-duplicating
-				// against the seen ids is what stops an entry appearing in two blocks.
 				expect(built?.block).not.toContain('[499]');
 				expect(built?.block).not.toContain('Shown already');
+			});
+
+			it('floors the next delta at the highest entry this turn cut', async () => {
+				const service = serviceWith();
+				activityEventRepository.findFeed.mockResolvedValueOnce(
+					Array.from({ length: 41 }, (_, index) => entry({ id: 900 - index })),
+				);
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(built?.cursor.activityFloor).toBe(860);
+				expect(built?.cursor.activitySeen).not.toContain(860);
+			});
+
+			it('withholds credential entries from a caller without credential:read', async () => {
+				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+					const scopes = args[1];
+					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+				});
+				const service = serviceWith();
+
+				await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+					expect.objectContaining({ allowedCategories: ['workflow'] }),
+				);
+			});
+
+			it('allows credential entries for a caller that may read them', async () => {
+				const service = serviceWith();
+
+				await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+					expect.objectContaining({ allowedCategories: ['workflow', 'credential'] }),
+				);
+			});
+
+			it('reopens the entry window when the scope widens, without repeating the rest', async () => {
+				const service = serviceWith();
+				activityEventRepository.findFeed.mockResolvedValueOnce([]);
+				activityEventRepository.findFeed.mockResolvedValueOnce([]);
+				activityEventRepository.findFeed.mockResolvedValueOnce([
+					entry({
+						id: 320,
+						category: 'credential',
+						resourceType: 'credential',
+						resourceId: 'cred-1',
+						resourceName: 'Slack account',
+					}),
+				]);
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: {
+						activityMark: 500,
+						activityFloor: 400,
+						activityCategories: ['workflow'],
+						activitySeen: [500],
+						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+					},
+					now: NOW,
+				});
+
+				expect(built?.block).toContain('Slack account');
+				expect(built?.block.match(/^\[320\]/gm)).toHaveLength(1);
+				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+					expect.objectContaining({
+						afterId: 0,
+						beforeId: 401,
+						allowedCategories: ['credential'],
+					}),
+				);
+			});
+
+			it('reopens credential history without repeating cut workflow entries', async () => {
+				const service = serviceWith();
+				let table = [3, 2, 1];
+				activityEventRepository.findFeed.mockImplementation(async (query) => {
+					const ids = table
+						.filter((id) => query.allowedCategories.includes(id === 2 ? 'credential' : 'workflow'))
+						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
+						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
+						.slice(0, query.limit);
+					return ids.map((id) =>
+						entry({
+							id,
+							resourceId: `resource-${id}`,
+							category: id === 2 ? 'credential' : 'workflow',
+							resourceType: id === 2 ? 'credential' : 'workflow',
+						}),
+					);
+				});
+				const idsIn = (block: string | undefined) => block?.match(/^\[\d+\]/gm) ?? [];
+
+				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+					const scopes = args[1];
+					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+				});
+
+				const first = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+				expect(idsIn(first?.block)).toEqual(['[3]', '[1]']);
+
+				table = [...Array.from({ length: 41 }, (_, index) => 44 - index), 3, 2, 1];
+				const second = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: first!.cursor,
+					now: NOW,
+				});
+				expect(second?.cursor.activityFloor).toBe(4);
+
+				userHasScopes.mockResolvedValue(true);
+				const third = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: second!.cursor,
+					now: NOW,
+				});
+
+				expect(idsIn(third?.block)).toEqual(['[2]']);
+				expect(third?.cursor.activityFloor).toBe(4);
+				expect(
+					await service.buildBlock({
+						enabled: true,
+						user: USER,
+						scope: BOUND,
+						cursor: third!.cursor,
+						now: NOW,
+					}),
+				).toBeNull();
+			});
+
+			it('reaches the oldest end of a band that outgrew one window', async () => {
+				const service = serviceWith();
+				const shownIds = Array.from({ length: 200 }, (_, index) => 200 - index).filter(
+					(id) => id !== 10,
+				);
+				const table = [...shownIds, 10].sort((a, b) => b - a);
+				activityEventRepository.findFeed.mockImplementation(async (query) => {
+					const ids = table
+						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
+						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
+						.slice(0, query.limit);
+					return ids.map((id) => entry({ id, resourceId: `wf-${id}` }));
+				});
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: {
+						activityMark: 200,
+						activityFloor: 0,
+						activityCategories: ['workflow', 'credential'],
+						activitySeen: shownIds,
+						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+					},
+					now: NOW,
+				});
+
+				expect(built?.block).toContain('[10]');
+				expect(built?.block.match(/^\[\d+\]/gm)).toHaveLength(1);
 			});
 
 			/**
@@ -401,8 +655,9 @@ describe('InstanceContextService', () => {
 					.mockResolvedValueOnce([entry({ id: 498, resourceName: 'Committed late' })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -417,8 +672,9 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -430,22 +686,22 @@ describe('InstanceContextService', () => {
 				expect(stoppedBefore).toEqual(NOW);
 			});
 
-			it('advances the mark past every entry it saw, and remembers only ids inside the band', async () => {
+			it('advances the mark past every entry it saw, and remembers every id it showed', async () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed
 					.mockResolvedValueOnce([entry({ id: 600 })])
 					.mockResolvedValueOnce([entry({ id: 350 })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
 
 				expect(built?.cursor.activityMark).toBe(600);
-				// 350 is below 600 − 200, so the floor already excludes it next time.
-				expect(built?.cursor.activitySeen).toEqual([600, 500, 499]);
+				expect(built?.cursor.activitySeen).toEqual([600, 500, 499, 350]);
 			});
 
 			it('builds nothing when the delta is empty', async () => {
@@ -453,8 +709,9 @@ describe('InstanceContextService', () => {
 
 				expect(
 					await service.buildBlock({
+						enabled: true,
 						user: USER,
-						projectId: PROJECT_ID,
+						scope: BOUND,
 						cursor,
 						now: NOW,
 					}),
@@ -468,8 +725,9 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor: null,
 					now: NOW,
 				}),
@@ -492,8 +750,9 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -511,8 +770,9 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ resourceName: hostile })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -530,8 +790,9 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -547,8 +808,9 @@ describe('InstanceContextService', () => {
 				workflows: [{ id: 'wf-1', name: hostile, active: false }],
 			});
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -566,7 +828,7 @@ describe('InstanceContextService', () => {
 			await service.list({ user: USER, scope: BOUND, limit: 5, category: 'workflow' });
 
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
-				expect.objectContaining({ category: 'workflow' }),
+				expect.objectContaining({ filterCategory: 'workflow' }),
 			);
 		});
 
@@ -622,6 +884,7 @@ describe('InstanceContextService', () => {
 		const unbound = (credentialGranted = true): InstanceContextScope => ({
 			surface: 'mcp',
 			credentialGranted,
+			executionGranted: true,
 		});
 
 		it('reads every project the caller can see, plus their personal one', async () => {
@@ -661,10 +924,12 @@ describe('InstanceContextService', () => {
 		it('reads the whole instance without enumerating projects for a global reader', async () => {
 			const service = serviceWith();
 
-			await service.list({ user: GLOBAL_READER, scope: unbound(), limit: 5 });
+			await service.list({ user: GLOBAL_READER, scope: unbound(false), limit: 5 });
 
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-			expect(projectRepository.getPersonalProjectForUser).not.toHaveBeenCalled();
+			// Never enumerated for workflows — that is the branch this exists to avoid.
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalledWith(GLOBAL_READER, [
+				'workflow:read',
+			]);
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
 				expect.objectContaining({ projectIds: 'all-projects' }),
 			);
@@ -684,7 +949,7 @@ describe('InstanceContextService', () => {
 			await service.list({ user: USER, scope: unbound(true), limit: 5 });
 
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
-				expect.objectContaining({ category: 'workflow' }),
+				expect.objectContaining({ filterCategory: 'workflow' }),
 			);
 		});
 
@@ -701,6 +966,101 @@ describe('InstanceContextService', () => {
 			const entries = await service.list({ user: USER, scope: unbound(true), limit: 5 });
 
 			expect(entries.map((e) => e.id)).toEqual([2]);
+		});
+
+		describe('the opening block', () => {
+			it('filters the aggregate legs inside the query, not after it', async () => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 1,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: MCP_BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				// A count filtered after the fact would report workflows the caller cannot see.
+				expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith(
+					[PROJECT_ID],
+					expect.any(Number),
+					{ mcpVisibleOnly: true },
+				);
+				expect(executionRepository.summariseRunsForProjects).toHaveBeenCalledWith(
+					expect.objectContaining({ mcpVisibleOnly: true }),
+				);
+			});
+
+			/** An MCP client is handed the text directly and has nothing to strip a tag out of. */
+			it('carries no instance-context tags and names MCP tools, not Instance AI ones', async () => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 3,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: MCP_BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(built?.block).not.toContain('<instance-context>');
+				expect(built?.block).toContain('get_instance_activity');
+				expect(built?.block).toContain('search_workflows');
+				expect(built?.block).not.toContain('activity(action=');
+				expect(built?.block).not.toContain('workflows(action=');
+			});
+
+			it('still tags the block and names Instance AI tools on a conversation', async () => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 3,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(built?.block).toContain('<instance-context>');
+				expect(built?.block).toContain('activity(action="list")');
+				expect(built?.block).not.toContain('get_instance_activity');
+			});
+
+			it.each([true, false])('uses the shared activity gate for MCP: %s', async (enabled) => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 1,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				const built = await service.buildBlock({
+					enabled,
+					user: USER,
+					scope: MCP_BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				if (enabled) {
+					expect(built?.block).toBeTruthy();
+				} else {
+					expect(built).toBeNull();
+					expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
+					expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+				}
+			});
 		});
 
 		/**
@@ -724,6 +1084,69 @@ describe('InstanceContextService', () => {
 			expect(page.hasMore).toBe(true);
 			// The lowest id *read*, not the lowest shown — nothing was shown.
 			expect(page.nextBeforeId).toBe(13);
+		});
+
+		/**
+		 * The over-fetch can hold visible rows below the ones shown, so resuming from the lowest
+		 * row *read* steps over them. Ids 20, 19, 18, 17 with a limit of 2 must resume at 19.
+		 */
+		it('resumes at the last row shown, not the lowest row read', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue(
+				[20, 19, 18, 17].map((id) => entry({ id, resourceId: 'wf-1' })),
+			);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map([['wf-1', true]]));
+
+			const page = await service.listPage({ user: USER, scope: MCP_BOUND, limit: 2 });
+
+			expect(page.entries.map((e) => e.id)).toEqual([20, 19]);
+			expect(page.hasMore).toBe(true);
+			// 17 would lose 18.
+			expect(page.nextBeforeId).toBe(19);
+		});
+
+		/** A resource narrowed to a withheld workflow must answer as a pruned one does. */
+		it('answers a withheld resource filter exactly as it answers an unknown one', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue(
+				Array.from({ length: 8 }, (_, i) => entry({ id: 40 - i, resourceId: 'wf-hidden' })),
+			);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(
+				new Map([['wf-hidden', false]]),
+			);
+
+			const withheld = await service.listPage({
+				user: USER,
+				scope: MCP_BOUND,
+				limit: 1,
+				resourceId: 'wf-hidden',
+			});
+
+			activityEventRepository.findFeed.mockResolvedValue([]);
+			const unknown = await service.listPage({
+				user: USER,
+				scope: MCP_BOUND,
+				limit: 1,
+				resourceId: 'wf-never-existed',
+			});
+
+			expect(withheld).toEqual(unknown);
+		});
+
+		/** Reading every workflow does not imply reading every credential, nor none of them. */
+		it('keeps project-level credential access for a global workflow reader', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+				scopes.includes('credential:read') ? ['team-a'] : [],
+			);
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 2, category: 'credential', resourceType: 'credential', projectId: 'team-a' }),
+				entry({ id: 1, category: 'credential', resourceType: 'credential', projectId: 'team-b' }),
+			]);
+
+			const entries = await service.list({ user: GLOBAL_READER, scope: unbound(true), limit: 5 });
+
+			expect(entries.map((e) => e.id)).toEqual([2]);
 		});
 
 		it('reports no more below when the read did not fill', async () => {
@@ -827,6 +1250,17 @@ describe('InstanceContextService', () => {
 			expect(entries.map((e) => e.id)).toEqual([3]);
 		});
 
+		it('still shows them on the conversation surface, which has no MCP visibility rule', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 3, action: 'deleted', resourceId: 'wf-gone' }),
+			]);
+
+			const entries = await service.list({ user: USER, scope: BOUND, limit: 5 });
+
+			expect(entries.map((e) => e.id)).toEqual([3]);
+		});
+
 		it('answers a withheld workflow the same way it answers a pruned id', async () => {
 			const service = serviceWith();
 			activityEventRepository.findEntry.mockResolvedValue(entry({ id: 7, resourceId: 'wf-1' }));
@@ -868,7 +1302,7 @@ describe('InstanceContextService', () => {
 			});
 
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
-				expect.objectContaining({ category: 'workflow' }),
+				expect.objectContaining({ filterCategory: 'workflow' }),
 			);
 		});
 
@@ -905,7 +1339,14 @@ describe('InstanceContextService', () => {
 
 describe('readInstanceContextCursor', () => {
 	it('reads a stored cursor', () => {
-		const stored = { activityMark: 12, activitySeen: [12, 11], runsThrough: NOW.toISOString() };
+		const stored = {
+			activityMark: 12,
+			activitySeenFloor: 1,
+			activityFloor: 4,
+			activityCategories: ['workflow'],
+			activitySeen: [12, 11],
+			runsThrough: NOW.toISOString(),
+		};
 
 		expect(readInstanceContextCursor({ instanceContext: stored })).toEqual(stored);
 	});
@@ -914,7 +1355,21 @@ describe('readInstanceContextCursor', () => {
 		['no metadata', undefined],
 		['no cursor', {}],
 		['a cursor of the wrong shape', { instanceContext: { activityMark: 'nope' } }],
-		['an unparseable timestamp', { instanceContext: { activityMark: 1, runsThrough: 'soon' } }],
+		[
+			'an unparseable timestamp',
+			{
+				instanceContext: {
+					activityMark: 1,
+					activityFloor: 0,
+					activityCategories: [],
+					runsThrough: 'soon',
+				},
+			},
+		],
+		[
+			'a cursor written before the floor existed',
+			{ instanceContext: { activityMark: 12, runsThrough: NOW.toISOString() } },
+		],
 	])('starts over on %s', (_case, metadata) => {
 		expect(readInstanceContextCursor(metadata)).toBeNull();
 	});
@@ -923,6 +1378,8 @@ describe('readInstanceContextCursor', () => {
 		const cursor = readInstanceContextCursor({
 			instanceContext: {
 				activityMark: 5,
+				activityFloor: 0,
+				activityCategories: ['workflow'],
 				activitySeen: [5, 'four', null],
 				runsThrough: NOW.toISOString(),
 			},

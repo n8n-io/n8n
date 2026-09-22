@@ -13,6 +13,7 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import { McpRegistryCapabilities } from './mcp-registry-capabilities';
 import {
 	listMcpRegistryServers,
 	searchMcpRegistryServers,
@@ -28,6 +29,7 @@ export class McpRegistryService {
 		private readonly logger: Logger,
 		private readonly repository: McpRegistryServerRepository,
 		private readonly apiClient: McpRegistryApiClient,
+		private readonly capabilities: McpRegistryCapabilities,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly push: Push,
@@ -66,10 +68,11 @@ export class McpRegistryService {
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
-		const entities = includeDeprecated
-			? await this.repository.find()
-			: await this.repository.findBy({ status: 'active' });
-		return this.filterGatewayEligibility(entities.map(fromEntity));
+		const servers = await this.getStoredServers(includeDeprecated);
+		const supported = servers.filter(({ requiredCapabilities }) =>
+			this.capabilities.supports(requiredCapabilities),
+		);
+		return this.filterGatewayEligibility(supported);
 	}
 
 	/**
@@ -86,6 +89,7 @@ export class McpRegistryService {
 		const entity = await this.repository.findOneBy({ slug });
 		if (!entity) return undefined;
 		const server = fromEntity(entity);
+		if (!this.capabilities.supports(server.requiredCapabilities)) return undefined;
 		if (server.authType === 'gateway' && !this.aiGatewayService.isEnabled()) return undefined;
 		return server;
 	}
@@ -96,7 +100,10 @@ export class McpRegistryService {
 		}
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		return this.filterGatewayEligibility(entities.map(fromEntity));
+		const supported = entities
+			.map(fromEntity)
+			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
+		return this.filterGatewayEligibility(supported);
 	}
 
 	/**
@@ -131,7 +138,7 @@ export class McpRegistryService {
 	 * signal aborts before the write starts. The signal cancels the API requests.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
-		const existingServers = await this.getAll({ includeDeprecated: true });
+		const existingServers = await this.getStoredServers(true);
 		let updatedServers: McpRegistryServer[];
 		if (existingServers.length === 0) {
 			updatedServers = await this.apiClient.fetchAllServers(signal);
@@ -152,6 +159,13 @@ export class McpRegistryService {
 		await this.publishReloadCommand();
 
 		this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
+	}
+
+	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
+		const entities = includeDeprecated
+			? await this.repository.find()
+			: await this.repository.findBy({ status: 'active' });
+		return entities.map(fromEntity);
 	}
 
 	private async refreshUpdatedServers(

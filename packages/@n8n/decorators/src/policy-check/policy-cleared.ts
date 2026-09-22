@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { brand } from './policy-brand';
 import type {
 	EnforcementPoint,
+	PolicedCredential,
 	PolicedWorkflow,
 	PolicyDecision,
 	PolicyVersionRef,
@@ -50,6 +51,27 @@ export function workflowSubject(workflow: Pick<PolicedWorkflow, 'id' | 'nodes'>)
 	if (workflow.id) return { type: 'workflow', id: workflow.id };
 
 	return workflowContentSubject(workflow);
+}
+
+/**
+ * A credential being created binds to its type, the one field a check reads.
+ *
+ * Same reasoning as {@link workflowContentSubject}: a create has no committed id, and a
+ * client-supplied one proves nothing. Nothing may change `type` between the check and the write.
+ */
+export function credentialContentSubject(
+	credential: Pick<PolicedCredential, 'type'>,
+): PolicySubject {
+	const hash = createHash('sha256').update(credential.type).digest('hex');
+
+	return { type: 'credential', id: hash };
+}
+
+/** An existing credential binds to its id; one with none yet binds to its type. */
+export function credentialSubject(credential: PolicedCredential): PolicySubject {
+	if (credential.id) return { type: 'credential', id: credential.id };
+
+	return credentialContentSubject(credential);
 }
 
 /**

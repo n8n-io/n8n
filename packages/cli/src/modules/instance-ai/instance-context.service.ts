@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	ActivityEventRepository,
@@ -52,6 +51,17 @@ const withheldFetchMultiplier = 4;
 const maxAgeMs = 7 * Time.days.toMilliseconds;
 
 /**
+ * How far back the run leg looks on the MCP surface.
+ *
+ * Shorter than `maxAgeMs` on purpose. Instance AI pays the full window once per thread and every
+ * later turn passes a cursor, so its window shrinks to the gap between turns. An MCP read always
+ * passes `cursor: null` — the server is stateless — so it would pay seven days of executions on
+ * every call, and a whole-instance reader has no project predicate to narrow it either. The block
+ * names at most `runWorkflowCap` workflows, so a shorter window costs almost nothing in content.
+ */
+const mcpRunWindowMs = 24 * Time.hours.toMilliseconds;
+
+/**
  * Distinct workflows whose runs may appear. Runs are already folded per workflow, so this caps
  * breadth, not repetition: without it a busy instance's schedules crowd out every edit the user
  * made, which is the signal actually worth carrying.
@@ -64,38 +74,10 @@ const inventorySize = 8;
 /** How much of one resource's own history an expand returns. A resource cannot need more. */
 const resourceHistoryLimit = 20;
 
-/**
- * How far below the high-water mark a delta re-reads.
- *
- * Ids are an ordering key, not a completeness watermark: Postgres allocates a sequence value
- * outside the surrounding transaction, so two writers can commit id 101 before id 100, and a
- * cursor that asks for "everything above the highest id seen" skips 100 for good. The entries most
- * worth surfacing are deletions, written by whichever request happens to be committing.
- *
- * So a delta re-reads this far below the mark and drops what it has already shown.
- *
- * What this does and does not promise. The read below is newest-first and capped, so when more
- * rows sit above the floor than the cap, the ones dropped are the lowest — and the mark then
- * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
- * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
- * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
- * could be displayed", not "every straggler is recovered". What makes even that much true is
- * `entryFetchLimit` staying above `windowSize`, which is why that one is derived rather than set.
- */
-const activityLagIds = 200;
+/** Shown ids retained to de-duplicate the late-commit lag band. */
+const seenIdsCap = 200;
 
-/**
- * Ids remembered inside the band, so a delta does not show one twice. Deliberately the band's own
- * width: the band spans that many ids, so a smaller cap would forget an id still inside it and
- * show it again, and a larger one would store ids the floor already excludes.
- */
-const seenIdsCap = activityLagIds;
-
-/**
- * Rows one delta reads. Derived from `windowSize` rather than set by hand: staying above it is
- * what bounds what a truncated read can lose — see the note on `activityLagIds` — and the multiple
- * leaves room for the age filter to discard rows and still fill a window.
- */
+/** Extra rows let age filtering still fill the visible window. */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
 /**
@@ -117,20 +99,35 @@ export type InstanceContextScope =
 	 * of the credential gate — the other half is the caller's actual `credential:read` on the
 	 * projects being read, which this service resolves rather than trusts.
 	 */
-	| { surface: 'mcp'; projectId?: string; credentialGranted: boolean };
+	| {
+			surface: 'mcp';
+			projectId?: string;
+			credentialGranted: boolean;
+			/**
+			 * Whether the caller's token covers reading executions. The run leg ships run counts,
+			 * failure counts and the id of the last failure, and every other execution read on the
+			 * MCP server sits behind `execution:read` — so a grant that cannot fetch an execution
+			 * is not handed one. Same shape as `credentialGranted`: a content gate, because the
+			 * tool itself rides on `workflow:read` for the legs that are not execution data.
+			 */
+			executionGranted: boolean;
+	  };
 
 /**
  * A scope after the caller's access has actually been resolved. Separate from the requested scope
  * so nothing downstream can mistake "what was asked for" for "what was allowed".
  */
-type ResolvedScope =
+type ResolvedScope = { allowedCategories: ActivityEventCategory[] } & (
 	| { surface: 'conversation'; projectIds: string[] }
 	| {
 			surface: 'mcp';
 			projectIds: ActivityProjectScope;
 			/** Of those, the ones whose credential entries the caller may read. */
 			credentialProjectIds: ActivityProjectScope;
-	  };
+			/** Whether the run leg may be read at all. */
+			runsVisible: boolean;
+	  }
+);
 
 export type ActivityPage = {
 	entries: InstanceAiActivityEntry[];
@@ -146,10 +143,16 @@ export type ActivityPage = {
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
 
 export type InstanceContextCursor = {
-	/** Highest activity entry id shown. */
+	/** Highest activity entry id read. */
 	activityMark: number;
-	/** Entry ids already shown that still sit inside the lag band. */
+	/** Highest entry id a turn cut. Nothing at or below it is offered again. */
+	activityFloor: number;
+	/** Categories allowed when this cursor was created. */
+	activityCategories: ActivityEventCategory[];
+	/** Entry ids already shown, including ids below the current floor. */
 	activitySeen: number[];
+	/** The deduplication limit excludes forgotten ids, even after a scope change. */
+	activitySeenFloor?: number;
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
 };
@@ -164,15 +167,22 @@ export function readInstanceContextCursor(
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
 	if (!isRecord(value)) return null;
 
-	const { activityMark, activitySeen, runsThrough } = value;
+	const { activityMark, activityFloor, activityCategories, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
+	if (typeof activityFloor !== 'number' || !Number.isFinite(activityFloor)) return null;
+	if (!Array.isArray(activityCategories)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
 	return {
 		activityMark,
+		activityFloor,
+		activityCategories: activityCategories.filter(isKnownCategory),
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
+		...(typeof value.activitySeenFloor === 'number' && Number.isFinite(value.activitySeenFloor)
+			? { activitySeenFloor: value.activitySeenFloor }
+			: {}),
 		runsThrough,
 	};
 }
@@ -211,7 +221,6 @@ export type InstanceContextBlock = {
 export class InstanceContextService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -219,10 +228,6 @@ export class InstanceContextService {
 		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-	}
-
-	get enabled(): boolean {
-		return this.globalConfig.instanceAi.instanceContextEnabled;
 	}
 
 	/**
@@ -235,7 +240,11 @@ export class InstanceContextService {
 	 */
 	async buildBlock(input: {
 		user: User;
-		projectId?: string;
+		/**
+		 * Instance AI passes its thread's own project; an MCP client passes the MCP scope, which
+		 * resolves the caller's own access instead. Both legs below are filtered accordingly.
+		 */
+		scope: InstanceContextScope;
 		cursor: InstanceContextCursor | null;
 		/**
 		 * The agent continuing its own task — a checkpoint or a planned build — rather than a
@@ -243,33 +252,42 @@ export class InstanceContextService {
 		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
 		 */
 		isMachineFollowUp?: boolean;
+		/** Instance gate result shared with the activity tool for this turn. */
+		enabled: boolean;
 		now?: Date;
 	}): Promise<InstanceContextBlock | null> {
-		if (!this.enabled || input.isMachineFollowUp) return null;
+		if (!input.enabled) return null;
+		if (input.isMachineFollowUp) return null;
 
 		try {
 			const now = input.now ?? new Date();
-			const isUpdate = input.cursor !== null;
-			// Conversation-bound: the per-turn block is Instance AI's, and its run and inventory legs
-			// have no MCP-visibility filter yet. The MCP surface reads through `list` and `expand`.
-			const resolved = await this.resolveScope(input.user, {
-				surface: 'conversation',
-				...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
-			});
+
+			const resolved = await this.resolveScope(input.user, input.scope);
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
-			// A conversation always resolves to a list, never the whole instance.
-			if (resolved?.surface !== 'conversation' || resolved.projectIds.length === 0) return null;
+			if (resolved === null) return null;
+
 			const projectIds = resolved.projectIds;
+			// Withheld and archived workflows are excluded inside each query, not after it. The
+			// inventory and run legs are aggregates, so filtering their rows afterwards would leave
+			// a total counting workflows the caller cannot see.
+			const mcpVisibleOnly = resolved.surface === 'mcp';
+
+			const cursor = input.cursor;
+			const isUpdate = cursor !== null;
 
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ projectIds, cursor: input.cursor, now }),
-				this.readRuns({ projectIds, cursor: input.cursor, now }),
+				this.readEntries({ cursor, now, scope: resolved }),
+				resolved.surface === 'mcp' && !resolved.runsVisible
+					? Promise.resolve([])
+					: this.readRuns({ projectIds, cursor, now, mcpVisibleOnly }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
 				isUpdate
 					? Promise.resolve(undefined)
-					: this.workflowRepository.findRecentForProjects(projectIds, inventorySize),
+					: this.workflowRepository.findRecentForProjects(projectIds, inventorySize, {
+							mcpVisibleOnly,
+						}),
 			]);
 
 			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
@@ -279,6 +297,7 @@ export class InstanceContextService {
 
 			return {
 				block: renderBlock({
+					surface: resolved.surface,
 					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
 					entriesTruncated: entries.truncated,
 					runs,
@@ -288,13 +307,21 @@ export class InstanceContextService {
 				}),
 				cursor: {
 					activityMark: entries.mark,
+					activityFloor: entries.floor,
+					activityCategories: resolved.allowedCategories,
 					activitySeen: entries.seen,
+					activitySeenFloor: entries.seenFloor,
 					runsThrough: now.toISOString(),
 				},
 			};
 		} catch (error) {
-			// Context is an enhancement; failing to build it must not fail the user's turn.
 			this.logger.warn('Failed to build the instance-context block', { error });
+
+			// A chat turn has no error channel, and the block is an enhancement, so a failed read
+			// must not fail the turn. A tool call does have one, and an MCP caller is told to read
+			// an empty answer as "nothing exists here yet" — so returning null on failure would
+			// send it off to rebuild work that is already there.
+			if (input.scope.surface === 'mcp') throw error;
 			return null;
 		}
 	}
@@ -353,12 +380,21 @@ export class InstanceContextService {
 		const rows = await this.activityEventRepository.findFeed({
 			limit: fetchLimit,
 			projectIds: resolved.projectIds,
-			...(category !== undefined ? { category } : {}),
+			allowedCategories: resolved.allowedCategories,
+			...(category !== undefined ? { filterCategory: category } : {}),
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 		});
 
 		const visible = filtersWithheld ? await this.withoutWithheldWorkflows(rows, resolved) : rows;
+
+		// A read narrowed to one resource answers about that resource, so a withheld one has to
+		// answer exactly as a pruned one does. Reporting `hasMore` off rows that were then
+		// withheld would say "this resource has history you cannot see", which is the probe the
+		// `notFound` contract exists to prevent.
+		if (input.resourceId !== undefined && rows.length > 0 && visible.length === 0) {
+			return empty;
+		}
 
 		// More is below either because the filter cut this page short of a full read, or because a
 		// full page came back and the read itself was capped. Both mean "page again".
@@ -400,7 +436,11 @@ export class InstanceContextService {
 		if (resolved === null) return null;
 
 		const projectIds = resolved.projectIds;
-		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
+		const row = await this.activityEventRepository.findEntry({
+			id: input.id,
+			projectIds,
+			allowedCategories: resolved.allowedCategories,
+		});
 		if (!row) return null;
 
 		if (resolved.surface === 'mcp') {
@@ -443,34 +483,63 @@ export class InstanceContextService {
 	 * shown: they have been accounted for, and re-reading them next turn would only cost tokens.
 	 */
 	private async readEntries(input: {
-		projectIds: string[];
+		scope: ResolvedScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
-	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
-		const cursor = input.cursor;
+	}): Promise<{
+		rows: ActivityEvent[];
+		mark: number;
+		floor: number;
+		seen: number[];
+		seenFloor: number;
+		truncated: boolean;
+	}> {
+		const fetchLimit =
+			input.scope.surface === 'mcp' ? entryFetchLimit * withheldFetchMultiplier : entryFetchLimit;
 
 		// Newest first, and on a delta only what arrived above the mark.
 		const arrivals = await this.activityEventRepository.findFeed({
-			limit: entryFetchLimit,
-			projectIds: input.projectIds,
-			...(cursor ? { afterId: cursor.activityMark } : {}),
+			limit: fetchLimit,
+			projectIds: input.scope.projectIds,
+			allowedCategories: input.scope.allowedCategories,
+			...(input.cursor ? { afterId: input.cursor.activityMark } : {}),
 		});
 
-		// The band below the mark is read separately, not folded into the query above. One capped
-		// read cannot cover both: arrivals are unbounded and come back first, so a busy turn would
-		// fill the page and push the band out — losing exactly the late commit the band exists for.
-		// Alone it is bounded by its own width, since it spans that many ids at most.
+		// Read the lag band separately so new arrivals cannot push late commits out of the page.
+		const cursor = input.cursor;
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
-					limit: activityLagIds,
-					projectIds: input.projectIds,
-					afterId: Math.max(0, cursor.activityMark - activityLagIds),
+					limit: seenIdsCap,
+					projectIds: input.scope.projectIds,
+					allowedCategories: input.scope.allowedCategories,
+					afterId: Math.max(cursor.activityFloor, cursor.activitySeenFloor ?? 0),
 					beforeId: cursor.activityMark,
 				})
 			: [];
 
-		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
-		const rows = [...arrivals, ...band];
+		// New permissions expose older rows only in the newly allowed categories.
+		const addedCategories = input.scope.allowedCategories.filter(
+			(category) => cursor && !cursor.activityCategories.includes(category),
+		);
+		const reopened =
+			cursor && addedCategories.length > 0
+				? await this.activityEventRepository.findFeed({
+						limit: seenIdsCap,
+						projectIds: input.scope.projectIds,
+						allowedCategories: addedCategories,
+						afterId: cursor.activitySeenFloor ?? 0,
+						beforeId: cursor.activityFloor + 1,
+					})
+				: [];
+
+		// The three ranges do not overlap and remain ordered from newest to oldest.
+		const read = [...arrivals, ...band, ...reopened];
+
+		// Entries are individual rows rather than an aggregate, so the same post-read filter the
+		// `list` tool uses applies here. The mark below still advances past what was filtered:
+		// those rows have been accounted for and will not become visible on a later turn.
+		const rows =
+			input.scope.surface === 'mcp' ? await this.withoutWithheldWorkflows(read, input.scope) : read;
 
 		const alreadyShown = new Set(cursor?.activitySeen ?? []);
 		const fresh = rows.filter(
@@ -479,32 +548,42 @@ export class InstanceContextService {
 		);
 
 		const shown = fresh.slice(0, windowSize);
-		const mark = rows.reduce(
+		// Over everything read, including rows the visibility filter dropped, so a window full of
+		// withheld rows still advances rather than being re-read every turn.
+		//
+		// The cost is real but unreachable today: `availableInMCP` is toggled at runtime, so a row
+		// dropped now could become visible later, and a delta past this mark would miss it. Only a
+		// cursor-bearing caller could hit that, and the MCP surface passes `cursor: null` on every
+		// read. Revisit this the day one carries a cursor.
+		const mark = read.reduce(
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// What was shown, not what was read: an entry the window cut is still unseen, and the band
-		// gives it another turn to appear rather than burying it under a mark it never reached.
-		// Only ids inside the band need remembering — below it, the floor already excludes them.
-		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.filter((id) => id > mark - activityLagIds)
-			.sort((a, b) => b - a)
-			.slice(0, seenIdsCap);
+		// Keep the old floor unless this turn cuts the window.
+		const cut = fresh[windowSize];
+		const floor = Math.max(cursor?.activityFloor ?? 0, cut?.id ?? 0);
+
+		// Keep shown ids across scope changes so reopened rows do not repeat.
+		const seen = [...alreadyShown, ...shown.map((row) => row.id)].sort((a, b) => b - a);
+		const seenFloor = Math.max(cursor?.activitySeenFloor ?? 0, seen[seenIdsCap] ?? 0);
 
 		return {
 			rows: shown,
 			mark,
-			seen,
+			floor,
+			seen: seen.filter((id) => id > seenFloor).slice(0, seenIdsCap),
+			seenFloor,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
-			truncated: fresh.length > windowSize || arrivals.length === entryFetchLimit,
+			truncated: fresh.length > windowSize || arrivals.length === fetchLimit,
 		};
 	}
 
 	private async readRuns(input: {
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
+		mcpVisibleOnly: boolean;
 	}): Promise<RunSummary[]> {
 		// Consecutive windows tile the timeline: half-open `[after, before)`, so a delta starts
 		// exactly where the last one ended and a run is summarised once. Re-reading a lag window
@@ -517,15 +596,17 @@ export class InstanceContextService {
 		// The cost is stated rather than hidden: a run whose row commits after this read but whose
 		// `stoppedAt` precedes it is never summarised. Runs have no gap-tolerant cursor the way
 		// entries do, because the aggregate returns counts rather than the ids to de-duplicate on.
+		const windowMs = input.mcpVisibleOnly ? mcpRunWindowMs : maxAgeMs;
 		const stoppedAfter = input.cursor
 			? new Date(Date.parse(input.cursor.runsThrough))
-			: new Date(input.now.getTime() - maxAgeMs);
+			: new Date(input.now.getTime() - windowMs);
 
 		return await this.executionRepository.summariseRunsForProjects({
 			projectIds: input.projectIds,
 			stoppedAfter,
 			stoppedBefore: input.now,
 			workflowLimit: runWorkflowCap,
+			...(input.mcpVisibleOnly ? { mcpVisibleOnly: true } : {}),
 		});
 	}
 
@@ -562,7 +643,12 @@ export class InstanceContextService {
 			if (!allowed) return null;
 
 			if (scope.surface === 'conversation') {
-				return { surface: 'conversation', projectIds: [projectId] };
+				const credentials = await userHasScopes(user, ['credential:read'], false, { projectId });
+				return {
+					surface: 'conversation',
+					projectIds: [projectId],
+					allowedCategories: credentials ? ['workflow', 'credential'] : ['workflow'],
+				};
 			}
 
 			// The personal project is credential-readable by its owner without a project role, so
@@ -574,7 +660,14 @@ export class InstanceContextService {
 						(await this.projectRepository.getPersonalProjectForUser(user.id))?.id,
 					)
 				: [];
-			return { surface: 'mcp', projectIds: [projectId], credentialProjectIds };
+			return {
+				surface: 'mcp',
+				projectIds: [projectId],
+				credentialProjectIds,
+				allowedCategories:
+					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				runsVisible: scope.executionGranted,
+			};
 		}
 
 		if (scope.surface === 'conversation') return null;
@@ -582,11 +675,22 @@ export class InstanceContextService {
 		// A global reader needs no project predicate at all, which is both correct and the only
 		// bounded option: `getProjectIdsWithScope` would hand back every project on the instance.
 		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
-			const credentialProjectIds: ActivityProjectScope =
-				scope.credentialGranted && hasGlobalScope(user, ['credential:read'], { mode: 'allOf' })
+			// Reading every workflow does not imply reading every credential, and the two are
+			// resolved apart: global `credential:read` opens all of them, otherwise the caller may
+			// still hold it on individual projects and should see those.
+			const credentialProjectIds: ActivityProjectScope = !scope.credentialGranted
+				? []
+				: hasGlobalScope(user, ['credential:read'], { mode: 'allOf' })
 					? 'all-projects'
-					: [];
-			return { surface: 'mcp', projectIds: 'all-projects', credentialProjectIds };
+					: await this.credentialReadableProjectIds(user, null, undefined);
+			return {
+				surface: 'mcp',
+				projectIds: 'all-projects',
+				credentialProjectIds,
+				allowedCategories:
+					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				runsVisible: scope.executionGranted,
+			};
 		}
 
 		const [scopedIds, personalProject] = await Promise.all([
@@ -603,7 +707,14 @@ export class InstanceContextService {
 			? await this.credentialReadableProjectIds(user, projectIds, personalProject?.id)
 			: [];
 
-		return { surface: 'mcp', projectIds, credentialProjectIds };
+		return {
+			surface: 'mcp',
+			projectIds,
+			credentialProjectIds,
+			allowedCategories:
+				credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+			runsVisible: scope.executionGranted,
+		};
 	}
 
 	/**
@@ -617,23 +728,46 @@ export class InstanceContextService {
 	 */
 	private async credentialReadableProjectIds(
 		user: User,
-		projectIds: string[],
+		/**
+		 * Narrow to these, or `null` for a whole-instance reader, which has no list to narrow to.
+		 * Passing the list keeps the query bounded to what the caller can already see; asking for
+		 * every project on the instance and intersecting afterwards would read strictly more.
+		 */
+		projectIds: string[] | null,
 		/** Already read by the caller; passed in so this does not read it a second time. */
 		personalProjectId: string | undefined,
 	): Promise<string[]> {
-		if (projectIds.length === 0) return [];
+		if (projectIds !== null && projectIds.length === 0) return [];
 
-		// Bounded to what the caller can already see. Asking for every project on the instance
-		// where they may read credentials and then intersecting would read strictly more.
 		const readable = await this.projectService.getProjectIdsWithScope(
 			user,
 			['credential:read'],
-			projectIds,
+			projectIds ?? undefined,
 		);
 		const readableSet = new Set(readable);
 		if (personalProjectId) readableSet.add(personalProjectId);
 
+		if (projectIds === null) return [...readableSet];
 		return projectIds.filter((projectId) => readableSet.has(projectId));
+	}
+
+	/**
+	 * Whether anything exists in scope that this surface is withholding, asked only when the block
+	 * came back empty.
+	 *
+	 * `availableInMCP` defaults to withheld, so an instance that predates the setting exposes
+	 * nothing: every leg comes back empty and the honest answer is "nothing is exposed", not
+	 * "nothing has been built". Telling a client the latter sends it off to rebuild an estate it
+	 * simply cannot see, which is the opposite of what this surface is for.
+	 */
+	async hasWithheldWorkflows(user: User, scope: InstanceContextScope): Promise<boolean> {
+		const resolved = await this.resolveScope(user, scope);
+		if (resolved === null) return false;
+
+		const { total } = await this.workflowRepository.findRecentForProjects(resolved.projectIds, 1, {
+			mcpVisibleOnly: false,
+		});
+		return total > 0;
 	}
 
 	/**
@@ -692,6 +826,7 @@ function resolveCategory(
 	scope: ResolvedScope,
 ): ActivityEventCategory | undefined | null {
 	const category = isKnownCategory(requested) ? requested : undefined;
+	if (category !== undefined && !scope.allowedCategories.includes(category)) return null;
 	if (scope.surface !== 'mcp') return category;
 
 	const seesSomeCredentials =
@@ -716,15 +851,32 @@ function isCredentialVisible(row: ActivityEvent, scope: ResolvedScope): boolean 
 	return scope.credentialProjectIds.includes(row.projectId);
 }
 
-const initialPreamble = [
+/**
+ * How to reach the tools named in the block. The two surfaces do not share tool names, so a reader
+ * told to call `activity(action="list")` over MCP is told to call something that is not there.
+ */
+const toolNames = {
+	conversation: {
+		expand: '`activity(action="expand", id=N)`',
+		list: '`activity(action="list")`',
+		workflows: '`workflows(action="list")`',
+	},
+	mcp: {
+		expand: '`expand_instance_activity(id=N)`',
+		list: '`get_instance_activity`',
+		workflows: '`search_workflows`',
+	},
+} as const;
+
+const initialPreamble = (tools: SurfaceToolNames) => [
 	'What is going on in this instance. This is work that already exists and that you can pick up:',
 	'when the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually',
 	'the most recent thing here, and often the most recent failure. Name what you think they mean',
 	'and act on it rather than asking them to choose from a list they can already see.',
 	'Do not narrate this back to them — unless they asked what has been happening, let it change',
 	'what you do rather than what you say.',
-	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
-	'everything else that happened to the same resource, or `activity(action="list")` to look',
+	`Call ${tools.expand} on a bracketed id to see that entry in full along with`,
+	`everything else that happened to the same resource, or ${tools.list} to look`,
 	'further back than this window. An entry may name a resource that no longer exists.',
 ];
 
@@ -732,16 +884,28 @@ const initialPreamble = [
  * An update says so explicitly. Without that, a two-entry delta reads as though nothing else ever
  * happened, and the agent would draw conclusions from a list it was never given in full.
  */
-const updatePreamble = [
+const updatePreamble = (tools: SurfaceToolNames) => [
 	'What has happened since the list earlier in this conversation. Those earlier entries still',
 	'stand — these are additions, not a replacement. Read them the same way: context on what the',
 	'user has been doing, not a task list or something to comment on unprompted.',
-	'`activity(action="expand", id=N)` and `activity(action="list")` work on these ids too.',
+	`${tools.expand} and ${tools.list} work on these ids too.`,
 ];
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
-function renderInventory(inventory: Inventory): string[] {
-	if (inventory.total === 0) return ['Nothing has been built here yet.', ''];
+function renderInventory(
+	inventory: Inventory,
+	tools: SurfaceToolNames,
+	surface: ResolvedScope['surface'],
+): string[] {
+	// An empty inventory means two different things. On MCP the count is filtered, so zero
+	// usually means "all withheld" on an instance that predates `availableInMCP` — and a block
+	// can still render off the other legs, putting this line in front of activity that proves
+	// the estate exists. Saying "nothing has been built" there is simply false.
+	if (inventory.total === 0) {
+		return surface === 'mcp'
+			? ['No workflows here are exposed to MCP, so none can be named.', '']
+			: ['Nothing has been built here yet.', ''];
+	}
 
 	const named = inventory.workflows.map(
 		(workflow) =>
@@ -754,7 +918,7 @@ function renderInventory(inventory: Inventory): string[] {
 	return [
 		`Workflows that already exist here: ${inventory.total}. Most recently worked on:`,
 		...named,
-		...(more > 0 ? [`  ... and ${more} more — \`workflows(action="list")\` for the rest.`] : []),
+		...(more > 0 ? [`  ... and ${more} more — ${tools.workflows} for the rest.`] : []),
 		'',
 	];
 }
@@ -797,25 +961,35 @@ function renderBlock(input: {
 	isUpdate: boolean;
 	inventory?: Inventory;
 	now: Date;
+	surface: ResolvedScope['surface'];
 }): string {
+	const tools = toolNames[input.surface];
+
 	const prose = [
-		...(input.isUpdate ? updatePreamble : initialPreamble),
+		...(input.isUpdate ? updatePreamble(tools) : initialPreamble(tools)),
 		'',
-		...(input.inventory ? renderInventory(input.inventory) : []),
+		...(input.inventory ? renderInventory(input.inventory, tools, input.surface) : []),
 		...renderRuns(input.runs, input.isUpdate, input.now),
 		...(input.entries.length > 0
 			? [
 					input.isUpdate ? 'Changes since then:' : 'What changed recently:',
 					...input.entries,
 					...(input.entriesTruncated
-						? ['  ... and more than these — `activity(action="list")` for the rest.']
+						? [`  ... and more than these — ${tools.list} for the rest.`]
 						: []),
 				]
 			: []),
 	].join('\n');
 
-	return `${INSTANCE_CONTEXT_OPEN_TAG}\n${prose}\n${INSTANCE_CONTEXT_CLOSE_TAG}`;
+	// The tags are Instance AI's transport: `cleanStoredUserMessage` strips them back out of the
+	// stored message. An MCP client is handed the text directly and has nothing to strip, so it
+	// would only be reading a stray tag.
+	return input.surface === 'mcp'
+		? prose
+		: `${INSTANCE_CONTEXT_OPEN_TAG}\n${prose}\n${INSTANCE_CONTEXT_CLOSE_TAG}`;
 }
+
+type SurfaceToolNames = (typeof toolNames)[keyof typeof toolNames];
 
 const knownCategories = new Set<string>(activityEventCategories);
 

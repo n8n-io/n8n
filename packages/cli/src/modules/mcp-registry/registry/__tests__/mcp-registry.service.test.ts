@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,6 +12,7 @@ import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';
 import { McpRegistryNodeLoader } from '../../mcp-registry-node-loader';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../../node-description-transform';
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
+import { McpRegistryCapabilities } from '../mcp-registry-capabilities';
 import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
 import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
 import { McpRegistryService } from '../mcp-registry.service';
@@ -34,6 +36,10 @@ function createService(options: CreateServiceOptions = {}) {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const repository = mock<McpRegistryServerRepository>();
 	const apiClient = mock<McpRegistryApiClient>();
+	const globalConfig = mock<GlobalConfig>({
+		deployment: { type: 'default' },
+	});
+	const capabilities = new McpRegistryCapabilities(globalConfig);
 	const instanceSettings = mock<InstanceSettings>({
 		instanceType: options.instanceType ?? 'main',
 	});
@@ -79,6 +85,7 @@ function createService(options: CreateServiceOptions = {}) {
 		logger,
 		repository,
 		apiClient,
+		capabilities,
 		instanceSettings,
 		loadNodesAndCredentials,
 		push,
@@ -144,6 +151,22 @@ describe('McpRegistryService', () => {
 
 			expect(notion).toEqual(notionMockServer);
 			expect(missing).toBeUndefined();
+		});
+
+		it('excludes servers that require an unsupported capability', async () => {
+			const unsupportedServer: McpRegistryServer = {
+				...linearMockServer,
+				requiredCapabilities: ['unsupported-capability'],
+			};
+			const { service } = createService({
+				storedServers: [notionMockServer, unsupportedServer],
+			});
+
+			expect(await service.getAll()).toEqual([notionMockServer]);
+			expect(await service.get(unsupportedServer.slug)).toBeUndefined();
+			expect(await service.getBySlugs([notionMockServer.slug, unsupportedServer.slug])).toEqual([
+				notionMockServer,
+			]);
 		});
 
 		it('returns empty array for getBySlugs when input is empty', async () => {
@@ -298,12 +321,17 @@ describe('McpRegistryService', () => {
 
 		it('refreshFromApi fetches all servers when no data is persisted', async () => {
 			const { service, apiClient, repository } = createService({ storedServers: null });
+			const unsupportedServer: McpRegistryServer = {
+				...notionMockServer,
+				requiredCapabilities: ['unsupported-capability'],
+			};
+			apiClient.fetchAllServers.mockResolvedValue([unsupportedServer]);
 
 			await service.refreshFromApi();
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledTimes(1);
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
-			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			expect(repository.upsert).toHaveBeenCalledWith([toEntity(unsupportedServer)], ['slug']);
 		});
 
 		it('refreshFromApi stops before the write when the signal aborts during the fetch', async () => {

@@ -1,10 +1,13 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+import type { EngineMode } from './engine';
+
 /** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
 export const EXTERNAL_HOST = 'host.docker.internal';
 
 export const SERVICE_NAMES = [
 	'postgres',
+	'enginePostgres',
 	'redis',
 	'mailpit',
 	'gitea',
@@ -70,11 +73,15 @@ export interface StartContext {
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
 
 export interface StackConfig {
+	/** Overall startup deadline and n8n readiness timeout override in milliseconds. */
+	startupTimeoutMs?: number;
 	mains?: number;
 	workers?: number;
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	postgres?: boolean;
+	/** Runs engine 2.0. Needs `postgres: true`, one main, no workers, no webhook procs. */
+	engine?: EngineMode;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -115,8 +122,6 @@ export interface StackConfig {
 	userHomeHostDir?: string;
 	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
-	/** n8n readiness timeout override; an old release migrating a fresh DB can exceed the default. */
-	startupTimeoutMs?: number;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {
