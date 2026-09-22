@@ -648,19 +648,12 @@ function handleStop() {
 function handleComposerKeydown(event: KeyboardEvent): void {
 	if (!mentionMenuOpen.value) return;
 	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
-	if (
-		!handled &&
-		event.key === 'Enter' &&
-		!event.shiftKey &&
-		!event.ctrlKey &&
-		!event.metaKey &&
-		!event.altKey &&
-		!event.isComposing &&
-		event.keyCode !== 229
-	) {
-		event.preventDefault();
-		event.stopPropagation();
-	}
+	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+	const isComposing = event.isComposing || event.keyCode === 229;
+	if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
+
+	event.preventDefault();
+	event.stopPropagation();
 }
 
 function handleTabAutocomplete() {
