@@ -14,14 +14,14 @@ type ZendeskCredentials = {
 	marketplaceAppId?: string;
 };
 
-function getMarketplaceHeaders(credentials: ZendeskCredentials): IDataObject {
+function getMarketplaceHeaders(credentials: ZendeskCredentials): IDataObject | undefined {
 	const headers = {
 		'X-Zendesk-Marketplace-Name': credentials.marketplaceName,
 		'X-Zendesk-Marketplace-Organization-Id': credentials.marketplaceOrganizationId,
 		'X-Zendesk-Marketplace-App-Id': credentials.marketplaceAppId,
 	};
 
-	return Object.values(headers).every(Boolean) ? headers : {};
+	return Object.values(headers).every(Boolean) ? headers : undefined;
 }
 
 function getUri(resource: string, subdomain: string) {
@@ -68,7 +68,10 @@ export async function zendeskApiRequest(
 		delete options.body;
 	}
 
-	options.headers = { ...options.headers, ...getMarketplaceHeaders(credentials) };
+	const marketplaceHeaders = getMarketplaceHeaders(credentials);
+	if (marketplaceHeaders) {
+		options.headers = { ...(options.headers ?? {}), ...marketplaceHeaders };
+	}
 
 	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
 

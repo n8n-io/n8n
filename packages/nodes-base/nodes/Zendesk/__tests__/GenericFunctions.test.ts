@@ -44,7 +44,7 @@ describe('Zendesk > GenericFunctions', () => {
 		expect(sentHeaders()).toEqual(MARKETPLACE_HEADERS);
 	});
 
-	it('should send no marketplace headers when one of them is missing', async () => {
+	it('should leave the headers untouched when one of them is missing', async () => {
 		setUp('oAuth2', {
 			subdomain: 'n8n',
 			marketplaceName: 'n8n',
@@ -53,7 +53,7 @@ describe('Zendesk > GenericFunctions', () => {
 
 		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets');
 
-		expect(sentHeaders()).toEqual({});
+		expect(sentHeaders()).toBeUndefined();
 	});
 
 	it('should send no marketplace headers for API token authentication', async () => {
@@ -62,7 +62,7 @@ describe('Zendesk > GenericFunctions', () => {
 		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets');
 
 		expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('zendeskApi');
-		expect(sentHeaders()).toEqual({});
+		expect(sentHeaders()).toBeUndefined();
 	});
 
 	it('should keep headers passed in by the caller', async () => {
