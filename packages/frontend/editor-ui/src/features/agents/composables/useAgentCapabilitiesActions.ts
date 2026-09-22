@@ -428,6 +428,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		// still the current one.
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
 
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
@@ -438,7 +440,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
-						if (agentId.value !== targetAgentId) return;
+						if (!isCurrentTarget()) return;
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);
@@ -463,10 +465,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							// this as a skill-creation failure.
 							return;
 						}
-						if (agentId.value !== targetAgentId) return;
+						if (!isCurrentTarget()) return;
 						try {
 							await ensureAgentPersisted?.();
-							if (agentId.value !== targetAgentId) return;
+							if (!isCurrentTarget()) return;
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,
@@ -481,7 +483,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							showError(error, locale.baseText('agents.builder.skills.create.error'));
 							return;
 						}
-						if (agent.value?.id !== targetAgentId) return;
+						if (!isCurrentTarget() || agent.value?.id !== targetAgentId) return;
 						agent.value = {
 							...agent.value,
 							versionId,
@@ -502,7 +504,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							showError(error, locale.baseText('agents.builder.loadError'));
 							return;
 						}
-						if (refreshed && agentId.value === targetAgentId && localConfig.value) {
+						if (refreshed && isCurrentTarget() && localConfig.value) {
 							localConfig.value = {
 								...localConfig.value,
 								skills: [

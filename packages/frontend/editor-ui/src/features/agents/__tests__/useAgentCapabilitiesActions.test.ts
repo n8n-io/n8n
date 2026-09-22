@@ -55,6 +55,7 @@ function setup(
 		refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 		agent?: Ref<AgentResource | null>;
 		agentId?: Ref<string>;
+		projectId?: Ref<string>;
 	} = {},
 ) {
 	setActivePinia(createTestingPinia({ stubActions: false }));
@@ -63,11 +64,12 @@ function setup(
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig());
 	const scheduleConfigUpdate = vi.fn();
 	const agentId = overrides.agentId ?? ref('inline:node-1');
+	const projectId = overrides.projectId ?? ref('project-1');
 
 	const actions = useAgentCapabilitiesActions({
 		localConfig,
 		agent: ref<AgentResource | null>(null),
-		projectId: computed(() => 'project-1'),
+		projectId: computed(() => projectId.value),
 		agentId: computed(() => agentId.value),
 		connectedTriggers: ref([]),
 		scheduleConfigUpdate,
@@ -75,7 +77,7 @@ function setup(
 		...overrides,
 	});
 
-	return { uiStore, actions, scheduleConfigUpdate, localConfig, agentId };
+	return { uiStore, actions, scheduleConfigUpdate, localConfig, agentId, projectId };
 }
 
 type ToolsModalData = {
@@ -311,6 +313,43 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		await flushPromises();
 		agentId.value = 'inline:node-2';
 		agent.value = { id: 'inline:node-2', skills: {} } as unknown as AgentResource;
+		localConfig.value = makeConfig();
+		releaseRefresh(true);
+		await flushPromises();
+
+		expect(localConfig.value.skills).toBeUndefined();
+		expect(agent.value.skills).toEqual({});
+	});
+
+	it('does not apply a created skill ref after the active project changes during refresh', async () => {
+		let releaseRefresh: (refreshed: boolean) => void = () => {};
+		const refresh = new Promise<boolean>((resolve) => {
+			releaseRefresh = resolve;
+		});
+		const projectId = ref('project-1');
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions, localConfig } = setup({
+			agent,
+			projectId,
+			refreshAgentAfterMutation: async () => await refresh,
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+		projectId.value = 'project-2';
+		agent.value = { id: 'inline:node-1', skills: {} } as unknown as AgentResource;
 		localConfig.value = makeConfig();
 		releaseRefresh(true);
 		await flushPromises();
