@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the user.
+    description: The ID or email of the user.
     name: userId
     in: path
 requestBody:

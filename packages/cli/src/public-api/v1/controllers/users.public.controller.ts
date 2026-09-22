@@ -7,7 +7,6 @@ import {
 	RoleChangeRequestDto,
 	UserListPublicDto,
 	UserPublicDto,
-	userIdParamSchema,
 	userIdentifierParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -155,7 +154,7 @@ export class UsersPublicController {
 	async deleteUser(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('userId', userIdParamSchema) userId: string,
+		@Param('userId', userIdentifierParamSchema) userId: string,
 		@Query query: DeleteUserQueryPublicDto,
 	): Promise<void> {
 		await this.userService.deleteUser(req.user, userId, query.transferId);
@@ -172,7 +171,7 @@ export class UsersPublicController {
 	async changeRole(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('userId', userIdParamSchema) userId: string,
+		@Param('userId', userIdentifierParamSchema) userId: string,
 		@Body body: RoleChangeRequestDto,
 	): Promise<void> {
 		await this.userService.changeGlobalRole(req.user, userId, body);

@@ -303,6 +303,17 @@ describe('Users in Public API', () => {
 			expect(response.status).toBe(204);
 			await expect(getUserById(member.id)).rejects.toThrow();
 		});
+
+		it('if the identifier is neither a valid ID nor a valid email, should reject', async () => {
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer.publicApiAgentFor(owner).delete('/users/not-an-id');
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: 'request/params/userId must be a valid ID or email',
+			});
+		});
 	});
 
 	describe('PATCH /users/:id/role', () => {
@@ -360,6 +371,22 @@ describe('Users in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(400);
+		});
+
+		it('if the identifier is neither a valid ID nor a valid email, should reject', async () => {
+			testServer.license.enable('feat:advancedPermissions');
+			const owner = await createOwnerWithApiKey();
+			const payload = { newRoleName: 'global:admin' };
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch('/users/not-an-id/role')
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: 'request/params/userId must be a valid ID or email',
+			});
 		});
 
 		it("should change a user's role", async () => {
