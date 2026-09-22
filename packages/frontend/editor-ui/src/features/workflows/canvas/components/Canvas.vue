@@ -14,6 +14,7 @@ import {
 	MODAL_CONFIRM,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
+import { useFlexibleGroups } from '@/app/composables/useFlexibleGroups';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -453,9 +454,14 @@ const {
 });
 
 const { isSelectionExtractable } = useSelectionValidation();
+const { isEnabled: isFlexibleGroupsEnabled } = useFlexibleGroups();
 
 // Groups that start the workflow themselves
 const groupIdsWithTrigger = computed(() => {
+	if (!isFlexibleGroupsEnabled.value) {
+		return new Set<string>();
+	}
+
 	const groupsContainingTriggers = workflowDocumentStore.value.allGroups.filter((group) =>
 		group.nodeIds.some((nodeId) => {
 			const node = workflowDocumentStore.value.getNodeById(nodeId);

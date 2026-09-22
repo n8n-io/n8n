@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
