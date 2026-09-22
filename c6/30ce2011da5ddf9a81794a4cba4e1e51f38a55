@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_f96f809a5a23fd::t_578673dfe88ad7 177-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c630ce2011da5ddf9a81794a4cba4e1e51f38a55",
+  "prompts": {},
+  "sessions": {
+    "s_f96f809a5a23fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789b3d8-a4c8-4349-ae10-8789ea280c91",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
