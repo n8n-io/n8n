@@ -1,5 +1,6 @@
 import { Tool } from '@n8n/agents';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { InstanceAiContext, InstanceAiPreferenceWriteResult } from '../types';
@@ -42,8 +43,10 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 		.output(outputSchema)
 		.handler(async (input): Promise<InstanceAiPreferenceWriteResult> => {
 			const service = context.aiPreferenceService;
+			// The tool is registered only when the adapter is wired, so a missing
+			// service is a wiring fault, not a user or instance state.
 			if (!service) {
-				throw new Error('Saved preferences are not enabled on this instance.');
+				throw new UnexpectedError('Saved preferences are not enabled on this instance.');
 			}
 
 			if (context.permissions?.createPreference === 'blocked') {
