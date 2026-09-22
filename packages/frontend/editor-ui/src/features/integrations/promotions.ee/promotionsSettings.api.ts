@@ -1,4 +1,6 @@
 import type {
+	ApplyPackageDto,
+	ApplyPackageResultDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
@@ -221,5 +223,17 @@ export const promotePackage = async (
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/promote`,
+		data: payload,
+	});
+
+export const applyPromotion = async (
+	context: PublicApiContext,
+	connectionId: string,
+	payload?: ApplyPackageDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply`,
 		data: payload,
 	});

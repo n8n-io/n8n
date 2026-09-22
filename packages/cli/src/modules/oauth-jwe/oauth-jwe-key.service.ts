@@ -13,7 +13,6 @@ import {
 	JWE_KEY_ALGORITHMS,
 	JWE_KEY_CACHE_KEY,
 	JWE_KEY_USE,
-	JWE_PRIVATE_KEY_TYPE,
 	type JweKeyAlgorithm,
 } from './oauth-jwe.constants';
 
@@ -181,13 +180,7 @@ export class OAuthJweKeyService {
 	}
 
 	private async readActiveEntry(algorithm: JweKeyAlgorithm): Promise<OAuthJweKeyEntry | null> {
-		const privateRow = await this.deploymentKeyRepository.findOne({
-			where: {
-				type: JWE_PRIVATE_KEY_TYPE,
-				algorithm,
-				status: 'active',
-			},
-		});
+		const privateRow = await this.deploymentKeyRepository.findActiveOAuthJweKey(algorithm);
 		if (!privateRow) return null;
 
 		const decryptedPrivate = this.unwrapPrivateJwk(privateRow.value);
@@ -228,13 +221,7 @@ export class OAuthJweKeyService {
 		const encryptedPrivate = this.cipher.encryptDEKWithInstanceKey(JSON.stringify(privateJwk));
 
 		try {
-			await this.deploymentKeyRepository.insert({
-				id,
-				type: JWE_PRIVATE_KEY_TYPE,
-				value: encryptedPrivate,
-				algorithm,
-				status: 'active',
-			});
+			await this.deploymentKeyRepository.insertActiveOAuthJweKey(id, encryptedPrivate, algorithm);
 
 			this.logger.info('Generated new instance OAuth JWE key pair', { algorithm, kid: id });
 		} catch (error) {

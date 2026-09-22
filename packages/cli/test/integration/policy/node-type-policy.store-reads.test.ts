@@ -99,6 +99,7 @@ describe('node type policy store reads', () => {
 
 		if (withAttachment) {
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 1, isFloor: false }],
 				'user-1',
@@ -222,6 +223,7 @@ describe('node type policy store reads', () => {
 			expect(await slackVerdict(null)).toBe('allow');
 
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',
@@ -235,6 +237,7 @@ describe('node type policy store reads', () => {
 			const { scope, policy } = await configureScope(null, true);
 			const { scope: projectScope } = await configureScope(project.id, false);
 			await service.replaceAttachments(
+				KIND,
 				projectScope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',

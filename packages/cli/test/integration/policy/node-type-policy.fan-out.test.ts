@@ -78,6 +78,7 @@ describe('node type policy document fan-out', () => {
 				ROOT,
 			);
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',

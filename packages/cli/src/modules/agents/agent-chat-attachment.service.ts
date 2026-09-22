@@ -10,6 +10,13 @@ import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import {
+	draftChatMemoryResourceId,
+	isIntegrationMemoryResourceId,
+	isTaskRunMemoryResourceId,
+} from './utils/agent-memory-scope';
+import { threadBelongsTo } from './utils/agent-thread-access';
 
 // Typed against `SourceType` so a drift from the `binary_data` schema enum
 // (see `packages/@n8n/db/src/entities/binary-data-file.ts`) is a compile error.
@@ -62,6 +69,7 @@ export class AgentChatAttachmentService {
 		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly repository: AgentChatAttachmentRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
@@ -110,12 +118,24 @@ export class AgentChatAttachmentService {
 		}
 	}
 
-	/** Metadata lookup scoped to the owning agent + project; null when out of scope. */
+	/** Return metadata only when the caller can read the session. */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string },
+		scope: { agentId: string; projectId: string; userId: string },
 	): Promise<AgentChatAttachment | null> {
-		return await this.repository.findByIdForAgent(attachmentId, scope);
+		const attachment = await this.repository.findByIdForAgent(attachmentId, scope);
+		if (!attachment) return null;
+		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
+		if (thread) {
+			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)
+				? attachment
+				: null;
+		}
+		return attachment.resourceId === draftChatMemoryResourceId(scope.userId) ||
+			isIntegrationMemoryResourceId(attachment.resourceId ?? undefined) ||
+			isTaskRunMemoryResourceId(attachment.resourceId ?? undefined)
+			? attachment
+			: null;
 	}
 
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {

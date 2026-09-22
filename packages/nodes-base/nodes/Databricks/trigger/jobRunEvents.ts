@@ -1,14 +1,22 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
 
-import { getActiveCredentialType, makePermissionErrorLegible } from '../actions/helpers';
+import { getActiveCredentialType } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { JOB_RUNS_MAX_PAGE_SIZE, listAllJobRuns, listJobRuns } from '../transport';
-
-export const OVERLAP_MS = 5 * 60 * 1000;
+import {
+	OVERLAP_MS,
+	readEvents,
+	toIso,
+	toOutput,
+	withLegibleErrors,
+	withoutUndefined,
+} from './shared';
 
 const JOB_RUN_EVENTS = ['runFailed', 'runStarted', 'runSucceeded'] as const;
+const PERMISSION_HINT =
+	'Grant Can View on the job to the user or service principal of the credential, then retry.';
 
 type JobRunEvent = (typeof JOB_RUN_EVENTS)[number];
 
@@ -28,12 +36,6 @@ type JobRunWatchState = {
 	floorMs: number;
 	runs: Record<string, TrackedRun>;
 };
-
-function isJobRunEventList(value: unknown): value is JobRunEvent[] {
-	return (
-		Array.isArray(value) && value.every((item) => JOB_RUN_EVENTS.some((event) => event === item))
-	);
-}
 
 function isListedRun(run: unknown): run is ListedRun {
 	return (
@@ -61,24 +63,6 @@ function isJobRunWatchState(value: unknown): value is JobRunWatchState {
 	);
 }
 
-function isPermissionDeniedError(error: unknown): error is NodeApiError {
-	return (
-		error instanceof NodeApiError &&
-		isRecord(error.context.data) &&
-		error.context.data.error_code === 'PERMISSION_DENIED'
-	);
-}
-
-function readEvents(context: IPollFunctions): JobRunEvent[] {
-	const events = context.getNodeParameter('events');
-	if (!isJobRunEventList(events)) {
-		throw new NodeOperationError(context.getNode(), 'Events must be a list of run events', {
-			description: 'Choose the events in the Events field.',
-		});
-	}
-	return events;
-}
-
 function readJobId(context: IPollFunctions): number {
 	const jobId = String(context.getNodeParameter('jobId', '', { extractValue: true }));
 	if (!/^[0-9]+$/.test(jobId)) {
@@ -93,19 +77,6 @@ function readJobId(context: IPollFunctions): number {
 		});
 	}
 	return Number(jobId);
-}
-
-async function withLegibleErrors<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (error) {
-		makePermissionErrorLegible(error);
-		if (isPermissionDeniedError(error)) {
-			error.description =
-				'Grant Can View on the job to the user or service principal of the credential, then retry.';
-		}
-		throw error;
-	}
 }
 
 function getLifecycleState(run: DatabricksJobRun): string | undefined {
@@ -144,14 +115,6 @@ function toParameterEntries(parameter: JobParameter): Array<[string, string | un
 
 function readJobParameters(run: DatabricksJobRun): Record<string, string | undefined> {
 	return Object.fromEntries((run.job_parameters ?? []).flatMap(toParameterEntries));
-}
-
-function toIso(ms: number): string {
-	return new Date(ms).toISOString();
-}
-
-function withoutUndefined(record: IDataObject): IDataObject {
-	return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
 }
 
 function getDurationMs(run: ListedRun, endMs: number | undefined): number | undefined {
@@ -198,10 +161,6 @@ function simplifyRun(event: JobRunEvent, run: ListedRun): IDataObject {
 
 function toItem(event: JobRunEvent, run: ListedRun, simplify: boolean): INodeExecutionData {
 	return { json: simplify ? simplifyRun(event, run) : { event, ...run } };
-}
-
-function toOutput(items: INodeExecutionData[]): INodeExecutionData[][] | null {
-	return items.length > 0 ? [items] : null;
 }
 
 function collectManualItems(
@@ -265,7 +224,7 @@ function advanceCursor(state: JobRunWatchState, listedRunIds: Set<string>): void
 export async function pollJobRunEvents(
 	this: IPollFunctions,
 ): Promise<INodeExecutionData[][] | null> {
-	const subscribed = readEvents(this);
+	const subscribed = readEvents(this, JOB_RUN_EVENTS, 'run');
 	const simplify = this.getNodeParameter('simplify', true) === true;
 	const jobId = readJobId(this);
 	const credentialType = getActiveCredentialType(this);
@@ -274,6 +233,7 @@ export async function pollJobRunEvents(
 		const page = await withLegibleErrors(
 			async () =>
 				await listJobRuns(this, credentialType, { jobId, pageSize: JOB_RUNS_MAX_PAGE_SIZE }),
+			PERMISSION_HINT,
 		);
 		return toOutput(collectManualItems(toChronological(page.items), subscribed, simplify));
 	}
@@ -294,6 +254,7 @@ export async function pollJobRunEvents(
 				{ jobId, startTimeFromMs, pageSize: JOB_RUNS_MAX_PAGE_SIZE },
 				{ deadlineEpochMs },
 			),
+		PERMISSION_HINT,
 	);
 	const runs = toChronological(page.items).filter((run) => run.start_time >= startTimeFromMs);
 	const items = runs.flatMap((run) =>
