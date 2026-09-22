@@ -20,7 +20,7 @@ import {
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
-import { ExecutionResponseSender, noopResponseFrameSender } from '../../response-channel';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -75,7 +75,7 @@ describe('execution start (integration)', () => {
 				stepQueue,
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
-				new ExecutionResponseSender(noopResponseFrameSender),
+				noopExecutionResponseSender,
 			),
 		);
 		worker.start();

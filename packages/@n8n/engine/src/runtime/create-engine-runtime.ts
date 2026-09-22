@@ -33,7 +33,7 @@ export interface EngineRuntimeOptions {
 	logger?: EngineLogger;
 	/**
 	 * Where an execution sends responses. The host owns it. No default: a host
-	 * that discards responses says so with `noopResponseFrameSender`.
+	 * that discards responses says so with `noopExecutionResponseSender`.
 	 */
 	responseSender: ExecutionResponseSender;
 	/**

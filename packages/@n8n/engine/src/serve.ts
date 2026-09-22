@@ -5,7 +5,7 @@ import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
-import { ExecutionResponseSender, noopResponseFrameSender } from './response-channel';
+import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
 
 const logger = createConsoleLogger();
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
 		logger,
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
-		responseSender: new ExecutionResponseSender(noopResponseFrameSender),
+		responseSender: noopExecutionResponseSender,
 	});
 	runtime.start();
 

@@ -3,7 +3,7 @@ import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionResponseReceiver, ExecutionResponseSender } from '@n8n/engine';
+import type { ExecutionResponseSender } from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
@@ -21,7 +21,7 @@ import { randomBytes } from 'node:crypto';
 export class EngineV2Module implements ModuleInterface {
 	private responseSender?: ExecutionResponseSender;
 
-	private responseReceiver?: ExecutionResponseReceiver;
+	private responseReceiver?: { stop(): Promise<void> };
 
 	async init() {
 		if (Container.get(ExecutionsConfig).mode === 'queue') {
@@ -41,14 +41,21 @@ export class EngineV2Module implements ModuleInterface {
 
 		// Create both endpoints before the engine starts. A short run can answer
 		// before `startExecution` returns, and responses are not replayed.
-		const { createInMemoryResponsePair, ExecutionResponseReceiver, ExecutionResponseSender } =
-			await import('@n8n/engine');
-		// In-memory for now because both planes share this process. Separate frame
-		// endpoints can later use Redis when the planes run in different processes.
-		const { frameSender, frameReceiver } = createInMemoryResponsePair();
-		const responseSender = new ExecutionResponseSender(frameSender);
-		const responseReceiver = new ExecutionResponseReceiver(
-			frameReceiver,
+		const { InMemoryExecutionResponseChannel } = await import(
+			'./in-memory-execution-response-channel.js'
+		);
+		const { InMemoryExecutionResponseSender } = await import(
+			'./in-memory-execution-response-sender.js'
+		);
+		const { InMemoryExecutionResponseReceiver } = await import(
+			'./in-memory-execution-response-receiver.js'
+		);
+		// In-memory for now because both planes share this process. Redis endpoints
+		// can use the same response contracts when the planes run separately.
+		const responseChannel = new InMemoryExecutionResponseChannel();
+		const responseSender = new InMemoryExecutionResponseSender(responseChannel);
+		const responseReceiver = new InMemoryExecutionResponseReceiver(
+			responseChannel,
 			Container.get(Logger).scoped('engine-v2'),
 		);
 		this.responseSender = responseSender;

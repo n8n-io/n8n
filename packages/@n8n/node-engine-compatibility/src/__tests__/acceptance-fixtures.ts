@@ -8,8 +8,7 @@ import type {
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
-	ExecutionResponseSender,
-	noopResponseFrameSender,
+	noopExecutionResponseSender,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
 	WorkflowExecution,
@@ -325,7 +324,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(authSecret),
 			// Nothing here waits for a response; the fixture reads the run over the API.
-			responseSender: new ExecutionResponseSender(noopResponseFrameSender),
+			responseSender: noopExecutionResponseSender,
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
