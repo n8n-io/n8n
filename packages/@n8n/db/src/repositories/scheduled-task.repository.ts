@@ -949,7 +949,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * another instance sweeps at the same time.
 	 */
 	private async retireMissedPendingWithPostgres(limit: number): Promise<RetireMissedResult> {
-		const rows = await this.manager.query<RetiredRow[]>(
+		const rows = await this.manager.query<PostgresRetiredRow[]>(
 			`WITH stale AS MATERIALIZED (
 			   SELECT t."id"
 			     FROM ${this.tableName} t
@@ -980,7 +980,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	private async retireMissedPendingWithSqlite(limit: number): Promise<RetireMissedResult> {
 		return await this.manager.transaction(async (manager) => {
-			const rows = await manager.query<RetiredRow[]>(
+			const rows = await manager.query<SqliteRetiredRow[]>(
 				`SELECT t."id", t."jobId", t."taskType",
 				        (${this.atConcurrencyLimitSql('t.', 'j.')}) AS "heldByConcurrencyLimit"
 				   FROM ${this.tableName} t
@@ -1009,14 +1009,25 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 }
 
-/** One row of the retire pass, as either dialect reads it back. */
-interface RetiredRow {
-	id: string | number;
+/** The retire pass columns both dialects read back the same way. */
+interface RetiredRowBase {
 	jobId: number;
 	taskType: string;
-	/** Postgres returns a boolean, SQLite a 0/1 integer. */
-	heldByConcurrencyLimit: boolean | number;
 }
+
+/** Postgres reads a `bigint` id back as a string and a SQL boolean as a boolean. */
+interface PostgresRetiredRow extends RetiredRowBase {
+	id: string;
+	heldByConcurrencyLimit: boolean;
+}
+
+/** SQLite has no boolean type: the rowid reads back as a number and the flag as 0 or 1. */
+interface SqliteRetiredRow extends RetiredRowBase {
+	id: number;
+	heldByConcurrencyLimit: 0 | 1;
+}
+
+type RetiredRow = PostgresRetiredRow | SqliteRetiredRow;
 
 function retireResult(rows: RetiredRow[]): RetireMissedResult {
 	return {
