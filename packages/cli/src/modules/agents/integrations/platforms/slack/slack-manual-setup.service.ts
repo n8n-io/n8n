@@ -14,7 +14,12 @@ import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { SlackMethodsService } from './slack-methods.service';
-import { childRecord, type SlackAppSetupSession, slackSetupCacheKey } from './slack-setup.types';
+import {
+	childRecord,
+	parseSlackAppSetupResponse,
+	type SlackAppSetupSession,
+	slackSetupCacheKey,
+} from './slack-setup.types';
 import { stringProperty } from '../../integration-helpers';
 
 export interface CreateSlackAppOptions {
@@ -79,33 +84,7 @@ export class SlackManualSetupService {
 			throw this.methods.slackError('create the Slack app', response);
 		}
 
-		const credentials = childRecord(response, 'credentials');
-		const appId = stringProperty(response, 'app_id');
-		const clientId = stringProperty(credentials, 'client_id');
-		const clientSecret = stringProperty(credentials, 'client_secret');
-		const signingSecret = stringProperty(credentials, 'signing_secret');
-		const oauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
-		if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
-			throw new BadRequestError('Slack returned an incomplete app setup response');
-		}
-
-		const state = randomBytes(32).toString('hex');
-		const setupSession = {
-			projectId: options.projectId,
-			agentId: options.agentId,
-			userId: options.user.id,
-			appId,
-			clientId,
-			clientSecret,
-			signingSecret,
-			redirectUrl,
-		} satisfies SlackAppSetupSession;
-		await this.methods.storeSession(state, setupSession);
-
-		return {
-			appId,
-			installUrl: this.methods.installUrl(oauthAuthorizeUrl, state, redirectUrl),
-		};
+		return await this.createInstallSession(options, redirectUrl, response);
 	}
 
 	async getManifest(options: GetSlackAppManifestOptions): Promise<SlackAgentAppManifestResponse> {
@@ -121,43 +100,10 @@ export class SlackManualSetupService {
 			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
 
-		const user = await this.userRepository.findOne({
-			where: { id: session.userId },
-			relations: ['role'],
-		});
-		if (!user) throw new NotFoundError(`User "${session.userId}" not found`);
-		const project = await this.projectService.getProjectWithScope(user, session.projectId, [
-			'agent:update',
-			'credential:create',
-		]);
-		if (!project) {
-			throw new ForbiddenError('You do not have permission to complete Slack app setup');
-		}
+		const user = await this.getInstallUser(session);
 
 		const agent = await this.methods.getAgent(session.agentId, session.projectId);
-		const tokenResponse = await this.methods.callSlackApi(
-			'oauth.v2.access',
-			{
-				code: options.code,
-				redirect_uri: session.redirectUrl,
-			},
-			{
-				authorization: `Basic ${Buffer.from(`${session.clientId}:${session.clientSecret}`).toString(
-					'base64',
-				)}`,
-			},
-		);
-		if (!tokenResponse.ok) {
-			throw this.methods.slackError('finish Slack app installation', tokenResponse);
-		}
-
-		const accessToken = stringProperty(tokenResponse, 'access_token');
-		if (!accessToken?.startsWith('xoxb-')) {
-			throw new BadRequestError('Slack did not return a Bot User OAuth Token');
-		}
-
-		const team = childRecord(tokenResponse, 'team');
-		const teamName = stringProperty(team, 'name');
+		const { accessToken, teamName } = await this.exchangeInstallCode(session, options.code);
 		await this.methods.connectBotCredential(agent, user, accessToken, {
 			...session,
 			...(teamName ? { teamName } : {}),
@@ -179,5 +125,75 @@ export class SlackManualSetupService {
 		}
 
 		throw new BadRequestError('Slack app setup state has expired or is invalid');
+	}
+
+	private async createInstallSession(
+		options: CreateSlackAppOptions,
+		redirectUrl: string,
+		response: Record<string, unknown>,
+	): Promise<CreateSlackAgentAppResponse> {
+		const { appId, clientId, clientSecret, signingSecret, oauthAuthorizeUrl } =
+			parseSlackAppSetupResponse(response);
+
+		const state = randomBytes(32).toString('hex');
+		const setupSession = {
+			projectId: options.projectId,
+			agentId: options.agentId,
+			userId: options.user.id,
+			appId,
+			clientId,
+			clientSecret,
+			signingSecret,
+			redirectUrl,
+		} satisfies SlackAppSetupSession;
+		await this.methods.storeSession(state, setupSession);
+
+		return {
+			appId,
+			installUrl: this.methods.installUrl(oauthAuthorizeUrl, state, redirectUrl),
+		};
+	}
+
+	private async getInstallUser(session: SlackAppSetupSession): Promise<User> {
+		const user = await this.userRepository.findOne({
+			where: { id: session.userId },
+			relations: ['role'],
+		});
+		if (!user) throw new NotFoundError(`User "${session.userId}" not found`);
+		const project = await this.projectService.getProjectWithScope(user, session.projectId, [
+			'agent:update',
+			'credential:create',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have permission to complete Slack app setup');
+		}
+		return user;
+	}
+
+	private async exchangeInstallCode(session: SlackAppSetupSession, code: string) {
+		const tokenResponse = await this.methods.callSlackApi(
+			'oauth.v2.access',
+			{
+				code,
+				redirect_uri: session.redirectUrl,
+			},
+			{
+				authorization: `Basic ${Buffer.from(`${session.clientId}:${session.clientSecret}`).toString(
+					'base64',
+				)}`,
+			},
+		);
+		if (!tokenResponse.ok) {
+			throw this.methods.slackError('finish Slack app installation', tokenResponse);
+		}
+
+		const accessToken = stringProperty(tokenResponse, 'access_token');
+		if (!accessToken?.startsWith('xoxb-')) {
+			throw new BadRequestError('Slack did not return a Bot User OAuth Token');
+		}
+
+		const team = childRecord(tokenResponse, 'team');
+		const teamName = stringProperty(team, 'name');
+		return { accessToken, teamName };
 	}
 }

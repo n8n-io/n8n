@@ -138,14 +138,7 @@ export class AgentPublishService {
 			return { agent };
 		}
 
-		let targetHistory: AgentHistory | undefined;
-		if (versionId) {
-			const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
-			if (!target) {
-				throw new NotFoundError(`Version "${versionId}" not found for agent "${agent.id}"`);
-			}
-			targetHistory = target;
-		}
+		const targetHistory = await this.findPublishTarget(versionId, agent.id);
 
 		const tasks = versionId
 			? new Map<string, AgentTask>()
@@ -164,66 +157,7 @@ export class AgentPublishService {
 			targetHistory ? targetHistory.schema : agent.schema,
 		);
 
-		await this.agentRepository.manager.transaction(async (trx) => {
-			let nextActiveVersionId: string;
-			let nextVersionId: string;
-			let nextActiveVersion: AgentHistory | null | undefined;
-
-			if (targetHistory) {
-				nextActiveVersionId = targetHistory.versionId;
-				nextActiveVersion = targetHistory;
-				nextVersionId = uuid();
-			} else {
-				nextVersionId = agent.versionId ?? uuid();
-				try {
-					nextActiveVersion = await this.agentHistoryRepository.saveVersion(
-						{
-							versionId: nextVersionId,
-							agentId: agent.id,
-							schema: agent.schema,
-							tools: this.customToolsService.snapshotConfiguredTools(
-								agent.schema,
-								agent.tools ?? {},
-							),
-							skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
-							publishedBy: user,
-						},
-						trx,
-					);
-				} catch (error) {
-					// Two concurrent publishes of the same draft share this
-					// versionId, so the loser collides on the history primary
-					// key before it can reach the revision fence. Surface the
-					// same retryable conflict the fence would have produced.
-					if (isUniqueConstraintError(error)) {
-						throw new ConflictError(
-							'Agent was modified concurrently while publishing; please retry',
-						);
-					}
-					throw error;
-				}
-				await this.snapshotConfiguredTasks(trx, nextVersionId, agent.schema, tasks);
-				nextActiveVersionId = nextVersionId;
-			}
-
-			const won = await this.agentRepository.setActiveVersionFenced(
-				agent.id,
-				expectedRevision,
-				{ activeVersionId: nextActiveVersionId, versionId: nextVersionId },
-				trx,
-			);
-			if (!won) {
-				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
-			}
-
-			// Fence first: only mutate the in-memory entity once the row is ours,
-			// so a losing caller never sees phantom published state on the entity
-			// instance it still holds.
-			agent.activeVersionId = nextActiveVersionId;
-			agent.activeVersion = nextActiveVersion;
-			agent.versionId = nextVersionId;
-			agent.revision = expectedRevision + 1;
-		});
+		await this.commitPublication(agent, expectedRevision, user, tasks, targetHistory);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
@@ -232,24 +166,7 @@ export class AgentPublishService {
 		this.trackPublished(agent, projectId, user, emitter, targetHistory);
 		await emitSetupCompleted?.();
 
-		const credentialIntegrations = agent.integrations ?? [];
-		if (credentialIntegrations.length > 0) {
-			await Container.get(ChatIntegrationService)
-				.syncToConfig(agent, [], credentialIntegrations)
-				.catch((error) =>
-					this.logger.warn('Failed to connect integrations on publish', {
-						agentId,
-						error,
-					}),
-				);
-		}
-
-		const { AgentTaskService } = await import('./agent-task.service.js');
-		await Container.get(AgentTaskService)
-			.requestReconcile(agentId)
-			.catch((error) =>
-				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
-			);
+		await this.startPublishedServices(agent);
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
@@ -337,27 +254,7 @@ export class AgentPublishService {
 		// a user-retryable conflict instead of rolling back a newer active version.
 		const expectedRevision = agent.revision;
 
-		await this.agentRepository.manager.transaction(async (trx) => {
-			const nextVersionId = uuid();
-
-			// Fence first: only mutate the in-memory entity once the row is ours,
-			// so a losing caller never sees phantom unpublished state on the
-			// entity instance it still holds.
-			const won = await this.agentRepository.setActiveVersionFenced(
-				agent.id,
-				expectedRevision,
-				{ activeVersionId: null, versionId: nextVersionId },
-				trx,
-			);
-			if (!won) {
-				throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
-			}
-
-			agent.activeVersionId = null;
-			agent.activeVersion = null;
-			agent.versionId = nextVersionId;
-			agent.revision = expectedRevision + 1;
-		});
+		await this.commitUnpublication(agent, expectedRevision);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 
@@ -738,27 +635,9 @@ export class AgentPublishService {
 		const existing = await repo.findBy({ agentId });
 		const snapshots = await this.agentTaskSnapshotRepository.findByVersionId(versionId, trx);
 
-		const existingBodies = Object.fromEntries(
-			existing.map((row) => [
-				row.id,
-				{
-					name: row.name,
-					objective: row.objective,
-					cronExpression: row.cronExpression,
-					timezone: row.timezone,
-				},
-			]),
-		);
+		const existingBodies = Object.fromEntries(existing.map((row) => [row.id, taskBody(row)]));
 		const snapshotBodies = Object.fromEntries(
-			snapshots.map((snapshot) => [
-				snapshot.taskId,
-				{
-					name: snapshot.name,
-					objective: snapshot.objective,
-					cronExpression: snapshot.cronExpression,
-					timezone: snapshot.timezone,
-				},
-			]),
+			snapshots.map((snapshot) => [snapshot.taskId, taskBody(snapshot)]),
 		);
 		const tasksChanged = !isEqual(existingBodies, snapshotBodies);
 
@@ -770,24 +649,144 @@ export class AgentPublishService {
 		const existingIds = new Set(existing.map((row) => row.id));
 		for (const snapshot of snapshots) {
 			if (existingIds.has(snapshot.taskId)) {
-				await repo.update(snapshot.taskId, {
-					name: snapshot.name,
-					objective: snapshot.objective,
-					cronExpression: snapshot.cronExpression,
-					timezone: snapshot.timezone,
-				});
+				await repo.update(snapshot.taskId, taskBody(snapshot));
 			} else {
 				await repo.insert({
 					id: snapshot.taskId,
 					agentId,
-					name: snapshot.name,
-					objective: snapshot.objective,
-					cronExpression: snapshot.cronExpression,
-					timezone: snapshot.timezone,
+					...taskBody(snapshot),
 				});
 			}
 		}
 
 		return tasksChanged;
 	}
+
+	private async startPublishedServices(agent: Agent): Promise<void> {
+		const agentId = agent.id;
+		const credentialIntegrations = agent.integrations ?? [];
+		if (credentialIntegrations.length > 0) {
+			await Container.get(ChatIntegrationService)
+				.syncToConfig(agent, [], credentialIntegrations)
+				.catch((error) =>
+					this.logger.warn('Failed to connect integrations on publish', {
+						agentId,
+						error,
+					}),
+				);
+		}
+
+		const { AgentTaskService } = await import('./agent-task.service.js');
+		await Container.get(AgentTaskService)
+			.requestReconcile(agentId)
+			.catch((error) =>
+				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
+			);
+	}
+
+	private async commitUnpublication(agent: Agent, expectedRevision: number): Promise<void> {
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const nextVersionId = uuid();
+
+			// Fence first: only mutate the in-memory entity once the row is ours,
+			// so a losing caller never sees phantom unpublished state on the
+			// entity instance it still holds.
+			const won = await this.agentRepository.setActiveVersionFenced(
+				agent.id,
+				expectedRevision,
+				{ activeVersionId: null, versionId: nextVersionId },
+				trx,
+			);
+			if (!won) {
+				throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
+			}
+
+			agent.activeVersionId = null;
+			agent.activeVersion = null;
+			agent.versionId = nextVersionId;
+			agent.revision = expectedRevision + 1;
+		});
+	}
+
+	private async findPublishTarget(
+		versionId: string | undefined,
+		agentId: string,
+	): Promise<AgentHistory | undefined> {
+		if (!versionId) return undefined;
+		const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!target) throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+		return target;
+	}
+
+	private async commitPublication(
+		agent: Agent,
+		expectedRevision: number,
+		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
+		targetHistory?: AgentHistory,
+	): Promise<void> {
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const next = await this.preparePublishedVersion(trx, agent, user, tasks, targetHistory);
+			const won = await this.agentRepository.setActiveVersionFenced(
+				agent.id,
+				expectedRevision,
+				{ activeVersionId: next.activeVersionId, versionId: next.versionId },
+				trx,
+			);
+			if (!won)
+				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			// Update the caller's entity only after the revision fence succeeds.
+			agent.activeVersionId = next.activeVersionId;
+			agent.activeVersion = next.activeVersion;
+			agent.versionId = next.versionId;
+			agent.revision = expectedRevision + 1;
+		});
+	}
+
+	private async preparePublishedVersion(
+		trx: EntityManager,
+		agent: Agent,
+		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
+		targetHistory?: AgentHistory,
+	) {
+		if (targetHistory) {
+			return {
+				activeVersionId: targetHistory.versionId,
+				activeVersion: targetHistory,
+				versionId: uuid(),
+			};
+		}
+		const versionId = agent.versionId ?? uuid();
+		const activeVersion = await this.saveDraftHistory(trx, agent, user, versionId);
+		await this.snapshotConfiguredTasks(trx, versionId, agent.schema, tasks);
+		return { activeVersionId: versionId, activeVersion, versionId };
+	}
+
+	private async saveDraftHistory(trx: EntityManager, agent: Agent, user: User, versionId: string) {
+		try {
+			return await this.agentHistoryRepository.saveVersion(
+				{
+					versionId,
+					agentId: agent.id,
+					schema: agent.schema,
+					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+					skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
+					publishedBy: user,
+				},
+				trx,
+			);
+		} catch (error) {
+			// Concurrent publishes of one draft can collide before they reach the revision fence.
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			}
+			throw error;
+		}
+	}
+}
+
+function taskBody(task: Pick<AgentTask, 'name' | 'objective' | 'cronExpression' | 'timezone'>) {
+	const { name, objective, cronExpression, timezone } = task;
+	return { name, objective, cronExpression, timezone };
 }

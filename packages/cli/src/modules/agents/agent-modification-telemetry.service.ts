@@ -83,6 +83,75 @@ export function diffAgentConfigParts(
 	});
 }
 
+interface AgentModificationEvent {
+	/** Post-save entity, so the reported profile is the one that landed. */
+	agent: Agent;
+	projectId: string;
+	user: User;
+	by: AgentActor;
+	changedParts: AgentConfigPart[];
+	/**
+	 * Whether the agent was still unconfigured before this write. The write
+	 * that leaves it configured is what creates it as far as telemetry is
+	 * concerned, so it reports the creation event for `by` instead of the
+	 * modification one — a write is never counted as both.
+	 */
+	wasUnconfigured: boolean;
+}
+
+export function captureAgentMutation(agent: Agent) {
+	const schema = agent.schema ?? null;
+	const integrations = agent.integrations ?? [];
+	return { schema, integrations, wasUnconfigured: isUnconfiguredAgent(schema, integrations) };
+}
+
+export type AgentMutationSnapshot = ReturnType<typeof captureAgentMutation>;
+
+export function buildAgentMutationEvent(
+	agent: Agent,
+	projectId: string,
+	context: AgentMutationTelemetryContext,
+	previous: AgentMutationSnapshot,
+	sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>>,
+): AgentModificationEvent {
+	return {
+		agent,
+		projectId,
+		user: context.user,
+		by: context.modifiedBy,
+		changedParts: diffAgentConfigParts(
+			previous.schema,
+			agent.schema,
+			previous.integrations,
+			agent.integrations ?? [],
+			sidecarChanges,
+		),
+		wasUnconfigured: previous.wasUnconfigured,
+	};
+}
+
+function modificationProperties({ agent, projectId, user, changedParts }: AgentModificationEvent) {
+	const counts = countAgentCapabilities(agent.schema, agent.integrations);
+	// Only model and tool_types: this helper's own tool_count folds in MCP
+	// servers, provider tools, web search and sub-agents, which would
+	// disagree with the per-kind counts above.
+	const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
+		agent.schema,
+		agent.integrations,
+	);
+
+	return {
+		agent_id: agent.id,
+		project_id: projectId,
+		user_id: user.id,
+		changed_parts: changedParts,
+		...capabilityCountTelemetryProperties(counts),
+		model,
+		tool_types,
+		has_published_version: Boolean(agent.activeVersionId),
+	} as const;
+}
+
 /**
  * Single emitter for the six agent creation and modification events. Every
  * config write reports through here, so the only things that differ between
@@ -93,81 +162,16 @@ export function diffAgentConfigParts(
 export class AgentModificationTelemetryService {
 	constructor(private readonly telemetry: Telemetry) {}
 
-	record({
-		agent,
-		projectId,
-		user,
-		by,
-		changedParts,
-		wasUnconfigured,
-	}: {
-		/** Post-save entity, so the reported profile is the one that landed. */
-		agent: Agent;
-		projectId: string;
-		user: User;
-		by: AgentActor;
-		changedParts: AgentConfigPart[];
-		/**
-		 * Whether the agent was still unconfigured before this write. The write
-		 * that leaves it configured is what creates it as far as telemetry is
-		 * concerned, so it reports the creation event for `by` instead of the
-		 * modification one — a write is never counted as both.
-		 */
-		wasUnconfigured: boolean;
-	}): void {
-		if (changedParts.length === 0) return;
-
+	record(event: AgentModificationEvent): void {
+		if (event.changedParts.length === 0) return;
 		try {
-			const stillUnconfigured = isUnconfiguredAgent(agent.schema, agent.integrations);
-			// Blank-to-blank (rename/recolour of an unconfigured agent) stays silent
-			// so a creation remains the first event any agent reports. Configured →
-			// unconfigured (final capability removal) still reports modification.
-			if (wasUnconfigured && stillUnconfigured) return;
+			const { agent, by, wasUnconfigured } = event;
+			if (wasUnconfigured && isUnconfiguredAgent(agent.schema, agent.integrations)) return;
 
-			const counts = countAgentCapabilities(agent.schema, agent.integrations);
-			// Only model and tool_types: this helper's own tool_count folds in MCP
-			// servers, provider tools, web search and sub-agents, which would
-			// disagree with the per-kind counts above.
-			const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
-				agent.schema,
-				agent.integrations,
-			);
-
-			const properties = {
-				agent_id: agent.id,
-				project_id: projectId,
-				user_id: user.id,
-				changed_parts: changedParts,
-				...capabilityCountTelemetryProperties(counts),
-				model,
-				tool_types,
-				has_published_version: Boolean(agent.activeVersionId),
-			} as const;
-
+			const properties = modificationProperties(event);
 			if (wasUnconfigured) {
-				// Written out per surface rather than looked up, because the creation
-				// events do not share one event_version and `Telemetry.track` types
-				// its payload against the specific event passed.
-				switch (by) {
-					case 'user':
-						this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
-							...properties,
-							event_version: '2',
-						});
-						return;
-					case 'builder':
-						this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
-							...properties,
-							event_version: '2',
-						});
-						return;
-					case 'mcp':
-						this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, {
-							...properties,
-							event_version: '1',
-						});
-						return;
-				}
+				this.recordCreation(by, properties);
+				return;
 			}
 
 			const entry = {
@@ -175,10 +179,36 @@ export class AgentModificationTelemetryService {
 				builder: TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
 				mcp: TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
 			}[by];
-
 			this.telemetry.track(entry, { ...properties, event_version: '1' });
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	private recordCreation(
+		by: AgentActor,
+		properties: ReturnType<typeof modificationProperties>,
+	): void {
+		// Creation events use different versions. Keep each payload tied to its event.
+		switch (by) {
+			case 'user':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
+					...properties,
+					event_version: '2',
+				});
+				return;
+			case 'builder':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
+					...properties,
+					event_version: '2',
+				});
+				return;
+			case 'mcp':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+				return;
 		}
 	}
 }

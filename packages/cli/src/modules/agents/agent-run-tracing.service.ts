@@ -84,14 +84,12 @@ export class AgentRunTracingService {
 			source: metadata.source,
 			...(metadata.userId ? { user_id: metadata.userId } : {}),
 			...(metadata.modelId ? { model_id: metadata.modelId } : {}),
-			...(isWorkflowTracingMetadata(metadata)
-				? {
-						...(metadata.executionId ? { execution_id: metadata.executionId } : {}),
-						...(metadata.workflowId ? { workflow_id: metadata.workflowId } : {}),
-						...(metadata.nodeId ? { node_id: metadata.nodeId } : {}),
-					}
-				: {}),
 		};
+		if (isWorkflowTracingMetadata(metadata)) {
+			if (metadata.executionId) attributes.execution_id = metadata.executionId;
+			if (metadata.workflowId) attributes.workflow_id = metadata.workflowId;
+			if (metadata.nodeId) attributes.node_id = metadata.nodeId;
+		}
 
 		const built = await new Telemetry()
 			.tracer(this.otelService.getTracer(AGENTS_TRACER_NAME))

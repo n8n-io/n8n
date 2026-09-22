@@ -89,9 +89,8 @@ function projectIntegrations(
 	// instead of leaving both the draft and the connected entry behind.
 	next = next.filter((entry) => !(entry.type === add.type && isDraftIntegration(entry)));
 
-	return next.some((entry) => matchesIntegrationRef(entry, add))
-		? next.map((entry) => (matchesIntegrationRef(entry, add) ? add : entry))
-		: [...next, add];
+	if (!next.some((entry) => matchesIntegrationRef(entry, add))) return [...next, add];
+	return next.map((entry) => (matchesIntegrationRef(entry, add) ? add : entry));
 }
 
 @Service()
@@ -158,59 +157,13 @@ export class AgentIntegrationPersistenceService {
 		);
 
 		for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
-			const state = await this.agentRepository.findIntegrationState(agent.id);
-			if (!state) throw new UserError(`Agent "${agent.id}" no longer exists`);
-
-			const current = state.integrations ?? [];
-			const removed = remove
-				? current.find((entry) => matchesIntegrationRef(entry, remove))
-				: undefined;
-
-			const published = state.activeVersionId !== null;
-			// Callers derive their response and their runtime decisions from the
-			// entity, so correct it to what was read. Scalar only — nothing here reads
-			// the `activeVersion` relation, and fabricating one would be worse.
-			agent.activeVersionId = state.activeVersionId;
-
-			// A removal of something already gone is not a failure — and with
-			// nothing to add there is no write left to make.
-			if (!add && !removed) {
-				agent.integrations = current;
-				agent.versionId = state.versionId;
-				return { agent, changed: false, published };
-			}
-
-			const integrations = projectIntegrations(current, { add, remove });
-			// Always fresh: `versionId` is the compare-and-set token, so writing back
-			// the value we guarded on would let two concurrent writes both match.
-			// Consumers only compare it to `activeVersionId`, which a rotation keeps.
-			const versionId = uuid();
-
-			// Gate evaluated against the state about to be written; the marker is
-			// claimed and reported only once that write succeeded.
-			agent.integrations = integrations;
-			const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
+			const result = await this.applyIntegrationAttempt(
 				agent,
-				agent.projectId,
+				{ add, remove },
+				context,
 				credentialProvider,
-				context.user,
 			);
-
-			const written = await this.agentRepository.updateIntegrations(
-				agent.id,
-				integrations,
-				{ versionId: state.versionId, activeVersionId: state.activeVersionId },
-				versionId,
-			);
-			if (!written) continue;
-
-			agent.versionId = versionId;
-			this.runtimeCacheService.clearRuntimes(agent.id);
-			this.eventService.emit('agent-saved', { agentId: agent.id });
-			await emitSetupCompleted?.();
-			this.recordIntegrationMutation(agent, current, context);
-
-			return { agent, changed: true, published, ...(removed ? { removed } : {}) };
+			if (result) return result;
 		}
 
 		throw new OperationalError(
@@ -252,5 +205,83 @@ export class AgentIntegrationPersistenceService {
 			),
 			wasUnconfigured,
 		});
+	}
+	private async applyIntegrationAttempt(
+		agent: Agent,
+		{ add, remove }: IntegrationDelta,
+		context: CredentialIntegrationMutationContext,
+		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
+	): Promise<IntegrationDeltaResult | undefined> {
+		const state = await this.agentRepository.findIntegrationState(agent.id);
+		if (!state) throw new UserError(`Agent "${agent.id}" no longer exists`);
+
+		const current = state.integrations ?? [];
+		const removed = remove
+			? current.find((entry) => matchesIntegrationRef(entry, remove))
+			: undefined;
+
+		const published = state.activeVersionId !== null;
+		// Callers derive their response and their runtime decisions from the
+		// entity, so correct it to what was read. Scalar only — nothing here reads
+		// the `activeVersion` relation, and fabricating one would be worse.
+		agent.activeVersionId = state.activeVersionId;
+
+		// A removal of something already gone is not a failure — and with
+		// nothing to add there is no write left to make.
+		if (!add && !removed) {
+			agent.integrations = current;
+			agent.versionId = state.versionId;
+			return { agent, changed: false, published };
+		}
+
+		const integrations = projectIntegrations(current, { add, remove });
+		const written = await this.persistIntegrations(
+			agent,
+			integrations,
+			state,
+			context,
+			credentialProvider,
+		);
+		if (!written) return undefined;
+		this.runtimeCacheService.clearRuntimes(agent.id);
+		this.eventService.emit('agent-saved', { agentId: agent.id });
+		await written.emitSetupCompleted?.();
+		this.recordIntegrationMutation(agent, current, context);
+
+		return { agent, changed: true, published, ...(removed ? { removed } : {}) };
+	}
+
+	private async persistIntegrations(
+		agent: Agent,
+		integrations: AgentIntegrationConfig[],
+		state: Pick<Agent, 'versionId' | 'activeVersionId'>,
+		context: CredentialIntegrationMutationContext,
+		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
+	) {
+		// Always fresh: `versionId` is the compare-and-set token, so writing back
+		// the value we guarded on would let two concurrent writes both match.
+		// Consumers only compare it to `activeVersionId`, which a rotation keeps.
+		const versionId = uuid();
+
+		// Gate evaluated against the state about to be written; the marker is
+		// claimed and reported only once that write succeeded.
+		agent.integrations = integrations;
+		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
+			agent,
+			agent.projectId,
+			credentialProvider,
+			context.user,
+		);
+
+		const written = await this.agentRepository.updateIntegrations(
+			agent.id,
+			integrations,
+			{ versionId: state.versionId, activeVersionId: state.activeVersionId },
+			versionId,
+		);
+		if (!written) return undefined;
+
+		agent.versionId = versionId;
+		return { emitSetupCompleted };
 	}
 }
