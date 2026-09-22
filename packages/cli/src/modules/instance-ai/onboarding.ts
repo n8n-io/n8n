@@ -20,6 +20,8 @@ import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import {
@@ -45,6 +47,55 @@ type Question = z.infer<typeof instanceAiQuestionSchema>;
 type GivenAnswer = Extract<InstanceAiConfirmRequest, { kind: 'questions' }>['answers'][number];
 /** One answer in the `ask-user` result shape: the wire answer plus the question text. */
 type Answer = GivenAnswer & { question: string };
+
+/**
+ * The n8n Cloud signup survey answers the launch context may carry under `survey`, keyed like
+ * the cloud stores them in the account `information` (`GET /rest/cloud/proxy/user/me`). Other
+ * keys are dropped. The card skips a step the survey answers; the answer still reaches the agent.
+ */
+const surveySchema = z.object({ what_team_are_you_on: z.string().optional() });
+type Survey = z.infer<typeof surveySchema>;
+const launchContextSchema = z.object({ survey: surveySchema.optional() });
+/** Card question id -> the survey key that answers it. */
+// ponytail: one pair; move it into the opening YAML when a second survey-backed question shows up.
+const SURVEY_KEY_BY_QUESTION: Partial<Record<string, keyof Survey>> = {
+	team: 'what_team_are_you_on',
+};
+
+function surveyOf(sourceContext: unknown): Survey {
+	const parsed = launchContextSchema.safeParse(sourceContext ?? {});
+	if (!parsed.success) throw new BadRequestError('Invalid onboarding survey in sourceContext');
+	return parsed.data.survey ?? {};
+}
+
+/**
+ * Split the opening into the steps the card shows and the answers the survey already gave. A
+ * shown step that picks its options from a survey-answered step gets them resolved here: the
+ * card resolves `optionsByAnswer` only from its own steps.
+ */
+function applySurvey(questions: Question[], survey: Survey) {
+	const answered = new Map<string, string>();
+	for (const question of questions) {
+		const key = SURVEY_KEY_BY_QUESTION[question.id];
+		const value = key && survey[key]?.trim();
+		if (value) answered.set(question.id, value);
+	}
+	const shown = questions.flatMap((question) => {
+		if (answered.has(question.id)) return [];
+		const dependency = question.optionsByAnswer;
+		const dependencyAnswer = dependency && answered.get(dependency.questionId);
+		if (!dependency || !dependencyAnswer) return [question];
+		// An answer outside the list (the survey's "Other") keeps the step's fallback options.
+		return [
+			{
+				...question,
+				options: dependency.options[dependencyAnswer] ?? question.options,
+				optionsByAnswer: undefined,
+			},
+		];
+	});
+	return { shown, answered };
+}
 
 /** `onboarding/cloud-form.yaml` in `@n8n/instance-ai`: the copy shown before the agent's first turn. */
 const openingSchema = z.object({
@@ -104,8 +155,10 @@ export class InstanceAiOnboardingService {
 		projectId: string,
 		launchMetadata: InstanceAiThreadLaunchMetadata,
 	): Promise<InstanceAiEnsureThreadResponse> {
-		// Load the opening before the thread exists, so a broken opening file creates nothing.
+		// Load the opening and read the survey before the thread exists, so a broken opening file
+		// or a bad survey creates nothing.
 		const { opening } = await loadOnboarding();
+		const { shown } = applySurvey(opening.questions, surveyOf(launchMetadata.sourceContext));
 		const response = await this.memoryService.ensureThread(
 			user.id,
 			threadId,
@@ -127,7 +180,7 @@ export class InstanceAiOnboardingService {
 			messageId: userMessageId,
 			title: opening.title,
 			text: greeting,
-			questions: opening.questions,
+			questions: shown,
 		});
 		return response;
 	}
@@ -146,17 +199,22 @@ export class InstanceAiOnboardingService {
 		const row = await this.pendingConfirmationRepo.claim(requestId, userId);
 		if (!row?.toolCallId) return undefined;
 
-		const { opening } = await loadOnboarding();
+		const [{ opening }, metadata] = await Promise.all([
+			loadOnboarding(),
+			this.memoryService.getThreadMetadata(userId, row.threadId),
+		]);
+		const { shown, answered } = applySurvey(opening.questions, surveyOf(metadata?.sourceContext));
 		const given = request.kind === 'questions' ? request.answers : [];
-		// One answer per step in card order, with the question text like the `ask-user` tool adds.
-		const answers: Answer[] = opening.questions.map((question) => ({
+		// One answer per shown step in card order, with the question text like the `ask-user` tool adds.
+		const answerFor = (question: Question): Answer => ({
 			...(given.find((answer) => answer.questionId === question.id) ?? {
 				questionId: question.id,
 				selectedOptions: [],
 				skipped: true,
 			}),
 			question: question.question,
-		}));
+		});
+		const answers = shown.map(answerFor);
 		// Same result shape as the `ask-user` tool, so the UI and the agent read it the same way.
 		this.eventBus.publish(row.threadId, {
 			type: 'tool-result',
@@ -167,10 +225,14 @@ export class InstanceAiOnboardingService {
 		// Committed before the first turn writes its rows, so the fold keeps the card under the
 		// greeting.
 		await this.eventLog.flush(row.threadId);
-		return {
-			threadId: row.threadId,
-			message: buildOnboardingAnswerMessage(answers),
-		};
+		// The card showed only what the survey left open; the agent gets every line, in opening order.
+		const lines = opening.questions.map((question) => {
+			const fromSurvey = answered.get(question.id);
+			return fromSurvey
+				? { question: question.question, selectedOptions: [fromSurvey] }
+				: answerFor(question);
+		});
+		return { threadId: row.threadId, message: buildOnboardingAnswerMessage(lines) };
 	}
 
 	/**

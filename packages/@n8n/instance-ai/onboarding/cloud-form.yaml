@@ -3,7 +3,8 @@
 # has no Skip button; the card's own "Something else" free text is the way out of a `single` or
 # `multi` step. The answers reach the agent in an <onboarding-answer> block on the first user
 # turn, one line per question, so a new question here needs no code change: add it to the list.
-# The next new onboarding thread reads this file again. {{firstName}} becomes the user's first
+# The host skips a step the signup survey already answered; that answer still reaches the
+# agent. The next new onboarding thread reads this file again. {{firstName}} becomes the user's first
 # name, or "there".
 title: Welcome to n8n
 greeting: >-
@@ -13,7 +14,8 @@ greeting: >-
 questions:
   # The n8n Cloud signup form's team labels, so the answers stay comparable with the Cloud
   # metadata (`what_team_are_you_on`). The card hides options that start with "other"; its
-  # "Something else" field stands in for Other.
+  # "Something else" field stands in for Other. The launch context's `survey.what_team_are_you_on`
+  # answers this step, and the card then starts at the apps step with that team's list.
   - id: team
     question: What team are you on?
     type: single
