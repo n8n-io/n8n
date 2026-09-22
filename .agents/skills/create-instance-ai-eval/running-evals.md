@@ -241,9 +241,14 @@ crashed it. A batch calibrates on the LangTracer dispatchers:
 
 ```bash
 gh workflow run test-evals-instance-ai.yml --repo n8n-io/n8n \
-  -f branch=<your-branch> -f suite=<suite> -f filter=<slug-substrings> \
+  -f branch=<your-branch> -f cache-sha=$(git rev-parse origin/<your-branch>) \
+  -f suite=<suite> -f filter=<slug-substrings> \
   -f iterations=3 -f experiment-name=<change-name>
 ```
+
+`cache-sha` is what puts a backend change under test: without it the workflow
+restores the n8n image cached for master's head, and only the eval CLI runs from
+your branch. A harness-only change works either way.
 
 CI reads cases from LangTracer only. A case that exists only on disk goes into a
 throwaway suite first (`eval:langtracer-push --suite <scratch-suite> <slug>`).
