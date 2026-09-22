@@ -65,6 +65,31 @@ const triggerNodeTypes: Record<string, INodeTypeDescription> = {
 	'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
 };
 
+/** A feeds B and C, which each leave the selection: two exit nodes. */
+function makeTwoExitGraph(): LinearGraphFixture {
+	const connections: IConnections = {
+		A: {
+			main: [
+				[
+					{ node: 'B', type: 'main', index: 0 },
+					{ node: 'C', type: 'main', index: 0 },
+				],
+			],
+		},
+		B: { main: [[{ node: 'OutsideOne', type: 'main', index: 0 }]] },
+		C: { main: [[{ node: 'OutsideTwo', type: 'main', index: 0 }]] },
+	};
+
+	return {
+		nodes: {
+			a: makeNode({ id: 'a', name: 'A' }),
+			b: makeNode({ id: 'b', name: 'B' }),
+			c: makeNode({ id: 'c', name: 'C' }),
+		},
+		connections,
+	};
+}
+
 /** Outside reaches A and B, which both join at C: two entry nodes. */
 function makeTwoEntryGraph(): LinearGraphFixture {
 	const connections: IConnections = {
@@ -265,6 +290,15 @@ describe('useSelectionValidation', () => {
 			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
 		});
 
+		it('accepts a selection with two exit nodes', () => {
+			const graph = makeTwoExitGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
+		});
+
 		it('still refuses to extract a selection with two entry nodes', () => {
 			const graph = makeTwoEntryGraph();
 			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
@@ -277,6 +311,15 @@ describe('useSelectionValidation', () => {
 
 	it('refuses a selection with two entry nodes while the flag is off', () => {
 		const graph = makeTwoEntryGraph();
+		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+		const { isSelectionGroupable } = useSelectionValidation();
+
+		expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
+	});
+
+	it('refuses a selection with two exit nodes while the flag is off', () => {
+		const graph = makeTwoExitGraph();
 		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
 
 		const { isSelectionGroupable } = useSelectionValidation();
