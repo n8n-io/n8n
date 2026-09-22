@@ -1,7 +1,12 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 const NON_RUNTIME_FILE =
-	/(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test[\\/])|([\\/]migrations[\\/])|([\\/]backend-test-utils[\\/])/;
+	/(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test[\\/])|([\\/]backend-test-utils[\\/])/;
+
+// A database migration owns its table, so it writes entities directly. Only those
+// directories are exempt: `cli/src/modules/breaking-changes/migrations` holds node
+// migrations, which are runtime code that rewrites workflow content.
+const DATABASE_MIGRATION_FILE = /[\\/](?:db[\\/]src|database)[\\/]migrations[\\/]/;
 const WRITE_METHODS = new Set(['save', 'insert', 'upsert']);
 
 export type SealedEntityWriteConfig = {
@@ -138,7 +143,11 @@ export const createUnsealedEntityWriteRule = (config: SealedEntityWriteConfig) =
 		},
 		defaultOptions: [],
 		create(context) {
-			if (NON_RUNTIME_FILE.test(context.filename) || repositoryFile.test(context.filename)) {
+			if (
+				NON_RUNTIME_FILE.test(context.filename) ||
+				DATABASE_MIGRATION_FILE.test(context.filename) ||
+				repositoryFile.test(context.filename)
+			) {
 				return {};
 			}
 

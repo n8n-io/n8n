@@ -21,6 +21,11 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 			code: 'workflowRepository.save(workflow);',
 			filename: '/packages/@n8n/backend-test-utils/src/db/workflows.ts',
 		},
+		// A database migration owns its table.
+		{
+			code: 'workflowRepository.save(workflow);',
+			filename: '/packages/@n8n/db/src/migrations/common/1700000000000-Foo.ts',
+		},
 	],
 	invalid: [
 		{ code: 'workflowRepository.save(workflow);', errors },
@@ -56,5 +61,12 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 		{ code: 'manager.query(`UPDATE\\x20workflow_entity SET nodes = ?`);', errors },
 		{ code: "manager.query('UPDATE public.workflow_entity SET nodes = ?');", errors },
 		{ code: 'manager.query(`UPDATE "public"."workflow_entity" SET nodes = ?`);', errors },
+		// A folder merely named `migrations` is not a database migration: the node
+		// migrations under breaking-changes rewrite workflow content at runtime.
+		{
+			code: 'workflowRepository.save(workflow);',
+			filename: '/packages/cli/src/modules/breaking-changes/migrations/foo.migration.ts',
+			errors,
+		},
 	],
 });

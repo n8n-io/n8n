@@ -36,6 +36,15 @@ ruleTester.run('no-unsealed-credentials-entity-write', NoUnsealedCredentialsEnti
 			code: 'credentialsRepository.save(credential);',
 			filename: '/packages/@n8n/backend-test-utils/src/db/credentials.ts',
 		},
+		// A database migration owns its table.
+		{
+			code: 'credentialsRepository.save(credential);',
+			filename: '/packages/@n8n/db/src/migrations/common/1700000000000-Foo.ts',
+		},
+		{
+			code: 'credentialsRepository.save(credential);',
+			filename: '/packages/@n8n/engine/src/database/migrations/1700000000000-Foo.ts',
+		},
 	],
 	invalid: [
 		{ code: 'credentialsRepository.save(credential);', errors },
@@ -69,6 +78,12 @@ ruleTester.run('no-unsealed-credentials-entity-write', NoUnsealedCredentialsEnti
 		{ code: 'manager.query(`INSERT INTO credentials_entity (type) VALUES (?)`);', errors },
 		{ code: 'manager.query(`UPDATE ${prefix}credentials_entity SET type = ?`);', errors },
 		{ code: "manager.query('UPDATE public.credentials_entity SET type = ?');", errors },
+		// A folder merely named `migrations` is not a database migration.
+		{
+			code: 'credentialsRepository.save(credential);',
+			filename: '/packages/cli/src/modules/breaking-changes/migrations/foo.migration.ts',
+			errors,
+		},
 		{ code: 'manager.query(`UPDATE "public"."credentials_entity" SET type = ?`);', errors },
 	],
 });
