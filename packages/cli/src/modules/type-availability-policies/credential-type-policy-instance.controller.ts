@@ -22,24 +22,24 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { NODE_TYPES_KIND } from './constants';
+import { CREDENTIAL_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
- * Instance-scope REST surface for node type availability policies. Every route requires
- * `LICENSE_FEATURES.NODE_TYPE_POLICIES` and `nodeTypePolicy:manage` (owner-only, per IAM-1327).
- * The flag name is a placeholder pending a final SKU decision (see IAM-1332); renaming it later
- * is a one-line change here.
+ * Instance-scope REST surface for credential type availability policies. Same shape as
+ * `TypeAvailabilityPolicyInstanceController`, mounted on its own path and kind: every route
+ * requires `LICENSE_FEATURES.NODE_TYPE_POLICIES` and `credentialTypePolicy:manage`, a separate
+ * permission from `nodeTypePolicy:manage` (see the scope's own ticket for why).
  */
-@RestController('/node-type-policies')
-export class TypeAvailabilityPolicyInstanceController {
+@RestController('/credential-type-policies')
+export class CredentialTypePolicyInstanceController {
 	constructor(private readonly service: TypeAvailabilityPolicyService) {}
 
 	@Get('/instance')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async getInstancePolicy() {
-		const effective = await this.service.getEffectivePolicy(NODE_TYPES_KIND, null);
+		const effective = await this.service.getEffectivePolicy(CREDENTIAL_TYPES_KIND, null);
 
 		return {
 			scopeId: effective.scopeId,
@@ -51,14 +51,14 @@ export class TypeAvailabilityPolicyInstanceController {
 
 	@Put('/instance')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async putInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: PutInstancePolicyDto,
 	) {
 		const result = await this.service.setEffectivePolicy(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			null,
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
@@ -76,14 +76,14 @@ export class TypeAvailabilityPolicyInstanceController {
 
 	@Post('/policies')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async createPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreatePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.createPolicyDocument(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			dto.rules,
 			req.user.id,
 		);
@@ -93,16 +93,16 @@ export class TypeAvailabilityPolicyInstanceController {
 
 	@Get('/policies')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async listPolicies() {
-		return await this.service.listPolicyDocuments(NODE_TYPES_KIND);
+		return await this.service.listPolicyDocuments(CREDENTIAL_TYPES_KIND);
 	}
 
 	@Get('/policies/:policyId')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async getPolicy(_req: AuthenticatedRequest, _res: Response, @Param('policyId') policyId: string) {
-		const policy = await this.service.getPolicyDocument(NODE_TYPES_KIND, policyId);
+		const policy = await this.service.getPolicyDocument(CREDENTIAL_TYPES_KIND, policyId);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
 		}
@@ -112,7 +112,7 @@ export class TypeAvailabilityPolicyInstanceController {
 
 	@Patch('/policies/:policyId')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async updatePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -120,7 +120,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		@Body dto: UpdatePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.updatePolicyDocument(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			policyId,
 			dto.rules,
 			dto.version,
@@ -132,20 +132,20 @@ export class TypeAvailabilityPolicyInstanceController {
 
 	@Delete('/policies/:policyId')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async deletePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId') policyId: string,
 	) {
-		await this.service.deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
+		await this.service.deletePolicyDocument(CREDENTIAL_TYPES_KIND, policyId, req.user.id);
 
 		return { success: true };
 	}
 
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
-	@GlobalScope('nodeTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	async replaceAttachments(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -153,7 +153,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		@Body dto: ReplaceAttachmentsDto,
 	) {
 		return await this.service.replaceAttachments(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			scopeId,
 			dto.attachments,
 			req.user.id,
