@@ -97,13 +97,13 @@ describe('fetchInstalledPackageInfo', () => {
 });
 
 describe('isNodesApiVersionError', () => {
-	const incompatibleNodesApiVersionError = (requiredNodesApiVersion: number | null): unknown => ({
+	const incompatibleNodesApiVersionError = (requiredNodesApiVersion: string | null): unknown => ({
 		httpStatusCode: 400,
-		meta: { requiredNodesApiVersion, supportedNodesApiVersion: 1 },
+		meta: { requiredNodesApiVersion, supportedNodesApiVersion: '1' },
 	});
 
 	it('should match the error metadata, not the message', () => {
-		expect(isNodesApiVersionError(incompatibleNodesApiVersionError(3))).toBe(true);
+		expect(isNodesApiVersionError(incompatibleNodesApiVersionError('3.1'))).toBe(true);
 		// Malformed declared values carry `null` and must be recognized too.
 		expect(isNodesApiVersionError(incompatibleNodesApiVersionError(null))).toBe(true);
 		// The same copy without the metadata is a generic error.

@@ -41,7 +41,7 @@ export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
 	qs: { filters?: StrapiFilters; fields?: string[] } = {},
 	maxAiNodeSdk: number,
-	maxN8nNodesApiVersion: number,
+	maxN8nNodesApiVersion: string,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
 	const params = {
@@ -59,7 +59,7 @@ export async function getCommunityNodeTypes(
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
 	maxAiNodeSdk: number,
-	maxN8nNodesApiVersion: number,
+	maxN8nNodesApiVersion: string,
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
 	const params = {

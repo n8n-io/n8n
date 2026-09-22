@@ -48,7 +48,8 @@ type PaginationRequestParams = {
 		pageSize: number;
 	};
 	maxAiNodeSdk?: number;
-	maxN8nNodesApiVersion?: number;
+	/** `"<major>"` or `"<major>.<minor>"`; plain integers stay wire-compatible with older clients. */
+	maxN8nNodesApiVersion?: string;
 	version?: number;
 };
 

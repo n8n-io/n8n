@@ -34,9 +34,9 @@ export const N8nObjectValidationRule = createRule<[], MessageIds>({
 			wrongLocationApiVersion:
 				'"n8nNodesApiVersion" must be inside the "n8n" section, not at the root level of package.json.',
 			missingNodesApiVersion:
-				'The "n8n" object must declare "n8nNodesApiVersion" (a positive integer).',
+				'The "n8n" object must declare "n8nNodesApiVersion" (a positive integer, or a "<major>.<minor>" string).',
 			invalidNodesApiVersion:
-				'"n8n.n8nNodesApiVersion" must be a positive integer, got {{ value }}.',
+				'"n8n.n8nNodesApiVersion" must be a positive integer, or a "<major>.<minor>" string such as "3.1", got {{ value }}.',
 			missingN8nNodes: 'The "n8n" object must declare "nodes" as an array of "dist/" paths.',
 			n8nNodesNotArray: '"n8n.nodes" must be an array of "dist/" paths.',
 			emptyN8nNodes: '"n8n.nodes" must contain at least one path.',
@@ -108,7 +108,7 @@ function validateApiVersion(context: Context, n8nObject: TSESTree.ObjectExpressi
 	}
 
 	const valueNode = apiVersionProp.value;
-	if (valueNode.type !== AST_NODE_TYPES.Literal || !isPositiveInteger(valueNode.value)) {
+	if (valueNode.type !== AST_NODE_TYPES.Literal || !isApiLevel(valueNode.value)) {
 		context.report({
 			node: apiVersionProp,
 			messageId: 'invalidNodesApiVersion',
@@ -195,6 +195,15 @@ function validatePathArray(
 	}
 }
 
-function isPositiveInteger(value: unknown): boolean {
-	return typeof value === 'number' && Number.isInteger(value) && value > 0;
+/**
+ * A level is a positive integer (the legacy `<major>.0` form) or a
+ * `"<major>.<minor>"` string. A fractional number is rejected: JSON cannot
+ * carry a minor level, because `3.10` parses as `3.1`.
+ */
+function isApiLevel(value: unknown): boolean {
+	if (typeof value === 'number') return Number.isInteger(value) && value > 0;
+	if (typeof value !== 'string') return false;
+
+	const match = /^(\d+)(?:\.(\d+))?$/.exec(value);
+	return match !== null && Number(match[1]) > 0;
 }

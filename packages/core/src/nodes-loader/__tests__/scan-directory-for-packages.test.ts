@@ -1,7 +1,7 @@
 // eslint-disable-next-line import-x/order
 import { mock } from 'vitest-mock-extended';
 import { Logger } from '@n8n/backend-common';
-import { N8N_NODES_API_VERSION } from 'n8n-workflow';
+import { N8N_NODES_API_VERSION, parseNodesApiLevel } from 'n8n-workflow';
 import * as fs from 'node:fs';
 import type * as fsPromises from 'node:fs/promises';
 
@@ -35,6 +35,11 @@ describe('scanDirectoryForPackages', () => {
 
 	const firecrawlPackageJson = (n8n?: object) =>
 		JSON.stringify({ name: '@mendable/n8n-nodes-firecrawl', version: '2.1.2', ...{ n8n } });
+
+	// One minor above whatever this runtime supports, so the test states the
+	// boundary instead of pinning the constant.
+	const [major, minor] = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
+	const unsupportedLevel = `${major}.${minor + 1}`;
 
 	const enoent = (file: string): NodeJS.ErrnoException => {
 		const error: NodeJS.ErrnoException = new Error(
@@ -116,7 +121,7 @@ describe('scanDirectoryForPackages', () => {
 	});
 
 	it('skips a package requiring an unsupported node API version and keeps compatible ones', async () => {
-		mockPackageJsonOnDisk(firecrawlPackageJson({ n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 }));
+		mockPackageJsonOnDisk(firecrawlPackageJson({ n8nNodesApiVersion: unsupportedLevel }));
 
 		const loaders = await scanDirectoryForPackages(nodeModulesDir);
 
@@ -144,7 +149,7 @@ describe('scanDirectoryForPackages', () => {
 	});
 
 	it('logs name, declared version, supported version, and remediation for an unsupported package', async () => {
-		mockPackageJsonOnDisk(firecrawlPackageJson({ n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 }));
+		mockPackageJsonOnDisk(firecrawlPackageJson({ n8nNodesApiVersion: unsupportedLevel }));
 
 		await scanDirectoryForPackages(nodeModulesDir);
 
@@ -152,13 +157,15 @@ describe('scanDirectoryForPackages', () => {
 			expect.stringContaining('@mendable/n8n-nodes-firecrawl'),
 		);
 		const [message] = vi.mocked(logger.warn).mock.calls[0];
-		expect(message).toContain(`node API version ${N8N_NODES_API_VERSION + 1}`);
+		expect(message).toContain(`node API version ${unsupportedLevel}`);
 		expect(message).toContain(`supports up to ${N8N_NODES_API_VERSION}`);
 		expect(message).toContain('Upgrade n8n');
 	});
 
+	// A fractional number cannot express a minor level (`3.10` parses as `3.1`),
+	// so it is malformed rather than a level.
 	it('skips a package with a malformed node API version', async () => {
-		mockPackageJsonOnDisk(firecrawlPackageJson({ n8nNodesApiVersion: '3' }));
+		mockPackageJsonOnDisk(firecrawlPackageJson({ n8nNodesApiVersion: 3.1 }));
 
 		const loaders = await scanDirectoryForPackages(nodeModulesDir);
 

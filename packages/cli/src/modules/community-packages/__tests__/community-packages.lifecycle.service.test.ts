@@ -199,7 +199,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		communityPackagesService.installPackage.mockRejectedValue(
 			new IncompatibleNodesApiVersionError(
 				'This community node requires n8n node API version 3, but this instance supports up to 1.',
-				{ requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+				{ requiredNodesApiVersion: '3', supportedNodesApiVersion: '1' },
 			),
 		);
 
@@ -207,7 +207,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		await expect(promise).rejects.toBeInstanceOf(IncompatibleNodesApiVersionError);
 		await expect(promise).rejects.toMatchObject({
 			httpStatusCode: 400,
-			meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+			meta: { requiredNodesApiVersion: '3', supportedNodesApiVersion: '1' },
 			message:
 				'This community node requires n8n node API version 3, but this instance supports up to 1.',
 		});
@@ -472,7 +472,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.updatePackage.mockRejectedValue(
 				new IncompatibleNodesApiVersionError(
 					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
-					{ requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+					{ requiredNodesApiVersion: '3', supportedNodesApiVersion: '1' },
 				),
 			);
 
@@ -484,7 +484,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			await expect(promise).rejects.toBeInstanceOf(IncompatibleNodesApiVersionError);
 			await expect(promise).rejects.toMatchObject({
 				httpStatusCode: 400,
-				meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+				meta: { requiredNodesApiVersion: '3', supportedNodesApiVersion: '1' },
 			});
 		});
 
@@ -497,8 +497,8 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
 			communityPackagesService.updatePackage.mockRejectedValue(
 				new IncompatibleNodesApiVersionError('Not compatible', {
-					requiredNodesApiVersion: 3,
-					supportedNodesApiVersion: 1,
+					requiredNodesApiVersion: '3',
+					supportedNodesApiVersion: '1',
 				}),
 			);
 

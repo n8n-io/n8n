@@ -409,7 +409,7 @@ describe('useInstallNode', () => {
 				new Error('This community node requires n8n node API version 3.'),
 				{
 					httpStatusCode: 400,
-					meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+					meta: { requiredNodesApiVersion: '3', supportedNodesApiVersion: '1' },
 				},
 			);
 			vi.mocked(communityNodesStore.installPackage).mockRejectedValue(error);
