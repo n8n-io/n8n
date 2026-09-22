@@ -61,9 +61,8 @@ so one value serves every reader:
   reader: `create()` counts the target scope, and `update()` counts it again when the write
   moves a row to another scope.
 
-No tool input schema carries either number yet, because no tool writes a preference yet.
 The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
-the write tool of CONTEXT-138 reuses that schema for its content field.
+the `save_user_preference` tool reuses that schema for its content field.
 
 The caps apply on the write, never on the read. A read that dropped a row would hide a
 colleague's preference with no way to tell. A write can refuse the text while the person

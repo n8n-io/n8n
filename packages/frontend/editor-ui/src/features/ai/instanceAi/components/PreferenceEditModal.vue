@@ -14,6 +14,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { editPreferenceCard, undoPreferenceCard } from '../instanceAi.api';
 import { useThread } from '../instanceAi.store';
@@ -36,6 +38,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const { restApiContext } = useRootStore();
 const thread = useThread();
+const telemetry = useTelemetry();
 
 /** The only scope this ticket writes. CONTEXT-141 adds the others and enables the select. */
 const USER_SCOPE_VALUE = 'user';
@@ -96,6 +99,11 @@ async function remove() {
 			toolCallId: props.toolCallId,
 		});
 		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.removeFailed')) return;
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			count: 1,
+			source: 'rejected',
+			scope_types: ['user'],
+		});
 		open.value = false;
 	} catch (error) {
 		errorMessage.value = messageOf(error, 'instanceAi.preferenceCard.modal.removeFailed');
