@@ -5,6 +5,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
+import type { InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -41,6 +42,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
+const instanceSettings = mock<InstanceSettings>({ isWorker: false });
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -89,6 +91,7 @@ describe('ActiveExecutions', () => {
 			concurrencyControl,
 			mock(),
 			executionsConfig,
+			instanceSettings,
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -289,6 +292,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				instanceSettings,
 			);
 
 			let resolvedId: string | undefined;
@@ -317,6 +321,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				instanceSettings,
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -460,6 +465,7 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				instanceSettings,
 			);
 
 			executionData.httpResponse = mock<Response>();
