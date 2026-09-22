@@ -120,10 +120,11 @@ file name.
 A merged record is history. Do not edit its Context, Decision, or Alternatives
 to reflect a later change. Write a new record instead.
 
-Therefore a change to a record rides the pull request that merges the record.
-In a stack, the change belongs in the first pull request that carries the
-record, not in the follow-up that implements it. A decision can merge before
-its code. That is normal, and not a reason to move or edit the record.
+Therefore a change to the Context, the Decision, or the Alternatives rides the
+pull request that merges the record. In a stack, the change belongs in the
+first pull request that carries the record, not in the follow-up that
+implements it. A decision can merge before its code. That is normal, and not a
+reason to move or edit the record.
 
 When a new decision replaces an old one:
 
