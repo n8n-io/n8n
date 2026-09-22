@@ -49,7 +49,6 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
-import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -298,6 +297,8 @@ export abstract class BaseCommand<F = never> {
 			metadata.register(taskClass);
 		}
 
+		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
+		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
 		await Container.get(SystemTaskRunner).init();
 	}
 
