@@ -15,7 +15,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	it('is gated by the node type policies license feature, so an unlicensed instance skips init', () => {
 		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
 
-		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	// The available-types controller injects the node registry, whose import chain takes

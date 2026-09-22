@@ -75,7 +75,7 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 	it.each(routeCases)(
 		'$handlerName is gated by the node type policies license feature',
 		({ route }) => {
-			expect(route.licenseFeature).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		},
 	);
 

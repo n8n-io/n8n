@@ -28,7 +28,7 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
 /**
  * Instance-scope REST surface for credential type availability policies. Same shape as
  * `TypeAvailabilityPolicyInstanceController`, mounted on its own path and kind: every route
- * requires `LICENSE_FEATURES.NODE_TYPE_POLICIES` and `credentialTypePolicy:manage`, a separate
+ * requires `LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES` and `credentialTypePolicy:manage`, a separate
  * permission from `nodeTypePolicy:manage` (see the scope's own ticket for why).
  */
 @RestController('/credential-type-policies')
@@ -36,7 +36,7 @@ export class CredentialTypePolicyInstanceController {
 	constructor(private readonly service: TypeAvailabilityPolicyService) {}
 
 	@Get('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async getInstancePolicy() {
 		const effective = await this.service.getEffectivePolicy(CREDENTIAL_TYPES_KIND, null);
@@ -50,7 +50,7 @@ export class CredentialTypePolicyInstanceController {
 	}
 
 	@Put('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async putInstancePolicy(
 		req: AuthenticatedRequest,
@@ -75,7 +75,7 @@ export class CredentialTypePolicyInstanceController {
 	}
 
 	@Post('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async createPolicy(
 		req: AuthenticatedRequest,
@@ -92,14 +92,14 @@ export class CredentialTypePolicyInstanceController {
 	}
 
 	@Get('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async listPolicies() {
 		return await this.service.listPolicyDocuments(CREDENTIAL_TYPES_KIND);
 	}
 
 	@Get('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async getPolicy(_req: AuthenticatedRequest, _res: Response, @Param('policyId') policyId: string) {
 		const policy = await this.service.getPolicyDocument(CREDENTIAL_TYPES_KIND, policyId);
@@ -111,7 +111,7 @@ export class CredentialTypePolicyInstanceController {
 	}
 
 	@Patch('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async updatePolicy(
 		req: AuthenticatedRequest,
@@ -131,7 +131,7 @@ export class CredentialTypePolicyInstanceController {
 	}
 
 	@Delete('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async deletePolicy(
 		req: AuthenticatedRequest,
@@ -144,7 +144,7 @@ export class CredentialTypePolicyInstanceController {
 	}
 
 	@Put('/scopes/:scopeId/attachments')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async replaceAttachments(
 		req: AuthenticatedRequest,
