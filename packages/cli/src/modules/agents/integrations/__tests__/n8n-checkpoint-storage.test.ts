@@ -33,7 +33,7 @@ const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'use
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
 	const sessionLock = mock<AgentSessionLock>();
-	sessionLock.run.mockImplementation(async (_projectId, fn) => await fn({}));
+	sessionLock.run.mockImplementation(async (_sessionId, fn) => await fn({}));
 	const service = new N8NCheckpointStorage(
 		repository,
 		mockLogger(),
@@ -84,7 +84,7 @@ describe('N8NCheckpointStorage', () => {
 
 		await service.getStorage('agent-1', 'project-1').save('run-1', state);
 
-		expect(sessionLock.run).toHaveBeenCalledWith('project-1', expect.any(Function));
+		expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
 		expect(repository.saveForRunningExecution).toHaveBeenCalledWith(
 			{
 				runId: 'run-1',

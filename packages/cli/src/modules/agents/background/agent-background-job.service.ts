@@ -147,7 +147,7 @@ export class AgentBackgroundJobService {
 		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'> & { projectId: string },
 	): Promise<BackgroundJobReceipt> {
 		const { projectId, ...job } = params;
-		const receipt = await this.sessionLock.run(projectId, async (ctx) => {
+		const receipt = await this.sessionLock.run(job.parentThreadId, async (ctx) => {
 			await this.threadRepository.assertSessionExists(
 				projectId,
 				job.parentAgentId,
@@ -186,7 +186,7 @@ export class AgentBackgroundJobService {
 	): Promise<BackgroundJobReceipt> {
 		const { executionId, projectId, ...job } = params;
 
-		const outcome = await this.sessionLock.run(projectId, async (ctx) => {
+		const outcome = await this.sessionLock.run(job.parentThreadId, async (ctx) => {
 			await this.threadRepository.assertSessionExists(
 				projectId,
 				job.parentAgentId,

@@ -77,7 +77,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
-	sessionLock.run.mockImplementation(async (_projectId, fn) => await fn({}));
+	sessionLock.run.mockImplementation(async (_sessionId, fn) => await fn({}));
 
 	jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(0);
 	jobRepository.insertJob.mockResolvedValue(undefined);
@@ -226,11 +226,12 @@ describe('background task notifications', () => {
 
 describe('registerSubAgentJob', () => {
 	it('returns started with the job id and a ~30min timeout', async () => {
-		const { service, jobRepository } = setup();
+		const { service, jobRepository, sessionLock } = setup();
 
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
+		expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
 		const inserted = jobRepository.insertJob.mock.calls[0][0];
 		if (inserted.kind !== 'subagent') throw new Error('expected a subagent job insert');
 		const expectedTimeout = Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS;
@@ -658,11 +659,12 @@ describe('registerWorkflowJob', () => {
 	};
 
 	it('registers a running workflow job keyed to its execution', async () => {
-		const { service, jobRepository, updateBroadcaster } = setup();
+		const { service, jobRepository, sessionLock, updateBroadcaster } = setup();
 
 		const receipt = await service.registerWorkflowJob(workflowParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'wf-job-1' });
+		expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
 		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',

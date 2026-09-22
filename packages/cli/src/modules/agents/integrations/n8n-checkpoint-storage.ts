@@ -111,7 +111,7 @@ export class N8NCheckpointStorage {
 		const executionId = state.persistence?.hostRunId;
 		if (!executionId) throw new UnexpectedError('Agent checkpoint has no execution ID');
 		await this.sessionLock.run(
-			projectId,
+			threadId,
 			async (ctx) =>
 				await this.agentCheckpointRepository.saveForRunningExecution(
 					{ ...input, projectId, executionId },

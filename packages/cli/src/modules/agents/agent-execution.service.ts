@@ -147,7 +147,7 @@ export class AgentExecutionService {
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
 		const { inserted, created, needsTitleSync } = await this.sessionLock.run(
-			params.projectId,
+			params.threadMetadata?.parentThreadId ?? params.threadId,
 			async (ctx) => {
 				const prepared = await this.prepareThread(params, ctx);
 				const execution = this.agentExecutionRepository.create({
@@ -539,7 +539,7 @@ export class AgentExecutionService {
 		threadId: string,
 		userId: string,
 	): Promise<boolean> {
-		const result = await this.sessionLock.run(projectId, async (ctx) => {
+		const result = await this.sessionLock.run(threadId, async (ctx) => {
 			const deletion = await this.agentExecutionThreadRepository.deleteSession(
 				projectId,
 				agentId,

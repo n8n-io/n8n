@@ -95,7 +95,7 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
-		sessionLock.run.mockImplementation(async (_projectId, fn) => await fn({}));
+		sessionLock.run.mockImplementation(async (_sessionId, fn) => await fn({}));
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -662,6 +662,7 @@ describe('AgentExecutionService', () => {
 				undefined,
 				undefined,
 			);
+			expect(sessionLock.run).toHaveBeenCalledWith('parent-thread-1', expect.any(Function));
 		});
 
 		it('stamps the task snapshot version on newly created task sessions', async () => {
@@ -1315,6 +1316,7 @@ describe('AgentExecutionService', () => {
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
 
 			expect(result).toBe(true);
+			expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
 			expect(agentExecutionThreadRepository.deleteSession).toHaveBeenCalledWith(
 				'project-1',
 				'agent-1',

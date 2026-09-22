@@ -22,7 +22,7 @@ describe('AgentChatAttachmentService', () => {
 		repository = mock<AgentChatAttachmentRepository>();
 		threadRepository = mock<AgentExecutionThreadRepository>();
 		sessionLock = mock<AgentSessionLock>();
-		sessionLock.run.mockImplementation(async (_projectId, fn) => await fn({}));
+		sessionLock.run.mockImplementation(async (_sessionId, fn) => await fn({}));
 		service = new AgentChatAttachmentService(
 			mock<Logger>(),
 			binaryDataService,
@@ -95,6 +95,7 @@ describe('AgentChatAttachmentService', () => {
 			);
 
 			expect(repository.saveForSession).toHaveBeenCalledTimes(1);
+			expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
 			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');

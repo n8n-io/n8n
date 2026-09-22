@@ -759,7 +759,7 @@ describe('AgentExecutionRepository', () => {
 
 		await expect(
 			Container.get(AgentSessionLock).run(
-				projectId,
+				thread.id,
 				async (ctx) =>
 					await attachmentRepo.saveForSession(
 						attachment,

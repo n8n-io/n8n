@@ -110,7 +110,7 @@ export class AgentChatAttachmentService {
 				source: params.source,
 			});
 			return await this.sessionLock.run(
-				params.projectId,
+				params.threadId,
 				async (ctx) =>
 					await this.repository.saveForSession(
 						attachment,
