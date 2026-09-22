@@ -186,28 +186,30 @@ const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>(
 const workflowDocumentStore = provideWorkflowDocumentStore();
 const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
+const modalOptions = computed<NewCredentialsModal | undefined>(() => {
+	const state = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(state) ? state : undefined;
+});
+
 // Telemetry workflow attribution: prefer the workflow passed by the surface that
 // opened the modal (NDV, Instance AI setup card) — the resolved document store is
 // empty when the modal opens outside a loaded workflow document.
 const telemetryWorkflowId = computed(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	const fromModal = isCredentialModalState(modalState) ? modalState.workflowId : undefined;
+	const fromModal = modalOptions.value?.workflowId;
 	return fromModal ?? workflowDocumentStore.value.workflowId;
 });
 
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	if (isCredentialModalState(modalState) && modalState.contextNode) {
-		return modalState.contextNode;
+	if (modalOptions.value?.contextNode) {
+		return modalOptions.value.contextNode;
 	}
-	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
+	const fallbackName = modalOptions.value?.nodeName;
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
 });
 
 const overrideProjectId = computed(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	return modalOptions.value?.projectId;
 });
 
 const form = useCredentialForm({
@@ -217,12 +219,10 @@ const form = useCredentialForm({
 	projectId: () => overrideProjectId.value,
 	showAuthSelector: () => requiredCredentials.value,
 	suggestedName: () => {
-		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
+		return modalOptions.value?.suggestedName;
 	},
 	setupHint: () => {
-		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-		return isCredentialModalState(modalState) ? modalState.credentialSetupHint : undefined;
+		return modalOptions.value?.credentialSetupHint;
 	},
 	// Scroll the auth-error/success banner into view after a test (parity with the
 	// modal's former testCredential, which ended with scrollToTop).
@@ -269,36 +269,30 @@ const {
 } = form;
 
 const hideAskAssistant = computed<boolean>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
+	return modalOptions.value?.hideAskAssistant === true;
 });
 
 // The host's Instance AI credential-help behavior, stashed in the modal state by
 // whoever opened the modal (the editor capability or the credentials list).
 const instanceAiCredentialHelp = computed(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) ? modalState.instanceAiCredentialHelp : undefined;
+	return modalOptions.value?.instanceAiCredentialHelp;
 });
 
 const closeOnSave = computed<boolean>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+	return modalOptions.value?.closeOnSave === true;
 });
 
 const onCredentialCreated = computed<NewCredentialsModal['onCredentialCreated']>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) ? modalState.onCredentialCreated : undefined;
+	return modalOptions.value?.onCredentialCreated;
 });
 
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
+	return modalOptions.value?.usageScope;
 });
 
 const appendToBody = computed<boolean>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) && modalState.appendToBody === true;
+	return modalOptions.value?.appendToBody === true;
 });
 
 const isInstanceCredential = computed(
@@ -368,13 +362,11 @@ const showSharingContent = computed(() => activeTab.value === 'sharing' && !!cre
 onMounted(async () => {
 	// Inner try isolates optional secrets loading; outer try catches all other initialization failures.
 	try {
-		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-		requiredCredentials.value =
-			isCredentialModalState(modalState) && modalState.showAuthSelector === true;
+		requiredCredentials.value = modalOptions.value?.showAuthSelector === true;
 
-		const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
+		const forceManual = modalOptions.value?.forceManualMode === true;
 
-		const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+		const overrideProjectId = modalOptions.value?.projectId;
 		const projectId =
 			overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
 		if (projectId) {
