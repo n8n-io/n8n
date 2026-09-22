@@ -310,6 +310,7 @@ describe('mapAgentChunkToEvent', () => {
 							suggestedName: 'Slack API',
 						},
 					],
+					requireUserSelection: true,
 					projectId: 'project-1',
 					inputType: 'plan-review',
 					questions: [
@@ -334,8 +335,18 @@ describe('mapAgentChunkToEvent', () => {
 					],
 					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 					credentialFlow: { stage: 'generic' },
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch account'],
+					},
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
+					resourceName: 'CRM Lead enrichment',
+					approvalDetails: {
+						action: 'insert-rows',
+						count: 1,
+						rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+					},
 					resourceDecision: {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
@@ -363,12 +374,23 @@ describe('mapAgentChunkToEvent', () => {
 						suggestedName: 'Slack API',
 					},
 				],
+				requireUserSelection: true,
 				projectId: 'project-1',
 				inputType: 'plan-review',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 				credentialFlow: { stage: 'generic' },
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
+				resourceName: 'CRM Lead enrichment',
+				approvalDetails: {
+					action: 'insert-rows',
+					count: 1,
+					rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+				},
 				questions: [
 					{
 						id: 'q1',
@@ -399,12 +421,31 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it.each([false, 'true', 1])(
+		'drops a non-true credential selection requirement (%s)',
+		(requireUserSelection) => {
+			const event = map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'setup-credentials',
+				suspendPayload: {
+					requestId: 'request-1',
+					requireUserSelection,
+				},
+			});
+
+			expect(event).toMatchObject({ type: 'confirmation-request' });
+			expect(event).not.toHaveProperty('payload.requireUserSelection');
+		},
+	);
+
 	it('defaults optional suspension values and filters invalid structured payloads', () => {
 		const result = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
 			suspendPayload: {
 				severity: 'unknown',
+				approvalDetails: { action: 'insert-rows', count: -1 },
 				credentialRequests: [{ invalid: true }],
 				inputType: 'bad-input-type',
 				questions: [{ invalid: true }],
@@ -412,6 +453,10 @@ describe('mapAgentChunkToEvent', () => {
 				domainAccess: { url: 'https://example.com' },
 				webSearch: { invalid: true },
 				credentialFlow: { stage: 'unknown' },
+				credentialDestination: {
+					origin: 'https://api.example.com/path',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [{ invalid: true }],
 				workflowId: 42,
 			},
@@ -553,6 +598,75 @@ describe('mapAgentChunkToEvent', () => {
 				channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
 			},
 		});
+	});
+
+	it('maps confirmations with an mcpConnectRequest payload', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'mcp-servers',
+				input: { action: 'connect', serverSlugs: ['brave'] },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'To search the web',
+					mcpConnectRequest: {
+						servers: [
+							{
+								serverSlug: 'brave',
+								title: 'Brave',
+								tagline: 'Search the web with Brave Search',
+								usesCredentials: [
+									{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+								],
+							},
+						],
+					},
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'mcp-servers',
+				args: { action: 'connect', serverSlugs: ['brave'] },
+				severity: 'info',
+				message: 'To search the web',
+				mcpConnectRequest: {
+					servers: [
+						{
+							serverSlug: 'brave',
+							title: 'Brave',
+							tagline: 'Search the web with Brave Search',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+					],
+				},
+			},
+		});
+	});
+
+	it('drops a malformed mcpConnectRequest payload', () => {
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'mcp-servers',
+			suspendPayload: {
+				requestId: 'request-1',
+				severity: 'info',
+				message: 'To search the web',
+				mcpConnectRequest: { servers: [] },
+			},
+		});
+
+		expect(event).toMatchObject({ type: 'confirmation-request' });
+		expect(event).not.toHaveProperty('payload.mcpConnectRequest');
 	});
 
 	it('returns null for suspensions without a tool call id', () => {

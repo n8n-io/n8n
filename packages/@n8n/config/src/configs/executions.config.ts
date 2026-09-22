@@ -194,4 +194,13 @@ export class ExecutionsConfig {
 	 */
 	@Env('N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED')
 	webhookResponseRelayOffloadEnabled: boolean = false;
+
+	/**
+	 * When true, a throw from `workflow.preExecute` still creates a failed execution
+	 * that counts as billable production usage (legacy). Default false: the run
+	 * never starts, so it does not count toward Insights or license usage.
+	 * Temporary compatibility flag; Will be removed in v3.
+	 */
+	@Env('N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION')
+	preExecuteErrorCreatesExecution: boolean = false;
 }

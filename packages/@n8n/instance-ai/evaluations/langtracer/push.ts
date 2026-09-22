@@ -31,6 +31,7 @@ const COMPARED_KEYS = [
 	'outcomeExpectations',
 	'messageBudget',
 	'credentials',
+	'credentialFixture',
 	'datasets',
 	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
 	// (lang-tracer #48) and the export emits them back in disk shape.
@@ -145,11 +146,18 @@ function projectComparable(src: unknown): Record<string, unknown> {
 
 /** Drop message `id`s from a seed before comparing: shorthand expansion mints a
  *  new one per parse, so keeping them would make a shorthand-authored case differ
- *  from its stored export forever. Everything else the author wrote — role,
- *  content, `createdAt`, workflows, data tables — still compares. */
+ *  from its stored export forever. Empty slots go too: the loader defaults every
+ *  seed array to `[]`, while the push omits an empty `folders` (the write API has
+ *  no such key) and a stored export may lack any empty slot, so `[]` and absent
+ *  must read as the same seed. Everything else the author wrote — role, content,
+ *  `createdAt`, workflows, data tables — still compares. */
 function seedWithoutMessageIds(value: unknown): unknown {
 	if (value === null || typeof value !== 'object') return value;
-	const seed: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+	const seed: Record<string, unknown> = {};
+	for (const [key, slot] of Object.entries(value as Record<string, unknown>)) {
+		if (Array.isArray(slot) && slot.length === 0) continue;
+		seed[key] = slot;
+	}
 	const messages: unknown = seed.messages;
 	if (!Array.isArray(messages)) return seed;
 	seed.messages = (messages as unknown[]).map((message) => {
@@ -169,7 +177,7 @@ function sortKeysDeep(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(sortKeysDeep);
 	if (value !== null && typeof value === 'object') {
 		const sorted: Record<string, unknown> = {};
-		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+		for (const key of Object.keys(value).sort()) {
 			sorted[key] = sortKeysDeep((value as Record<string, unknown>)[key]);
 		}
 		return sorted;

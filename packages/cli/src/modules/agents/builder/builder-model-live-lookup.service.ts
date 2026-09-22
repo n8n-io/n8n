@@ -2,13 +2,15 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
+import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 
 export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
 
@@ -19,6 +21,10 @@ export type LiveModelLookupResult =
 			policy: ModelCatalogPolicy;
 	  }
 	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
+
+interface ModelLookupOptions {
+	useEvalModelCatalog?: boolean;
+}
 
 /**
  * Fetches a provider's live chat-model list for a credential, via the shared
@@ -33,7 +39,7 @@ export type LiveModelLookupResult =
 export class BuilderModelLiveLookupService {
 	constructor(
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsHelper: CredentialsHelper,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
@@ -51,8 +57,16 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
+		options?: ModelLookupOptions,
 	): Promise<Array<{ name: string; value: string }>> {
-		const result = await this.lookup(user, projectId, credentialId, credentialType, provider);
+		const result = await this.lookup(
+			user,
+			projectId,
+			credentialId,
+			credentialType,
+			provider,
+			options,
+		);
 		if (result.status === 'unavailable') throw result.error;
 		return result.models;
 	}
@@ -63,8 +77,12 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
+		options?: ModelLookupOptions,
 	): Promise<LiveModelLookupResult> {
 		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			if (options?.useEvalModelCatalog) {
+				return this.getEvalModelCatalog(credentialType, provider, 'managed');
+			}
 			return await this.lookupAiGatewayManagedModels(projectId, provider, user);
 		}
 
@@ -76,14 +94,59 @@ export class BuilderModelLiveLookupService {
 		if (!usable || usable.type !== credentialType) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
-
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
-		if (!credential) {
-			throw new Error(`Credential ${credentialId} not found or not accessible`);
+		if (options?.useEvalModelCatalog) {
+			return this.getEvalModelCatalog(credentialType, provider, 'curated');
 		}
-		const rawData = await this.credentialsService.decrypt(credential, true);
 
-		return await this.discoverModels(provider, rawData);
+		const credentialData = await this.decryptWithExpressions(usable, projectId, user);
+
+		return await this.discoverModels(provider, credentialData);
+	}
+
+	private getEvalModelCatalog(
+		credentialType: string,
+		provider: string,
+		policy: ModelCatalogPolicy,
+	): LiveModelLookupResult {
+		const configuredDefault = LLM_PROVIDER_DEFAULTS[credentialType];
+		const model =
+			configuredDefault?.provider === provider
+				? configuredDefault.defaultModel
+				: `eval-${provider}-model`;
+
+		return {
+			status: 'success',
+			models: [{ name: model, value: model }],
+			policy,
+		};
+	}
+
+	/**
+	 * Decrypt the way node execution does, so credential defaults are applied and
+	 * expressions resolved. A base URL computed from sibling fields (region,
+	 * workspace) is otherwise absent or still literal expression text.
+	 *
+	 * There is no workflow or execution here, so `additionalData` comes from
+	 * `getBase()` and the mode is `internal` — which skips dynamic-credential
+	 * resolution, leaving a per-user credential on its static stored data. Same
+	 * as `AgentsCredentialProvider`.
+	 */
+	private async decryptWithExpressions(
+		credential: { id: string; name: string; type: string },
+		projectId: string,
+		user: User,
+	): Promise<ICredentialDataDecryptedObject> {
+		// Imported lazily: pulls in the execution stack, and model lookup is not on
+		// every request.
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		const additionalData = await getBase({ userId: user.id, projectId });
+
+		return await this.credentialsHelper.getDecrypted(
+			additionalData,
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			'internal',
+		);
 	}
 
 	/**
@@ -99,7 +162,7 @@ export class BuilderModelLiveLookupService {
 		try {
 			const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
 			if (!credentialType) {
-				throw new Error(`n8n credits does not support the "${provider}" model provider`);
+				throw new Error(`Gateway credits do not support the "${provider}" model provider`);
 			}
 			const raw = await this.aiGatewayService.getSyntheticCredential({
 				credentialType,
@@ -113,8 +176,9 @@ export class BuilderModelLiveLookupService {
 	}
 
 	/**
-	 * Runs provider model discovery against a raw credential record (real or the
-	 * gateway synthetic credential), preserving the applicable catalog policy.
+	 * Runs provider model discovery against a resolved credential record (a
+	 * decrypted stored credential or the gateway synthetic credential),
+	 * preserving the applicable catalog policy.
 	 */
 	private async discoverModels(
 		provider: string,
@@ -138,7 +202,7 @@ export class BuilderModelLiveLookupService {
 			const models = await listModelsForProvider(provider, {
 				apiKey,
 				baseURL,
-				fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
+				fetch: createAiProxyFetch(this.outboundHttp),
 				...(headers ? { headers } : {}),
 			});
 

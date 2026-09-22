@@ -89,6 +89,13 @@ const templatedCustomAuth: ICredentialType = {
 	],
 };
 
+// A type with a plain required string field.
+const requiredStringAuth: ICredentialType = {
+	name: 'requiredStringApi',
+	displayName: 'Required String API',
+	properties: [{ displayName: 'Host', name: 'host', type: 'string', required: true, default: '' }],
+};
+
 // Plain per-auth-option types for a node with an auth selector.
 const alphaApi: ICredentialType = {
 	name: 'alphaApi',
@@ -108,6 +115,7 @@ const typesByName: Record<string, ICredentialType> = {
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
 	httpTemplatedCustomAuth: templatedCustomAuth,
+	requiredStringApi: requiredStringAuth,
 	alphaApi,
 	betaApi,
 };
@@ -119,6 +127,7 @@ const falSetupHint = {
 	testUrl: 'https://fal.run/v1/models',
 	docsUrl: 'https://fal.ai/dashboard/keys',
 	serviceHost: 'fal.run',
+	serviceOrigin: 'https://fal.run',
 };
 
 describe('useCredentialForm', () => {
@@ -222,6 +231,7 @@ describe('useCredentialForm', () => {
 				testUrl: falSetupHint.testUrl,
 				docsUrl: falSetupHint.docsUrl,
 				serviceHost: falSetupHint.serviceHost,
+				serviceOrigin: falSetupHint.serviceOrigin,
 			});
 			// Freshly seeded = the required placeholder has no value yet, so the
 			// save/test gate holds until the user pastes it.
@@ -300,7 +310,45 @@ describe('useCredentialForm', () => {
 		});
 	});
 
+	describe('isCredentialTestable', () => {
+		// The store getter checks every registered node version; the composable must defer to
+		// it rather than deciding for itself, or a test declared on an older version stays
+		// hidden and the credential silently saves without being tested.
+		const stubStoreTestable = (testable: boolean) => {
+			Object.defineProperty(credentialsStore, 'isCredentialTypeTestable', {
+				configurable: true,
+				get: () => () => testable,
+			});
+		};
+
+		it('is testable when the store finds a test for the type', async () => {
+			stubStoreTestable(true);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+			await form.initialize();
+
+			expect(form.isCredentialTestable.value).toBe(true);
+		});
+
+		it('is not testable when the store finds no test on any version', async () => {
+			stubStoreTestable(false);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+			await form.initialize();
+
+			expect(form.isCredentialTestable.value).toBe(false);
+		});
+	});
+
 	describe('requiredPropertiesFilled', () => {
+		it('is false while a required string field is empty and true once it is set', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'requiredStringApi' });
+			await form.initialize();
+
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = { ...form.credentialData.value, host: 'example.com' };
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
+
 		it('blocks save and test while a required placeholder has no value', async () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
 			await form.initialize();

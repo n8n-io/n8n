@@ -4,6 +4,7 @@ import { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -97,6 +98,8 @@ describe('list-credentials MCP tool', () => {
 					id: 'a',
 					name: 'Slack',
 					type: 'slackApi',
+					description: 'Send alerts to the operations workspace',
+					data: 'encrypted-test-value',
 					scopes: ['credential:read', 'credential:update'],
 				}),
 				buildCredential({
@@ -118,6 +121,7 @@ describe('list-credentials MCP tool', () => {
 						id: 'a',
 						name: 'Slack',
 						type: 'slackApi',
+						description: 'Send alerts to the operations workspace',
 						scopes: ['credential:read', 'credential:update'],
 						isManaged: false,
 						isGlobal: false,
@@ -127,6 +131,7 @@ describe('list-credentials MCP tool', () => {
 						id: 'b',
 						name: 'HTTP Header',
 						type: 'httpHeaderAuth',
+						description: null,
 						scopes: [],
 						isManaged: false,
 						isGlobal: true,
@@ -143,6 +148,51 @@ describe('list-credentials MCP tool', () => {
 				onlySharedWithMe: false,
 			});
 		});
+
+		test.each([
+			{ label: 'unset', description: null, expected: null },
+			{ label: 'omitted', description: undefined, expected: null },
+			{ label: 'short', description: 'Reporting database', expected: 'Reporting database' },
+			{ label: 'at the preview limit', description: 'x'.repeat(256), expected: 'x'.repeat(256) },
+			{
+				label: 'with a Unicode character at the boundary',
+				description: 'x'.repeat(252) + '😀extra',
+				expected: 'x'.repeat(252) + '...',
+			},
+			{
+				label: 'above the preview limit',
+				description: 'x'.repeat(257),
+				expected: 'x'.repeat(253) + '...',
+			},
+			{
+				label: 'at the storage limit',
+				description: 'x'.repeat(512),
+				expected: 'x'.repeat(253) + '...',
+			},
+		])(
+			'returns a $label description in both response formats',
+			async ({ description, expected }) => {
+				const { credentialsService, telemetry } = createMocks([buildCredential({ description })]);
+				const { aiGatewayService } = makeAiGatewayMocks({ available: false });
+				const tool = createListCredentialsTool(
+					user,
+					credentialsService,
+					telemetry,
+					aiGatewayService,
+				);
+
+				const result = await tool.handler(
+					{ limit: 200, query: '', type: '', projectId: '', onlySharedWithMe: false },
+					{} as never,
+				);
+
+				const parsed = z.object(tool.config.outputSchema!).parse(result.structuredContent);
+				expect(parsed.data[0].description).toBe(expected);
+				expect(result.content).toEqual([
+					{ type: 'text', text: JSON.stringify(result.structuredContent) },
+				]);
+			},
+		);
 
 		test('passes filters to credentialsService.getMany and clamps limit', async () => {
 			const { credentialsService } = createMocks();
@@ -275,7 +325,7 @@ describe('list-credentials MCP tool', () => {
 			);
 		});
 
-		describe('n8nConnect block', () => {
+		describe('gatewayCredits block', () => {
 			async function callHandler(opts: { available?: boolean } = {}) {
 				const { credentialsService, telemetry } = createMocks([buildCredential()]);
 				const { aiGatewayService } = makeAiGatewayMocks(opts);
@@ -298,21 +348,21 @@ describe('list-credentials MCP tool', () => {
 				return result.structuredContent as {
 					data: unknown[];
 					count: number;
-					n8nConnect?: { credentialTypes: string[]; nodes: string[] };
+					gatewayCredits?: { credentialTypes: string[]; nodes: string[] };
 				};
 			}
 
-			test('includes n8nConnect block when gateway is available', async () => {
+			test('includes gatewayCredits block when gateway is available', async () => {
 				const structured = await callHandler({ available: true });
-				expect(structured.n8nConnect).toEqual({
+				expect(structured.gatewayCredits).toEqual({
 					credentialTypes: ['openAiApi'],
 					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
 				});
 			});
 
-			test('omits n8nConnect block when unavailable', async () => {
+			test('omits gatewayCredits block when unavailable', async () => {
 				const structured = await callHandler({ available: false });
-				expect(structured.n8nConnect).toBeUndefined();
+				expect(structured.gatewayCredits).toBeUndefined();
 			});
 		});
 	});

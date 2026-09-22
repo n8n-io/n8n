@@ -1,6 +1,7 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -27,6 +28,7 @@ export const useExecutionDebugging = () => {
 	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
+	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -41,7 +43,37 @@ export const useExecutionDebugging = () => {
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
-		const execution = await workflowsStore.getExecution(executionId);
+		let execution = await workflowsStore.getExecution(executionId);
+
+		// getExecution sends no redaction flag, so it always returns the policy-redacted
+		// payload: every item is an empty placeholder that would overwrite real node data.
+		const redactionInfo = execution?.data?.redactionInfo;
+		if (redactionInfo?.isRedacted) {
+			if (!redactionInfo.canReveal) {
+				// The preview disables the button for this, but the command bar and a pasted
+				// debug URL both reach here directly.
+				toast.showToast({
+					title: i18n.baseText('nodeView.showMessage.debug.redacted.title'),
+					message: i18n.baseText('executionsList.debug.button.redacted.tooltip'),
+					type: 'warning',
+				});
+				await router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
+				});
+				return;
+			}
+
+			// An unpermitted reveal request fails and records an audit event, so only ask
+			// for one when canReveal says it will succeed.
+			const unredacted = await workflowsStore.fetchExecutionDataById(executionId, {
+				redactExecutionData: false,
+			});
+			if (unredacted?.data) {
+				execution = unredacted;
+			}
+		}
+
 		const workflowNodes = workflowDocumentStore.value.allNodes;
 
 		if (!execution?.data?.resultData) {
@@ -105,9 +137,19 @@ export const useExecutionDebugging = () => {
 		);
 
 		// Pin data of all nodes which do not have a parent node
-		const pinnableNodes = workflowNodes.filter(
+		let pinnableNodes = workflowNodes.filter(
 			(node: INodeUi) => !workflowDocumentStore.value.getParentNodes(node.name).length,
 		);
+
+		// Data this execution recorded for AI-simulated nodes is fabricated —
+		// copying it to the editor pins fake data, so it needs an explicit opt-in.
+		const simulatedPinnableNodes = pinnableNodes.filter((node) =>
+			aiSimulatedDataGuard.isSimulatedNodeOutput(executionId, node.name),
+		);
+		if (simulatedPinnableNodes.length > 0 && !(await aiSimulatedDataGuard.confirmAdoption())) {
+			const simulatedNames = new Set(simulatedPinnableNodes.map((node) => node.name));
+			pinnableNodes = pinnableNodes.filter((node) => !simulatedNames.has(node.name));
+		}
 
 		let pinnings = 0;
 

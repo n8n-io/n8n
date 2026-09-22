@@ -41,6 +41,7 @@ const PROTECTED_EVENT_EMITTER_METHODS = [
 const lockEventEmitterMethods = () => {
 	for (const method of PROTECTED_EVENT_EMITTER_METHODS) {
 		Object.defineProperty(EventEmitter.prototype, method, {
+			// eslint-disable-next-line @typescript-eslint/unbound-method -- reinstalled as a property, not called here
 			value: EventEmitter.prototype[method],
 			writable: false,
 			configurable: false,

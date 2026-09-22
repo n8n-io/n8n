@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
 import type { AgentMessage } from './message';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
@@ -15,6 +16,8 @@ export interface ToolSuspendOptions {
 }
 
 export interface ToolExecutionContext {
+	/** Load and retain instructions from this run's selected skill catalog. */
+	loadSkill?: RuntimeSkillLoader;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/**
@@ -26,6 +29,7 @@ export interface ToolExecutionContext {
 	persistence?: {
 		threadId: string;
 		resourceId: string;
+		hostMetadata?: JSONObject;
 	};
 	/** Internal runtime event bridge for platform-managed tools. */
 	emitEvent?: (event: AgentEventData) => void;
@@ -51,6 +55,7 @@ export interface ToolExecutionContext {
 }
 
 export interface ToolContext {
+	loadSkill?: ToolExecutionContext['loadSkill'];
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
 	/** Exact model-facing name of the tool being executed. */
@@ -70,6 +75,7 @@ export interface ToolContext {
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
+	loadSkill?: ToolExecutionContext['loadSkill'];
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals
@@ -136,12 +142,16 @@ export interface BuiltTool {
 	readonly handleCancellation?: boolean;
 	/** Run cleanup before the runtime auto-cancels a suspended tool call. */
 	readonly onCancellation?: (input: unknown, ctx: ToolCancellationContext) => Promise<void>;
-	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
+	readonly toMessage?: (
+		output: unknown,
+	) => AgentMessage | undefined | Promise<AgentMessage | undefined>;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.
 	 * The raw output is stored in history; only the transformed version goes to the model.
 	 */
 	readonly toModelOutput?: (output: unknown) => unknown;
+	/** Treat every model-facing result and error from this tool as external reference data. */
+	readonly outputTrust?: 'untrusted';
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,

@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system';
+import {
+	N8nBreadcrumbs,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+	type DropdownMenuItemProps,
+	type IconName,
+	type PathItem,
+} from '@n8n/design-system';
+
 import { useI18n } from '@n8n/i18n';
 
 interface SessionDropdownData {
@@ -15,16 +25,19 @@ const props = defineProps<{
 	sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
 	showMetrics: boolean;
 	triggerSource: string | null;
-	triggerIcon: 'slack' | 'bolt-filled';
+	triggerIcon: IconName;
 	triggerLabel: string;
 	totalTokens: number;
 	totalCost: number;
 	durationLabel: string;
+	showLangsmithExport: boolean;
+	langsmithExportLoading: boolean;
 }>();
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
+	'langsmith-export': [];
 	close: [];
 }>();
 
@@ -74,6 +87,23 @@ const i18n = useI18n();
 			</N8nBreadcrumbs>
 		</div>
 		<div v-if="props.showMetrics" :class="$style.topBarRight">
+			<N8nTooltip
+				v-if="props.showLangsmithExport"
+				:content="i18n.baseText('agentSessions.langsmithExport.button')"
+				placement="bottom"
+				:show-after="TOOLTIP_DELAY_MS"
+			>
+				<N8nIconButton
+					icon="bug"
+					variant="ghost"
+					size="small"
+					icon-size="large"
+					:loading="props.langsmithExportLoading"
+					:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
+					data-testid="agent-session-langsmith-export"
+					@click="emit('langsmith-export')"
+				/>
+			</N8nTooltip>
 			<span v-if="props.triggerSource" :class="$style.metricItem">
 				<N8nIcon :icon="props.triggerIcon" :size="12" />
 				<span>{{ props.triggerLabel }}</span>
@@ -88,17 +118,18 @@ const i18n = useI18n();
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>
-			<N8nButton
-				variant="ghost"
-				icon-only
-				size="medium"
-				:aria-label="i18n.baseText('generic.close')"
-				data-testid="agent-session-timeline-close"
-				data-test-id="agent-session-timeline-close"
-				@click="emit('close')"
-			>
-				<N8nIcon icon="x" :size="16" />
-			</N8nButton>
+			<N8nTooltip :content="i18n.baseText('generic.close')">
+				<N8nButton
+					variant="ghost"
+					icon-only
+					icon="x"
+					size="medium"
+					:aria-label="i18n.baseText('generic.close')"
+					data-testid="agent-session-timeline-close"
+					data-test-id="agent-session-timeline-close"
+					@click="emit('close')"
+				/>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

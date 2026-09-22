@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -69,7 +68,13 @@ const actionDisabled = computed(
 					:content="i18n.baseText('communityNodeInfo.approved')"
 					placement="top"
 				>
-					<ShieldIcon :class="$style.verifiedIcon" data-test-id="chat-tool-verified-badge" />
+					<N8nIcon
+						icon="shield-half"
+						:size="12"
+						:class="$style.verifiedIcon"
+						:aria-label="i18n.baseText('communityNodeInfo.approved')"
+						data-test-id="chat-tool-verified-badge"
+					/>
 				</N8nTooltip>
 			</div>
 			<N8nText :class="$style.description" size="small" color="text-light">
@@ -196,8 +201,7 @@ const actionDisabled = computed(
 
 .verifiedIcon {
 	flex-shrink: 0;
-	width: 12px;
-	height: 12px;
+	vertical-align: middle;
 	color: var(--color--success);
 }
 

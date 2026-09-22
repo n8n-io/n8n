@@ -4,6 +4,20 @@ import { z } from 'zod';
 import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
 import { Tool, wrapToolForApproval } from '../tool';
 
+describe('Tool builder — .untrustedOutput()', () => {
+	it('preserves the output trust declaration through approval wrapping', () => {
+		const tool = new Tool('read_external')
+			.description('Read external data')
+			.input(z.object({}))
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.untrustedOutput()
+			.requireApproval()
+			.build();
+
+		expect(tool.outputTrust).toBe('untrusted');
+	});
+});
+
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------

@@ -22,7 +22,7 @@ import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
-import { PROJECT_CUSTOM_ROLE_SCOPES } from '@n8n/permissions';
+import { CUSTOM_ROLE_SCOPE_WHITELIST } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -60,7 +60,7 @@ const {
 					[],
 			),
 		),
-	filterScopes: (scopes) => scopes.filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
+	filterScopes: (scopes) => scopes.filter((s) => CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s)),
 	fetchError: 'Error fetching role',
 });
 
@@ -121,6 +121,26 @@ function toggleScope(scope: string) {
 		if (form.value.scopes.includes('workflow:execute')) {
 			toggleScope('workflow:execute');
 		}
+	}
+
+	// Executions: viewing follows workflow viewing and cannot be toggled on its own
+	// (its checkbox is disabled); deleting requires viewing.
+	if (scope === 'workflow:read') {
+		if (isBeingAdded && !form.value.scopes.includes('execution:read')) {
+			toggleScope('execution:read');
+		}
+		if (!isBeingAdded) {
+			if (form.value.scopes.includes('execution:read')) toggleScope('execution:read');
+			if (form.value.scopes.includes('execution:delete')) toggleScope('execution:delete');
+		}
+	}
+
+	if (
+		scope === 'execution:delete' &&
+		isBeingAdded &&
+		!form.value.scopes.includes('workflow:read')
+	) {
+		toggleScope('workflow:read');
 	}
 
 	// Dependency: workflow:publish and workflow:unpublish are coupled
@@ -243,7 +263,7 @@ function setPreset(slug: string) {
 	}
 
 	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
-		PROJECT_CUSTOM_ROLE_SCOPES.has(s),
+		CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s),
 	);
 }
 
@@ -376,7 +396,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 										validate-on-blur
 										type="checkbox"
 										:class="$style.checkbox"
-										:disabled="isReadOnly"
+										:disabled="isReadOnly || scope === 'execution:read'"
 										@update:model-value="() => toggleScope(scope)"
 									/>
 								</N8nTooltip>

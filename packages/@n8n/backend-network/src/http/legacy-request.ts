@@ -15,7 +15,12 @@ import type { SsrfBridge } from '../ssrf';
 import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
-import { resolveLegacyRequestUrl, throwIfDomainNotAllowed, validateUrlSsrf } from './axios/utils';
+import {
+	resolveLegacyRequestUrl,
+	throwIfDomainNotAllowed,
+	validateProxySsrf,
+	validateUrlSsrf,
+} from './axios/utils';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
 
@@ -56,6 +61,7 @@ export async function executeLegacyRequest(
 
 	const url = resolveLegacyRequestUrl(requestObject);
 	await validateUrlSsrf(url, ssrfBridge);
+	await validateProxySsrf(requestObject.proxy, ssrfBridge);
 
 	axiosConfig = Object.assign(
 		axiosConfig,

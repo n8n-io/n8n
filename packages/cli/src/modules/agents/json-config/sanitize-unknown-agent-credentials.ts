@@ -4,6 +4,7 @@ import {
 	MANAGED_CREDENTIAL_TOKEN,
 	SUB_AGENT_TASK_DIFFICULTIES,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 function clearUnknownCredentialId(
 	credentialId: unknown,
@@ -37,7 +38,6 @@ const AI_GATEWAY_MODEL_CREDENTIAL_PATHS: ReadonlySet<string> = new Set([
 	),
 	'memory.observationalMemory.observerModel.credential',
 	'memory.observationalMemory.reflectorModel.credential',
-	'memory.episodicMemory.extractorModel.credential',
 	'memory.episodicMemory.reflectorModel.credential',
 ]);
 
@@ -127,7 +127,6 @@ function sanitizeUnknownCredentialsInValue(
 
 	return sanitized;
 }
-
 /**
  * Replace credential IDs that are not accessible to the agent project with `""`.
  * Walks the config recursively and only targets credential-like fields:
@@ -160,8 +159,4 @@ export function sanitizeUnknownAgentCredentials(
 	}
 
 	return sanitized;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

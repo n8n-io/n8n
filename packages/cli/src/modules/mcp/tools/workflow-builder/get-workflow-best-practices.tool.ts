@@ -16,11 +16,13 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 const LIST_SENTINEL = 'list';
 
+const TECHNIQUE_CHOICES = [LIST_SENTINEL, ...Object.values(WorkflowTechnique)] as const;
+
 const inputSchema = {
 	technique: z
-		.union([z.nativeEnum(WorkflowTechnique), z.literal(LIST_SENTINEL)])
+		.enum(TECHNIQUE_CHOICES)
 		.describe(
-			`Workflow technique key (e.g. "chatbot", "scheduling", "triage") to fetch best-practices guidance for. Pass "${LIST_SENTINEL}" to discover all available techniques.`,
+			`Workflow technique key to fetch best-practices guidance for. Pass "${LIST_SENTINEL}" to discover all available techniques. One of: ${TECHNIQUE_CHOICES.join(', ')}.`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -47,7 +49,7 @@ const outputSchema = {
 		.describe('All available techniques, returned when "list" was requested.'),
 } satisfies z.ZodRawShape;
 
-function buildListResponse(canvasGroupsEnabled: boolean) {
+function buildListResponse() {
 	const availableTechniques = Object.entries(TechniqueDescription).map(([key, description]) => ({
 		technique: key,
 		description,
@@ -64,9 +66,8 @@ function buildListResponse(canvasGroupsEnabled: boolean) {
 			(t) =>
 				`- ${t.technique}${t.hasDocumentation ? '' : ' (no detailed documentation yet)'} — ${t.description}`,
 		),
-		// Grouping guidance is flag-gated and appended last, so flag-off output is
-		// unchanged.
-		...(canvasGroupsEnabled ? ['', GROUPING_GUIDANCE] : []),
+		'',
+		GROUPING_GUIDANCE,
 	].join('\n');
 
 	return {
@@ -108,7 +109,6 @@ function buildTechniqueResponse(technique: WorkflowTechniqueType) {
 export const createGetWorkflowBestPracticesTool = (
 	user: User,
 	telemetry: Telemetry,
-	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
 	config: {
@@ -133,9 +133,7 @@ export const createGetWorkflowBestPracticesTool = (
 
 		try {
 			const response =
-				technique === LIST_SENTINEL
-					? buildListResponse(canvasGroupsEnabled)
-					: buildTechniqueResponse(technique);
+				technique === LIST_SENTINEL ? buildListResponse() : buildTechniqueResponse(technique);
 
 			telemetryPayload.results = {
 				success: true,

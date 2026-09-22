@@ -1,6 +1,6 @@
 import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
-import { assertCredentialAllowsUrl, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -12,6 +12,8 @@ import type {
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -211,13 +213,11 @@ export class LmOpenAi implements INodeType {
 
 				if (options.baseURL) {
 					const credentials = await this.getCredentials('openAiApi');
-					allowedDomains = assertCredentialAllowsUrl({
-						node: this.getNode(),
-						credentialData: credentials,
-						url: options.baseURL,
-						pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-						surface: 'OpenAI',
-					});
+					allowedDomains = assertOpenAiCredentialAllowsUrl(
+						this.getNode(),
+						credentials,
+						options.baseURL,
+					);
 					uri = `${options.baseURL}/models`;
 				}
 
@@ -265,22 +265,20 @@ export class LmOpenAi implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			fetchOptions: {
-				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					options.baseURL ?? 'https://api.openai.com/v1',
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 			defaultHeaders,
 		};
 
 		if (options.baseURL) {
-			assertCredentialAllowsUrl({
-				node: this.getNode(),
-				credentialData: credentials,
-				url: options.baseURL,
-				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-				surface: 'OpenAI',
-			});
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		}
 

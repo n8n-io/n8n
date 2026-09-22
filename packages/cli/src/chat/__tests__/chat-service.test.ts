@@ -25,6 +25,9 @@ describe('ChatService', () => {
 
 	beforeEach(() => {
 		mockExecutionManager = mock<ChatExecutionManager>();
+		// Default: the parked node is chat-resumable. Node-type gating is covered in
+		// chat-execution-manager.test.ts; individual tests override to false.
+		mockExecutionManager.canResumeOverChat.mockReturnValue(true);
 		mockLogger = mock<Logger>();
 		mockErrorReporter = mock<ErrorReporter>();
 		chatService = new ChatService(mockExecutionManager, mockLogger, mockErrorReporter);
@@ -375,7 +378,7 @@ describe('ChatService', () => {
 			expect(mockLogger.error).toHaveBeenCalled();
 		});
 
-		it('should not resume execution if blockUserInput is true', async () => {
+		it('should not resume execution when the parked node is not chat-resumable', async () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
 				executionId: '123',
@@ -391,12 +394,17 @@ describe('ChatService', () => {
 					nodes: [{ name: 'node1', type: CHAT_NODE_TYPE, parameters: { blockUserInput: true } }],
 				},
 			} as any);
+			// The guard refuses this node type, so the message must not resume it and
+			// the node must stay marked as waiting.
+			mockExecutionManager.canResumeOverChat.mockReturnValue(false);
 
 			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
 			await incomingMessageHandler(data);
 
 			expect(session.nodeWaitingForChatResponse).toBe('node1');
 			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
+			// The refusal is logged rather than silent.
+			expect(mockLogger.warn).toHaveBeenCalled();
 		});
 	});
 

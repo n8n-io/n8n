@@ -172,6 +172,12 @@
         "subject": {
             "type": "string"
         },
+        "to": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "toRecipients": {
             "type": "array",
             "items": {
@@ -195,5 +201,5 @@
             "type": "string"
         }
     },
-    "version": 10
+    "version": 11
 }

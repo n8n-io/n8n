@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
+import { getInactiveCredentials } from '@/app/utils/nodeTypesUtils';
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 
@@ -17,16 +18,22 @@ import type {
 import { type INode, type INodeParameters, type INodeProperties, NodeHelpers } from 'n8n-workflow';
 
 /**
- * Collects all credential types that a node requires from three sources:
+ * Collects all credential types that a node requires:
  * 1. Node type definition — standard credentials with displayOptions
  * 2. Node issues — dynamic credentials (e.g. in HTTP Request node) that are missing or invalid
  * 3. Assigned credentials — dynamic credentials already properly set
+ * 4. Parameter-selected credentials, even before a binding or issue exists
  */
 export function getNodeCredentialTypes(
 	nodeTypeProvider: NodeTypeProvider,
 	node: INodeUi,
 ): string[] {
 	const credentialTypes = new Set<string>();
+	const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+	const activeTypes = NodeHelpers.getActiveCredentialTypes(node, nodeType);
+	for (const type of [node.parameters.nodeCredentialType, node.parameters.genericAuthType]) {
+		if (typeof type === 'string' && activeTypes?.has(type)) credentialTypes.add(type);
+	}
 
 	const displayableCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
 	for (const cred of displayableCredentials) {
@@ -39,8 +46,16 @@ export function getNodeCredentialTypes(
 	}
 
 	if (node.credentials) {
+		// Types the node's current configuration no longer uses are removed when the
+		// workflow is saved, so don't offer a card for them — a credential connected
+		// there would silently disappear on the next save.
+		const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+		const inactiveTypes = new Set(getInactiveCredentials(node, nodeType));
+
 		for (const credType of Object.keys(node.credentials)) {
-			credentialTypes.add(credType);
+			if (!inactiveTypes.has(credType)) {
+				credentialTypes.add(credType);
+			}
 		}
 	}
 
@@ -63,7 +78,7 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 			nodeType.properties,
 			node.parameters,
 			true,
-			false,
+			true,
 			node,
 			nodeType,
 		) ?? node.parameters;

@@ -112,6 +112,22 @@ describe('uniqueProjectScopes', () => {
 });
 
 describe('unsupportedMcpBuildSetupFields', () => {
+	it.each([undefined, false])('allows user execution setting %s', (allowUserExecution) => {
+		expect(unsupportedMcpBuildSetupFields(testCase({ allowUserExecution }))).toEqual([]);
+	});
+
+	it('rejects cases that enable user execution', () => {
+		expect(unsupportedMcpBuildSetupFields(testCase({ allowUserExecution: true }))).toEqual([
+			'allowUserExecution',
+		]);
+	});
+
+	it.each(['default', 'progressive'] as const)(
+		'keeps explicit mode %s unsupported',
+		(buildMode) => {
+			expect(unsupportedMcpBuildSetupFields(testCase({ buildMode }))).toEqual(['buildMode']);
+		},
+	);
 	it('classifies every test-case schema key, so adding a field forces a decision', () => {
 		// MCP_BUILD_KEY_SUPPORT must stay in lockstep with the case schema: a new
 		// build-side setup field left unclassified would let --build-via-mcp build
@@ -129,6 +145,12 @@ describe('unsupportedMcpBuildSetupFields', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase({ credentials: [] }))).toEqual([]);
 	});
 
+	it('does not flag declared credentials (the fused path seeds them per-case)', () => {
+		expect(
+			unsupportedMcpBuildSetupFields(testCase({ credentials: [{ type: 'slackApi' }] })),
+		).toEqual([]);
+	});
+
 	it('does not flag messageBudget (inapplicable to a single-shot claude build)', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase({ messageBudget: 6 }))).toEqual([]);
 	});
@@ -136,7 +158,6 @@ describe('unsupportedMcpBuildSetupFields', () => {
 	// One `seed` entry covers every mode: the classification keys off the slot, not
 	// the mode, so a new arm needs no edit here.
 	it.each<[string, string, Partial<WorkflowTestCase>]>([
-		['credentials', 'credentials', { credentials: [{ type: 'slackApi' }] }],
 		[
 			'an inline seed',
 			'seed',
@@ -155,6 +176,8 @@ describe('unsupportedMcpBuildSetupFields', () => {
 					workflows: [],
 					dataTables: [],
 					agents: [],
+					folders: [],
+					projects: [],
 				},
 			},
 		],
@@ -163,7 +186,7 @@ describe('unsupportedMcpBuildSetupFields', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase(overrides))).toEqual([field]);
 	});
 
-	it('flags multiple declared fields together', () => {
+	it('flags only the seed when credentials and a seed are declared together', () => {
 		expect(
 			unsupportedMcpBuildSetupFields(
 				testCase({
@@ -171,7 +194,7 @@ describe('unsupportedMcpBuildSetupFields', () => {
 					seed: { mode: 'replay', threadId: 't1' },
 				}),
 			),
-		).toEqual(['credentials', 'seed']);
+		).toEqual(['seed']);
 	});
 });
 

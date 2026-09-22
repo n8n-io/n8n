@@ -27,9 +27,20 @@ const i18n = useI18n();
 const editor = ref<EditorView | null>(null);
 const root = ref<HTMLElement | null>(null);
 
+// Redaction empties the item data, so any expression that reads it resolves to
+// the redaction hint. Replace the whole output with that hint, so a mixed
+// expression does not render `Hello <hint>`.
+const redactedSegment = computed(() =>
+	props.segments.find((s): s is Resolved => s.kind === 'resolvable' && s.state === 'redacted'),
+);
+
 const resolvedExpression = computed(() => {
 	if (props.segments.length === 0) {
 		return i18n.baseText('parameterInput.emptyString');
+	}
+
+	if (redactedSegment.value) {
+		return String(redactedSegment.value.resolved);
 	}
 
 	return props.segments.reduce(
@@ -47,10 +58,16 @@ const resolvedExpression = computed(() => {
 });
 
 const plaintextSegments = computed<Plaintext[]>(() => {
+	if (redactedSegment.value) return [];
 	return props.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
 });
 
 const resolvedSegments = computed<Resolved[]>(() => {
+	if (redactedSegment.value) {
+		const text = resolvedExpression.value;
+		return [{ ...redactedSegment.value, from: 0, to: text.length, resolved: text }];
+	}
+
 	if (props.segments.length === 0) {
 		const emptyExpression = resolvedExpression.value;
 		const emptySegment: Resolved = {

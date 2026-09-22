@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
@@ -8,8 +8,8 @@ import ApprovalCard from './ApprovalCard.vue';
 import N8nChatActionCard from './N8nChatActionCard.vue';
 
 /**
- * Single dispatch point for the interactive cards. `approval` and
- * `chat_action` dispatch by `toolName` — their payload shape isn't shared
+ * Single dispatch point for the interactive cards. `approval`, `chat_action`
+ * and `wait` dispatch by `toolName` — their payload shape isn't shared
  * with any other surface, so `toolName` is a reliable, TS-narrowing
  * discriminant for both `matches` and `getProps`.
  */
@@ -48,6 +48,20 @@ const interactiveRenderers = [
 		matches: (payload) => payload.toolName === N8N_CHAT_ACTION_TOOL_NAME,
 		getProps: (payload) => {
 			if (payload.toolName !== N8N_CHAT_ACTION_TOOL_NAME) return {};
+			return {
+				input: payload.input,
+				resolvedValue: payload.resolvedValue,
+			};
+		},
+	},
+	{
+		// A workflow tool parked on a Wait node posts the same card contract, so
+		// it renders through the same component.
+		key: 'wait',
+		component: N8nChatActionCard,
+		matches: (payload) => payload.toolName === WAIT_TOOL_NAME,
+		getProps: (payload) => {
+			if (payload.toolName !== WAIT_TOOL_NAME) return {};
 			return {
 				input: payload.input,
 				resolvedValue: payload.resolvedValue,

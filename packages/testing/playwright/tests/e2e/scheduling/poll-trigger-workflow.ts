@@ -1,12 +1,14 @@
 import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
+export const POLL_TRIGGER_NODE_NAME = 'E2E Test Polling Trigger';
+
 const buildWorkflow = (path: string, pollTimesItem: Record<string, unknown>) => {
 	const pollTrigger = trigger({
 		type: 'n8n-nodes-base.e2eTestPollingTrigger',
 		version: 1,
 		config: {
-			name: 'E2E Test Polling Trigger',
+			name: POLL_TRIGGER_NODE_NAME,
 			parameters: {
 				url: `http://e2e-poll-test.local${path}`,
 				pollTimes: { item: [pollTimesItem] },

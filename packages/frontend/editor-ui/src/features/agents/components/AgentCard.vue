@@ -6,12 +6,14 @@ import {
 	N8nBadge,
 	N8nCard,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -35,6 +37,8 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
+	'new-chat': [agentId: string, projectId: string];
+	duplicate: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -45,7 +49,7 @@ const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
-const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
+const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 	() => props.projectId,
 );
 
@@ -76,14 +80,23 @@ const actions = computed(() => {
 	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
 
 	if (isPublished.value && canUnpublish.value) {
-		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+			divided: true,
+		});
 	} else if (!isPublished.value && canPublish.value) {
-		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+			divided: true,
+		});
 	}
 
 	items.push({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
 
 	if (isMcpEnabled.value && canUpdate.value) {
@@ -102,6 +115,13 @@ const actions = computed(() => {
 			value: 'delete',
 			label: locale.baseText('agents.list.actions.delete'),
 			divided: items.length > 0,
+		});
+	}
+
+	if (canCreate.value) {
+		items.push({
+			value: 'duplicate',
+			label: locale.baseText('agents.list.actions.duplicate'),
 		});
 	}
 
@@ -146,6 +166,8 @@ async function onAction(action: string) {
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
 		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
+	} else if (action === 'duplicate') {
+		emit('duplicate', props.agent.id);
 	}
 }
 
@@ -193,16 +215,21 @@ async function toggleMCPAccess(enabled: boolean) {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<div
+				<PublicationIndicator
 					v-if="isPublished"
-					:class="$style.publishIndicator"
+					:label="locale.baseText('agents.list.published')"
 					data-test-id="agent-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">
-						{{ locale.baseText('agents.list.published') }}
-					</N8nText>
-				</div>
+				/>
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+					<N8nIconButton
+						icon="message-circle-plus"
+						variant="ghost"
+						size="medium"
+						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						data-test-id="agent-card-new-chat"
+						@click="emit('new-chat', agent.id, projectId)"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					v-if="showActions"
 					:actions="actions"
@@ -216,6 +243,8 @@ async function toggleMCPAccess(enabled: boolean) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -256,7 +285,7 @@ async function toggleMCPAccess(enabled: boolean) {
 
 .cardActions {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
@@ -265,28 +294,7 @@ async function toggleMCPAccess(enabled: boolean) {
 	cursor: default;
 }
 
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

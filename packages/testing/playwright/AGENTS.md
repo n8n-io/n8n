@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## Purpose
+
+Playwright is n8n's general-purpose test orchestrator. Do not assume that every
+Playwright test drives the editor UI. This package also owns API tests, container
+topologies, process lifecycle tests, infrastructure validation, performance
+benchmarks, evaluation suites, and browser-backed harness contracts.
+
+Choose the suite by the behavior under test:
+
+| Behavior | Location | Runner |
+|----------|----------|--------|
+| Product UI or API journey | `tests/e2e/` | `test:local` or a container project |
+| Database, queue, multi-main, encryption, or process lifecycle | `tests/infrastructure/` | `test:infrastructure` or the named project |
+| Infrastructure throughput and resource use | `tests/infrastructure/benchmarks/` | `test:benchmark` |
+| Browser and canvas performance | `tests/performance/` | `test:performance` |
+| Fixture or harness contract | `tests/framework/` | `test:unit` or `test:harness` |
+| Evaluation scenario | Existing evaluation directory | Its named evaluation project |
+
+Use Playwright when the test needs its worker lifecycle, fixtures, retries,
+artifacts, project matrix, browser context, or managed container stack. Use
+Vitest for browser-free unit and integration tests that need none of these.
+
 ## Commands
 
 ```bash
@@ -8,7 +30,10 @@ pnpm --filter=n8n-playwright test:local <file-path>
 pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
 # Run with container capabilities (requires pnpm build:docker first)
-pnpm --filter=n8n-playwright test:container:sqlite --grep @capability:email
+pnpm --filter=n8n-playwright test:container:sqlite tests/e2e/auth/password-reset.spec.ts
+
+# Run one infrastructure benchmark
+pnpm --filter=n8n-playwright test:benchmark tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts
 
 # Lint and typecheck
 pnpm --filter=n8n-playwright lint
@@ -16,6 +41,21 @@ pnpm --filter=n8n-playwright typecheck
 ```
 
 Always trim output: `--reporter=list 2>&1 | tail -50`
+
+## Test Layout
+
+Product Playwright tests live under `tests/`. Keep product E2E specs under
+`tests/e2e/` and keep infrastructure, performance, evaluation, and related
+suites in their existing directories under `tests/`.
+
+Framework and harness tests live under `tests/framework/`. Use this directory
+for tests of fixtures, startup lifecycle, diagnostics, telemetry, and harness
+contracts. These tests are not product E2E specs and must not be placed under
+`tests/e2e/`.
+
+Framework unit tests use the package Vitest configuration. Browser-backed
+harness contract tests use `vitest.harness.config.ts` so they stay separate
+from browser-free unit tests.
 
 ## Test Maintenance (Janitor)
 
@@ -162,9 +202,11 @@ pnpm janitor --file=tests/my-new-test.spec.ts --verbose
 
 See `packages/testing/janitor/README.md` for full documentation.
 
-## Entry Points
+## UI Entry Points
 
-All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
+UI journey tests should start with `n8n.start.*` methods. API, infrastructure,
+benchmark, lifecycle, and framework tests use their own fixtures and harnesses.
+See `composables/TestEntryComposer.ts` for UI entry points.
 
 | Method | Use Case |
 |--------|----------|
@@ -175,6 +217,82 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 | `fromImportedWorkflow(file)` | Test pre-built workflow JSON |
 | `withUser(user)` | Isolated browser context per user |
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
+
+## Accessibility Checks
+
+The `a11y` fixture runs axe-core against the current page, scoped to a named
+bucket. It **never throws** - a scan that can't run (bucket not on screen, axe
+failure) logs a warning and returns an empty array, so bolting a check onto an
+existing journey can't turn that journey red. Callers decide what to assert.
+
+```typescript
+test('canvas is accessible', async ({ n8n, a11y }) => {
+  await n8n.start.fromBlankCanvas();
+
+  const violations = await a11y.check('canvas');
+
+  expect(violations).toEqual([]);
+});
+```
+
+Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
+`modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
+A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
+
+When a journey acts as another user, `n8n.start.withUser()` returns a new
+`n8nPage`. Point the checker at it with `a11y.for(otherN8n)` - the derived
+checker reports into the same scan list.
+
+### Report and failure budget
+
+Every scan is attached to its test, so the raw axe results are always available
+on that test (including in Currents). Set `PLAYWRIGHT_A11Y_REPORT` to also
+register `reporters/a11y-reporter.ts`, which aggregates a run's scans into one
+axe HTML report at `a11y-report/index.html` plus a table in the GitHub job
+summary. Under sharding each shard reports the specs it ran. CI sets the
+variable for the e2e workflow, which uploads the report as its own artifact on a
+failing run; locally the reporter stays off unless asked for:
+
+```bash
+PLAYWRIGHT_A11Y_REPORT=1 pnpm --filter=n8n-playwright test:local
+```
+
+Violations are **reporting-only by default**. Set
+`PLAYWRIGHT_A11Y_MAX_VIOLATIONS` to the number of violations a single test may
+report before it fails:
+
+```bash
+# Fail any test reporting more than 5 violations
+PLAYWRIGHT_A11Y_MAX_VIOLATIONS=5 pnpm --filter=n8n-playwright test:local
+```
+
+Unset (the default), empty or malformed all mean "no budget", so the violations
+that already exist can't turn CI red. The budget is not applied to a test that
+already failed for another reason.
+
+### Per-bucket scores
+
+The reporter also scores each bucket the run exercised and writes one line for
+each of them, worst first:
+
+```
+[a11y] score bucket=canvas scans=2 rules=3 elements=7 score=31 critical=1 serious=3 moderate=1 minor=2
+```
+
+`elements` counts the distinct violating elements. An element is counted once
+for each screen it is broken on, however many rules it trips there, so a bucket
+the run scanned twice on the same screen reports its elements once. `score`
+weights those elements by impact (critical 10, serious 5, moderate 3, minor 1),
+taking the worst impact reported for each element, so it goes to zero as the
+bucket gets fixed. The same numbers go into the GitHub job summary as a bucket
+table.
+
+When `QA_METRICS_WEBHOOK_*` is set - CI sets it for the e2e workflow - the
+reporter sends the scores to the QA metrics webhook the perf metrics use. Each
+bucket writes three `qa_performance_metrics` rows (`a11y-score`,
+`a11y-violated-rules`, `a11y-violating-elements`) under the `a11y-buckets`
+benchmark, with the bucket in `dimensions`. The send is best-effort: a failure
+warns and the run carries on. See [.github/CI-TELEMETRY.md](../../../.github/CI-TELEMETRY.md).
 
 ## Test Isolation
 
@@ -290,6 +408,7 @@ See [Quality Corner: Test Migration Guide](https://www.notion.so/n8n/Best-Practi
 | Composable example | `composables/WorkflowComposer.ts` |
 | API helpers | `services/api-helper.ts` |
 | Capabilities | `fixtures/capabilities.ts` |
+| Accessibility fixture | `fixtures/a11y.ts` |
 
 ```typescript
 const member = await api.publicApi.createUser({...});

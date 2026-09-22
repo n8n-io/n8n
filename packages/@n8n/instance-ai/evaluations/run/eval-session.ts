@@ -23,13 +23,15 @@ import { createCasePipeline, type CasePipeline } from './case-pipeline';
 import { LaneAllocator } from './lane-allocator';
 import type { CliArgs } from '../cli/args';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { executeAgentScenario } from '../harness/agent-execution';
+import { executeAgentScenario, type AgentScenarioContext } from '../harness/agent-execution';
 import {
 	buildWorkflow,
+	scrubLocalSecretsFromBuild,
 	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
+import { resolveCredentialSetupFixture } from '../harness/credential-setup-lane';
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { executeScenario } from '../harness/scenario-execution';
@@ -134,23 +136,37 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 			tracedBuild: wrap(
 				'workflow_build',
 				laneNum,
+				// Scrubbed INSIDE the wrapper: `traceable` records this function's
+				// return value, so a local run's real key would reach LangSmith
+				// before any later redaction could touch it.
 				async (buildArgs: BuildArgs) =>
-					await buildWorkflow({
-						client: lane.client,
-						conversation: buildArgs.conversation,
-						messageBudget: buildArgs.messageBudget,
-						credentials: buildArgs.credentials,
-						seed: buildArgs.seed,
-						executionScenarios: buildArgs.executionScenarios,
-						createdCredentialIds: lane.createdCredentialIds,
-						timeoutMs: buildArgs.timeoutMs,
-						preRunWorkflowIds: lane.preRunWorkflowIds,
-						preRunDataTableIds: lane.preRunDataTableIds,
-						claimedWorkflowIds: lane.claimedWorkflowIds,
-						logger,
-						laneTag,
-						workflowExpected: workflowExpectedForCase(buildArgs),
-					}),
+					scrubLocalSecretsFromBuild(
+						await buildWorkflow({
+							client: lane.client,
+							conversation: buildArgs.conversation,
+							messageBudget: buildArgs.messageBudget,
+							buildMode: buildArgs.buildMode,
+							promptVersion: buildArgs.promptVersion,
+							allowUserExecution: buildArgs.allowUserExecution,
+							credentials: buildArgs.credentials,
+							seed: buildArgs.seed,
+							executionScenarios: buildArgs.executionScenarios,
+							createdCredentialIds: lane.createdCredentialIds,
+							timeoutMs: buildArgs.timeoutMs,
+							preRunWorkflowIds: lane.preRunWorkflowIds,
+							preRunDataTableIds: lane.preRunDataTableIds,
+							preRunFolderIds: lane.preRunFolderIds,
+							claimedWorkflowIds: lane.claimedWorkflowIds,
+							logger,
+							laneTag,
+							workflowExpected: workflowExpectedForCase(buildArgs),
+							// `{kind:'none'}` for every case that hasn't opted in, so no browser
+							// launches and no port opens.
+							credentialSetupSelection: await resolveCredentialSetupFixture(buildArgs),
+							credentialSetupType: buildArgs.credentials?.[0]?.type,
+							caseIdentity: { fileSlug: buildArgs.fileSlug, iteration: buildArgs.iteration },
+						}),
+					),
 			),
 			tracedExecute: wrap(
 				'scenario_execution',
@@ -220,7 +236,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 
 	// Agent config + skills, fetched once per build and shared by every
 	// scenario row of the case (the agent analog of the cached workflow JSON).
-	const agentContextByKey = new Map<string, Promise<string>>();
+	const agentContextByKey = new Map<string, Promise<AgentScenarioContext>>();
 
 	const orchestrator = createBuildOrchestrator({
 		args,

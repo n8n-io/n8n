@@ -1,14 +1,64 @@
-import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig, GlobalConfig } from '@n8n/config';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import type { Project, User, WorkflowEntity } from '@n8n/db';
+import { DbConnectionOptions, DbLockService, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 
 import { InsightsConfig } from '@/modules/insights/insights.config';
+import { createMember } from '@test-integration/db/users';
 
-import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
+import {
+	createCompactedInsightsEvent,
+	createMetadata,
+	createRawInsightsEvent,
+} from '../../entities/__tests__/db-utils';
+import type { InsightsByPeriod } from '../../entities/insights-by-period';
+import { TypeToNumber } from '../../entities/insights-shared';
+import type { InsightsAccessFilter } from '../insights-by-period.repository';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
+import { InsightsRawRepository } from '../insights-raw.repository';
 
 const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
+
+/** Holds the first transaction open after it copied its batch, so a second runner can start. */
+function pauseFirstTransactionAfterRead(manager: EntityManager) {
+	let reached!: () => void;
+	let resume!: () => void;
+	const reachedPromise = new Promise<void>((resolve) => (reached = resolve));
+	const resumePromise = new Promise<void>((resolve) => (resume = resolve));
+	const transaction = manager.transaction.bind(manager);
+	let intercepted = false;
+	const pausingTransaction = async (run: (trx: EntityManager) => Promise<unknown>) => {
+		if (intercepted) return await transaction(run);
+		intercepted = true;
+		return await transaction(async (trx) => {
+			const query = trx.query.bind(trx);
+			vi.spyOn(trx, 'query').mockImplementation(async (sql: string, parameters?: unknown[]) => {
+				const result: unknown = await query(sql, parameters);
+				if (sql.includes('CREATE TEMPORARY TABLE')) {
+					reached();
+					await resumePromise;
+				}
+				return result;
+			});
+			return await run(trx);
+		});
+	};
+	const spy = vi
+		.spyOn(manager, 'transaction')
+		.mockImplementation(pausingTransaction as typeof manager.transaction);
+	return { reached: reachedPromise, resume, restore: () => spy.mockRestore() };
+}
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
@@ -266,6 +316,221 @@ describe('InsightsByPeriodRepository', () => {
 			// await all promises concurrently
 			await expect(Promise.all(promises)).resolves.toBeDefined();
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('concurrent compaction across processes', () => {
+		test.skipIf(!isPostgres)(
+			'moves every source row once when two repository instances compact at the same time',
+			async () => {
+				// ARRANGE
+				await testDb.truncate([
+					'InsightsRaw',
+					'InsightsByPeriod',
+					'InsightsMetadata',
+					'WorkflowEntity',
+					'Project',
+				]);
+				const dataSource = Container.get(DataSource);
+				const insightsRawRepository = Container.get(InsightsRawRepository);
+				const otherInstance = new DataSource(Container.get(DbConnectionOptions).getOptions());
+				await otherInstance.initialize();
+				const runners = [
+					Container.get(InsightsByPeriodRepository),
+					new InsightsByPeriodRepository(
+						otherInstance,
+						Container.get(SharedWorkflowRepository),
+						new DbLockService(otherInstance, Container.get(DatabaseConfig)),
+					),
+				];
+				const project = await createTeamProject();
+				const workflow = await createWorkflow({ nodes: [] }, project);
+				await createMetadata(workflow);
+				const hour = DateTime.utc(2000, 1, 1, 0);
+				for (let minute = 0; minute < 3; minute++) {
+					await createRawInsightsEvent(workflow, {
+						type: 'success',
+						value: 1,
+						timestamp: hour.plus({ minute }),
+					});
+				}
+				const compact = async (repository: InsightsByPeriodRepository) =>
+					await repository.compactSourceDataIntoInsightPeriod({
+						sourceBatchQuery: insightsRawRepository.getRawInsightsBatchQuery(500),
+						sourceTableName: insightsRawRepository.metadata.tableName,
+						periodUnitToCompactInto: 'hour',
+					});
+				const pause = pauseFirstTransactionAfterRead(dataSource.manager);
+
+				// ACT
+				let compacted: number[];
+				try {
+					const first = compact(runners[0]);
+					await pause.reached;
+					const second = compact(runners[1]);
+					await Promise.race([second, sleep(250)]);
+					pause.resume();
+					compacted = await Promise.all([first, second]);
+				} finally {
+					pause.restore();
+					await otherInstance.destroy();
+				}
+
+				// ASSERT
+				expect(compacted[0] + compacted[1]).toBe(3);
+				await expect(insightsRawRepository.count()).resolves.toBe(0);
+				const hourly = await runners[0].find();
+				expect(hourly).toHaveLength(1);
+				expect(hourly[0].value).toBe(3);
+			},
+		);
+	});
+
+	describe('access filter', () => {
+		let member: User;
+		let accessibleProject: Project;
+		let accessibleWorkflow: WorkflowEntity;
+		let accessibleInsight: InsightsByPeriod;
+		let inaccessibleProject: Project;
+		let inaccessibleWorkflow: WorkflowEntity;
+		let inaccessibleInsight: InsightsByPeriod;
+		let accessFilter: InsightsAccessFilter;
+		let startDate: Date;
+		let endDate: Date;
+
+		beforeAll(async () => {
+			member = await createMember();
+
+			accessibleProject = await createTeamProject();
+			await linkUserToProject(member, accessibleProject, 'project:viewer');
+			accessibleWorkflow = await createWorkflow({}, accessibleProject);
+
+			inaccessibleProject = await createTeamProject();
+			inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+
+			const now = DateTime.utc();
+			startDate = now.minus({ days: 7 }).toJSDate();
+			endDate = now.toJSDate();
+
+			[accessibleInsight, inaccessibleInsight] = await Promise.all([
+				createCompactedInsightsEvent(accessibleWorkflow, {
+					type: 'success',
+					value: 4,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 1 }),
+				}),
+				createCompactedInsightsEvent(inaccessibleWorkflow, {
+					type: 'success',
+					value: 10,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 1 }),
+				}),
+			]);
+
+			accessFilter = {
+				user: member,
+				projectRoles: ['project:viewer'],
+				workflowRoles: ['workflow:owner'],
+			};
+		});
+
+		describe('getPreviousAndCurrentPeriodTypeAggregates', () => {
+			test('should aggregate both workflows when no access filter is applied', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+					startDate,
+					endDate,
+				});
+
+				const currentSuccessTotal = rows.find(
+					(row) => row.period === 'current' && row.type === TypeToNumber.success,
+				)?.total_value;
+
+				expect(Number(currentSuccessTotal)).toBe(
+					accessibleInsight.value + inaccessibleInsight.value,
+				);
+			});
+
+			test('should exclude workflows outside the access filter', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+					startDate,
+					endDate,
+					accessFilter,
+				});
+
+				const currentSuccessTotal = rows.find(
+					(row) => row.period === 'current' && row.type === TypeToNumber.success,
+				)?.total_value;
+
+				expect(Number(currentSuccessTotal)).toBe(accessibleInsight.value);
+			});
+		});
+
+		describe('getInsightsByWorkflow', () => {
+			test('should return both workflows when no access filter is applied', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const { count, rows } = await insightsByPeriodRepository.getInsightsByWorkflow({
+					startDate,
+					endDate,
+				});
+
+				expect(count).toBe(2);
+				expect(rows.map((row) => row.workflowId).sort()).toEqual(
+					[accessibleWorkflow.id, inaccessibleWorkflow.id].sort(),
+				);
+			});
+
+			test('should exclude workflows outside the access filter', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const { count, rows } = await insightsByPeriodRepository.getInsightsByWorkflow({
+					startDate,
+					endDate,
+					accessFilter,
+				});
+
+				expect(count).toBe(1);
+				expect(rows).toHaveLength(1);
+				expect(rows[0].workflowId).toBe(accessibleWorkflow.id);
+				expect(rows[0].succeeded).toBe(accessibleInsight.value);
+			});
+		});
+
+		describe('getInsightsByTime', () => {
+			test('should aggregate both workflows when no access filter is applied', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getInsightsByTime({
+					startDate,
+					endDate,
+					periodUnit: 'day',
+					insightTypes: ['success'],
+				});
+
+				const totalSucceeded = rows.reduce((sum, row) => sum + (row.succeeded ?? 0), 0);
+
+				expect(totalSucceeded).toBe(accessibleInsight.value + inaccessibleInsight.value);
+			});
+
+			test('should exclude workflows outside the access filter', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getInsightsByTime({
+					startDate,
+					endDate,
+					periodUnit: 'day',
+					insightTypes: ['success'],
+					accessFilter,
+				});
+
+				const totalSucceeded = rows.reduce((sum, row) => sum + (row.succeeded ?? 0), 0);
+
+				expect(totalSucceeded).toBe(accessibleInsight.value);
+			});
 		});
 	});
 });

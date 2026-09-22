@@ -1,0 +1,316 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://cubic.dev/schema/cubic-repository-config.schema.json",
+	"title": "Cubic Repository Configuration",
+	"description": "JSON schema for cubic.yaml (and the legacy .cubic.yaml) so editors can validate and autocomplete repository settings.",
+	"type": "object",
+	"additionalProperties": true,
+	"required": ["version"],
+	"properties": {
+		"version": {
+			"const": 1,
+			"description": "Schema version. Must always be 1."
+		},
+		"reviews": {
+			"type": "object",
+			"description": "AI review behavior and optional YAML-defined custom agents.",
+			"additionalProperties": false,
+			"properties": {
+				"enabled": {
+					"type": "boolean",
+					"description": "Master toggle for AI reviews on this repository."
+				},
+				"sensitivity": {
+					"type": "string",
+					"enum": ["low", "medium", "high"],
+					"description": "Controls how strictly Cubic flags issues."
+				},
+				"incremental_commits": {
+					"type": "boolean",
+					"default": true,
+					"description": "If true, reviews new commits pushed to open PRs (only new issues are posted). If false, reviews only when the PR is first opened."
+				},
+				"check_drafts": {
+					"type": "boolean",
+					"default": false,
+					"description": "If true, reviews draft PRs immediately when opened. If false, skips them."
+				},
+				"architecture_diagrams": {
+					"type": "boolean",
+					"default": false,
+					"description": "If true, includes AI-generated architecture diagrams in review summaries."
+				},
+				"external_contributors_require_manual_review": {
+					"type": "boolean",
+					"default": false,
+					"description": "If true, cubic skips automatic reviews for public-repository PRs from external contributors until a trusted installation member manually triggers a review."
+				},
+				"show_ai_feedback_buttons": {
+					"type": "boolean",
+					"default": false,
+					"deprecated": true,
+					"description": "Deprecated and ignored. Retained so existing cubic.yaml files continue to validate."
+				},
+				"resolve_threads_when_addressed": {
+					"type": "boolean",
+					"default": true,
+					"description": "Automatically resolve GitHub review threads when cubic detects the issue has been addressed in a subsequent commit."
+				},
+				"merge_confidence_summary": {
+					"type": "boolean",
+					"default": false,
+					"description": "If true, includes an AI-generated merge confidence summary on full reviews."
+				},
+				"auto_approve_behavior": {
+					"type": "string",
+					"enum": ["disabled", "shadow", "live"],
+					"description": "Controls whether auto-approval is disabled, simulated in shadow mode, or submitted live to GitHub."
+				},
+				"auto_approve": {
+					"type": "string",
+					"enum": ["disabled", "always", "low_risk_only", "custom"],
+					"description": "Auto-approve mode: disabled, always approve clean runs, use low-risk heuristics, or use a custom prompt."
+				},
+				"auto_approve_custom_prompt": {
+					"type": "string",
+					"description": "Custom criteria for auto-approval. Only used when auto_approve is custom."
+				},
+				"auto_approve_rules": {
+					"$ref": "#/$defs/autoApproveRules"
+				},
+				"ultrareview": {
+					"type": "string",
+					"enum": ["disabled", "manual", "automatic"],
+					"description": "Master switch for ultrareviews. disabled blocks all ultrareviews (manual and automatic), manual allows only manual triggers (the default), automatic also enables the automatic triggers."
+				},
+				"auto_ultrareview": {
+					"type": "string",
+					"enum": ["disabled", "high_risk_only", "custom"],
+					"description": "Auto-trigger ultrareview mode: disabled, let cubic decide per PR using built-in high-risk criteria, or use a custom prompt."
+				},
+				"auto_ultrareview_custom_prompt": {
+					"type": "string",
+					"description": "Custom criteria describing which PRs warrant an ultrareview. Only used when auto_ultrareview is custom."
+				},
+				"auto_ultrareview_file_patterns": {
+					"$ref": "#/$defs/globList",
+					"description": "File or directory globs that always trigger an ultrareview. If any changed file in a PR matches, cubic runs an ultrareview regardless of the auto_ultrareview mode."
+				},
+				"custom_instructions": {
+					"type": "string",
+					"description": "Free-form reviewer guidance. Leading/trailing whitespace is trimmed."
+				},
+				"ignore": {
+					"$ref": "#/$defs/ignore"
+				},
+				"custom_rules": {
+					"type": "array",
+					"description": "List of YAML-managed custom agents enforced before UI-defined agents.",
+					"items": {
+						"$ref": "#/$defs/customRule"
+					}
+				}
+			}
+		},
+		"pr_descriptions": {
+			"type": "object",
+			"description": "Configuration for AI-authored pull request descriptions.",
+			"additionalProperties": false,
+			"properties": {
+				"generate": {
+					"type": "boolean",
+					"description": "Enable AI-authored PR descriptions."
+				},
+				"instructions": {
+					"type": "string",
+					"description": "Extra guidance inserted into generated summaries."
+				},
+				"cubic_review_link": {
+					"type": "boolean",
+					"description": "Include a link to review the PR in cubic (eg www.cubic.dev/pr/owner/repo/123)."
+				},
+				"skip_if_author_description": {
+					"type": "boolean",
+					"description": "Skip AI description generation on new PRs when the author already wrote a substantive description. Empty or template-only descriptions still get an AI description."
+				}
+			}
+		},
+		"issues": {
+			"type": "object",
+			"description": "Issue and PR comment fix settings.",
+			"additionalProperties": false,
+			"properties": {
+				"fix_with_cubic_buttons": {
+					"type": "boolean",
+					"description": "Toggle Fix with cubic buttons inside GitHub issues."
+				},
+				"pr_comment_fixes": {
+					"type": "boolean",
+					"description": "Allow cubic to make code changes when requested from PR comment threads."
+				},
+				"fix_commits_to_pr": {
+					"type": "boolean",
+					"description": "When true, fix commits are pushed directly to the PR branch instead of opening a new PR."
+				},
+				"auto_fix_sign_commits": {
+					"type": "boolean",
+					"default": false,
+					"description": "When true, cubic signs the commits it pushes so GitHub marks them as verified. This applies only to the 'cubic' coding agent; the Cursor agent always signs its commits."
+				},
+				"coding_agent_provider": {
+					"type": "string",
+					"enum": ["cubic", "cursor_cloud_agent"],
+					"description": "Which coding agent applies automatic fixes. 'cubic' uses cubic's built-in agent; 'cursor_cloud_agent' dispatches a Cursor cloud agent (requires Cursor configuration)."
+				}
+			}
+		}
+	},
+	"$defs": {
+		"globList": {
+			"type": "array",
+			"description": "List of glob patterns. Empty strings are ignored at runtime.",
+			"items": {
+				"type": "string",
+				"minLength": 1
+			}
+		},
+		"ignore": {
+			"type": "object",
+			"description": "Conditional ignore filters that skip AI reviews.",
+			"additionalProperties": false,
+			"properties": {
+				"files": {
+					"$ref": "#/$defs/globList",
+					"description": "File globs to skip entirely."
+				},
+				"head_branches": {
+					"$ref": "#/$defs/globList",
+					"description": "Source branches that should not trigger reviews."
+				},
+				"base_branches": {
+					"$ref": "#/$defs/globList",
+					"description": "Target branches that should not trigger reviews."
+				},
+				"pr_labels": {
+					"$ref": "#/$defs/globList",
+					"description": "Labels that disable reviews when present."
+				},
+				"pr_titles": {
+					"$ref": "#/$defs/globList",
+					"description": "Wildcard matches applied to pull request titles."
+				},
+				"max_changed_lines": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 2147483647,
+					"description": "Store the automatic-review threshold for reviewable added plus deleted lines. Positive integers up to 2,147,483,647 are preserved, but cubic applies an effective 50,000-line ceiling to every review. Manual triggers can bypass a lower configured threshold, but not the effective ceiling."
+				}
+			}
+		},
+		"autoApproveRules": {
+			"type": "object",
+			"description": "Rules that control whether auto-approval evaluation is allowed.",
+			"additionalProperties": false,
+			"properties": {
+				"exclude": {
+					"$ref": "#/$defs/globList",
+					"description": "Changed files matching these globs are never eligible for auto-approval."
+				},
+				"only_files": {
+					"$ref": "#/$defs/globList",
+					"description": "Every changed path must match at least one of these globs for the pull request to be eligible for auto-approval. Renamed files must match on both their current and previous paths."
+				},
+				"exclude_external_contributors": {
+					"type": "boolean",
+					"default": false,
+					"description": "If true, public-repository PRs from external contributors are reviewed but never auto-approved."
+				},
+				"exclude_authors": {
+					"$ref": "#/$defs/globList",
+					"description": "PRs from a matching author are never auto-approved. Logins match case-insensitively and brackets are literal, so `renovate[bot]` and `*[bot]` both work."
+				},
+				"only_authors": {
+					"$ref": "#/$defs/globList",
+					"description": "Only PRs from a matching author can be auto-approved."
+				},
+				"exclude_head_branches": {
+					"$ref": "#/$defs/globList",
+					"description": "PRs whose source branch matches are never auto-approved."
+				},
+				"only_head_branches": {
+					"$ref": "#/$defs/globList",
+					"description": "Only PRs whose source branch matches can be auto-approved."
+				},
+				"exclude_base_branches": {
+					"$ref": "#/$defs/globList",
+					"description": "PRs targeting a matching base branch are never auto-approved."
+				},
+				"only_base_branches": {
+					"$ref": "#/$defs/globList",
+					"description": "Only PRs targeting a matching base branch can be auto-approved."
+				},
+				"exclude_labels": {
+					"$ref": "#/$defs/globList",
+					"description": "PRs carrying a matching label are never auto-approved. Labels match exactly, case-insensitively."
+				},
+				"only_labels": {
+					"$ref": "#/$defs/globList",
+					"description": "Only PRs carrying a matching label can be auto-approved. Labels match exactly, case-insensitively."
+				},
+				"exclude_titles": {
+					"$ref": "#/$defs/globList",
+					"description": "PRs whose title matches are never auto-approved."
+				},
+				"only_titles": {
+					"$ref": "#/$defs/globList",
+					"description": "Only PRs whose title matches can be auto-approved."
+				}
+			}
+		},
+		"customRule": {
+			"type": "object",
+			"description": "Definition of a YAML-managed custom agent.",
+			"additionalProperties": false,
+			"required": ["name"],
+			"anyOf": [
+				{
+					"required": ["description"]
+				},
+				{
+					"required": ["file_paths"]
+				}
+			],
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Rule title shown in the dashboard."
+				},
+				"description": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Explain what the rule enforces."
+				},
+				"file_paths": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 10,
+					"description": "Ordered repo-relative instruction files. The first 10,000 characters of the description plus concatenated file text are used.",
+					"items": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 500
+					}
+				},
+				"include": {
+					"$ref": "#/$defs/globList",
+					"description": "Optional include globs. Defaults to all files."
+				},
+				"exclude": {
+					"$ref": "#/$defs/globList",
+					"description": "Optional exclude globs that override includes."
+				}
+			}
+		}
+	}
+}

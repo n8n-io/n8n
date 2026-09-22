@@ -8,10 +8,14 @@ import {
 	SUPERSEDED_BY,
 	getEscalationWarningKey,
 	isOptionImplied,
+	isOptionMandatory,
+	mandatoryOptionTooltipKey,
 	resolveOptionState,
 	toggleOptionInGroup,
+	type InstanceResource,
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
+import PersonalSpacePermissions from './PersonalSpacePermissions.vue';
 
 const i18n = useI18n();
 
@@ -46,11 +50,21 @@ function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScope
 }
 
 /**
- * Tooltip shown for a permission option. When the option is implied by another
- * (e.g. "Manage own" under a checked "Manage all") the "Included in …" note
- * takes precedence; otherwise it explains what the permission grants.
+ * Tooltip shown for a permission option. A mandatory option (granted to every
+ * role, see `isOptionMandatory`) explains why it can't be turned off; an option
+ * implied by another (e.g. "Manage own" under a checked "Manage all") shows the
+ * "Included in …" note; otherwise it explains what the permission grants.
  */
-function optionTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]): string {
+function optionTooltip(
+	resource: InstanceResource,
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+): string {
+	// Mandatory wins over "Included in …": for an option that can never be unchecked,
+	// saying it is included in another implies unchecking that other one would remove
+	// it, which is false.
+	const mandatoryKey = mandatoryOptionTooltipKey(resource, option);
+	if (mandatoryKey) return i18n.baseText(mandatoryKey);
 	if (isOptionImplied(option, groupOptions, props.modelValue)) {
 		return impliedTooltip(option, groupOptions);
 	}
@@ -66,18 +80,33 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 
 <template>
 	<div :class="$style.cardContainer">
+		<!-- Every user owns a personal project whatever the role grants. Shown first so
+		     nobody reads an empty role as "no access at all". -->
+		<div :class="$style.card" data-test-id="personal-space-card">
+			<div :class="$style.cardTitle">
+				{{ i18n.baseText('instanceRoles.personalSpace.title') }}
+			</div>
+			<div :class="$style.optionList">
+				<PersonalSpacePermissions />
+			</div>
+		</div>
 		<div v-for="group in groups" :key="group.resource" :class="$style.card">
 			<div :class="$style.cardTitle">
 				{{ i18n.baseText(group.labelKey) }}
 			</div>
 			<div :class="$style.optionList">
-				<N8nLoading v-if="loading" :rows="group.options.length" :shrink-last="false" />
+				<N8nLoading
+					v-if="loading"
+					:class="$style.loading"
+					:rows="group.options.length"
+					:shrink-last="false"
+				/>
 				<template v-else>
 					<N8nTooltip
 						v-for="option in group.options"
 						:key="option.key"
-						:content="optionTooltip(option, group.options)"
-						:disabled="!optionTooltip(option, group.options)"
+						:content="optionTooltip(group.resource, option, group.options)"
+						:disabled="!optionTooltip(group.resource, option, group.options)"
 						placement="right"
 						:enterable="false"
 						:show-after="250"
@@ -89,7 +118,11 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 							:indeterminate="
 								resolveOptionState(option, group.options, modelValue) === 'indeterminate'
 							"
-							:disabled="readonly || isOptionImplied(option, group.options, modelValue)"
+							:disabled="
+								readonly ||
+								isOptionImplied(option, group.options, modelValue) ||
+								isOptionMandatory(group.resource, option)
+							"
 							:class="$style.checkbox"
 							@update:model-value="onToggle(option, group.options)"
 						/>
@@ -150,13 +183,23 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	flex: 1;
+	/* Keep each tooltip trigger as wide as its option, so the tooltip opens
+	   beside the hovered option and not at the right edge of the card. */
+	align-items: flex-start;
 }
 
 .checkbox {
 	margin-bottom: 0;
 }
 
+/* Also opts out: the skeleton rows size themselves in percent of the card. */
+.loading {
+	align-self: stretch;
+}
+
 .warning {
 	margin-top: var(--spacing--2xs);
+	/* Opt out of the option alignment above: the callout spans the whole card. */
+	align-self: stretch;
 }
 </style>

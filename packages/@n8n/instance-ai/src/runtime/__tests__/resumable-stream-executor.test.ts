@@ -8,7 +8,6 @@ function createEventBus() {
 		publish: vi.fn(),
 		subscribe: vi.fn(),
 		getEventsAfter: vi.fn(),
-		getNextEventId: vi.fn(),
 		getEventsForRun: vi.fn().mockReturnValue([]),
 		getEventsForRuns: vi.fn().mockReturnValue([]),
 	};
@@ -179,6 +178,68 @@ describe('executeResumableStream', () => {
 		expect(result.status).toBe('errored');
 		expect(result.agentRunId).toBe('agent-run-1');
 		expect(result.error).toBe(error);
+	});
+
+	it('reports the terminal finish reason of a completed run', async () => {
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('Working...'),
+					{ type: 'finish', finishReason: 'max-iterations' },
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe('completed');
+		expect(result.finishReason).toBe('max-iterations');
+	});
+
+	it('reports the finish reason of the resumed stream, not the suspended one', async () => {
+		const resume = vi.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([
+				textChunk('Done.'),
+				{ type: 'finish', finishReason: 'max-iterations' },
+			]),
+		});
+
+		const result = await executeResumableStream({
+			agent: { resume },
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					suspensionChunk({
+						toolCallId: 'tool-call-1',
+						toolName: 'pause-for-user',
+						suspendPayload: { requestId: 'request-1', message: 'Please confirm' },
+					}),
+					{ type: 'finish', finishReason: 'tool-calls' },
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'auto', waitForConfirmation: vi.fn().mockResolvedValue({ approved: true }) },
+		});
+
+		expect(result.status).toBe('completed');
+		expect(result.finishReason).toBe('max-iterations');
 	});
 
 	it('publishes only the quota error when a follow-on error chunk arrives', async () => {
@@ -358,7 +419,7 @@ describe('executeResumableStream', () => {
 		});
 
 		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
-		// The output redactor may merge contiguous deltas, so match by prefix.
+		// Match the segment's first delta by prefix; deltas publish per chunk.
 		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
 		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
 		const second = publishedEvents.find((event) => event.payload?.text === 'Second segment');
@@ -400,7 +461,7 @@ describe('executeResumableStream', () => {
 		});
 
 		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
-		// The output redactor may merge contiguous deltas, so match by prefix.
+		// Match each segment's delta by prefix.
 		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
 		const second = publishedEvents.find((event) => event.payload?.text?.startsWith('Second'));
 

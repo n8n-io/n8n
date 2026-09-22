@@ -2,9 +2,12 @@
 
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	ErrorReporter,
@@ -26,41 +29,70 @@ import type {
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
+	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
+
+import { EventService } from './events/event.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 // `no-cycle` still reports a cycle here, but only through the dynamic import
 // in `execute-error-workflow`, which creates no evaluation-order edge.
-// eslint-disable-next-line import-x/no-cycle
+
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import {
+	CredentialsPermissionChecker,
+	WorkflowPreExecute,
+} from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { EventService } from './events/event.service';
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
 const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 
 /** JSON chunk written periodically to keep the streaming connection alive through reverse proxies */
 const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
+
+/** How long to keep rechecking the execution status after a max-stalled-count error before failing the run */
+const MAX_STALLED_COUNT_GRACE_WINDOW_MS = 30 * Time.seconds.toMilliseconds;
+
+/** Delay between execution status rechecks inside the max-stalled-count grace window */
+const MAX_STALLED_COUNT_RECHECK_INTERVAL_MS = 1 * Time.seconds.toMilliseconds;
+
+/** Rechecks that fit in the grace window, on top of the first read */
+const MAX_STALLED_COUNT_RECHECK_ATTEMPTS = Math.floor(
+	MAX_STALLED_COUNT_GRACE_WINDOW_MS / MAX_STALLED_COUNT_RECHECK_INTERVAL_MS,
+);
+
+/**
+ * Symmetric spread applied to each recheck delay (0.2 = plus or minus 20%). Correlated stalls
+ * put every affected execution on the same recheck cadence, so the delay is spread to keep
+ * them off a single lockstep read against an already unhealthy instance. Same convention as
+ * the scheduler timeline.
+ */
+const MAX_STALLED_COUNT_RECHECK_JITTER_RATIO = 0.2;
 
 /**
  * Flush the response through the compression middleware.
@@ -76,6 +108,8 @@ function flushResponse(res: { flush?: () => void }) {
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
+
+	private poolConfigService: PoolConfigService;
 
 	constructor(
 		private readonly logger: Logger,
@@ -93,6 +127,8 @@ export class WorkflowRunner {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly engineV2Dispatcher: EngineV2Dispatcher,
+		private readonly workflowPreExecute: WorkflowPreExecute,
 	) {}
 
 	/** The process did error */
@@ -116,23 +152,138 @@ export class WorkflowRunner {
 			return;
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
-
 		const isQueueMode = this.executionsConfig.mode === 'queue';
 
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
 		if (isQueueMode) {
-			const executionWithoutData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
-			if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
-				// false positive, execution was successful
-				return;
+			const isStalled = error instanceof MaxStalledCountError;
+			const rechecks = isStalled ? MAX_STALLED_COUNT_RECHECK_ATTEMPTS : 0;
+			const recheckUntil = Date.now() + (isStalled ? MAX_STALLED_COUNT_GRACE_WINDOW_MS : 0);
+
+			for (let recheck = 0; recheck <= rechecks; recheck++) {
+				const executionWithoutData = await this.executionRepository.findSingleExecution(
+					executionId,
+					{ includeData: false },
+				);
+				const status = executionWithoutData?.status;
+
+				// A `waiting` row means the worker finished its segment and no resume has claimed
+				// the execution yet, so the pause is left intact for the wait tracker to resume.
+				if (status === 'success' || status === 'waiting') {
+					// false positive, the execution was not lost
+					let storedRunData: IRun | undefined;
+
+					try {
+						const fullExecutionData = await this.executionPersistence.findSingleExecution(
+							executionId,
+							{
+								includeData: true,
+								unflattenData: true,
+							},
+						);
+
+						if (fullExecutionData?.data) {
+							storedRunData = {
+								finished: fullExecutionData.finished,
+								mode: fullExecutionData.mode,
+								startedAt: fullExecutionData.startedAt,
+								stoppedAt: fullExecutionData.stoppedAt,
+								status: fullExecutionData.status,
+								waitTill: fullExecutionData.waitTill,
+								data: fullExecutionData.data,
+								storedAt: fullExecutionData.storedAt,
+							};
+						}
+
+						// No lifecycle hooks ran for this execution, so make the retention
+						// decision they would have made, regardless of data readability.
+						if (fullExecutionData && status === 'success') {
+							try {
+								const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+								const isManualExecution = fullExecutionData.mode === 'manual';
+								if (isManualExecution && !saveSettings.manual) {
+									await this.executionRepository.softDelete(executionId);
+								} else if (!isManualExecution && !saveSettings.success) {
+									await this.executionPersistence.deleteInFlightExecution({
+										workflowId: fullExecutionData.workflowId,
+										executionId,
+										storedAt: fullExecutionData.storedAt,
+									});
+								}
+							} catch (pruneError) {
+								this.logger.warn('Could not prune a recovered false-positive success', {
+									executionId,
+									error: ensureError(pruneError),
+								});
+							}
+						}
+					} catch (readError) {
+						this.logger.warn('Could not read execution data for a recovered execution', {
+							executionId,
+							error: ensureError(readError),
+						});
+					}
+
+					const unreadableRunData: IRun =
+						status === 'waiting'
+							? {
+									data: createRunExecutionData({ resultData: { runData: {} } }),
+									finished: false,
+									mode: executionMode,
+									startedAt,
+									stoppedAt: new Date(),
+									status: 'waiting',
+									waitTill: executionWithoutData?.waitTill ?? undefined,
+									storedAt: this.storageConfig.modeTag,
+								}
+							: {
+									data: createRunExecutionData({
+										resultData: {
+											error: new WorkflowOperationError(
+												`Execution ${executionId} succeeded, but its result could not be read`,
+											),
+											runData: {},
+										},
+									}),
+									finished: false,
+									mode: executionMode,
+									startedAt,
+									stoppedAt: new Date(),
+									status: 'error',
+									storedAt: this.storageConfig.modeTag,
+								};
+
+					const runData: IRun = storedRunData ?? unreadableRunData;
+
+					this.activeExecutions.resolveExecutionResponsePromise(executionId);
+					this.activeExecutions.finalizeExecution(executionId, runData);
+
+					return;
+				}
+
+				// The user cancelled during the grace window; the execution is already
+				// finalized as canceled elsewhere, so don't overwrite it with a failure.
+				if (status === 'canceled') return;
+
+				// A terminal status will not change, and a missing row cannot become one, so
+				// stop rechecking and fail the run now.
+				if (status === undefined || isTerminalExecutionStatus(status)) break;
+
+				if (recheck >= rechecks || Date.now() >= recheckUntil) break;
+
+				const jitter =
+					MAX_STALLED_COUNT_RECHECK_INTERVAL_MS *
+					MAX_STALLED_COUNT_RECHECK_JITTER_RATIO *
+					(2 * Math.random() - 1);
+
+				await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS + jitter);
 			}
 		}
+
+		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+		this.errorReporter.error(error, { executionId });
 
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
@@ -182,16 +333,13 @@ export class WorkflowRunner {
 		this.activeExecutions.finalizeExecution(executionId);
 	}
 
-	/** Run the workflow
-	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	/**
+	 * Returns the masking error, if any, having already emptied the trigger-item stack
+	 * either way.
 	 */
-	async run(
+	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
-		loadStaticData?: boolean,
-		realtime?: boolean,
-		existingExecution?: ResumableExecution,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
+	): Promise<(ExecutionError & { node?: INode }) | undefined> {
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
 		// data.executionData to the DB; any header masking or runtimeData
@@ -236,6 +384,49 @@ export class WorkflowRunner {
 			}
 		}
 
+		return establishContextError;
+	}
+
+	/** Run the workflow
+	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	 */
+	async run(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		existingExecution?: ResumableExecution,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// execution row, so everything below here does not apply to it.
+		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
+			return await this.engineV2Dispatcher.start(data);
+		}
+
+		const establishContextError = await this.establishContextForPersistence(data);
+
+		if (!establishContextError) {
+			try {
+				await this.credentialsPermissionChecker.check(
+					data.workflowData.id,
+					data.workflowData.nodes,
+				);
+			} catch (error) {
+				const executionId = await this.activeExecutions.add(data, existingExecution);
+				await this.failExecution(data, executionId, error, responsePromise);
+				return executionId;
+			}
+		}
+
+		let executionWorkflow: Workflow | undefined;
+		if (!existingExecution && !establishContextError) {
+			try {
+				executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
+			} catch (error) {
+				throw PreExecuteBlockedError.unwrap(error);
+			}
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
 
@@ -244,14 +435,7 @@ export class WorkflowRunner {
 			return executionId;
 		}
 
-		const { id: workflowId, nodes } = data.workflowData;
-
-		try {
-			await this.credentialsPermissionChecker.check(workflowId, nodes);
-		} catch (error) {
-			await this.failExecution(data, executionId, error, responsePromise);
-			return executionId;
-		}
+		const { id: workflowId } = data.workflowData;
 
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
@@ -277,17 +461,32 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
-		if (shouldEnqueue) {
-			await this.enqueueExecution(
-				executionId,
-				workflowId,
-				data,
-				loadStaticData,
-				realtime,
-				existingExecution?.executionId,
-			);
-		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
+		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
+
+		try {
+			if (shouldEnqueue) {
+				await this.enqueueExecution(
+					executionId,
+					workflowId,
+					data,
+					shouldReloadStaticData,
+					realtime,
+					existingExecution?.executionId,
+				);
+			} else {
+				await this.runMainProcess(
+					executionId,
+					data,
+					shouldReloadStaticData,
+					existingExecution?.executionId,
+					executionWorkflow,
+				);
+			}
+		} catch (error) {
+			// A failed start means the post-execute promise that normally clears the
+			// heartbeat never settles, so clear it here.
+			if (heartbeatInterval) clearInterval(heartbeatInterval);
+			throw error;
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -326,6 +525,31 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (['manual', 'evaluation'].includes(data.executionMode)) {
+			return data.pinData ?? data.workflowData.pinData;
+		}
+		return undefined;
+	}
+
+	async prepareNewExecution(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+	): Promise<Workflow | undefined> {
+		if (loadStaticData === true && data.workflowData.id) {
+			data.workflowData.staticData = await this.workflowStaticDataService.getStaticDataById(
+				data.workflowData.id,
+			);
+		}
+
+		return await this.workflowPreExecute.run(
+			data.workflowData,
+			data.executionMode,
+			data.source,
+			this.resolvePinData(data),
+		);
+	}
+
 	/** Run the workflow in current process */
 
 	private async runMainProcess(
@@ -333,6 +557,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
+		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
@@ -351,22 +576,20 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
-		let pinData: IPinData | undefined;
-		if (['manual', 'evaluation'].includes(data.executionMode)) {
-			pinData = data.pinData ?? data.workflowData.pinData;
-		}
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: data.workflowData.name,
-			nodes: data.workflowData.nodes,
-			connections: data.workflowData.connections,
-			active: data.workflowData.activeVersionId !== null,
-			nodeTypes: this.nodeTypes,
-			staticData: data.workflowData.staticData,
-			settings: workflowSettings,
-			pinData,
-		});
+		const pinData = this.resolvePinData(data);
+		const workflow =
+			executionWorkflow ??
+			new Workflow({
+				id: workflowId,
+				name: data.workflowData.name,
+				nodes: data.workflowData.nodes,
+				connections: data.workflowData.connections,
+				active: data.workflowData.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+				staticData: data.workflowData.staticData,
+				settings: workflowSettings,
+				pinData,
+			});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			userId: data.userId,
@@ -508,29 +731,15 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		restartExecutionId?: string,
 	): Promise<void> {
-		const jobData: JobData = {
-			workflowId,
-			executionId,
-			loadStaticData: !!loadStaticData,
-			pushRef: data.pushRef,
-			streamingEnabled: data.streamingEnabled,
-			restartExecutionId,
-			projectId: data.projectId,
-			projectName: data.projectName,
-			// Carry the manual-execution identity for private credential resolution on the worker.
-			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
-			// MCP-specific fields for queue mode support
-			isMcpExecution: data.isMcpExecution,
-			mcpType: data.mcpType,
-			mcpSessionId: data.mcpSessionId,
-			mcpMessageId: data.mcpMessageId,
-			mcpToolCall: data.mcpToolCall,
-		};
-
 		if (!this.scalingService) {
 			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
+		}
+
+		if (!this.poolConfigService) {
+			const { PoolConfigService } = await import('@/scaling/pool-config.service.ee.js');
+			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
@@ -538,7 +747,30 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
+			const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
+
+			const jobData: JobData = {
+				workflowId,
+				executionId,
+				loadStaticData: !!loadStaticData,
+				pushRef: data.pushRef,
+				streamingEnabled: data.streamingEnabled,
+				restartExecutionId,
+				projectId: data.projectId,
+				projectName: data.projectName,
+				// Carry the manual-execution identity for private credential resolution on the worker.
+				encryptedRunnerIdentity: data.encryptedRunnerIdentity,
+				poolName,
+				// MCP-specific fields for queue mode support
+				isMcpExecution: data.isMcpExecution,
+				mcpType: data.mcpType,
+				mcpSessionId: data.mcpSessionId,
+				mcpMessageId: data.mcpMessageId,
+				mcpToolCall: data.mcpToolCall,
+				mcpToolInput: data.mcpToolInput,
+			};
+
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 

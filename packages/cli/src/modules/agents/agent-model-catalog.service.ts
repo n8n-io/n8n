@@ -14,24 +14,14 @@ import {
 	BuilderModelLiveLookupService,
 	type LiveModelLookupResult,
 } from './builder/builder-model-live-lookup.service';
-
-/** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
-const GOOGLE_MODEL_ID_PREFIX = 'models/';
+import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
+import { stripSnapshotSuffix } from './utils/model-snapshot-alias';
+import { normalizeProviderModelId } from './utils/provider-model-id';
 
 function getProviderCredentialType(provider: string): string | undefined {
 	if (!isModelDiscoveryProvider(provider)) return undefined;
 	return getAgentModelProviderCredentialTypes(provider)[0];
 }
-
-function normalizeLiveModelValue(provider: string, value: string): string {
-	if (provider === 'google' && value.startsWith(GOOGLE_MODEL_ID_PREFIX)) {
-		return value.slice(GOOGLE_MODEL_ID_PREFIX.length);
-	}
-	return value;
-}
-
-/** Dated snapshot suffixes: Anthropic `-20251001`, OpenAI `-2024-08-06`. */
-const SNAPSHOT_SUFFIX = /-(?:\d{8}|\d{4}-\d{2}-\d{2})$/;
 
 /**
  * The ids a live model verifies. Providers list older models only as dated
@@ -41,7 +31,7 @@ const SNAPSHOT_SUFFIX = /-(?:\d{8}|\d{4}-\d{2}-\d{2})$/;
  * still prunes: retired models have no live snapshot either.
  */
 function liveModelIdVariants(id: string): string[] {
-	const alias = id.replace(SNAPSHOT_SUFFIX, '');
+	const alias = stripSnapshotSuffix(id);
 	return alias === id ? [id] : [id, alias];
 }
 
@@ -59,6 +49,7 @@ export class AgentModelCatalogService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
+		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 	) {}
 
 	/** Returns the provider's models according to the live lookup's catalog policy. */
@@ -106,7 +97,7 @@ export class AgentModelCatalogService {
 				return { provider, verified: true, unavailable: true, models: [] };
 			}
 
-			return {
+			return this.withDefaultModel(provider, credentialId, {
 				provider,
 				verified: true,
 				models: lookup.models.map((live) => ({
@@ -114,7 +105,7 @@ export class AgentModelCatalogService {
 					name: live.name || live.value,
 					toolCall: true,
 				})),
-			};
+			});
 		}
 
 		if (lookup.status === 'unavailable') {
@@ -134,26 +125,26 @@ export class AgentModelCatalogService {
 		// allowlist matches (e.g. a dated snapshot, not the catalog's versionless
 		// alias). Use those ids verbatim, enriched with catalog display/metadata.
 		if (lookup.policy === 'managed') {
-			return {
+			return this.withDefaultModel(provider, credentialId, {
 				provider,
 				verified: true,
 				models: liveModels.map((live) => {
-					const id = normalizeLiveModelValue(provider, live.value);
-					const catalogMatch = catalogModels[id] ?? catalogModels[id.replace(SNAPSHOT_SUFFIX, '')];
+					const id = normalizeProviderModelId(provider, live.value);
+					const catalogMatch = catalogModels[id] ?? catalogModels[stripSnapshotSuffix(id)];
 					return catalogMatch
 						? { ...catalogMatch, id }
 						: {
 								id,
-								name: normalizeLiveModelValue(provider, live.name) || id,
+								name: normalizeProviderModelId(provider, live.name) || id,
 								toolCall: true,
 							};
 				}),
-			};
+			});
 		}
 
 		const liveModelIds = new Set(
 			liveModels.flatMap((live) =>
-				liveModelIdVariants(normalizeLiveModelValue(provider, live.value)),
+				liveModelIdVariants(normalizeProviderModelId(provider, live.value)),
 			),
 		);
 		const catalogList = Object.values(catalogModels);
@@ -163,28 +154,46 @@ export class AgentModelCatalogService {
 		// add live-only models — we only prune catalog entries the provider no
 		// longer reports (retired ids that would 404 at call time).
 		if (catalogList.length > 0) {
-			return {
+			return this.withDefaultModel(provider, credentialId, {
 				provider,
 				verified: true,
 				models: catalogList.filter((model) => liveModelIds.has(model.id)),
-			};
+			});
 		}
 
 		// Catalog unavailable (models.dev down or no entry for this provider): there
 		// is no curated list to prune against, so show the verified live list rather
 		// than an empty picker.
-		return {
+		return this.withDefaultModel(provider, credentialId, {
 			provider,
 			verified: true,
 			models: liveModels.map((live) => {
-				const id = normalizeLiveModelValue(provider, live.value);
+				const id = normalizeProviderModelId(provider, live.value);
 				return {
 					id,
-					name: normalizeLiveModelValue(provider, live.name) || id,
+					name: normalizeProviderModelId(provider, live.name) || id,
 					toolCall: true,
 				};
 			}),
-		};
+		});
+	}
+
+	private withDefaultModel(
+		provider: string,
+		credentialId: string,
+		result: AgentProviderModelsResponse,
+	): AgentProviderModelsResponse {
+		const resolved = this.agentDefaultModelResolverService.resolveFromVerifiedModelIds(
+			provider,
+			credentialId,
+			result.models.map((model) => model.id),
+		);
+		if (!resolved) return result;
+
+		const modelId = resolved.model.slice(`${provider}/`.length);
+		return result.models.some((model) => model.id === modelId)
+			? { ...result, defaultModelId: modelId }
+			: result;
 	}
 
 	private logLiveLookupFailure(provider: string, error: unknown): void {

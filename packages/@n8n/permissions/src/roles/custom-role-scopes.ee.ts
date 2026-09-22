@@ -1,5 +1,5 @@
-import type { RESOURCES } from '@/constants.ee';
-import type { Scope } from '@/types.ee';
+import type { RESOURCES } from '../constants.ee';
+import type { Scope } from '../types.ee';
 
 /**
  * UI-visible operations per resource for the project role editor.
@@ -7,7 +7,7 @@ import type { Scope } from '@/types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
-	project: ['read', 'update', 'delete', 'export'],
+	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
 		'read',
@@ -35,7 +35,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'move',
 		'delete',
 	],
-	execution: ['reveal'],
+	execution: ['read', 'reveal', 'delete'],
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],
 	sourceControl: ['push'],
@@ -50,6 +50,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'delete',
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
+	projectAiPreference: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -73,8 +74,12 @@ type InstanceScopeGroups = {
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	settings: {
-		// Grants access to every instance Settings page. Each scope below gates a
-		// specific page; granting all of them lets the role see and manage all of them.
+		// Grants access to every instance Settings page, including MCP and n8n
+		// Assistant management. MCP and n8n Assistant also have their own narrower
+		// use/manage options below so a role can be given just those without the
+		// rest of instance Settings — Manage's bundle is a strict superset of all
+		// four, so checking Manage checks them too, and unchecking any one of them
+		// drops Manage out of the fully-checked state.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
@@ -95,21 +100,42 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'eventBusDestination:delete',
 			'eventBusDestination:list',
 			'eventBusDestination:test',
-			'variable:list',
-			'variable:read',
 			'dataTable:list',
+			'aiPreference:create', // Context (instance-wide AI preferences)
+			'aiPreference:read',
+			'aiPreference:update',
+			'aiPreference:delete',
+			'aiPreference:list',
 			'chatHub:manage', // Chat
 			'chatHub:message', // needed for model listing on the Chat settings page
-			'aiAssistant:manage', // AI Assistant
+			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
+			'instanceAi:gateway', // computer-use gateway pairing
 			'mcp:manage', // Instance-level MCP
 			'mcp:oauth', // MCP OAuth clients
 			'mcpApiKey:create', // MCP personal API key
 			'mcpApiKey:rotate',
 		],
+		'Mcp use': ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
+		'Mcp manage': ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
+		'AiAssistant use': ['instanceAi:message', 'instanceAi:gateway'],
+		'AiAssistant manage': [
+			'aiAssistant:manage',
+			'instanceAi:manage',
+			'instanceAi:message',
+			'instanceAi:gateway',
+		],
 	},
 	user: {
+		// Lets a role look up other users (e.g. the member-search box a Project Admin
+		// uses to add users to a project) without granting the Settings > Users page
+		// or the ability to change anyone's role. Only `user:list` — the scope the
+		// search endpoint actually checks — matches GLOBAL_MEMBER_SCOPES exactly, so
+		// a custom role built to mirror Member never ends up with more than Member.
+		// `user:read` only gates the Public API's single-user lookup, which Member
+		// doesn't have either, so it stays out of this bundle.
+		View: ['user:list'],
 		Manage: [
 			'user:create',
 			'user:update',
@@ -133,10 +159,28 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		'Manage all': ['apiKey:create', 'apiKey:update', 'apiKey:manage'],
 	},
 	tag: {
-		// read/list are bundled with write scopes: tags on workflows you can already
-		// read are always visible (they come embedded in the workflow response), so
-		// there is no meaningful "view-only" tier for tag definitions.
+		// Tags on a workflow you can read come embedded in the workflow response, and
+		// applying one rides on workflow:update, not a tag scope. read/list gate only
+		// the tag *picker* — listing every existing tag to choose from — which every
+		// role gets (see MANDATORY_INSTANCE_OPTIONS below). Manage keeps read/list so
+		// it stays a strict superset of View, matching `user`.
+		View: ['tag:read', 'tag:list'],
 		Manage: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
+	},
+	variable: {
+		// Global (instance-level) variables only; project variables are granted per
+		// project via `projectVariable:*` on a project role. View mirrors
+		// GLOBAL_MEMBER_SCOPES exactly, so a custom role built to match Member never
+		// exceeds it. The list response carries each variable's value, so View reads
+		// values and is not only discovery — hence it is opt-in, not mandatory.
+		View: ['variable:list', 'variable:read'],
+		Manage: [
+			'variable:list',
+			'variable:read',
+			'variable:create',
+			'variable:update',
+			'variable:delete',
+		],
 	},
 	project: {
 		Create: ['project:create'],
@@ -151,6 +195,44 @@ export const GLOBAL_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set(
 		Object.values<readonly Scope[]>(optionMap).flat(),
 	),
 );
+
+/** Correlates each resource with its own option keys, so a typo fails the typecheck. */
+type MandatoryInstanceOption = {
+	[R in keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS]: {
+		resource: R;
+		option: keyof (typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS)[R];
+	};
+}[keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS];
+
+/**
+ * Options every instance role carries regardless of what is saved — the default
+ * Member role already grants them, so they are baseline behaviour rather than
+ * something a custom role opts into. The editor renders them checked and
+ * disabled; `resolveScopes` unions them into every global-role write.
+ */
+export const MANDATORY_INSTANCE_OPTIONS = [
+	{ resource: 'user', option: 'View' },
+	{ resource: 'tag', option: 'View' },
+] as const satisfies readonly MandatoryInstanceOption[];
+
+export function isMandatoryInstanceOption(resource: string, option: string): boolean {
+	return MANDATORY_INSTANCE_OPTIONS.some((m) => m.resource === resource && m.option === option);
+}
+
+/** Derived by indexing the groups table, so a typo contributes nothing silently. */
+export const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = [
+	...new Set(
+		MANDATORY_INSTANCE_OPTIONS.flatMap(({ resource, option }) => {
+			const optionMap: Record<string, readonly Scope[]> = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS[resource];
+			return optionMap[option];
+		}),
+	),
+];
+
+/** Unions in the mandatory scopes (see `MANDATORY_INSTANCE_OPTIONS`) on top of an already-filtered scope list. */
+export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
+	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+}
 
 /** Precise union of the scopes the operations map grants — keeps each resource
  * correlated with its own operations (no resource×operation cross-product). */

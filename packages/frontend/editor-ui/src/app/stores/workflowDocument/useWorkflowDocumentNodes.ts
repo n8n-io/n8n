@@ -39,7 +39,6 @@ import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useNodeTypesStore } from '../nodeTypes.store';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 
 // --- Event types ---
 
@@ -124,10 +123,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			}
 
 			if (node.position) {
-				const snappedPosition = snapPositionToGrid(node.position);
-				node.position = isAgentNodeV2(node)
-					? [snappedPosition[0], node.position[1]]
-					: snappedPosition;
+				node.position = snapPositionToGrid(node.position);
 			}
 		}
 
@@ -503,7 +499,14 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		return updateNodeAtIndex(nodeIndex, nodeData);
 	}
 
-	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
+	/**
+	 * `markDirty: false` is for writes that mirror already-saved server state:
+	 * the document changes, but there is nothing new to save.
+	 */
+	function updateNodeProperties(
+		updateInformation: INodeUpdatePropertiesInformation,
+		{ markDirty = true }: { markDirty?: boolean } = {},
+	): void {
 		const nodeIndex = nodes.value.findIndex((node) => node.name === updateInformation.name);
 
 		if (nodeIndex !== -1) {
@@ -513,7 +516,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
 
-				if (changed) {
+				if (changed && markDirty) {
 					void onStateDirty.trigger();
 				}
 			}

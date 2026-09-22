@@ -1,8 +1,27 @@
-import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
+import {
+	type Folder,
+	type Project,
+	type ProjectRepository,
+	type User,
+	WorkflowEntity,
+} from '@n8n/db';
 import z from 'zod';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { UrlService } from '@/services/url.service';
+import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import {
+	MAX_WORKFLOW_CODE_LENGTH,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
@@ -10,46 +29,44 @@ import {
 	trackAutoassignOutcomes,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
+import type { McpPostSaveMetricsService } from '../../mcp-post-save-metrics.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
-	dropInvalidNodeGroups,
+	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
-import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
 export type CreateWorkflowFromCodeToolOptions = {
 	/**
-	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
-	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
-	 * default — groups are then dropped at the entity assembly, exactly like
-	 * before groups were supported. With the flag on, an invalid group does not
-	 * fail the creation: it is dropped and reported in `skippedGroups` instead,
-	 * while the rest of the workflow is still created. This tool pre-validates
-	 * with the same rules `WorkflowCreationService.createWorkflow` enforces, so
-	 * that shared service's own (fatal) group check never actually triggers here.
+	 * Reports which of the workflow's node types are verified community nodes
+	 * that are not installed here, so creation can warn that the workflow will
+	 * not run yet. Supplied only on surfaces that offer community-node
+	 * discovery, which keeps this tool independent of the node catalog.
 	 */
-	canvasGroupsEnabled?: boolean;
+	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+	/** Whether this session can call the install tool; steers the warning text. */
+	installToolAvailable?: boolean;
 };
 
 function normalizeWorkflowDescription(description?: string) {
@@ -67,8 +84,9 @@ function normalizeWorkflowDescription(description?: string) {
 const inputSchema = {
 	code: z
 		.string()
+		.max(MAX_WORKFLOW_CODE_LENGTH)
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
 		),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
@@ -96,7 +114,7 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe(
-			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project.',
+			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project; when multiple folders match the name, ask the user which one they meant before creating.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -122,7 +140,7 @@ const outputSchema = {
 					.enum(['user', 'aiGateway'])
 					.optional()
 					.describe(
-						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via Gateway credits.',
 					),
 			}),
 		)
@@ -138,6 +156,15 @@ const outputSchema = {
 		})
 		.optional()
 		.describe('The project the workflow was actually created in.'),
+	targetFolder: z
+		.object({
+			id: z.string().describe('The ID of the folder the workflow was created in'),
+			name: z.string().describe('The name of the folder the workflow was created in'),
+		})
+		.optional()
+		.describe(
+			'The folder the workflow was created in. Absent when the workflow was created at the project root.',
+		),
 	note: z
 		.string()
 		.optional()
@@ -152,7 +179,9 @@ const outputSchema = {
 			}),
 		)
 		.optional()
-		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
+		.describe(
+			'Node groups that were invalid and skipped instead of failing the whole creation. Repair them with update_workflow before you report the workflow as done.',
+		),
 	hint: z
 		.string()
 		.optional()
@@ -179,7 +208,109 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe('Error message explaining why the creation failed. Present only on failure.'),
+	errorCode: z
+		.string()
+		.optional()
+		.describe('Machine-readable error code. Present only on failure.'),
 } satisfies z.ZodRawShape;
+
+type RecoverPersistedCreateArgs = {
+	newWorkflow: WorkflowEntity | undefined;
+	landingProject: Project | null;
+	user: User;
+	workflowFinderService: WorkflowFinderService;
+	urlService: UrlService;
+	telemetry: Telemetry;
+	telemetryPayload: UserCalledMCPToolEventPayload;
+	error: unknown;
+	logger: Logger;
+	postSaveMetrics: McpPostSaveMetricsService;
+};
+
+async function recoverPersistedCreate({
+	newWorkflow,
+	landingProject,
+	user,
+	workflowFinderService,
+	urlService,
+	telemetry,
+	telemetryPayload,
+	error,
+	logger,
+	postSaveMetrics,
+}: RecoverPersistedCreateArgs) {
+	const errorMessage = error instanceof Error ? error.message : String(error);
+
+	// TypeORM sets the entity id during save(), even inside a transaction that
+	// may later roll back. A DB lookup confirms that the row exists.
+	if (!newWorkflow?.id) return undefined;
+
+	let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null = null;
+	try {
+		persisted = await workflowFinderService.findWorkflowForUser(
+			newWorkflow.id,
+			user,
+			['workflow:read'],
+			// landingFolder is only assigned after createWorkflow returns, so a
+			// post-save failure inside it leaves the variable unset. Load the
+			// relation here so targetFolder still reflects where the row landed.
+			{ includeParentFolder: true },
+		);
+	} catch (lookupError) {
+		logger.warn('Post-create verification lookup failed', {
+			workflowId: newWorkflow.id,
+			error: lookupError,
+		});
+		// Verification lookup failed. Fall through and report the original error.
+	}
+
+	if (!persisted || !landingProject) return undefined;
+
+	const baseUrl = urlService.getInstanceBaseUrl();
+	const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+	postSaveMetrics.incrementPostSaveFailure('create', error);
+
+	try {
+		telemetryPayload.results = {
+			success: true,
+			data: {
+				workflowId: persisted.id,
+				nodeCount: persisted.nodes.length,
+				postSaveError: errorMessage,
+			},
+		};
+		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+	} catch (telemetryError) {
+		logger.error('Post-save telemetry failed for create_workflow_from_code (recovery path)', {
+			workflowId: persisted.id,
+			error: telemetryError,
+		});
+		postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
+	}
+
+	const output = {
+		workflowId: persisted.id,
+		name: persisted.name,
+		nodeCount: persisted.nodes.length,
+		url: workflowUrl,
+		autoAssignedCredentials: [],
+		targetProject: {
+			id: landingProject.id,
+			name: landingProject.name,
+			type: landingProject.type,
+		},
+		targetFolder: persisted.parentFolder
+			? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
+			: undefined,
+		note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+	};
+
+	return {
+		content: [{ type: 'text' as const, text: JSON.stringify(output, null, 2) }],
+		structuredContent: output,
+	};
+}
 
 /**
  * MCP tool that creates a workflow in n8n from validated SDK code.
@@ -197,10 +328,12 @@ export const createCreateWorkflowFromCodeTool = (
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
 	options: CreateWorkflowFromCodeToolOptions = {},
+	logger: Logger,
+	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If the user named a target folder, resolve it via search_folders. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project — and folder, if any — the workflow landed in (see the targetProject and targetFolder fields in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -211,6 +344,7 @@ export const createCreateWorkflowFromCodeTool = (
 			openWorldHint: false,
 		},
 	},
+
 	handler: async ({
 		code,
 		skillsUsed,
@@ -249,15 +383,17 @@ export const createCreateWorkflowFromCodeTool = (
 			const errorMessage = 'projectId is required when folderId is provided';
 			telemetryPayload.results = { success: false, error: errorMessage };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			const output = { error: errorMessage, errorCode: 'MISSING_PROJECT_ID' };
 			return {
-				content: [{ type: 'text', text: JSON.stringify({ error: errorMessage }, null, 2) }],
-				structuredContent: { error: errorMessage },
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 				isError: true,
 			};
 		}
 
 		let newWorkflow: WorkflowEntity | undefined;
 		let landingProject: Project | null = null;
+		let landingFolder: Folder | null = null;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -290,8 +426,7 @@ export const createCreateWorkflowFromCodeTool = (
 				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
-				// Flag off: groups keep being dropped here, exactly like before.
-				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
+				nodeGroups: workflowJson.nodeGroups ?? [],
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
@@ -306,11 +441,10 @@ export const createCreateWorkflowFromCodeTool = (
 			// parser above. Validate them here, before the shared persistence layer's
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
-			const skippedGroups = options.canvasGroupsEnabled
-				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
-						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
-					)
-				: [];
+			const skippedGroups = dropInvalidWorkflowGroups(
+				newWorkflow,
+				makeGetNodeTypeForGrouping(nodeTypes),
+			).map((violation) => ({ groupName: violation.groupName, reason: violation.message }));
 
 			landingProject = projectId
 				? await projectRepository.findOneBy({ id: projectId })
@@ -371,33 +505,12 @@ export const createCreateWorkflowFromCodeTool = (
 				versionName: versionMetadata.name,
 				versionDescription: versionMetadata.description,
 			});
-
-			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
-			trackAutoassignOutcomes(
-				telemetry,
-				user.id,
-				'create_workflow_from_code',
-				autoAssignOutcomes,
-				nodeTypesByName,
-				savedWorkflow.id,
-			);
+			// The saved workflow carries the project-validated parent folder, echoed
+			// back as targetFolder.
+			landingFolder = savedWorkflow.parentFolder ?? null;
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
-
-			telemetryPayload.results = {
-				success: true,
-				data: {
-					workflowId: savedWorkflow.id,
-					nodeCount: savedWorkflow.nodes.length,
-					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
-					// flag is off so the payload stays identical across cohorts.
-					...(options.canvasGroupsEnabled
-						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
-						: {}),
-				},
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const notes = [
 				descriptionTruncated
@@ -419,11 +532,58 @@ export const createCreateWorkflowFromCodeTool = (
 					name: landingProject.name,
 					type: landingProject.type,
 				},
+				targetFolder: landingFolder
+					? { id: landingFolder.id, name: landingFolder.name }
+					: undefined,
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
-			const output =
-				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
+
+			const ceilingWarning = topLevelItemsWarning(savedWorkflow);
+
+			const uninstalledWarnings = await buildUninstalledNodeWarnings(
+				savedWorkflow.nodes,
+				options.findUninstalledNodeTypes,
+				options.installToolAvailable,
+			);
+
+			const warnings = [
+				...result.warnings,
+				...(ceilingWarning ? [ceilingWarning] : []),
+				...uninstalledWarnings,
+			];
+			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
+
+			// The response is fully built above. Side effects below (telemetry,
+			// credential auto-assign tracking) must not turn a successful persist
+			// into a client-visible error — they are observability-only.
+			try {
+				const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+				trackAutoassignOutcomes(
+					telemetry,
+					user.id,
+					'create_workflow_from_code',
+					autoAssignOutcomes,
+					nodeTypesByName,
+					savedWorkflow.id,
+				);
+
+				telemetryPayload.results = {
+					success: true,
+					data: {
+						workflowId: savedWorkflow.id,
+						nodeCount: savedWorkflow.nodes.length,
+						groupCount: workflowJson.nodeGroups?.length ?? 0,
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (sideEffectError) {
+				logger.error('Post-save side effect failed for create_workflow_from_code', {
+					workflowId: savedWorkflow.id,
+					error: sideEffectError,
+				});
+				postSaveMetrics.incrementPostSaveFailure('create', sideEffectError);
+			}
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
@@ -431,67 +591,42 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorCode = getErrorCode(error);
 
-			// Check whether the workflow was actually persisted despite the error.
-			// TypeORM sets the entity id during save(), even inside a transaction that
-			// may later roll back, so newWorkflow.id alone is not a reliable signal.
-			// A DB lookup confirms the row truly exists before we report success.
-			if (newWorkflow?.id) {
-				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
-					null;
-				try {
-					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
-						'workflow:read',
-					]);
-				} catch {
-					// Verification lookup failed — fall through and report the original error.
-				}
+			const recoveredCreate = await recoverPersistedCreate({
+				newWorkflow,
+				landingProject,
+				user,
+				workflowFinderService,
+				urlService,
+				telemetry,
+				telemetryPayload,
+				error,
+				logger,
+				postSaveMetrics,
+			});
+			if (recoveredCreate) return recoveredCreate;
 
-				if (persisted && landingProject) {
-					const baseUrl = urlService.getInstanceBaseUrl();
-					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
-
-					telemetryPayload.results = {
-						success: true,
-						data: {
-							workflowId: persisted.id,
-							nodeCount: persisted.nodes.length,
-							postSaveError: errorMessage,
-						},
-					};
-					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-					const output = {
-						workflowId: persisted.id,
-						name: persisted.name,
-						nodeCount: persisted.nodes.length,
-						url: workflowUrl,
-						autoAssignedCredentials: [],
-						targetProject: {
-							id: landingProject.id,
-							name: landingProject.name,
-							type: landingProject.type,
-						},
-						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
-					};
-
-					return {
-						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-						structuredContent: output,
-					};
-				}
+			try {
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (telemetryError) {
+				logger.error('Telemetry failed for create_workflow_from_code (error path)', {
+					error: telemetryError,
+				});
 			}
-
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const hint = getSdkReferenceHint(error, {
 				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
 			});
-			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
+			const output = {
+				error: errorMessage,
+				errorCode,
+				...(hint ? { hint } : {}),
+			};
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

@@ -1,8 +1,9 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
-import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
+import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -16,7 +17,9 @@ async function* toAsyncIterable<T>(items: T[]): AsyncIterable<T> {
 
 async function collectEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
 	const events: AgentSseEvent[] = [];
-	await pumpChunks(toAsyncIterable(chunks), (e) => events.push(e));
+	for await (const chunk of toAsyncIterable(chunks)) {
+		emitChunkEvents(chunk, (event) => events.push(event));
+	}
 	return events;
 }
 
@@ -31,12 +34,27 @@ function createResponse() {
 		flushHeaders: vi.fn(),
 		write: vi.fn(),
 		flush: vi.fn(),
+		end: vi.fn(),
 		socket,
 		writableEnded: false,
 		destroyed: false,
 	}) as unknown as FlushableResponse;
 
 	return { res, socket };
+}
+
+async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
+	const { res } = createResponse();
+	const { send } = initSseStream(res);
+	for await (const chunk of toAsyncIterable(chunks)) emitChunkEvents(chunk, send);
+
+	const events = vi.mocked(res.write).mock.calls.flatMap(([payload]) => {
+		if (typeof payload !== 'string' || !payload.startsWith('data: ')) return [];
+		return [JSON.parse(payload.slice('data: '.length)) as AgentSseEvent];
+	});
+	res.emit('close');
+
+	return events;
 }
 
 describe('agent-sse-stream — connection setup', () => {
@@ -84,10 +102,25 @@ describe('agent-sse-stream — connection setup', () => {
 
 		expect(res.write).not.toHaveBeenCalled();
 	});
+
+	it('closes completed delivery without cancelling execution', () => {
+		vi.useFakeTimers();
+		const { res } = createResponse();
+		const { close, abortSignal } = initSseStream(res);
+
+		close();
+		res.emit('close');
+		vi.mocked(res.write).mockClear();
+		vi.advanceTimersByTime(30_000);
+
+		expect(abortSignal.aborted).toBe(false);
+		expect(res.end).toHaveBeenCalledOnce();
+		expect(res.write).not.toHaveBeenCalled();
+	});
 });
 
 // ---------------------------------------------------------------------------
-// stringifyError — tested through pumpChunks / emitChunkEvents
+// stringifyError — tested through emitChunkEvents
 // ---------------------------------------------------------------------------
 
 vi.mock('n8n-workflow', () => ({
@@ -96,7 +129,7 @@ vi.mock('n8n-workflow', () => ({
 	},
 }));
 
-describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () => {
+describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {
 		const events = await collectEvents([{ type: 'error', error: new Error('something broke') }]);
 		expect(events).toEqual([{ type: 'error', message: 'something broke' }]);
@@ -119,11 +152,14 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 	});
 
 	it('falls back to "Unknown error" when JSON.stringify throws (circular ref)', async () => {
+		const warn = vi.mocked(LoggerProxy.warn);
+		warn.mockClear();
 		const circular: Record<string, unknown> = {};
 		circular.self = circular;
 
 		const events = await collectEvents([{ type: 'error', error: circular }]);
 		expect(events).toEqual([{ type: 'error', message: 'Unknown error' }]);
+		expect(warn).toHaveBeenCalledExactlyOnceWith('Failed to stringify agent streaming error');
 	});
 
 	it('handles null via JSON.stringify (typeof null === "object")', async () => {
@@ -183,7 +219,7 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('completes after the runtime stream closes even when a finish chunk is present', async () => {
+	it('leaves completion delivery to the caller when it receives a finish chunk', async () => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
@@ -196,7 +232,7 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('drains every suspension chunk before reporting that the run paused', async () => {
+	it('maps every suspension chunk', async () => {
 		const chunks: StreamChunk[] = [
 			{
 				type: 'tool-call-suspended',
@@ -214,11 +250,8 @@ describe('agent-sse-stream — stream completion', () => {
 			},
 			{ type: 'finish', finishReason: 'other' },
 		];
-		const events: AgentSseEvent[] = [];
+		const events = await collectEvents(chunks);
 
-		const suspended = await pumpChunks(toAsyncIterable(chunks), (event) => events.push(event));
-
-		expect(suspended).toBe(true);
 		expect(events).toEqual([
 			{
 				type: 'tool-call-suspended',
@@ -310,6 +343,114 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 				toolName: 'delegate_subagent',
 				isError: false,
 				endTime: 1_014,
+			},
+		]);
+	});
+
+	it('preserves successful structured tool output across SSE serialization', async () => {
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { records: 2 },
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { records: 2 },
+			},
+		]);
+	});
+
+	it('normalizes native Error tool failures across SSE serialization', async () => {
+		// Regression coverage for AGENT-618: native Error properties must survive the wire format.
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'write_records',
+				output: new Error('Column "status" no longer exists'),
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'write_records',
+				output: new Error('Column "owner" no longer exists'),
+				isError: true,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'write_records',
+				output: 'Column "status" no longer exists',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'write_records',
+				output: 'Column "owner" no longer exists',
+				isError: true,
+			},
+		]);
+	});
+
+	it('scrubs secrets from every failed tool output across SSE serialization', async () => {
+		const apiKey = `sk-${'a'.repeat(20)}`;
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-error',
+				toolName: 'write_records',
+				output: new Error('Request failed with password=hunter2'),
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-string',
+				toolName: 'write_records',
+				output: 'Request failed with password=hunter2',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-object',
+				toolName: 'write_records',
+				output: { message: 'Request failed', detail: apiKey },
+				isError: true,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-error',
+				toolName: 'write_records',
+				output: 'Request failed with [REDACTED]',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-string',
+				toolName: 'write_records',
+				output: 'Error: Request failed with [REDACTED]',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-object',
+				toolName: 'write_records',
+				output: '{\n  "message": "Request failed",\n  "detail": "[REDACTED]"\n}',
+				isError: true,
 			},
 		]);
 	});

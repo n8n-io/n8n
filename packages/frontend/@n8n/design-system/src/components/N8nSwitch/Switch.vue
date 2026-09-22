@@ -18,6 +18,11 @@ const rootProps = useForwardProps(reactivePick(props, 'required', 'value', 'defa
 const modelValue = defineModel<boolean>({ default: undefined });
 
 const attrs = useAttrs();
+const ariaLabel = computed(() => {
+	if (props.label) return undefined;
+	const explicitLabel = attrs['aria-label'];
+	return typeof explicitLabel === 'string' ? explicitLabel : 'Toggle';
+});
 const getRootAttrs = () => {
 	const rootAttrs = { ...attrs };
 	delete rootAttrs.class;
@@ -39,7 +44,7 @@ const getRootAttrs = () => {
 			:disabled="disabled"
 			:class="$style.switchRoot"
 			:aria-labelledby="label ? uuid : undefined"
-			:aria-label="!label && 'Toggle'"
+			:aria-label="ariaLabel"
 		>
 			<SwitchThumb :class="$style.switchThumb" />
 		</SwitchRoot>

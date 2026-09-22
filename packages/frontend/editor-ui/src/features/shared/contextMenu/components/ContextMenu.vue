@@ -94,7 +94,13 @@ function onOpenChange(open: boolean) {
 					<template v-for="item in actions" :key="item.id">
 						<ContextMenuSeparator v-if="item.divided" :class="$style.separator" />
 						<ContextMenuItem
-							:class="[$style.item, $style.itemContainer, { [$style.disabled]: !!item.disabled }]"
+							:class="[
+								$style.item,
+								$style.itemContainer,
+								{
+									[$style.disabled]: !!item.disabled,
+								},
+							]"
 							:disabled="item.disabled"
 							:data-test-id="`context-menu-item-${item.id}`"
 							@select="onActionSelect(item.id)"

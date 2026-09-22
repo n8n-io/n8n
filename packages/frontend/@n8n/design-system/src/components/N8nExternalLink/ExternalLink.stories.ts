@@ -33,6 +33,14 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<N8nExternalLink v-bind="args">{{ args.default }}</N8nExternalLink>',
 });
 
+export const Default = Template.bind({});
+Default.args = {
+	href: 'https://n8n.io',
+	size: 'medium',
+	newWindow: true,
+	default: 'Visit n8n',
+};
+
 export const IconOnly = Template.bind({});
 IconOnly.args = {
 	href: 'https://n8n.io',
@@ -40,29 +48,16 @@ IconOnly.args = {
 	newWindow: true,
 };
 
-export const WithText = Template.bind({});
-WithText.args = {
-	href: 'https://n8n.io',
-	size: 'medium',
-	newWindow: true,
-	default: 'Visit n8n',
-};
-
-export const Small = Template.bind({});
-Small.args = {
-	href: 'https://n8n.io',
-	size: 'small',
-	newWindow: true,
-	default: 'Visit n8n',
-};
-
-export const Large = Template.bind({});
-Large.args = {
-	href: 'https://n8n.io',
-	size: 'large',
-	newWindow: true,
-	default: 'Visit n8n',
-};
+export const Sizes: StoryFn = () => ({
+	components: { N8nExternalLink },
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+			<N8nExternalLink href="https://n8n.io" size="small">Small</N8nExternalLink>
+			<N8nExternalLink href="https://n8n.io" size="medium">Medium</N8nExternalLink>
+			<N8nExternalLink href="https://n8n.io" size="large">Large</N8nExternalLink>
+		</div>
+	`,
+});
 
 export const SameWindow = Template.bind({});
 SameWindow.args = {

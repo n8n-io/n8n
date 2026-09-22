@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -9,21 +9,21 @@ import { Telemetry } from '@/telemetry';
 import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
 import {
-	configuredCapabilityKinds,
+	capabilityCountTelemetryProperties,
 	countAgentCapabilities,
 	isUnconfiguredAgent,
-	totalAgentCapabilities,
 } from './utils/agent-capabilities';
 
 export { isUnconfiguredAgent };
 
-/** Which surface acted: selects the per-surface event on every agent lifecycle emit. */
-export type AgentActor = 'user' | 'builder' | 'mcp';
+export type { AgentActor } from '@n8n/api-types';
 
 /** Context passed to canonical mutating sidecar services. */
 export type AgentMutationTelemetryContext = {
 	user: User;
 	modifiedBy: AgentActor;
+	/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
+	pushRef?: string;
 };
 
 export type AgentConfigPart =
@@ -138,15 +138,7 @@ export class AgentModificationTelemetryService {
 				project_id: projectId,
 				user_id: user.id,
 				changed_parts: changedParts,
-				capability_kinds: configuredCapabilityKinds(counts),
-				capability_count: totalAgentCapabilities(counts),
-				tool_count: counts.tool,
-				skill_count: counts.skill,
-				sub_agent_count: counts.subAgent,
-				mcp_server_count: counts.mcpServer,
-				vector_store_count: counts.vectorStore,
-				task_count: counts.task,
-				trigger_count: counts.channel,
+				...capabilityCountTelemetryProperties(counts),
 				model,
 				tool_types,
 				has_published_version: Boolean(agent.activeVersionId),

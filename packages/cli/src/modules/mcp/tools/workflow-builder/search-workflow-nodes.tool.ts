@@ -1,14 +1,14 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { NodeCatalogService } from '@/node-catalog';
+import type { NodeCatalogService, SearchNodesOptions } from '@/node-catalog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import { toN8nConnectCoverage } from '../../mcp-ai-gateway.helper';
 import {
-	LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from '../../mcp.constants';
 import type {
@@ -36,18 +36,20 @@ const outputSchema = {
 	results: z
 		.string()
 		.describe('Search results with matching node IDs, discriminators, and related nodes'),
-	n8nConnect: z
+	gatewayCredits: z
 		.object({
-			credentialTypes: z.array(z.string()).describe('Credential types n8n Connect can provide.'),
+			credentialTypes: z
+				.array(z.string())
+				.describe('Credential types Gateway credits can provide.'),
 			nodes: z
 				.array(z.string())
 				.describe(
-					'Node types n8n Connect may cover. Prefer these when the user has not specified an integration. Candidate coverage only — exact eligibility also depends on the node action, minimum type version, and hidden properties.',
+					'Node types Gateway credits may cover. Prefer these when the user has not specified an integration. Candidate coverage only — exact eligibility also depends on the node action, minimum type version, and hidden properties.',
 				),
 		})
 		.optional()
 		.describe(
-			`Present when n8n Connect is available. Candidate coverage — cross-reference against the search results, but call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
+			`Present when Gateway credits are available. Candidate coverage — cross-reference against the search results, but call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -75,6 +77,12 @@ export const createSearchWorkflowNodesTool = (
 	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 	aiGatewayService: AiGatewayService,
+	/**
+	 * Offer verified community nodes that are not installed here, in a labelled
+	 * second section. Off by default: only surfaces that can follow up with an
+	 * install step should ask for it.
+	 */
+	includeUninstalled: boolean = false,
 ): SearchNodesToolDefinition => ({
 	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
 	config: {
@@ -98,17 +106,20 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const options =
-				usage === 'agentTool'
-					? {
-							nodeFilter: (await import('@/modules/agents/agents-tools.service.js'))
-								.isAgentToolNodeType,
-						}
-					: {};
-			const [{ results, queriesWithNoResults }, availability] = await Promise.all([
-				nodeCatalogService.searchNodes(queries, options),
-				aiGatewayService.isAvailable(),
-			]);
+			// MCP is the only surface that opts into the verified-but-uninstalled
+			// tier: it can follow up with an install step, which Instance AI and
+			// the agents builder have no equivalent for.
+			const options: SearchNodesOptions = { includeUninstalled };
+			if (usage === 'agentTool') {
+				options.nodeFilter = (
+					await import('@/modules/agents/agents-tools.service.js')
+				).isAgentToolNodeType;
+			}
+			const [{ results, queriesWithNoResults, uninstalledOffered }, availability] =
+				await Promise.all([
+					nodeCatalogService.searchNodes(queries, options),
+					aiGatewayService.isAvailable(),
+				]);
 
 			telemetryPayload.results = {
 				success: true,
@@ -116,20 +127,26 @@ export const createSearchWorkflowNodesTool = (
 					queryCount: queries.length,
 					noResultQueryCount: queriesWithNoResults.length,
 					queriesWithNoResults,
+					// Front of the offered -> installed funnel, paired with the
+					// install_community_node event. Absent when discovery is off, so
+					// the payload stays identical to before on those instances.
+					...(includeUninstalled
+						? { uninstalledOfferedCount: uninstalledOffered?.length ?? 0 }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const structured: {
 				results: string;
-				n8nConnect?: N8nConnectCoverage;
+				gatewayCredits?: N8nConnectCoverage;
 			} = {
 				results,
 			};
 			const coverage = toN8nConnectCoverage(availability);
-			if (coverage) structured.n8nConnect = coverage;
+			if (coverage) structured.gatewayCredits = coverage;
 
-			const text = coverage ? `${results}\n\nn8nConnect: ${JSON.stringify(coverage)}` : results;
+			const text = coverage ? `${results}\n\ngatewayCredits: ${JSON.stringify(coverage)}` : results;
 
 			return {
 				content: [{ type: 'text', text }],

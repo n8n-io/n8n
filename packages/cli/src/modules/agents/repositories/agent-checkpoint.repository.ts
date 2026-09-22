@@ -17,10 +17,18 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		return await this.findOneBy({ runId, agentId });
 	}
 
-	async findActiveForAgent(agentId: string): Promise<AgentCheckpoint[]> {
+	async findActiveForThread(agentId: string, threadId: string): Promise<AgentCheckpoint[]> {
+		return await this.find({
+			where: { agentId, threadId, expired: false },
+			order: { updatedAt: 'DESC' },
+		});
+	}
+
+	async findForSandboxReconciliation(agentId: string): Promise<AgentCheckpoint[]> {
 		return await this.find({
 			where: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
+			take: 101,
 		});
 	}
 

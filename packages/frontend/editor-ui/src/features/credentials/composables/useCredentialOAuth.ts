@@ -12,12 +12,36 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { useCredentialsStore } from '../credentials.store';
+import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getTrustedOAuthOrigins, hasOAuthTokenData, waitForOAuthCallback } from './oauthCallback';
+import {
+	getTrustedOAuthOrigins,
+	hasOAuthTokenData,
+	waitForOAuthCallback,
+	type OAuthFlowOutcome,
+} from './oauthCallback';
+
+interface OAuthPopupState {
+	window: Window;
+	onReopen?: () => void;
+}
+
+interface OAuthAuthorizationOptions {
+	abortOnPopupClose?: boolean;
+	popup?: OAuthPopupState;
+}
+
+interface CreateAndAuthorizeOptions {
+	onAuthorizationStarted?: (reopen: () => void) => void;
+	projectId?: string;
+	workflowId?: string;
+	credentialFetchScope?: CredentialFetchScope;
+	data?: ICredentialDataDecryptedObject;
+	name?: string;
+}
 
 /**
  * Composable for OAuth credential type detection and authorization.
@@ -194,6 +218,13 @@ export function useCredentialOAuth() {
 		);
 	}
 
+	function showPopupBlockedError(): void {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
+		);
+	}
+
 	function openOAuthPopup(url: string, signal?: AbortSignal): Window | null {
 		const params =
 			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
@@ -217,11 +248,27 @@ export function useCredentialOAuth() {
 	/**
 	 * Authorize OAuth credentials by opening a popup and listening for callback.
 	 * Returns true if OAuth was successful, false if cancelled or failed.
+	 *
+	 * Must be called synchronously from the click handler (or be given a popup
+	 * that was opened synchronously from it, see `options.popup`).
 	 */
 	async function authorize(
 		credential: ICredentialsResponse,
 		signal?: AbortSignal,
+		options: OAuthAuthorizationOptions = {},
 	): Promise<boolean> {
+		// window.open must run within the click's transient user activation:
+		// opening after the network round trips below gets the popup blocked on
+		// slow connections (Chrome expires activation after ~5s) and in stricter
+		// browsers (Safari) regardless of timing. Open a blank window now and
+		// navigate it once the authorization URL is known.
+		const popupWindow = options.popup?.window ?? openOAuthPopup('about:blank', signal);
+		if (!popupWindow) {
+			showPopupBlockedError();
+			return false;
+		}
+		const popup: OAuthPopupState = options.popup ?? { window: popupWindow };
+
 		// Token presence in credential data can only confirm the flow for fixed
 		// credentials that had no token before the popup opened: a reconnect's old
 		// token would read as an immediate false success, and end-user
@@ -229,49 +276,56 @@ export function useCredentialOAuth() {
 		// data, so presence never changes there.
 		const canVerifyConnected = !credential.isResolvable && !(await isConnected(credential.id));
 
-		const urlResult = await getOAuthAuthorizationUrl(credential);
-		if (!urlResult.ok) {
-			if (urlResult.error === 'no-url') showOAuthUrlError();
-			return false;
-		}
+		let outcome: OAuthFlowOutcome;
+		while (true) {
+			const urlResult = await getOAuthAuthorizationUrl(credential);
+			if (!urlResult.ok) {
+				popup.window.close();
+				if (urlResult.error === 'no-url') showOAuthUrlError();
+				return false;
+			}
 
-		if (!isValidHttpUrl(urlResult.result)) {
-			showOAuthUrlError();
-			return false;
-		}
+			if (!isValidHttpUrl(urlResult.result)) {
+				popup.window.close();
+				showOAuthUrlError();
+				return false;
+			}
 
-		const popup = openOAuthPopup(urlResult.result, signal);
-		if (!popup) {
-			showOAuthUrlError();
-			return false;
-		}
+			popup.window.location.href = urlResult.result;
+			const retryController = new AbortController();
+			popup.onReopen = () => retryController.abort();
+			try {
+				outcome = await waitForOAuthCallback({
+					popup: popup.window,
+					trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+					signal: signal
+						? AbortSignal.any([signal, retryController.signal])
+						: retryController.signal,
+					verifyConnected: canVerifyConnected
+						? async () => await isConnected(credential.id)
+						: undefined,
+					abortOnPopupClose: options.abortOnPopupClose,
+				});
+			} finally {
+				popup.onReopen = undefined;
+			}
 
-		let outcome = await waitForOAuthCallback({
-			popup,
-			trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
-			signal,
-			verifyConnected: canVerifyConnected
-				? async () => await isConnected(credential.id)
-				: undefined,
-		});
+			// The callback can finish while a timeout, retry, or cancellation starts.
+			if (
+				(outcome === 'timeout' || outcome === 'aborted') &&
+				canVerifyConnected &&
+				(await isConnected(credential.id))
+			) {
+				outcome = 'success';
+			}
 
-		// Timeout and abort can race the backend committing the token: authorization
-		// can legitimately take longer than the timeout, and cancellation is not
-		// always explicit user intent (NodeCredentials also cancels on unmount).
-		// Re-check before treating the flow as failed — a wrong failure deletes the
-		// credential in createAndAuthorize and would resurface "Credential not
-		// found" on the callback page.
-		if (
-			(outcome === 'timeout' || outcome === 'aborted') &&
-			canVerifyConnected &&
-			(await isConnected(credential.id))
-		) {
-			outcome = 'success';
+			// Reopening needs fresh server state and a fresh callback timeout.
+			if (!retryController.signal.aborted || signal?.aborted || outcome !== 'aborted') break;
 		}
 
 		// No-op when the opener relationship was severed by the provider's COOP
 		// policy; the callback page closes itself in that case.
-		popup.close();
+		popup.window.close();
 
 		if (outcome === 'success') {
 			toast.showMessage({
@@ -289,32 +343,111 @@ export function useCredentialOAuth() {
 	}
 
 	/**
+	 * Authorize a credential that was just created. Keeps it out of the store
+	 * until OAuth succeeds and removes it when authorization is not completed.
+	 */
+	/**
+	 * Publishes a credential the user just connected. `upsertCredential` only reaches
+	 * the flat map, so the picker — which reads the scope-narrowed slice — would not
+	 * offer the credential until the next scoped fetch. Ask the server rather than
+	 * inserting locally: only it can say whether the credential is usable here.
+	 */
+	async function publishConnectedCredential(
+		credential: ICredentialsResponse,
+		scope?: CredentialFetchScope,
+	): Promise<void> {
+		credentialsStore.upsertCredential(credential);
+		if (scope) await credentialsStore.fetchUsableCredentials(scope);
+		else await credentialsStore.refreshUsableCredentials();
+	}
+
+	async function authorizeNewCredential(
+		credential: ICredentialsResponse,
+		options: OAuthAuthorizationOptions = {},
+	): Promise<boolean> {
+		const controller = new AbortController();
+		oauthAbortController.value = controller;
+		let success = false;
+
+		try {
+			success = await authorize(credential, controller.signal, options);
+			if (success) {
+				await publishConnectedCredential(credential);
+			}
+			return success;
+		} finally {
+			oauthAbortController.value = null;
+			if (!success) {
+				await credentialsStore.deleteCredential({ id: credential.id }).catch(() => {});
+			}
+		}
+	}
+
+	/**
 	 * Create a new OAuth credential and run the full authorization flow.
 	 * Returns the credential on success, null on failure (cleans up automatically).
 	 */
 	async function createAndAuthorize(
 		credentialTypeName: string,
 		nodeType?: string,
+		options: CreateAndAuthorizeOptions = {},
 	): Promise<ICredentialsResponse | null> {
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 		if (!credentialType) {
 			return null;
 		}
 
-		const data: ICredentialDataDecryptedObject = {};
+		const controller = new AbortController();
+		oauthAbortController.value = controller;
+
+		// Opened before the credential-creation round trips so it stays within
+		// the click's transient user activation (see authorize).
+		const initialPopup = openOAuthPopup('about:blank', controller.signal);
+		if (!initialPopup) {
+			showPopupBlockedError();
+			oauthAbortController.value = null;
+			return null;
+		}
+		const popup: OAuthPopupState = { window: initialPopup };
+		let authorizationFinished = false;
+
+		options.onAuthorizationStarted?.(() => {
+			if (authorizationFinished || controller.signal.aborted) return;
+			try {
+				if (!popup.window.closed) {
+					popup.window.focus();
+					return;
+				}
+			} catch {
+				// A provider can isolate the popup from its opener.
+			}
+
+			const reopenedPopup = openOAuthPopup('about:blank', controller.signal);
+			if (!reopenedPopup) {
+				showPopupBlockedError();
+				return;
+			}
+			popup.window = reopenedPopup;
+			popup.onReopen?.();
+			reopenedPopup.focus();
+		});
+
+		const data: ICredentialDataDecryptedObject = { ...options.data };
 		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
 			(prop) => prop.name === 'allowedHttpRequestDomains',
 		);
 		if (!allowedHttpRequestDomainsProperty || allowedHttpRequestDomainsProperty.type !== 'hidden') {
-			data.allowedHttpRequestDomains = 'none';
+			data.allowedHttpRequestDomains ??= 'none';
 		}
 
 		let credential: ICredentialsResponse;
 		try {
-			const name = await credentialsStore.getNewCredentialName({
-				credentialTypeName,
-				fallbackName: credentialType.displayName,
-			});
+			const name =
+				options.name ??
+				(await credentialsStore.getNewCredentialName({
+					credentialTypeName,
+					fallbackName: credentialType.displayName,
+				}));
 			credential = await credentialsStore.createNewCredential(
 				{
 					id: '',
@@ -322,7 +455,7 @@ export function useCredentialOAuth() {
 					type: credentialTypeName,
 					data,
 				},
-				projectsStore.currentProject?.id,
+				options.projectId ?? projectsStore.currentProject?.id,
 				undefined,
 				{ skipStoreUpdate: true },
 			);
@@ -330,25 +463,27 @@ export function useCredentialOAuth() {
 			telemetry.track('User created credentials', {
 				credential_type: credential.type,
 				credential_id: credential.id,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: options.workflowId ?? workflowsStore.workflowId,
 			});
 		} catch (error) {
+			popup.window.close();
+			oauthAbortController.value = null;
 			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
 			return null;
 		}
 
-		const controller = new AbortController();
-		oauthAbortController.value = controller;
 		pendingCredentialId.value = credential.id;
 
-		const success = await authorize(credential, controller.signal);
+		const success = await authorize(credential, controller.signal, { popup }).finally(() => {
+			authorizationFinished = true;
+		});
 
 		oauthAbortController.value = null;
 		pendingCredentialId.value = null;
 
 		const trackProperties: Record<string, GenericValue> = {
 			credential_type: credentialTypeName,
-			workflow_id: workflowsStore.workflowId ?? null,
+			workflow_id: options.workflowId ?? workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
 			is_complete: true,
 			is_new: true,
@@ -363,7 +498,11 @@ export function useCredentialOAuth() {
 		telemetry.track('User saved credentials', trackProperties);
 
 		if (success) {
-			credentialsStore.upsertCredential(credential);
+			await publishConnectedCredential(
+				credential,
+				options.credentialFetchScope ??
+					(options.workflowId ? { workflowId: options.workflowId } : undefined),
+			);
 
 			return credential;
 		}
@@ -400,6 +539,7 @@ export function useCredentialOAuth() {
 		canOAuthCredentialQuickConnect,
 		hasManualCredentialInputFields,
 		authorize,
+		authorizeNewCredential,
 		createAndAuthorize,
 		cancelAuthorize,
 	};

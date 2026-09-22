@@ -16,8 +16,7 @@ import type {
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
-import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -33,48 +32,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace ExecutionRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			includeData?: boolean;
-			ignoreDataSizeLimit?: boolean;
-			redactExecutionData?: boolean;
-			workflowId?: string;
-			lastId?: string;
-			projectId?: string;
-		}
-	>;
-
-	type Get = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{},
-		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
-	>;
-	type Delete = Get;
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
-	type Stop = AuthenticatedRequest<{ id: string }>;
-	type StopMany = AuthenticatedRequest<
-		{},
-		{},
-		{
-			status: Array<Extract<ExecutionStatus, 'waiting' | 'running'> | 'queued'>;
-			workflowId?: string;
-			startedAfter?: string;
-			startedBefore?: string;
-		}
-	>;
-	type GetTags = AuthenticatedRequest<{ id: string }>;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
-}
-
 export declare namespace TestRunRequest {
 	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
 	// resolves it from `req.params.id`); `runId` is the test run id.
@@ -106,59 +63,13 @@ export declare namespace TestRunRequest {
 	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
-export declare namespace TagRequest {
-	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
-	type Get = AuthenticatedRequest<{ id: string }>;
-	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
-}
-
-export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
-}
-
 export declare namespace WorkflowRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			tags?: string;
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			workflowId?: number;
-			active: boolean;
-			name?: string;
-			projectId?: string;
-			excludePinnedData?: boolean;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
-		{}
-	>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
-	type Delete = Get;
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		WorkflowEntity & { parentFolderId?: string | null },
-		{ publishIfActive?: boolean }
-	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
@@ -214,63 +125,6 @@ export declare namespace UserRequest {
 	>;
 }
 
-export declare namespace CredentialRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{ limit?: number; cursor?: string; offset?: number }
-	>;
-
-	type Get = AuthenticatedRequest<{ id: string }>;
-
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		{
-			type: string;
-			name: string;
-			data: ICredentialDataDecryptedObject;
-			projectId?: string;
-			isResolvable?: boolean;
-		},
-		{}
-	>;
-
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{
-			type?: string;
-			name?: string;
-			data?: ICredentialDataDecryptedObject;
-			isGlobal?: boolean;
-			isResolvable?: boolean;
-			isPartialData?: boolean;
-		},
-		{}
-	>;
-
-	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
-
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
-}
-
-export declare namespace InsightsRequest {
-	type GetSummary = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			startDate?: string;
-			endDate?: string;
-			projectId?: string;
-		}
-	>;
-}
-
 export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
@@ -291,7 +145,7 @@ export interface IDependency {
 }
 
 export interface IJsonSchema {
-	additionalProperties: boolean;
+	additionalProperties: false;
 	type: 'object';
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];

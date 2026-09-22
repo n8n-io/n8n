@@ -1,13 +1,14 @@
 import { createTestingPinia } from '@pinia/testing';
 import { AGENT_TASK_OBJECTIVE_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
-import { defineComponent, h, onMounted, watch } from 'vue';
+import { defineComponent, h, nextTick, onMounted, watch } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import AgentTaskModal from '../components/AgentTaskModal.vue';
 import { formatScheduleDateTime } from '../utils/scheduleBuilder';
@@ -17,8 +18,12 @@ configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
-			options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.builder.tasks.schedule.summary') {
+				return `${options?.interpolate?.description} · ${options?.interpolate?.execution}`;
+			}
+			return options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key;
+		},
 	};
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
@@ -31,21 +36,27 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => rootStoreMock,
 }));
 
+// Captured before any test installs fake timers: `vi.useFakeTimers()` swaps
+// `Intl.DateTimeFormat` for a wrapper that still builds real instances, so a spy
+// on the wrapper's prototype is never reached — this one is.
+const RealDateTimeFormat = Intl.DateTimeFormat;
+
+/** Pin the zone `Intl` reports for the machine viewing the modal. */
+function setBrowserTimezone(timeZone: string): void {
+	const resolved = new RealDateTimeFormat().resolvedOptions();
+	vi.spyOn(RealDateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+		...resolved,
+		timeZone,
+	});
+}
+
 const createAgentTaskSpy = vi.fn();
 const updateAgentTaskSpy = vi.fn();
 const deleteAgentTaskSpy = vi.fn();
-const runAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentTask: (...args: unknown[]) => createAgentTaskSpy(...args),
 	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
-	runAgentTask: (...args: unknown[]) => runAgentTaskSpy(...args),
 	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
-}));
-
-const showMessageSpy = vi.fn();
-const showErrorSpy = vi.fn();
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
 }));
 
 const confirmSpy = vi.fn();
@@ -124,12 +135,21 @@ const stubs = {
 	N8nIcon: { template: '<span />' },
 	N8nButton: {
 		props: ['disabled', 'loading'],
+		emits: ['click'],
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
 	N8nSwitch2: {
 		props: ['modelValue'],
-		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',
+		emits: ['update:modelValue'],
+		template:
+			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	},
+	AgentPreviewButton: {
+		props: ['isRunnable', 'testId', 'validationIssues'],
+		emits: ['open-preview'],
+		template:
+			'<button :data-testid="testId" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -140,11 +160,16 @@ const stubs = {
 	FormInput: N8nFormInputStub,
 	// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
 	MarkdownEditor: {
-		props: ['modelValue'],
+		props: ['modelValue', 'showToolbar'],
 		template:
-			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<textarea v-bind="$attrs" :value="modelValue" :data-show-toolbar="showToolbar" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
-	Select: { props: ['modelValue'], template: '<select v-bind="$attrs"><slot /></select>' },
+	Select: {
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template:
+			'<select v-bind="$attrs" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+	},
 	Option: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
 };
 
@@ -180,6 +205,11 @@ describe('AgentTaskModal', () => {
 		vi.useRealTimers();
 		rootStoreMock.timezone = 'UTC';
 		createTestingPinia({ stubActions: false });
+		// The zone list the schedule's timezone selector offers, trimmed to what
+		// these tests pick from.
+		mockedStore(useSettingsStore).getTimezones = vi
+			.fn()
+			.mockResolvedValue({ 'Asia/Tokyo': 'Asia/Tokyo', 'Europe/London': 'Europe/London' });
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -195,6 +225,10 @@ describe('AgentTaskModal', () => {
 		createAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId, onSaved } = renderModal();
 
+		expect(getByTestId('agent-task-objective-input')).toHaveAttribute(
+			'data-show-toolbar',
+			'floating',
+		);
 		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
@@ -230,6 +264,63 @@ describe('AgentTaskModal', () => {
 			'a1',
 			expect.objectContaining({ enabled: true }),
 		);
+	});
+
+	it('waits for persistence before creating a task', async function waitForPersistence() {
+		let resolvePersistence!: () => void;
+		const persistence = new Promise<void>(function capturePersistenceResolver(resolve) {
+			resolvePersistence = resolve;
+		});
+		const ensureAgentPersisted = vi.fn().mockReturnValue(persistence);
+		createAgentTaskSpy.mockResolvedValue({});
+		const { getByTestId, onSaved } = renderModal({
+			isPublished: false,
+			ensureAgentPersisted,
+		});
+
+		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		expect(ensureAgentPersisted).toHaveBeenCalledOnce();
+		expect(createAgentTaskSpy).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getByTestId('agent-task-save')).toBeDisabled();
+
+		resolvePersistence();
+
+		await waitFor(function expectTaskSaved() {
+			expect(onSaved).toHaveBeenCalledOnce();
+		});
+		expect(createAgentTaskSpy).toHaveBeenCalledExactlyOnceWith(
+			{},
+			'p1',
+			'a1',
+			expect.objectContaining({ name: 'My Task', objective: 'Do the thing', enabled: true }),
+		);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('does not create a task when persistence fails', async function rejectFailedPersistence() {
+		const ensureAgentPersisted = vi.fn().mockRejectedValue(new Error('Agent could not be saved'));
+		const { getByTestId, getByText, onSaved } = renderModal({
+			isPublished: false,
+			ensureAgentPersisted,
+		});
+
+		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		await waitFor(function expectPersistenceError() {
+			expect(getByText('Agent could not be saved')).toBeInTheDocument();
+		});
+		expect(ensureAgentPersisted).toHaveBeenCalledOnce();
+		expect(createAgentTaskSpy).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getByTestId('agent-task-save')).toBeEnabled();
 	});
 
 	it('does not save when required fields are empty', async () => {
@@ -295,52 +386,191 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('toggles an existing task through the modal callback', async () => {
+	it('pauses and unpauses an existing task with the inline toggle', async () => {
 		const onToggle = vi.fn();
-		const { getByTestId } = renderModal({
+		const { getByTestId, getByText, queryByText } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
 			onToggle,
 		});
 
+		expect(getByTestId('agent-task-pause-control')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
+		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+
 		await fireEvent.click(getByTestId('agent-task-toggle'));
 
 		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'true');
+		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
+		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-task-toggle'));
+
+		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
+		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 	});
 
-	it('formats the next run preview in the user timezone', () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date('2026-01-01T13:00:00.000Z'));
-		rootStoreMock.timezone = 'America/New_York';
-		const browserTimezone = 'UTC';
-		const originalResolvedOptions = new Intl.DateTimeFormat().resolvedOptions();
-		vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
-			...originalResolvedOptions,
-			timeZone: browserTimezone,
+	describe('schedule timezone', () => {
+		/**
+		 * Every case pins "now" so the expected occurrence is exact. Fake timers make
+		 * `waitFor` unusable, but nothing here needs it: the async work is all
+		 * microtasks (the timezone list load, the save call), so flushing ticks is
+		 * enough.
+		 */
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-01-01T13:00:00.000Z'));
+			rootStoreMock.timezone = 'America/New_York';
 		});
 
-		const { getByText } = renderModal({ task: makeTask({ cronExpression: '0 9 * * *' }) });
+		/** The next run label reads "<key> <formatted occurrence>" via the i18n mock. */
+		function expectNextRun(
+			getByText: (text: string) => HTMLElement,
+			at: string,
+			inZone: string,
+		): void {
+			expect(
+				getByText(
+					`agents.builder.tasks.schedule.nextOccurrence ${formatScheduleDateTime(new Date(at), inZone)}`,
+				),
+			).toBeInTheDocument();
+		}
 
-		const nextRunInUserTimezone = formatScheduleDateTime(
-			new Date('2026-01-01T14:00:00.000Z'),
-			browserTimezone,
-		);
-		expect(
-			getByText(`agents.builder.tasks.schedule.nextOccurrence ${nextRunInUserTimezone}`),
-		).toBeInTheDocument();
+		it('previews the next execution after a new task schedule changes', async () => {
+			setBrowserTimezone('Asia/Tokyo');
+
+			const { getByTestId, getByText, queryByText } = renderModal();
+
+			expect(
+				queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/),
+			).not.toBeInTheDocument();
+
+			await fireEvent.update(getByTestId('agent-task-frequency'), 'weekly');
+
+			expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		});
+
+		it("previews an existing task in the task's own timezone", () => {
+			setBrowserTimezone('UTC');
+
+			const { getByText } = renderModal({
+				task: makeTask({ cronExpression: '0 8 * * *', timezone: 'Asia/Tokyo' }),
+			});
+
+			// 08:00 Tokyo on 2 Jan, in Tokyo time — not the viewer's, not the instance's.
+			expectNextRun(getByText, '2026-01-01T23:00:00.000Z', 'Asia/Tokyo');
+		});
+
+		it('uses the localized custom schedule summary', () => {
+			const { getByText } = renderModal({
+				task: makeTask({ cronExpression: '*/15 * * * *', timezone: 'UTC' }),
+			});
+
+			expect(
+				getByText(/Every 15 minutes · agents\.builder\.tasks\.schedule\.nextOccurrence/),
+			).toBeInTheDocument();
+		});
+
+		it('previews a task saved without a timezone in the instance timezone', () => {
+			setBrowserTimezone('Asia/Tokyo');
+
+			const { getByText } = renderModal({
+				task: makeTask({ cronExpression: '0 9 * * *', timezone: null }),
+			});
+
+			// Tasks predating per-task timezones really do run on the instance timezone.
+			expectNextRun(getByText, '2026-01-01T14:00:00.000Z', 'America/New_York');
+		});
+
+		it('keeps a task on the instance timezone when the schedule is not touched', async () => {
+			setBrowserTimezone('Asia/Tokyo');
+			updateAgentTaskSpy.mockResolvedValue({});
+
+			const { getByTestId } = renderModal({ task: makeTask({ timezone: null }) });
+
+			await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
+			await fireEvent.click(getByTestId('agent-task-save'));
+
+			// Editing anything else must not pin the task, or a later change to the
+			// instance timezone would stop applying to it.
+			expect(updateAgentTaskSpy).toHaveBeenCalledWith(
+				{},
+				'p1',
+				'a1',
+				'task-9',
+				expect.objectContaining({ timezone: null }),
+			);
+		});
+
+		it('re-previews and saves against a newly picked timezone', async () => {
+			setBrowserTimezone('Asia/Tokyo');
+			updateAgentTaskSpy.mockResolvedValue({});
+
+			const { getByTestId, getByText } = renderModal({
+				task: makeTask({ cronExpression: '0 9 * * *', timezone: 'Asia/Tokyo' }),
+			});
+
+			// Let the awaited timezone list land and re-render its options, so the
+			// stubbed <select> can actually take the value below. Fake timers rule out
+			// `waitFor`, but the load is pure microtasks.
+			await Promise.resolve();
+			await nextTick();
+			await fireEvent.update(getByTestId('agent-task-timezone'), 'Europe/London');
+
+			// 09:00 London on 2 Jan — 09:00 on the 1st has already passed in that zone.
+			expectNextRun(getByText, '2026-01-02T09:00:00.000Z', 'Europe/London');
+
+			await fireEvent.click(getByTestId('agent-task-save'));
+
+			expect(updateAgentTaskSpy).toHaveBeenCalledWith(
+				{},
+				'p1',
+				'a1',
+				'task-9',
+				expect.objectContaining({ cronExpression: '0 9 * * *', timezone: 'Europe/London' }),
+			);
+		});
 	});
 
-	it('runs an existing task and shows a success toast', async () => {
-		runAgentTaskSpy.mockResolvedValue({ success: true });
+	it('opens Preview with the trimmed task objective', async () => {
+		const onPreview = vi.fn();
 		const { getByTestId } = renderModal({
-			task: makeTask(),
+			task: makeTask({ objective: '  Test these instructions  ' }),
 			taskState: { enabled: true },
+			isRunnable: true,
+			onPreview,
 		});
 
-		await fireEvent.click(getByTestId('agent-task-run'));
+		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		await waitFor(() => expect(runAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-9'));
-		expect(showMessageSpy).toHaveBeenCalled();
+		expect(onPreview).toHaveBeenCalledWith('Test these instructions');
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('keeps Preview disabled when the agent is not runnable', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({ task: makeTask(), isRunnable: false, onPreview });
+
+		expect(getByTestId('agent-task-preview')).toBeDisabled();
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).not.toHaveBeenCalled();
+	});
+
+	it('does not open Preview when the objective is invalid', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({
+			task: makeTask({ objective: '' }),
+			isRunnable: true,
+			onPreview,
+		});
+
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
 	});
 
 	it('deletes an existing task after confirmation', async () => {
@@ -357,21 +587,35 @@ describe('AgentTaskModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('keeps task actions in the header for existing tasks only', async () => {
+	it('shows the edit-only controls for existing tasks', async () => {
 		const { getByTestId, rerender, queryByTestId } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
+			isRunnable: true,
 		});
 
-		expect(getByTestId('agent-task-toggle')).toBeTruthy();
-		expect(getByTestId('agent-task-run')).toBeTruthy();
+		expect(getByTestId('agent-task-delete')).toHaveTextContent('generic.delete');
+		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
+		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
+		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
+		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');
+		expect(queryByTestId('agent-task-run')).not.toBeInTheDocument();
 
 		await rerender({
 			modalName: MODAL_NAME,
-			data: { projectId: 'p1', agentId: 'a1', isPublished: true, onSaved: vi.fn() },
+			data: {
+				projectId: 'p1',
+				agentId: 'a1',
+				isPublished: true,
+				isRunnable: true,
+				onSaved: vi.fn(),
+			},
 		});
 
 		expect(queryByTestId('agent-task-toggle')).toBeNull();
-		expect(queryByTestId('agent-task-run')).toBeNull();
+		expect(queryByTestId('agent-task-pause-control')).toBeNull();
+		expect(queryByTestId('agent-task-delete')).toBeNull();
+		expect(getByTestId('agent-task-preview')).toBeInTheDocument();
+		expect(getByTestId('agent-task-save')).toBeInTheDocument();
 	});
 });

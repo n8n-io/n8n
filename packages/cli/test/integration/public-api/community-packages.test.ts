@@ -31,10 +31,7 @@ const COMMUNITY_PACKAGE_API_SCOPES: ApiKeyScope[] = [
 	'communityPackage:uninstall',
 ];
 
-const communityPackagesService = mockInstance(CommunityPackagesService, {
-	missingPackages: [],
-	hasMissingPackages: false,
-});
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const communityNodeTypesService = mockInstance(CommunityNodeTypesService);
 const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
@@ -64,6 +61,7 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
 		const ownerUser = await createOwner();
@@ -174,8 +172,8 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return 400 when package is already installed and loaded', async () => {
-			communityPackagesService.isPackageInstalled.mockResolvedValue(true);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
+			communityPackagesService.isPackageLoaded.mockReturnValue(true);
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 			const response = await testServer
@@ -190,8 +188,7 @@ describe('Community packages (Public API)', () => {
 		it('should return 200 when package is installed successfully', async () => {
 			const pkg = mockPackage();
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 			communityPackagesService.installPackage.mockResolvedValue(pkg);
 
@@ -202,9 +199,11 @@ describe('Community packages (Public API)', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body.packageName).toBe(pkg.packageName);
+			// No version requested, so install() pins the latest vetted version:
+			// the same catalog lookup provides both it and the checksum.
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
-				undefined,
+				mockedVettedPackage.npmVersion,
 				mockedVettedPackage.checksum,
 			);
 		});
@@ -225,8 +224,7 @@ describe('Community packages (Public API)', () => {
 		it('should return 400 when package is banned', async () => {
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'Banned' });
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 
 			const response = await testServer
 				.publicApiAgentFor(owner)

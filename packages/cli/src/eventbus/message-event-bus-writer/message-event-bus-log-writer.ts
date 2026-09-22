@@ -20,7 +20,6 @@ import {
 	EventMessageConfirm,
 	isEventMessageConfirm,
 } from '../event-message-classes/event-message-confirm';
-import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
 import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
 import type { EventMessageMcpOptions } from '../event-message-classes/event-message-mcp';
 import { EventMessageMcp } from '../event-message-classes/event-message-mcp';
@@ -435,7 +434,7 @@ export class MessageEventBusLogWriter {
 	getEventMessageObjectByType(message: AbstractEventMessageOptions): EventMessageTypes | null {
 		switch (message.__type as EventMessageTypeNames) {
 			case EventMessageTypeNames.generic:
-				return new EventMessageGeneric(message as EventMessageGenericOptions);
+				return new EventMessageGeneric(message);
 			case EventMessageTypeNames.workflow:
 				return new EventMessageWorkflow(message as EventMessageWorkflowOptions);
 			case EventMessageTypeNames.audit:

@@ -1,6 +1,11 @@
 import type { IDataObject } from 'n8n-workflow';
 
-import { generateSubnodeCall, generateSubnodesConfig, formatValue } from './subnode-generator';
+import {
+	formatCredentials,
+	generateSubnodeCall,
+	generateSubnodesConfig,
+	formatValue,
+} from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 
 /**
@@ -236,6 +241,32 @@ describe('generateSubnodesConfig', () => {
 		expect(result).toContain('model: model');
 		// Should NOT contain inline languageModel call
 		expect(result).not.toContain('languageModel({');
+	});
+});
+
+describe('formatCredentials', () => {
+	it('preserves a bare null credential ID as a literal', () => {
+		const result = formatCredentials({
+			openAiApi: { id: null, name: 'OpenAI API' },
+		});
+
+		expect(result).toBe("{ openAiApi: { id: null, name: 'OpenAI API' } }");
+	});
+
+	it('keeps string credential IDs in the existing two-argument form', () => {
+		const result = formatCredentials({
+			slackApi: { id: 'cred-123', name: 'My Slack' },
+		});
+
+		expect(result).toBe("{ slackApi: newCredential('My Slack', 'cred-123') }");
+	});
+
+	it('keeps name-only credentials in the existing one-argument form', () => {
+		const result = formatCredentials({
+			slackApi: { name: 'My Slack' },
+		});
+
+		expect(result).toBe("{ slackApi: newCredential('My Slack') }");
 	});
 });
 

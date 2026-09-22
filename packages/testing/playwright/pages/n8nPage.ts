@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { AgentSessionsPage } from './AgentSessionsPage';
 import { AIAssistantPage } from './AIAssistantPage';
 import { CanvasPage } from './CanvasPage';
 import { ChatHubChatPage } from './ChatHubChatPage';
@@ -18,6 +19,7 @@ import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
 import { WorkflowMenu } from './components/WorkflowMenu';
+import { WorkflowReviewControls } from './components/WorkflowReviewControls';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -50,6 +52,7 @@ import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
 import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
+import { WorkflowReviewsPage } from './WorkflowReviewsPage';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
@@ -78,6 +81,7 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly agentSessions: AgentSessionsPage;
 	readonly canvas: CanvasPage;
 	readonly chatHubChat: ChatHubChatPage;
 	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
@@ -100,6 +104,7 @@ export class n8nPage {
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
+	readonly workflowReviews: WorkflowReviewsPage;
 	readonly workflows: WorkflowsPage;
 	readonly notifications: NotificationsPage;
 	readonly credentials: CredentialsPage;
@@ -117,6 +122,7 @@ export class n8nPage {
 	readonly projectTabs: ProjectTabsComponent;
 	readonly commandBar: CommandBar;
 	readonly workflowMenu: WorkflowMenu;
+	readonly workflowReviewControls: WorkflowReviewControls;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
@@ -157,11 +163,15 @@ export class n8nPage {
 
 	constructor(page: Page, api?: ApiHelpers) {
 		this.page = page;
+		// The fallback helper carries no options, so it applies no stack workflow
+		// settings and its engine 2.0 routing check stays quiet. Pass a helper, or
+		// use `start.newTab()`, for a page that creates or runs workflows.
 		this.api = api ?? new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.agentSessions = new AgentSessionsPage(page);
 		this.canvas = new CanvasPage(page);
 		this.chatHubChat = new ChatHubChatPage(page);
 		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);
@@ -184,6 +194,7 @@ export class n8nPage {
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
+		this.workflowReviews = new WorkflowReviewsPage(page);
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);
@@ -205,6 +216,7 @@ export class n8nPage {
 		this.projectTabs = new ProjectTabsComponent(page);
 		this.commandBar = new CommandBar(page);
 		this.workflowMenu = new WorkflowMenu(page);
+		this.workflowReviewControls = new WorkflowReviewControls(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
@@ -241,7 +253,7 @@ export class n8nPage {
 
 	/**
 	 * Navigate to the workflow overview. Goes there directly rather than via `/`,
-	 * because the root route lands users on the AI Assistant when the `instance-ai`
+	 * because the root route lands users on the n8n Assistant when the `instance-ai`
 	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
 	 */
 	async goHome() {

@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
@@ -23,6 +22,24 @@ type OAuthJweKeyEntry = {
 	encryptedPrivateJwk: string;
 	kid: string;
 };
+
+/**
+ * Stored private JWKs written by earlier releases carry this base64 header:
+ * their storage format emits the fixed OpenSSL EVP magic bytes (`Salted__`)
+ * first, and `U2FsdGVkX1` is their base64 encoding, so every such value
+ * starts with it. New values are wrapped the same way DEKs are (see
+ * {@link Cipher.encryptDEKWithInstanceKey}), whose output starts with a
+ * version byte (`A` in base64) and can never carry this prefix — the stored
+ * value alone identifies its format, without a schema change. The
+ * `algorithm` column cannot be the marker here: on these rows it already
+ * names the JWE algorithm.
+ *
+ * Rows in the earlier format are read, never rewritten: a rolling deployment
+ * can still run instances that only read that format, and this service's
+ * cache is shared between instances. Rewriting the stored rows is staged for
+ * a release after every supported reader accepts both formats.
+ */
+const EARLIER_WRAP_PREFIX = 'U2FsdGVkX1';
 
 type OAuthJweKeyPair = {
 	algorithm: JweKeyAlgorithm;
@@ -111,8 +128,16 @@ export class OAuthJweKeyService {
 		return data;
 	}
 
+	/** Unwraps a stored private JWK of either wrap format. */
+	private unwrapPrivateJwk(value: string): string {
+		if (value.startsWith(EARLIER_WRAP_PREFIX)) {
+			return this.cipher.decryptWithInstanceKey(value);
+		}
+		return this.cipher.decryptDEKWithInstanceKey(value);
+	}
+
 	private async deriveKeyPair(entry: OAuthJweKeyEntry): Promise<OAuthJweKeyPair> {
-		const decryptedPrivate = this.cipher.decryptWithInstanceKey(entry.encryptedPrivateJwk);
+		const decryptedPrivate = this.unwrapPrivateJwk(entry.encryptedPrivateJwk);
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
@@ -165,7 +190,7 @@ export class OAuthJweKeyService {
 		});
 		if (!privateRow) return null;
 
-		const decryptedPrivate = this.cipher.decryptWithInstanceKey(privateRow.value);
+		const decryptedPrivate = this.unwrapPrivateJwk(privateRow.value);
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
@@ -199,7 +224,8 @@ export class OAuthJweKeyService {
 			use: JWE_KEY_USE,
 		};
 
-		const encryptedPrivate = this.cipher.encryptWithInstanceKey(JSON.stringify(privateJwk));
+		// Same wrapping as data-encryption keys: instance-key wrapped, GCM.
+		const encryptedPrivate = this.cipher.encryptDEKWithInstanceKey(JSON.stringify(privateJwk));
 
 		try {
 			await this.deploymentKeyRepository.insert({
@@ -212,7 +238,7 @@ export class OAuthJweKeyService {
 
 			this.logger.info('Generated new instance OAuth JWE key pair', { algorithm, kid: id });
 		} catch (error) {
-			if (!isUniqueConstraintViolation(error)) throw error;
+			if (!isUniqueConstraintError(error)) throw error;
 
 			this.logger.debug(
 				'OAuth JWE key insert raced with another main; re-reading winner',
@@ -242,12 +268,5 @@ function toPublicJwk(privateJwk: JWK, algorithm: JweKeyAlgorithm): JWK {
 	const entries = allowed
 		.filter((field) => privateJwk[field] !== undefined)
 		.map((field) => [field, privateJwk[field]] as const);
-	return Object.fromEntries(entries) as JWK;
-}
-
-function isUniqueConstraintViolation(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driverError = error.driverError as { code?: string };
-	const code = driverError?.code;
-	return code === '23505' /* postgres */ || code === 'SQLITE_CONSTRAINT_UNIQUE';
+	return Object.fromEntries(entries);
 }

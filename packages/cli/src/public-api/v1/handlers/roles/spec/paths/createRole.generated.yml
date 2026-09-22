@@ -8,6 +8,7 @@ x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
 requestBody:
+  required: true
   content:
     application/json:
       schema:
@@ -39,44 +40,12 @@ responses:
     content:
       application/json:
         schema:
-          type: object
-          properties:
-            slug:
-              type: string
-            displayName:
-              type: string
-            description:
-              type: string
-              nullable: true
-            systemRole:
-              type: boolean
-            roleType:
-              type: string
-              enum:
-                - project
-                - global
-            scopes:
-              type: array
-              items:
-                type: string
-            createdAt:
-              type: string
-              format: date-time
-            updatedAt:
-              type: string
-              format: date-time
-          required:
-            - slug
-            - displayName
-            - description
-            - systemRole
-            - roleType
-            - scopes
-            - createdAt
-            - updatedAt
+          $ref: ../../../../shared/spec/schemas/rolePublicDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

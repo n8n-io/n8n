@@ -5,7 +5,12 @@
 		"module": "esnext",
 		"importHelpers": true,
 		"allowJs": true,
-		"incremental": false,
+		// Incremental cuts a `vue-tsc` re-run after one edit from ~34s to ~10s in editor-ui.
+		// The build info goes to `.turbo`, not `dist`: editor-ui ships its `dist` verbatim,
+		// and the declaration-emit build configs must not share a build info file with the
+		// `noEmit` typecheck program (they pin `incremental: false`).
+		"incremental": true,
+		"tsBuildInfoFile": "${configDir}/.turbo/typecheck.tsbuildinfo",
 		"allowSyntheticDefaultImports": true,
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"]
 	},

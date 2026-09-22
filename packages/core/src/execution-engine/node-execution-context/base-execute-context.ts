@@ -23,16 +23,19 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	ChunkType,
 	NodeConnectionType,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
+	IDataObject,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
 	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
-	WAIT_INDEFINITELY,
+	WAIT_FOR_SUB_EXECUTION,
 	WorkflowDataProxy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
@@ -40,6 +43,7 @@ import {
 	shouldRedactConsoleOutput,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
@@ -184,9 +188,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
+			this.setMetadata({
+				waitingChildExecutionIds: [
+					...(this.executeData.metadata?.waitingChildExecutionIds ?? []),
+					result.executionId,
+				],
+			});
 			// then put the parent workflow execution also into the waiting state,
 			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
 		}
 
 		return result;
@@ -212,7 +222,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
+		const threadId = callerSessionId || randomUUID();
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
@@ -240,6 +250,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			runExecutionData: this.runExecutionData,
 		};
 
+		const sendResponseChunk =
+			agentInfo.enableStreaming !== false &&
+			agentInfo.outputSchema === undefined &&
+			this.isStreaming()
+				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
+						await this.sendChunk(type, itemIndex, content)
+				: undefined;
+
 		return await this.additionalData.executeAgent(
 			source,
 			message,
@@ -249,7 +267,47 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
 			workflowContext,
+			{
+				nodeId: this.node.id,
+				nodeName: this.node.name,
+				runIndex: this.runIndex,
+				itemIndex,
+				...(sendResponseChunk ? { sendResponseChunk } : {}),
+			},
 		);
+	}
+
+	isStreaming(): boolean {
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+
+		return hasHandlers && executionModeSupportsStreaming.includes(this.mode) && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const metadata = {
+			nodeId: this.node.id,
+			nodeName: this.node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {

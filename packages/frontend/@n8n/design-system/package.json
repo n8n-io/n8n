@@ -1,8 +1,37 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.33.0",
-  "main": "src/index.ts",
+  "version": "2.39.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./icons/lucide": {
+      "types": "./dist/icons/lucide/index.d.ts",
+      "import": "./dist/icons/lucide/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./theme.css": "./dist/theme.css",
+    "./css/*": "./dist/css/*",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
+  "files": [
+    "dist",
+    "assets/fonts",
+    "README.md"
+  ],
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
@@ -29,7 +58,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@storybook/addon-docs": "catalog:storybook",
-    "@storybook/vue3": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
@@ -42,8 +70,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
-    "autoprefixer": "^10.4.19",
-    "emojibase-data": "^17.0.0",
+    "autoprefixer": "catalog:frontend",
     "eslint-plugin-storybook": "catalog:storybook",
     "pinia": "catalog:frontend",
     "postcss": "^8.4.38",
@@ -51,14 +78,12 @@
     "storybook": "catalog:storybook",
     "storybook-addon-vue-mdx": "3.0.0",
     "stylelint": "catalog:",
-    "tailwindcss": "^3.4.3",
     "typescript": "catalog:",
+    "unplugin-dts": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
@@ -101,7 +126,8 @@
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
-    "vue-router": "catalog:frontend"
+    "vue-router": "catalog:frontend",
+    "@vue/language-core": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

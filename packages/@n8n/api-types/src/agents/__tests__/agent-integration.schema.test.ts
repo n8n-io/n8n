@@ -10,7 +10,7 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts a chat integration with credential id', () => {
+	it('accepts an existing Slack integration without messaging settings', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
 			credentialId: 'cred-123',
@@ -18,11 +18,55 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a Slack integration that uses the Agent messaging experience', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'slack',
+			credentialId: 'cred-123',
+			settings: { messagingExperience: 'agent' },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects an unknown Slack messaging experience', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'slack',
+			credentialId: 'cred-123',
+			settings: { messagingExperience: 'unknown' },
+		});
+		expect(result.success).toBe(false);
+	});
+
 	it('rejects Telegram private settings without allowed users', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',
 			credentialId: 'cred-telegram',
 			settings: { accessMode: 'private', allowedUsers: [] },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts a Discord integration with a session idle timeout', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'discord',
+			credentialId: 'cred-123',
+			settings: { sessionIdleTimeoutMinutes: 60 },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a Linear integration without settings', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'linear',
+			credentialId: 'cred-123',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a non-positive session idle timeout', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'telegram',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'public', allowedUsers: [], sessionIdleTimeoutMinutes: 0 },
 		});
 		expect(result.success).toBe(false);
 	});

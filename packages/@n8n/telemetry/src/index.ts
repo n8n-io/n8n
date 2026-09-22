@@ -8,5 +8,9 @@ export type {
 	TelemetryEventInput,
 	TelemetryEventRegistry,
 } from './define';
+export { POLICY_KINDS } from './events/node-type-policies';
+export type { PolicyKind } from './events/node-type-policies';
+export { redactTelemetryProperties, redactTelemetryText } from './redaction';
+export type { TelemetryTextOptions } from './redaction';
 export { collectDuplicateNames, validateEntrySchemas } from './registry-checks';
 export { TELEMETRY_EVENT } from './telemetry-events';

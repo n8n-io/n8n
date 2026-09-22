@@ -1,6 +1,8 @@
+import { UserError } from 'n8n-workflow';
+
 import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
 
-/** GET a provider endpoint and parse JSON, throwing a descriptive error on non-2xx. */
+/** GET a provider endpoint and parse JSON, treating rejected credentials as user errors. */
 export async function getJson(
 	url: string,
 	headers: Record<string, string>,
@@ -13,6 +15,13 @@ export async function getJson(
 		headers: { ...headers, ...options.headers },
 	});
 	if (!response.ok) {
+		if (response.status === 401 || response.status === 403) {
+			throw new UserError(
+				"Models couldn't be loaded. Check that the selected credential is valid and has the required permissions, then try again.",
+				{ shouldReport: false },
+			);
+		}
+
 		const body = await response.text().catch(() => '');
 		throw new Error(
 			`Failed to list ${provider} models (status ${response.status})${body ? `: ${body.slice(0, 500)}` : ''}`,
@@ -24,6 +33,32 @@ export async function getJson(
 /** Resolve the API base: caller override or the provider default, without a trailing slash. */
 export function baseUrl(options: ListModelsOptions, fallback: string): string {
 	return (options.baseURL ?? fallback).replace(/\/+$/, '');
+}
+
+/**
+ * Ensure a base URL's path ends with `suffix`, appending it if missing.
+ *
+ * `stripSuffix`, when given and present at the end of the path, is removed
+ * before `suffix` is appended (e.g. a path ending in `/v1` becomes one
+ * ending in `/anthropic/v1`, not `/v1/anthropic/v1`).
+ */
+export function ensureUrlPathSuffix(
+	baseURL: string,
+	suffix: string,
+	options?: { stripSuffix?: string },
+): string {
+	const url = new URL(baseURL);
+
+	const path = url.pathname.replace(/\/$/, '');
+	if (path.endsWith(suffix)) return baseURL;
+
+	const trimmedPath =
+		options?.stripSuffix && path.endsWith(options.stripSuffix)
+			? path.slice(0, -options.stripSuffix.length)
+			: path;
+	url.pathname = `${trimmedPath}${suffix}`;
+
+	return url.toString();
 }
 
 export function bearerHeaders(options: ListModelsOptions): Record<string, string> {

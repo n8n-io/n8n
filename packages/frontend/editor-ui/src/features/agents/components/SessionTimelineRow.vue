@@ -1,13 +1,23 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { VIEWS } from '@/app/constants/navigation';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { TimelineItem } from '../session-timeline.types';
-import { isSubAgentTimelineItem } from '../session-timeline.utils';
+import {
+	backgroundJobSignalSummary,
+	executionErrorLabel,
+	executionErrorMessage,
+	hitlRequestLabelKey,
+	hitlTimelineName,
+	isSubAgentTimelineItem,
+	timelineItemStatus,
+} from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -21,6 +31,12 @@ const emit = defineEmits<{ select: [] }>();
 
 const router = useRouter();
 const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
+
+const nodeType = computed(() => {
+	if (props.item.kind !== 'node' || !props.item.nodeType) return null;
+	return nodeTypesStore.getNodeType(props.item.nodeType, props.item.nodeTypeVersion) ?? null;
+});
 
 // A delegate_subagent call renders as a sub-agent (bot icon + "Sub-agent · name")
 // to match the chat, rather than as a plain tool.
@@ -41,24 +57,32 @@ const workflowHref = computed((): string => {
 const infoText = computed((): string => {
 	const it = props.item;
 	switch (it.kind) {
+		case 'background-task-signal':
+			return backgroundJobSignalSummary(it, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(it.content ?? '', 500);
+		case 'skill':
+			return it.skillName ?? resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
 		case 'tool': {
-			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
-			return resolveToolNameForDisplay(it.toolName, i18n);
+			return resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
 		case 'node':
 			return it.nodeDisplayName ?? formatToolNameForDisplay(it.toolName);
+		case 'execution-error':
+			return executionErrorMessage(it, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response':
+			return hitlTimelineName(it, i18n);
 		default:
 			return '';
 	}
 });
+
+const status = computed(() => timelineItemStatus(props.item));
 
 const attachmentChip = computed((): { label: string; tooltip: string } | null => {
 	const attachments = props.item.attachments;
@@ -73,18 +97,26 @@ const attachmentChip = computed((): { label: string; tooltip: string } | null =>
 const label = computed((): string => {
 	if (isSubAgent.value) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (props.item.kind) {
+		case 'background-task-signal':
+			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return executionErrorLabel(props.item, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspended');
+			return i18n.baseText(hitlRequestLabelKey(props.item.hitlRequestType));
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -92,9 +124,12 @@ const label = computed((): string => {
 </script>
 
 <template>
-	<div :class="[$style.row, selected && $style.selected]" @click="emit('select')">
+	<div :class="[$style.row, selected && $style.selected]" role="gridcell" @click="emit('select')">
 		<N8nTooltip :content="label" placement="top">
-			<SessionTimelinePill :kind="pillKind" />
+			<span v-if="nodeType" :class="$style.nodeIcon">
+				<NodeIcon :node-type="nodeType" :size="20" />
+			</span>
+			<SessionTimelinePill v-else :kind="pillKind" />
 		</N8nTooltip>
 		<div :class="$style.info">
 			<template v-if="item.kind === 'workflow' && workflowHref">
@@ -110,6 +145,21 @@ const label = computed((): string => {
 			<template v-else>
 				<span>{{ infoText }}</span>
 			</template>
+			<N8nBadge
+				v-if="status"
+				:class="$style.statusBadge"
+				:theme="status.theme"
+				size="xsmall"
+				:data-test-id="
+					status.kind === 'hitl-response'
+						? 'timeline-hitl-response-badge'
+						: item.kind === 'execution-error'
+							? 'timeline-execution-error-badge'
+							: 'timeline-tool-error-badge'
+				"
+			>
+				{{ i18n.baseText(status.labelKey) }}
+			</N8nBadge>
 			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
 				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">
 					<N8nIcon icon="paperclip" size="xsmall" />
@@ -142,6 +192,16 @@ const label = computed((): string => {
 	background-color: var(--background--active);
 }
 
+.nodeIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--height--2xs);
+	height: var(--height--2xs);
+	flex-shrink: 0;
+	border-radius: var(--radius);
+}
+
 .info {
 	display: flex;
 	align-items: center;
@@ -153,11 +213,15 @@ const label = computed((): string => {
 
 	/* Apply ellipsis to text spans, not the flex container — the container's
 	   overflow:hidden combined with a tight line-box was clipping descenders. */
-	> span {
+	> span:not(.statusBadge) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		line-height: var(--line-height--sm);
 	}
+}
+
+.statusBadge {
+	flex-shrink: 0;
 }
 
 .workflowLink {

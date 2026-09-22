@@ -17,8 +17,8 @@ withDefaults(
 		clickable?: boolean;
 		/** 'small' matches PreviewTag scale (for menus/lists); 'medium' is the default. */
 		size?: 'small' | 'medium';
-		/** Visual variant. 'default' is green; 'danger' is red for depleted/error states. */
-		type?: 'default' | 'danger';
+		/** Visual variant. */
+		type?: 'default' | 'danger' | 'info';
 	}>(),
 	{
 		text: undefined,
@@ -42,6 +42,7 @@ const hovered = ref(false);
 			$style.root,
 			size === 'small' && $style.small,
 			type === 'danger' && $style.danger,
+			type === 'info' && $style.info,
 			clickable && $style.clickable,
 			hoverText && hovered && $style.pressed,
 		]"
@@ -88,6 +89,15 @@ const hovered = ref(false);
 	&.clickable:hover {
 		background-color: var(--color--green-200);
 		color: var(--color--green-950);
+	}
+}
+
+.info {
+	background-color: var(--color--blue-50);
+	color: var(--color--blue-800);
+
+	&.clickable:hover {
+		background-color: color-mix(in srgb, var(--color--blue-50), var(--color--neutral-black) 5%);
 	}
 }
 

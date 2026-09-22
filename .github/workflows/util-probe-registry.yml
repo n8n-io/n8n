@@ -1,0 +1,58 @@
+name: Probe npm Registry Path
+
+# Diagnostic for the pnpm install slowdown (`Request took Nms` / `error (23)` /
+# ERR_PNPM_BROKEN_METADATA_JSON on large packuments). Separates a degraded runner
+# egress path from bandwidth division across pnpm's ~50 concurrent metadata
+# connections — the install logs alone cannot tell those apart.
+#
+# Temporary — delete along with .github/scripts/probe-registry.mjs once
+# root-caused.
+
+on:
+  # workflow_dispatch only registers once this file is on the default branch, so
+  # the push trigger is what actually runs the probe from a topic branch.
+  push:
+    branches:
+      - 'probe-registry**'
+  workflow_dispatch:
+    inputs:
+      reqs:
+        description: 'Requests per parallelism level'
+        required: false
+        default: '16'
+      timeout-ms:
+        description: "Per-request timeout; matches pnpm's fetch-timeout"
+        required: false
+        default: '60000'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 2vcpu is where installs actually run; 4vcpu covers the unit/lint jobs
+        # that also install; ubuntu-latest is the non-Blacksmith control.
+        runner:
+          - blacksmith-2vcpu-ubuntu-2204
+          - blacksmith-4vcpu-ubuntu-2204
+          - ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    # par=1 is sequential, so a genuinely degraded path makes this slow — which is
+    # itself the answer. Bounded so it cannot hang a runner indefinitely.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Deliberately not setup-nodejs: that would run pnpm install and contend
+      # for the very bandwidth being measured. The runner's preinstalled Node is
+      # new enough (needs AbortSignal.timeout, Node 18+).
+      - name: Probe registry path
+        env:
+          REQS: ${{ inputs.reqs }}
+          TIMEOUT_MS: ${{ inputs.timeout-ms }}
+        run: |
+          echo "runner=${{ matrix.runner }} node=$(node --version)"
+          node .github/scripts/probe-registry.mjs

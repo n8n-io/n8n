@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LockService, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type SsrfProtectionService } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
@@ -34,11 +34,16 @@ interface Received {
  */
 function buildService() {
 	const ssrf = mock<SsrfProtectionService>();
+	const lockService = mock<LockService>();
 	ssrf.validateUrl.mockResolvedValue({ ok: true, result: undefined });
 	ssrf.validateConnectionHost.mockReturnValue({ ok: true, result: undefined });
+	lockService.withLease.mockImplementation(
+		async (_namespace, _key, operation) => await operation(new AbortController().signal),
+	);
 
 	return new OauthService(
 		mock<Logger>(),
+		lockService,
 		mock<CredentialsHelper>(),
 		mock<CredentialsRepository>(),
 		mock<CredentialsFinderService>(),
@@ -52,7 +57,7 @@ function buildService() {
 		mock<OAuthBrowserBindingService>(),
 		mock<EventService>(),
 		mock<CacheService>(),
-		new OutboundHttp(ssrf, mock<Logger>()),
+		new OutboundHttp(ssrf, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>()),
 		ssrf,
 		mock<SsrfProtectionConfig>({ enabled: true }),
 	);

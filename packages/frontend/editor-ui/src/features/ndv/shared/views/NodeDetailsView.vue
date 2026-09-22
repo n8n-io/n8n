@@ -15,6 +15,7 @@ import {
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNdvLayout } from '../../panel/composables/useNdvLayout';
 import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
@@ -43,6 +44,7 @@ import InputPanel from '../../panel/components/InputPanel.vue';
 import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButton from '../../panel/components/PanelDragButton.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
+import { useCanvasOnlyExternalLinks } from '@/app/composables/useCanvasOnlyExternalLinks';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
@@ -86,6 +88,7 @@ const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
+const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
@@ -105,6 +108,8 @@ const isPairedItemHoveringEnabled = ref(true);
 const dialogRef = ref<HTMLDialogElement>();
 const containerRef = useTemplateRef('containerRef');
 const mainPanelRef = useTemplateRef('mainPanelRef');
+
+useCanvasOnlyExternalLinks(dialogRef);
 
 // computed
 const pushRef = computed(() => ndvStore.value.pushRef);
@@ -349,8 +354,22 @@ const currentNodePaneType = computed((): MainPanelType => {
 	return activeNodeType.value?.parameterPane ?? 'regular';
 });
 
-const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
-	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
+const {
+	containerWidth,
+	onDrag,
+	onResize,
+	onResizeEnd,
+	resetPanelSize,
+	panelWidthPercentage,
+	panelWidthPixels,
+} = useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
+
+function onResizeHandleDblClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	if (target?.closest('[data-test-id="resize-handle"], [data-test-id="panel-drag-button"]')) {
+		resetPanelSize();
+	}
+}
 
 const icon = useNodeIconSource(activeNodeType, activeNode);
 
@@ -480,10 +499,17 @@ const close = async () => {
 	}
 
 	if (outputPanelEditMode.value.enabled && activeNode.value) {
+		// Saving edits made on AI-simulated output adopts fabricated sample data
+		// as pins — say so in the dialog instead of stacking a second confirm.
+		const editsSimulatedOutput = aiSimulatedDataGuard.isSimulatedNodeOutput(
+			workflowExecutionStateStore.value.activeExecution?.id,
+			activeNode.value.name,
+		);
 		const shouldPinDataBeforeClosing = await message.confirm(
-			'',
+			editsSimulatedOutput ? i18n.baseText('ndv.pinData.aiSimulated.confirm.description') : '',
 			i18n.baseText('ndv.pinData.beforeClosing.title'),
 			{
+				...(editsSimulatedOutput ? { type: 'warning' as const } : {}),
 				confirmButtonText: i18n.baseText('ndv.pinData.beforeClosing.confirm'),
 				cancelButtonText: i18n.baseText('ndv.pinData.beforeClosing.cancel'),
 			},
@@ -807,10 +833,10 @@ onBeforeUnmount(() => {
 							[$style.webhookWaiting]: isExecutionWaitingForWebhook,
 						}"
 						:style="{ width: `${panelWidthPercentage.main}%` }"
-						outset
 						@resize="onResize"
 						@resizestart="onDragStart"
 						@resizeend="onDragEnd"
+						@dblclick="onResizeHandleDblClick"
 					>
 						<div ref="mainPanelRef" :class="$style.main">
 							<PanelDragButton
@@ -933,6 +959,17 @@ onBeforeUnmount(() => {
 .input,
 .output {
 	min-width: 280px;
+}
+
+.input:has([data-ndv-empty-state]),
+.output:has([data-ndv-empty-state]) {
+	min-width: 0;
+	container: ndvPane / inline-size;
+}
+
+.input:has([data-ndv-pane-min]),
+.output:has([data-ndv-pane-min]) {
+	min-width: 220px;
 }
 
 .dataColumn {

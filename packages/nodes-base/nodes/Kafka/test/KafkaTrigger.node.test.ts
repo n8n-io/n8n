@@ -407,9 +407,9 @@ describe('KafkaTrigger Node', () => {
 			headers: { 'content-type': Buffer.from('application/json') },
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'http://localhost:8081',
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'http://localhost:8081/' }),
+		);
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
 			[
@@ -459,10 +459,12 @@ describe('KafkaTrigger Node', () => {
 			value: Buffer.from('test-message'),
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://schema-registry.local:8081',
-			auth: { username: 'registry-user', password: 'registry-password' },
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				host: 'https://schema-registry.local:8081/',
+				auth: { username: 'registry-user', password: 'registry-password' },
+			}),
+		);
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
 			[
@@ -506,9 +508,9 @@ describe('KafkaTrigger Node', () => {
 			},
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://unauthenticated-registry.local:8081',
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'https://unauthenticated-registry.local:8081/' }),
+		);
 	});
 
 	it('should emit the original message and log a sanitized warning when decoding fails', async () => {

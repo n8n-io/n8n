@@ -11,10 +11,10 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
-} from '@/app/constants';
+} from '@/features/core/auth/auth.constants';
 
 /**
- * The four modal keys `Modals.vue` renders on unauthenticated routes. `<AppModals />`
+ * The four auth modal keys reachable on unauthenticated routes. `<AppModals />`
  * is not auth-gated, so these mount before any registration has run.
  */
 const AUTH_ROUTE_MODAL_KEYS = [
@@ -38,9 +38,8 @@ const renderedSlotProps = () => JSON.parse(screen.getByTestId('modal-content').t
 describe('ModalRoot', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		modalRegistry.clear();
 		// Nothing has registered yet — the state every reader sees on first paint.
-		useUIStore().modalsById = {};
+		modalRegistry.clear();
 	});
 
 	it('renders nothing for a key that is not registered', () => {
@@ -71,7 +70,7 @@ describe('ModalRoot', () => {
 
 	it('passes modal state to the slot once the key is open', () => {
 		const uiStore = useUIStore();
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[MODAL_KEY]: { open: true, mode: 'edit', activeId: '42', data: { foo: 'bar' } },
 		};
 		uiStore.openModal(MODAL_KEY);
@@ -94,10 +93,24 @@ describe('ModalRoot', () => {
 		renderModalRoot({ props: { name: MODAL_KEY } });
 		expect(screen.queryByTestId('modal-content')).not.toBeInTheDocument();
 
-		uiStore.registerModal(MODAL_KEY);
+		modalRegistry.register({ key: MODAL_KEY, component: {} });
 		uiStore.openModal(MODAL_KEY);
 		await nextTick();
 
 		expect(screen.getByTestId('modal-content')).toBeInTheDocument();
+	});
+
+	it('picks up the initial state a modal registers with, without the store mirroring it', async () => {
+		renderModalRoot({ props: { name: MODAL_KEY, keepAlive: true } });
+		expect(renderedSlotProps()).toMatchObject({ open: false });
+
+		modalRegistry.register({
+			key: MODAL_KEY,
+			component: {},
+			initialState: { open: false, mode: 'edit' },
+		});
+		await nextTick();
+
+		expect(renderedSlotProps()).toMatchObject({ mode: 'edit' });
 	});
 });

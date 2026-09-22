@@ -20,12 +20,14 @@ import {
 	filterNodeValidator,
 	fromAiValidator,
 	httpRequestValidator,
+	duplicateNodeIdValidator,
 	maxNodesValidator,
 	memorySessionKeyValidator,
 	mergeNodeValidator,
 	missingTriggerValidator,
 	noNodesValidator,
 	setNodeValidator,
+	structuredOutputParserValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
 	unknownConfigKeysValidator,
@@ -47,11 +49,13 @@ const coreValidators: ValidatorPlugin[] = [
 	noNodesValidator, // Check if workflow has any nodes
 	missingTriggerValidator, // Check if workflow has a trigger
 	maxNodesValidator, // Check max nodes per type constraint
+	duplicateNodeIdValidator, // Two nodes may not claim one stable node id
 
 	// Node-specific validators (high priority)
 	agentValidator,
 	chainLlmValidator,
 	httpRequestValidator,
+	structuredOutputParserValidator,
 	toolNodeValidator,
 	fromAiValidator,
 	memorySessionKeyValidator,

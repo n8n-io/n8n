@@ -33,6 +33,8 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	lastNodeProp: null as unknown,
 	lastFieldLabel: undefined as string | undefined,
 	lastSetupHint: undefined as unknown,
+	lastSkipAutoSelect: undefined as boolean | undefined,
+	lastPreferNewCredential: undefined as boolean | undefined,
 	lastCredentialHelp: undefined as
 		| ((credential: {
 				credentialType: string;
@@ -72,13 +74,24 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return {
 		default: defineComponent({
-			props: ['node', 'credentialsFieldLabel', 'credentialSetupHint', 'instanceAiCredentialHelp'],
+			props: [
+				'node',
+				'credentialsFieldLabel',
+				'credentialSetupHint',
+				'instanceAiCredentialHelp',
+				'skipAutoSelect',
+				'preferNewCredential',
+			],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
 				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
+				nodeCredentialsMock.lastSkipAutoSelect = props.skipAutoSelect as boolean | undefined;
+				nodeCredentialsMock.lastPreferNewCredential = props.preferNewCredential as
+					| boolean
+					| undefined;
 				nodeCredentialsMock.lastCredentialHelp = props.instanceAiCredentialHelp as
 					| ((credential: {
 							credentialType: string;
@@ -155,9 +168,8 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 
 	return {
 		sections: computed(() => [section]),
-		steps: computed(() => [{ kind: 'section', section }]),
 		currentStepIndex: ref(0),
-		activeStep: computed(() => ({ kind: 'section', section })),
+		activeSection: computed(() => section),
 		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({ [section.targetNodeName]: { typeformApi: 'cred-1' } }),
@@ -179,9 +191,7 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 		isSectionComplete: () => false,
 		isCredentialTestFailed: () => false,
 		isSectionSkipped: () => false,
-		isStepComplete: () => false,
-		isStepSkipped: () => false,
-		isStepHandled: () => false,
+		isSectionHandled: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
@@ -267,6 +277,37 @@ describe('WorkflowSetupSectionBody', () => {
 
 		// Empty => nothing hidden => the "required" issue is shown without interaction.
 		expect(parameterListMock.lastHiddenIssuesInputs).toEqual([]);
+	});
+
+	// INS-361: the picker otherwise preselects the most recently updated
+	// credential of the type, contradicting a user who asked for a new one.
+	it('stops the picker preselecting an existing credential when the user asked for a new one', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'Send Hello Message',
+			credentialType: 'slackApi',
+			preferNewCredential: true,
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastSkipAutoSelect).toBe(true);
+		expect(nodeCredentialsMock.lastPreferNewCredential).toBe(true);
+	});
+
+	it('leaves auto-select on for a credential the user did not ask to recreate', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'Send Hello Message',
+			credentialType: 'slackApi',
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastSkipAutoSelect).toBe(false);
+		expect(nodeCredentialsMock.lastPreferNewCredential).toBe(false);
 	});
 
 	it('labels the credential selector after the recipe service instead of the generic type', async () => {
@@ -400,6 +441,7 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 			'project-1',
 			'Where do I find the "fal.ai API key" for my "fal.ai API Key" credential?',
+			{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 			{ source: 'credential_edit', origin: 'internal' },
 			undefined,
 			undefined,

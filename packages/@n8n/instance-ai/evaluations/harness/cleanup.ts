@@ -13,6 +13,7 @@ import { classifyScenarioExecutionError } from './transient-error';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
+import { N8nApiError } from '../clients/n8n-client';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { CapturedEvent, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
@@ -108,8 +109,17 @@ export function abortedWorkflowTestCaseResult(
 	};
 }
 
+/** The log line for one artifact kind. Says so when a delete or the project
+ *  lookup failed: a bare "Cleaned up" would mask the leak the retry exists for. */
+function reportCleanup(noun: string, count: number, ok: boolean): string {
+	return ok
+		? `  Cleaned up ${String(count)} ${noun}`
+		: `  Could not clean up every one of ${String(count)} ${noun}; retrying at end of run`;
+}
+
 /**
- * Clean up workflows, data tables and any built agent created during a build.
+ * Clean up workflows, data tables, seeded folders and projects, and any built
+ * agent created during a build.
  *
  * Returns false when any deletion failed so callers can retry later.
  */
@@ -119,14 +129,48 @@ export async function cleanupBuild(
 	logger: EvalLogger,
 ): Promise<boolean> {
 	let clean = true;
+	let workflowsClean = true;
 
+	// A workflow that is already gone is the state this wants, not a failure: the
+	// end-of-run retry re-runs this on the same build, so every id a first pass
+	// took comes back gone. n8n reports that as 403 to the eval user, who holds
+	// `workflow:delete` globally, and as 404 to a member. `deleteWorkflow`
+	// swallows both already. The check is repeated here because any client that
+	// does not would deadlock the folders below, which wait on this flag. Only a
+	// real failure may hold them back.
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
-		} catch {
-			clean = false; // Best-effort cleanup
+		} catch (error: unknown) {
+			if (error instanceof N8nApiError && (error.status === 403 || error.status === 404)) continue;
+			workflowsClean = false; // Best-effort cleanup
 		}
 	}
+	clean = workflowsClean;
+
+	// Project-scoped artifacts: each id on its own, best-effort, so one failure
+	// never shields the rest. Returns false when any delete (or the project
+	// lookup) failed. Callers await it before folding into `clean`: a `&&=`
+	// would skip the whole kind once an earlier kind failed.
+	const deleteEachInProject = async (
+		ids: Iterable<string>,
+		remove: (projectId: string, id: string) => Promise<void>,
+	): Promise<boolean> => {
+		let ok = true;
+		try {
+			const projectId = await client.getPersonalProjectId();
+			for (const id of ids) {
+				try {
+					await remove(projectId, id);
+				} catch {
+					ok = false;
+				}
+			}
+		} catch {
+			ok = false; // Non-fatal — project ID lookup may fail
+		}
+		return ok;
+	};
 
 	// Agent-anchored builds create a first-class Agent, and a seed may have restored
 	// one — delete both with the rest of the build's artifacts so no caller has to
@@ -134,33 +178,54 @@ export async function cleanupBuild(
 	const agentRef = findAgentArtifactRef(build.artifactRefs);
 	const agentIds = new Set([...(agentRef ? [agentRef.id] : []), ...(build.createdAgentIds ?? [])]);
 	if (agentIds.size > 0) {
-		try {
-			const projectId = await client.getPersonalProjectId();
-			for (const id of agentIds) {
-				try {
-					await client.deleteAgent(projectId, id);
-				} catch {
-					clean = false; // Best-effort cleanup
-				}
-			}
-		} catch {
-			clean = false; // Non-fatal — project ID lookup may fail
-		}
+		const agentsClean = await deleteEachInProject(agentIds, async (projectId, id) => {
+			await client.deleteAgent(projectId, id);
+		});
+		clean = clean && agentsClean;
 	}
 
 	if (build.createdDataTableIds.length > 0) {
+		const tablesClean = await deleteEachInProject(
+			build.createdDataTableIds,
+			async (projectId, id) => {
+				await client.deleteDataTable(projectId, id);
+			},
+		);
+		clean = clean && tablesClean;
+		logger.verbose(reportCleanup('data table(s)', build.createdDataTableIds.length, tablesClean));
+	}
+
+	// The root folders a seed created (the delete cascades to subfolders). Held
+	// back until every workflow this tracked is gone: a folder delete does not
+	// delete what it still holds, it archives it and moves it to the project
+	// root. The retry would then find the workflow but no folder, so the cleanup
+	// could never complete. Left for the retry, which deletes the workflows first.
+	//
+	// `workflowsClean` does not promise the folder is empty. A build that
+	// succeeded reports only the workflows its own turn created, so a seeded
+	// workflow the agent never touched is not in `createdWorkflowIds` and is
+	// still inside. That one is archived to the project root here rather than
+	// deleted. `remapSeedArtifactIds` renames every iteration's seed, so nothing
+	// turns ambiguous, and the next run's name-based eviction clears it.
+	if (workflowsClean && build.createdFolderIds?.length) {
+		const foldersClean = await deleteEachInProject(
+			build.createdFolderIds,
+			async (projectId, id) => {
+				await client.deleteFolder(projectId, id);
+			},
+		);
+		clean = clean && foldersClean;
+		logger.verbose(reportCleanup('folder(s)', build.createdFolderIds.length, foldersClean));
+	}
+
+	// Projects a seed created. Deleted last of the artifacts, so anything the
+	// run put inside one is already gone by its own path rather than vanishing with
+	// the project.
+	for (const id of build.createdProjectIds ?? []) {
 		try {
-			const projectId = await client.getPersonalProjectId();
-			for (const dtId of build.createdDataTableIds) {
-				try {
-					await client.deleteDataTable(projectId, dtId);
-				} catch {
-					clean = false; // Best-effort cleanup
-				}
-			}
-			logger.verbose(`  Cleaned up ${String(build.createdDataTableIds.length)} data table(s)`);
+			await client.deleteProject(id);
 		} catch {
-			clean = false; // Non-fatal — project ID lookup may fail
+			clean = false; // Best-effort cleanup
 		}
 	}
 
@@ -246,9 +311,9 @@ export async function runWorkflowChecks(args: {
 }
 
 function hasAnthropicKey(): boolean {
-	return Boolean(
-		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-			process.env.N8N_AI_ANTHROPIC_KEY ??
-			process.env.ANTHROPIC_API_KEY,
-	);
+	return [
+		process.env.N8N_AI_ANTHROPIC_KEY,
+		process.env.ANTHROPIC_API_KEY,
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY,
+	].some((value) => Boolean(value?.trim()));
 }

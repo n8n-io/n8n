@@ -19,6 +19,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isJsonKeyObject } from '@/app/utils/typesUtils';
 import {
+	getActiveCredentialTypes,
 	isResourceLocatorValue,
 	type IDataObject,
 	type INode,
@@ -570,6 +571,77 @@ export const isMatchingField = (
 	}
 	return false;
 };
+
+/**
+ * True when the node picks its credential type through parameters rather than
+ * through the node type's declared credentials (HTTP Request and friends).
+ */
+export function usesParameterSelectedCredentials(node: INodeUi): boolean {
+	return hasProxyAuth(node) || Object.keys(node.parameters ?? {}).includes('genericAuthType');
+}
+
+/**
+ * Credential types the node type declares whose visibility does not depend on the
+ * auth-mode parameter (`authentication`). These sit alongside the auth-mode
+ * credential rather than being alternatives to it — HTTP Request's `httpSslAuth`
+ * is gated on the `provideSslCertificates` node setting — so switching auth types
+ * must not remove them. Types gated on `authentication` (e.g. HTTP Request v2's
+ * v1-era `httpBasicAuth`, which its current `authentication` values can never
+ * show) stay removable.
+ */
+function getAuthModeIndependentCredentials(nodeType: INodeTypeDescription | null): Set<string> {
+	const types = new Set<string>();
+
+	for (const credential of nodeType?.credentials ?? []) {
+		const { show, hide } = credential.displayOptions ?? {};
+		const dependsOnAuthMode = [show, hide].some(
+			(rules) =>
+				rules !== undefined &&
+				(MAIN_AUTH_FIELD_NAME in rules || `/${MAIN_AUTH_FIELD_NAME}` in rules),
+		);
+
+		if (!dependsOnAuthMode) {
+			types.add(credential.name);
+		}
+	}
+
+	return types;
+}
+
+/**
+ * Returns the credential type names in `node.credentials` that are safe to remove
+ * because the node's current configuration doesn't use them (see
+ * `getActiveCredentialTypes` in n8n-workflow).
+ *
+ * Returns an empty array when the active set cannot be determined statically
+ * (e.g. unknown node type or an expression in a credential-type parameter), since
+ * removing a credential that may be in use is worse than keeping a stale one.
+ */
+export function getInactiveCredentials(
+	node: INodeUi,
+	nodeType: INodeTypeDescription | null,
+): string[] {
+	if (!node.credentials) {
+		return [];
+	}
+
+	const activeTypes = getActiveCredentialTypes(node, nodeType);
+	if (!activeTypes) {
+		return [];
+	}
+
+	// Parameter-selected credentials are the ones that accumulate on an auth switch,
+	// and they used to be kept wholesale on save. Only remove what the auth mode
+	// itself governs there, so an unrelated declared credential isn't collateral
+	// damage. Nodes on the declared path keep matching the save-time display filter.
+	const keepRegardlessOfAuthMode = usesParameterSelectedCredentials(node)
+		? getAuthModeIndependentCredentials(nodeType)
+		: new Set<string>();
+
+	return Object.keys(node.credentials).filter(
+		(type) => !activeTypes.has(type) && !keepRegardlessOfAuthMode.has(type),
+	);
+}
 
 export const getThemedValue = <T extends string>(
 	value: Themed<T> | T | undefined,

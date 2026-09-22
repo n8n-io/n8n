@@ -1,8 +1,4 @@
-import type {
-	PullWorkFolderRequestDto,
-	PushWorkFolderRequestDto,
-	SourceControlledFile,
-} from '@n8n/api-types';
+import type { PullWorkFolderRequestDto, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -45,8 +41,15 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
+import type { SourceControlActionOrigin } from './types/source-control-action-origin';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+
+export type PushWorkfolderOptions = {
+	commitMessage?: string;
+	force?: boolean;
+	fileNames: Array<Pick<SourceControlledFile, 'id' | 'type'>>;
+};
 
 @Service()
 export class SourceControlService {
@@ -307,20 +310,74 @@ export class SourceControlService {
 
 	async pushWorkfolder(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		origin: SourceControlActionOrigin = 'ui',
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
 		return await this.workfolderMutex(
-			async () => await this.pushWorkfolderWithoutLock(user, options),
+			async () => await this.pushWorkfolderWithoutLock(user, options, origin),
 		);
+	}
+
+	/**
+	 * Resolves which resources a push may act on. The status service is the single source of
+	 * truth for what the user may push: it scopes resources to the user's projects and derives
+	 * each resource's file path and status on the server. The client only selects resources by
+	 * (id, type); file path and status are always taken from the matching authorized entry, so
+	 * an authorized (id, type) cannot be pointed at another resource's file.
+	 */
+	private async resolveAuthorizedFilesToPush(
+		user: User,
+		requestedFiles: Array<Pick<SourceControlledFile, 'id' | 'type'>>,
+		origin: SourceControlActionOrigin,
+	): Promise<SourceControlledFile[]> {
+		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+			origin,
+		});
+
+		// No explicit selection: push everything the user is allowed to.
+		let filesToPush = allowedResources;
+
+		if (requestedFiles.length) {
+			const allowedKeys = new Set(
+				allowedResources.map((allowed) => `${allowed.type}:${allowed.id}`),
+			);
+			const requestedKeys = new Set<string>();
+			for (const requested of requestedFiles) {
+				const key = `${requested.type}:${requested.id}`;
+				if (!allowedKeys.has(key)) {
+					throw new ForbiddenError('You are not allowed to push these changes');
+				}
+				requestedKeys.add(key);
+			}
+			// Keep every authorized record for the requested resources. Filtering rather than
+			// mapping each request to a single record means a server-reported conflict for a
+			// (type, id) is never dropped by de-duplication, so the conflict check in the caller
+			// still sees it.
+			filesToPush = allowedResources.filter((allowed) =>
+				requestedKeys.has(`${allowed.type}:${allowed.id}`),
+			);
+		}
+
+		// Defense in depth: every path we act on must stay inside the git work folder.
+		// Server-derived paths already are, but this guards against a regression producing
+		// a path outside it.
+		return filesToPush.map((file) => ({
+			...file,
+			file: normalizeAndValidateSourceControlledFilePath(this.gitFolder, file.file),
+		}));
 	}
 
 	private async pushWorkfolderWithoutLock(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		origin: SourceControlActionOrigin = 'ui',
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -334,41 +391,7 @@ export class SourceControlService {
 
 		const context = await this.sourceControlContextFactory.createContext(user);
 
-		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
-			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
-				this.gitFolder,
-				file.file,
-			);
-
-			return {
-				...file,
-				file: normalizedPath,
-			};
-		});
-
-		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
-			direction: 'push',
-			verbose: false,
-			preferLocalVersion: true,
-		});
-
-		// Fallback to all allowed resources if no fileNames are provided
-		if (!filesToPush.length) {
-			filesToPush = allowedResources;
-		}
-
-		// If fileNames are provided, we need to check if they are allowed
-		if (
-			filesToPush !== allowedResources &&
-			filesToPush.some(
-				(file) =>
-					!allowedResources.some((allowed) => {
-						return allowed.id === file.id && allowed.type === file.type;
-					}),
-			)
-		) {
-			throw new ForbiddenError('You are not allowed to push these changes');
-		}
+		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, origin);
 
 		let statusResult: SourceControlledFile[] = filesToPush;
 
@@ -494,10 +517,10 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		this.eventService.emit(
-			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(user.id, statusResult),
-		);
+		this.eventService.emit('source-control-user-finished-push-ui', {
+			...getTrackingInformationFromPostPushResult(user.id, statusResult),
+			publicApi: origin === 'publicApi',
+		});
 		// #endregion
 
 		return {
@@ -579,10 +602,27 @@ export class SourceControlService {
 			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
 
-		for (const { id, publishingError, publishingErrorDetails } of workflowImportResults) {
+		for (const {
+			id,
+			publishingError,
+			publishingErrorDetails,
+			contentImportPolicy,
+		} of workflowImportResults) {
+			const statusItem = statusByWorkflowId.get(id);
+
+			if (contentImportPolicy?.violations.length) {
+				this.logger.warn(
+					`Skipped workflow ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+
+			if (contentImportPolicy && statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
+			}
+
 			if (!publishingError && !publishingErrorDetails) continue;
 
-			const statusItem = statusByWorkflowId.get(id);
 			if (statusItem) {
 				statusItem.publishingError = publishingError;
 				if (publishingErrorDetails) {

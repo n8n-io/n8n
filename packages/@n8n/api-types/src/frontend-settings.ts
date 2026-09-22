@@ -100,6 +100,7 @@ export interface FrontendSettings {
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	excludeNodes: string[];
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
@@ -185,7 +186,6 @@ export interface FrontendSettings {
 		enabled: boolean;
 		host: string;
 	};
-	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	/** Whether multi-main mode is enabled and licensed for this main instance. */
 	isMultiMain: boolean;
@@ -197,6 +197,10 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 	};
+	/**
+	 * @deprecated Gates the AI Transform node's code generation. No longer gates
+	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
+	 */
 	askAi: {
 		enabled: boolean;
 	};
@@ -229,6 +233,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	workerPools: {
+		enabled: boolean;
+	};
 	collaboration: {
 		crdt: 'off' | 'local' | 'server';
 	};
@@ -247,6 +254,7 @@ export interface FrontendSettings {
 	aiGateway?: {
 		enabled: boolean;
 		budget: number;
+		cloudUbbEnabled: boolean;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
@@ -297,6 +305,14 @@ export interface FrontendSettings {
 	activeModules: string[];
 	canvasOnly: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
+
+	/**
+	 * Which expression engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read at runtime rather than baked in at
+	 * build time, so one image serves either engine. Independent of the engine the
+	 * backend evaluates with, and never `vm`: isolated-vm is a native module.
+	 */
+	expressionEngine: 'legacy' | 'quickjs';
 }
 
 export type FrontendModuleSettings = {
@@ -324,6 +340,27 @@ export type FrontendModuleSettings = {
 		mcpManagedByEnv: boolean;
 		/** Public URL of the instance MCP server endpoint. */
 		serverUrl?: string;
+		/** Whether newly created workflows are auto-exposed to MCP. */
+		autoExposeNewWorkflows: boolean;
+	};
+
+	/**
+	 * Client settings for the instance-reporting module. Present only when the
+	 * module is enabled on this instance.
+	 */
+	'instance-reporting'?: {
+		/** Whether a receiver is configured, i.e. whether reports are actually sent. */
+		enabled: boolean;
+		/** Minute of the UTC day the daily report fires at, as `HH:mm`. Absent when disabled. */
+		reportTime?: string;
+	};
+
+	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
 	};
 
 	/**
@@ -352,6 +389,10 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
+		activationCapped?: boolean;
+		/** Whether the non-blocking setup panel replaces the suspending setup wizard (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`). */
+		instanceAiSetupPanelEnabled?: boolean;
 	};
 
 	/**
@@ -395,10 +436,8 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 		/**
-		 * Whether the agent knowledge base is enabled. True when the backend's
-		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
-		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
-		 * proxy is available.
+		 * Whether the agent knowledge base is enabled by the backend's
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED` opt-in.
 		 */
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */

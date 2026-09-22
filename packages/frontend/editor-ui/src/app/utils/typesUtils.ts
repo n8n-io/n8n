@@ -75,12 +75,6 @@ export function toMegaBytes(bytes: number, decimalPlaces: number = 2): number {
 	return parseFloat(megabytes.toFixed(decimalPlaces));
 }
 
-export function formatBytes(sizeInBytes: number): string {
-	if (sizeInBytes < 1024) return `${sizeInBytes}B`;
-	if (sizeInBytes < 1024 * 1024) return `${Math.round(sizeInBytes / 1024)}KB`;
-	return `${Math.round(sizeInBytes / (1024 * 1024))}MB`;
-}
-
 export function shorten(s: string, limit: number, keep: number) {
 	if (s.length <= limit) {
 		return s;

@@ -110,11 +110,7 @@ export class RunStateManager {
 
 	/** Delete a finished run from storage. Called when a resumed run completes without re-suspending. */
 	async complete(runId: string): Promise<void> {
-		try {
-			await this.store.delete(runId);
-		} catch (deleteError: unknown) {
-			console.error(`[RunStateManager] Failed to delete checkpoint ${runId}:`, deleteError);
-		}
+		await this.store.delete(runId);
 	}
 
 	/** Delete a cancelled run and surface failures so its parent can remain retryable. */

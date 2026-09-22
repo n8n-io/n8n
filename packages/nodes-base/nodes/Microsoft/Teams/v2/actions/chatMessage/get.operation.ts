@@ -4,7 +4,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
-import { throwIfChatUnsupported } from './sharedGuard';
+import { throwIfChatMessageUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	chatRLC,
@@ -36,7 +36,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 
 	// App-only Graph cannot read chats; fail before the request (and before the
 	// catch below, so the static SP message is surfaced, not the generic one).
-	throwIfChatUnsupported.call(this);
+	throwIfChatMessageUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const messageId = this.getNodeParameter('messageId', i) as string;

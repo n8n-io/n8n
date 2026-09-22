@@ -63,7 +63,7 @@ describe('LmChatAlibabaCloud', () => {
 				displayName: 'Qwen Cloud Chat Model',
 				name: 'lmChatAlibabaCloud',
 				group: ['transform'],
-				version: [1],
+				version: [1, 1.1],
 			});
 		});
 
@@ -172,6 +172,7 @@ describe('LmChatAlibabaCloud', () => {
 					headersTimeout: undefined,
 					bodyTimeout: undefined,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 
@@ -191,6 +192,7 @@ describe('LmChatAlibabaCloud', () => {
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 

@@ -17,6 +17,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
+import { createServer } from 'miragejs';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -67,7 +68,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<div data-test-id="add-resource-actions" >
-				<button v-for="action in $props.actions" :key="action.value"></button>
+				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
 			</div>
 		</div>
 	`,
@@ -113,6 +114,47 @@ describe('ProjectHeader', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('shows live promotion changes only with export and push access', async () => {
+		const server = createServer({ environment: 'test' });
+		server.get('/rest/promotions/project-1/changes/promote', () => ({
+			data: {
+				commitSha: 'a'.repeat(40),
+				changes: [
+					{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' },
+				],
+			},
+		}));
+		try {
+			settingsStore.isModuleActive.mockReturnValue(true);
+			settingsStore.settings = {
+				...settingsStore.settings,
+				envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
+			};
+			projectsStore.currentProject = createTestProject({
+				id: 'project-1',
+				scopes: ['project:export'],
+			});
+			usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:push'] });
+			const { findByTestId, queryByTestId } = renderComponent();
+
+			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
+			await userEvent.click(await findByTestId('promotion-banner-link'));
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: 'promotionSelect',
+				data: { projectId: 'project-1' },
+			});
+
+			projectsStore.currentProject.scopes = [];
+			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
+			projectsStore.currentProject.scopes = ['project:export'];
+			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
+			usersStore.currentUser = mock<IUser>({ globalScopes: [] });
+			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
+		} finally {
+			server.shutdown();
+		}
 	});
 
 	it('should not render title icon on overview page', async () => {
@@ -241,7 +283,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
+	it('should render ProjectTabs without Settings if no project update, manageMembers or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -251,6 +293,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project member has project:manageMembers scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'project:manageMembers'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);
@@ -501,7 +558,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
 		});
 
 		it('should pass empty array when no modules are active', () => {

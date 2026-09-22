@@ -47,6 +47,10 @@ export interface DialogContentProps {
 	 * Accessible description for the dialog (used when DialogDescription is not provided)
 	 */
 	ariaDescription?: string;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
 }
 
 export interface DialogContentEmits {
@@ -106,7 +110,7 @@ function handleInteractOutside(e: Event) {
 		:force-mount="forceMount"
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
-		:class="[$style.content, sizeClass]"
+		:class="[$style.content, sizeClass, stacked && $style.stacked]"
 		@escape-key-down="emit('escapeKeyDown', $event)"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
@@ -129,6 +133,8 @@ function handleInteractOutside(e: Event) {
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/motion';
+
 @keyframes dialogFadeIn {
 	from {
 		opacity: 0;
@@ -174,12 +180,20 @@ function handleInteractOutside(e: Event) {
 	}
 }
 
+.stacked {
+	z-index: 1952; // Higher than default .content z-index to ensure the dialog is always on top.
+}
+
 .content[data-state='open'] {
 	animation: dialogFadeIn var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
 }
 
 .content[data-state='closed'] {
 	animation: dialogFadeOut var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
 }
 
 .small {

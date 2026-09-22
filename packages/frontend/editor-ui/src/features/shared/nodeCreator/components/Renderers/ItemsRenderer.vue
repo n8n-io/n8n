@@ -193,7 +193,7 @@ watch(
 					<NodeItem
 						v-if="item.type === 'node' && !communityNode"
 						:node-type="item.properties"
-						:active="true"
+						:active="activeItemId === item.uuid"
 						:subcategory="item.subcategory"
 					/>
 
@@ -234,6 +234,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .itemSkeleton {
 	height: 50px;
 }

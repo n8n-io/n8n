@@ -44,7 +44,7 @@ export function resolveTargetNodeName(
 	if (target === null || typeof target !== 'object') return undefined;
 
 	// Helper to get the actual node name, accounting for auto-renamed nodes
-	const getNodeName = (nodeInstance: NodeInstance<string, string, unknown>): string => {
+	const getNodeName = (nodeInstance: { id: string; name: string }): string => {
 		// First check the passed-in nameMapping
 		const mappedKey = nameMapping?.get(nodeInstance.id);
 		if (mappedKey) return mappedKey;
@@ -67,10 +67,17 @@ export function resolveTargetNodeName(
 		return getNodeName(target.head);
 	}
 
-	// Try registry resolution for composites (IfElse, SwitchCase, SplitInBatches)
-	const compositeHeadName = registry.resolveCompositeHeadName(target, nameMapping);
-	if (compositeHeadName !== undefined) {
-		return compositeHeadName;
+	// Try registry resolution for composites (IfElse, SwitchCase, SplitInBatches).
+	// When the handler exposes the head as { name, id }, resolve renames through the
+	// live nodes map too: nameMapping alone misses auto-renamed heads (e.g. a source
+	// chain whose head collided with an existing node name).
+	const compositeHandler = registry.findCompositeHandler(target);
+	if (compositeHandler) {
+		const headInfo = compositeHandler.getHeadNodeName?.(target);
+		if (typeof headInfo === 'object' && headInfo !== null && 'name' in headInfo) {
+			return getNodeName(headInfo);
+		}
+		return registry.resolveCompositeHeadName(target, nameMapping);
 	}
 
 	// Check for InputTarget - return the referenced node's name

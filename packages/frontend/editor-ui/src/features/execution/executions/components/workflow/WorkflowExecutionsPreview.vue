@@ -11,11 +11,12 @@ import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import { formatBytes } from '@/app/utils/typesUtils';
+import { formatBytes } from '@n8n/utils/number/bytes';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -55,6 +56,10 @@ const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+const executionPermissions = computed(
+	() =>
+		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).execution,
+);
 const executionId = computed(() => route.params.executionId as string);
 const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
@@ -73,6 +78,20 @@ const debugButtonData = computed(() =>
 );
 const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
+);
+
+// Read from the per-execution data store that ExecutionPreviewHost below already
+// fills, so no extra request is needed. Keyed by execution id, not by document scope.
+const redactionInfo = computed(
+	() =>
+		useExecutionDataStore(createExecutionDataId(executionId.value)).execution?.data?.redactionInfo,
+);
+// Copying to the editor pins the fetched items. Without a reveal, the fetch
+// returns empty placeholders, so pinning would erase real node data. The reason
+// is deliberately not named: end-user credential data is unrevealable to
+// everyone but the executing user, so no scope can unblock it.
+const pinBlockedByRedaction = computed(
+	() => redactionInfo.value?.isRedacted === true && redactionInfo.value.canReveal !== true,
 );
 
 const { isFeatureEnabled: isAddToDatasetFeatureEnabled } = useAddExecutionToDataset(workflowId);
@@ -390,29 +409,34 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 
 			<div :class="$style.actions">
-				<RouterLink
-					:to="{
-						name: VIEWS.EXECUTION_DEBUG,
-						params: {
-							workflowId: execution.workflowId,
-							executionId: execution.id,
-						},
-					}"
+				<N8nTooltip
+					:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
+					:disabled="!pinBlockedByRedaction"
 				>
-					<N8nButton
-						size="medium"
-						variant="subtle"
-						:class="$style.debugLink"
-						:disabled="!workflowPermissions.update"
+					<RouterLink
+						:to="{
+							name: VIEWS.EXECUTION_DEBUG,
+							params: {
+								workflowId: execution.workflowId,
+								executionId: execution.id,
+							},
+						}"
 					>
-						<span
-							data-test-id="execution-debug-button"
-							@click="executionDebugging.handleDebugLinkClick"
+						<N8nButton
+							size="medium"
+							variant="subtle"
+							:class="$style.debugLink"
+							:disabled="!workflowPermissions.update || pinBlockedByRedaction"
 						>
-							{{ debugButtonData.text }}
-						</span>
-					</N8nButton>
-				</RouterLink>
+							<span
+								data-test-id="execution-debug-button"
+								@click="executionDebugging.handleDebugLinkClick"
+							>
+								{{ debugButtonData.text }}
+							</span>
+						</N8nButton>
+					</RouterLink>
+				</N8nTooltip>
 
 				<ElDropdown
 					v-if="isRetriable"
@@ -464,7 +488,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				<N8nIconButton
 					variant="subtle"
 					:title="locale.baseText('executionDetails.deleteExecution')"
-					:disabled="!workflowPermissions.update"
+					:disabled="!executionPermissions.delete"
 					icon="trash-2"
 					size="medium"
 					data-test-id="execution-preview-delete-button"

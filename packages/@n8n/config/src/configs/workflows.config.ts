@@ -7,6 +7,9 @@ import { positiveIntSchema } from '../schemas';
 const callerPolicySchema = z.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']);
 type CallerPolicy = z.infer<typeof callerPolicySchema>;
 
+// Bounded so lease-derived timeouts stay far below Node's max timer delay (~24.8 days).
+const outboxLeaseSecondsSchema = positiveIntSchema.max(Time.days.toSeconds);
+
 @Config
 export class WorkflowsConfig {
 	/** Default name suggested when creating a new workflow. */
@@ -25,17 +28,18 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_INDEX_BATCH_SIZE')
 	indexingBatchSize: number = 10;
 
-	/** Whether to use the workflow publication service. Still under development. */
+	/** Whether to use the workflow publication service. */
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
-	useWorkflowPublicationService: boolean = false;
+	useWorkflowPublicationService: boolean = true;
 
 	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
 
 	/** Seconds after which an `in_progress` workflow publication outbox record
-	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle. */
-	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
+	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle.
+	 *  Must be at most one day. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS', outboxLeaseSecondsSchema)
 	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
 
 	/** Number of workflow publication outbox records the leader processes in parallel per drain. */

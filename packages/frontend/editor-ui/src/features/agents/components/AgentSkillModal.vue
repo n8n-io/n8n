@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+} from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
@@ -37,6 +41,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
+const { showMessage } = useToast();
 
 const skill = ref<AgentSkill>(
 	normalizeSkill({
@@ -84,6 +89,10 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 	if (!instructions) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsRequired');
+	} else if (skill.value.instructions.length > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
+		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
+			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
+		});
 	}
 	if (skill.value.references?.some((reference) => !reference.content.trim())) {
 		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
@@ -168,7 +177,19 @@ function closeModal() {
 
 function onSave() {
 	submitted.value = true;
-	if (!canSave.value) return;
+	if (!canSave.value) {
+		const message =
+			validationErrors.value.name ??
+			validationErrors.value.description ??
+			validationErrors.value.instructions ??
+			validationErrors.value.references;
+		showMessage({
+			title: i18n.baseText('agents.builder.skills.saveError'),
+			...(message ? { message } : {}),
+			type: 'error',
+		});
+		return;
+	}
 
 	const payload = normalizeSkill({
 		name: skill.value.name.trim(),

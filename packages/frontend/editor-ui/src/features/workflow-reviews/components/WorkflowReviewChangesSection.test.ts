@@ -1,4 +1,6 @@
 import type {
+	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetail,
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
@@ -33,7 +35,16 @@ vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(WorkflowReviewChangesSection);
+const renderSection = createComponentRenderer(WorkflowReviewChangesSection);
+
+/** Defaults to an open review; closed cases pass `state` and `decision` themselves. */
+const renderComponent = (options: {
+	props: {
+		workflow: WorkflowReviewRequestWorkflowDetail;
+		state?: WorkflowReviewRequestState;
+		decision?: WorkflowReviewRequestDecision;
+	};
+}) => renderSection({ props: { state: 'open', decision: 'pending', ...options.props } });
 
 function makeNode(overrides: Partial<INode> = {}): INode {
 	return {
@@ -69,6 +80,7 @@ function makeWorkflow(
 		workflowName: 'Payment handler',
 		workflowVersionId: '77b70644-0000-0000-0000-000000000000',
 		pinnedVersion: makeSnapshot(),
+		publishedVersionId: null,
 		baselineVersion: makeSnapshot({
 			versionId: '0f123890-0000-0000-0000-000000000000',
 			nodes: [makeNode({ id: 'node-removed', name: 'Removed node' }), makeNode()],
@@ -116,13 +128,13 @@ describe('WorkflowReviewChangesSection', () => {
 	it.each([
 		['null', null],
 		['empty', ''],
-	])('falls back to the short id when the name is %s', (_case, name) => {
+	])('falls back to the id-derived label when the name is %s', (_case, name) => {
 		const { getByTestId } = renderComponent({
 			props: { workflow: makeWorkflow({ pinnedVersion: makeSnapshot({ name }) }) },
 		});
 
 		expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent(
-			'In review: 77b70644',
+			'In review: Version 77b70644',
 		);
 	});
 
@@ -240,6 +252,75 @@ describe('WorkflowReviewChangesSection', () => {
 		expect(isReactive(targetWorkflow)).toBe(false);
 		expect(isReactive(targetWorkflow?.nodes)).toBe(false);
 		expect(isReactive(targetWorkflow?.nodes[0])).toBe(false);
+	});
+
+	describe('closed reviews', () => {
+		const approved = { state: 'closed', decision: 'approved' } as const;
+
+		it('labels the frozen baseline and the approved version', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...approved,
+					workflow: makeWorkflow({
+						pinnedVersion: makeSnapshot({ name: 'Version hotpink' }),
+						baselineVersion: makeSnapshot({
+							versionId: '0f123890-0000-0000-0000-000000000000',
+							name: 'Version teal',
+							nodes: [makeNode({ id: 'node-removed', name: 'Removed node' }), makeNode()],
+						}),
+					}),
+				},
+			});
+
+			expect(getByTestId('workflow-review-changes-source-label')).toHaveTextContent(
+				'Previously published: Version teal',
+			);
+			expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent(
+				'Approved: Version hotpink',
+			);
+		});
+
+		// Nothing was published when this was approved, so the baseline is empty by
+		// right — not missing. The diff still renders, sourceless.
+		it('renders a sourceless diff when nothing was published at approval', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { ...approved, workflow: makeWorkflow({ baselineVersion: null }) },
+			});
+
+			expect(getByTestId('workflow-diff-view-stub')).toBeInTheDocument();
+			expect(diffViewProps[0].sourceWorkflow).toBeUndefined();
+			expect(
+				queryByTestId('workflow-review-changes-closed-without-approval'),
+			).not.toBeInTheDocument();
+		});
+
+		it('phrases the no-changes state in the past tense', () => {
+			const snapshot = makeSnapshot();
+			const { getByTestId } = renderComponent({
+				props: {
+					...approved,
+					workflow: makeWorkflow({ pinnedVersion: snapshot, baselineVersion: snapshot }),
+				},
+			});
+
+			expect(getByTestId('workflow-review-changes-no-changes')).toHaveTextContent(
+				'No changes compared to the previously published version.',
+			);
+		});
+
+		// Auto-closed by archiving, transferring or deleting the workflow: approval
+		// is the only thing that freezes a baseline, so there is nothing to diff.
+		it.each(['pending', 'changes_requested'] as const)(
+			'explains that a review closed with decision %s has no changes to compare',
+			(decision) => {
+				const { getByTestId, queryByTestId } = renderComponent({
+					props: { state: 'closed', decision, workflow: makeWorkflow() },
+				});
+
+				expect(getByTestId('workflow-review-changes-closed-without-approval')).toBeInTheDocument();
+				expect(queryByTestId('workflow-diff-view-stub')).not.toBeInTheDocument();
+			},
+		);
 	});
 
 	it('renders the diff when versions differ only by an execution flag', () => {

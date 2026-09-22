@@ -1,14 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
 } from '@/services/protected-resource.registry';
+
+import { triggerResourceGate } from '../resource-gate';
 import { UrlService } from '@/services/url.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
@@ -18,9 +18,9 @@ import {
 	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
 	parseMethodParam,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
 
@@ -50,20 +50,17 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 	readonly scopes = WEBHOOK_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the test webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
-		// Can't throw — `resourceUrlToWebhookPath` already parsed the URL.
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getTestWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
+		// Can't throw — `webhookPathFromResourceUrl` already parsed the URL.
 		return await this.resolveByPath(pathname, new URL(resourceUrl).search);
 	}
 
 	async resolveByPath(pathname: string, search?: string) {
-		if (!isWebhookOAuth2Enabled()) {
-			return undefined;
-		}
-
 		if (!pathname.startsWith(`/${this.config.endpoints.webhookTest}/`)) {
 			// we can quickly rule out non-test-webhook paths without doing any cache work
 			return undefined;
@@ -143,24 +140,19 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			const urlFor = (method: string) => `${baseUrl}${methodQueryString(method)}`;
 			const methods = [...new Set(triggerMethods.map((method) => method.toUpperCase()))].sort();
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			// One list, served live and sealed into the grant, so the audiences a run is
+			// verified against don't change when the registration goes away.
+			const audiences = methods.map(urlFor);
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
 				getResourceUrl: () => urlFor(requestedMethod),
-				getAudiences: () => methods.map(urlFor),
+				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflowEntity.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflowEntity.id);
-					}
-					return true;
-				},
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,
+				}),
 			};
 		}
 

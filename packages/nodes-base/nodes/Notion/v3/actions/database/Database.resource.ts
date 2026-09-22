@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import { handleOperationError, simplifyObjects } from '../../helpers/utils';
 import { notionApiRequestV3 } from '../../transport';
@@ -54,7 +55,7 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/databases/${databaseId}`,
+				`/databases/${toPathSegment(databaseId)}`,
 			);
 			if (this.getNodeParameter('simple', i) as boolean) {
 				response = simplifyObjects(response, false, 3);

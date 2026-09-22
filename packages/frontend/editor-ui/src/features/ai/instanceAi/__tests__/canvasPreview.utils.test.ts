@@ -885,6 +885,53 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
+	test('extracts simulated node names from a verify-built-workflow result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-1' },
+					result: {
+						executionId: 'exec-1',
+						status: 'success',
+						simulatedNodes: [
+							{ nodeName: 'Gmail', reason: 'Mocked credentials' },
+							{ nodeName: 'HTTP Request', reason: 'Declared output fixture' },
+						],
+					},
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')?.simulatedNodeNames).toEqual(['Gmail', 'HTTP Request']);
+	});
+
+	test('omits simulatedNodeNames when absent or malformed', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-1', status: 'success' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-2' },
+					result: {
+						executionId: 'exec-2',
+						status: 'success',
+						simulatedNodes: ['not-an-object', { reason: 'missing nodeName' }, null],
+					},
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')).not.toHaveProperty('simulatedNodeNames');
+		expect(results.get('wf-2')).not.toHaveProperty('simulatedNodeNames');
+	});
+
 	test('extracts error run-workflow result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
@@ -1119,6 +1166,32 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('locks an announced workflow while its first build has no result yet', () => {
+		const call = makeToolCall({
+			toolName: 'build-workflow',
+			args: { filePath: 'workflow.ts' },
+			isLoading: true,
+			startedAt: '2026-09-15T08:00:00.000Z',
+		});
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [call],
+			setupItemsByWorkflowId: { 'wf-other': [], 'wf-1': [] },
+			latestSetupAnnouncement: {
+				workflowId: 'wf-1',
+				agentId: 'agent-1',
+				timestamp: '2026-09-15T08:00:01.000Z',
+			},
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
+		call.startedAt = '2026-09-15T08:01:00.000Z';
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+		call.startedAt = '2026-09-15T08:00:00.000Z';
+		call.isLoading = false;
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks while an active agent run has already built the workflow', () => {
 		const node = makeAgentNode({
 			status: 'active',

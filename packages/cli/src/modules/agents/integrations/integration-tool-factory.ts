@@ -20,7 +20,6 @@ import {
 import {
 	buildActionInputSchema,
 	buildContextInputSchema,
-	type RawActionToolInput,
 	type RawContextToolInput,
 	toSingleActionOperation,
 	toSingleContextOperation,
@@ -106,10 +105,9 @@ export function buildIntegrationConnectionId(integration: IntegrationToolConnect
 
 export function createIntegrationContextTool(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	queryExecutor: IntegrationContextQueryExecutor;
 }) {
-	const { descriptor, messageContextStore, queryExecutor } = params;
+	const { descriptor, queryExecutor } = params;
 
 	return new Tool(descriptor.contextToolName)
 		.description(buildContextToolDescription(descriptor))
@@ -125,7 +123,6 @@ export function createIntegrationContextTool(params: {
 							result: await executeContextToolOperation({
 								operation,
 								descriptor,
-								messageContextStore,
 								queryExecutor,
 								persistence: ctx.persistence,
 							}),
@@ -139,7 +136,6 @@ export function createIntegrationContextTool(params: {
 			return await executeContextToolOperation({
 				operation: toSingleContextOperation(toolInput),
 				descriptor,
-				messageContextStore,
 				queryExecutor,
 				persistence: ctx.persistence,
 			});
@@ -164,7 +160,7 @@ export function createIntegrationActionTool(params: {
 			}
 
 			const interruptCtx = ctx as InterruptibleToolContext;
-			const toolInput = input as RawActionToolInput;
+			const toolInput = input;
 
 			if (toolInput.actions !== undefined) {
 				return await executeActionToolBatch({

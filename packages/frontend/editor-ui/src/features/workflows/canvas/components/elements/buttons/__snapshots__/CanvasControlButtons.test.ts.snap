@@ -12,7 +12,6 @@ exports[`CanvasControlButtons > should render correctly 1`] = `
     <!--v-if--><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-button-stub variant="subtle" icon="zoom-in" size="large" loading="false" icononly="true" disabled="false" class="" aria-label="Zoom In" data-test-id="zoom-in-button"></n8n-icon-button-stub></span>
     <!--v-if--><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-button-stub variant="subtle" icon="zoom-out" size="large" loading="false" icononly="true" disabled="false" class="" aria-label="Zoom Out" data-test-id="zoom-out-button"></n8n-icon-button-stub></span>
     <!--v-if-->
-    <!--v-if-->
     <!--v-if--><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub variant="subtle" size="large" loading="false" icononly="true" disabled="false" class="iconButton" aria-label="Tidy Up" data-test-id="tidy-up-button"></n8n-button-stub></span>
     <!--v-if-->
     <!--v-if-->

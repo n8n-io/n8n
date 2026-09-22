@@ -5,7 +5,34 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"GET /roles": {
+			"status": "gap"
+		},
+		"GET /roles/{roleSlug}": {
+			"status": "gap"
+		},
 		"POST /roles": {
+			"status": "gap"
+		},
+		"PUT /roles/{roleSlug}": {
+			"status": "gap"
+		},
+		"DELETE /roles/{roleSlug}": {
+			"status": "gap"
+		},
+		"GET /role-mapping-rules": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules/{roleMappingRuleId}/move": {
+			"status": "gap"
+		},
+		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
+		"DELETE /role-mapping-rules/{roleMappingRuleId}": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {
@@ -17,17 +44,17 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
-		"GET /credentials/{id}": {
+		"GET /credentials/{credentialId}": {
 			"status": "gap"
 		},
 		"POST /credentials": {
 			"status": "covered",
 			"nodeOperation": "credential:create"
 		},
-		"PATCH /credentials/{id}": {
+		"PATCH /credentials/{credentialId}": {
 			"status": "gap"
 		},
-		"DELETE /credentials/{id}": {
+		"DELETE /credentials/{credentialId}": {
 			"status": "covered",
 			"nodeOperation": "credential:delete"
 		},
@@ -35,10 +62,10 @@
 			"status": "covered",
 			"nodeOperation": "credential:getSchema"
 		},
-		"PUT /credentials/{id}/transfer": {
+		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
-		"POST /credentials/{id}/test": {
+		"POST /credentials/{credentialId}/test": {
 			"status": "gap"
 		},
 		"GET /community-packages": {
@@ -63,27 +90,27 @@
 			"status": "covered",
 			"nodeOperation": "execution:getAll"
 		},
-		"GET /executions/{id}": {
+		"GET /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:get"
 		},
-		"DELETE /executions/{id}": {
+		"DELETE /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
-		"POST /executions/{id}/retry": {
+		"POST /executions/{executionId}/retry": {
 			"status": "gap"
 		},
-		"POST /executions/{id}/stop": {
+		"POST /executions/{executionId}/stop": {
 			"status": "gap"
 		},
 		"POST /executions/stop": {
 			"status": "gap"
 		},
-		"GET /executions/{id}/tags": {
+		"GET /executions/{executionId}/tags": {
 			"status": "gap"
 		},
-		"PUT /executions/{id}/tags": {
+		"PUT /executions/{executionId}/tags": {
 			"status": "gap"
 		},
 		"GET /insights/summary": {
@@ -95,13 +122,13 @@
 		"GET /tags": {
 			"status": "gap"
 		},
-		"GET /tags/{id}": {
+		"GET /tags/{tagId}": {
 			"status": "gap"
 		},
-		"DELETE /tags/{id}": {
+		"DELETE /tags/{tagId}": {
 			"status": "gap"
 		},
-		"PUT /tags/{id}": {
+		"PUT /tags/{tagId}": {
 			"status": "gap"
 		},
 		"POST /workflows": {
@@ -127,6 +154,9 @@
 		"GET /workflows/{id}/{versionId}": {
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
+		},
+		"GET /workflows/{workflowId}/versions/{workflowVersionId}": {
+			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {
 			"status": "gap"
@@ -191,6 +221,75 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /source-control/status": {
+			"status": "gap"
+		},
+		"POST /source-control/push": {
+			"status": "gap"
+		},
+		"GET /promotions/providers": {
+			"status": "gap"
+		},
+		"POST /promotions/providers": {
+			"status": "gap"
+		},
+		"GET /promotions/providers/{promotionProviderId}": {
+			"status": "gap"
+		},
+		"PUT /promotions/providers/{promotionProviderId}": {
+			"status": "gap"
+		},
+		"DELETE /promotions/providers/{promotionProviderId}": {
+			"status": "gap"
+		},
+		"GET /promotions/connections": {
+			"status": "gap"
+		},
+		"POST /promotions/connections": {
+			"status": "gap"
+		},
+		"GET /promotions/connections/{promotionConnectionId}": {
+			"status": "gap"
+		},
+		"PUT /promotions/connections/{promotionConnectionId}": {
+			"status": "gap"
+		},
+		"DELETE /promotions/connections/{promotionConnectionId}": {
+			"status": "gap"
+		},
+		"PUT /promotions/connections/{promotionConnectionId}/configs/apply": {
+			"status": "gap"
+		},
+		"PUT /promotions/connections/{promotionConnectionId}/configs/promote": {
+			"status": "gap"
+		},
+		"DELETE /promotions/connections/{promotionConnectionId}/configs/{direction}": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/{direction}/clone": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/{direction}/disconnect": {
+			"status": "gap"
+		},
+		"GET /promotions/connections/{promotionConnectionId}/projects": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
+			"status": "gap"
+		},
+		"DELETE /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/apply": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {
@@ -341,6 +440,36 @@
 			"status": "gap"
 		},
 		"POST /n8n-packages/import": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/instance": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/instance": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

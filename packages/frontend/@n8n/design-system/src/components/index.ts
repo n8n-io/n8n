@@ -32,10 +32,15 @@ export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
+export { default as N8nSetupPanel } from './N8nSetupPanel/SetupPanel.vue';
+export type { SetupPanelItem, SetupPanelProps } from './N8nSetupPanel/SetupPanel.types';
+export { default as N8nSetupConnection } from './N8nSetupConnection/SetupConnection.vue';
+export type { SetupConnectionProps } from './N8nSetupConnection/SetupConnection.types';
 export { default as N8nButtonList } from './N8nButtonList';
 export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
+export { default as N8nCanvasPill } from './CanvasPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
@@ -68,10 +73,12 @@ export { default as N8nInfoTip } from './N8nInfoTip';
 export { default as N8nInput } from './N8nInput';
 export { default as N8nInputLabel } from './N8nInputLabel';
 export { default as N8nInputNumber } from './N8nInputNumber';
+export type * from './N8nInputNumber/InputNumber.types';
 export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
+/** @deprecated Use N8nChatActions with `showRating` instead. */
 export { default as N8nMessageRating } from './AskAssistantChat/messages/MessageRating.vue';
 export { default as N8nMenuItem } from './N8nMenuItem';
 export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
@@ -107,15 +114,29 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
+export type {
+	ChatActionCopyResult,
+	ChatActionCopyStatus,
+	ChatActionReadAloudResult,
+	ChatActionReadAloudStatus,
+	ChatActionsProps,
+} from './N8nChatActions/ChatActions.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
-export { default as N8nRadioButtons } from './N8nRadioButtons';
+export { default as N8nSegmentControl } from './N8nSegmentControl';
+export type {
+	SegmentControlProps,
+	SegmentControlSize,
+	SegmentOption,
+} from './N8nSegmentControl';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
+export type { StatusDotProps, StatusDotVariant } from './N8nStatusDot';
 export { default as N8nStepper } from './N8nStepper/Stepper.vue';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
@@ -158,3 +179,4 @@ export { default as N8nCommandBar } from './N8nCommandBar';
 export type { CommandBarItem } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
+export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

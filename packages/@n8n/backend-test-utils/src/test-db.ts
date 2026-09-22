@@ -156,6 +156,7 @@ type EntityName =
 	| 'InsightsRaw'
 	| 'InsightsByPeriod'
 	| 'InsightsMetadata'
+	| 'InstanceMonitoringReport'
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'ChatHubSession'
@@ -170,6 +171,9 @@ type EntityName =
 	| 'DynamicCredentialEntry'
 	| 'DynamicCredentialResolver'
 	| 'DynamicCredentialUserEntry'
+	| 'TypeAvailabilityPolicy'
+	| 'TypeAvailabilityPolicyScope'
+	| 'TypeAvailabilityPolicyAttachment'
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
@@ -202,6 +206,12 @@ export async function truncate(entities: EntityName[]) {
 	// Clean junction tables first (since they reference the entities)
 	for (const tableName of junctionTablesToClean) {
 		await connection.query(`DELETE FROM ${tableName}`);
+	}
+
+	// `workflow_published_version` references workflows and history rows with
+	// RESTRICT, so it has to go before either of them.
+	if (entities.includes('WorkflowEntity') || entities.includes('WorkflowHistory')) {
+		await connection.getRepository('WorkflowPublishedVersion').delete({});
 	}
 
 	for (const name of entities) {

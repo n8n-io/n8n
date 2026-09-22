@@ -7,8 +7,13 @@ import type { ModulePushHandler, ModulePushHandlers } from '../types/push';
 const handlers = new Map<PushType, ModulePushHandler>();
 
 export function register(type: PushType, handler: ModulePushHandler): void {
-	if (handlers.has(type)) {
-		console.warn(`Push handler for type "${type}" is already registered. Skipping.`);
+	const existing = handlers.get(type);
+	if (existing) {
+		// Same handler replayed by a re-login is a no-op; a different one
+		// claiming a taken type is the real collision.
+		if (existing !== handler) {
+			console.warn(`Push handler for type "${type}" is already registered. Skipping.`);
+		}
 		return;
 	}
 	handlers.set(type, handler);

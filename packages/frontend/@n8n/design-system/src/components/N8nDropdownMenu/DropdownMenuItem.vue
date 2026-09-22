@@ -201,7 +201,12 @@ onBeforeUnmount(() => {
 				:aria-selected="highlighted || undefined"
 				:disabled="disabled"
 				:data-test-id="testId"
-				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
+				:class="[
+					$style.item,
+					$style['sub-trigger'],
+					props.class,
+					{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+				]"
 				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -348,7 +353,11 @@ onBeforeUnmount(() => {
 			:aria-selected="highlighted || undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
@@ -384,7 +393,11 @@ onBeforeUnmount(() => {
 			:aria-selected="highlighted || undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
@@ -423,6 +436,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/floating-item' as floating-item;
 @use '../../css/common/var';
 @use '../../css/mixins/mixins' as scrollbar-mixins;
 
@@ -451,18 +465,9 @@ onBeforeUnmount(() => {
 }
 
 .item {
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	border-radius: var(--radius--2xs);
-	display: flex;
-	align-items: center;
-	min-height: var(--spacing--xl);
-	padding: var(--spacing--2xs);
-	position: relative;
-	user-select: none;
+	@include floating-item.floating-item;
+
 	color: var(--text-color);
-	gap: var(--spacing--2xs);
-	outline: none;
 
 	&:not([data-disabled]) {
 		&:hover,
@@ -476,6 +481,22 @@ onBeforeUnmount(() => {
 	&[data-disabled] {
 		color: var(--text-color--disabled);
 		cursor: not-allowed;
+	}
+
+	&.destructive.destructive:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			.item-label.item-label {
+				color: var(--text-color--danger);
+			}
+
+			.icon.icon,
+			.item-check.item-check,
+			.sub-indicator.sub-indicator {
+				color: var(--icon-color--danger) !important;
+			}
+		}
 	}
 
 	:global([data-menu-items]:has([aria-selected='true'])) &:not([aria-selected='true']) {

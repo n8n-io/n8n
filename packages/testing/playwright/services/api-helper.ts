@@ -7,6 +7,7 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -20,6 +21,7 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
@@ -34,6 +36,14 @@ import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
+
+export interface ApiHelpersOptions {
+	/**
+	 * Settings merged over every workflow this helper creates. Set per stack, so
+	 * a project that runs engine 2.0 routes every workflow to it.
+	 */
+	workflowSettings?: Partial<IWorkflowSettings>;
+}
 
 export interface LoginResponseData {
 	id: string;
@@ -85,10 +95,14 @@ export class ApiHelpers {
 	sourceControl: SourceControlApiHelper;
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
+	instanceAi: InstanceAiApiHelper;
 
 	publicApi: PublicApiHelper;
 
-	constructor(requestContext: APIRequestContext) {
+	constructor(
+		requestContext: APIRequestContext,
+		readonly options: ApiHelpersOptions = {},
+	) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
@@ -106,6 +120,7 @@ export class ApiHelpers {
 		this.sourceControl = new SourceControlApiHelper(this);
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
+		this.instanceAi = new InstanceAiApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -242,6 +257,47 @@ export class ApiHelpers {
 		return data.count;
 	}
 
+	async getPollerCursor(
+		workflowId: string,
+		nodeId: string,
+	): Promise<Record<string, unknown> | null> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller cursor: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { cursor: Record<string, unknown> | null };
+		};
+		return data.cursor;
+	}
+
+	async getPollerFailureState(
+		workflowId: string,
+		nodeId: string,
+	): Promise<{ consecutiveErrors: number; backoffUntil: string | null }> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller failure state: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { consecutiveErrors: number; backoffUntil: string | null };
+		};
+		return { consecutiveErrors: data.consecutiveErrors, backoffUntil: data.backoffUntil };
+	}
+
+	async clearWorkflowStaticData(workflowId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
+			data: { workflowId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to clear workflow static data: ${await response.text()}`);
+		}
+	}
+
 	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
 			data: { workflowId, nodeId },
@@ -299,6 +355,41 @@ export class ApiHelpers {
 		return await response.json();
 	}
 
+	/**
+	 * The backend modules this instance started with. A module the license did not
+	 * cover at boot is missing here, and `enableFeature` cannot add it later.
+	 */
+	async getActiveModules(): Promise<string[]> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.activeModules ?? [];
+	}
+
+	/**
+	 * The engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read from the instance rather than the
+	 * env, so a spec can skip when the instance does not run the engine it needs.
+	 */
+	async getFrontendExpressionEngine(): Promise<string | undefined> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.expressionEngine;
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {
@@ -332,7 +423,7 @@ export class ApiHelpers {
 	 */
 	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
 		const userContext = await request.newContext();
-		const userApi = new ApiHelpers(userContext);
+		const userApi = new ApiHelpers(userContext, this.options);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
 	}

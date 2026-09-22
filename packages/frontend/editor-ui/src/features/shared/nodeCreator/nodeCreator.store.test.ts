@@ -148,21 +148,25 @@ describe('useNodeCreatorStore', () => {
 			settingsStore.isAiGatewayEnabled = true;
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
 
 			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
 
 			expect(aiGatewayStore.fetchConfig).toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).toHaveBeenCalled();
 		});
 
-		it('does not fetch the gateway config when AI Gateway is disabled', () => {
+		it('does not fetch the gateway config or wallet when AI Gateway is disabled', () => {
 			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isAiGatewayEnabled = false;
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
 
 			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
 
 			expect(aiGatewayStore.fetchConfig).not.toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
 		});
 	});
 

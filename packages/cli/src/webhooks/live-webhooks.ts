@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import {
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_PATH_SUFFIX,
 	WEBHOOK_NODE_TYPE,
 	nodeParametersAreStatic,
 	webhookDescriptionIsNativelyResolvable,
@@ -63,7 +64,7 @@ export class LiveWebhooks implements IWebhookManager {
 		});
 
 		const isChatWebhookNode = (type: string, webhookId?: string) =>
-			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
+			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/${CHAT_TRIGGER_PATH_SUFFIX}` === path;
 
 		const nodes = workflowData?.activeVersion?.nodes;
 		const webhookNode = nodes?.find(
@@ -114,11 +115,10 @@ export class LiveWebhooks implements IWebhookManager {
 		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
-		const { nodes, connections } = publishedVersion;
+		const { nodes, connections, versionId } = publishedVersion;
 
-		// Create a clean workflowData object with only activeVersion nodes/connections
-		// This prevents any downstream code from accidentally using the draft nodes
-		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections };
+		// Use the published revision for both execution content and metadata.
+		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections, versionId };
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,

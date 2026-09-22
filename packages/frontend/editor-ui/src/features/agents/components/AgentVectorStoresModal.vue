@@ -231,7 +231,7 @@ function onEmbeddingModelUpdate(model: string) {
 async function loadCredentials() {
 	credentialsLoading.value = true;
 	try {
-		const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+		const allCredentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.data.projectId,
 		});
 		const types = new Set<string>();

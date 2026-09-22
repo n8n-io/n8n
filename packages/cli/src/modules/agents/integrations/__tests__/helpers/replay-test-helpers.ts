@@ -10,6 +10,7 @@ import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
 import type { ComponentMapper } from '../../component-mapper';
 import { ChatIntegrationActionExecutor } from '../../integration-action-executor';
+import { ChannelRateLimitGuard } from '../../channel-rate-limit.guard';
 import type { IntegrationMessageContextService } from '../../integration-message-context.service';
 import type {
 	IntegrationMessageContext,
@@ -17,9 +18,9 @@ import type {
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
 
-type AgentExecutorLike = ConstructorParameters<typeof AgentChatBridge>[2];
-
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
+
+type AgentExecutor = ConstructorParameters<typeof AgentChatBridge>[2];
 
 export type ReplayWebhookHandler = (
 	request: Request,
@@ -33,6 +34,7 @@ export interface ReplayApiCall {
 
 export class MemoryMessageContextStore implements IntegrationMessageContextStore {
 	private readonly contexts = new Map<string, IntegrationMessageContext>();
+	private readonly bindings = new Map<string, { threadId: string; resourceId: string }>();
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		return await Promise.resolve(this.contexts.get(threadId) ?? null);
@@ -48,12 +50,31 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		return;
 	}
 
-	latest(): IntegrationMessageContext | undefined {
-		return [...this.contexts.values()].at(-1);
+	async bindSession(
+		derivedThreadId: string,
+		origin: { threadId: string; resourceId: string },
+	): Promise<void> {
+		if (derivedThreadId === origin.threadId) return;
+		if (this.bindings.has(derivedThreadId)) return; // first write wins
+		this.bindings.set(derivedThreadId, origin);
+		await Promise.resolve();
 	}
 
-	latestThreadId(): string | undefined {
-		return [...this.contexts.keys()].at(-1);
+	async resolveSession(
+		derivedThreadId: string,
+	): Promise<{ threadId: string; resourceId: string } | null> {
+		return await Promise.resolve(this.bindings.get(derivedThreadId) ?? null);
+	}
+
+	async unbindSession(derivedThreadId: string): Promise<void> {
+		this.bindings.delete(derivedThreadId);
+		await Promise.resolve();
+	}
+
+	async clearSessionBindings(_originThreadId: string): Promise<void> {
+		// The in-memory store does not track the origin→derived list; tests
+		// that need unbind semantics call unbindSession directly.
+		await Promise.resolve();
 	}
 }
 
@@ -169,6 +190,8 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
+	latestContext: () => IntegrationMessageContext | undefined;
+	latestThreadId: () => string | undefined;
 	nextStream: (chunks: StreamChunk[]) => void;
 	shutdown: () => Promise<void>;
 }
@@ -188,16 +211,25 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },
 		{ type: 'finish', finishReason: 'stop' },
 	];
+	let selectedContext: IntegrationMessageContext | undefined;
+	let selectedThreadId: string | undefined;
 	const agentExecutor = {
-		executeForChatPublished: vi.fn(() => toStream(stream)),
-		resumeForChat: vi.fn(() => toStream(stream)),
+		executeForChatPublished: vi.fn<AgentExecutor['executeForChatPublished']>((config) => {
+			selectedContext = config.messageContext ?? undefined;
+			selectedThreadId = config.memory.threadId.id;
+			return toStream(stream);
+		}),
+		resumeForChat: vi.fn<AgentExecutor['resumeForChat']>((config) => {
+			selectedContext = config.messageContext ?? undefined;
+			return toStream(stream);
+		}),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 
 	new AgentChatBridge(
 		params.chat as never,
 		'agent-1',
-		agentExecutor as AgentExecutorLike,
+		agentExecutor,
 		params.componentMapper ?? mock<ComponentMapper>(),
 		mock<Logger>(),
 		'project-1',
@@ -207,7 +239,11 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	chatIntegrationService.getChatInstance.mockReturnValue(params.chat);
-	const actionExecutor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+	const actionExecutor = new ChatIntegrationActionExecutor(
+		chatIntegrationService,
+		registry,
+		new ChannelRateLimitGuard(),
+	);
 	const descriptor = getIntegrationToolConnectionDescriptors([params.integration], 'agent-1')[0];
 
 	return {
@@ -217,6 +253,8 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
+		latestContext: () => selectedContext,
+		latestThreadId: () => selectedThreadId,
 		nextStream: (chunks: StreamChunk[]) => {
 			stream = chunks;
 		},

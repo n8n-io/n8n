@@ -1,3 +1,5 @@
+import type { EnforcementPoint, PolicyCleared } from '@n8n/decorators';
+
 /**
  * Transaction ports — the TypeORM-agnostic surface business logic depends on.
  *
@@ -38,6 +40,7 @@ export abstract class Transaction {
  */
 export interface OperationContext {
 	readonly trx?: Transaction;
+	readonly policyCleared?: PolicyCleared<EnforcementPoint>;
 }
 
 export interface RunOptions {

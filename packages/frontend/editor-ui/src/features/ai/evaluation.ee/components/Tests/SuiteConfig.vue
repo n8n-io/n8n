@@ -73,14 +73,15 @@ function onSelectNode(name: string) {
 }
 
 // Persist suite-config edits (node + metrics) with a debounced, silent save.
-const persist = useDebounceFn(
-	() => void saveConfig({ silent: true }),
-	getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE),
-);
+const persist = useDebounceFn(() => {
+	void saveConfig({ silent: true });
+}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
 
 watch(
 	[aiNodeName, selectedMetricKeys, customChecks, judgeSelectionByMetric],
-	() => void persist(),
+	() => {
+		void persist();
+	},
 	{
 		deep: true,
 	},

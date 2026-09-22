@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "1.34.0",
+  "version": "1.40.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -34,7 +34,6 @@
     "n8n-workflow": "workspace:*",
     "stream-json": "catalog:",
     "picocolors": "catalog:",
-    "reflect-metadata": "catalog:",
     "winston": "3.14.2",
     "yargs-parser": "21.1.1"
   },

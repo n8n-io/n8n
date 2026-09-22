@@ -18,7 +18,7 @@ export default {
 		},
 		layout: {
 			control: 'select',
-			options: ['single-line', 'multiline'],
+			options: ['single-line', 'multiline', 'adaptive'],
 		},
 		placeholder: {
 			control: 'text',
@@ -120,6 +120,21 @@ export const MultiLine = Template.bind({});
 MultiLine.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
+};
+
+export const Adaptive = Template.bind({});
+Adaptive.args = {
+	placeholder: 'Starts as one line and grows with your text...',
+	maxLength: 1000,
+	layout: 'adaptive',
+};
+Adaptive.parameters = {
+	docs: {
+		description: {
+			story:
+				'Adaptive supports the default icon-only send/stop button. A custom button label or action slot falls back to the multiline layout.',
+		},
+	},
 };
 
 const workflowSuggestions: WorkflowSuggestion[] = [
@@ -535,7 +550,7 @@ const SuggestionsTemplate: StoryFn = (args) => ({
 		N8nChatInput,
 	},
 	template: `
-		<div style="max-width: 710px; margin: 0 auto; padding: 20px;">
+		<div style="max-width: 710px; margin: 0 auto;">
 			<div
 				style="
 					display: flex;

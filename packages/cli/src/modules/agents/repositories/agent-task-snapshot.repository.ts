@@ -5,7 +5,7 @@ import { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 
 type AgentTaskSnapshotData = Pick<
 	AgentTaskSnapshot,
-	'versionId' | 'taskId' | 'enabled' | 'name' | 'objective' | 'cronExpression'
+	'versionId' | 'taskId' | 'enabled' | 'name' | 'objective' | 'cronExpression' | 'timezone'
 >;
 
 @Service()

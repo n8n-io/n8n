@@ -24,9 +24,10 @@ const otelHandlers: OtelHandlers = {
 	getOtelSettings: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'otel:manage' }),
 		async (_req, res) => {
-			const settings = await Container.get(OtelSettingsService).loadSettings();
+			const settingsService = Container.get(OtelSettingsService);
+			await settingsService.loadSettings();
 
-			return res.json(toOtelSettingsResponse(settings));
+			return res.json(toOtelSettingsResponse(settingsService.getSettings()));
 		},
 	],
 

@@ -1,3 +1,4 @@
+import type { PolicyCleared } from '@n8n/decorators';
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
@@ -6,6 +7,7 @@ import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workfl
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
@@ -35,6 +37,7 @@ describe('ChatHubWorkflowService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 
 	const mockCipher = mock<Cipher>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -68,6 +71,7 @@ describe('ChatHubWorkflowService', () => {
 			chatHubToolService,
 			workflowFinderService,
 			mockCipher,
+			policyEnforcementService,
 		);
 
 		// Mock repository methods
@@ -78,14 +82,137 @@ describe('ChatHubWorkflowService', () => {
 			}),
 		} as any;
 
-		Object.defineProperty(workflowRepository, 'manager', {
-			value: {
-				transaction: vi.fn((cb) => cb(mockEntityManager)),
-			},
-			writable: true,
-		});
+		workflowRepository.runInTransaction.mockImplementation(
+			async (ctx: unknown, fn: (em: unknown, ctx: unknown) => Promise<unknown>) =>
+				await fn(mockEntityManager, ctx),
+		);
+		workflowRepository.createContent.mockImplementation(
+			async (workflow: unknown) => ({ ...(workflow as object), id: 'workflow-123' }) as never,
+		);
+		policyEnforcementService.enforceWorkflowSave.mockResolvedValue(mock());
 
 		(sharedWorkflowRepository.create as Mock) = vi.fn().mockReturnValue({});
+	});
+
+	describe('content policy', () => {
+		const cleared = mock<PolicyCleared<'workflowSave'>>();
+		const semanticSearchOptions: SemanticSearchOptions = {
+			embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },
+			vectorStore: {
+				nodeType: 'vectorStore',
+				credentialType: 'pineconeApi',
+				credentialId: 'vs-cred',
+			},
+		};
+
+		beforeEach(() => {
+			policyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
+		});
+
+		// Chat workflows are system-generated but their nodes are real, so a blocked node type
+		// has to stop the run rather than reach the engine.
+		it('enforces the save and threads the clearance to the write', async () => {
+			await service.createChatWorkflow(
+				'user-123',
+				'session-456',
+				'project-789',
+				[],
+				'Hello',
+				[],
+				{},
+				{ provider: 'openai', model: 'gpt-4' },
+				undefined,
+				[],
+				'UTC',
+				null,
+				defaultExecutionMetadata,
+			);
+
+			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+				expect.objectContaining({ storedWorkflow: null, projectId: 'project-789' }),
+			);
+			expect(workflowRepository.createContent).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
+
+		it('writes nothing when the policy blocks the save', async () => {
+			policyEnforcementService.enforceWorkflowSave.mockRejectedValue(new Error('blocked'));
+
+			await expect(
+				service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{},
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				),
+			).rejects.toThrow('blocked');
+
+			expect(workflowRepository.createContent).not.toHaveBeenCalled();
+		});
+
+		it('enforces the save for the title-generation workflow', async () => {
+			await service.createTitleGenerationWorkflow(
+				'user-123',
+				'session-456',
+				'project-789',
+				'Hello',
+				[],
+				{},
+				{ provider: 'openai', model: 'gpt-4' },
+			);
+
+			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-789' }),
+			);
+			expect(workflowRepository.createContent).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
+
+		it('enforces the save for the embeddings-insertion workflow', async () => {
+			await service.createEmbeddingsInsertionWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'project-1',
+				[
+					{
+						attachment: {
+							data: 'base64data',
+							mimeType: 'application/pdf',
+							fileName: 'doc.pdf',
+						} as IBinaryData,
+						knowledgeId: 'knowledge-1',
+					},
+				],
+				'agent-1',
+				semanticSearchOptions,
+				{},
+				'workflow-1',
+			);
+
+			// This site supplies its own id, so the clearance binds to that rather than to a hash.
+			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: expect.objectContaining({ id: 'workflow-1' }),
+					projectId: 'project-1',
+				}),
+			);
+			expect(workflowRepository.createContent).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
 	});
 
 	describe('createChatWorkflow', () => {
@@ -962,6 +1089,25 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
+		it('should normalize the legacy wildcard mime type', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+						allowedFilesMimeTypes: '*',
+					},
+				}),
+			];
+
+			expect(service.resolveWorkflowAttachmentPolicy(nodes)).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: '*/*',
+			});
+			expect(
+				service.parseInputModalities({ allowFileUploads: true, allowedFilesMimeTypes: '*' }),
+			).toEqual(['text', 'image', 'audio', 'video', 'file']);
+		});
+
 		it('should return wildcard mime types when allowFileUploads is true and mime types is not set', () => {
 			const nodes = [
 				makeNode({
@@ -1148,13 +1294,6 @@ describe('ChatHubWorkflowService', () => {
 			},
 		};
 
-		let trx: ReturnType<typeof mock<EntityManager>>;
-
-		beforeEach(() => {
-			trx = mock<EntityManager>();
-			trx.save.mockImplementation(async (entity) => entity as never);
-		});
-
 		const attachment = {
 			attachment: {
 				data: 'base64data',
@@ -1171,7 +1310,7 @@ describe('ChatHubWorkflowService', () => {
 				[attachment],
 				'agent-1',
 				SEMANTIC_SEARCH_OPTIONS,
-				trx,
+				{},
 				'workflow-1',
 			);
 
@@ -1195,7 +1334,7 @@ describe('ChatHubWorkflowService', () => {
 				[attachment],
 				'agent-1',
 				SEMANTIC_SEARCH_OPTIONS,
-				trx,
+				{},
 				'workflow-1',
 			);
 
@@ -1220,6 +1359,7 @@ describe('ChatHubWorkflowService', () => {
 				chatHubToolService,
 				workflowFinderService,
 				mockCipher,
+				policyEnforcementService,
 			);
 
 			const mockTrx = mock<EntityManager>();
@@ -1244,7 +1384,7 @@ describe('ChatHubWorkflowService', () => {
 				[],
 				[],
 				'UTC',
-				mockTrx,
+				{},
 				defaultExecutionMetadata,
 			);
 

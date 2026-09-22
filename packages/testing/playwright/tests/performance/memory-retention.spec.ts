@@ -10,7 +10,7 @@ test.use({
 });
 
 test.describe(
-	'Memory Leak Detection @capability:observability',
+	'Memory Leak Detection',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

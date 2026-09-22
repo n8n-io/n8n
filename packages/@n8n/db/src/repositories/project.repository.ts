@@ -1,8 +1,9 @@
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Not, Repository } from '@n8n/typeorm';
 
 import { Project } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class ProjectRepository extends Repository<Project> {
@@ -33,6 +34,25 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
+	/** IDs of every team project, ordered for a stable export. */
+	async findTeamProjectIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { type: 'team' },
+			select: { id: true },
+			order: { id: 'ASC' },
+		});
+		return rows.map(({ id }) => id);
+	}
+
+	/** Id and type of every project that exists with one of these ids. */
+	async findTypesByIds(ids: string[]): Promise<Array<Pick<Project, 'id' | 'type'>>> {
+		const rows: Array<Pick<Project, 'id' | 'type'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
+		}
+		return rows;
+	}
+
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: {
@@ -41,6 +61,14 @@ export class ProjectRepository extends Repository<Project> {
 				},
 			},
 		});
+	}
+
+	async findTeamProjects(): Promise<Project[]> {
+		return await this.findBy({ type: 'team' });
+	}
+
+	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
+		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
 	}
 
 	async getAccessibleProjectsByExactName(

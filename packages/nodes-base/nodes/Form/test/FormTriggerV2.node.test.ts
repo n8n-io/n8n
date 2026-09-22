@@ -94,7 +94,6 @@ describe('FormTrigger', () => {
 			expect(requireExecuteAccess).toMatchObject({
 				type: 'boolean',
 				default: false,
-				envFeatureFlag: 'FORM_TRIGGER_OAUTH2',
 			});
 		});
 

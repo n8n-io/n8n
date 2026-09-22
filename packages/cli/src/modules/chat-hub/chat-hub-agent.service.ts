@@ -226,8 +226,9 @@ export class ChatHubAgentService {
 		try {
 			const settings = await this.ensureSemanticSearchOptions();
 
-			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
-				async (trx) => {
+			const { workflowData, executionData } = await this.chatAgentRepository.runInTransaction(
+				{},
+				async (trx, ctx) => {
 					const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 					return await this.chatHubWorkflowService.createEmbeddingsInsertionWorkflow(
@@ -236,7 +237,7 @@ export class ChatHubAgentService {
 						files,
 						agentId,
 						settings,
-						trx,
+						ctx,
 						workflowId,
 					);
 				},

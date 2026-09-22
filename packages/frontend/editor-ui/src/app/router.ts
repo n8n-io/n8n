@@ -18,13 +18,14 @@ import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
-import { MfaRequiredError } from '@n8n/rest-api-client';
+import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
+import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	canManageInstanceAi,
@@ -33,6 +34,8 @@ import {
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
+const ConfirmEmailChangeView = async () =>
+	await import('@/features/core/auth/views/ConfirmEmailChangeView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
@@ -600,6 +603,19 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/confirm-email-change',
+		name: VIEWS.CONFIRM_EMAIL_CHANGE,
+		component: ConfirmEmailChangeView,
+		// No auth middleware: the token authorizes the change, so the link works
+		// whether the user is signed in or not (the confirm endpoint is skipAuth).
+		meta: {
+			layout: 'auth',
+			telemetry: {
+				pageCategory: 'auth',
+			},
+		},
+	},
+	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
 		props: true,
@@ -760,7 +776,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// Old path from before the feature was renamed to Gateway credits;
+				// redirect old deep links to the renamed route.
 				path: 'n8n-connect',
+				redirect: () => ({ name: VIEWS.AI_GATEWAY_SETTINGS }),
+			},
+			{
+				path: 'gateway-credits',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -768,7 +790,7 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return settingsStore.isAiGatewayEnabled;
+							return settingsStore.isAiGatewayEnabled && !settingsStore.isAiGatewayCloudUbbEnabled;
 						},
 					},
 					telemetry: {
@@ -1034,8 +1056,10 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'encryptionKey:manage',
 						},
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('ENCRYPTION_KEY_ROTATION');
+							const settingsStore = useSettingsStore();
+							return (
+								settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true
+							);
 						},
 					},
 					telemetry: {
@@ -1188,16 +1212,28 @@ const router = createRouter({
 	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
+setUnauthorizedHandler((baseURL) => {
+	void handleSessionExpired(router, baseURL);
+});
+
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		/**
-		 * Initialize application core
-		 * This step executes before first route is loaded and is required for permission checks
-		 */
+		try {
+			/**
+			 * Initialize application core
+			 * This step executes before first route is loaded and is required for permission checks
+			 */
 
-		await initializeCore();
-		// Pass undefined for first param to use default
-		await initializeAuthenticatedFeatures(undefined, to.name as string);
+			await initializeCore();
+			// Pass undefined for first param to use default
+			await initializeAuthenticatedFeatures(undefined, to.name as string);
+		} catch (error) {
+			if (error instanceof MfaRequiredError) {
+				throw error; // let the outer catch's MFA redirect handle it
+			}
+			// Swallowed so the permission checks below still run on whatever state did initialize.
+			console.error(error);
+		}
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
@@ -1246,9 +1282,16 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
-		} else {
-			console.error(failure);
+			return;
 		}
+
+		// Resolve the guard instead of leaving it hanging, but don't authorize `to`
+		// without its permission check having completed: redirect to sign-in.
+		console.error(failure);
+		return next({
+			name: VIEWS.SIGNIN,
+			query: { redirect: encodeURIComponent(getSanitizedCurrentPath(to)) },
+		});
 	}
 });
 

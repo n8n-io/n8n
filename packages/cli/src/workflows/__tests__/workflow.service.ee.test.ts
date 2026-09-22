@@ -1,17 +1,22 @@
 import type {
 	CredentialsEntity,
+	FolderRepository,
 	Project,
 	SharedWorkflow,
+	User,
 	WorkflowEntity,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { EntityManager, UpdateResult } from '@n8n/typeorm';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -21,6 +26,10 @@ describe('EnterpriseWorkflowService', () => {
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const workflowMutationHooks = mock<WorkflowMutationHooksProxy>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+	const projectService = mock<ProjectService>();
+	const folderRepository = mock<FolderRepository>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -31,14 +40,15 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // credentialsRepository
 			mock(), // credentialsService
 			mock(), // ownershipService
-			mock(), // projectService
+			projectService,
 			activeWorkflowManager,
 			mock(), // credentialsFinderService
 			mock(), // enterpriseCredentialsService
-			mock(), // workflowFinderService
-			mock(), // folderRepository
+			workflowFinderService,
+			folderRepository,
 			workflowPublishHistoryRepository,
 			workflowMutationHooks,
+			policyEnforcementService,
 		);
 	});
 
@@ -115,6 +125,189 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(() => service.validateCredentialPermissionsToUser(workflow, [])).not.toThrow();
 		});
+
+		it('should inspect credentials referenced inside an inline sub-workflow', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: {
+							source: 'parameter',
+							workflowJson: JSON.stringify({
+								nodes: [{ credentials: { spotifyApi: { id: 'cred-unknown', name: 'x' } } }],
+								connections: {},
+							}),
+						},
+					},
+				],
+			});
+
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [
+					mock<CredentialsEntity>({ id: 'cred-1' }),
+				]),
+			).toThrow();
+		});
+
+		it('should pass when an inline sub-workflow credential is in the allowed list', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: {
+							source: 'parameter',
+							workflowJson: JSON.stringify({
+								nodes: [{ credentials: { spotifyApi: { id: 'cred-1', name: 'x' } } }],
+								connections: {},
+							}),
+						},
+					},
+				],
+			});
+
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [
+					mock<CredentialsEntity>({ id: 'cred-1' }),
+				]),
+			).not.toThrow();
+		});
+
+		it('should reject a non-managed credential with a null id (name-only reference)', () => {
+			// Built as a real object: mock<IWorkflowBase> strips an explicit null id.
+			const workflow = {
+				nodes: [{ credentials: { spotifyApi: { id: null, name: 'Someone else prod' } } }],
+			} as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [
+					mock<CredentialsEntity>({ id: 'cred-1' }),
+				]),
+			).toThrow();
+		});
+
+		it('should reject a non-managed credential with an empty-string id', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [{ credentials: { spotifyApi: { id: '', name: 'Someone else prod' } } }],
+			});
+
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [
+					mock<CredentialsEntity>({ id: 'cred-1' }),
+				]),
+			).toThrow();
+		});
+
+		it('should reject a null-id credential hidden inside an inline sub-workflow', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: {
+							source: 'parameter',
+							workflowJson: JSON.stringify({
+								nodes: [{ credentials: { spotifyApi: { id: null, name: 'Someone else prod' } } }],
+								connections: {},
+							}),
+						},
+					},
+				],
+			});
+
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [
+					mock<CredentialsEntity>({ id: 'cred-1' }),
+				]),
+			).toThrow();
+		});
+
+		it('should inspect credentials nested in a deeper inline sub-workflow', () => {
+			const inner = JSON.stringify({
+				nodes: [{ credentials: { spotifyApi: { id: 'cred-unknown', name: 'x' } } }],
+				connections: {},
+			});
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: {
+							source: 'parameter',
+							workflowJson: JSON.stringify({
+								nodes: [
+									{ type: 'n8n-nodes-base.executeWorkflow', parameters: { workflowJson: inner } },
+								],
+								connections: {},
+							}),
+						},
+					},
+				],
+			});
+
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [
+					mock<CredentialsEntity>({ id: 'cred-1' }),
+				]),
+			).toThrow();
+		});
+	});
+
+	describe('validateWorkflowCredentialUsage() - unresolved credentials', () => {
+		// Real objects, not mock<IWorkflowBase>, so the explicit null id survives.
+		const nodeWithNullCred = (id: string, name: string) =>
+			({
+				id,
+				name,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {},
+				credentials: { httpHeaderAuth: { id: null, name: 'some name' } },
+			}) as unknown as INode;
+
+		it('rejects a new node carrying an unresolved (name-only) credential as tampering', () => {
+			const newVersion = {
+				nodes: [nodeWithNullCred('new-1', 'Steal')],
+			} as unknown as IWorkflowBase;
+			const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
+			).toThrow();
+		});
+
+		it('rejects an unresolved credential smuggled into a new inline sub-workflow node', () => {
+			const inlineNode = {
+				id: 'new-inline',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					source: 'parameter',
+					workflowJson: JSON.stringify({
+						nodes: [{ credentials: { httpHeaderAuth: { id: null, name: 'y' } } }],
+						connections: {},
+					}),
+				},
+			} as unknown as INode;
+			const newVersion = { nodes: [inlineNode] } as unknown as IWorkflowBase;
+			const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
+			).toThrow();
+		});
+
+		it('keeps an unresolved credential on a pre-existing (read-only) node without throwing', () => {
+			const existing = nodeWithNullCred('existing-1', 'Call');
+			const newVersion = {
+				nodes: [{ ...existing, name: 'Renamed' }],
+			} as unknown as IWorkflowBase;
+			const previousVersion = { nodes: [existing] } as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
+			).not.toThrow();
+		});
 	});
 
 	describe('attemptWorkflowReactivation', () => {
@@ -169,6 +362,96 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('transferWorkflow()', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const sourceProject = mock<Project>({ id: 'proj-source' });
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
+			mock<WorkflowEntity>({
+				id: 'wf-1',
+				name: 'My workflow',
+				nodes: [],
+				activeVersionId: null,
+				parentFolder: null,
+				shared: [mock<SharedWorkflow>({ role: 'workflow:owner', project: sourceProject })],
+				...overrides,
+			});
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let transferOwnershipSpy: ReturnType<typeof vi.spyOn<any, any>>;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let shareCredentialsSpy: ReturnType<typeof vi.spyOn<any, any>>;
+
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflow());
+			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
+			// Ownership transfer and credential sharing are exercised by their own
+			// describe blocks below; stubbed here so these tests isolate the
+			// policy-enforcement wiring in `transferWorkflow` itself.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			transferOwnershipSpy = vi
+				.spyOn(service as any, 'transferWorkflowOwnership')
+				.mockResolvedValue(undefined);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			shareCredentialsSpy = vi
+				.spyOn(service as any, 'shareCredentialsWithProject')
+				.mockResolvedValue(undefined);
+		});
+
+		it('calls enforceWorkflowTransfer with the target project, not the source', async () => {
+			const workflow = makeWorkflow();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith({
+				workflow,
+				targetProjectId: destinationProject.id,
+			});
+		});
+
+		it('proceeds with the transfer unchanged when the policy check clears', async () => {
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+			expect(shareCredentialsSpy).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.update).toHaveBeenCalledWith(
+				{ id: 'wf-1' },
+				{ parentFolder: null },
+			);
+		});
+
+		it('blocks the transfer and performs no mutation when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValue(violation);
+
+			await expect(service.transferWorkflow(user, 'wf-1', 'proj-dest')).rejects.toThrow(violation);
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(shareCredentialsSpy).not.toHaveBeenCalled();
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('resolves the destination project before enforcing the policy check', async () => {
+			const callOrder: string[] = [];
+			projectService.getProjectWithScope.mockImplementation(async () => {
+				callOrder.push('getProjectWithScope');
+				return destinationProject;
+			});
+			policyEnforcementService.enforceWorkflowTransfer.mockImplementation(async () => {
+				callOrder.push('enforceWorkflowTransfer');
+				return await mock();
+			});
+
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(callOrder).toEqual(['getProjectWithScope', 'enforceWorkflowTransfer']);
+		});
+	});
+
 	describe('transferWorkflowOwnership', () => {
 		const destinationProject = mock<Project>({ id: 'proj-dest' });
 
@@ -199,17 +482,26 @@ describe('EnterpriseWorkflowService', () => {
 			const moved = makeWorkflow('wf-moved', 'proj-source');
 			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
 
-			await service['transferWorkflowOwnership']([moved, folderMoveOnly], destinationProject);
+			await service['transferWorkflowOwnership'](
+				mock<User>({ id: 'user-1' }),
+				[moved, folderMoveOnly],
+				destinationProject,
+			);
 
-			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith([
-				'wf-moved',
-			]);
+			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith(
+				['wf-moved'],
+				'user-1',
+			);
 		});
 
 		it('does not notify the mutation hook for a same-project folder move', async () => {
 			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
 
-			await service['transferWorkflowOwnership']([folderMoveOnly], destinationProject);
+			await service['transferWorkflowOwnership'](
+				mock<User>(),
+				[folderMoveOnly],
+				destinationProject,
+			);
 
 			expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
 		});

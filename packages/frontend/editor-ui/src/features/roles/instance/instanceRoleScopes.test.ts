@@ -7,8 +7,11 @@ import {
 	getOptionState,
 	getEscalationWarningKey,
 	isOptionImplied,
+	isOptionMandatory,
+	mandatoryOptionTooltipKey,
 	resolveOptionState,
 	toggleOptionInGroup,
+	withMandatoryInstanceScopes,
 } from './instanceRoleScopes';
 
 const ALL_SCOPES_SET = new Set<string>(ALL_SCOPES as string[]);
@@ -78,10 +81,17 @@ describe('instanceRoleScopes config', () => {
 
 		it('exposes the configured option labels per resource', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.apiKey)).toEqual(['Manage own', 'Manage all']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['View', 'Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.variable)).toEqual(['View', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual([
+				'Manage',
+				'Mcp use',
+				'Mcp manage',
+				'AiAssistant use',
+				'AiAssistant manage',
+			]);
 		});
 	});
 });
@@ -128,7 +138,7 @@ describe('isOptionImplied', () => {
 		expect(isOptionImplied(manageOwn, apiKeyGroup.options, allScopes)).toBe(true);
 	});
 
-	it('returns false for options in groups with no superseding relationships', () => {
+	it('returns false for a superseding option, even with its own scopes fully present', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
 		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
 		expect(
@@ -144,6 +154,14 @@ describe('isOptionImplied', () => {
 
 	it('returns false when the superseding option is present but "Manage own" is checked via own scopes only', () => {
 		expect(isOptionImplied(manageOwn, apiKeyGroup.options, ownScopes)).toBe(false);
+	});
+
+	it('renders variable "View" as implied under a fully-checked variable "Manage"', () => {
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const view = variableGroup.options.find((o) => o.key === 'View')!;
+		const manage = variableGroup.options.find((o) => o.key === 'Manage')!;
+		expect(isOptionImplied(view, variableGroup.options, [...manage.scopes])).toBe(true);
+		expect(isOptionImplied(view, variableGroup.options, [...view.scopes])).toBe(false);
 	});
 });
 
@@ -183,10 +201,15 @@ describe('resolveOptionState', () => {
 		expect(resolveOptionState(manageAll, apiKeyGroup.options, partialOwn)).toBe('indeterminate');
 	});
 
-	it('does not affect unrelated groups', () => {
+	it('applies the same View/Manage arithmetic to tags', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
 		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+		// 1 of View's 2 scopes — View isn't fully checked, so this stays a genuine partial.
 		expect(resolveOptionState(tagManage, tagGroup.options, ['tag:read'])).toBe('indeterminate');
+		// View fully checked: "Manage" would read 2/5, but both scopes are View's.
+		expect(resolveOptionState(tagManage, tagGroup.options, ['tag:read', 'tag:list'])).toBe(
+			'unchecked',
+		);
 		expect(
 			resolveOptionState(tagManage, tagGroup.options, [
 				'tag:read',
@@ -212,8 +235,16 @@ describe('getEscalationWarningKey', () => {
 		);
 	});
 
-	it('does not warn for "Manage project roles" alone (role:manageProject without role:manage)', () => {
-		expect(getEscalationWarningKey('role', ['role:read', 'role:manageProject'])).toBeUndefined();
+	it('returns the project-roles warning for "Manage project roles" alone (role:manageProject without role:manage)', () => {
+		expect(getEscalationWarningKey('role', ['role:read', 'role:manageProject'])).toBe(
+			'instanceRoles.warning.manageProjectRoles',
+		);
+	});
+
+	it('prefers the roles warning over the project-roles warning when both scopes are present', () => {
+		expect(
+			getEscalationWarningKey('role', ['role:read', 'role:manage', 'role:manageProject']),
+		).toBe('instanceRoles.warning.manageRoles');
 	});
 
 	it('returns undefined for a non-escalating resource', () => {
@@ -227,6 +258,10 @@ describe('getEscalationWarningKey', () => {
 
 	it('returns undefined for role when only the non-escalating role:read scope is present', () => {
 		expect(getEscalationWarningKey('role', ['role:read'])).toBeUndefined();
+	});
+
+	it('returns undefined for user when only the non-escalating View scope (user:list) is present', () => {
+		expect(getEscalationWarningKey('user', ['user:list'])).toBeUndefined();
 	});
 });
 
@@ -270,6 +305,28 @@ describe('toggleOptionInGroup', () => {
 	});
 
 	it('removes the whole scope set when the option has no subordinate', () => {
+		const insightsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'insights')!;
+		const insightsView = insightsGroup.options.find((o) => o.key === 'View')!;
+		const result = toggleOptionInGroup(
+			['user:read', ...insightsView.scopes],
+			insightsView,
+			insightsGroup.options,
+		);
+		expect(result).toEqual(['user:read']);
+	});
+
+	it('downgrades to "View" when unchecking variable "Manage"', () => {
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const manageVariables = variableGroup.options.find((o) => o.key === 'Manage')!;
+		const result = toggleOptionInGroup(
+			['user:list', ...manageVariables.scopes],
+			manageVariables,
+			variableGroup.options,
+		);
+		expect(result).toEqual(['user:list', 'variable:list', 'variable:read']);
+	});
+
+	it('downgrades to "View" when unchecking tag "Manage", keeping the mandatory scopes', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
 		const manageTags = tagGroup.options.find((o) => o.key === 'Manage')!;
 		const result = toggleOptionInGroup(
@@ -277,12 +334,128 @@ describe('toggleOptionInGroup', () => {
 			manageTags,
 			tagGroup.options,
 		);
-		expect(result).toEqual(['user:read']);
+		expect(result).toEqual(['user:read', 'tag:read', 'tag:list']);
 	});
 
 	it('does not mutate the input array', () => {
 		const input = [...manageAll.scopes];
 		toggleOptionInGroup(input, manageAll, apiKeyGroup.options);
 		expect(input).toEqual([...manageAll.scopes]);
+	});
+
+	describe('settings "Manage all settings" acts as a select-all over MCP/n8n Assistant', () => {
+		const settingsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'settings')!;
+		const manageAllSettings = settingsGroup.options.find((o) => o.key === 'Manage')!;
+		const mcpUse = settingsGroup.options.find((o) => o.key === 'Mcp use')!;
+		const mcpManage = settingsGroup.options.find((o) => o.key === 'Mcp manage')!;
+		const aiAssistantUse = settingsGroup.options.find((o) => o.key === 'AiAssistant use')!;
+		const aiAssistantManage = settingsGroup.options.find((o) => o.key === 'AiAssistant manage')!;
+
+		it('checking "Manage all settings" checks MCP and n8n Assistant use/manage too', () => {
+			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			expect(getOptionState(scopes, mcpUse.scopes)).toBe('checked');
+			expect(getOptionState(scopes, mcpManage.scopes)).toBe('checked');
+			expect(getOptionState(scopes, aiAssistantUse.scopes)).toBe('checked');
+			expect(getOptionState(scopes, aiAssistantManage.scopes)).toBe('checked');
+		});
+
+		it('all four MCP/n8n Assistant options stay independently toggleable while "Manage all settings" is checked (none implied/disabled by it)', () => {
+			// Unlike apiKey's "Manage own"/"Manage all" tiering, none of these four
+			// are superseded by another option in this group — "Manage all settings"
+			// checks them via plain scope-superset arithmetic, not implication, so
+			// unchecking any one of the four must stay a single, direct click.
+			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			expect(isOptionImplied(mcpUse, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(mcpManage, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(aiAssistantUse, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(aiAssistantManage, settingsGroup.options, scopes)).toBe(false);
+		});
+
+		it('unchecking "Mcp manage" while "Manage all settings" is checked drops it out of the checked state', () => {
+			const fullyChecked = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			const afterUncheck = toggleOptionInGroup(fullyChecked, mcpManage, settingsGroup.options);
+			expect(resolveOptionState(manageAllSettings, settingsGroup.options, afterUncheck)).not.toBe(
+				'checked',
+			);
+			// The rest of the "Manage all settings" bundle survives the uncheck.
+			expect(afterUncheck).toContain('securitySettings:manage');
+		});
+
+		it('unchecking "AiAssistant use" while "Manage all settings" is checked drops it out of the checked state', () => {
+			const fullyChecked = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			const afterUncheck = toggleOptionInGroup(fullyChecked, aiAssistantUse, settingsGroup.options);
+			expect(resolveOptionState(manageAllSettings, settingsGroup.options, afterUncheck)).not.toBe(
+				'checked',
+			);
+		});
+	});
+});
+
+describe('mandatory instance options', () => {
+	const userGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'user')!;
+	const userView = userGroup.options.find((o) => o.key === 'View')!;
+	const userManage = userGroup.options.find((o) => o.key === 'Manage')!;
+
+	const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
+	const tagView = tagGroup.options.find((o) => o.key === 'View')!;
+	const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+
+	const MANDATORY = [
+		['user', 'View'],
+		['tag', 'View'],
+	] as const;
+
+	it('flags "Users: View" and "Tags: View" as mandatory and every other option as not', () => {
+		expect(isOptionMandatory('user', userView)).toBe(true);
+		expect(isOptionMandatory('tag', tagView)).toBe(true);
+		expect(isOptionMandatory('user', userManage)).toBe(false);
+		expect(isOptionMandatory('tag', tagManage)).toBe(false);
+
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				if (MANDATORY.some(([r, k]) => r === group.resource && k === option.key)) continue;
+				expect(isOptionMandatory(group.resource, option)).toBe(false);
+			}
+		}
+	});
+
+	it('resolves every mandatory entry to a real option in its group (typo guard)', () => {
+		for (const [resource, key] of MANDATORY) {
+			const group = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === resource);
+			expect(group?.options.some((o) => o.key === key)).toBe(true);
+		}
+	});
+
+	it('gives a mandatory option its override tooltip, or its own description as fallback', () => {
+		expect(mandatoryOptionTooltipKey('user', userView)).toBe('instanceRoles.option.mandatory');
+		expect(mandatoryOptionTooltipKey('tag', tagView)).toBe('instanceRoles.description.tag.view');
+	});
+
+	it('returns no mandatory tooltip key for an optional option', () => {
+		expect(mandatoryOptionTooltipKey('user', userManage)).toBeUndefined();
+		expect(mandatoryOptionTooltipKey('tag', tagManage)).toBeUndefined();
+	});
+
+	it("withMandatoryInstanceScopes adds every mandatory option's scopes to an empty list", () => {
+		expect(withMandatoryInstanceScopes([])).toEqual(['user:list', 'tag:read', 'tag:list']);
+	});
+
+	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
+		const withDuplicate = withMandatoryInstanceScopes(['user:list', 'tag:read']);
+		expect(withDuplicate.filter((s) => s === 'user:list')).toHaveLength(1);
+		expect(withDuplicate.filter((s) => s === 'tag:read')).toHaveLength(1);
+		expect(withDuplicate).toEqual(expect.arrayContaining(['user:list', 'tag:read']));
+	});
+
+	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {
+		const result = withMandatoryInstanceScopes(['insights:read', 'insights:list']);
+		expect(result).toEqual(
+			expect.arrayContaining([
+				'insights:read',
+				'insights:list',
+				...userView.scopes,
+				...tagView.scopes,
+			]),
+		);
 	});
 });

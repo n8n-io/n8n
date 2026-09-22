@@ -22,9 +22,38 @@ import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
+import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
+
+// Spied, not stubbed: the real registration must run so a replay that warns is
+// caught by the test that asserts the console stays quiet.
+vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
+	const actual = await importOriginal<typeof moduleInitializer>();
+
+	return {
+		...actual,
+		registerModuleResources: vi.fn(actual.registerModuleResources),
+		registerModuleProjectTabs: vi.fn(actual.registerModuleProjectTabs),
+		registerModuleModals: vi.fn(actual.registerModuleModals),
+		registerModuleSettingsPages: vi.fn(actual.registerModuleSettingsPages),
+		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
+		registerModuleCommands: vi.fn(actual.registerModuleCommands),
+		registerModuleParameterInputs: vi.fn(actual.registerModuleParameterInputs),
+	};
+});
+
+const moduleRegistrations = [
+	moduleInitializer.registerModuleResources,
+	moduleInitializer.registerModuleProjectTabs,
+	moduleInitializer.registerModuleModals,
+	moduleInitializer.registerModuleSettingsPages,
+	moduleInitializer.registerModulePushHandlers,
+	moduleInitializer.registerModuleCommands,
+	moduleInitializer.registerModuleParameterInputs,
+];
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
@@ -38,6 +67,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/init/toastNotifier', () => ({
 	registerToastNotifier: vi.fn(),
+}));
+
+// The real one dynamically imports the QuickJS runtime bundle, which has no
+// place in this graph. It stays inert on the default `legacy` setting anyway.
+vi.mock('@/app/init/expressionEngine', () => ({
+	initializeExpressionEngine: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -163,6 +198,29 @@ describe('Init', () => {
 			});
 		});
 
+		it('should start the expression engine from the settings payload', async () => {
+			await initializeCore();
+
+			expect(initializeExpressionEngine).toHaveBeenCalledWith('legacy');
+		});
+
+		// Public settings omit the engine, so an unauthenticated boot leaves the
+		// legacy evaluator in place and the login hook is the first point where
+		// the choice is known.
+		it('should start the expression engine in the login hook with authenticated settings', async () => {
+			settingsStore.getSettings.mockImplementation(async () => {
+				settingsStore.settings.expressionEngine = 'quickjs';
+			});
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			expect(initializeExpressionEngine).toHaveBeenCalledTimes(2);
+			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
+		});
+
 		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {
 			const saml = { loginEnabled: false, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
@@ -283,6 +341,51 @@ describe('Init', () => {
 			await initializeAuthenticatedFeatures();
 
 			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('re-initializes authenticated features for the next login after the registered logout hook runs', async () => {
+			// Force registerAuthenticationHooks() (only runs once) to run again.
+			state.initialized = false;
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+			await initializeCore();
+			const registeredLogoutHook = registerLogoutHookSpy.mock.calls[0][0];
+
+			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
+
+			// Simulates a session-expiry logout resetting the module-level flag.
+			await registeredLogoutHook();
+
+			await initializeAuthenticatedFeatures();
+			expect(cloudStoreSpy).toHaveBeenCalledTimes(2);
+		});
+
+		it('re-runs module registration on the next login, without a duplicate-registration warning', async () => {
+			// Force registerAuthenticationHooks() (only runs once) to run again.
+			state.initialized = false;
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+			await initializeCore();
+			const registeredLogoutHook = registerLogoutHookSpy.mock.calls[0][0];
+
+			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			await initializeAuthenticatedFeatures(false);
+			await registeredLogoutHook();
+			await initializeAuthenticatedFeatures();
+
+			for (const register of moduleRegistrations) {
+				expect(register).toHaveBeenCalledTimes(2);
+			}
+			// Matched on the shared registry wording, so unrelated Vue warnings in
+			// this graph do not decide the result.
+			expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('is already registered'));
+
+			consoleSpy.mockRestore();
 		});
 
 		it('should handle cloud plan initialization error', async () => {

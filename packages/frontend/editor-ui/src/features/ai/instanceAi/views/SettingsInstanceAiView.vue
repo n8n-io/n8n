@@ -30,11 +30,14 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 
@@ -195,6 +198,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		],
 	},
 	{
+		id: 'nodes',
+		labelKey: 'settings.n8nAgent.permissions.group.nodes',
+		keys: ['executeNode'],
+	},
+	{
 		id: 'folders',
 		labelKey: 'settings.n8nAgent.permissions.group.folders',
 		keys: ['createFolder', 'deleteFolder'],
@@ -207,7 +215,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'credentials',
 		labelKey: 'settings.n8nAgent.permissions.group.credentials',
-		keys: ['deleteCredential'],
+		keys: ['createCredential', 'deleteCredential'],
 	},
 	{
 		id: 'system',
@@ -351,6 +359,8 @@ async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
 	return await store.save();
 }
 
+useSetupPageViewTelemetry('settings');
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
@@ -397,7 +407,7 @@ async function handleEnable() {
 		if (
 			!(await testSavedCredential(
 				sandboxCredentialId.value,
-				'AI Assistant sandbox',
+				'n8n Assistant sandbox',
 				isDaytona ? 'daytonaApi' : 'httpHeaderAuth',
 			))
 		) {
@@ -638,6 +648,9 @@ function openAiUsageSettings() {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
+			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+			<DefaultEditorSetting />
+
 			<N8nSettingsSection
 				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
@@ -820,6 +833,10 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 		</template>
 
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
+		none of the admin sections above, so they get the row on its own. -->
+		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured" />
+
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isModelReadOnly"
 			kind="model"
@@ -887,7 +904,7 @@ function openAiUsageSettings() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: 0 0 var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .permissionRow {

@@ -19,6 +19,11 @@ import {
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
 import { getTemplateTelemetrySession } from './template-telemetry';
+import {
+	traceSandboxOperation,
+	sandboxCommandTraceResult,
+	sandboxFileBytes,
+} from '../tracing/sandbox-tracing';
 
 export interface SandboxWorkspace extends SharedSandboxWorkspace {
 	filesystem?: {
@@ -96,9 +101,13 @@ export async function retryTransientSandboxIo<T>(
 				attempt,
 				error: formatErrorForLog(error),
 			});
-			await sleepUntilAbort(
-				Math.min(baseMs * 2 ** (attempt - 1), SANDBOX_IO_RETRY_BACKOFF_CAP_MS),
-				options?.abortSignal,
+			const delayMs = Math.min(baseMs * 2 ** (attempt - 1), SANDBOX_IO_RETRY_BACKOFF_CAP_MS);
+			await traceSandboxOperation(
+				'retry',
+				{
+					inputs: { path: filePath, attempt, delayMs, error: formatErrorForLog(error) },
+				},
+				async () => await sleepUntilAbort(delayMs, options?.abortSignal),
 			);
 		}
 	}
@@ -117,7 +126,18 @@ export async function runInSandbox(
 	command: string,
 	cwdOrOptions?: string | RunInSandboxOptions,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-	const result = await runInSharedSandbox(workspace, command, cwdOrOptions);
+	const result = await traceSandboxOperation(
+		'execute-command',
+		{
+			kind: 'io',
+			inputs: {
+				commandBytes: sandboxFileBytes(command),
+				cwd: typeof cwdOrOptions === 'string' ? cwdOrOptions : cwdOrOptions?.cwd,
+			},
+			processResult: sandboxCommandTraceResult,
+		},
+		async () => await runInSharedSandbox(workspace, command, cwdOrOptions),
+	);
 
 	const session = getTemplateTelemetrySession(workspace);
 	if (session) {
@@ -143,48 +163,57 @@ export async function writeFileViaSandbox(
 	content: string | Buffer,
 	options?: SandboxIoRetryOptions,
 ): Promise<void> {
-	await retryTransientSandboxIo(
+	return await traceSandboxOperation(
+		'write-file',
+		{
+			kind: 'io',
+			inputs: { path: filePath, bytes: sandboxFileBytes(content), transport: 'command' },
+		},
 		async () => {
-			const runWriteCommand = async (command: string) => {
-				const result = await runInSandbox(workspace, command, {
-					abortSignal: options?.abortSignal,
-				});
-				if (result.exitCode !== 0) {
-					throw new Error(`Failed to write file ${filePath}: ${result.stderr}`);
-				}
-			};
+			await retryTransientSandboxIo(
+				async () => {
+					const runWriteCommand = async (command: string) => {
+						const result = await runInSandbox(workspace, command, {
+							abortSignal: options?.abortSignal,
+						});
+						if (result.exitCode !== 0) {
+							throw new Error(`Failed to write file ${filePath}: ${result.stderr}`);
+						}
+					};
 
-			// Ensure parent directory exists
-			const dir = filePath.substring(0, filePath.lastIndexOf('/'));
-			if (dir) {
-				await runWriteCommand(`mkdir -p '${escapeSingleQuotes(dir)}'`);
-			}
+					// Ensure parent directory exists
+					const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+					if (dir) {
+						await runWriteCommand(`mkdir -p '${escapeSingleQuotes(dir)}'`);
+					}
 
-			// Encode content as base64, transfer it in small chunks, then decode in the sandbox.
-			// Some providers run commands through spawn(), where a single huge argument can hit E2BIG.
-			const b64 =
-				typeof content === 'string'
-					? Buffer.from(content, 'utf-8').toString('base64')
-					: content.toString('base64');
-			const tempPath = `${filePath}.base64.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-			const escapedTempPath = escapeSingleQuotes(tempPath);
+					// Encode content as base64, transfer it in small chunks, then decode in the sandbox.
+					// Some providers run commands through spawn(), where a single huge argument can hit E2BIG.
+					const b64 =
+						typeof content === 'string'
+							? Buffer.from(content, 'utf-8').toString('base64')
+							: content.toString('base64');
+					const tempPath = `${filePath}.base64.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+					const escapedTempPath = escapeSingleQuotes(tempPath);
 
-			await runWriteCommand(`: > '${escapedTempPath}'`);
+					await runWriteCommand(`: > '${escapedTempPath}'`);
 
-			for (let offset = 0; offset < b64.length; offset += BASE64_WRITE_CHUNK_SIZE) {
-				const chunk = b64.slice(offset, offset + BASE64_WRITE_CHUNK_SIZE);
-				await runWriteCommand(`printf '%s' '${chunk}' >> '${escapedTempPath}'`);
-			}
+					for (let offset = 0; offset < b64.length; offset += BASE64_WRITE_CHUNK_SIZE) {
+						const chunk = b64.slice(offset, offset + BASE64_WRITE_CHUNK_SIZE);
+						await runWriteCommand(`printf '%s' '${chunk}' >> '${escapedTempPath}'`);
+					}
 
-			// Decode + cleanup in one shell expression; the exit reflects base64's
-			// status. Avoid the variable name `status` — it's a read-only builtin in
-			// zsh, which silently breaks the assignment and loses base64's exit code.
-			await runWriteCommand(
-				`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; rc=$?; rm -f '${escapedTempPath}'; exit $rc`,
+					// Decode + cleanup in one shell expression; the exit reflects base64's
+					// status. Avoid the variable name `status` — it's a read-only builtin in
+					// zsh, which silently breaks the assignment and loses base64's exit code.
+					await runWriteCommand(
+						`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; rc=$?; rm -f '${escapedTempPath}'; exit $rc`,
+					);
+				},
+				filePath,
+				options,
 			);
 		},
-		filePath,
-		options,
 	);
 }
 
@@ -198,16 +227,28 @@ export async function readFileViaSandbox(
 	filePath: string,
 	options?: SandboxIoRetryOptions,
 ): Promise<string | null> {
-	const result = await retryTransientSandboxIo(
-		async () =>
-			await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`, {
-				abortSignal: options?.abortSignal,
+	return await traceSandboxOperation(
+		'read-file',
+		{
+			kind: 'io',
+			inputs: { path: filePath, transport: 'command' },
+			processResult: (result) => ({
+				outputs: { found: result !== null, bytes: result === null ? 0 : sandboxFileBytes(result) },
 			}),
-		filePath,
-		options,
+		},
+		async () => {
+			const result = await retryTransientSandboxIo(
+				async () =>
+					await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`, {
+						abortSignal: options?.abortSignal,
+					}),
+				filePath,
+				options,
+			);
+			if (result.exitCode !== 0) return null;
+			return result.stdout;
+		},
 	);
-	if (result.exitCode !== 0) return null;
-	return result.stdout;
 }
 
 /**
