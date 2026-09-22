@@ -32,11 +32,15 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { JwtService } from '@/services/jwt.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
+
+const roleCacheService = mockInstance(RoleCacheService);
+roleCacheService.refreshCache.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
@@ -107,6 +111,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(RoleCacheService, roleCacheService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
 		Container.set(InstanceSettings, instanceSettings);
@@ -195,6 +200,11 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 			expect(pollJobProvider.init).toHaveBeenCalledTimes(1);
+			// The role cache is rebuilt after the role sync committed, never before it.
+			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
+			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
+				authRolesService.init.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
@@ -232,6 +242,7 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).not.toHaveBeenCalled();
+			expect(roleCacheService.refreshCache).not.toHaveBeenCalled();
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader (advisory lock serializes)', async () => {

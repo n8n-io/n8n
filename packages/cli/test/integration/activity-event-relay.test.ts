@@ -1,3 +1,4 @@
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -9,6 +10,7 @@ import type { INode } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
+import { PostHogClient } from '@/posthog';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -34,6 +36,7 @@ describe('ActivityEventRelay', () => {
 	let project: Project;
 	let workflow: WorkflowEntity;
 	let owner: User;
+	let postHogClient: PostHogClient;
 
 	/** `activity_event.userId` is a foreign key, so the acting user has to be a real row. */
 	const actor = () => ({
@@ -48,11 +51,13 @@ describe('ActivityEventRelay', () => {
 		await testDb.init();
 		repository = Container.get(ActivityEventRepository);
 		eventService = Container.get(EventService);
-		Container.get(GlobalConfig).activityLog.enabled = true;
+		postHogClient = Container.get(PostHogClient);
+		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
 		Container.get(ActivityEventRelay).init();
 	});
 
 	beforeEach(async () => {
+		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
 		owner = await createOwner();
 		project = await createTeamProject();
 		workflow = await createWorkflow({ name: 'Lead enrichment' }, project);
@@ -64,7 +69,11 @@ describe('ActivityEventRelay', () => {
 	/** A handler awaits a lookup and an insert, so the row lands some turns after the emit. */
 	const waitForEntry = async (projectId: string) =>
 		await vi.waitFor(async () => {
-			const entries = await repository.findFeed({ projectIds: [projectId], limit: 10 });
+			const entries = await repository.findFeed({
+				projectIds: [projectId],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(entries).not.toHaveLength(0);
 			return entries;
 		});
@@ -108,6 +117,24 @@ describe('ActivityEventRelay', () => {
 			resourceId: workflow.id,
 			resourceName: 'Lead enrichment',
 		});
+	});
+
+	it('stops recording when the override is off', async () => {
+		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false };
+		const readFlag = vi.spyOn(postHogClient, 'getFeatureFlagForInstance');
+		const record = vi.spyOn(repository, 'record');
+
+		eventService.emit('workflow-saved', {
+			user: actor(),
+			workflow: { ...workflow, nodes: [] },
+			publicApi: false,
+			source: 'ui',
+		});
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(readFlag).toHaveBeenCalledWith(INSTANCE_ACTIVITY_CONTEXT_FLAG);
+		expect(record).not.toHaveBeenCalled();
+		expect(await repository.count()).toBe(0);
 	});
 
 	it('holds the table to its caps on an instance busy enough to need more than one batch', async () => {

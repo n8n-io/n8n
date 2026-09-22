@@ -304,9 +304,8 @@ which output format. Enforced in CI by the rules in
 `backendConfig`, and so of `nodesConfig`; every package that runs on Node
 extends one of those layers):
 
-- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
-- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
-  `packages/core/src/encryption/` and database migrations.
+- `Cipher` does not expose the legacy or explicit-key methods.
+- The raw AES classes stay inside `packages/core/src/encryption/`.
 - **Deployment keys are never deleted** — data encrypted with a key becomes
   unreadable without it. Deactivate keys instead; the repository does not expose
   deletion and database triggers reject direct deletion.

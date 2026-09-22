@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'PreventDeploymentKeyDeletion1789986374991';
+const MIGRATION_NAME = 'PreventDeploymentKeyDeletion1790054384570';
 
 describe('PreventDeploymentKeyDeletion migration', () => {
 	let dataSource: DataSource;

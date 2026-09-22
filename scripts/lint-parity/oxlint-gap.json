@@ -50,20 +50,6 @@
 		"replacement": "Wait for the upstream emitDecoratorMetadata option, or use an approved shim that suppresses decorated files.",
 		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
 	},
-	"n8n-local-rules/no-legacy-cipher-methods": {
-		"layer": "backend",
-		"native": null,
-		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve a Cipher receiver.",
-		"impact": "The deprecated Cipher.encrypt and Cipher.decrypt APIs are not guarded by an Oxlint-only package.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
-	"n8n-local-rules/no-misplaced-cipher-primitives": {
-		"layer": "backend",
-		"native": null,
-		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve the imported cipher primitive.",
-		"impact": "Raw cipher primitive placement is not guarded by an Oxlint-only package.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",
 		"native": null,

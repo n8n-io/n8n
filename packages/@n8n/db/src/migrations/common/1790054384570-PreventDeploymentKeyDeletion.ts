@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class PreventDeploymentKeyDeletion1789986374991 implements ReversibleMigration {
+export class PreventDeploymentKeyDeletion1790054384570 implements ReversibleMigration {
 	async up({ isSqlite, escape, runQuery }: MigrationContext) {
 		const table = escape.tableName('deployment_key');
 		const deleteTrigger = escape.triggerName('prevent_deployment_key_delete');
