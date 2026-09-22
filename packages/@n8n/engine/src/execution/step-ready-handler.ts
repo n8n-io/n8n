@@ -179,20 +179,7 @@ export class StepReadyHandler {
 				: {}),
 		});
 
-		if (result.wait && !hasResumeCondition(result.wait)) {
-			throw new UnexpectedError(
-				`step ${step.id} declares a wait that can never resume: it names neither a deadline nor a resume request`,
-			);
-		}
-
-		// `suspendStep` derives `wait_till` from this value, so one no date can be
-		// made from fails that write and leaves the claimed step running. Rejecting
-		// it here records the step as failed instead, like the check above.
-		if (result.wait?.resumeAt !== undefined && Number.isNaN(Date.parse(result.wait.resumeAt))) {
-			throw new UnexpectedError(
-				`step ${step.id} declares a wait with a deadline that is not a date: ${result.wait.resumeAt}`,
-			);
-		}
+		if (result.wait) validateWaitDeclaration(step.id, result.wait);
 
 		return result;
 	}
@@ -402,4 +389,24 @@ function capturedDeadlineOutputs(step: StepRecord): StepSlots {
 		);
 	}
 	return outputs;
+}
+
+/**
+ * Rejects a declaration that would strand the execution. Throwing records the
+ * step as failed, which a wait nothing can end would never do on its own.
+ */
+function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
+	if (!hasResumeCondition(wait)) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume request`,
+		);
+	}
+
+	// `suspendStep` derives `wait_till` from this value, so one no date can be
+	// made from fails that write and leaves the claimed step running.
+	if (wait.resumeAt !== undefined && Number.isNaN(Date.parse(wait.resumeAt))) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait with a deadline that is not a date: ${wait.resumeAt}`,
+		);
+	}
 }
