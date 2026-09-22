@@ -20,11 +20,15 @@ on:
       affectedPackages:
         description: |
           Space-separated list of workspace packages affected by the PR, as
-          computed by `janitor affected-packages` in install-and-build. Empty
-          string means "no scoping data, run everything".
+          computed by `janitor affected-packages` in install-and-build.
         required: false
         default: ''
         type: string
+      affectedPackagesComputed:
+        description: Whether affectedPackages contains a computed result. Run all packages when false.
+        required: false
+        default: false
+        type: boolean
       changedFiles:
         description: |
           Newline-separated list of CHANGED_FILES from ci-filter. Passed to
@@ -299,12 +303,24 @@ jobs:
           files: ./packages/**/coverage/lcov.info
 
   unit-test-frontend:
-    name: Frontend (${{ matrix.shard }}/2)
+    if: >-
+      inputs.affectedPackagesComputed == false ||
+      contains(inputs.affectedPackages, 'n8n-editor-ui') ||
+      contains(inputs.affectedPackages, '@n8n/frontend-') ||
+      contains(inputs.affectedPackages, '@n8n/chat') ||
+      contains(inputs.affectedPackages, '@n8n/composables') ||
+      contains(inputs.affectedPackages, '@n8n/design-system') ||
+      contains(inputs.affectedPackages, '@n8n/eslint-plugin-design-system') ||
+      contains(inputs.affectedPackages, '@n8n/i18n') ||
+      contains(inputs.affectedPackages, '@n8n/rest-api-client') ||
+      contains(inputs.affectedPackages, '@n8n/stores') ||
+      contains(inputs.affectedPackages, '@n8n/storybook')
+    name: Frontend (${{ matrix.shard }}/4)
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -320,9 +336,9 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/2
+        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/4
         env:
-          VITEST_SHARD: ${{ matrix.shard }}/2
+          VITEST_SHARD: ${{ matrix.shard }}/4
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
