@@ -28,6 +28,17 @@ afterEach(async () => {
 });
 
 describe('GET /rest/mcp/oauth-clients', () => {
+	test('returns the resolved scope tools in the client list', async () => {
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.scopeTools).toEqual(
+			expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
+		);
+	});
+
 	test('should return only the requesting user clients', async () => {
 		const ownerClient = await oauthClientRepository.save({
 			id: 'owner-list-client',

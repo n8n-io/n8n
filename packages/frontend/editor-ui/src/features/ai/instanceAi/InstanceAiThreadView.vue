@@ -699,6 +699,10 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 		dismissedContextKeys: [...dismissedKeys],
 	});
 }
+
+function handleNewThreadClick() {
+	void router.push({ name: INSTANCE_AI_VIEW });
+}
 </script>
 
 <template>
@@ -724,9 +728,15 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
-				<InstanceAiViewHeader>
+				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
 					<template #title>
-						<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+						<N8nHeading
+							v-if="currentThreadTitle"
+							tag="h2"
+							bold
+							size="small"
+							:class="$style.headerTitle"
+						>
 							{{ currentThreadTitle }}
 						</N8nHeading>
 						<N8nText
@@ -739,6 +749,21 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 						</N8nText>
 					</template>
 					<template #actions>
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.thread.new')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<N8nIconButton
+								icon="message-circle-plus"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								:aria-label="i18n.baseText('instanceAi.thread.new')"
+								data-test-id="instance-ai-embed-new-thread"
+								@click="handleNewThreadClick"
+							/>
+						</N8nTooltip>
 						<N8nIconButton
 							v-if="isDebugEnabled"
 							icon="bug"
