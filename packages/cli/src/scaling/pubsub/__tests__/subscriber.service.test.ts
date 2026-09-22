@@ -18,10 +18,7 @@ describe('Subscriber', () => {
 	const client = mock<SingleNodeClient>();
 	const redisClientService = mock<RedisClientService>({ createClient: () => client });
 	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
-	const globalConfig = mockInstance(GlobalConfig, {
-		redis: { prefix: 'n8n' },
-		queue: { bull: { redis: { clusterNodes: '' } } },
-	});
+	const globalConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n' } });
 
 	function getHandler(event: string) {
 		const call = client.on.mock.calls.find(([e]) => e === event);
@@ -171,7 +168,7 @@ describe('Subscriber', () => {
 	describe('liveness', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
-			client.ping.mockReset();
+			client.subscribe.mockReset();
 			client.disconnect.mockClear();
 		});
 
@@ -179,8 +176,7 @@ describe('Subscriber', () => {
 			vi.useRealTimers();
 		});
 
-		it('should drop the connection when PING gets no PONG in time', async () => {
-			client.ping.mockReturnValue(new Promise(() => {}));
+		async function subscribedSubscriber() {
 			const subscriber = new Subscriber(
 				mockLogger(),
 				mock(),
@@ -189,58 +185,55 @@ describe('Subscriber', () => {
 				executionsConfig,
 				globalConfig,
 			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			await subscriber.subscribe(subscriber.getWorkerResponseChannel());
+			client.subscribe.mockReset();
+			return subscriber;
+		}
+
+		it('should re-issue SUBSCRIBE for all channels periodically', async () => {
+			client.subscribe.mockResolvedValue(2);
+			const subscriber = await subscribedSubscriber();
 
 			await vi.advanceTimersByTimeAsync(30_000 + 10_000);
 
-			expect(client.ping).toHaveBeenCalledTimes(1);
-			expect(client.disconnect).toHaveBeenCalledWith(true);
-			subscriber.shutdown();
-		});
-
-		it('should keep the connection when PING is answered', async () => {
-			client.ping.mockResolvedValue('PONG');
-			const subscriber = new Subscriber(
-				mockLogger(),
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				globalConfig,
-			);
-
-			await vi.advanceTimersByTimeAsync(30_000 + 10_000);
-
-			expect(client.ping).toHaveBeenCalledTimes(1);
+			expect(client.subscribe).toHaveBeenCalledTimes(1);
+			expect(client.subscribe).toHaveBeenCalledWith('n8n:n8n.commands', 'n8n:n8n.worker-response');
 			expect(client.disconnect).not.toHaveBeenCalled();
 			subscriber.shutdown();
 		});
 
-		it('should not run liveness checks for a cluster client', async () => {
-			const clusterConfig = mockInstance(GlobalConfig, {
-				redis: { prefix: 'n8n' },
-				queue: { bull: { redis: { clusterNodes: 'a:1,b:2' } } },
-			});
-			new Subscriber(
+		it('should drop the connection when SUBSCRIBE gets no reply in time', async () => {
+			const subscriber = await subscribedSubscriber();
+			client.subscribe.mockReturnValue(new Promise(() => {}));
+
+			await vi.advanceTimersByTimeAsync(30_000 + 10_000);
+
+			expect(client.subscribe).toHaveBeenCalledTimes(1);
+			expect(client.disconnect).toHaveBeenCalledWith(true);
+			subscriber.shutdown();
+		});
+
+		it('should not check before any channel was requested', async () => {
+			const subscriber = new Subscriber(
 				mockLogger(),
 				mock(),
 				mock(),
 				redisClientService,
 				executionsConfig,
-				clusterConfig,
+				globalConfig,
 			);
 
 			await vi.advanceTimersByTimeAsync(60_000);
 
-			expect(client.ping).not.toHaveBeenCalled();
+			expect(client.subscribe).not.toHaveBeenCalled();
+			subscriber.shutdown();
 		});
 	});
 
 	describe('prefix isolation', () => {
 		it('should apply configured prefix when subscribing to channels', async () => {
-			const customConfig = mockInstance(GlobalConfig, {
-				redis: { prefix: 'n8n-instance-1' },
-				queue: { bull: { redis: { clusterNodes: '' } } },
-			});
+			const customConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n-instance-1' } });
 			const subscriber = new Subscriber(
 				mock(),
 				mock(),

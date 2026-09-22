@@ -85,12 +85,9 @@ export class Subscriber {
 			void this.resubscribe();
 		});
 
-		// A cluster client pings a random node, not the dedicated subscriber connection.
-		if (this.globalConfig.queue.bull.redis.clusterNodes === '') {
-			this.livenessTimer = setInterval(async () => {
-				await this.checkLiveness();
-			}, SUBSCRIBER_LIVENESS_INTERVAL_MS).unref();
-		}
+		this.livenessTimer = setInterval(async () => {
+			await this.checkLiveness();
+		}, SUBSCRIBER_LIVENESS_INTERVAL_MS).unref();
 
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
 			this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
@@ -205,15 +202,21 @@ export class Subscriber {
 
 	/**
 	 * A subscriber connection is idle by nature, so a half-open socket (peer gone, no RST
-	 * received) is never detected by ioredis. PING is allowed in subscriber mode; a missing
-	 * PONG drops the socket so ioredis reconnects and `resubscribe` runs.
+	 * received) is never detected by ioredis. Re-issuing SUBSCRIBE is idempotent, travels over
+	 * the subscriber connection in both single-node and cluster mode (PING would not), and
+	 * confirms the subscriptions still exist. No reply in time drops the socket so ioredis
+	 * reconnects and `resubscribe` runs.
 	 */
 	private async checkLiveness() {
+		if (this.channels.size === 0) return;
 		const timeout = new Promise<never>((_, reject) => {
-			setTimeout(() => reject(new Error('PONG timeout')), SUBSCRIBER_LIVENESS_TIMEOUT_MS).unref();
+			setTimeout(
+				() => reject(new Error('SUBSCRIBE timeout')),
+				SUBSCRIBER_LIVENESS_TIMEOUT_MS,
+			).unref();
 		});
 		try {
-			await Promise.race([this.client.ping(), timeout]);
+			await Promise.race([this.client.subscribe(...this.channels), timeout]);
 		} catch (error) {
 			this.logger.warn('Pubsub subscriber connection is unresponsive, reconnecting', { error });
 			this.client.disconnect(true);
