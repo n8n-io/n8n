@@ -22,20 +22,24 @@ import {
 	type ExecuteForChatConfig,
 	type ResumeForChatConfig,
 } from './agent-execution-orchestrator.service';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import type { AgentSessionMode } from './utils/agent-thread-access';
 
 interface PrepareDraftRunInput {
 	agentId: string;
 	projectId: string;
+	user: User;
 	sessionId?: string;
+	previewChat?: boolean;
+	newSession?: boolean;
 	credentialProvider: CredentialProvider;
 }
 
 export type PrepareDraftRunResult =
-	| { status: 'ready'; sessionId: string }
+	| { status: 'ready'; sessionId: string; sessionMode: AgentSessionMode }
 	| { status: 'session_not_found' }
 	| { status: 'agent_misconfigured'; missing: string[] };
 
@@ -158,12 +162,23 @@ export class AgentTestRunService {
 	async prepareDraftRun({
 		agentId,
 		projectId,
+		user,
 		sessionId,
+		previewChat,
+		newSession,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
+		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
 		if (sessionId) {
-			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+			if (
+				!(await this.agentExecutionService.canUseDraftThread(
+					sessionId,
+					projectId,
+					agentId,
+					user.id,
+					{ previewChat, sessionMode },
+				))
+			) {
 				return { status: 'session_not_found' };
 			}
 		}
@@ -175,7 +190,11 @@ export class AgentTestRunService {
 		);
 		if (missing.length > 0) return { status: 'agent_misconfigured', missing };
 
-		return { status: 'ready', sessionId: sessionId ?? randomUUID() };
+		return {
+			status: 'ready',
+			sessionId: sessionId ?? randomUUID(),
+			sessionMode,
+		};
 	}
 
 	async executePreparedDraftRun({
@@ -235,6 +254,7 @@ export class AgentTestRunService {
 		const result = await this.executePreparedDraftRun({
 			...input,
 			sessionId: prepared.sessionId,
+			sessionMode: prepared.sessionMode,
 		});
 		return { ...result, sessionId: prepared.sessionId };
 	}
@@ -244,8 +264,15 @@ export class AgentTestRunService {
 		response,
 		...input
 	}: ResumeDraftRunInput): Promise<AgentTestRunResult> {
-		const existing = await this.agentExecutionService.findThreadById(sessionId);
-		if (existing && !threadBelongsTo(existing, input.projectId, input.agentId)) {
+		if (
+			!(await this.agentExecutionService.canUseDraftThread(
+				sessionId,
+				input.projectId,
+				input.agentId,
+				input.user.id,
+				{ previewChat: input.previewChat, sessionMode: 'existing' },
+			))
+		) {
 			return { status: 'session_not_found' };
 		}
 

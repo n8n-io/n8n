@@ -249,6 +249,47 @@ describe('N8NCheckpointStorage', () => {
 		);
 	});
 
+	describe('hasNoConflictingThreadResource', () => {
+		const checkpoint = (overrides: Partial<AgentCheckpoint> = {}) =>
+			mock<AgentCheckpoint>({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				state: JSON.stringify(suspendedState),
+				...overrides,
+			});
+
+		it.each([
+			{ name: 'allows an unused thread ID', rows: [], expected: true },
+			{ name: 'allows a matching checkpoint', rows: [checkpoint()], expected: true },
+			{
+				name: 'rejects another agent',
+				rows: [checkpoint({ agentId: 'agent-2' })],
+				expected: false,
+			},
+			{
+				name: 'rejects another resource',
+				rows: [
+					checkpoint({
+						state: JSON.stringify({
+							...suspendedState,
+							persistence: { threadId: 'thread-1', resourceId: 'resource-2' },
+						}),
+					}),
+				],
+				expected: false,
+			},
+			{ name: 'ignores malformed state', rows: [checkpoint({ state: '{' })], expected: true },
+			{ name: 'ignores cleared state', rows: [checkpoint({ state: null })], expected: true },
+		])('$name', async ({ rows, expected }) => {
+			const { service, repository } = makeService();
+			repository.findRetainedByThreadId.mockResolvedValue(rows);
+
+			await expect(
+				service.hasNoConflictingThreadResource('agent-1', 'thread-1', 'resource-1'),
+			).resolves.toBe(expected);
+		});
+	});
+
 	describe('findSuspendedForThread', () => {
 		const row = (runId: string, state: SerializableAgentState) =>
 			({

@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { computed, nextTick, ref } from 'vue';
 
 import '../../css/_tokens.scss';
 
@@ -8,6 +9,11 @@ import type { WorkflowSuggestion } from '../../types/assistant';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import type {
+	DropdownMenuExposed,
+	DropdownMenuItemProps,
+} from '../N8nDropdownMenu/DropdownMenu.types';
 
 export default {
 	title: 'Areas/Assistant/ChatInput',
@@ -354,6 +360,237 @@ export const WithActions = ActionsTemplate.bind({});
 WithActions.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
+};
+
+const ExternalDropdownTemplate: StoryFn = (args) => ({
+	components: {
+		N8nChatInput,
+		N8nDropdownMenu,
+		N8nIconButton,
+		N8nTooltip,
+	},
+	setup() {
+		const chatInputRef = ref<{
+			getInputElement: () => HTMLTextAreaElement | undefined;
+		} | null>(null);
+		const dropdownRef = ref<DropdownMenuExposed | null>(null);
+		const composerRef = ref<HTMLElement | null>(null);
+		const menuOpen = ref(false);
+		const value = ref('');
+		const mentionRange = ref<{ start: number; end: number } | null>(null);
+		const savedSelection = ref({ start: 0, end: 0 });
+		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
+		const items: Array<DropdownMenuItemProps<string>> = [
+			{
+				id: 'orders',
+				label: 'Orders workflow',
+				selectable: true,
+				children: [
+					{ id: 'validate-order', label: 'Validate order' },
+					{
+						id: 'fulfillment',
+						label: 'Fulfillment group',
+						selectable: true,
+						children: [{ id: 'create-shipment', label: 'Create shipment' }],
+					},
+				],
+			},
+			{ id: 'invoices', label: 'Invoices workflow' },
+		];
+		const logSelect = action('select');
+
+		const findItemLabel = (
+			menuItems: Array<DropdownMenuItemProps<string>>,
+			itemId: string,
+		): string | undefined => {
+			for (const item of menuItems) {
+				if (item.id === itemId) return item.label;
+				const childLabel = item.children && findItemLabel(item.children, itemId);
+				if (childLabel) return childLabel;
+			}
+
+			return undefined;
+		};
+
+		const saveSelection = () => {
+			const input = inputElement.value;
+			if (!input) return;
+
+			savedSelection.value = {
+				start: input.selectionStart,
+				end: input.selectionEnd,
+			};
+		};
+
+		const handleCaretMove = async () => {
+			await nextTick();
+			saveSelection();
+			const range = mentionRange.value;
+			if (!range) return;
+
+			const selection = savedSelection.value;
+			if (
+				selection.start <= range.start ||
+				selection.start > range.end ||
+				selection.end > range.end
+			) {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			}
+		};
+
+		const handleKeydown = (event: KeyboardEvent) => {
+			dropdownRef.value?.handleExternalKeydown(event);
+		};
+
+		const openMenu = async () => {
+			menuOpen.value = true;
+			await nextTick();
+			dropdownRef.value?.highlightFirstItem();
+		};
+
+		const handleOpenChange = async (open: boolean) => {
+			if (open) {
+				await openMenu();
+			} else {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			}
+		};
+
+		const handleUpdateModelValue = async (newValue: string) => {
+			value.value = newValue;
+			await nextTick();
+			saveSelection();
+
+			const caret = inputElement.value?.selectionEnd ?? newValue.length;
+			const candidateIndex = caret - 1;
+			const followsWhitespace =
+				candidateIndex === 0 || /\s/.test(newValue[candidateIndex - 1] ?? '');
+			if (newValue[candidateIndex] === '@' && followsWhitespace) {
+				mentionRange.value = { start: candidateIndex, end: caret };
+				await openMenu();
+				return;
+			}
+
+			const range = mentionRange.value;
+			if (range && (newValue[range.start] !== '@' || caret <= range.start)) {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			} else if (range) {
+				mentionRange.value = { start: range.start, end: caret };
+			}
+		};
+
+		const handleSelect = async (itemId: string) => {
+			logSelect(itemId);
+			const label = findItemLabel(items, itemId);
+			if (!label) return;
+
+			const range = mentionRange.value;
+			const start = range?.start ?? savedSelection.value.start;
+			const end = range?.end ?? savedSelection.value.end;
+			const insertedText = `"${label}"`;
+			value.value = value.value.slice(0, start) + insertedText + value.value.slice(end);
+			mentionRange.value = null;
+
+			await nextTick();
+			const caret = start + insertedText.length;
+			inputElement.value?.focus({ preventScroll: true });
+			inputElement.value?.setSelectionRange(caret, caret);
+			savedSelection.value = { start: caret, end: caret };
+		};
+
+		return {
+			args,
+			chatInputRef,
+			dropdownRef,
+			composerRef,
+			menuOpen,
+			value,
+			inputElement,
+			items,
+			handleKeydown,
+			handleOpenChange,
+			handleUpdateModelValue,
+			handleSelect,
+			handleCaretMove,
+			saveSelection,
+			onSubmit: methods.onSubmit,
+		};
+	},
+	template: `
+		<div
+			style="
+				display: flex;
+				flex-direction: column;
+				box-sizing: border-box;
+				min-height: 100vh;
+				width: 100%;
+				padding: var(--spacing--4xl) var(--spacing--lg) var(--spacing--lg);
+			"
+			@keydown.capture="handleKeydown"
+		>
+			<div ref="composerRef">
+				<N8nChatInput
+					ref="chatInputRef"
+					:model-value="value"
+					:placeholder="args.placeholder"
+					:max-length="args.maxLength"
+					@update:model-value="handleUpdateModelValue"
+					@submit="onSubmit"
+					@click="handleCaretMove"
+					@keyup="handleCaretMove"
+					@pointerdown.capture="saveSelection"
+					@select="handleCaretMove"
+				>
+					<template #right-actions>
+						<N8nDropdownMenu
+							ref="dropdownRef"
+							:model-value="menuOpen"
+							:items="items"
+							:external-focus-target="inputElement"
+							:reference="composerRef"
+							placement="top-start"
+							searchable
+							search-mode="external"
+							@update:model-value="handleOpenChange"
+							@select="handleSelect"
+						>
+							<template #trigger>
+								<N8nTooltip content="Open context menu" placement="top">
+									<N8nIconButton
+										icon="at-sign"
+										title="Open context menu"
+										variant="ghost"
+										size="medium"
+									/>
+								</N8nTooltip>
+							</template>
+						</N8nDropdownMenu>
+					</template>
+				</N8nChatInput>
+			</div>
+			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
+				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
+			</p>
+		</div>
+	`,
+});
+
+export const WithExternalDropdown = ExternalDropdownTemplate.bind({});
+WithExternalDropdown.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+WithExternalDropdown.parameters = {
+	layout: 'fullscreen',
+	docs: {
+		description: {
+			story:
+				'Demonstrates typed and button-triggered opening, quoted text insertion, external focus, and keyboard integration. Query filtering and attachments are not included.',
+		},
+	},
 };
 
 export const Streaming = Template.bind({});

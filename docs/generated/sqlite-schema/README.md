@@ -20,7 +20,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 22 |  | table |
-| [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
+| [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
@@ -172,9 +172,10 @@ erDiagram
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution_threads" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -524,11 +525,13 @@ erDiagram
   TEXT userMessage
 }
 "agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
   varchar_128_ id PK
+  varchar ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

@@ -415,13 +415,17 @@ export class OauthService {
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		await credentials.updateData(toUpdate, toDelete);
+		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
+		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
 		// Only a token ends the pending state: dynamic client registration writes
 		// client data through here before the user has seen the consent screen.
-		await this.credentialsRepository.update(credential.id, {
-			...credentials.getDataToSave(),
+		const update: Pick<ICredentialsDb, 'data' | 'updatedAt'> &
+			Partial<Pick<CredentialsEntity, 'pendingAuthorizationExpiresAt'>> = {
+			data: credentials.getDataToSave().data,
 			...(toUpdate.oauthTokenData !== undefined && { pendingAuthorizationExpiresAt: null }),
 			updatedAt: new Date(),
-		});
+		};
+		await this.credentialsRepository.update(credential.id, update);
 	}
 
 	/** Get a credential without user check */

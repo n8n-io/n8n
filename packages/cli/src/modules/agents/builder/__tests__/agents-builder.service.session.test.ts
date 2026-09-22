@@ -30,6 +30,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const instructionsCalls: string[] = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
+	const configurationCalls: Array<{ maxIterations?: number }> = [];
 	const promptCachingCalls: unknown[] = [];
 	const reasoningCalls: string[] = [];
 	const telemetryCalls: unknown[] = [];
@@ -74,7 +75,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 		checkpoint() {
 			return this;
 		}
-		configuration() {
+		configuration(config: { maxIterations?: number }) {
+			configurationCalls.push(config);
 			return this;
 		}
 		telemetry(t: unknown) {
@@ -129,6 +131,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		instructionsCalls,
 		registeredToolNames,
 		modelCalls,
+		configurationCalls,
 		promptCachingCalls,
 		reasoningCalls,
 		telemetryCalls,
@@ -237,6 +240,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
+		agentsSdkMocks.configurationCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
 		agentsSdkMocks.reasoningCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
@@ -500,6 +504,24 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-sonnet-host-resolved']);
+	});
+
+	it('configures the builder agent with a maximum of 100 iterations', async () => {
+		const { service, user, credentialProvider, credentialService } = setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
+		);
+
+		expect(agentsSdkMocks.configurationCalls).toEqual([{ maxIterations: 100 }]);
 	});
 
 	it('enables prompt caching with a 5m Anthropic TTL for the builder agent', async () => {

@@ -556,6 +556,8 @@ export class AgentWorkflowExecutionService {
 		sandboxScope?: WorkflowSandboxScope,
 		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
+		// Keep the original intent if deletion happens during preparation.
+		const sessionMode = await this.turnExecutionService.getSessionMode(threadId);
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
 			throw new OperationalError('Agent not found or not accessible.');
@@ -577,11 +579,13 @@ export class AgentWorkflowExecutionService {
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
 		const recordingParams: StartExecutionParams = {
+			access: { accessScope: 'project', ownerId: null },
 			threadId,
 			agentId,
 			agentName: agentData.schema?.name ?? agentData.name,
 			projectId,
 			userMessage: message,
+			sessionMode,
 			source: AGENT_WORKFLOW_TRIGGER_TYPE,
 			telemetry: { userId: telemetryUserId, runType, configuration: telemetryConfiguration },
 		};
