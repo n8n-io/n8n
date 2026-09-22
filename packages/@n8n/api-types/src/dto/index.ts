@@ -111,6 +111,9 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 export { ChangeEmailRequestDto } from './user/change-email-request.dto';
 export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
 export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
+export { ListUsersQueryDto } from './user/list-users-query.dto';
+export { GetUserQueryDto } from './user/get-user-query.dto';
+export { UserPublicDto, UserListPublicDto, userPublicSchema } from './user/user-public.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -262,6 +265,8 @@ export {
 	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
 	folderPublicSchema,
+	UpdateFolderPublicDto,
+	UpdatedFolderPublicDto,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 

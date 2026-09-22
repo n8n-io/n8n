@@ -39,8 +39,6 @@ const scopeKey = computed<BaseTextKey>(
 		(props.scope && SCOPE_TITLE_KEY[props.scope]) ??
 		'typeAvailabilityPolicies.restrictedNode.title',
 );
-
-const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 </script>
 
 <template>
@@ -83,19 +81,8 @@ const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 				</div>
 			</template>
 		</N8nPopover>
-		<ContactInstanceAdminModal
-			v-model:open="isContactAdminOpen"
-			:description="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.description', {
-					interpolate,
-				})
-			"
-			:mail-subject="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.mailSubject', {
-					interpolate,
-				})
-			"
-		/>
+		<!-- A sibling of the popover: its content unmounts on close and must not take the dialog with it. -->
+		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</span>
 </template>
 

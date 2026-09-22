@@ -17,9 +17,8 @@ import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
-import { createConsoleLogger } from '../../logging';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
-import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
@@ -82,7 +81,7 @@ describe('step execution (integration)', () => {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
-			responseChannel: new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+			responseSender: noopExecutionResponseSender,
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);

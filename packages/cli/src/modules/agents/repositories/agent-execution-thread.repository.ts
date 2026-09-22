@@ -1,11 +1,26 @@
 import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
+import type { SerializableAgentState } from '@n8n/agents';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import chunk from 'lodash/chunk';
+import { jsonParse, UserError } from 'n8n-workflow';
 
+import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadAccess,
+} from '../entities/agent-execution-thread.entity';
+import {
+	getDelegatedChildCheckpoints,
+	type DelegatedChildCheckpoint,
+} from '../utils/delegated-child-checkpoints';
+import { PREVIEW_THREAD_SOURCES } from '../utils/agent-thread-access';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
+const CHECKPOINT_BATCH_SIZE = 400;
 
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
@@ -17,10 +32,15 @@ export interface AgentExecutionThreadPage {
 	nextCursor: string | null;
 }
 
+interface AgentSessionDeletionRefs {
+	attachmentBinaryDataIds: string[];
+	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
+}
+
 @Service()
-export class AgentExecutionThreadRepository extends Repository<AgentExecutionThread> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecutionThread, dataSource.manager);
+export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutionThread> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -32,6 +52,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
@@ -43,6 +64,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 					agentId,
 					agentName,
 					projectId,
+					access,
 					metadata,
 					taskId,
 					taskVersionId,
@@ -60,14 +82,35 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
 			const repository = entityManager.getRepository(AgentExecutionThread);
+			if (metadata?.parentThreadId) {
+				const parent = await repository.findOneBy({ id: metadata.parentThreadId });
+				if (parent) {
+					if (parent.projectId !== projectId || parent.agentId !== metadata.parentAgentId) {
+						throw new UserError('Session not found');
+					}
+					access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
+				}
+			}
+			if (access.accessScope === 'user' && !access.ownerId) {
+				throw new UserError('Session not found');
+			}
 			const existing = await repository.findOneBy({ id: threadId });
 			if (existing) {
+				if (
+					existing.projectId !== projectId ||
+					existing.agentId !== agentId ||
+					existing.accessScope !== access.accessScope ||
+					existing.ownerId !== access.ownerId
+				) {
+					throw new UserError('Session not found');
+				}
 				return { thread: existing, created: false };
 			}
 
@@ -84,6 +127,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				agentId,
 				agentName,
 				projectId,
+				...access,
 				taskId: taskId ?? null,
 				taskVersionId: taskVersionId ?? null,
 				sessionNumber,
@@ -103,6 +147,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 	async findByProjectIdPaginated(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		limit: number,
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
@@ -110,12 +155,31 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
+			.andWhere(
+				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
+				{ userId },
+			)
 			.orderBy('thread.updatedAt', 'DESC')
 			.take(limit + 1);
 
 		if (cursor) {
 			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
 		}
+		this.applyListFilters(query, filters);
+		const threads = await query.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+
+		return {
+			threads,
+			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
+		};
+	}
+
+	private applyListFilters(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		filters: AgentSessionQueryFilters,
+	) {
 		if (filters.updatedAfter) {
 			query.andWhere('thread.updatedAt >= :updatedAfter', {
 				updatedAfter: filters.updatedAfter,
@@ -127,34 +191,40 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			});
 		}
 		if (filters.status) {
-			const latestStatus = this.latestExecutionStatusSubquery(query);
-			const failureExists = this.failureExistsSubquery(query);
-			if (filters.status === 'succeeded') {
-				query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
-			} else if (filters.status === 'error') {
-				query.andWhere(
-					`((${latestStatus}) = 'error' OR ` +
-						`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
-				);
-			} else {
-				query.andWhere(`(${latestStatus}) = :sessionStatus`, {
-					sessionStatus: filters.status,
-				});
-			}
+			this.applyStatusFilter(query, filters.status);
 		}
 		if (filters.origin) {
 			this.applyOriginFilter(query, filters.origin);
 		}
+		if (filters.previewOnly) this.applyPreviewFilter(query);
+	}
 
-		const threads = await query.getMany();
+	private applyStatusFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		status: NonNullable<AgentSessionQueryFilters['status']>,
+	) {
+		const latestStatus = this.latestExecutionStatusSubquery(query);
+		const failureExists = this.failureExistsSubquery(query);
+		if (status === 'succeeded') {
+			query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
+		} else if (status === 'error') {
+			query.andWhere(
+				`((${latestStatus}) = 'error' OR ` +
+					`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
+			);
+		} else {
+			query.andWhere(`(${latestStatus}) = :sessionStatus`, { sessionStatus: status });
+		}
+	}
 
-		const hasMore = threads.length > limit;
-		if (hasMore) threads.pop();
-
-		return {
-			threads,
-			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
-		};
+	private applyPreviewFilter(query: SelectQueryBuilder<AgentExecutionThread>) {
+		query
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL')
+			.andWhere('thread.taskId IS NULL')
+			.andWhere(`${this.normalizedFirstSource(query)} IN (:...previewThreadSources)`, {
+				previewThreadSources: [...PREVIEW_THREAD_SOURCES],
+			});
 	}
 
 	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
@@ -179,10 +249,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			.getQuery();
 	}
 
-	private applyOriginFilter(
-		query: SelectQueryBuilder<AgentExecutionThread>,
-		origin: AgentSessionOrigin,
-	): void {
+	private normalizedFirstSource(query: SelectQueryBuilder<AgentExecutionThread>): string {
 		const firstSource = query
 			.subQuery()
 			.select('sourceExecution.source')
@@ -193,7 +260,14 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			.addOrderBy('sourceExecution.id', 'ASC')
 			.limit(1)
 			.getQuery();
-		const normalizedSource = `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+		return `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+	}
+
+	private applyOriginFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		origin: AgentSessionOrigin,
+	): void {
+		const normalizedSource = this.normalizedFirstSource(query);
 		const isSubAgent =
 			'(thread."parentThreadId" IS NOT NULL OR ' +
 			`${normalizedSource} IN ('subagent', 'sub-agent'))`;
@@ -206,7 +280,9 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		} else if (origin === 'schedule') {
 			query.andWhere(isSchedule);
 		} else if (origin === 'preview') {
-			query.andWhere(`${isDirect} AND ${normalizedSource} IN ('', 'chat', 'n8n_chat')`);
+			query.andWhere(`${isDirect} AND ${normalizedSource} IN (:...previewThreadSources)`, {
+				previewThreadSources: [...PREVIEW_THREAD_SOURCES],
+			});
 		} else {
 			query.andWhere(`${isDirect} AND ${normalizedSource} = :sessionOrigin`, {
 				sessionOrigin: origin,
@@ -261,6 +337,137 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		const result = await this.delete({ id: threadId, projectId });
 		return (result.affected ?? 0) > 0;
 	}
+
+	async deleteSession(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		userId: string,
+		ctx: OperationContext,
+	): Promise<AgentSessionDeletionRefs | null> {
+		const manager = this.managerFor(ctx);
+		const thread = await manager.findOne(AgentExecutionThread, {
+			where: [
+				{ id: threadId, projectId, agentId, accessScope: 'project' },
+				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+			],
+		});
+		if (!thread) return null;
+
+		const { attachments, executionLogs } = await this.findExternalRefs(
+			manager,
+			projectId,
+			threadId,
+		);
+		const checkpointRunIds = await this.findSessionCheckpointRunIds(manager, agentId, threadId);
+		for (const batch of chunk(checkpointRunIds, CHECKPOINT_BATCH_SIZE)) {
+			await manager.delete(AgentCheckpoint, batch);
+		}
+		if (attachments.length > 0) {
+			await manager.delete(
+				AgentChatAttachment,
+				attachments.map(({ id }) => id),
+			);
+		}
+		await manager.delete(AgentExecutionThread, { id: threadId });
+		return {
+			executionLogs,
+			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+		};
+	}
+
+	private async findSessionCheckpointRunIds(
+		manager: EntityManager,
+		agentId: string,
+		threadId: string,
+	): Promise<string[]> {
+		const parents = await manager.find(AgentCheckpoint, {
+			select: ['runId', 'agentId', 'state'],
+			where: { agentId, threadId },
+		});
+		const checkpoints = parents.map((row) => ({ row, agentId }));
+		const visited = new Set(checkpoints.map(({ row }) => checkpointKey(agentId, row.runId)));
+		let currentLevel = checkpoints;
+
+		while (currentLevel.length > 0) {
+			const children = collectUnvisitedChildCheckpoints(currentLevel, visited);
+			if (children.length === 0) break;
+			const childRows = await this.findCheckpointRows(manager, children);
+			currentLevel = childRows.flatMap((row) =>
+				row.agentId ? [{ row, agentId: row.agentId }] : [],
+			);
+			checkpoints.push(...currentLevel);
+		}
+
+		return checkpoints.map(({ row }) => row.runId);
+	}
+
+	private async findCheckpointRows(
+		manager: EntityManager,
+		checkpoints: DelegatedChildCheckpoint[],
+	): Promise<AgentCheckpoint[]> {
+		const rows: AgentCheckpoint[] = [];
+		for (const batch of chunk(checkpoints, CHECKPOINT_BATCH_SIZE)) {
+			rows.push(
+				...(await manager.find(AgentCheckpoint, {
+					select: ['runId', 'agentId', 'state'],
+					where: batch,
+				})),
+			);
+		}
+		return rows;
+	}
+
+	private async findExternalRefs(
+		manager: EntityManager,
+		projectId: string,
+		threadId: string,
+	): Promise<{
+		executionLogs: AgentSessionDeletionRefs['executionLogs'];
+		attachments: Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>>;
+	}> {
+		const executionLogs = await manager.find(AgentExecution, {
+			select: ['id', 'storedAt'],
+			where: { threadId, storedAt: Not('db') },
+		});
+		const attachments = await manager.find(AgentChatAttachment, {
+			select: ['id', 'binaryDataId'],
+			where: { projectId, threadId },
+		});
+		return { executionLogs, attachments };
+	}
+}
+
+function parseChildCheckpoints(
+	state: string | null,
+	parentAgentId: string,
+): DelegatedChildCheckpoint[] {
+	if (!state) return [];
+	try {
+		return getDelegatedChildCheckpoints(jsonParse<SerializableAgentState>(state), parentAgentId);
+	} catch {
+		return [];
+	}
+}
+
+function collectUnvisitedChildCheckpoints(
+	checkpoints: Array<{ row: AgentCheckpoint; agentId: string }>,
+	visited: Set<string>,
+): DelegatedChildCheckpoint[] {
+	const children: DelegatedChildCheckpoint[] = [];
+	for (const { row, agentId } of checkpoints) {
+		for (const child of parseChildCheckpoints(row.state, agentId)) {
+			const key = checkpointKey(child.agentId, child.runId);
+			if (visited.has(key)) continue;
+			visited.add(key);
+			children.push(child);
+		}
+	}
+	return children;
+}
+
+function checkpointKey(agentId: string, runId: string): string {
+	return `${agentId}\0${runId}`;
 }
 
 function isRetriableWriteError(error: unknown): boolean {

@@ -228,3 +228,36 @@ export async function truncate(entities: EntityName[]) {
 		await connection.getRepository(name).delete({});
 	}
 }
+
+export async function resetDeploymentKeys() {
+	const connection = Container.get(Connection);
+	const { type, tablePrefix } = Container.get(GlobalConfig).database;
+	const table = connection.driver.escape(`${tablePrefix}deployment_key`);
+	const deleteTrigger = connection.driver.escape(`${tablePrefix}prevent_deployment_key_delete`);
+
+	if (type === 'postgresdb') {
+		const truncateTrigger = connection.driver.escape(
+			`${tablePrefix}prevent_deployment_key_truncate`,
+		);
+		await connection.transaction(async (tx) => {
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${truncateTrigger}`);
+			await tx.query(`DELETE FROM ${table}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${truncateTrigger}`);
+		});
+		return;
+	}
+
+	await connection.transaction(async (tx) => {
+		await tx.query(`DROP TRIGGER ${deleteTrigger}`);
+		await tx.query(`DELETE FROM ${table}`);
+		await tx.query(`
+			CREATE TRIGGER ${deleteTrigger}
+			BEFORE DELETE ON ${table}
+			BEGIN
+				SELECT RAISE(ABORT, 'Deployment keys must not be deleted');
+			END
+		`);
+	});
+}
