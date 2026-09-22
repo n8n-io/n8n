@@ -20,6 +20,10 @@ import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 export type AgentSubAgentOption = {
 	id: string;
 	name: string;
+	added?: boolean;
+	useWhen?: string;
+	invalidReasons?: string[];
+	agentHref?: string;
 };
 
 type AgentSubAgentsModalConfirmPayload = { agentId: string; useWhen?: string };
@@ -28,7 +32,7 @@ type AddSubAgentModalData = {
 	agents: AgentSubAgentOption[];
 	selectedAgent?: never;
 	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
-	onRemove?: never;
+	onRemove?: (agentId: string) => void;
 };
 
 type EditSubAgentModalData = {
@@ -65,10 +69,16 @@ const filteredAgents = computed(() =>
 );
 const hasMatchingAgents = computed(() => filteredAgents.value.length > 0);
 const isEditing = computed(() => Boolean(props.data.selectedAgent));
-const invalidReasons = computed(() =>
-	'invalidReasons' in props.data ? (props.data.invalidReasons ?? []) : [],
-);
 const selectedAgent = ref<AgentSubAgentOption | null>(props.data.selectedAgent ?? null);
+const selectedAgentIsAdded = computed(() => isEditing.value || Boolean(selectedAgent.value?.added));
+const invalidReasons = computed(() => {
+	if ('invalidReasons' in props.data) return props.data.invalidReasons ?? [];
+	return selectedAgent.value?.invalidReasons ?? [];
+});
+const selectedAgentHref = computed(() => {
+	if ('agentHref' in props.data) return props.data.agentHref;
+	return selectedAgent.value?.agentHref;
+});
 const useWhen = ref(('useWhen' in props.data ? props.data.useWhen : '') ?? '');
 const useWhenTrimmed = computed(() => useWhen.value.trim());
 const useWhenError = computed(() => {
@@ -89,7 +99,7 @@ function closeModal() {
 
 function onSelectAgent(agent: AgentSubAgentOption) {
 	selectedAgent.value = agent;
-	useWhen.value = '';
+	useWhen.value = agent.useWhen ?? '';
 }
 
 function onBack() {
@@ -128,11 +138,11 @@ function onConfirm() {
 	>
 		<template #headerActions>
 			<N8nIconButton
-				v-if="selectedAgent && 'agentHref' in data && data.agentHref"
+				v-if="selectedAgent && selectedAgentHref"
 				icon="external-link"
 				variant="ghost"
 				size="small"
-				:href="data.agentHref"
+				:href="selectedAgentHref"
 				target="_blank"
 				rel="noopener noreferrer"
 				:title="i18n.baseText('agents.builder.subAgents.open')"
@@ -179,7 +189,18 @@ function onConfirm() {
 						</div>
 
 						<div :class="$style.actions">
+							<button
+								v-if="agent.added"
+								type="button"
+								:class="$style.addedTrigger"
+								data-testid="agent-sub-agents-modal-added"
+								@click="onSelectAgent(agent)"
+							>
+								<N8nIcon icon="check" :size="14" :class="$style.addedIcon" aria-hidden="true" />
+								{{ i18n.baseText('agents.builder.subAgents.modal.added' as BaseTextKey) }}
+							</button>
 							<N8nButton
+								v-else
 								variant="subtle"
 								size="small"
 								:aria-label="
@@ -256,7 +277,7 @@ function onConfirm() {
 			</div>
 		</div>
 
-		<template v-if="selectedAgent && isEditing && data.onRemove" #footerLeft>
+		<template v-if="selectedAgent && selectedAgentIsAdded && data.onRemove" #footerLeft>
 			<N8nButton variant="subtle" data-testid="agent-sub-agents-modal-remove" @click="onRemove">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.subAgents.modal.remove') }}
@@ -271,6 +292,8 @@ function onConfirm() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -329,6 +352,33 @@ function onConfirm() {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.addedTrigger {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: 0;
+	border-radius: var(--radius--2xs);
+	background: none;
+	color: var(--color--text--tint-1);
+	font-family: inherit;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	white-space: nowrap;
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background--light-1);
+	}
+
+	@include focus.focus-visible-ring;
+}
+
+.addedIcon {
+	flex-shrink: 0;
+	color: var(--color--success);
 }
 
 .field {

@@ -79,9 +79,8 @@ and `Remove workflow`. New items and picker rows do not show Remove.
 ### Status contract
 
 Use the same status treatment in Agent picker rows. Show a success check before
-`Connected`. Use muted `2xs` text and `3xs` spacing. Show the check whenever the
-user-visible status is `Connected`. Keep warning and failure indicators
-distinct.
+`Connected` or `Added`. Use `Added` for selected Sub-agents. Use muted `2xs`
+text and `3xs` spacing. Keep warning and failure indicators distinct.
 
 ### Multi-step contract
 

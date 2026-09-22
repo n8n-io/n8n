@@ -390,8 +390,30 @@ describe('AgentCapabilitiesSection', () => {
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
 					agents: [
-						{ id: 'agent-3', name: 'Research Agent' },
-						{ id: 'agent-4', name: 'Draft Agent' },
+						{
+							id: 'agent-2',
+							name: 'Helper Agent',
+							added: true,
+							useWhen: 'Use for billing support requests.',
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-2',
+						},
+						{
+							id: 'agent-3',
+							name: 'Research Agent',
+							added: false,
+							useWhen: undefined,
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-3',
+						},
+						{
+							id: 'agent-4',
+							name: 'Draft Agent',
+							added: false,
+							useWhen: undefined,
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-4',
+						},
 					],
 				}),
 			}),

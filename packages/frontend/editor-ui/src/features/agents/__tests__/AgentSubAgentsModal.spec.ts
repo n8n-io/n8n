@@ -19,6 +19,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.modal.noResults.title': 'No matching agents',
 				'agents.builder.subAgents.modal.noResults.description': 'Try another search term.',
 				'agents.builder.subAgents.modal.add': 'Add sub-agent',
+				'agents.builder.subAgents.modal.added': 'Added',
 				'agents.builder.subAgents.modal.addAriaLabel': `Add ${options?.interpolate?.name ?? ''} as a sub-agent`,
 				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
 				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
@@ -154,6 +155,48 @@ describe('AgentSubAgentsModal', () => {
 
 		expect(onConfirm).toHaveBeenCalledWith({ agentId: 'agent-2' });
 		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+	});
+
+	it('keeps an added sub-agent visible and opens its existing configuration', async () => {
+		const onConfirm = vi.fn();
+		const onRemove = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [
+						{
+							id: 'agent-2',
+							name: 'Billing Agent',
+							added: true,
+							useWhen: 'Use for invoice questions.',
+						},
+					],
+					onConfirm,
+					onRemove,
+				},
+			},
+		});
+
+		const addedButton = wrapper.find('[data-testid="agent-sub-agents-modal-added"]');
+		expect(addedButton.text()).toBe('Added');
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-add"]').exists()).toBe(false);
+
+		await addedButton.trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Billing Agent');
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').element).toHaveProperty(
+			'value',
+			'Use for invoice questions.',
+		);
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-remove"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			agentId: 'agent-2',
+			useWhen: 'Use for invoice questions.',
+		});
 	});
 
 	it('filters available agents by name before configuring one', async () => {

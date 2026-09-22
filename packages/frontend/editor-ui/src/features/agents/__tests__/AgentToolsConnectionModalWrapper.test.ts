@@ -588,6 +588,34 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(availableSlack).toHaveLength(1);
 	});
 
+	it('excludes workflow refs from tool mode and preserves them when a node tool is added', async () => {
+		const workflowRef: AgentJsonToolRef = {
+			type: 'workflow',
+			workflowId: 'workflow-1',
+			workflow: 'Daily sales digest',
+			name: 'Daily sales digest',
+			description: 'Build the daily sales digest',
+			allOutputs: false,
+		};
+		const onConfirm = vi.fn();
+		render([workflowRef], onConfirm);
+		await flushPromises();
+
+		expect(getItems().some((item) => item.kind === 'workflow')).toBe(false);
+
+		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
+		emitConnect(slack!);
+		await flushPromises();
+
+		const configuredRef = toolRef(SLACK.name);
+		await saveConfiguration(configuredRef);
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			tools: [workflowRef, configuredRef],
+			mcpServers: [],
+		});
+	});
+
 	it('opens the inline configure step when Add is clicked', async () => {
 		const onConfirm = vi.fn();
 		render([], onConfirm);

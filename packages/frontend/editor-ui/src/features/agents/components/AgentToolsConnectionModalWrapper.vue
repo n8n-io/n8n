@@ -68,7 +68,7 @@ import {
 	mcpServerToNode,
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
-import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
 import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
@@ -627,21 +627,6 @@ function credentialSubtitle(node: INode): string | undefined {
 
 function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 	const { localId, ref } = entry;
-	if (ref.type === 'workflow') {
-		const workflowRef = ref as WorkflowToolRef;
-		const item: WorkflowConnectionItem = {
-			id: `tool:${localId}`,
-			kind: 'workflow',
-			category: 'workflows',
-			workflowId: workflowRef.workflowId ?? workflowRef.workflow,
-			title: workflowRef.name ?? workflowRef.workflow,
-			description: workflowRef.description,
-			status: 'connected',
-			credentials: [],
-		};
-		return item;
-	}
-
 	if (ref.type !== 'node') return null;
 
 	const node = toolRefToNode(ref);
