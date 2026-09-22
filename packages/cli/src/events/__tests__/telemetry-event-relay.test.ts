@@ -735,7 +735,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				{
 					user_id: 'user123',
 					source: 'user',
@@ -785,7 +785,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					kind: 'credential-types',
 					evaluated_type_count: 3,
@@ -819,7 +819,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					kind: 'credential-types',
 					blocked_type_count: 2,
@@ -864,7 +864,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					scope: 'project',
 					project_id: 'project-1',
@@ -910,7 +910,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				{
 					user_id: 'user123',
 					source: 'user',
@@ -938,7 +938,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				expect.objectContaining({ kind: 'credential-types' }),
 			);
 		});
@@ -970,7 +970,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				expect.objectContaining({
 					operation: 'updated',
 					rule_count: 2,
@@ -990,7 +990,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-deleted', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				expect.objectContaining({
 					operation: 'deleted',
 					rule_count: 0,
@@ -1014,7 +1014,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					blocked_type_count: 1,
 					allowed_type_count: 2,
@@ -1038,7 +1038,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					rule_count: 1,
 					blocked_type_count: 2,
@@ -1091,7 +1091,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					blocked_type_count: 3,
 					allowed_type_count: 0,
@@ -1118,7 +1118,7 @@ describe('TelemetryEventRelay', () => {
 				});
 
 				expect(telemetry.track).not.toHaveBeenCalledWith(
-					TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+					TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 					expect.anything(),
 				);
 			},
@@ -1146,7 +1146,8 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-attachments-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES
+					.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 				{
 					user_id: 'user123',
 					source: 'user',
@@ -1174,7 +1175,8 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-attachments-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES
+					.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 				expect.objectContaining({ kind: 'credential-types' }),
 			);
 		});

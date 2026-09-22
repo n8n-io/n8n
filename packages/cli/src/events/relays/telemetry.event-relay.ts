@@ -565,20 +565,23 @@ export class TelemetryEventRelay extends EventRelay {
 				: Object.keys(this.nodeTypes.getKnownTypes());
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
-		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
-			...policyActor(updatedBy),
-			kind,
-			...policyScope(projectId),
-			default_action: after.defaultAction,
-			previous_default_action: before?.defaultAction ?? null,
-			is_first_write: before === null,
-			...countRuleActions(rulesAfter),
-			...countSelectorKinds(rulesAfter),
-			...summarizeTypeAvailability(rulesAfter, after.defaultAction, typeNames, resolvePackage),
-			previous_rule_count: rulesBefore?.length ?? null,
-			shadow_warning_count: warningCount,
-			version: after.version,
-		});
+		this.telemetry.track(
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+			{
+				...policyActor(updatedBy),
+				kind,
+				...policyScope(projectId),
+				default_action: after.defaultAction,
+				previous_default_action: before?.defaultAction ?? null,
+				is_first_write: before === null,
+				...countRuleActions(rulesAfter),
+				...countSelectorKinds(rulesAfter),
+				...summarizeTypeAvailability(rulesAfter, after.defaultAction, typeNames, resolvePackage),
+				previous_rule_count: rulesBefore?.length ?? null,
+				shadow_warning_count: warningCount,
+				version: after.version,
+			},
+		);
 	}
 
 	/**
@@ -630,7 +633,7 @@ export class TelemetryEventRelay extends EventRelay {
 		if (!isPolicyKind(kind)) return;
 
 		this.telemetry.track(
-			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 			{
 				...policyActor(updatedBy),
 				kind,
@@ -653,7 +656,7 @@ export class TelemetryEventRelay extends EventRelay {
 		if (!isPolicyKind(kind)) return;
 
 		this.telemetry.track(
-			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 			{
 				...policyActor(updatedBy),
 				kind,
