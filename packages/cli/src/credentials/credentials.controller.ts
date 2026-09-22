@@ -38,6 +38,7 @@ import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialTypes } from '@/credential-types';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -66,6 +67,7 @@ export class CredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -442,7 +444,7 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
+		if (!this.credentialTypes.isOAuthCredentialType(credential.type)) {
 			throw new BadRequestError('Only OAuth credentials can be disconnected');
 		}
 

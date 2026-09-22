@@ -206,6 +206,10 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		return this.delegate.getParentTypes(name);
 	}
 
+	getOAuth2Options(type: string) {
+		return this.delegate.getOAuth2Options(type);
+	}
+
 	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
 		return this.delegate.isCredentialUsableByNode(credentialType, nodeType);
 	}
