@@ -2,9 +2,11 @@
 @use '../../design-system/src/css/reset.scss';
 @use '../../design-system/src/css/index.scss';
 
-// Hug the story content. A block root places inline components on a text line and adds space.
 #storybook-root {
-	display: inline-flex;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	width: 100%;
 }
 
 .sbdocs.sbdocs-content {
