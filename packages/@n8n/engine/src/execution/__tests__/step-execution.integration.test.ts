@@ -111,7 +111,7 @@ describe('step execution (integration)', () => {
 				workflow: {},
 				triggerOutputs,
 				executionId: generateId(),
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -155,6 +155,7 @@ describe('step execution (integration)', () => {
 			executionId,
 			workflowId: 'wf-1',
 			mode: 'production',
+			hostMode: 'trigger',
 			at: expect.any(String) as string,
 		});
 		// The ids are the ones a consumer would re-query the data plane with.
@@ -185,7 +186,7 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-1',
 			mode: 'production',
 			iteration: 0,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 	});
 
@@ -402,7 +403,7 @@ describe('step execution (integration)', () => {
 			graph,
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them

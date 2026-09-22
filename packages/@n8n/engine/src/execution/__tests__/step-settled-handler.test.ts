@@ -57,7 +57,7 @@ function makeExecutionStore(
 		graph,
 		workflow: {},
 		triggerOutputs: null,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 		...overrides,
 	};
 	return {
