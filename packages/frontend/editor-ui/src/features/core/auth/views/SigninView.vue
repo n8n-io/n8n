@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
+import SsoSigninCard from '../components/SsoSigninCard.vue';
 
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -15,12 +16,18 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
+import {
+	INTERNAL_AUTH_QUERY_PARAM,
+	MFA_AUTHENTICATION_REQUIRED_ERROR_CODE,
+	VIEWS,
+	MFA_FORM,
+} from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
 import {
 	SSO_ERROR_ACCESS_DENIED,
 	SSO_ERROR_LOGIN_FAILED,
 	SSO_ERROR_QUERY_PARAM,
+	SSO_LOGIN_REQUIRED_ERROR_CODE,
 } from '@n8n/api-types';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
@@ -46,6 +53,14 @@ const showMfaView = ref(false);
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
+
+// SSO (SAML or OIDC) is the active login method: lead with it and keep the
+// password form behind a disclosure. `?internalAuth=true` reveals the form up
+// front so an admin can still sign in when the identity provider is down.
+const isSsoLogin = computed(() => ssoStore.showSsoLoginButton);
+const isInternalAuthRequested = computed(() => route.query[INTERNAL_AUTH_QUERY_PARAM] === 'true');
+const ssoLoading = ref(false);
+const ssoRequired = ref(false);
 
 const notificationsStore = useNotificationsStore();
 
@@ -157,6 +172,21 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 	await login(form);
 };
 
+const onSsoLogin = async () => {
+	ssoLoading.value = true;
+	try {
+		const redirectUrl = ssoStore.isDefaultAuthenticationSaml
+			? await ssoStore.getSSORedirectUrl(
+					typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+				)
+			: ssoStore.oidc.loginUrl;
+		window.location.href = redirectUrl ?? '';
+	} catch (error) {
+		ssoLoading.value = false;
+		toast.showError(error, locale.baseText('auth.signin.error'));
+	}
+};
+
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
 
@@ -184,6 +214,7 @@ const getRedirectQueryParameter = () => {
 
 const login = async (form: LoginRequestDto) => {
 	notificationsStore.setNotificationsSuppressed(false);
+	ssoRequired.value = false;
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
@@ -229,6 +260,18 @@ const login = async (form: LoginRequestDto) => {
 			result: showMfaView.value ? 'mfa_token_rejected' : 'credentials_error',
 		});
 
+		// The account has to sign in through SSO: explain that inline, next to the
+		// SSO button, instead of surfacing it as a generic login failure.
+		if (
+			error.errorCode === SSO_LOGIN_REQUIRED_ERROR_CODE &&
+			isSsoLogin.value &&
+			!showMfaView.value
+		) {
+			ssoRequired.value = true;
+			loading.value = false;
+			return;
+		}
+
 		if (!showMfaView.value) {
 			toast.showError(error, locale.baseText('auth.signin.error'));
 			loading.value = false;
@@ -259,14 +302,26 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 
 <template>
 	<div>
-		<AuthView
-			v-if="!showMfaView"
-			:form="formConfig"
-			:form-loading="loading"
-			:with-sso="true"
-			data-test-id="signin-form"
-			@submit="onEmailPasswordSubmitted"
-		/>
+		<template v-if="!showMfaView">
+			<AuthView v-if="isSsoLogin" data-test-id="signin-form">
+				<SsoSigninCard
+					:form="formConfig"
+					:form-loading="loading"
+					:sso-loading="ssoLoading"
+					:sso-required="ssoRequired"
+					:default-expanded="isInternalAuthRequested"
+					@submit="onEmailPasswordSubmitted"
+					@sso-login="onSsoLogin"
+				/>
+			</AuthView>
+			<AuthView
+				v-else
+				:form="formConfig"
+				:form-loading="loading"
+				data-test-id="signin-form"
+				@submit="onEmailPasswordSubmitted"
+			/>
+		</template>
 		<MfaView
 			v-if="showMfaView"
 			:report-error="reportError"
