@@ -665,11 +665,8 @@ describe('WorkflowService', () => {
 			);
 
 			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).toHaveBeenCalledWith(user);
-			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.anything(),
-				{ relaxNodeGroupRules: true },
-			);
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual({ relaxNodeGroupRules: true });
 		});
 
 		test('keeps the group rules for a user outside the rollout', async () => {
@@ -687,11 +684,8 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.anything(),
-				{ relaxNodeGroupRules: false },
-			);
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual({ relaxNodeGroupRules: false });
 		});
 
 		test('does not read the flag for a workflow without groups', async () => {
@@ -709,11 +703,8 @@ describe('WorkflowService', () => {
 			);
 
 			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).not.toHaveBeenCalled();
-			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.anything(),
-				{ relaxNodeGroupRules: false },
-			);
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual({ relaxNodeGroupRules: false });
 		});
 
 		test('skips nodeGroup validation on a metadata-only edit (nodes/connections/groups unchanged)', async () => {
