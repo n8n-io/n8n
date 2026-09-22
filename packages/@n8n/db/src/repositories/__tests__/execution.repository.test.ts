@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -10,12 +11,13 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity, type WorkflowEntity } from '../../entities';
+import { ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { ExecutionRepository } from '../execution.repository';
+import { SharedWorkflowRepository } from '../shared-workflow.repository';
 
 const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
@@ -28,6 +30,8 @@ describe('ExecutionRepository', () => {
 		logging: { outputs: ['console'], scopes: [] },
 	});
 	mockInstance(BinaryDataService);
+	const logger = mockInstance(Logger);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const transactionRunner = mock<TransactionRunner>();
 	Container.set(TransactionRunner, transactionRunner);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -35,6 +39,7 @@ describe('ExecutionRepository', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 	});
 
 	describe('countInWorkflows', () => {
@@ -249,13 +254,22 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	const crashableRow = (id: string) =>
-		mock<ExecutionEntity>({
+	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
+
+	const crashableRow = (id: string, overrides: Partial<ExecutionEntity> = {}) =>
+		Object.assign(new ExecutionEntity(), {
 			id,
 			workflowId: `workflow-${id}`,
 			mode: 'trigger',
+			startedAt: crashedStartedAt,
 			workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
+			...overrides,
 		});
+
+	const ownerProject = (
+		id: string,
+		customTelemetryTags: Array<{ key: string; value: string }> = [],
+	) => Object.assign(new Project(), { id, customTelemetryTags });
 
 	const executionIdsOfLength = (length: number) =>
 		Array(length)
@@ -280,7 +294,7 @@ describe('ExecutionRepository', () => {
 
 		test('should crash only in-progress rows and clear their `waitTill`', async () => {
 			const executionIds = ['1', '2'];
-			entityManager.find.mockResolvedValue(executionIds.map(crashableRow));
+			entityManager.find.mockResolvedValue(executionIds.map((id) => crashableRow(id)));
 
 			await executionRepository.markAsCrashed(executionIds);
 
@@ -291,7 +305,7 @@ describe('ExecutionRepository', () => {
 			);
 		});
 
-		test('should report the workflow, name and mode of each execution it transitioned', async () => {
+		test('should report the workflow, name, mode and start time of each execution it transitioned', async () => {
 			entityManager.find.mockResolvedValue([crashableRow('1')]);
 
 			const crashed = await executionRepository.markAsCrashed(['1', '2']);
@@ -302,6 +316,8 @@ describe('ExecutionRepository', () => {
 					workflowId: 'workflow-1',
 					workflowName: 'Workflow 1',
 					mode: 'trigger',
+					startedAt: crashedStartedAt,
+					stoppedAt: expect.any(Date),
 				},
 			]);
 		});
@@ -315,9 +331,98 @@ describe('ExecutionRepository', () => {
 			const findOptions = entityManager.find.mock.calls[0][1];
 
 			expect(findOptions).toMatchObject({
+				select: {
+					workflowVersionId: true,
+					retryOf: true,
+					workflow: { settings: { customTelemetryTags: true } },
+				},
 				where: { id: In(['1']), status: 'crashed', stoppedAt: updateValues.stoppedAt },
 				withDeleted: true,
 			});
+		});
+
+		test('should read back and report the trace context of each execution', async () => {
+			const tracingContext = {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			};
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', { tracingContext }),
+				crashableRow('2', { tracingContext: null }),
+			]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			const findOptions = entityManager.find.mock.calls[0][1];
+
+			expect(findOptions).toMatchObject({ select: { tracingContext: { traceparent: true } } });
+			expect(crashed[0].tracingContext).toEqual(tracingContext);
+			expect(crashed[1].tracingContext).toBeUndefined();
+		});
+
+		test('should read back and report the version id, retry source and workflow tags', async () => {
+			const customTelemetryTags = [{ key: 'env', value: 'production' }];
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', {
+					workflowVersionId: 'version-1',
+					retryOf: '9',
+					workflow: mock<WorkflowEntity>({ settings: { customTelemetryTags } }),
+				}),
+				crashableRow('2', { workflowVersionId: null }),
+			]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(crashed[0]).toMatchObject({
+				workflowVersionId: 'version-1',
+				retryOf: '9',
+				workflowCustomTelemetryTags: customTelemetryTags,
+			});
+			expect(crashed[1].workflowVersionId).toBeUndefined();
+			expect(crashed[1].retryOf).toBeUndefined();
+		});
+
+		test('should report the owner project of each execution', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['workflow-1', ownerProject('project-1', [{ key: 'team', value: 'platform' }])]]),
+			);
+			entityManager.find.mockResolvedValue([crashableRow('1'), crashableRow('2')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(crashed[0].project).toEqual({
+				id: 'project-1',
+				customTelemetryTags: [{ key: 'team', value: 'platform' }],
+			});
+			expect(crashed[1].project).toBeUndefined();
+		});
+
+		test('should report without a project when the owner lookup fails', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockRejectedValue(
+				new Error('connection reset'),
+			);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1']);
+
+			expect(crashed[0].project).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to load owner projects for crashed executions',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		test('should look up the owner projects once for each batch, on deduplicated workflow ids', async () => {
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', { workflowId: 'workflow-1' }),
+				crashableRow('2', { workflowId: 'workflow-1' }),
+			]);
+
+			await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledTimes(1);
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
+				'workflow-1',
+			]);
 		});
 
 		test('should collapse duplicated ids before batching', async () => {
@@ -335,6 +440,7 @@ describe('ExecutionRepository', () => {
 			const crashed = await executionRepository.markAsCrashed(['1']);
 
 			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).not.toHaveBeenCalled();
 			expect(crashed).toEqual([]);
 		});
 	});
@@ -352,8 +458,26 @@ describe('ExecutionRepository', () => {
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
 			expect(crashed).toEqual([
-				{ id: '1', workflowId: 'workflow-1', workflowName: 'Workflow 1', mode: 'trigger' },
+				{
+					id: '1',
+					workflowId: 'workflow-1',
+					workflowName: 'Workflow 1',
+					mode: 'trigger',
+					startedAt: crashedStartedAt,
+					stoppedAt: expect.any(Date),
+				},
 			]);
+		});
+
+		test('should report the owner project of each execution it transitioned', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['workflow-1', ownerProject('project-1')]]),
+			);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(crashed[0].project).toEqual({ id: 'project-1', customTelemetryTags: [] });
 		});
 	});
 
