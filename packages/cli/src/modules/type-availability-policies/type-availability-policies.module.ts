@@ -20,6 +20,7 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		await import('./credential-type-policy-instance.controller.js');
 		await import('./credential-type-policy-project.controller.js');
 		await import('./available-types.controller.js');
+		await import('./available-credential-types.controller.js');
 
 		// Side-effecting import: `@PolicyCheck` registers the check on class definition.
 		await import('./node-type-policy.check.js');
