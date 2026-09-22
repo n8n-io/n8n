@@ -108,7 +108,7 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
@@ -1048,6 +1048,18 @@ async function onAddNodesAndConnections(
 async function onAddEmptyGroup(connectToLastInteractedNode = false) {
 	if (!checkIfEditingIsAllowed() || isAddingEmptyGroup.value) return;
 	isAddingEmptyGroup.value = true;
+	// Seed generic placement at the viewport center while retaining collision handling for later groups.
+	if (
+		workflowDocumentStore.value.allNodes.length === 0 &&
+		viewportDimensions.value.width > 0 &&
+		viewportDimensions.value.height > 0
+	) {
+		const { xMin, xMax, yMin, yMax } = viewportBoundaries.value;
+		lastClickPosition.value = [
+			(xMin + xMax - DEFAULT_NODE_SIZE[0]) / 2,
+			(yMin + yMax - DEFAULT_NODE_SIZE[1]) / 2,
+		];
+	}
 
 	const ownsUndoBulk = historyStore.currentBulkAction === null;
 	if (ownsUndoBulk) historyStore.startRecordingUndo();

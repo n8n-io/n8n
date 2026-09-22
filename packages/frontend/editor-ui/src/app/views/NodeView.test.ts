@@ -42,6 +42,7 @@ import {
 } from '@/app/models/history';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
@@ -298,7 +299,7 @@ describe('NodeView', () => {
 			expect(useHistoryStore().undoStack).toHaveLength(1);
 		});
 
-		it('places sequential empty groups at different positions', async () => {
+		it('centers the first empty group and collision-adjusts later groups', async () => {
 			routeMock.meta = { nodeView: true };
 			useWorkflowsListStore().addWorkflow(
 				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
@@ -317,6 +318,9 @@ describe('NodeView', () => {
 			await userEvent.click(addEmptyGroup);
 			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
 			const firstPosition = workflowDocumentStore.allNodes[0].position;
+			expect(firstPosition).toEqual(
+				snapPositionToGrid([500 - DEFAULT_NODE_SIZE[0] / 2, 500 - DEFAULT_NODE_SIZE[1] / 2]),
+			);
 
 			await userEvent.click(addEmptyGroup);
 			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(2));
