@@ -1,5 +1,8 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { invalidatePromotionConnection, usePromotionConnection } from './usePromotionConnection';
+import {
+	invalidateInstancePromotionConnection,
+	useInstancePromotionConnection,
+} from './useInstancePromotionConnection';
 import * as api from '../promotionsSettings.api';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -14,16 +17,16 @@ const connection = {
 	configs: { apply: { id: 'config-1' } },
 } as unknown as api.PromotionConnection;
 
-describe('usePromotionConnection', () => {
+describe('useInstancePromotionConnection', () => {
 	beforeEach(() => {
 		vi.mocked(api.fetchPromotionConnections).mockReset();
-		invalidatePromotionConnection();
+		invalidateInstancePromotionConnection();
 	});
 
 	it('should fetch the instance connection once for every caller', async () => {
 		vi.mocked(api.fetchPromotionConnections).mockResolvedValue([connection]);
-		const header = usePromotionConnection();
-		const modal = usePromotionConnection();
+		const header = useInstancePromotionConnection();
+		const modal = useInstancePromotionConnection();
 
 		await Promise.all([header.load(), modal.load()]);
 
@@ -41,7 +44,7 @@ describe('usePromotionConnection', () => {
 			hasApplyConfig,
 			hasPromoteConfig,
 			load,
-		} = usePromotionConnection();
+		} = useInstancePromotionConnection();
 
 		await load();
 
@@ -54,7 +57,7 @@ describe('usePromotionConnection', () => {
 		vi.mocked(api.fetchPromotionConnections)
 			.mockRejectedValueOnce(new Error('offline'))
 			.mockResolvedValueOnce([connection]);
-		const { connection: current, load } = usePromotionConnection();
+		const { connection: current, load } = useInstancePromotionConnection();
 
 		await load();
 		expect(current.value).toBeNull();
@@ -66,13 +69,13 @@ describe('usePromotionConnection', () => {
 
 	it('should fetch again only after the cache is invalidated', async () => {
 		vi.mocked(api.fetchPromotionConnections).mockResolvedValue([connection]);
-		const { load } = usePromotionConnection();
+		const { load } = useInstancePromotionConnection();
 
 		await load();
 		await load();
 		expect(api.fetchPromotionConnections).toHaveBeenCalledTimes(1);
 
-		invalidatePromotionConnection();
+		invalidateInstancePromotionConnection();
 		await load();
 		expect(api.fetchPromotionConnections).toHaveBeenCalledTimes(2);
 	});

@@ -12,7 +12,7 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
 import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
-import { usePromotionConnection } from '../composables/usePromotionConnection';
+import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 
 const i18n = useI18n();
@@ -38,7 +38,7 @@ const {
 	hasPromoteConfig,
 	hasApplyConfig,
 	load: loadConnection,
-} = usePromotionConnection();
+} = useInstancePromotionConnection();
 
 const canPreviewChanges = computed(
 	() =>
@@ -121,7 +121,7 @@ function onOpenPromotionModal() {
 	if (!currentProjectId.value) return;
 	uiStore.openModalWithData({
 		name: PROMOTION_SELECT_MODAL_KEY,
-		data: { projectId: currentProjectId.value },
+		data: { projectId: currentProjectId.value, direction: 'promote' },
 	});
 }
 

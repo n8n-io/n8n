@@ -187,7 +187,7 @@ const chat = computed<IMenuItem>(() => ({
 	route: { to: { name: CHAT_VIEW } },
 }));
 
-// A pull or an applied package can create and delete projects behind the sidebar.
+/** A pull or an applied package can create and delete projects behind the sidebar. */
 async function reloadMyProjects() {
 	await projectsStore.getMyProjects();
 }

@@ -22,7 +22,7 @@ interface Props {
 	modalName: string;
 	data: {
 		projectId: string;
-		direction?: PromotionDirection;
+		direction: PromotionDirection;
 		/** The instance connection and its Apply config. Only the `apply` direction needs it. */
 		apply?: { connectionId: string; configId: string; branchName: string };
 	};
@@ -39,7 +39,7 @@ const message = useMessage();
 const toast = useToast();
 const modalBus = createEventBus();
 
-const direction = props.data.direction ?? 'promote';
+const { direction } = props.data;
 const isIncoming = direction === 'apply';
 const isApplying = ref(false);
 

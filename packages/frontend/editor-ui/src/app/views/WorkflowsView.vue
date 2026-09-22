@@ -669,7 +669,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-// The project header leaves the page when the package removed this project.
+/** The project header leaves the page when the package removed this project. */
 async function onPromotionApplied() {
 	await initialize();
 }

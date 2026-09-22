@@ -102,7 +102,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -119,7 +119,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -132,7 +132,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -149,7 +149,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -167,7 +167,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -181,7 +181,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -213,7 +213,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -235,7 +235,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 
@@ -277,7 +277,7 @@ describe('PromotionSelectModal', () => {
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
+				data: { projectId: 'project-1', direction: 'promote' },
 			},
 		});
 

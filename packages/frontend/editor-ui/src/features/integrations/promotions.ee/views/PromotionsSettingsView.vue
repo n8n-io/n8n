@@ -19,7 +19,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
-import { invalidatePromotionConnection } from '../composables/usePromotionConnection';
+import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import {
 	fetchPromotionConnection,
 	fetchPromotionConnections,
@@ -121,7 +121,7 @@ function onProviderDeleted() {
 function onConnectionSaved(saved: PromotionConnection) {
 	connection.value = saved;
 	// The project header caches the instance connection per page load.
-	invalidatePromotionConnection();
+	invalidateInstancePromotionConnection();
 }
 
 async function focusProvider(id: string | undefined) {

@@ -16,7 +16,7 @@ import { createTestProject } from '@/features/collaboration/projects/__tests__/u
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import PromotionBanners from './PromotionBanners.vue';
-import { invalidatePromotionConnection } from '../composables/usePromotionConnection';
+import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { promotionEventBus } from '../promotions.eventBus';
 import * as settingsApi from '../promotionsSettings.api';
 
@@ -72,7 +72,7 @@ describe('PromotionBanners', () => {
 		// The store reads this from the route, which the mocked store cannot see.
 		projectsStore.currentProjectId = 'project-1';
 		// The connection is cached per page load; tests must not share it.
-		invalidatePromotionConnection();
+		invalidateInstancePromotionConnection();
 	});
 
 	afterEach(() => {
@@ -96,7 +96,7 @@ describe('PromotionBanners', () => {
 		await userEvent.click(await findByTestId('promotion-banner-link'));
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: 'promotionSelect',
-			data: { projectId: 'project-1' },
+			data: { projectId: 'project-1', direction: 'promote' },
 		});
 
 		// The store replaces the project object, so the change is reactive.

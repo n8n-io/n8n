@@ -7,12 +7,12 @@ import {
 
 let instanceConnection: Promise<PromotionConnectionSummary | null> | undefined;
 
-export function invalidatePromotionConnection() {
+export function invalidateInstancePromotionConnection() {
 	instanceConnection = undefined;
 }
 
 /** The instance connection and which directions it has, so callers only ask for those. */
-export function usePromotionConnection() {
+export function useInstancePromotionConnection() {
 	const rootStore = useRootStore();
 	const connection = ref<PromotionConnectionSummary | null>(null);
 
@@ -22,7 +22,7 @@ export function usePromotionConnection() {
 		})
 			.then((connections) => connections[0] ?? null)
 			.catch(() => {
-				invalidatePromotionConnection();
+				invalidateInstancePromotionConnection();
 				return null;
 			});
 		connection.value = await instanceConnection;
