@@ -7,6 +7,8 @@ import {
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { SystemTaskPlacement } from './system-task-placement';
+
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
 
@@ -29,21 +31,8 @@ export interface SystemTask {
 	/** What kind of effects a run has, which sets the defaults of the overrides below. */
 	readonly effects: SystemTaskEffects;
 
-	/**
-	 * Migration status.
-	 * - `false` runs on the leader-gated in-memory timer
-	 * - `true` runs on the durable scheduler when the instance flag is on.
-	 * @remarks Temporary, removed once every task is durable.
-	 */
-	readonly durable: boolean;
-
-	/**
-	 * Runs one occurrence as soon as this instance becomes the leader,
-	 * including at startup for an instance that is already the leader, on
-	 * top of the scheduled occurrences. In-memory timers only: ignored for a
-	 * durable run.
-	 */
-	readonly runOnTakeover?: boolean;
+	/** Where the occurrences run, and what coordinates them. */
+	readonly placement: SystemTaskPlacement;
 
 	/**
 	 * How long after a failed run an earlier retry occurrence runs, instead of

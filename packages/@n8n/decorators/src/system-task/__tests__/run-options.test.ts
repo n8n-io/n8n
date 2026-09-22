@@ -12,7 +12,7 @@ const schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
 const taskWith = (overrides: Partial<SystemTask> & { effects: SystemTaskEffects }): SystemTask => ({
 	name: 'test-task',
 	schedule,
-	durable: false,
+	placement: { scope: 'cluster', durable: false },
 	run: async () => {},
 	...overrides,
 });
