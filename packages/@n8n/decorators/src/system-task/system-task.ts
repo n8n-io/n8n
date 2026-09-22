@@ -77,9 +77,10 @@ export interface SystemTask {
 	/**
 	 * Overrides how many of the task's durable occurrences may run at the same
 	 * time. `null` lets them overlap. Defaults to
-	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}, which matches the in-memory
-	 * timer: a run that outlasts its own cadence holds the next occurrence back
-	 * instead of overlapping it. Durable runs only.
+	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}: one at a time, so a run that
+	 * outlasts its own cadence holds the next occurrence back instead of
+	 * overlapping it. The in-memory timer never overlaps a task with itself
+	 * either. Durable runs only.
 	 */
 	readonly concurrencyLimit?: number | null;
 
