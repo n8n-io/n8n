@@ -8,5 +8,5 @@ export {
 	type ExpiredLeaseRow,
 	type ReaperHooks,
 	type RetireMissedResult,
-	type RetiredOccurrence,
+	type RetiredTask,
 } from './reap';

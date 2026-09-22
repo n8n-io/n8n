@@ -75,7 +75,7 @@ export type {
 	ReaperOptions,
 	ReapResult,
 	RetireMissedResult,
-	RetiredOccurrence,
+	RetiredTask,
 } from './reaper';
 export {
 	reconcile,

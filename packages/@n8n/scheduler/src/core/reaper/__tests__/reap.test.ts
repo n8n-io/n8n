@@ -6,12 +6,12 @@ import {
 	type ExpiredLeaseRow,
 	type ReaperTaskStore,
 	type RetireMissedResult,
-	type RetiredOccurrence,
+	type RetiredTask,
 } from '../reap';
 
 const retired = (
 	count: number,
-	heldByConcurrencyLimit: RetiredOccurrence[] = [],
+	heldByConcurrencyLimit: RetiredTask[] = [],
 ): RetireMissedResult => ({ retired: count, heldByConcurrencyLimit });
 
 const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({

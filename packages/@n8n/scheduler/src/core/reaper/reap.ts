@@ -30,8 +30,8 @@ export interface ExpiredLeaseRow extends ClaimedTask {
 	dispatchedAt: Date | null;
 }
 
-/** Identity of one occurrence a sweep retired as `missed`. */
-export interface RetiredOccurrence {
+/** Identity of one task a sweep retired as `missed`. */
+export interface RetiredTask {
 	id: string;
 	jobId: number;
 	taskType: string;
@@ -39,13 +39,13 @@ export interface RetiredOccurrence {
 
 /** Outcome of one sweep's retire step. */
 export interface RetireMissedResult {
-	/** How many `pending` occurrences were retired as `missed`. */
+	/** How many `pending` tasks were retired as `missed`. */
 	retired: number;
 	/**
-	 * The retired occurrences whose job was already running as many occurrences as
-	 * its concurrency limit allows, so the limit is what kept them from a claim.
+	 * The retired tasks whose job was already running as many tasks as its
+	 * concurrency limit allows, so the limit is what kept them from a claim.
 	 */
-	heldByConcurrencyLimit: RetiredOccurrence[];
+	heldByConcurrencyLimit: RetiredTask[];
 }
 
 /**
@@ -86,10 +86,10 @@ export interface ReaperHooks {
 	/** Notified when retiring stale `pending` rows fails; the rest of the sweep still runs. */
 	onRetireError?: (error: unknown) => void;
 	/**
-	 * Notified, once per sweep, with the occurrences a job's concurrency limit held
-	 * back until their deadline passed. Never called with an empty list.
+	 * Notified, once per sweep, with the tasks a job's concurrency limit held back
+	 * until their deadline passed. Never called with an empty list.
 	 */
-	onHeldByConcurrencyLimit?: (occurrences: RetiredOccurrence[]) => void;
+	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
 	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
 	/**

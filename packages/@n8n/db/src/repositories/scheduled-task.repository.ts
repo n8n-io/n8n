@@ -83,8 +83,8 @@ export interface NewOccurrence {
 	missedAfter?: Date | null;
 }
 
-/** Identity of one occurrence {@link ScheduledTaskRepository.retireMissedPending} retired. */
-export interface RetiredOccurrence {
+/** Identity of one task {@link ScheduledTaskRepository.retireMissedPending} retired. */
+export interface RetiredTask {
 	id: string;
 	jobId: number;
 	taskType: string;
@@ -92,13 +92,13 @@ export interface RetiredOccurrence {
 
 /** Outcome of one retire pass (see {@link ScheduledTaskRepository.retireMissedPending}). */
 export interface RetireMissedResult {
-	/** How many `pending` occurrences were retired as `missed`. */
+	/** How many `pending` tasks were retired as `missed`. */
 	retired: number;
 	/**
-	 * The retired occurrences whose job was already running as many occurrences as
-	 * its `concurrencyLimit` allows, so the limit is what kept them from a claim.
+	 * The retired tasks whose job was already running as many tasks as its
+	 * `concurrencyLimit` allows, so the limit is what kept them from a claim.
 	 */
-	heldByConcurrencyLimit: RetiredOccurrence[];
+	heldByConcurrencyLimit: RetiredTask[];
 }
 
 /** Identity of a row {@link ScheduledTaskRepository.insertIgnoringDuplicates} just created. */
@@ -899,7 +899,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		if (!Number.isSafeInteger(limit)) {
 			throw new UnexpectedError(`retireMissedPending needs an integer limit, got: ${limit}`);
 		}
-		if (limit <= 0) return { retired: 0, heldByConcurrencyLimit: [] };
+		if (limit <= 0) {
+			return { retired: 0, heldByConcurrencyLimit: [] };
+		}
 		return this.isPostgres
 			? await this.retireMissedPendingWithPostgres(limit)
 			: await this.retireMissedPendingWithSqlite(limit);

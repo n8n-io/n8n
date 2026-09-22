@@ -24,7 +24,7 @@ import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
-import type { ReaperOptions, ReaperTaskStore, RetiredOccurrence } from './reaper';
+import type { ReaperOptions, ReaperTaskStore, RetiredTask } from './reaper';
 import { DEFAULT_RECONCILIATION_OPTIONS, reconcile } from './reconciliation';
 import type {
 	ReconciliationCursor,
@@ -124,11 +124,11 @@ export interface SchedulerDeps {
 	onEvent?: (event: SchedulerEvent) => void;
 
 	/**
-	 * Notified when a reaper sweep retires occurrences that their job's concurrency
-	 * limit held back until their deadline passed. The host decides what to report;
+	 * Notified when a reaper sweep retires tasks that their job's concurrency limit
+	 * held back until their deadline passed. The host decides what to report;
 	 * a throwing listener is swallowed.
 	 */
-	onHeldByConcurrencyLimit?: (occurrences: RetiredOccurrence[]) => void;
+	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 
 	/** Host tracer; defaults to a no-op. */
 	tracer?: Tracer;
@@ -472,11 +472,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							error: described(error),
 						});
 					},
-					onHeldByConcurrencyLimit: (occurrences) => {
-						emit('debug', 'Scheduler retired occurrences their job had no free slot for', {
-							count: occurrences.length,
+					onHeldByConcurrencyLimit: (tasks) => {
+						emit('debug', 'Scheduler retired tasks their job had no free slot for', {
+							count: tasks.length,
 						});
-						deps.onHeldByConcurrencyLimit?.(occurrences);
+						deps.onHeldByConcurrencyLimit?.(tasks);
 					},
 					onDeadLetter: (task) => {
 						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
