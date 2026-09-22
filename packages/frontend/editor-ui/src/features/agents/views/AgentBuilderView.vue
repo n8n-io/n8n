@@ -66,6 +66,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
+import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
 import { useAgentConfigAutosave, type AutosaveResult } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
@@ -361,7 +362,7 @@ watch(
 async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
-	const session = sessionsStore.threads.find(({ id }) => id === threadId);
+	const session = currentSession.value;
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
 
@@ -493,6 +494,8 @@ const {
 	activeChatSessionId,
 	continueSessionId,
 	effectiveSessionId,
+	currentSession,
+	previewThreads,
 	currentSessionHasMessages,
 	currentSessionTitle,
 	currentSessionIsEphemeral,
@@ -508,6 +511,12 @@ const {
 	projectId,
 	agentId,
 });
+const previewSessionsLoading = computed(
+	() => sessionsStore.loading || sessionsStore.previewLoading,
+);
+const previewSessionReady = computed(
+	() => currentSessionIsEphemeral.value || currentSession.value?.canContinueInPreview === true,
+);
 
 // Config
 const { config, configHash, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
@@ -776,7 +785,7 @@ async function refreshAgentAfterIntegrationChange(
 }
 
 function sessionIdForPreview(): string | undefined {
-	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
+	return effectiveSessionId.value ?? previewThreads.value[0]?.id;
 }
 
 async function openPreview(preferredSessionId?: string) {
@@ -909,20 +918,19 @@ async function onReverted(updated: AgentResource) {
 
 /**
  * Pick the session the preview chat should bind to when no explicit one has been
- * chosen yet. Prefer the most recent thread — users land back where they left
- * off — and only mint a fresh ephemeral session when there is no history.
+ * chosen yet. Resume the latest private chat after the Preview list loads.
  */
 function bindPreviewSession() {
-	if (effectiveSessionId.value) return;
-	const latest = sessionsStore.threads?.[0];
+	if (effectiveSessionId.value || previewSessionsLoading.value) return;
+	selectLatestPreviewSession();
+}
+
+function selectLatestPreviewSession() {
+	const latest = previewThreads.value[0];
 	if (latest) {
 		setSessionInUrl(latest.id);
 		return;
 	}
-	// Still loading — defer the decision; the watcher below will rebind once
-	// threads arrive, falling back to a fresh ephemeral session if the list
-	// comes back empty.
-	if (sessionsStore.loading) return;
 	onNewChat();
 }
 
@@ -2119,24 +2127,18 @@ onBeforeUnmount(() => {
 // the most recent thread as soon as it arrives. Also fires when loading
 // finishes with no threads so we can mint a fresh ephemeral session instead
 // of leaving the chat panel empty.
-watch(
-	() => sessionsStore.loading,
-	(isLoading, wasLoading) => {
-		if (!wasLoading || isLoading || !initialized.value) return;
-		if (!isPreviewActive.value) return;
-		if (isArtifactMode.value && props.artifactPreviewSessionId) {
-			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
-		}
-		if (effectiveSessionId.value) return;
-		bindPreviewSession();
-	},
-);
+watch(previewSessionsLoading, (isLoading, wasLoading) => {
+	if (!wasLoading || isLoading || !initialized.value) return;
+	if (!isPreviewActive.value) return;
+	if (effectiveSessionId.value) return;
+	bindPreviewSession();
+});
 
 watch(
 	[isPreviewActive, initialized],
 	([open, isInitialized]) => {
 		if (open) persistedPreviewOpen.value = true;
-		if (open && isInitialized && !sessionsStore.loading) bindPreviewSession();
+		if (open && isInitialized && !previewSessionsLoading.value) bindPreviewSession();
 	},
 	{ immediate: true },
 );
@@ -2150,49 +2152,66 @@ function isNotFoundError(error: unknown): boolean {
 	);
 }
 
-let latestArtifactPreviewValidationId = 0;
-async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
-	const requestId = ++latestArtifactPreviewValidationId;
-	if (sessionsStore.loading || effectiveSessionId.value !== sessionId) return;
-	if (sessionsStore.threads.some((thread) => thread.id === sessionId)) return;
-
+const pendingPreviewValidations = new Set<string>();
+async function ensurePreviewSessionAvailable(sessionId: string) {
+	if (previewSessionsLoading.value || currentSessionIsEphemeral.value) return;
+	if (currentSession.value) {
+		if (!currentSession.value.canContinueInPreview) acceptPreviewSession(currentSession.value);
+		return;
+	}
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
+	const validationKey = JSON.stringify([targetProjectId, targetAgentId, sessionId]);
+	if (pendingPreviewValidations.has(validationKey)) return;
+	pendingPreviewValidations.add(validationKey);
+	const isCurrent = () =>
+		isPreviewActive.value &&
+		!isStaleAgentTarget(targetProjectId, targetAgentId) &&
+		effectiveSessionId.value === sessionId;
 	try {
 		const { thread } = await sessionsStore.getThreadDetail(
 			targetProjectId,
 			targetAgentId,
 			sessionId,
 		);
-		if (
-			requestId !== latestArtifactPreviewValidationId ||
-			isStaleAgentTarget(targetProjectId, targetAgentId) ||
-			effectiveSessionId.value !== sessionId
-		) {
-			return;
-		}
-		sessionsStore.upsertThread(thread);
+		if (isCurrent()) acceptPreviewSession(thread);
 	} catch (error) {
-		if (
-			requestId !== latestArtifactPreviewValidationId ||
-			isStaleAgentTarget(targetProjectId, targetAgentId) ||
-			effectiveSessionId.value !== sessionId ||
-			!isNotFoundError(error)
-		) {
-			return;
+		if (!isCurrent()) return;
+		if (isNotFoundError(error)) {
+			selectLatestPreviewSession();
+		} else {
+			showError(error, locale.baseText('agentSessions.showError.load'));
 		}
-
-		activeChatSessionId.value = null;
-		bindPreviewSession();
+	} finally {
+		pendingPreviewValidations.delete(validationKey);
 	}
 }
+
+function acceptPreviewSession(thread: AgentExecutionThread) {
+	if (thread.canContinueInPreview) {
+		sessionsStore.upsertThread(thread);
+		return;
+	}
+	void router.replace({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value, threadId: thread.id },
+	});
+}
+
+watch(
+	[effectiveSessionId, initialized, isPreviewActive, previewSessionsLoading],
+	([sessionId, isInitialized, isOpen, isLoading]) => {
+		if (!sessionId || !isInitialized || !isOpen || isLoading) return;
+		void ensurePreviewSessionAvailable(sessionId);
+	},
+	{ immediate: true },
+);
 
 watch(
 	[() => props.artifactPreviewSessionId, initialized],
 	([sessionId, isInitialized]) => {
 		if (!isArtifactMode.value || !isInitialized || !sessionId) return;
 		openArtifactPreview(sessionId);
-		void ensureArtifactPreviewSessionAvailable(sessionId);
 	},
 	{ immediate: true },
 );
@@ -2270,36 +2289,13 @@ async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 }
 
 function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
-	if (sessionId !== effectiveSessionId.value) return;
-
-	// Only kick away from a URL-supplied session when the URL points at a
-	// missing/stale thread. A real thread can legitimately have zero persisted
-	// chat messages if its execution failed before history was saved.
-	const requestedSessionId = continueSessionId.value;
-	const knownThread = requestedSessionId
-		? sessionsStore.threads.some((thread) => thread.id === requestedSessionId)
-		: false;
-
-	if (count === 0 && requestedSessionId && !knownThread) {
-		// A session switch re-keys the chat immediately, before its route replace
-		// necessarily lands. Ignore a load event until the route catches up.
-		if (requestedSessionId !== sessionId) return;
-		// Same-tab "New chat" already owns this ephemeral id via
-		// `activeChatSessionId` — drop the shareable URL param only.
-		if (currentSessionIsEphemeral.value) {
-			exitContinueMode();
-			return;
-		}
-		// Stale deep-link (or a cross-page navigation that left an unknown id
-		// in the URL): bind immediately so we never wait on a raced
-		// `router.replace` + `nextTick` that can leave the chat blank.
-		if (!isPreviewActive.value) return;
-		const latest = sessionsStore.threads?.[0];
-		if (latest) {
-			setSessionInUrl(latest.id);
-		} else {
-			onNewChat();
-		}
+	if (
+		count === 0 &&
+		currentSessionIsEphemeral.value &&
+		sessionId === effectiveSessionId.value &&
+		sessionId === continueSessionId.value
+	) {
+		exitContinueMode();
 	}
 }
 
@@ -2428,7 +2424,7 @@ function onSwitchAgent(nextAgentId: string) {
 				<AgentPreviewChatPage
 					v-if="isStandalonePreview"
 					layout="page"
-					:initialized="initialized"
+					:initialized="initialized && previewSessionReady"
 					:project-id="projectId"
 					:agent-id="agentId"
 					:agent="agent"
@@ -2523,7 +2519,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:session-title="currentSessionTitle"
 						:session-options="sessionMenu"
 						:has-session="currentSessionHasMessages"
-						:initialized="initialized"
+						:initialized="initialized && previewSessionReady"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:agent="agent"
