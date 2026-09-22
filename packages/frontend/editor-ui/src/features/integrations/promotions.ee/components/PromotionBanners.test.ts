@@ -310,20 +310,31 @@ describe('PromotionBanners', () => {
 		usersStore.currentUser = mock<IUser>({
 			globalScopes: ['gitConnection:list', 'gitConnection:push'],
 		});
-		const { findByTestId } = renderComponent();
+		const { findByTestId, queryByTestId } = renderComponent();
 
 		const banner = await findByTestId('promotion-banner');
 		expect(banner).toHaveTextContent('1 change');
 
-		promoteChanges.mockImplementation(twoChanges);
+		// Hold the second response open, so the in-flight window can be asserted.
+		let releaseRefresh: (() => void) | undefined;
+		promoteChanges.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releaseRefresh = () => resolve(twoChanges());
+				}) as unknown as ReturnType<typeof twoChanges>,
+		);
 		await userEvent.click(await findByTestId('promotion-banner-refresh'));
 
-		await waitFor(() => {
-			expect(promoteChanges).toHaveBeenCalledTimes(2);
-			expect(banner).toHaveTextContent('2 changes');
-		});
-		// The banner never disappears while the manual refresh is in flight.
-		expect(banner).toBeInTheDocument();
+		await waitFor(() => expect(releaseRefresh).toBeDefined());
+		// Mid-refresh the banner keeps the last count and marks the button busy.
+		expect(queryByTestId('promotion-banner')).toBeInTheDocument();
+		expect(banner).toHaveTextContent('1 change');
+		expect(await findByTestId('promotion-banner-refresh')).toBeDisabled();
+
+		releaseRefresh?.();
+
+		await waitFor(() => expect(banner).toHaveTextContent('2 changes'));
+		expect(promoteChanges).toHaveBeenCalledTimes(2);
 	});
 
 	it('refreshes the incoming count on demand and clears a previous failure', async () => {

@@ -187,8 +187,8 @@ describe('PromotionSelectModal', () => {
 
 		await findByText('Email summary');
 		const lastRefreshed = await findByTestId('promotion-last-refreshed');
-		expect(lastRefreshed).toHaveTextContent('Last refreshed');
-		const initialText = lastRefreshed.textContent;
+		// The label and the relative time must read as one sentence, with a space between them.
+		expect(lastRefreshed.textContent).toBe('Last refreshed just now');
 
 		server.get(
 			'/rest/promotions/project-1/changes/promote',
@@ -196,8 +196,10 @@ describe('PromotionSelectModal', () => {
 		);
 		await userEvent.click(await findByTestId('promotion-refresh'));
 
+		// The timestamp stays on screen next to the error. `usePromotionChanges` owns the value
+		// itself: relative time renders both the old and the new stamp as "just now" here.
 		await findByTestId('promotion-error');
-		expect(await findByTestId('promotion-last-refreshed')).toHaveTextContent(initialText ?? '');
+		expect(await findByTestId('promotion-last-refreshed')).toHaveTextContent('Last refreshed');
 	});
 
 	it('keeps only selections that remain after refreshing the change list', async () => {

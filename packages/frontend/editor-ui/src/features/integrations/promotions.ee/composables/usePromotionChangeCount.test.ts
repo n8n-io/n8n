@@ -86,6 +86,20 @@ describe('usePromotionChangeCount', () => {
 		expect(isLoading.value).toBe(false);
 	});
 
+	it('should stop loading when the banner turns off while a request is pending', async () => {
+		const enabled = ref(true);
+		const projectId = ref<string | undefined>('project-a');
+		const { isLoading } = usePromotionChangeCount(projectId, 'apply', enabled);
+		await nextTick();
+		expect(isLoading.value).toBe(true);
+
+		// The pending request is invalidated, so nothing is left to clear the loading state.
+		enabled.value = false;
+		await nextTick();
+
+		expect(isLoading.value).toBe(false);
+	});
+
 	it('should clear the count when switching to a project with no request in flight', async () => {
 		const projectId = ref<string | undefined>('project-a');
 		const { count } = usePromotionChangeCount(projectId, 'apply', ref(true));

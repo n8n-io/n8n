@@ -30,6 +30,8 @@ export function usePromotionChangeCount(
 		if (!enabled.value || !requestedProjectId) {
 			count.value = 0;
 			failed.value = false;
+			// `next()` already invalidated any pending request, so none may finish and clear this.
+			isLoading.value = false;
 			return;
 		}
 		if (!isSameProject) {
