@@ -1,5 +1,3 @@
-// The agent route names moved to `@n8n/frontend-constants/agents` so a module outside
-// the shell can link to an agent route. Re-exported here for existing importers.
 export {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,

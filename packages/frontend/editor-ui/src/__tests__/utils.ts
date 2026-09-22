@@ -8,7 +8,6 @@ import { defaultSettings, getTooltip } from '@n8n/frontend-test-utils';
 // `@n8n/frontend-test-utils`, so a module package can reach them. They are re-exported rather
 // than codemodded away: `mockedStore` alone has 200+ importers here, and this file stays for the
 // helpers below it that are bound to the shell (`ISettingsState`) or to editor-ui's own DOM.
-// `getTooltip` is also imported above, because `withinTooltip` below calls it.
 export {
 	getTooltip,
 	mockedStore,

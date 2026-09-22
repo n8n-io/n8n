@@ -35,8 +35,6 @@ export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
 
-// Shared with the MCP module, which opens this modal through the `modalOpeners`
-// capability; re-exported here so the shell's own importers keep resolving.
 export { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@n8n/frontend-constants/workflows';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
