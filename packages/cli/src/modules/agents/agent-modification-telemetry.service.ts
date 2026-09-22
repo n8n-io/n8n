@@ -6,13 +6,9 @@ import isEqual from 'lodash/isEqual';
 
 import { Telemetry } from '@/telemetry';
 
-import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
+import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
-import {
-	capabilityCountTelemetryProperties,
-	countAgentCapabilities,
-	isUnconfiguredAgent,
-} from './utils/agent-capabilities';
+import { isUnconfiguredAgent } from './utils/agent-capabilities';
 
 export { isUnconfiguredAgent };
 
@@ -131,23 +127,12 @@ export function buildAgentMutationEvent(
 }
 
 function modificationProperties({ agent, projectId, user, changedParts }: AgentModificationEvent) {
-	const counts = countAgentCapabilities(agent.schema, agent.integrations);
-	// Only model and tool_types: this helper's own tool_count folds in MCP
-	// servers, provider tools, web search and sub-agents, which would
-	// disagree with the per-kind counts above.
-	const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
-		agent.schema,
-		agent.integrations,
-	);
-
 	return {
 		agent_id: agent.id,
 		project_id: projectId,
 		user_id: user.id,
 		changed_parts: changedParts,
-		...capabilityCountTelemetryProperties(counts),
-		model,
-		tool_types,
+		...buildAgentCapabilityTelemetryProperties(agent.schema, agent.integrations),
 		has_published_version: Boolean(agent.activeVersionId),
 	} as const;
 }

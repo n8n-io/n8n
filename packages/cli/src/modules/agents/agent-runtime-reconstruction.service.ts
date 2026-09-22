@@ -88,6 +88,7 @@ import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
+import { getAgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -335,13 +336,7 @@ export class AgentRuntimeReconstructionService {
 			unavailableTools = filtered.unavailable;
 		}
 
-		const toolsByName: Record<string, string> = {};
-		const toolDescriptors: Record<string, ToolDescriptor> = {};
-		for (const [_toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
-			toolsByName[toolEntry.descriptor.name] = toolEntry.code;
-			toolDescriptors[_toolId] = toolEntry.descriptor;
-		}
-
+		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity);
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(
 			config,
 			agentEntity.projectId,
@@ -353,7 +348,7 @@ export class AgentRuntimeReconstructionService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			toolDescriptors,
-			toolCodeByName: toolsByName,
+			toolCodeByName,
 			skills: agentEntity.skills ?? {},
 			runtimeProfile: 'top-level',
 			supportsHitl,

@@ -21,6 +21,7 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
@@ -781,10 +782,7 @@ export class AgentExecutionService {
 				run_type: params.telemetry.runType,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
 				configuration: params.telemetry.configuration,
-				latency_ms: record.duration,
-				cost: record.totalCost ?? 0,
-				token_count: record.usage?.totalTokens ?? 0,
-				tool_call_count: record.timeline.filter((event) => event.type === 'tool-call').length,
+				...buildAgentTurnMetrics(record),
 			});
 		} catch (error) {
 			this.logger.warn('Failed to track agent execution telemetry', {

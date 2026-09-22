@@ -7,21 +7,19 @@ import { Service } from '@n8n/di';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
+import { agentChannelKey, agentChannelRef, type AgentChannelRef } from '../utils/agent-channel';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService } from './chat-integration.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
-import {
-	AgentChannelStatusRepository,
-	type AgentChannelRef,
-} from '../repositories/agent-channel-status.repository';
+import { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 
 /** Why a pass is running. Only the periodic one waits out a channel's backoff. */
 export type ChannelReconcileReason = 'startup' | 'leader-takeover' | 'interval';
 
-/** Channels a pass should see running, keyed by {@link channelKey}. */
+/** Channels a pass should see running, keyed by {@link agentChannelKey}. */
 type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationConfig }>;
 
 /**
@@ -30,10 +28,6 @@ type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationC
  * nearly done finish, not to see a stalled one through.
  */
 const SHUTDOWN_SETTLE_MS = 5 * Time.seconds.toMilliseconds;
-
-function channelKey(ref: AgentChannelRef): string {
-	return `${ref.agentId}:${ref.integrationType}:${ref.credentialId}`;
-}
 
 /**
  * Keeps the channels this main runs in line with the channels the published
@@ -236,7 +230,7 @@ export class AgentChannelReconciler {
 		ownStatuses: AgentChannelStatus[],
 		reason: ChannelReconcileReason,
 	): Promise<void> {
-		const ownByChannel = new Map(ownStatuses.map((status) => [channelKey(status), status]));
+		const ownByChannel = new Map(ownStatuses.map((status) => [agentChannelKey(status), status]));
 		const now = new Date();
 
 		for (const [key, { agent, integration }] of wantedHere) {
@@ -281,7 +275,7 @@ export class AgentChannelReconciler {
 	private async releaseGhosts(wantedHere: WantedChannels): Promise<void> {
 		for (const ref of this.chatIntegrationService.listLiveChannels()) {
 			if (this.isShuttingDown) return;
-			if (wantedHere.has(channelKey(ref))) continue;
+			if (wantedHere.has(agentChannelKey(ref))) continue;
 
 			try {
 				await this.chatIntegrationService.releaseChannelLocally(ref.agentId, {
@@ -315,7 +309,7 @@ export class AgentChannelReconciler {
 	): Promise<void> {
 		for (const status of ownStatuses) {
 			if (this.isShuttingDown) return;
-			if (wantedHere.has(channelKey(status))) continue;
+			if (wantedHere.has(agentChannelKey(status))) continue;
 
 			await this.statusReporter.withdraw({
 				agentId: status.agentId,
@@ -351,14 +345,6 @@ export class AgentChannelReconciler {
 		}
 	}
 
-	private refOf(agent: Agent, integration: AgentIntegrationConfig): AgentChannelRef {
-		return {
-			agentId: agent.id,
-			integrationType: integration.type,
-			credentialId: integration.credentialId,
-		};
-	}
-
 	private collectWantedChannels(agents: Agent[]): WantedChannels {
 		const wanted: WantedChannels = new Map();
 		for (const agent of agents) {
@@ -366,7 +352,7 @@ export class AgentChannelReconciler {
 				(integration) => !isDraftIntegration(integration) && this.runsHere(integration),
 			);
 			for (const integration of integrations) {
-				wanted.set(channelKey(this.refOf(agent, integration)), { agent, integration });
+				wanted.set(agentChannelKey(agentChannelRef(agent.id, integration)), { agent, integration });
 			}
 		}
 		return wanted;
@@ -379,7 +365,7 @@ export class AgentChannelReconciler {
 		reason: ChannelReconcileReason,
 		now: Date,
 	): Promise<void> {
-		const ref = this.refOf(agent, integration);
+		const ref = agentChannelRef(agent.id, integration);
 		// A leader stepdown can invalidate the set selected at the start of the pass.
 		if (!this.runsHere(integration)) {
 			await this.statusReporter.withdraw(ref);

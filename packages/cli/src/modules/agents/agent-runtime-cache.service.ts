@@ -1,6 +1,5 @@
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -8,10 +7,8 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -19,11 +16,13 @@ import {
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import { AgentChangePublisher } from './agent-change-publisher.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { UserToolAccessSnapshot } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import type { ToolRegistry } from './tool-registry';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
@@ -120,8 +119,7 @@ export class AgentRuntimeCacheService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly publisher: Publisher,
-		private readonly globalConfig: GlobalConfig,
+		private readonly changePublisher: AgentChangePublisher,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
@@ -174,21 +172,7 @@ export class AgentRuntimeCacheService {
 		}
 
 		if (options.skipBroadcast) return;
-		if (!this.globalConfig.multiMainSetup.enabled) return;
-
-		void this.publisher
-			.publishCommand({
-				command: 'agent-config-changed',
-				payload: { agentId },
-			})
-			.catch((error) => {
-				this.logger.warn(
-					`[AgentRuntimeCacheService] Failed to publish agent-config-changed for ${agentId}`,
-					{
-						error: error instanceof Error ? error.message : String(error),
-					},
-				);
-			});
+		void this.changePublisher.publish({ command: 'agent-config-changed', payload: { agentId } });
 	}
 
 	/**
@@ -329,8 +313,12 @@ export class AgentRuntimeCacheService {
 			previewChat,
 		} = params;
 
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+		const agentEntity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			`Agent ${agentId} not found`,
+		);
 
 		const agentData: Agent = usePublishedVersion
 			? getPublishedAgentSnapshot(agentEntity)

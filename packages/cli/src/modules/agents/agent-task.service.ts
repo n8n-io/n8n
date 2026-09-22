@@ -13,7 +13,6 @@ import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
 	AgentModificationTelemetryService,
@@ -22,6 +21,7 @@ import {
 	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
@@ -30,6 +30,7 @@ import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	type AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
@@ -73,7 +74,7 @@ export class AgentTaskService {
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
-		private readonly publisher: Publisher,
+		private readonly changePublisher: AgentChangePublisher,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
@@ -138,8 +139,7 @@ export class AgentTaskService {
 			this.assertValidTimezone(dto.timezone);
 		}
 
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 
 		const previous = captureAgentMutation(agent);
@@ -205,8 +205,7 @@ export class AgentTaskService {
 		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
 		if (!changed) return this.toDto(task);
 
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previous = captureAgentMutation(agent);
 
@@ -236,8 +235,7 @@ export class AgentTaskService {
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previous = captureAgentMutation(agent);
 
@@ -326,15 +324,7 @@ export class AgentTaskService {
 
 	/** Broadcast a task reconcile to peer mains (no-op outside multi-main). */
 	private broadcastTasksChanged(agentId: string): void {
-		if (!this.globalConfig.multiMainSetup.enabled) return;
-		void this.publisher
-			.publishCommand({ command: 'agent-tasks-changed', payload: { agentId } })
-			.catch((error) =>
-				this.logger.warn('[AgentTaskService] Failed to publish agent-tasks-changed', {
-					agentId,
-					error: error instanceof Error ? error.message : String(error),
-				}),
-			);
+		void this.changePublisher.publish({ command: 'agent-tasks-changed', payload: { agentId } });
 	}
 
 	/** Stop all cron jobs belonging to an agent — called on unpublish/agent delete. */

@@ -190,7 +190,6 @@ describe('Slack setup services', () => {
 			methods,
 			userRepository,
 			cacheService,
-			cipher,
 			projectService,
 		);
 		const managedService = new SlackManagedSetupService(

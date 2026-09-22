@@ -23,7 +23,7 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
-import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
+import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
@@ -42,10 +42,7 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import {
-	capabilityCountTelemetryProperties,
-	countAgentCapabilities,
-} from './utils/agent-capabilities';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 export type AgentPublishTrigger = 'explicit' | 'republish';
@@ -123,10 +120,7 @@ export class AgentPublishService {
 		versionId?: string,
 		pushRef?: string,
 	): Promise<PublishAgentResult> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const expectedRevision = agent.revision;
 
@@ -244,10 +238,7 @@ export class AgentPublishService {
 		by: AgentActor,
 		pushRef?: string,
 	): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		// Same optimistic revision fence as publish: a concurrent edit that bumped
 		// `revision` after this load makes the unpublish lose the fence and surface
@@ -296,15 +287,6 @@ export class AgentPublishService {
 		// The snapshot that actually went live, which for a republish is the
 		// version's schema rather than the draft.
 		const published = targetHistory ? targetHistory.schema : agent.schema;
-		const counts = countAgentCapabilities(published, agent.integrations);
-		// Only model and tool_types: this helper's own tool_count folds in MCP
-		// servers, provider tools, web search and sub-agents, which would
-		// disagree with the per-kind counts above.
-		const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
-			published,
-			agent.integrations,
-		);
-
 		const properties = {
 			agent_id: agent.id,
 			project_id: projectId,
@@ -315,9 +297,7 @@ export class AgentPublishService {
 			// Set by the transaction above to either targetHistory.versionId or
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
-			...capabilityCountTelemetryProperties(counts),
-			model,
-			tool_types,
+			...buildAgentCapabilityTelemetryProperties(published, agent.integrations),
 		} as const;
 
 		switch (emitter.by) {
@@ -372,10 +352,7 @@ export class AgentPublishService {
 		modifiedBy: AgentActor,
 		pushRef?: string,
 	): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const activeVersion = agent.activeVersion;
 		if (!activeVersion) {
@@ -422,10 +399,7 @@ export class AgentPublishService {
 		modifiedBy: AgentActor,
 		pushRef?: string,
 	): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previousSchema = agent.schema;
 		const previousTools = agent.tools ?? {};
@@ -522,10 +496,7 @@ export class AgentPublishService {
 		projectId: string,
 		versionId: string,
 	): Promise<{ agent: Agent; version: AgentHistory; tasks: AgentTaskSnapshot[] }> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
 		if (!version) {
@@ -542,10 +513,7 @@ export class AgentPublishService {
 		take: number,
 		skip: number,
 	): Promise<AgentVersionListItemDto[]> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
 

@@ -12,7 +12,6 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -145,23 +144,10 @@ function stringsFromScope(value: unknown): Set<string> {
 	return new Set(value.split(/[\s,]+/).filter(Boolean));
 }
 
-function hasSessionShape(value: unknown): value is SlackAppSetupSession {
-	const keys: Array<keyof SlackAppSetupSession> = [
-		'projectId',
-		'agentId',
-		'userId',
-		'appId',
-		'clientId',
-		'clientSecret',
-		'signingSecret',
-		'redirectUrl',
-	];
-	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
-}
-
-function hasManagedSessionShape(value: unknown): value is ManagedSlackAppSession {
+function hasManagedSessionShape(
+	value: SlackAppSetupSession | undefined,
+): value is ManagedSlackAppSession {
 	return (
-		hasSessionShape(value) &&
 		isRecord(value) &&
 		typeof value.managerCredentialId === 'string' &&
 		typeof value.teamId === 'string' &&
@@ -621,8 +607,8 @@ export class SlackManagedSetupService {
 		const key = managedSlackAppCacheKey({ ...options, userId: options.user.id });
 		const cached = await this.cacheService.get<unknown>(key);
 		if (typeof cached === 'string') {
-			const session = await this.decryptManagedAppSession(cached);
-			if (session) {
+			const session = await this.methods.decodeSession(cached);
+			if (hasManagedSessionShape(session)) {
 				return {
 					session: { ...session, teamName: session.teamName ?? workspaceName },
 					created: false,
@@ -633,19 +619,6 @@ export class SlackManagedSetupService {
 		}
 
 		return await this.createManagedAppSession(options, agent, manager, workspaceName, key);
-	}
-
-	private async decryptManagedAppSession(
-		value: string,
-	): Promise<ManagedSlackAppSession | undefined> {
-		try {
-			const decrypted = await this.cipher.decryptV2(value);
-			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
-			if (hasManagedSessionShape(session)) return session;
-		} catch {
-			// Ignore stale or undecryptable managed setup state.
-		}
-		return undefined;
 	}
 
 	private async callManagerSlackApi<T extends { [key: string]: unknown }>(
