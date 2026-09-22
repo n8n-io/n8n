@@ -421,9 +421,16 @@ const storyTriggerStyle = `
 		background-color var(--duration--snappy) var(--easing--ease-out),
 		border-color var(--duration--snappy) var(--easing--ease-out);
 }
-.context-menu-story-trigger:hover {
+.context-menu-story-trigger:hover:not(.context-menu-story-trigger--disabled):not([data-disabled]) {
 	background-color: var(--background--hover);
 	border-color: var(--border-color--strong);
+}
+.context-menu-story-trigger--disabled,
+.context-menu-story-trigger[data-disabled] {
+	color: var(--text-color--disabled);
+	border-color: var(--border-color--subtle);
+	background-color: var(--background--disabled);
+	cursor: not-allowed;
 }
 `;
 
@@ -515,8 +522,11 @@ function renderMenuStory(args: ContextMenuProps<string>) {
 		template: `
 			<ContextMenu v-bind="args" @select="logSelect">
 				<template #trigger>
-					<div class="context-menu-story-trigger">
-						Right-click here
+					<div
+						class="context-menu-story-trigger"
+						:class="{ 'context-menu-story-trigger--disabled': args.disabled }"
+					>
+						{{ args.disabled ? 'Right-click is disabled' : 'Right-click here' }}
 					</div>
 				</template>
 			</ContextMenu>
@@ -894,23 +904,10 @@ export const Loading: Story = {
 };
 
 export const Disabled: Story = {
-	render: (args) => ({
-		components: { ContextMenu },
-		setup() {
-			return { args };
-		},
-		template: `
-			<ContextMenu :items="args.items" disabled>
-				<template #trigger>
-					<div class="context-menu-story-trigger">
-						Right-click is disabled
-					</div>
-				</template>
-			</ContextMenu>
-		`,
-	}),
+	render: (args) => renderMenuStory(args),
 	args: {
 		items: exampleItems,
+		disabled: true,
 	},
 };
 
