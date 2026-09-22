@@ -119,6 +119,22 @@ describe('PreferenceCard', () => {
 			expect(header).toHaveAttribute('aria-expanded', 'false');
 		});
 
+		// The user reopened the card on the active turn, then sent another message.
+		it('collapses when the turn moves into history, whatever the chevron did before', async () => {
+			const { rerender } = renderActive();
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			await userEvent.click(header);
+			await userEvent.click(header);
+			expect(header).toHaveAttribute('aria-expanded', 'true');
+
+			await rerender({ toolCall: toolCall(), runId: 'run-1', readOnly: true });
+
+			expect(screen.getByTestId('instance-ai-preference-card-header')).toHaveAttribute(
+				'aria-expanded',
+				'false',
+			);
+		});
+
 		it('reads "Preference removed" once the preference is undone', () => {
 			renderActive({ preferenceCard: { state: 'undone' } });
 
@@ -142,10 +158,18 @@ describe('PreferenceCard', () => {
 			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
 		});
 
+		it('shows the saved text without a strike-through', () => {
+			renderActive();
+
+			expect(screen.getByTestId('instance-ai-preference-card-text')).not.toHaveClass('removedText');
+		});
+
 		it('strikes the saved text through and offers no link once removed', () => {
 			renderActive({ preferenceCard: { state: 'undone' } });
 
-			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
+			const text = screen.getByTestId('instance-ai-preference-card-text');
+			expect(text).toHaveTextContent(STORED_TEXT);
+			expect(text).toHaveClass('removedText');
 			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
 			expect(screen.queryByTestId('instance-ai-preference-card-manage')).toBeNull();
 		});
@@ -158,6 +182,13 @@ describe('PreferenceCard', () => {
 			const text = screen.getByTestId('instance-ai-preference-card-text');
 			expect(text).toHaveTextContent('Keep replies brief.');
 			expect(text).not.toHaveTextContent(STORED_TEXT);
+			expect(text).toHaveClass('removedText');
+		});
+
+		it('renders nothing for another tool that answers in the saved shape', () => {
+			renderActive({ toolName: 'workflows' });
+
+			expect(screen.queryByTestId('instance-ai-preference-card')).toBeNull();
 		});
 
 		it('shows the edited text after an edit fact', () => {
@@ -272,6 +303,25 @@ describe('PreferenceCard', () => {
 				}),
 			);
 			expect(thread.applyEvent).toHaveBeenCalledWith(undoneEvent);
+			await waitFor(() =>
+				expect(screen.queryByTestId('instance-ai-preference-modal-text')).toBeNull(),
+			);
+		});
+
+		// Escape or the X while the request is pending would hide the refusal it may return.
+		it('ignores a close request while Remove is in flight, then closes on success', async () => {
+			let settle: (value: unknown) => void = () => {};
+			undoPreferenceCard.mockReturnValue(new Promise((resolve) => (settle = resolve)));
+			renderActive();
+			await openModal();
+
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
+			await waitFor(() => expect(undoPreferenceCard).toHaveBeenCalled());
+			await userEvent.keyboard('{Escape}');
+
+			expect(screen.getByTestId('instance-ai-preference-modal-text')).toBeInTheDocument();
+
+			settle({ ok: true, event: undoneEvent });
 			await waitFor(() =>
 				expect(screen.queryByTestId('instance-ai-preference-modal-text')).toBeNull(),
 			);

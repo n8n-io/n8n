@@ -1,6 +1,54 @@
 import { describe, it, expect } from 'vitest';
+import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-import { isPreferenceCardEvent } from '../preferenceCard.utils';
+import { isPreferenceCardEvent, resolvePreferenceCard } from '../preferenceCard.utils';
+
+describe('resolvePreferenceCard', () => {
+	const saved = {
+		ok: true,
+		preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+	};
+	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
+		toolCallId: 'tc-1',
+		toolName: 'save_user_preference',
+		args: {},
+		isLoading: false,
+		result: saved,
+		...overrides,
+	});
+
+	it('resolves the save tool result to a saved card', () => {
+		expect(resolvePreferenceCard(toolCall({}))).toEqual({
+			state: 'saved',
+			preferenceId: 'pref-1',
+			content: 'Keep replies short.',
+		});
+	});
+
+	it('ignores another tool that answers in the same shape', () => {
+		expect(resolvePreferenceCard(toolCall({ toolName: 'workflows' }))).toBeNull();
+	});
+
+	it('ignores a refusal and a call that is still running', () => {
+		expect(
+			resolvePreferenceCard(toolCall({ result: { ok: false, reason: 'too_long' } })),
+		).toBeNull();
+		expect(resolvePreferenceCard(toolCall({ result: undefined, isLoading: true }))).toBeNull();
+	});
+
+	it('lets a later fact override the state and the text', () => {
+		expect(
+			resolvePreferenceCard(
+				toolCall({ preferenceCard: { state: 'edited', content: 'Keep replies brief.' } }),
+			),
+		).toEqual({ state: 'edited', preferenceId: 'pref-1', content: 'Keep replies brief.' });
+		expect(resolvePreferenceCard(toolCall({ preferenceCard: { state: 'undone' } }))).toEqual({
+			state: 'undone',
+			preferenceId: 'pref-1',
+			content: 'Keep replies short.',
+		});
+	});
+});
 
 describe('isPreferenceCardEvent', () => {
 	const fact = {

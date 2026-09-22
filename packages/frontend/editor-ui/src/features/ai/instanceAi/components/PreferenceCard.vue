@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import {
@@ -40,6 +40,14 @@ const rowLabel = computed(() =>
 // overrides either default.
 const userToggled = ref<boolean | null>(null);
 const expanded = computed(() => userToggled.value ?? !props.readOnly);
+// A later turn moves the card into history, and history collapses whatever the
+// chevron did on the active turn.
+watch(
+	() => props.readOnly,
+	(readOnly) => {
+		if (readOnly) userToggled.value = null;
+	},
+);
 
 const modalOpen = ref(false);
 </script>
@@ -78,8 +86,11 @@ const modalOpen = ref(false);
 				<div :class="$style.scope">
 					<N8nIcon icon="layers" size="small" />
 					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('instanceAi.preferenceCard.appliesTo') }}
-						{{ i18n.baseText('instanceAi.preferenceCard.scope.user') }}
+						{{
+							i18n.baseText('instanceAi.preferenceCard.appliesTo', {
+								interpolate: { scope: i18n.baseText('instanceAi.preferenceCard.scope.user') },
+							})
+						}}
 					</N8nText>
 				</div>
 

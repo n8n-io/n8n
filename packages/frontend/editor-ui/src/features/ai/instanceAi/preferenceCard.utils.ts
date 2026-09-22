@@ -37,10 +37,12 @@ export function isSavedPreferenceResult(result: unknown): result is SavedPrefere
 
 export type PreferenceCardState = 'saved' | 'edited' | 'undone';
 
-/** The card's state and the text it shows, from the tool result plus any later fact. */
+/** The card's state and the text it shows, from the tool result plus any later fact.
+ *  Only the save tool's result counts: another tool may answer in the same shape. */
 export function resolvePreferenceCard(
 	tc: InstanceAiToolCallState,
 ): { state: PreferenceCardState; preferenceId: string; content: string } | null {
+	if (tc.toolName !== SAVE_USER_PREFERENCE_TOOL_NAME) return null;
 	if (!isSavedPreferenceResult(tc.result)) return null;
 	const later = tc.preferenceCard;
 	return {
