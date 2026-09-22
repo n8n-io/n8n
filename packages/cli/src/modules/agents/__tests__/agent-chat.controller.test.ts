@@ -38,7 +38,7 @@ function makeController() {
 	const agentValidationService = mock<AgentValidationService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
-	agentExecutionService.canUsePreviewThread.mockResolvedValue(true);
+	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 	const agentTestRunService = new AgentTestRunService(
 		agentExecutionService,
@@ -743,14 +743,16 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
-	it('rejects an unrelated session before saving an upload or starting a runtime', async () => {
+	it('rejects an ineligible Preview session before saving an upload or starting a runtime', async () => {
 		const {
 			controller,
 			agentExecutionService,
 			agentChatAttachmentService,
 			agentExecutionOrchestratorService,
 		} = makeController();
-		agentExecutionService.canUsePreviewThread.mockResolvedValue(false);
+		agentExecutionService.canUseDraftThread.mockImplementation(
+			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
+		);
 		const { res, events } = makeCleanupSseResponse();
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-2' } } as never,

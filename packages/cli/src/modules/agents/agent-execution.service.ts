@@ -32,7 +32,7 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
 	canContinueThreadInPreview,
-	canUseDraftThread,
+	canUseTopLevelDraftThread,
 	threadBelongsTo,
 } from './utils/agent-thread-access';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -698,18 +698,29 @@ export class AgentExecutionService {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 	}
 
-	async canUsePreviewThread(
+	async canUseDraftThread(
 		threadId: string,
 		projectId: string,
 		agentId: string,
 		userId: string,
+		options: { previewChat?: boolean } = {},
 	): Promise<boolean> {
 		const thread = await this.findThreadById(threadId);
 		if (thread) {
 			if (!threadBelongsTo(thread, projectId, agentId, userId)) return false;
+			if (!options.previewChat) return canUseTopLevelDraftThread(thread, userId);
+
 			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-			return canUseDraftThread(thread, userId, sources.get(threadId));
+			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
+		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+	}
+
+	private async canUseUnrecordedDraftThread(
+		threadId: string,
+		agentId: string,
+		userId: string,
+	): Promise<boolean> {
 		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		if (memory && memory.resourceId !== resourceId) return false;

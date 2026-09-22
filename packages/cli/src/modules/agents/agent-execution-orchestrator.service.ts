@@ -346,12 +346,14 @@ export class AgentExecutionOrchestratorService {
 		expectedMemory: Partial<AgentMemoryScope> | undefined;
 		user: User | undefined;
 		usePublishedVersion: boolean;
+		previewChat: boolean | undefined;
 	}): Promise<{
 		memoryScope: NonNullable<SerializableAgentState['persistence']>;
 		sandboxPrincipalHash: AgentSandboxPrincipalHash | undefined;
 		access: AgentThreadAccess;
 	}> {
-		const { agentId, projectId, runId, expectedMemory, user, usePublishedVersion } = params;
+		const { agentId, projectId, runId, expectedMemory, user, usePublishedVersion, previewChat } =
+			params;
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
@@ -382,11 +384,12 @@ export class AgentExecutionOrchestratorService {
 			if (
 				!user ||
 				memoryScope.resourceId !== draftChatMemoryResourceId(user.id) ||
-				!(await this.agentExecutionService.canUsePreviewThread(
+				!(await this.agentExecutionService.canUseDraftThread(
 					memoryScope.threadId,
 					projectId,
 					agentId,
 					user.id,
+					{ previewChat },
 				))
 			) {
 				throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
@@ -450,6 +453,7 @@ export class AgentExecutionOrchestratorService {
 			expectedMemory,
 			user,
 			usePublishedVersion,
+			previewChat: config.previewChat,
 		});
 
 		const threadId = memoryScope.threadId;
@@ -580,11 +584,12 @@ export class AgentExecutionOrchestratorService {
 		});
 		if (
 			memory.resourceId !== draftChatMemoryResourceId(user.id) ||
-			!(await this.agentExecutionService.canUsePreviewThread(
+			!(await this.agentExecutionService.canUseDraftThread(
 				memory.threadId,
 				projectId,
 				agentId,
 				user.id,
+				{ previewChat },
 			))
 		) {
 			throw new UserError('Session not found');
@@ -847,7 +852,7 @@ export class AgentExecutionOrchestratorService {
 		if (
 			isDraft &&
 			(memory.resourceId !== draftChatMemoryResourceId(identity.user.id) ||
-				!(await this.agentExecutionService.canUsePreviewThread(
+				!(await this.agentExecutionService.canUseDraftThread(
 					memory.threadId,
 					projectId,
 					agentId,

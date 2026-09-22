@@ -1088,19 +1088,15 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
-	describe('canUsePreviewThread', () => {
+	describe('canUseDraftThread', () => {
 		it.each<{
 			name: string;
 			thread: Partial<AgentExecutionThread>;
-			source?: string;
 			allowed: boolean;
 		}>([
 			{ name: 'owned private root', thread: {}, allowed: true },
 			{ name: 'shared session', thread: { accessScope: 'project', ownerId: null }, allowed: false },
 			{ name: 'sub-agent session', thread: { parentThreadId: 'parent' }, allowed: false },
-			{ name: 'legacy sub-agent source', thread: {}, source: ' SubAgent ', allowed: false },
-			{ name: 'MCP session', thread: {}, source: 'mcp', allowed: true },
-			{ name: 'Instance AI session', thread: {}, source: 'instance-ai', allowed: true },
 			{ name: 'task session', thread: { taskId: 'task-1' }, allowed: true },
 			{ name: 'other owner', thread: { ownerId: 'other-user' }, allowed: false },
 			{ name: 'unresolved owner', thread: { ownerId: null }, allowed: false },
@@ -1108,13 +1104,10 @@ describe('AgentExecutionService', () => {
 			{ name: 'other agent', thread: { agentId: 'other-agent' }, allowed: false },
 			{ name: 'owned legacy ID', thread: { id: 'test-agent-1:user-1' }, allowed: true },
 			{ name: 'owned unscoped legacy ID', thread: { id: 'test-agent-1' }, allowed: true },
-		])('checks an existing $name', async ({ thread: overrides, source, allowed }) => {
+		])('checks an existing $name', async ({ thread: overrides, allowed }) => {
 			const thread = makeThread(overrides);
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
-			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
-				new Map([[thread.id, source ?? 'chat']]),
-			);
-			expect(await service.canUsePreviewThread(thread.id, 'project-1', 'agent-1', 'user-1')).toBe(
+			expect(await service.canUseDraftThread(thread.id, 'project-1', 'agent-1', 'user-1')).toBe(
 				allowed,
 			);
 		});
@@ -1148,7 +1141,7 @@ describe('AgentExecutionService', () => {
 			checkpointStorage.hasNoConflictingThreadResource.mockResolvedValue(checkpointAllowed);
 
 			await expect(
-				service.canUsePreviewThread('new-thread', 'project-1', 'agent-1', 'user-1'),
+				service.canUseDraftThread('new-thread', 'project-1', 'agent-1', 'user-1'),
 			).resolves.toBe(allowed);
 		});
 	});

@@ -22,7 +22,7 @@ export function canContinueThreadInPreview(
 	source?: string | null,
 ): boolean {
 	return (
-		canUseDraftThread(thread, userId, source) &&
+		canUseTopLevelDraftThread(thread, userId) &&
 		thread.taskId === null &&
 		PREVIEW_THREAD_SOURCES.some(
 			(previewSource) => previewSource === (source?.trim().toLowerCase() ?? ''),
@@ -30,15 +30,8 @@ export function canContinueThreadInPreview(
 	);
 }
 
-export function canUseDraftThread(
-	thread: AgentExecutionThread,
-	userId: string,
-	source?: string | null,
-): boolean {
+export function canUseTopLevelDraftThread(thread: AgentExecutionThread, userId: string): boolean {
 	return (
-		thread.accessScope === 'user' &&
-		thread.ownerId === userId &&
-		thread.parentThreadId === null &&
-		!['subagent', 'sub-agent'].includes(source?.trim().toLowerCase() ?? '')
+		thread.accessScope === 'user' && thread.ownerId === userId && thread.parentThreadId === null
 	);
 }
