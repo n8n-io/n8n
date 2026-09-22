@@ -192,8 +192,8 @@ describe('Subscriber', () => {
 		}
 
 		it('should re-issue SUBSCRIBE for all channels periodically', async () => {
-			client.subscribe.mockResolvedValue(2);
 			const subscriber = await subscribedSubscriber();
+			client.subscribe.mockResolvedValue(2);
 
 			await vi.advanceTimersByTimeAsync(30_000 + 10_000);
 
