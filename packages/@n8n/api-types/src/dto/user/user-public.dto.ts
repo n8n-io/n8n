@@ -6,7 +6,7 @@ import { Z } from '../../zod-class';
 /** The user as the Public API publishes it. `role` is present only when the caller asks for it. */
 export const userPublicSchema = z.object({
 	id: z.string().openapi({ readOnly: true, example: '123e4567-e89b-12d3-a456-426614174000' }),
-	email: z.string().email().openapi({ example: 'john.doe@company.com' }),
+	email: z.string().email().nullable().openapi({ example: 'john.doe@company.com' }),
 	firstName: z.string().nullable().openapi({ readOnly: true, example: 'john' }),
 	lastName: z.string().nullable().openapi({ readOnly: true, example: 'Doe' }),
 	isPending: z.boolean().openapi({
