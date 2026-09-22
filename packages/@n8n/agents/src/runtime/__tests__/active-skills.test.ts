@@ -41,7 +41,7 @@ describe('active skills', () => {
 
 		for (let turn = 0; turn < 2; turn++) {
 			const active = new ActiveSkills(source, 'assistant', memory.skillState);
-			await active.restore(mask(new AgentMessageList()), scope);
+			await active.restore(new AgentMessageList(), scope);
 			expect(active.instructions()).toContain('Build one workflow.');
 			expect(active.instructions()).toContain('Create a task plan.');
 		}
@@ -143,7 +143,7 @@ describe('active skills', () => {
 	it('persists checkpoint skills when they differ from stored state', async () => {
 		const memory = new InMemoryMemory();
 		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);
-		const list = mask(new AgentMessageList());
+		const list = new AgentMessageList();
 		list.activeSkillIds = ['builder'];
 		const active = new ActiveSkills(source, 'assistant', memory.skillState);
 
@@ -199,6 +199,61 @@ describe('active skills', () => {
 		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
 			'builder',
 		]);
+	});
+
+	it('recovers a restored programmatic skill through the block when no anchor survives', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder']);
+		const list = new AgentMessageList();
+		// A prior run activated the skill programmatically: the calling tool's
+		// result is in history, but there is no `load_skill` record and restore()
+		// clears mid-run anchors. The skill must still reach the model.
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		await active.restore(list, scope);
+
+		expect(active.instructions()).toContain('Build one workflow.');
+	});
+
+	it('recovers a skill through the block when its activating tool call failed', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-fail',
+						input: {},
+						state: 'rejected',
+						error: 'boom',
+					},
+				],
+			},
+		]);
+		await active.restore(list, scope);
+		// The tool activated the skill, then failed — its error result cannot
+		// carry the body, so the skill belongs in the block, not silently dropped.
+		await active.load('builder', { toolCallId: 'build-fail' });
+
+		expect(active.instructions()).toContain('Build one workflow.');
 	});
 
 	it('keeps threads, resources, and agents isolated', async () => {

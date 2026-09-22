@@ -370,18 +370,6 @@ export class AgentMessageList {
 		};
 	}
 
-	/**
-	 * True when observational memory replaced part of the conversation for this
-	 * run — either an in-run mask (`maskObservedMessages`) or a fresh turn whose
-	 * history was loaded only after the persisted cursor, with the observation
-	 * log injected in its place. Both hide the tool results that delivered
-	 * earlier skills, so re-injecting those skills into the system prompt costs
-	 * no extra cache invalidation. Without it the system block stays empty.
-	 */
-	hasObservationMemory(): boolean {
-		return this.observationMaskBoundary !== undefined || this.observationLogMemory !== undefined;
-	}
-
 	/** Messages visible to the LLM: everything after the observation mask boundary. */
 	llmVisibleMessages(): AgentDbMessage[] {
 		const boundary = this.observationMaskBoundary;

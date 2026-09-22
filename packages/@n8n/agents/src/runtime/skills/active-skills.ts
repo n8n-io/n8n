@@ -23,17 +23,17 @@ import type { AgentMessageList } from '../model/message-list';
  *
  * The `<active_skills>` block of the system prompt is a recovery path only.
  * Anthropic renders the prompt as `tools → system → messages`, so any edit to
- * `system` invalidates the tool block and every message after it. The block is
- * therefore populated only when observational memory already replaced the
- * history for this run — an in-run mask, or a fresh turn whose history loaded
- * only after the persisted cursor. That is the one moment the move costs no
- * extra cache invalidation:
+ * `system` invalidates the tool block and every message after it. The block
+ * therefore holds only the skills the anchored path cannot deliver on this
+ * call — their result masked by observation memory, their activating call
+ * failed, or the activation predates this window with no `load_skill` record:
  *
- * - No observation memory on this run: the block stays empty. Every active
- *   skill rides on its still-visible activating tool result.
- * - Observation replaced the history: skills whose activating tool result is now
- *   hidden (activated at or before the observation cursor) move into the block.
- *   Skills activated after the cursor keep their still-visible anchor.
+ * - Anchor still deliverable: the skill rides on its resolved tool result, so
+ *   `system` is unchanged and the cached prefix stays warm.
+ * - Anchor gone or unusable: the skill moves into the block so its guidance is
+ *   never lost. When observation memory replaced the history it already rewrote
+ *   the prefix, so the move is free; otherwise it costs one rewrite, the price
+ *   of not dropping an active skill.
  */
 export class ActiveSkills {
 	private readonly loaded = new Map<string, RuntimeSkillContent>();
@@ -105,10 +105,10 @@ export class ActiveSkills {
 	}
 
 	/**
-	 * The active skills whose delivering tool result is no longer visible, as
-	 * one block for the top-level system prompt. A skill enters this block only
-	 * after observational memory masked its anchor — the moment the prefix was
-	 * rewritten anyway — so the block itself never breaks a warm cache.
+	 * The active skills the anchored path cannot deliver on this call, as one
+	 * block for the top-level system prompt. A skill enters the block only when
+	 * it has no successfully resolved, visible tool result to ride on, so a
+	 * still-anchored skill never edits `system` or breaks a warm cache.
 	 */
 	instructions(): string | undefined {
 		const { inBlock } = this.placement();
@@ -172,10 +172,14 @@ export class ActiveSkills {
 	 * call. `instructions()` and `modelMessages()` share this so a skill is
 	 * always delivered exactly once.
 	 *
-	 * The system block is a recovery path used only after observational memory
-	 * masked the window on this run. Without a mask the block stays empty, so a
-	 * skill without a visible anchor is simply not re-delivered — the move into
-	 * `system` would rewrite the whole cached prefix for no read.
+	 * An anchor must be a **successfully resolved** tool result: the skill body
+	 * is appended to it (see `appendToolResultText`, which skips error outputs),
+	 * so a pending, canceled, or failed call cannot deliver it. A skill with no
+	 * such anchor — its result masked by observation memory, or its activating
+	 * call failed, or the activation predates this window with no `load_skill`
+	 * record — falls back to the `<active_skills>` block, which never drops it.
+	 * The block only edits `system` when the anchored path cannot deliver, so an
+	 * unchanged, still-anchored skill never rewrites the cached prefix.
 	 */
 	private placement(loads?: Map<string, string>): {
 		anchors: Map<string, string>;
@@ -183,32 +187,39 @@ export class ActiveSkills {
 	} {
 		const anchors = new Map<string, string>();
 		if (this.list) {
-			const visible = new Set<string>();
-			for (const message of this.list.llmVisibleMessages()) {
-				if (!('content' in message)) continue;
-				for (const part of message.content) {
-					if (part.type === 'tool-call') visible.add(part.toolCallId);
-				}
-			}
+			const deliverable = this.deliverableToolResults();
 			for (const [toolCallId, skillId] of loads ?? this.recordedLoads(this.list)) {
-				if (!anchors.has(skillId) && this.loaded.has(skillId) && visible.has(toolCallId)) {
+				if (!anchors.has(skillId) && this.loaded.has(skillId) && deliverable.has(toolCallId)) {
 					anchors.set(skillId, toolCallId);
 				}
 			}
 			for (const [skillId, toolCallId] of this.midRunAnchors) {
-				if (!anchors.has(skillId) && this.loaded.has(skillId) && visible.has(toolCallId)) {
+				if (!anchors.has(skillId) && this.loaded.has(skillId) && deliverable.has(toolCallId)) {
 					anchors.set(skillId, toolCallId);
 				}
 			}
 		}
-		// Only recover skills into `system` when observation already replaced the
-		// history this run. Otherwise the block would break a warm cache for a
-		// change the model can already read from the anchored tool result.
-		const inBlock =
-			(this.list?.hasObservationMemory() ?? false)
-				? [...this.loaded.keys()].filter((id) => !anchors.has(id))
-				: [];
+		const inBlock = [...this.loaded.keys()].filter((id) => !anchors.has(id));
 		return { anchors, inBlock };
+	}
+
+	/**
+	 * Tool-call ids whose result is visible and successfully resolved, so a skill
+	 * body can ride on it. Pending, canceled, and failed calls are excluded — a
+	 * skill anchored there would silently vanish, so it belongs in the block.
+	 */
+	private deliverableToolResults(): Set<string> {
+		const ids = new Set<string>();
+		if (!this.list) return ids;
+		for (const message of this.list.llmVisibleMessages()) {
+			if (!('content' in message)) continue;
+			for (const part of message.content) {
+				if (part.type === 'tool-call' && part.state === 'resolved' && !part.canceled) {
+					ids.add(part.toolCallId);
+				}
+			}
+		}
+		return ids;
 	}
 
 	private formatSkill(skillId: string): string | undefined {
