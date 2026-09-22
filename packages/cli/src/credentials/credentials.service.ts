@@ -22,6 +22,7 @@ import type {
 	ScopesField,
 	OperationContext,
 	CredentialSharingRelation,
+	ProjectRelation,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -54,6 +55,7 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -199,7 +201,12 @@ type WorkflowCredentialResult = {
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
+	sharedRoute: 'project' | 'personal';
 } & CredentialConnectionStatus;
+
+function resolveSharedRoute(isProjectRoute: boolean): 'project' | 'personal' {
+	return isProjectRoute ? 'project' : 'personal';
+}
 
 /** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
 function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
@@ -573,8 +580,11 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Returns credentials that are both accessible to the user AND accessible to the project.
-	 * A credential shared with the project but not with the requesting user would be excluded.
+	 * Returns credentials the user can use in this workflow or project: shared
+	 * with it directly, global, or — behind {@link isCredSharingEnabled} — owned
+	 * by the user's own personal project while the user also belongs to it (the
+	 * personal route). A credential shared with the project but not with the
+	 * requesting user, and not reachable via either of those routes, is excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -599,15 +609,20 @@ export class CredentialsService {
 				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
-		// the intersection of both is all credentials the user can use in this
+		const personalRouteCredentialIds = isCredSharingEnabled()
+			? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
+			: new Set<string>();
+
+		// the union of all three is every credential the user can use in this
 		// workflow or project
-		const intersection = allCredentials.filter(
-			(c) => credentialIdsForWorkflow.has(c.id) || c.isGlobal,
+		const usableCredentials = allCredentials.filter(
+			(c) =>
+				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
 		);
 
-		if (intersection.length > 0) {
+		if (usableCredentials.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
-				intersection.map((c) => c.id),
+				usableCredentials.map((c) => c.id),
 			);
 			const relationsByCredentialId = new Map<string, SharedCredentials[]>();
 			for (const relation of relations) {
@@ -615,12 +630,12 @@ export class CredentialsService {
 				if (credentialRelations) credentialRelations.push(relation);
 				else relationsByCredentialId.set(relation.credentialsId, [relation]);
 			}
-			intersection.forEach((c) => {
+			usableCredentials.forEach((c) => {
 				c.shared = relationsByCredentialId.get(c.id) ?? [];
 			});
 		}
 
-		const enriched = intersection
+		const enriched = usableCredentials
 			.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
 			.map((c) => this.roleService.addScopes(c, user, projectRelations)) as Array<
 			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
@@ -640,10 +655,47 @@ export class CredentialsService {
 			homeProject: c.homeProject,
 			sharedWithProjects: c.sharedWithProjects,
 			currentUserHasAccess: true,
+			sharedRoute: resolveSharedRoute(credentialIdsForWorkflow.has(c.id) || c.isGlobal),
 		}));
 
 		await this.populateConnectedByMe(result, user);
 		return result;
+	}
+
+	/**
+	 * The ids, among `candidateCredentials`, that the user can use here only
+	 * via the personal route: owned by the user's own personal project, where
+	 * the user also belongs to the workflow's/project's project(s). See
+	 * {@link isCredSharingEnabled}.
+	 */
+	private async findPersonalRouteCredentialIds(
+		user: User,
+		candidateCredentials: CredentialsEntity[],
+		userProjectRelations: ProjectRelation[],
+		options: { workflowId: string } | { projectId: string },
+	): Promise<Set<string>> {
+		const personalProject = await this.projectService.getPersonalProject(user);
+		if (!personalProject) return new Set();
+
+		const ownedCredentialIds = new Set(
+			candidateCredentials
+				.filter((c) =>
+					c.shared.some((s) => s.role === 'credential:owner' && s.projectId === personalProject.id),
+				)
+				.map((c) => c.id),
+		);
+		if (ownedCredentialIds.size === 0) return ownedCredentialIds;
+
+		const targetProjectIds =
+			'workflowId' in options
+				? await this.projectService.findProjectsWorkflowIsIn(options.workflowId)
+				: [options.projectId];
+
+		const userIsMemberOfTargetProject = userProjectRelations.some((relation) =>
+			targetProjectIds.includes(relation.projectId),
+		);
+
+		return userIsMemberOfTargetProject ? ownedCredentialIds : new Set();
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
