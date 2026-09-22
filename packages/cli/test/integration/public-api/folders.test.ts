@@ -890,27 +890,13 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			.send({ name: 'Renamed' });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('name', 'Renamed');
-	});
-
-	test('should return only the documented folder fields', async () => {
-		testServer.license.enable('feat:folders');
-
-		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
-
-		const response = await authOwnerAgent
-			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
-			.send({ name: 'Renamed' });
-
-		expect(response.statusCode).toBe(200);
-		expect(Object.keys(response.body as object).sort()).toEqual([
-			'createdAt',
-			'id',
-			'name',
-			'parentFolderId',
-			'updatedAt',
-		]);
-		expect(response.body).toMatchObject({ id: folder.id, name: 'Renamed', parentFolderId: null });
+		expect(response.body).toStrictEqual({
+			id: folder.id,
+			name: 'Renamed',
+			parentFolderId: null,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+		});
 	});
 
 	test('should return 400 when the body is empty', async () => {
