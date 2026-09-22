@@ -229,6 +229,8 @@ export class Grist implements INodeType {
 			return [returnData];
 		}
 
+		let columnTypes: { [columnId: string]: string } | undefined;
+
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (operation === 'create') {
@@ -345,13 +347,15 @@ export class Grist implements INodeType {
 					}
 
 					if (filter?.filterProperties?.length) {
-						const columnsEndpoint = `/docs/${docId}/tables/${tableId}/columns`;
-						const { columns } = (await gristApiRequest.call(
-							this,
-							'GET',
-							columnsEndpoint,
-						)) as GristColumns;
-						const columnTypes = buildColumnTypeMap(columns);
+						if (columnTypes === undefined) {
+							const columnsEndpoint = `/docs/${docId}/tables/${tableId}/columns`;
+							const { columns } = (await gristApiRequest.call(
+								this,
+								'GET',
+								columnsEndpoint,
+							)) as GristColumns;
+							columnTypes = buildColumnTypeMap(columns);
+						}
 						const parsed = parseFilterProperties(filter.filterProperties, columnTypes);
 						qs.filter = JSON.stringify(parsed);
 					}
