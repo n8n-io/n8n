@@ -95,6 +95,8 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 	}, '');
 }
 
+// Range check, not an integer check: isSafeInteger(12.5) returns true.
+// Filter coercion depends on this. Do not "fix" without auditing call sites.
 export function isSafeInteger(val: number) {
 	//used MIN_SAFE_INTEGER and MAX_SAFE_INTEGER instead of MIN_VALUE and MAX_VALUE to avoid edge cases
 	return !isNaN(val) && val > Number.MIN_SAFE_INTEGER && val < Number.MAX_SAFE_INTEGER;
