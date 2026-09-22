@@ -19,6 +19,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
@@ -218,6 +219,7 @@ const props = withDefaults(
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const message = useMessage();
 const toast = useToast();
@@ -451,6 +453,18 @@ const {
 });
 
 const { isSelectionExtractable } = useSelectionValidation();
+
+// Groups that start the workflow themselves
+const groupIdsWithTrigger = computed(() => {
+	const groupsContainingTriggers = workflowDocumentStore.value.allGroups.filter((group) =>
+		group.nodeIds.some((nodeId) => {
+			const node = workflowDocumentStore.value.getNodeById(nodeId);
+			return node ? nodeTypesStore.isTriggerNode(node.type) : false;
+		}),
+	);
+
+	return new Set(groupsContainingTriggers.map((group) => group.id));
+});
 
 // Groups that can be extracted to sub-workflows
 const extractableGroupIds = computed(() => {
@@ -1926,6 +1940,7 @@ defineExpose({
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
 				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
+				:has-trigger="groupIdsWithTrigger.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@update:description="onCanvasGroupDescriptionUpdate"
