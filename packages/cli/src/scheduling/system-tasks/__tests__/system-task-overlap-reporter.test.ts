@@ -1,4 +1,4 @@
-import type { RetiredOccurrence } from '@n8n/scheduler';
+import type { RetiredTask } from '@n8n/scheduler';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -6,7 +6,7 @@ import type { EventService } from '@/events/event.service';
 import { SystemTaskOverlapReporter } from '../system-task-overlap-reporter';
 
 describe('SystemTaskOverlapReporter', () => {
-	const occurrence = (taskType: string, id = '1'): RetiredOccurrence => ({
+	const occurrence = (taskType: string, id = '1'): RetiredTask => ({
 		id,
 		jobId: 3,
 		taskType,

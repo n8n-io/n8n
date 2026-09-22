@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { RetiredOccurrence } from '@n8n/scheduler';
+import type { RetiredTask } from '@n8n/scheduler';
 
 import { EventService } from '@/events/event.service';
 
@@ -16,14 +16,15 @@ export class SystemTaskOverlapReporter {
 	constructor(private readonly eventService: EventService) {}
 
 	/** Occurrences of another owner's task type are ignored. */
-	report(occurrences: RetiredOccurrence[]): void {
+	report(occurrences: RetiredTask[]): void {
 		for (const { taskType } of occurrences) {
 			const name = systemTaskName(taskType);
-			if (name === undefined) continue;
-			emitSystemTaskMetric(this.eventService, 'system-task-run-skipped', {
-				name,
-				reason: 'overlap',
-			});
+			if (name !== undefined) {
+				emitSystemTaskMetric(this.eventService, 'system-task-run-skipped', {
+					name,
+					reason: 'overlap',
+				});
+			}
 		}
 	}
 }
