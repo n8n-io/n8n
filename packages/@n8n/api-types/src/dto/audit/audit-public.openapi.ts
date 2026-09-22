@@ -6,9 +6,8 @@ export const auditRequestFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
-export const auditReportFieldDocs = {
+export const auditReportFieldDocs: Record<string, ZodOpenAPIMetadata> = {
 	credentials: {
-		type: 'object',
 		example: {
 			risk: 'credentials',
 			sections: [
@@ -23,7 +22,6 @@ export const auditReportFieldDocs = {
 		},
 	},
 	database: {
-		type: 'object',
 		example: {
 			risk: 'database',
 			sections: [
@@ -48,7 +46,6 @@ export const auditReportFieldDocs = {
 		},
 	},
 	filesystem: {
-		type: 'object',
 		example: {
 			risk: 'filesystem',
 			sections: [
@@ -73,7 +70,6 @@ export const auditReportFieldDocs = {
 		},
 	},
 	nodes: {
-		type: 'object',
 		example: {
 			risk: 'nodes',
 			sections: [
@@ -95,9 +91,8 @@ export const auditReportFieldDocs = {
 		},
 	},
 	instance: {
-		type: 'object',
 		example: {
-			risk: 'execution',
+			risk: 'instance',
 			sections: [
 				{
 					title: 'Unprotected webhooks in instance',
@@ -116,4 +111,4 @@ export const auditReportFieldDocs = {
 			],
 		},
 	},
-} as const satisfies Record<string, ZodOpenAPIMetadata>;
+};

@@ -42,6 +42,110 @@ responses:
               properties:
                 Credentials Risk Report:
                   type: object
+                  properties:
+                    risk:
+                      type: string
+                      enum:
+                        - credentials
+                        - database
+                        - nodes
+                        - filesystem
+                        - instance
+                    sections:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
+                          recommendation:
+                            type: string
+                          location:
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - node
+                                    workflowId:
+                                      type: string
+                                    workflowName:
+                                      type: string
+                                    nodeId:
+                                      type: string
+                                    nodeName:
+                                      type: string
+                                    nodeType:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - workflowId
+                                    - workflowName
+                                    - nodeId
+                                    - nodeName
+                                    - nodeType
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - credential
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - id
+                                    - name
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - community
+                                    nodeType:
+                                      type: string
+                                    packageUrl:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - packageUrl
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - custom
+                                    nodeType:
+                                      type: string
+                                    filePath:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - filePath
+                          settings:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                          nextVersions:
+                            type: array
+                            items:
+                              nullable: true
+                        required:
+                          - title
+                          - description
+                          - recommendation
+                  required:
+                    - risk
+                    - sections
                   example:
                     risk: credentials
                     sections:
@@ -54,6 +158,110 @@ responses:
                             name: My Test Account
                 Database Risk Report:
                   type: object
+                  properties:
+                    risk:
+                      type: string
+                      enum:
+                        - credentials
+                        - database
+                        - nodes
+                        - filesystem
+                        - instance
+                    sections:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
+                          recommendation:
+                            type: string
+                          location:
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - node
+                                    workflowId:
+                                      type: string
+                                    workflowName:
+                                      type: string
+                                    nodeId:
+                                      type: string
+                                    nodeName:
+                                      type: string
+                                    nodeType:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - workflowId
+                                    - workflowName
+                                    - nodeId
+                                    - nodeName
+                                    - nodeType
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - credential
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - id
+                                    - name
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - community
+                                    nodeType:
+                                      type: string
+                                    packageUrl:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - packageUrl
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - custom
+                                    nodeType:
+                                      type: string
+                                    filePath:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - filePath
+                          settings:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                          nextVersions:
+                            type: array
+                            items:
+                              nullable: true
+                        required:
+                          - title
+                          - description
+                          - recommendation
+                  required:
+                    - risk
+                    - sections
                   example:
                     risk: database
                     sections:
@@ -69,6 +277,110 @@ responses:
                             nodeType: n8n-nodes-base.mySql
                 Filesystem Risk Report:
                   type: object
+                  properties:
+                    risk:
+                      type: string
+                      enum:
+                        - credentials
+                        - database
+                        - nodes
+                        - filesystem
+                        - instance
+                    sections:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
+                          recommendation:
+                            type: string
+                          location:
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - node
+                                    workflowId:
+                                      type: string
+                                    workflowName:
+                                      type: string
+                                    nodeId:
+                                      type: string
+                                    nodeName:
+                                      type: string
+                                    nodeType:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - workflowId
+                                    - workflowName
+                                    - nodeId
+                                    - nodeName
+                                    - nodeType
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - credential
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - id
+                                    - name
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - community
+                                    nodeType:
+                                      type: string
+                                    packageUrl:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - packageUrl
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - custom
+                                    nodeType:
+                                      type: string
+                                    filePath:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - filePath
+                          settings:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                          nextVersions:
+                            type: array
+                            items:
+                              nullable: true
+                        required:
+                          - title
+                          - description
+                          - recommendation
+                  required:
+                    - risk
+                    - sections
                   example:
                     risk: filesystem
                     sections:
@@ -84,6 +396,110 @@ responses:
                             nodeType: n8n-nodes-base.readBinaryFile
                 Nodes Risk Report:
                   type: object
+                  properties:
+                    risk:
+                      type: string
+                      enum:
+                        - credentials
+                        - database
+                        - nodes
+                        - filesystem
+                        - instance
+                    sections:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
+                          recommendation:
+                            type: string
+                          location:
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - node
+                                    workflowId:
+                                      type: string
+                                    workflowName:
+                                      type: string
+                                    nodeId:
+                                      type: string
+                                    nodeName:
+                                      type: string
+                                    nodeType:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - workflowId
+                                    - workflowName
+                                    - nodeId
+                                    - nodeName
+                                    - nodeType
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - credential
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - id
+                                    - name
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - community
+                                    nodeType:
+                                      type: string
+                                    packageUrl:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - packageUrl
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - custom
+                                    nodeType:
+                                      type: string
+                                    filePath:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - filePath
+                          settings:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                          nextVersions:
+                            type: array
+                            items:
+                              nullable: true
+                        required:
+                          - title
+                          - description
+                          - recommendation
+                  required:
+                    - risk
+                    - sections
                   example:
                     risk: nodes
                     sections:
@@ -96,8 +512,112 @@ responses:
                             packageUrl: https://www.npmjs.com/package/n8n-nodes-test
                 Instance Risk Report:
                   type: object
+                  properties:
+                    risk:
+                      type: string
+                      enum:
+                        - credentials
+                        - database
+                        - nodes
+                        - filesystem
+                        - instance
+                    sections:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
+                          recommendation:
+                            type: string
+                          location:
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - node
+                                    workflowId:
+                                      type: string
+                                    workflowName:
+                                      type: string
+                                    nodeId:
+                                      type: string
+                                    nodeName:
+                                      type: string
+                                    nodeType:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - workflowId
+                                    - workflowName
+                                    - nodeId
+                                    - nodeName
+                                    - nodeType
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - credential
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - id
+                                    - name
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - community
+                                    nodeType:
+                                      type: string
+                                    packageUrl:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - packageUrl
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - custom
+                                    nodeType:
+                                      type: string
+                                    filePath:
+                                      type: string
+                                  required:
+                                    - kind
+                                    - nodeType
+                                    - filePath
+                          settings:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                          nextVersions:
+                            type: array
+                            items:
+                              nullable: true
+                        required:
+                          - title
+                          - description
+                          - recommendation
+                  required:
+                    - risk
+                    - sections
                   example:
-                    risk: execution
+                    risk: instance
                     sections:
                       - title: Unprotected webhooks in instance
                         description: These webhook nodes have the "Authentication" field set to "None" and are not directly connected to a node to validate the payload. Every unprotected webhook allows your workflow to be called by any third party who knows the webhook URL.
