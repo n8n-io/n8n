@@ -15,30 +15,46 @@ export function usePromotionChangeCount(
 	const count = ref(0);
 	/** True when the last check failed, so the banner can say so instead of hiding. */
 	const failed = ref(false);
+	const isLoading = ref(false);
+	let lastRequestedProjectId: string | undefined;
 
 	async function fetchCount() {
 		// Only the newest request may write, so a slow answer for a project the user left
 		// and came back to cannot overwrite the current state.
 		const isLatest = next();
 		const requestedProjectId = projectId.value;
-		count.value = 0;
-		failed.value = false;
+		// A manual refresh of the same project keeps the last count on screen (with a spinner)
+		// instead of dropping to 0 and hiding the banner for the length of the request.
+		const isSameProject = requestedProjectId === lastRequestedProjectId;
+		lastRequestedProjectId = requestedProjectId;
 		if (!enabled.value || !requestedProjectId) {
+			count.value = 0;
+			failed.value = false;
 			return;
 		}
+		if (!isSameProject) {
+			count.value = 0;
+			failed.value = false;
+		}
+		isLoading.value = true;
 		try {
 			const { changes } = await getPromotableChanges(
 				rootStore.restApiContext,
 				requestedProjectId,
 				direction,
 			);
-			if (isLatest()) count.value = changes.length;
+			if (isLatest()) {
+				count.value = changes.length;
+				failed.value = false;
+			}
 		} catch {
 			if (isLatest()) failed.value = true;
+		} finally {
+			if (isLatest()) isLoading.value = false;
 		}
 	}
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { count, failed, refetch: fetchCount };
+	return { count, failed, isLoading, refetch: fetchCount };
 }

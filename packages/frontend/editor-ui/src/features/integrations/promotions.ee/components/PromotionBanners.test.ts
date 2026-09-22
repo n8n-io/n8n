@@ -266,6 +266,65 @@ describe('PromotionBanners', () => {
 		expect(connectionsRequest).toHaveBeenCalledTimes(1);
 	});
 
+	it('refreshes the outgoing count on demand without hiding the banner', async () => {
+		const twoChanges = () => ({
+			data: {
+				commitSha,
+				changes: [
+					{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' },
+					{ id: 'workflow-2', name: 'New workflow', type: 'workflow', status: 'new' },
+				],
+			},
+		});
+		const promoteChanges = vi.fn(() => oneChange('Changed workflow', 'modified'));
+		server.get('/api/v1/promotions/connections', () =>
+			connections({ promote: { id: 'config-1' } }),
+		);
+		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:push'],
+		});
+		const { findByTestId } = renderComponent();
+
+		const banner = await findByTestId('promotion-banner');
+		expect(banner).toHaveTextContent('1 change');
+
+		promoteChanges.mockImplementation(twoChanges);
+		await userEvent.click(await findByTestId('promotion-banner-refresh'));
+
+		await waitFor(() => {
+			expect(promoteChanges).toHaveBeenCalledTimes(2);
+			expect(banner).toHaveTextContent('2 changes');
+		});
+		// The banner never disappears while the manual refresh is in flight.
+		expect(banner).toBeInTheDocument();
+	});
+
+	it('refreshes the incoming count on demand and clears a previous failure', async () => {
+		server.get('/api/v1/promotions/connections', () =>
+			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
+		);
+		const applyChanges = vi.fn(
+			() => new Response(400, {}, { message: 'The apply direction is not cloned' }),
+		);
+		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+
+		const banner = await findByTestId('promotion-incoming-banner');
+		expect(banner).toHaveTextContent('Could not check for incoming changes');
+
+		applyChanges.mockImplementation(() => oneChange('Incoming workflow', 'new'));
+		await userEvent.click(await findByTestId('promotion-incoming-banner-refresh'));
+
+		await waitFor(() => {
+			expect(applyChanges).toHaveBeenCalledTimes(2);
+			expect(banner).toHaveTextContent('1 incoming change');
+		});
+	});
+
 	it('keeps the incoming changes entry visible when the check fails', async () => {
 		server.get('/api/v1/promotions/connections', () =>
 			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
