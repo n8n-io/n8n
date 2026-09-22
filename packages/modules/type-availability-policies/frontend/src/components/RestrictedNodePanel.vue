@@ -2,9 +2,9 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
-import ContactInstanceAdminButton from './ContactInstanceAdminButton.vue';
+import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
 const {
 	nodeTypeName,
@@ -25,10 +25,20 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 
 const i18n = useI18n();
 
+const isContactAdminOpen = ref(false);
+
 const description = computed(() =>
 	i18n.baseText(
 		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
 		{ interpolate: { nodeType: nodeTypeName } },
+	),
+);
+
+const nextStep = computed(() =>
+	i18n.baseText(
+		showReplace
+			? 'typeAvailabilityPolicies.restrictedNode.nextStep.replace'
+			: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
 	),
 );
 </script>
@@ -39,13 +49,17 @@ const description = computed(() =>
 		<N8nText size="large" color="text-dark" bold :class="$style.title">
 			{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.title') }}
 		</N8nText>
-		<N8nText :class="$style.description">{{ description }}</N8nText>
+		<N8nText :class="$style.description">{{ description }} {{ nextStep }}</N8nText>
 		<div :class="$style.actions">
-			<ContactInstanceAdminButton :node-type-name="nodeTypeName" variant="solid" size="small">
-				<template #icon>
-					<N8nIcon icon="mail" size="small" />
-				</template>
-			</ContactInstanceAdminButton>
+			<N8nButton
+				variant="solid"
+				size="small"
+				icon="mail"
+				data-test-id="node-restricted-contact-admin"
+				@click="isContactAdminOpen = true"
+			>
+				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+			</N8nButton>
 			<N8nButton
 				v-if="showReplace"
 				variant="subtle"
@@ -57,6 +71,7 @@ const description = computed(() =>
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
 		</div>
+		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</div>
 </template>
 
