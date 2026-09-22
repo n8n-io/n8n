@@ -281,7 +281,7 @@ function onRemove() {
 .content {
 	/* The Design System has no width preset between 2xlarge and full. */
 	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
-	height: min(70dvh, calc(var(--height--5xl) * 6));
+	height: min(calc(70dvh - var(--spacing--lg)), calc(var(--height--5xl) * 6 - var(--spacing--lg)));
 	min-height: 0;
 	display: flex;
 }
