@@ -8807,6 +8807,7 @@
 	"agents.chat.configureChannel.skipped": "Skipped",
 	"promotions.modal.title": "Promote changes",
 	"promotions.modal.search.placeholder": "Search changes...",
+	"promotions.modal.lastRefreshed": "Last refreshed",
 	"promotions.modal.refresh": "Refresh",
 	"promotions.modal.status.new": "New",
 	"promotions.modal.status.modified": "Modified",

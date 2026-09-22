@@ -101,6 +101,20 @@ describe('usePromotionChanges', () => {
 		expect(isLoading.value).toBe(false);
 	});
 
+	it('should set the last refreshed timestamp only on a successful fetch', async () => {
+		const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
+		expect(lastRefreshedAt.value).toBeNull();
+
+		await fetchChanges();
+		expect(lastRefreshedAt.value).not.toBeNull();
+
+		const firstRefresh = lastRefreshedAt.value;
+		vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(new Error('Network error'));
+		await fetchChanges();
+
+		expect(lastRefreshedAt.value).toBe(firstRefresh);
+	});
+
 	it('should select only the visible rows when a search filter is active', async () => {
 		const {
 			fetchChanges,

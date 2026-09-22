@@ -50,6 +50,7 @@ const {
 	isLoading,
 	error,
 	searchQuery,
+	lastRefreshedAt,
 	selectedIds,
 	selectedCount,
 	allSelected,
@@ -240,6 +241,16 @@ onMounted(async () => {
 						data-test-id="promotion-search"
 						:class="$style.searchInput"
 					/>
+					<N8nText
+						v-if="lastRefreshedAt"
+						size="small"
+						color="text-light"
+						:class="$style.lastRefreshed"
+						data-test-id="promotion-last-refreshed"
+					>
+						{{ i18n.baseText('promotions.modal.lastRefreshed') }}
+						<TimeAgo :date="lastRefreshedAt" />
+					</N8nText>
 					<N8nButton
 						variant="subtle"
 						size="small"
@@ -451,6 +462,11 @@ onMounted(async () => {
 .searchInput {
 	flex: 1;
 	margin-inline: calc(var(--input--padding) * -1) 0 0;
+}
+
+.lastRefreshed {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .loading {

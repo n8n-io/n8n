@@ -176,6 +176,30 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
+	it('should show a last refreshed timestamp after loading and keep it on a failed refresh', async () => {
+		const { findByTestId, findByText } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1' },
+			},
+		});
+
+		await findByText('Email summary');
+		const lastRefreshed = await findByTestId('promotion-last-refreshed');
+		expect(lastRefreshed).toHaveTextContent('Last refreshed');
+		const initialText = lastRefreshed.textContent;
+
+		server.get(
+			'/rest/promotions/project-1/changes/promote',
+			() => new Response(503, {}, { message: 'Preview unavailable' }),
+		);
+		await userEvent.click(await findByTestId('promotion-refresh'));
+
+		await findByTestId('promotion-error');
+		expect(await findByTestId('promotion-last-refreshed')).toHaveTextContent(initialText ?? '');
+	});
+
 	it('keeps only selections that remain after refreshing the change list', async () => {
 		const { findByTestId, findByText, queryByText } = renderComponent({
 			pinia,
