@@ -41,7 +41,7 @@ cd packages/cli
 export N8N_ENABLED_MODULES=instance-reporting
 export N8N_INSTANCE_REPORTING_BASE_URL=http://127.0.0.1:3456
 export N8N_INSTANCE_REPORTING_LABEL=local-dev
-export N8N_LICENSE_CERT=<certificate the receiver trusts, see prerequisites>
+export N8N_LICENSE_CERT='<certificate the receiver trusts, see prerequisites>'
 
 # Compact insights quickly, so raw rows reach insights_by_period in a minute.
 export N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES=1
