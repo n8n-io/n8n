@@ -403,9 +403,13 @@ describe('InsightsByPeriodRepository', () => {
 
 		afterAll(async () => {
 			if (otherInstance?.isInitialized) await otherInstance.destroy();
+			// Later blocks query a recent window and do not truncate, so leave none of these rows.
+			if (isPostgres) {
+				await truncateInsights();
+			}
 		});
 
-		async function seedRows(): Promise<{ old: number; fresh: number }> {
+		async function truncateInsights(): Promise<void> {
 			await testDb.truncate([
 				'InsightsRaw',
 				'InsightsByPeriod',
@@ -413,6 +417,10 @@ describe('InsightsByPeriodRepository', () => {
 				'WorkflowEntity',
 				'Project',
 			]);
+		}
+
+		async function seedRows(): Promise<{ old: number; fresh: number }> {
+			await truncateInsights();
 			const project = await createTeamProject();
 			const workflow = await createWorkflow({ nodes: [] }, project);
 			const { metaId } = await createMetadata(workflow);
@@ -430,7 +438,7 @@ describe('InsightsByPeriodRepository', () => {
 				row(now.minus({ days: 11, hours: hour })),
 			);
 			const fresh = Array.from({ length: 24 }, (_, hour) =>
-				row(now.minus({ days: 9, hours: hour })),
+				row(now.minus({ days: 1, hours: hour })),
 			);
 			await repository.save([...old, ...fresh]);
 			return { old: old.length, fresh: fresh.length };
@@ -440,8 +448,24 @@ describe('InsightsByPeriodRepository', () => {
 			const holder = otherInstance.createQueryRunner();
 			await holder.connect();
 			await holder.startTransaction();
-			await holder.query(sql);
+			try {
+				await holder.query(sql);
+			} catch (error) {
+				await releaseHolder(holder);
+				throw error;
+			}
 			return holder;
+		}
+
+		/** `release()` alone returns an open transaction to the pool, whose locks outlive the test. */
+		async function releaseHolder(holder: QueryRunner): Promise<void> {
+			try {
+				if (holder.isTransactionActive) {
+					await holder.rollbackTransaction();
+				}
+			} finally {
+				await holder.release();
+			}
 		}
 
 		test.skipIf(!isPostgres)(
@@ -465,7 +489,7 @@ describe('InsightsByPeriodRepository', () => {
 					await holder.commitTransaction();
 					({ affected } = await pending);
 				} finally {
-					await holder.release();
+					await releaseHolder(holder);
 				}
 
 				// ASSERT
@@ -491,7 +515,7 @@ describe('InsightsByPeriodRepository', () => {
 					await holder.commitTransaction();
 					({ affected } = await pending);
 				} finally {
-					await holder.release();
+					await releaseHolder(holder);
 				}
 
 				// ASSERT
