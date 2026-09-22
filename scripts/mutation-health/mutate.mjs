@@ -16,8 +16,8 @@
  * Use `--test-files` to name the test files that must kill the mutants. The
  * value goes to Stryker's `testFiles` config field, thus Stryker runs those
  * files instead of the whole related-test graph. The flag repeats and it also
- * takes a comma-separated list. `packages/cli` requires it — see
- * `cliScopeError` below.
+ * takes a comma-separated list. Named `packages/cli` targets require it;
+ * `--diff` uses the CLI test files changed in the patch.
  *
  * Stryker config resolution (first match wins):
  *   1. --config <path>                         explicit override
@@ -307,6 +307,13 @@ export function isMutableSource(repoRelPath) {
 	return !NON_SOURCE.some((re) => re.test(repoRelPath));
 }
 
+export function changedTestFilesForPackage(changedFiles, packageDir) {
+	const prefix = `${toPosix(packageDir).replace(/\/$/, '')}/`;
+	return changedFiles
+		.map((file) => toPosix(file).replace(/^\.\//, ''))
+		.filter((file) => file.startsWith(prefix) && /\.(test|spec)\.[cm]?tsx?$/.test(file));
+}
+
 // Merge overlapping and adjacent ranges. Stryker then gets one span per region.
 export function mergeRanges(ranges) {
 	const out = [];
@@ -411,9 +418,15 @@ export function strykerCliArgs(config) {
 
 // Why a cli target may not run, or null when it may. Named so the message says
 // what to do, not only what went wrong.
-export function cliScopeError(packageDir, testFiles) {
+export function cliScopeError(packageDir, testFiles, diffMode = false) {
 	if (toPosix(packageDir) !== CLI_PACKAGE_DIR) return null;
 	if (testFiles.length > 0) return null;
+	if (diffMode) {
+		return (
+			`Mutating ${CLI_PACKAGE_DIR} with --diff needs at least one changed test file.\n` +
+			'Add or update a test that covers the changed source, or run a named target with --test-files.'
+		);
+	}
 	return (
 		`Mutating ${CLI_PACKAGE_DIR} needs --test-files.\n` +
 		'Without it Stryker discovers every related test file in the package, forks a ' +
@@ -482,12 +495,13 @@ function planFromDiff(base) {
 		die(2, `git diff against '${base}' failed.\n${names.stderr.trim()}`);
 	}
 
-	const byPackage = new Map();
-	const skipped = [];
-	for (const file of names.stdout
+	const changedFiles = names.stdout
 		.split('\n')
 		.map((s) => s.trim())
-		.filter(Boolean)) {
+		.filter(Boolean);
+	const byPackage = new Map();
+	const skipped = [];
+	for (const file of changedFiles) {
 		if (!isMutableSource(file)) continue;
 		const abs = path.resolve(repoRoot, file);
 		if (!existsSync(abs)) continue; // the branch deleted the file
@@ -511,6 +525,13 @@ function planFromDiff(base) {
 		const job = byPackage.get(pkgRoot) ?? { pkgRoot, packageDir, targets: [] };
 		for (const r of ranges) job.targets.push(`${rel}:${r.start}-${r.end}`);
 		byPackage.set(pkgRoot, job);
+	}
+	for (const job of byPackage.values()) {
+		if (toPosix(job.packageDir) === CLI_PACKAGE_DIR) {
+			job.testFiles = changedTestFilesForPackage(changedFiles, job.packageDir).filter((file) =>
+				existsSync(path.resolve(repoRoot, file)),
+			);
+		}
 	}
 	return { jobs: [...byPackage.values()], skipped };
 }
@@ -765,13 +786,17 @@ function restoreWorkingTree({ bytes, dirtyBefore }) {
 	return [...restored];
 }
 
-async function runJob({ pkgRoot, packageDir, targets }, { configArg, testFiles = [] }) {
+async function runJob(
+	{ pkgRoot, packageDir, targets, testFiles: plannedTestFiles = [] },
+	{ configArg, testFiles = [] },
+) {
 	const configPath = resolveConfig(pkgRoot, configArg);
 	const strykerBin = resolveStrykerBin(pkgRoot, packageDir);
 	const mutateArg = formatMutateArg(targets);
+	const selectedTestFiles = testFiles.length > 0 ? testFiles : plannedTestFiles;
 	const strykerConfig = buildStrykerConfig({
 		targets,
-		testFiles: testFiles.map((f) => toPackageRelative(f, packageDir)),
+		testFiles: selectedTestFiles.map((f) => toPackageRelative(f, packageDir)),
 	});
 
 	const reportDir = path.join(pkgRoot, 'reports/mutation');
@@ -1062,7 +1087,10 @@ async function main() {
 		);
 	} else {
 		jobs = [planFromTarget(targetArg, packageDirArg)];
-		const scopeError = cliScopeError(jobs[0].packageDir, testFiles);
+	}
+	for (const job of jobs) {
+		const selectedTestFiles = testFiles.length > 0 ? testFiles : (job.testFiles ?? []);
+		const scopeError = cliScopeError(job.packageDir, selectedTestFiles, diffMode);
 		if (scopeError) die(2, scopeError);
 	}
 

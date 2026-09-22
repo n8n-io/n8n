@@ -10,6 +10,7 @@ import {
 	buildNoTestsSummary,
 	buildStrykerConfig,
 	buildSummary,
+	changedTestFilesForPackage,
 	classifyRun,
 	cliScopeError,
 	coverageFromCounts,
@@ -254,6 +255,37 @@ describe('isMutableSource', () => {
 		assert.equal(isMutableSource('packages/workflow/src/cron.js'), false);
 		assert.equal(isMutableSource('README.md'), false);
 		assert.equal(isMutableSource('packages/workflow/package.json'), false);
+	});
+});
+
+describe('changedTestFilesForPackage', () => {
+	it('selects changed test files from the exact package', () => {
+		const changedFiles = [
+			'packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts',
+			'packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts',
+			'packages/cli/src/modules/engine-v2/__tests__/in-memory-execution-response.test.ts',
+			'packages/cli/src/modules/engine-v2/engine-v2.runtime.ts',
+			'packages/cli-utils/src/foo.test.ts',
+		];
+
+		assert.deepEqual(changedTestFilesForPackage(changedFiles, 'packages/cli'), [
+			'packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts',
+			'packages/cli/src/modules/engine-v2/__tests__/in-memory-execution-response.test.ts',
+		]);
+	});
+
+	it('accepts ESM, CJS and TSX test extensions', () => {
+		assert.deepEqual(
+			changedTestFilesForPackage(
+				[
+					'packages/cli/src/a.test.mts',
+					'packages/cli/src/b.spec.cts',
+					'packages/cli/src/c.test.tsx',
+				],
+				'packages/cli/',
+			),
+			['packages/cli/src/a.test.mts', 'packages/cli/src/b.spec.cts', 'packages/cli/src/c.test.tsx'],
+		);
 	});
 });
 
@@ -541,6 +573,12 @@ describe('cliScopeError', () => {
 
 	it('allows a packages/cli target once test files are named', () => {
 		assert.equal(cliScopeError('packages/cli', ['src/__tests__/foo.test.ts']), null);
+	});
+
+	it('explains how to scope a CLI diff with no changed test file', () => {
+		const error = cliScopeError('packages/cli', [], true);
+		assert.match(error, /changed test file/);
+		assert.match(error, /named target with --test-files/);
 	});
 
 	it('leaves every other package alone', () => {
