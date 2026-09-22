@@ -96,21 +96,21 @@ example: "Engine v2 does not apply timeouts yet." Aim for fewer than 150
 words.
 
 **Decision.** What we decided, and the main reason. Use the present tense and
-the active voice: "The engine suspends the step." Do not write implementation
-state here. A sentence such as "the engine does not do this yet" goes stale
-exactly where a reader takes the text as the current contract. Do not describe
-the mechanism here either. A decision says what; a consequence says how.
+the active voice: "The engine suspends the step." When the chosen mechanism is
+the decision, describe it here. Do not write implementation state here. A
+sentence such as "the engine does not do this yet" goes stale exactly where a
+reader takes the text as the current contract.
 
 **Alternatives Considered.** Each option we did not select, and why. Use the
 conditional mood for what an alternative would do: "This option would need a
 column." The indicative mood ("this option needs a column") reads as a
 description of shipped code.
 
-**Consequences.** What follows from the decision: trade-offs, constraints,
-operational effects, the mechanism, and the work the decision creates or
-defers. This is the one section that may grow after the record is merged.
-Adding a consequence that the team learned later is correct. Changing the
-decision is not.
+**Consequences.** What follows from the decision: benefits, trade-offs,
+constraints, and operational effects. Not how the decision is implemented, and
+not the order in which the work lands. This is the one section that may grow
+after the record is merged. A consequence that the team learned later belongs
+here. A changed decision does not.
 
 **Links.** The RFC, the ticket or design document, and related records by full
 file name.
@@ -118,7 +118,12 @@ file name.
 ## Changing a decision
 
 A merged record is history. Do not edit its Context, Decision, or Alternatives
-to reflect a later change.
+to reflect a later change. Write a new record instead.
+
+Therefore a change to a record rides the pull request that merges the record.
+In a stack, the change belongs in the first pull request that carries the
+record, not in the follow-up that implements it. A decision can merge before
+its code. That is normal, and not a reason to move or edit the record.
 
 When a new decision replaces an old one:
 
@@ -133,7 +138,8 @@ When a decision no longer applies and nothing replaces it, set its status to
 
 - Write in ASD-STE100 Simplified Technical English, as `AGENTS.md` requires:
   short sentences, the active voice, one idea for each sentence.
-- Wrap lines at 80 columns.
+- Wrap lines at 80 columns. Keep each entry under `Links` on one line, even
+  when it is longer.
 - Keep the record short. A reader should understand the decision in a few
   minutes without the pull request or the design document.
 - Use a Mermaid diagram when a picture says it better than prose.
