@@ -403,7 +403,7 @@ function getAddEmptyGroupCommand(i18n: ReturnType<typeof useI18n>): CommandCreat
 	};
 }
 
-export function TriggerView(_nodes: SimplifiedNodeType[] = [], showAddGroup = false) {
+export function TriggerView(_nodes: SimplifiedNodeType[] = []) {
 	const i18n = useI18n();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
@@ -523,7 +523,7 @@ export function TriggerView(_nodes: SimplifiedNodeType[] = [], showAddGroup = fa
 					icon: 'folder-open',
 				},
 			},
-			...(showAddGroup ? [getAddEmptyGroupCommand(i18n)] : []),
+			getAddEmptyGroupCommand(i18n),
 		],
 	};
 
