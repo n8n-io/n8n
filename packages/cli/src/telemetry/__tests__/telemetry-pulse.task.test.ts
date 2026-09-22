@@ -1,3 +1,5 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { resolveSystemTaskRunOptions } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
@@ -17,7 +19,16 @@ describe('TelemetryPulseTask', () => {
 		expect(task.name).toBe('telemetry-pulse');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 21600 });
 		expect(task.effects).toBe('non-idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: false });
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+	});
+
+	it('should keep a missed occurrence for an hour and never retry a failed one', () => {
+		expect(task.misfireGraceSeconds).toBe(3600);
+		expect(resolveSystemTaskRunOptions(task)).toEqual({
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			misfireGraceSeconds: 3600,
+			maxAttempts: 1,
+		});
 	});
 
 	it('should send one pulse packet', async () => {

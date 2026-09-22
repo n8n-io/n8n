@@ -20,10 +20,13 @@ export class TelemetryPulseTask implements SystemTask {
 	readonly effects: SystemTaskEffects = 'non-idempotent';
 
 	/**
-	 * Each leader takeover restarts the six-hour wait. Delayed or missing packets are
-	 * acceptable until this task moves to the durable scheduler.
+	 * A late packet still describes the instance correctly. An hour carries the
+	 * occurrence across a restart or a failover, rather than losing the six-hour
+	 * window to the default grace of a minute.
 	 */
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly misfireGraceSeconds = Time.hours.toSeconds;
+
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
 	constructor(private readonly telemetry: Telemetry) {}
 
