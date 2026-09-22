@@ -519,6 +519,11 @@ export class WorkflowService {
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			});
+			// Only a workflow with groups needs the flag.
+			const relaxNodeGroupRules = workflowUpdateData.nodeGroups?.length
+				? await this.relaxedNodeGroupRulesFlagGate.isEnabled(user)
+				: false;
+
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
 					nodes: workflowUpdateData.nodes,
@@ -526,7 +531,7 @@ export class WorkflowService {
 					connections: workflowUpdateData.connections,
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
-				{ relaxNodeGroupRules: await this.relaxedNodeGroupRulesFlagGate.isEnabled(user) },
+				{ relaxNodeGroupRules },
 			);
 		}
 

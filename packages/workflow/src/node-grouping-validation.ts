@@ -224,8 +224,14 @@ export const NODE_GROUPING_RULES = {
 export function validateNodeSelectionForExtraction<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
 ): NodeSelectionValidationResult<TNode> {
-	const subgraphResult = validateNodeSelectionSubgraph(input);
-	if (!subgraphResult.valid) return subgraphResult;
+	// relaxNodeGroupRules forced to false: extraction replaces the selection with one
+	// node, which has one input and one output. Several entries or exits leave nothing
+	// to wire that node back to.
+	const subgraphResult = validateNodeSelectionSubgraph({ ...input, relaxNodeGroupRules: false });
+
+	if (!subgraphResult.valid) {
+		return subgraphResult;
+	}
 
 	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
 	const { start, end } = subgraphResult.subGraphData;

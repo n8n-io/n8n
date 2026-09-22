@@ -198,6 +198,16 @@ describe('WorkflowCreationService', () => {
 		return { transactionManager };
 	}
 
+	/** A minimal workflow that carries one group, so the save path reads the flag. */
+	function makeGroupedWorkflow(): WorkflowEntity {
+		const workflow = new WorkflowEntity();
+		workflow.name = 'Test';
+		workflow.nodes = [];
+		workflow.connections = {};
+		workflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: [] }];
+		return workflow;
+	}
+
 	describe('createWorkflow()', () => {
 		it('relaxes the group rules for a user inside the rollout', async () => {
 			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
@@ -206,10 +216,7 @@ describe('WorkflowCreationService', () => {
 			setupTransactionMocks();
 
 			const user = mock<User>();
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.name = 'Test';
-			newWorkflow.nodes = [];
-			newWorkflow.connections = {};
+			const newWorkflow = makeGroupedWorkflow();
 
 			// The transaction mock stops the create after validation, which is all this asserts.
 			await expect(
@@ -227,15 +234,32 @@ describe('WorkflowCreationService', () => {
 			setupTransactionMocks();
 
 			const user = mock<User>();
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.name = 'Test';
-			newWorkflow.nodes = [];
-			newWorkflow.connections = {};
+			const newWorkflow = makeGroupedWorkflow();
 
 			await expect(
 				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
 			).rejects.toThrow();
 
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual({ relaxNodeGroupRules: false });
+		});
+
+		it('does not read the flag for a workflow without groups', async () => {
+			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			setupTransactionMocks();
+
+			const newWorkflow = makeGroupedWorkflow();
+			newWorkflow.nodeGroups = [];
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow();
+
+			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).not.toHaveBeenCalled();
 			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
 			expect(options).toEqual({ relaxNodeGroupRules: false });
 		});

@@ -650,7 +650,8 @@ describe('WorkflowService', () => {
 
 		test('relaxes the group rules for a user inside the rollout', async () => {
 			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
-			setupExistingWorkflow();
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
 
 			const changedNodes = [
 				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
@@ -672,6 +673,29 @@ describe('WorkflowService', () => {
 		});
 
 		test('keeps the group rules for a user outside the rollout', async () => {
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+
+			await workflowService.update(
+				mock<User>(),
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				{ relaxNodeGroupRules: false },
+			);
+		});
+
+		test('does not read the flag for a workflow without groups', async () => {
+			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
 			setupExistingWorkflow();
 
 			const changedNodes = [
@@ -684,6 +708,7 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
+			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).not.toHaveBeenCalled();
 			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.anything(),

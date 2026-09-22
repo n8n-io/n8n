@@ -215,10 +215,15 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
+		// Only a workflow with groups needs the flag.
+		const relaxNodeGroupRules = newWorkflow.nodeGroups?.length
+			? await this.relaxedNodeGroupRulesFlagGate.isEnabled(user)
+			: false;
+
 		WorkflowHelpers.validateWorkflowNodeGroups(
 			newWorkflow,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
-			{ relaxNodeGroupRules: await this.relaxedNodeGroupRulesFlagGate.isEnabled(user) },
+			{ relaxNodeGroupRules },
 		);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {

@@ -219,6 +219,48 @@ describe('node grouping validation', () => {
 		).toBe(true);
 	});
 
+	// Extraction builds a runnable sub-workflow, so it keeps the strict rules whatever
+	// the rollout says. This block outlives the flag.
+	describe('sub-workflow extraction', () => {
+		const extract = (nodes: INode[], connectionsBySourceNode: IConnections, relax: boolean) =>
+			validateNodeSelectionForExtraction({
+				nodes,
+				connectionsBySourceNode,
+				getNodeType: () => makeNodeType(),
+				relaxNodeGroupRules: relax,
+			});
+
+		test.each([{ relaxNodeGroupRules: true }, { relaxNodeGroupRules: false }])(
+			'rejects two entry nodes regardless of the feature flag value (relaxNodeGroupRules: $relaxNodeGroupRules)',
+			({ relaxNodeGroupRules }) => {
+				const graph = makeTwoEntryGraph();
+
+				const result = extract(graph.nodes, graph.connections, relaxNodeGroupRules);
+
+				expect(result.valid).toBe(false);
+
+				if (!result.valid) {
+					expect(result.reason).toBe('invalid-subgraph');
+				}
+			},
+		);
+
+		test.each([{ relaxNodeGroupRules: true }, { relaxNodeGroupRules: false }])(
+			'rejects two exit nodes regardless of the feature flag value (relaxNodeGroupRules: $relaxNodeGroupRules)',
+			({ relaxNodeGroupRules }) => {
+				const graph = makeTwoExitGraph();
+
+				const result = extract(graph.nodes, graph.connections, relaxNodeGroupRules);
+
+				expect(result.valid).toBe(false);
+
+				if (!result.valid) {
+					expect(result.reason).toBe('invalid-subgraph');
+				}
+			},
+		);
+	});
+
 	// The rules the flexible groups rollout lifts. This whole block goes when the
 	// flag becomes permanent; the sibling block below stays.
 	describe('with relaxNodeGroupRules off', () => {
