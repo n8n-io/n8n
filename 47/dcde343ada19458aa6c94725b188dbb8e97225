@@ -6,6 +6,7 @@ packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
   s_29f51a98e4384d::t_3d961ba9d13787 187
   s_29f51a98e4384d::t_720a0e394cd22e 149
   s_29f51a98e4384d::t_403c9328735cf4 18-20
+  h_c63dce324dfc7b 186
 packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.module.test.ts
   s_29f51a98e4384d::t_1d0fc0de53a524 30,36
   s_29f51a98e4384d::t_9d5ae749ae9af0 132-139
@@ -33,6 +34,11 @@ packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
   "git_ai_version": "1.7.4",
   "base_commit_sha": "47dcde343ada19458aa6c94725b188dbb8e97225",
   "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
   "sessions": {
     "s_29f51a98e4384d": {
       "agent_id": {
