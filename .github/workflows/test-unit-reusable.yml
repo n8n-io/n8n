@@ -20,15 +20,11 @@ on:
       affectedPackages:
         description: |
           Space-separated list of workspace packages affected by the PR, as
-          computed by `janitor affected-packages` in install-and-build.
+          computed by `janitor affected-packages` in install-and-build. Empty
+          string means "no scoping data, run everything".
         required: false
         default: ''
         type: string
-      affectedPackagesComputed:
-        description: Whether affectedPackages contains a computed result. Run all packages when false.
-        required: false
-        default: false
-        type: boolean
       changedFiles:
         description: |
           Newline-separated list of CHANGED_FILES from ci-filter. Passed to
@@ -303,18 +299,6 @@ jobs:
           files: ./packages/**/coverage/lcov.info
 
   unit-test-frontend:
-    if: >-
-      inputs.affectedPackagesComputed == false ||
-      contains(inputs.affectedPackages, 'n8n-editor-ui') ||
-      contains(inputs.affectedPackages, '@n8n/frontend-') ||
-      contains(inputs.affectedPackages, '@n8n/chat') ||
-      contains(inputs.affectedPackages, '@n8n/composables') ||
-      contains(inputs.affectedPackages, '@n8n/design-system') ||
-      contains(inputs.affectedPackages, '@n8n/eslint-plugin-design-system') ||
-      contains(inputs.affectedPackages, '@n8n/i18n') ||
-      contains(inputs.affectedPackages, '@n8n/rest-api-client') ||
-      contains(inputs.affectedPackages, '@n8n/stores') ||
-      contains(inputs.affectedPackages, '@n8n/storybook')
     name: Frontend (${{ matrix.shard }}/4)
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
