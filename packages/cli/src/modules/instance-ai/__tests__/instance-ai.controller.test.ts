@@ -138,6 +138,7 @@ describe('InstanceAiController', () => {
 	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
+	const setupTelemetry = mock<InstanceAiWorkflowSetupTelemetryService>();
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
@@ -173,6 +174,8 @@ describe('InstanceAiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setupTelemetry.rememberSession.mockReset().mockResolvedValue();
+		Container.set(InstanceAiWorkflowSetupTelemetryService, setupTelemetry);
 		// SSE replay reads the durable log; default to an empty thread so tests
 		// only stub what they exercise.
 		eventLog.getEventsAfter.mockResolvedValue([]);
@@ -360,9 +363,7 @@ describe('InstanceAiController', () => {
 		it('admits only one overlapping request while saving session context', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const sessionSaved = createDeferredPromise();
-			const setupTelemetry = mock<InstanceAiWorkflowSetupTelemetryService>();
 			setupTelemetry.rememberSession.mockReturnValue(sessionSaved.promise);
-			Container.set(InstanceAiWorkflowSetupTelemetryService, setupTelemetry);
 			const request = mock<AuthenticatedRequest>({
 				user: { id: USER_ID },
 				headers: { 'push-ref': 'session-1' },

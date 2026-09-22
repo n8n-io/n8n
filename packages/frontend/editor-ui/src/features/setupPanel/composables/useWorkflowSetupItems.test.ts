@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -11,6 +12,7 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetupPanelState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -488,6 +490,71 @@ describe('useWorkflowSetupItems', () => {
 		read.resolve([]);
 		await flushPromises();
 		expect(state.credentialsAvailable.value).toBe(true);
+	});
+
+	it.each(['before', 'after'])(
+		'retains newer scoped credentials when the scope changes %s the older response',
+		async (scopeChange) => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			mockedStore(useNodeTypesStore).loadNodeTypesIfNotLoaded.mockResolvedValue(undefined);
+			const credential = mock<ICredentialsResponse>({
+				id: 'private',
+				name: 'Private account',
+				isResolvable: true,
+				connectedByMe: false,
+			});
+			const olderRead = Promise.withResolvers<ICredentialsResponse[]>();
+			vi.spyOn(credentialsApi, 'getUsableCredentials')
+				.mockReturnValueOnce(olderRead.promise)
+				.mockResolvedValueOnce([credential])
+				.mockResolvedValue([]);
+			const scope = effectScope();
+			try {
+				const state = scope.run(() => useWorkflowSetupItems(WORKFLOW_ID, { paused: true }))!;
+				const credentials = useCredentialsStore();
+				await credentials.fetchUsableCredentials({ workflowId: WORKFLOW_ID });
+				await flushPromises();
+				expect(state.isCredentialConfigured(credential)).toBe(false);
+
+				if (scopeChange === 'before') {
+					await credentials.fetchUsableCredentials({ workflowId: 'other-workflow' });
+					await flushPromises();
+				}
+				olderRead.resolve([{ ...credential, connectedByMe: true }]);
+				await flushPromises();
+				if (scopeChange === 'after')
+					await credentials.fetchUsableCredentials({ workflowId: 'other-workflow' });
+				await flushPromises();
+				expect(state.credentialsAvailable.value).toBe(true);
+				expect(state.isCredentialConfigured(credential)).toBe(false);
+			} finally {
+				scope.stop();
+			}
+		},
+	);
+
+	it('requires a fresh read after switching to a cached workflow scope', async () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		mockedStore(useNodeTypesStore).loadNodeTypesIfNotLoaded.mockResolvedValue(undefined);
+		const getCredentials = vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([]);
+		const workflowId = ref(WORKFLOW_ID);
+		const scope = effectScope();
+		try {
+			const state = scope.run(() => useWorkflowSetupItems(workflowId, { paused: true }))!;
+			await flushPromises();
+			await useCredentialsStore().fetchUsableCredentials({ workflowId: 'other-workflow' });
+			await flushPromises();
+			const read = Promise.withResolvers<ICredentialsResponse[]>();
+			getCredentials.mockReturnValueOnce(read.promise);
+			workflowId.value = 'other-workflow';
+			await flushPromises();
+			expect(state.credentialsAvailable.value).toBe(false);
+			read.resolve([]);
+			await flushPromises();
+			expect(state.credentialsAvailable.value).toBe(true);
+		} finally {
+			scope.stop();
+		}
 	});
 
 	it('derives a managed credential as complete without an ordinary credential ID', () => {

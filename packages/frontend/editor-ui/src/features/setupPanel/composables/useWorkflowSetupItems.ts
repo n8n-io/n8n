@@ -61,14 +61,13 @@ export function useWorkflowSetupItems(
 	});
 	// Keep this workflow's result when another workflow replaces the picker's slice.
 	watch(
-		() => {
-			const id = toValue(workflowId);
-			return id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
-				? Object.values(credentialsStore.usableCredentials)
-				: undefined;
-		},
+		() => Object.values(credentialsStore.usableCredentials),
 		(credentials) => {
-			if (credentials && credentialsAvailable.value) workflowCredentials.value = credentials;
+			const id = toValue(workflowId);
+			if (!id || !credentialsStore.hasUsableCredentialsForScope({ workflowId: id })) return;
+			workflowCredentials.value = credentials;
+			credentialsLoadedForWorkflow.value = id;
+			credentialFetchVersion++;
 		},
 	);
 

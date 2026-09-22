@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import type { InstanceAiMessage, InstanceAiSetupItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import type { INodeUi } from '@/Interface';
 import type { SetupPanelRow } from '../../../composables/useSetupPanelState';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
@@ -17,16 +18,18 @@ import { AI_GATEWAY_MANAGED_TAG } from '../../../constants';
 // The shared popover mock renders inline and cannot verify the portal boundary.
 vi.unmock('reka-ui');
 
+const telemetryMock = vi.hoisted(() => ({
+	trackConnectionStarted: vi.fn(),
+	trackConnectionCompleted: vi.fn(),
+	trackConnectionValidation: vi.fn(),
+	trackConnectionFailed: vi.fn(),
+	trackConnectionCancelled: vi.fn(),
+	trackParameterStarted: vi.fn(),
+	trackDismissed: vi.fn(),
+}));
+
 vi.mock('../../../composables/useSetupPanelTelemetry', () => ({
-	useSetupPanelTelemetry: () => ({
-		trackConnectionStarted: vi.fn(),
-		trackConnectionCompleted: vi.fn(),
-		trackConnectionValidation: vi.fn(),
-		trackConnectionFailed: vi.fn(),
-		trackConnectionCancelled: vi.fn(),
-		trackParameterStarted: vi.fn(),
-		trackDismissed: vi.fn(),
-	}),
+	useSetupPanelTelemetry: () => telemetryMock,
 }));
 
 const { actionsMock, showMessageMock, testCredentialMock, oauthMock, credentialsMock } = vi.hoisted(
@@ -571,12 +574,24 @@ describe('InstanceAiSetupPanel', () => {
 		expect(getByTestId('setup-panel-back')).toBeVisible();
 	});
 
-	it('connects managed OAuth directly from the row and keeps cancellation pending', async () => {
+	it.each([
+		{ type: 'failed', errorType: 'connection' },
+		{ type: 'cancelled', reason: 'oauth_closed' },
+	] as const)('tracks a $type managed OAuth connection and allows retry', async (outcome) => {
 		oauthMock.isOAuthCredentialType.mockReturnValue(true);
 		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(true);
 		stateMock.rows = [{ item: credentialItem, isDone: false }];
 		oauthMock.createAndAuthorize
-			.mockResolvedValueOnce(null)
+			.mockImplementationOnce(
+				async (
+					_type,
+					_nodeType,
+					options: Parameters<ReturnType<typeof useCredentialOAuth>['createAndAuthorize']>[2],
+				) => {
+					options?.onOutcome?.(outcome);
+					return null;
+				},
+			)
 			.mockResolvedValueOnce({ id: 'cred-1' });
 		credentialsMock.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Account' });
 		actionsMock.bindCredential.mockResolvedValue('applied');
@@ -589,13 +604,35 @@ describe('InstanceAiSetupPanel', () => {
 		});
 		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
 		expect(queryByRole('dialog')).toBeNull();
+		expect(telemetryMock.trackConnectionStarted).toHaveBeenCalledExactlyOnceWith(
+			credentialItem,
+			'oauth',
+		);
+		if (outcome.type === 'failed') {
+			expect(telemetryMock.trackConnectionFailed).toHaveBeenCalledExactlyOnceWith(
+				credentialItem,
+				outcome.errorType,
+			);
+			expect(telemetryMock.trackConnectionCancelled).not.toHaveBeenCalled();
+		} else {
+			expect(telemetryMock.trackConnectionCancelled).toHaveBeenCalledExactlyOnceWith(
+				credentialItem,
+				outcome.reason,
+			);
+			expect(telemetryMock.trackConnectionFailed).not.toHaveBeenCalled();
+		}
 		await userEvent.click(getByRole('button', { name: 'Connect' }));
 		await waitFor(() =>
-			expect(actionsMock.bindCredential).toHaveBeenCalledWith(credentialItem, {
-				id: 'cred-1',
-				name: 'Account',
-			}),
+			expect(telemetryMock.trackConnectionCompleted).toHaveBeenCalledExactlyOnceWith(
+				credentialItem,
+				'cred-1',
+				'applied',
+			),
 		);
+		expect(actionsMock.bindCredential).toHaveBeenCalledWith(credentialItem, {
+			id: 'cred-1',
+			name: 'Account',
+		});
 	});
 
 	it('opens the credential picker instead of a direct OAuth action when an account is available', async () => {
