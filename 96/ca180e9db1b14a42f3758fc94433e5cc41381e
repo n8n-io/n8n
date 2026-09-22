@@ -1,0 +1,111 @@
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listVolumes.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,10,14
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getVolume.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,12
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_1f1ec980d9998c::t_219f802fc8e818 1,3,8-20,27-28,30,32-41,48-49,51,61,63-68,70-78,85-96,100,102-103,105-107,111,115-117,124-132,134-135,138,144-167,170-189,191-196,199,202-216,218
+  s_1f1ec980d9998c::t_b184508463dafc 217
+  s_1f1ec980d9998c::t_b0f63a0fb84a58 219
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listTables.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,10,14
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listFunctions.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,10,14
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteCatalog.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 3-4,9
+packages/nodes-base/nodes/Databricks/actions/genie/createMessage.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,8,10-14
+packages/nodes-base/nodes/Databricks/actions/genie/getQueryResults.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,11-16
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createTable.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1-2,4-5,17,32
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/listIndexes.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,8
+packages/nodes-base/nodes/Databricks/actions/genie/executeMessageQuery.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,11-16
+packages/nodes-base/nodes/Databricks/transport/index.ts
+  s_1f1ec980d9998c::t_f17a8c6e50126f 1-7
+packages/nodes-base/nodes/Databricks/actions/modelServing/queryEndpoint.operation.ts
+  s_1f1ec980d9998c::t_57c8136ce2efb7 2,4-5,8,15-16,20,24,29-31,61,66
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getTable.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,9
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_1f1ec980d9998c::t_b52e09ff8c4dc1 1,5-9,12,30-36,43,49,51-52,54,70,79,82-87
+  s_1f1ec980d9998c::t_ca8845ef10cbda 88
+  s_1f1ec980d9998c::t_299116fe9ed2a9 93
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getFunction.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,9
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/getIndex.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,8
+packages/nodes-base/nodes/Databricks/actions/files/volumeLocation.ts
+  s_1f1ec980d9998c::t_16d1ad90747ec8 1-26
+packages/nodes-base/nodes/Databricks/actions/files/deleteDirectory.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 3-5,8,11,18
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteVolume.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 3-4,12
+packages/nodes-base/nodes/Databricks/actions/files/getFileInfo.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 3,5,7-9,11,16
+packages/nodes-base/nodes/Databricks/actions/files/uploadFile.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 3,8,10,14,16
+  s_1f1ec980d9998c::t_f17a8c6e50126f 5
+  s_1f1ec980d9998c::t_2f21cf6eb036a2 4
+packages/nodes-base/nodes/Databricks/actions/files/deleteFile.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 3,5,7-9,11,18
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getCatalog.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,9
+packages/nodes-base/nodes/Databricks/actions/files/downloadFile.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 4,6,8-11,14,16,18,20,35
+packages/nodes-base/nodes/Databricks/actions/genie/getMessage.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,10-14
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/queryIndex.operation.ts
+  s_1f1ec980d9998c::t_16d1ad90747ec8 1-2,4-10,24,37,43-44,47,51-52,54
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createFunction.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1-2,4-5,24-39
+packages/nodes-base/nodes/Databricks/transport/client.ts
+  s_1f1ec980d9998c::t_1decad653b4914 2,20-21,28,32,34-37,43-47,50-51,65-68,70-71,79-82,91,106,108,112,114-118,123-150,155,163,174-186,192,282,291-565,576-601,604
+  s_1f1ec980d9998c::t_674d84e99f5ed5 566-575,602
+  s_1f1ec980d9998c::t_e8be3cc9e12a1c 603
+  s_1f1ec980d9998c::t_a667687e327e8b 605
+packages/nodes-base/nodes/Databricks/trigger/pipelines.ts
+  s_1f1ec980d9998c::t_674d84e99f5ed5 5,34,38,55-56,72
+  s_1f1ec980d9998c::t_a3ebc887796c2c 3
+packages/nodes-base/nodes/Databricks/actions/genie/getSpace.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,8
+packages/nodes-base/nodes/Databricks/actions/files/listDirectory.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 1,3,8,15-17,19-23
+  s_1f1ec980d9998c::t_f17a8c6e50126f 5
+  s_1f1ec980d9998c::t_155da43961e8ac 4
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createCatalog.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,10,13
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createVolume.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 2,4-5,17,34
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/updateCatalog.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,10-11
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listCatalogs.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3,6
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/createIndex.operation.ts
+  s_1f1ec980d9998c::t_16d1ad90747ec8 1-2,4,12,27
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteFunction.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 3-4,9
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteTable.operation.ts
+  s_1f1ec980d9998c::t_778dc33c030eb6 1,3-4,9
+packages/nodes-base/nodes/Databricks/actions/genie/startConversation.operation.ts
+  s_1f1ec980d9998c::t_3233cd72611b0e 1,3,7,9-12
+packages/nodes-base/nodes/Databricks/actions/files/createDirectory.operation.ts
+  s_1f1ec980d9998c::t_3144967a9d7ba2 3-5,8,11,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96ca180e9db1b14a42f3758fc94433e5cc41381e",
+  "prompts": {},
+  "sessions": {
+    "s_1f1ec980d9998c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ca6cf34-09a9-48ed-b0de-28e10a1d85ba",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
