@@ -11,16 +11,15 @@ import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
-	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	type InstanceAiAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
 import { useAssistantAtMentions } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
+import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAttachments';
 import type {
 	AssistantMentionArtifactReference,
-	AssistantMentionItem,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
@@ -296,204 +295,35 @@ const mentions = useAssistantAtMentions({
 const mentionMenuOpen = mentions.menuOpen;
 const mentionQuery = mentions.query;
 
-interface SelectedMentionRecord {
-	item: AssistantMentionItem;
-	referenceId: string;
-}
-
-let mentionReferenceSequence = 0;
-const selectedMentionRecords = new Map<string, SelectedMentionRecord>();
-const ownedMentionRecords = new Map<string, SelectedMentionRecord>();
-
-onBeforeUnmount(() => {
-	for (const record of ownedMentionRecords.values()) releaseMentionReference(record);
+const mentionAttachments = useAssistantMentionAttachments({
+	files: attachedFiles,
+	resources: attachedResources,
+	projectId: () => props.mentionProjectId,
+	reservedAttachmentCount: () => props.reservedAttachmentCount,
+	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
+	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
+	onCleared: mentions.close,
 });
 
-function addMentionReference(item: AssistantMentionItem): SelectedMentionRecord {
-	const record = {
-		item,
-		referenceId: `${item.key}:${++mentionReferenceSequence}`,
-	};
-	selectedMentionRecords.set(item.key, record);
-	ownedMentionRecords.set(record.referenceId, record);
-	emit('mention-reference-added', {
-		referenceId: record.referenceId,
-		workflowId: item.workflowId,
-		workflowName: item.workflowName,
-	});
-	return record;
-}
-
-function releaseMentionReference(record: SelectedMentionRecord): void {
-	if (!ownedMentionRecords.delete(record.referenceId)) return;
-	emit('mention-reference-removed', record.referenceId);
-}
-
-function setMatchesMention(
-	set: Extract<InstanceAiResourceAttachment, { type: 'nodes' }>['sets'][number],
-	item: AssistantMentionItem,
-): boolean {
-	if (item.kind === 'node') {
-		return set.nodes.length === 1 && set.nodes[0]?.id === item.entityId;
-	}
-	return item.kind === 'group' && set.canvasGroupId === item.entityId;
-}
-
-function attachmentContainsMention(item: AssistantMentionItem): boolean {
-	if (item.kind === 'workflow') {
-		return attachedResources.value.some(
-			(attachment) => attachment.type === 'workflow' && attachment.id === item.workflowId,
+async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
+	const result = mentionAttachments.select(selection);
+	if (result.status === 'limit') {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
+			i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
 		);
-	}
-
-	return attachedResources.value.some(
-		(attachment) =>
-			attachment.type === 'nodes' &&
-			attachment.workflowId === item.workflowId &&
-			attachment.sets.some((set) => setMatchesMention(set, item)),
-	);
-}
-
-function reconcileSelectedMentionRecords(): void {
-	for (const [mentionKey, record] of selectedMentionRecords) {
-		if (attachmentContainsMention(record.item)) continue;
-		selectedMentionRecords.delete(mentionKey);
-		releaseMentionReference(record);
-	}
-}
-
-function attachmentAddsResource(attachment: InstanceAiResourceAttachment): boolean {
-	if (attachment.type === 'workflow') {
-		return !attachedResources.value.some(
-			(current) => current.type === 'workflow' && current.id === attachment.id,
-		);
-	}
-	if (attachment.type === 'nodes') {
-		return !attachedResources.value.some(
-			(current) => current.type === 'nodes' && current.workflowId === attachment.workflowId,
-		);
-	}
-	return true;
-}
-
-function addMentionAttachment(attachment: InstanceAiResourceAttachment): void {
-	if (attachment.type === 'workflow') {
-		if (
-			attachedResources.value.some(
-				(current) => current.type === 'workflow' && current.id === attachment.id,
-			)
-		)
-			return;
-		attachedResources.value = [...attachedResources.value, attachment];
 		return;
 	}
 
-	if (attachment.type === 'nodes') {
-		const index = attachedResources.value.findIndex(
-			(current) => current.type === 'nodes' && current.workflowId === attachment.workflowId,
+	if (result.truncated) {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.nodeContext.truncated.message')),
+			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
-		if (index !== -1) {
-			const current = attachedResources.value[index];
-			if (current.type !== 'nodes') return;
-			attachedResources.value[index] = {
-				...current,
-				workflowName: attachment.workflowName ?? current.workflowName,
-				sets: mergeNodeSets(current.sets, attachment.sets),
-			};
-			return;
-		}
 	}
-
-	attachedResources.value = [...attachedResources.value, attachment];
-}
-
-async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	const existingRecord = selectedMentionRecords.get(selection.item.key);
-	if (!existingRecord) {
-		const addsResource = attachmentAddsResource(selection.attachment);
-		if (
-			addsResource &&
-			attachedFiles.value.length + attachedResources.value.length + props.reservedAttachmentCount >=
-				MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE
-		) {
-			toast.showError(
-				new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
-				i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
-			);
-			return;
-		}
-
-		addMentionAttachment(selection.attachment);
-		if (!attachmentContainsMention(selection.item)) {
-			toast.showError(
-				new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
-				i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
-			);
-			return;
-		}
-		addMentionReference(selection.item);
-		if (selection.truncated) {
-			toast.showError(
-				new Error(i18n.baseText('instanceAi.nodeContext.truncated.message')),
-				i18n.baseText('instanceAi.nodeContext.truncated.title'),
-			);
-		}
-	}
-
 	emit('mention-workflow-open', selection.item.workflowId);
 	await mentions.replaceActiveRange(selection.item.label);
 }
-
-function handleMentionResourceUpdate(
-	index: number,
-	attachment: Extract<InstanceAiResourceAttachment, { type: 'nodes' }>,
-): void {
-	attachedResources.value[index] = attachment;
-	reconcileSelectedMentionRecords();
-}
-
-function clearMentionContextForProjectChange(): void {
-	const records = [...selectedMentionRecords.values()];
-	if (records.length === 0) return;
-
-	const nextResources: InstanceAiResourceAttachment[] = [];
-	for (const attachment of attachedResources.value) {
-		if (attachment.type === 'workflow') {
-			if (
-				!records.some(({ item }) => item.kind === 'workflow' && item.workflowId === attachment.id)
-			) {
-				nextResources.push(attachment);
-			}
-			continue;
-		}
-		if (attachment.type !== 'nodes') {
-			nextResources.push(attachment);
-			continue;
-		}
-
-		const matchingRecords = records.filter(
-			({ item }) => item.workflowId === attachment.workflowId && item.kind !== 'workflow',
-		);
-		const sets = attachment.sets.filter(
-			(set) => !matchingRecords.some(({ item }) => setMatchesMention(set, item)),
-		);
-		if (sets.length > 0) nextResources.push({ ...attachment, sets });
-	}
-	attachedResources.value = nextResources;
-
-	selectedMentionRecords.clear();
-	for (const record of records) releaseMentionReference(record);
-	mentions.close();
-}
-
-watch(
-	() => props.mentionProjectId,
-	(projectId, previousProjectId) => {
-		if (previousProjectId !== undefined && projectId !== previousProjectId) {
-			clearMentionContextForProjectChange();
-		}
-	},
-);
 
 const canSubmit = computed(() =>
 	canSubmitMessage(
@@ -669,34 +499,6 @@ function restoreSubmittedDraft(
 	return true;
 }
 
-function detachSubmittedMentionRecords(): SelectedMentionRecord[] {
-	const records = [...selectedMentionRecords.values()];
-	for (const record of records) {
-		if (selectedMentionRecords.get(record.item.key) === record) {
-			selectedMentionRecords.delete(record.item.key);
-		}
-	}
-	return records;
-}
-
-function acceptSubmittedMentionRecords(records: readonly SelectedMentionRecord[]): void {
-	for (const record of records) releaseMentionReference(record);
-}
-
-function restoreSubmittedMentionRecords(records: readonly SelectedMentionRecord[]): void {
-	for (const record of records) {
-		if (selectedMentionRecords.has(record.item.key)) {
-			releaseMentionReference(record);
-			continue;
-		}
-		if (attachmentContainsMention(record.item)) {
-			selectedMentionRecords.set(record.item.key, record);
-		} else {
-			releaseMentionReference(record);
-		}
-	}
-}
-
 /**
  * `prefill` is the snapshot its caller took when it read the message, not live
  * state: `handleSubmit` awaits file conversion in between, and the composer can
@@ -740,18 +542,18 @@ function submitComposerMessage(
 
 	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
 	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
-	const submittedMentionRecords = detachSubmittedMentionRecords();
+	const mentionSubmission = mentionAttachments.detachSubmission();
 	emitSubmittedMessage(
 		message,
 		attachments,
 		() => {
 			const restored = restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill);
-			restoreSubmittedMentionRecords(submittedMentionRecords);
+			mentionSubmission.restore();
 			return restored;
 		},
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
-		() => acceptSubmittedMentionRecords(submittedMentionRecords),
+		mentionSubmission.accept,
 	);
 	resetDraftComposer();
 }
@@ -811,8 +613,7 @@ async function handleSubmit() {
 }
 
 function removeResource(index: number) {
-	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
-	reconcileSelectedMentionRecords();
+	mentionAttachments.removeResource(index);
 }
 
 watch(
@@ -1056,7 +857,7 @@ const resizable = computed(() => {
 						:attachment="attachment"
 						:is-removable="true"
 						@remove-resource="removeResource(index)"
-						@update:attachment="handleMentionResourceUpdate(index, $event)"
+						@update:attachment="mentionAttachments.updateResource(index, $event)"
 					/>
 				</div>
 				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
