@@ -14,6 +14,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
+import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -61,13 +62,7 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const {
-	mcpConnectionsExperimentMock,
-	computerUseExperimentMock,
-	browserUseExperimentMock,
-	routerPushMock,
-} = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
+const { computerUseExperimentMock, browserUseExperimentMock, routerPushMock } = vi.hoisted(() => ({
 	browserUseExperimentMock: vi.fn(),
 	computerUseExperimentMock: vi.fn(),
 	routerPushMock: vi.fn(),
@@ -76,10 +71,6 @@ const {
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
-}));
-
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
@@ -104,18 +95,6 @@ function setModuleSettings(
 	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
 }
 
-const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
-
 describe('SettingsInstanceAiView', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -125,7 +104,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
@@ -629,23 +607,30 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
 			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
 		});
-
-		it('hides the MCP settings card when the connections experiment is disabled', () => {
-			mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-group-mcp')).toBeNull();
-		});
 	});
 
 	describe('Permissions groups', () => {
 		it('renders a row per permission group', () => {
 			const { getByTestId } = renderComponent();
-			for (const group of ['workflows', 'folders', 'dataTables', 'credentials', 'system', 'web']) {
+			for (const group of [
+				'workflows',
+				'nodes',
+				'folders',
+				'dataTables',
+				'credentials',
+				'system',
+				'web',
+			]) {
 				expect(getByTestId(`n8n-agent-permission-group-${group}`)).toBeVisible();
 			}
+		});
+
+		it('shows the Execute a node permission when the Nodes group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.nodes'));
+
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeNode')).toBeVisible());
 		});
 
 		it('summarises non-default permissions as exceptions', () => {

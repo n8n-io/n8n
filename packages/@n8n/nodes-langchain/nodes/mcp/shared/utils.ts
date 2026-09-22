@@ -302,9 +302,9 @@ function createAuthFetch(
 	onUnauthorized?: OnUnauthorizedHandler,
 	allowedDomains?: string,
 ): typeof fetch {
-	const secureLookup = secureEgressFilter.createSecureLookup();
 	return createRefreshingAuthFetch({
-		baseFetch: async (input, init) => await proxyFetch({ input, init, lookup: secureLookup }),
+		baseFetch: async (input, init) =>
+			await proxyFetch({ input, init, egressFilter: secureEgressFilter }),
 		initialHeaders,
 		...(onUnauthorized
 			? {

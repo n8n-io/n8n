@@ -894,6 +894,30 @@ export function setTracePromptVersion(
 	}
 }
 
+/** Serialized `provider/model` id for LangSmith metadata and AI SDK telemetry. */
+export function modelIdTraceMetadata(
+	modelId: unknown,
+): { model_id: string } | Record<string, never> {
+	if (modelId === undefined) {
+		return {};
+	}
+	const serialized = serializeModelIdForTrace(modelId);
+	return typeof serialized === 'string' && serialized.length > 0 ? { model_id: serialized } : {};
+}
+
+export function setTraceModelId(
+	tracing: InstanceAiTraceContext | undefined,
+	modelId: unknown,
+): void {
+	if (!tracing) return;
+	const metadata = modelIdTraceMetadata(modelId);
+	if (!('model_id' in metadata)) return;
+	appendRootRunMetadata(tracing.rootRun, metadata);
+	if (tracing.actorRun.id !== tracing.rootRun.id) {
+		appendRootRunMetadata(tracing.actorRun, metadata);
+	}
+}
+
 export function appendGeneratedWorkflowIdToRootMetadata(
 	root: InstanceAiTraceRun,
 	workflowId: string,
@@ -1674,6 +1698,9 @@ function createTelemetryFactory(options: {
 			options.baseMetadata,
 			{
 				prompt_version: options.rootRun.metadata?.prompt_version,
+				...(typeof options.rootRun.metadata?.model_id === 'string'
+					? { model_id: options.rootRun.metadata.model_id }
+					: {}),
 			},
 			telemetryOptions.metadata,
 			{

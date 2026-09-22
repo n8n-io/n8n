@@ -2,6 +2,17 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'setupPanel.label': 'Workflow setup',
+	'setupPanel.back': 'Back to setup checklist',
+	'setupPanel.complete': 'Complete',
+	'setupPanel.credentialSelected': 'Credential selected',
+	'setupPanel.setupComplete': 'Setup complete',
+	'setupPanel.execute': 'Execute',
+	'setupPanel.validating': 'Validating…',
+	'setupPanel.executing': 'Executing…',
+	'setupPanel.connected': 'Connected',
+	'setupPanel.changeConnection': 'Change connection',
+	'setupPanel.moreOptions': 'More options',
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
 	'generic.close': 'Close',
@@ -16,6 +27,8 @@ export default {
 	'nds.select.noResults': 'No results found',
 	'nds.inputNumber.increase': 'Increase',
 	'nds.inputNumber.decrease': 'Decrease',
+	'resizeWrapper.resize': 'Resize',
+	'resizeWrapper.drag': 'Drag',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
 	'formInput.validator.fieldRequired': 'This field is required',

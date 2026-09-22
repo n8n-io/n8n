@@ -22,6 +22,7 @@ export const RESOURCES = {
 		'manageInstance',
 		...DEFAULT_OPERATIONS,
 	] as const,
+	credentialTypePolicy: ['manage'] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
@@ -88,7 +89,7 @@ export const RESOURCES = {
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list', 'migrate'] as const,
-	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
+	apiKey: ['manage', 'create', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
@@ -125,10 +126,12 @@ export const API_KEY_RESOURCES = {
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
+	// TODO: add credentialTypePolicy:manage once a Public API endpoint consumes it.
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
 export const GLOBAL_ADMIN_ROLE_SLUG = 'global:admin';
+export const GLOBAL_MEMBER_ROLE_SLUG = 'global:member';
 export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';

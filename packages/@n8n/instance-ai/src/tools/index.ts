@@ -30,6 +30,9 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadSearchModelsTool = lazyMod(
+	() => require('./search-models.tool') as typeof import('./search-models.tool'),
+);
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
 );
@@ -105,7 +108,8 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
-		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
+		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),

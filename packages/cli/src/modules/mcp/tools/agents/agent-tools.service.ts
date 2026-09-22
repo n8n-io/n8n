@@ -1253,7 +1253,7 @@ export class McpAgentToolsService {
 			});
 			const previewAccessNote = canOpenPreview
 				? undefined
-				: 'Your access permits running this agent but not opening Preview. Share the Preview URL with a project member who has project and agent read access.';
+				: 'Your access permits running this agent but not opening Preview. Ask a project administrator for project and agent read access to open your preview session.';
 			const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
 				agentId,
 				suspensions: result.suspensions,

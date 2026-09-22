@@ -1088,4 +1088,97 @@ describe('DynamicCredentialsController', () => {
 			expect(res.send).toHaveBeenCalled();
 		});
 	});
+
+	describe('resolver / identity compatibility', () => {
+		const mockResolverEntity: DynamicCredentialResolver = {
+			id: 'resolver-123',
+			name: 'Test Resolver',
+			type: 'oauth2-introspection-identifier',
+			config: 'encrypted-config',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			generateId: vi.fn(),
+			setUpdateDate: vi.fn(),
+		};
+
+		/** Resolver keyed on an external subject: no `resolveOwningUserId`. */
+		const externalSubjectResolver = {
+			metadata: {
+				name: 'oauth2-introspection-identifier',
+				description: 'OAuth2 Introspection Identifier',
+			},
+			getSecret: vi.fn(),
+			setSecret: vi.fn(),
+			validateOptions: vi.fn(),
+			deleteSecret: vi.fn(),
+			validateIdentity: vi.fn(),
+		};
+
+		const buildRequest = () =>
+			mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123', authSource: 'cookie' },
+				headers: {},
+			});
+
+		beforeEach(() => {
+			enterpriseCredentialsService.getOne.mockResolvedValue(
+				mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' }),
+			);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			// Session-derived context, as built for `authSource=cookie`.
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue({
+				identity: 'n8n-session-jwt',
+				version: 1 as const,
+				metadata: { source: 'cookie-source', method: 'POST', endpoint: 'rest' },
+			});
+		});
+
+		it('rejects authorize when the resolver keys on an external subject', async () => {
+			resolverRegistry.getResolverByTypename.mockReturnValue(externalSubjectResolver);
+
+			await expect(
+				controller.authorizeCredential(buildRequest(), mock<Response>()),
+			).rejects.toThrow('resolves credentials per external user');
+			expect(externalSubjectResolver.validateIdentity).not.toHaveBeenCalled();
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('rejects revoke when the resolver keys on an external subject', async () => {
+			resolverRegistry.getResolverByTypename.mockReturnValue(externalSubjectResolver);
+
+			await expect(controller.revokeCredential(buildRequest(), mock<Response>())).rejects.toThrow(
+				'resolves credentials per external user',
+			);
+			expect(externalSubjectResolver.deleteSecret).not.toHaveBeenCalled();
+		});
+
+		it('allows authorize when the resolver maps the identity to an n8n user', async () => {
+			resolverRegistry.getResolverByTypename.mockReturnValue({
+				...externalSubjectResolver,
+				resolveOwningUserId: vi.fn().mockResolvedValue('user-1'),
+			});
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce('https://example.com/auth');
+
+			await expect(controller.authorizeCredential(buildRequest(), mock<Response>())).resolves.toBe(
+				'https://example.com/auth',
+			);
+		});
+
+		it('allows authorize for an externally supplied identity', async () => {
+			resolverRegistry.getResolverByTypename.mockReturnValue(externalSubjectResolver);
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue({
+				identity: 'external-token',
+				version: 1 as const,
+				metadata: {},
+			});
+			cipher.decryptV2.mockResolvedValueOnce('{}');
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce('https://example.com/auth');
+
+			await expect(controller.authorizeCredential(buildRequest(), mock<Response>())).resolves.toBe(
+				'https://example.com/auth',
+			);
+			expect(externalSubjectResolver.validateIdentity).toHaveBeenCalledTimes(1);
+		});
+	});
 });

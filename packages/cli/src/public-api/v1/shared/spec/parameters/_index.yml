@@ -10,12 +10,8 @@ TestRunWorkflowId:
   $ref: '../../../handlers/evaluations/spec/schemas/parameters/testRunWorkflowId.yml'
 TestRunId:
   $ref: '../../../handlers/evaluations/spec/schemas/parameters/testRunId.yml'
-TagId:
-  $ref: '../../../handlers/tags/spec/schemas/parameters/tagId.yml'
 UserIdentifier:
   $ref: '../../../handlers/users/spec/schemas/parameters/userIdentifier.yml'
-IncludeRole:
-  $ref: '../../../handlers/users/spec/schemas/parameters/includeRole.yml'
 dataTableId:
   $ref: '../../../handlers/data-tables/spec/schemas/parameters/dataTableId.yml'
 columnId:

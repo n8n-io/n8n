@@ -3,6 +3,7 @@ import {
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
 	StrictTimeZoneSchema,
+	type AgentConfigValidationIssue,
 	type AgentTaskDto,
 } from '@n8n/api-types';
 import {
@@ -25,19 +26,14 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createAgentTask,
-	deleteAgentTask,
-	runAgentTask,
-	updateAgentTask,
-} from '../composables/useAgentApi';
+import { createAgentTask, deleteAgentTask, updateAgentTask } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
+	describeSchedule,
 	formatScheduleDateTime,
 	formatTimeOfDay,
 	getNextScheduleOccurrence,
@@ -45,6 +41,7 @@ import {
 	type ScheduleFrequency,
 	weekdayLabel,
 } from '../utils/scheduleBuilder';
+import AgentPreviewButton from './AgentPreviewButton.vue';
 
 export type AgentTaskModalData = {
 	projectId: string;
@@ -52,10 +49,13 @@ export type AgentTaskModalData = {
 	ensureAgentPersisted?: () => Promise<void>;
 	task?: AgentTaskDto | null;
 	isPublished: boolean;
+	isRunnable?: boolean;
+	validationIssues?: AgentConfigValidationIssue[];
 	taskState?: {
 		enabled: boolean;
 	};
 	onToggle?: (payload: { id: string; enabled: boolean }) => void;
+	onPreview?: (instructions: string) => void;
 	onSaved: () => void;
 };
 
@@ -70,16 +70,15 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const task = computed(() => props.data.task ?? null);
 const isEditing = computed(() => Boolean(task.value));
+const scheduleTouched = ref(isEditing.value);
 // Editing a task on a published agent only changes the live schedule on the
 // next publish (see AgentTaskService), so warn before the edit silently no-ops.
 const showRepublishHint = computed(() => isEditing.value && props.data.isPublished);
 const enabled = ref(props.data.taskState?.enabled ?? true);
-const running = ref(false);
 const deleting = ref(false);
 
 const name = ref('');
@@ -186,7 +185,10 @@ const frequencyOptions = computed<Array<{ label: string; value: FrequencyOption 
 
 function onFrequencyChange(value: unknown) {
 	const match = frequencyOptions.value.find((option) => option.value === value);
-	if (match) frequency.value = match.value;
+	if (match) {
+		frequency.value = match.value;
+		scheduleTouched.value = true;
+	}
 }
 
 const dayOfWeekOptions = computed(() =>
@@ -204,6 +206,7 @@ const selectedTime = computed({
 	set: (value: number) => {
 		hour.value = Math.floor(value / 60);
 		minute.value = value % 60;
+		scheduleTouched.value = true;
 	},
 });
 
@@ -222,6 +225,17 @@ const timeOptions = computed(() => {
 function onMinuteInput(value: string) {
 	const parsed = Number(value);
 	minute.value = Number.isFinite(parsed) ? Math.min(59, Math.max(0, Math.trunc(parsed))) : 0;
+	scheduleTouched.value = true;
+}
+
+function onDayOfWeekChange(value: unknown) {
+	dayOfWeek.value = Number(value);
+	scheduleTouched.value = true;
+}
+
+function onDayOfMonthChange(value: unknown) {
+	dayOfMonth.value = Number(value);
+	scheduleTouched.value = true;
 }
 
 /**
@@ -248,9 +262,35 @@ onMounted(async () => {
 });
 
 const nextOccurrenceText = computed(() => {
+	if (!scheduleTouched.value) return '';
 	const next = getNextScheduleOccurrence(cronExpression.value, timezone.value);
 	if (!next) return '';
 	return formatScheduleDateTime(next, timezone.value);
+});
+
+const scheduleDescription = computed(() => {
+	if (frequency.value !== 'custom' || !nextOccurrenceText.value) return '';
+	return describeSchedule(cronExpression.value) ?? '';
+});
+
+const executionSummary = computed(() => {
+	if (!enabled.value && isEditing.value) {
+		return i18n.baseText('agents.builder.tasks.schedule.executionPaused');
+	}
+	if (!nextOccurrenceText.value) return '';
+	return i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
+		interpolate: { occurrence: nextOccurrenceText.value },
+	});
+});
+
+const scheduleSummary = computed(() => {
+	if (!scheduleDescription.value) return executionSummary.value;
+	return i18n.baseText('agents.builder.tasks.schedule.summary', {
+		interpolate: {
+			description: scheduleDescription.value,
+			execution: executionSummary.value,
+		},
+	});
 });
 
 const objectiveError = computed(() => {
@@ -285,11 +325,13 @@ function onNameInput(value: Validatable) {
 
 function onCronInput(value: Validatable) {
 	customCron.value = typeof value === 'string' ? value : '';
+	scheduleTouched.value = true;
 }
 
 function onTimezoneChange(value: unknown) {
 	timezone.value = String(value);
 	followsInstanceTimezone.value = false;
+	scheduleTouched.value = true;
 }
 
 function closeModal() {
@@ -303,26 +345,16 @@ function onToggleEnabled(value: boolean) {
 	props.data.onToggle?.({ id: current.id, enabled: value });
 }
 
-async function onRun() {
-	const current = task.value;
-	if (!current || running.value) return;
-	running.value = true;
-	try {
-		await runAgentTask(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-			current.id,
-		);
-		toast.showMessage({
-			title: i18n.baseText('agents.builder.tasks.executeStarted'),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.tasks.executeError'));
-	} finally {
-		running.value = false;
-	}
+function onPauseToggle(paused: boolean) {
+	onToggleEnabled(!paused);
+}
+
+function onPreview() {
+	objectiveTouched.value = true;
+	if (objectiveError.value || !props.data.onPreview) return;
+
+	closeModal();
+	props.data.onPreview(objective.value.trim());
 }
 
 async function onDelete() {
@@ -413,35 +445,6 @@ async function onSave() {
 						)
 					}}
 				</N8nHeading>
-				<div v-if="isEditing" :class="$style.headerActions">
-					<N8nTooltip
-						:content="
-							props.data.isPublished
-								? i18n.baseText('agents.builder.tasks.republishHint')
-								: i18n.baseText('agents.builder.tasks.publishHint')
-						"
-						placement="top"
-					>
-						<N8nSwitch2
-							:model-value="enabled"
-							data-testid="agent-task-toggle"
-							@update:model-value="(value) => onToggleEnabled(Boolean(value))"
-						/>
-					</N8nTooltip>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.execute')" placement="top">
-						<N8nButton
-							variant="ghost"
-							size="small"
-							icon-only
-							:loading="running"
-							:aria-label="i18n.baseText('agents.builder.tasks.execute')"
-							data-testid="agent-task-run"
-							@click="onRun"
-						>
-							<template #icon><N8nIcon icon="play" :size="16" /></template>
-						</N8nButton>
-					</N8nTooltip>
-				</div>
 			</div>
 		</template>
 
@@ -474,6 +477,7 @@ async function onSave() {
 						:class="$style.objectiveEditor"
 						:model-value="objective"
 						:placeholder="i18n.baseText('agents.builder.tasks.objective.placeholder')"
+						show-toolbar="floating"
 						max-height="100%"
 						data-testid="agent-task-objective-input"
 						@update:model-value="onObjectiveInput"
@@ -511,7 +515,7 @@ async function onSave() {
 								:model-value="dayOfWeek"
 								:class="$style.daySelect"
 								data-testid="agent-task-day-of-week"
-								@update:model-value="dayOfWeek = Number($event)"
+								@update:model-value="onDayOfWeekChange"
 							>
 								<N8nOption
 									v-for="day in dayOfWeekOptions"
@@ -530,7 +534,7 @@ async function onSave() {
 								:model-value="dayOfMonth"
 								:class="$style.daySelect"
 								data-testid="agent-task-day-of-month"
-								@update:model-value="dayOfMonth = Number($event)"
+								@update:model-value="onDayOfMonthChange"
 							>
 								<N8nOption
 									v-for="day in dayOfMonthOptions"
@@ -609,23 +613,37 @@ async function onSave() {
 							/>
 						</N8nSelect>
 					</div>
-					<N8nText v-if="nextOccurrenceText" :class="$style.help" size="small">
-						{{
-							i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
-								interpolate: { occurrence: nextOccurrenceText },
-							})
-						}}
-					</N8nText>
+					<div v-if="scheduleSummary" :class="$style.scheduleSummary">
+						<N8nText :class="$style.help" size="small">
+							{{ scheduleSummary }}
+						</N8nText>
+						<N8nTooltip
+							v-if="showRepublishHint"
+							:content="i18n.baseText('agents.builder.tasks.republishHint')"
+							placement="top"
+						>
+							<span
+								:class="$style.infoIcon"
+								:aria-label="i18n.baseText('agents.builder.tasks.republishHint')"
+								tabindex="0"
+							>
+								<N8nIcon icon="info" size="small" />
+							</span>
+						</N8nTooltip>
+					</div>
 				</div>
 
-				<N8nText
-					v-if="showRepublishHint"
-					:class="$style.help"
-					size="small"
-					data-testid="agent-task-republish-hint"
-				>
-					{{ i18n.baseText('agents.builder.tasks.republishHint') }}
-				</N8nText>
+				<div v-if="isEditing" :class="$style.pauseControl" data-testid="agent-task-pause-control">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.tasks.pause') }}
+					</N8nText>
+					<N8nSwitch2
+						:model-value="!enabled"
+						:aria-label="i18n.baseText('agents.builder.tasks.pause')"
+						data-testid="agent-task-toggle"
+						@update:model-value="(paused) => onPauseToggle(Boolean(paused))"
+					/>
+				</div>
 
 				<N8nText v-if="errorMessage" :class="$style.error" size="small">
 					{{ errorMessage }}
@@ -643,12 +661,15 @@ async function onSave() {
 					@click="onDelete"
 				>
 					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-					{{ i18n.baseText('agents.builder.tasks.delete') }}
+					{{ i18n.baseText('generic.delete') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
-						{{ i18n.baseText('agents.builder.tasks.cancel') }}
-					</N8nButton>
+					<AgentPreviewButton
+						:is-runnable="props.data.isRunnable === true"
+						:validation-issues="props.data.validationIssues ?? []"
+						test-id="agent-task-preview"
+						@open-preview="onPreview"
+					/>
 					<N8nButton
 						variant="solid"
 						:disabled="saving"
@@ -656,7 +677,7 @@ async function onSave() {
 						data-testid="agent-task-save"
 						@click="onSave"
 					>
-						{{ i18n.baseText('agents.builder.tasks.save') }}
+						{{ i18n.baseText('generic.save') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -671,12 +692,6 @@ async function onSave() {
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	padding-right: var(--spacing--xl);
-}
-
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 
 .content {
@@ -728,12 +743,30 @@ async function onSave() {
 	width: 14rem;
 }
 
+.scheduleSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.infoIcon {
+	display: inline-flex;
+	color: var(--color--text--tint-1);
+	cursor: help;
+}
+
 .help {
 	color: var(--color--text--tint-1);
 }
 
 .error {
 	color: var(--color--danger);
+}
+
+.pauseControl {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .footer {
@@ -744,6 +777,7 @@ async function onSave() {
 
 .footerActions {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	margin-left: auto;
 }

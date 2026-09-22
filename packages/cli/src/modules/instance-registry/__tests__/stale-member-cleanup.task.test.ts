@@ -19,7 +19,7 @@ describe('StaleMemberCleanupTask', () => {
 		expect(task.name).toBe('instance-registry-stale-member-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 180 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
+		expect(task.durable).toBe(true);
 	});
 
 	describe('run', () => {

@@ -305,6 +305,13 @@ defineExpose({
 	transform: translateY(1px);
 }
 
+.selectedLabel > :global(.n8n-text) {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
 .chevron {
 	color: var(--text-color--subtler);
 }

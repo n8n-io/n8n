@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-network",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -35,6 +35,11 @@
       "import": "./src/transport.ts",
       "require": "./dist/transport.js"
     },
+    "./egress": {
+      "types": "./dist/egress.d.ts",
+      "import": "./src/egress.ts",
+      "require": "./dist/egress.js"
+    },
     "./proxy": {
       "types": "./dist/proxy/index.d.ts",
       "import": "./src/proxy/index.ts",
@@ -48,6 +53,9 @@
       ],
       "transport": [
         "dist/transport.d.ts"
+      ],
+      "egress": [
+        "dist/egress.d.ts"
       ],
       "proxy": [
         "dist/proxy/index.d.ts"

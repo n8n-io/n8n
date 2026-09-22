@@ -1,9 +1,11 @@
 import { Container } from '@n8n/di';
 
+import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 /**
- * Drops the policy read-through cache.
+ * Drops the policy read-through cache, both layers: the shared `CacheService` entries and the
+ * service's own in-process memo.
  *
  * Call this wherever a test truncates the policy tables: truncating writes behind the service,
  * so the cache keeps serving rows that no longer exist. Nothing in production edits those
@@ -16,4 +18,6 @@ export async function clearPolicyCache(): Promise<void> {
 	const cache = Container.get(CacheService);
 	await cache.init();
 	await cache.reset();
+
+	Container.get(TypeAvailabilityPolicyService).resetLocalCaches();
 }

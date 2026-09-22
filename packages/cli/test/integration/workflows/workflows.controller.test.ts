@@ -301,6 +301,9 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(scopes).toEqual(
 			[
+				'execution:delete',
+				'execution:list',
+				'execution:read',
 				'execution:reveal',
 				'workflow:delete',
 				'workflow:disableRedaction',
@@ -1312,6 +1315,9 @@ describe('GET /workflows', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -1331,6 +1337,9 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'workflow:read',
 					'workflow:update',
 					'workflow:execute',
@@ -1355,6 +1364,9 @@ describe('GET /workflows', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual([
+				'execution:delete',
+				'execution:list',
+				'execution:read',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
@@ -1369,6 +1381,9 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -2685,6 +2700,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -2704,6 +2722,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'workflow:read',
 					'workflow:update',
 					'workflow:execute',
@@ -2733,6 +2754,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual([
+				'execution:delete',
+				'execution:list',
+				'execution:read',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
@@ -2747,6 +2771,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -5027,7 +5054,11 @@ describe('POST /workflows/:workflowId/run', () => {
 		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({
+				startExecution,
+				getExecution,
+				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+			});
 		});
 
 		beforeEach(() => {
