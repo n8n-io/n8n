@@ -190,10 +190,10 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs": {
+		"GET /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
-		"POST /workflows/{id}/test-runs": {
+		"POST /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/test-runs/{runId}": {
