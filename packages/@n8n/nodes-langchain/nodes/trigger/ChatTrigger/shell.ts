@@ -1,10 +1,5 @@
 import type { Request, Response } from 'express';
 
-/** Opt-in: with the flag off the hosted chat page renders as a single document, as before. */
-export function isChatOAuth2Enabled(): boolean {
-	return process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 === 'true';
-}
-
 /** Query flag that asks the `setup` GET for the inner render instead of the shell. */
 export const CHAT_SHELL_INNER_PARAM = 'n8nShellInner';
 
@@ -184,6 +179,10 @@ export function setChatRefreshToken(
 
 export function readChatRefreshToken(req: Request): string | null {
 	return readRawCookie(req, CHAT_OAUTH_REFRESH_COOKIE_NAME);
+}
+
+export function clearChatRefreshToken(res: Response, req: Request, resourceUrl: string): void {
+	res.clearCookie(CHAT_OAUTH_REFRESH_COOKIE_NAME, chatOAuthCookieOptions(req, resourceUrl));
 }
 
 /**

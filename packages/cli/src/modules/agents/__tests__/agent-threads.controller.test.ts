@@ -1,4 +1,9 @@
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
@@ -32,5 +37,32 @@ describe('AgentThreadsController route access scopes', () => {
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+
+	it('omits internal ownership fields from a thread response', async () => {
+		const agentExecutionService = mock<AgentExecutionService>();
+		const controller = new AgentThreadsController(
+			agentExecutionService,
+			mock<AgentSessionLangSmithExportService>(),
+		);
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: mock<AgentExecutionThread>({
+				id: 'thread-1',
+				ownerId: 'user-1',
+				accessScope: 'user',
+				owner: null,
+			}),
+			executions: [],
+		});
+
+		const result = await controller.getThread({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.thread).toMatchObject({ id: 'thread-1' });
+		expect(result.thread).not.toHaveProperty('ownerId');
+		expect(result.thread).not.toHaveProperty('accessScope');
+		expect(result.thread).not.toHaveProperty('owner');
 	});
 });

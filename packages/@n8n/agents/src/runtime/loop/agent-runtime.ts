@@ -6,12 +6,13 @@ import type { z } from 'zod';
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
-import type { RunOutputSink, RunServices } from './run-output-sink';
+import type { ModelCallContext, RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
 	isEmptyModelTurn,
+	isReasoningOnlyStop,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -19,6 +20,7 @@ import {
 import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
+import type { RuntimeSkillSource } from '../../skills/types';
 import type {
 	BuiltFileStore,
 	BuiltMemory,
@@ -44,6 +46,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
@@ -51,7 +54,6 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
@@ -60,7 +62,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import type { FetchFn } from '../model/model-factory';
+import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -68,6 +70,7 @@ import {
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
+import { ActiveSkills } from '../skills/active-skills';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -82,6 +85,14 @@ import {
 	type ToolCallBatchResult,
 } from '../tools/tool-call-executor';
 
+export interface VolatileInstructionsContext {
+	persistence?: AgentPersistenceOptions;
+}
+
+export type VolatileInstructionsProvider = (
+	context: VolatileInstructionsContext,
+) => Promise<string | undefined>;
+
 export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
@@ -92,6 +103,7 @@ export interface AgentRuntimeConfig {
 	 */
 	modelFetch?: FetchFn;
 	instructions: string;
+	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
@@ -138,6 +150,8 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
+	/** The runtime loads these host instructions before each model call but does not save them. */
+	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -158,6 +172,7 @@ type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?
 /** Shared input for the private generate/stream loops. */
 interface LoopContext {
 	list: AgentMessageList;
+	isFreshRun?: boolean;
 	options?: RuntimeExecutionOptions;
 	abortScope: AgentAbortScope;
 	pendingResume?: PendingResume;
@@ -200,14 +215,28 @@ export class AgentRuntime {
 	private context: RuntimeContextBuilder;
 
 	private toolExecutor: ToolCallExecutor;
+	private activeSkills?: ActiveSkills;
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		// Keep full tool results when the memory backend cannot persist active skill IDs.
+		if (config.skillSource && (!config.memory || config.memory.skillState)) {
+			this.activeSkills = new ActiveSkills(
+				config.skillSource,
+				config.name,
+				config.memory?.skillState,
+			);
+		}
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				// Let the discovery tools recognize the always-available toolset, so a
+				// `load_tool` call for one of those answers `already_loaded`.
+				activeTools: config.tools,
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
@@ -226,6 +255,7 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
+			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -285,7 +315,7 @@ export class AgentRuntime {
 					const initializedList = await this.initRun(input, options);
 					list = initializedList;
 					const result = await this.runAgentLoop<GenerateResult>(
-						{ list: initializedList, options, abortScope },
+						{ list: initializedList, options, abortScope, isFreshRun: true },
 						sink,
 					);
 					return { result, list: initializedList };
@@ -370,6 +400,9 @@ export class AgentRuntime {
 		if (!toolCall) {
 			throw new StaleResumeError(`No tool call found for toolCallId: ${options.toolCallId}`);
 		}
+		if (options.hostMetadata !== undefined && !state.persistence) {
+			throw new Error('Cannot update host metadata without persistence');
+		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
@@ -392,7 +425,7 @@ export class AgentRuntime {
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
-			resumeData = parseResult.data as JSONValue;
+			resumeData = parseResult.data;
 		}
 
 		try {
@@ -401,6 +434,7 @@ export class AgentRuntime {
 				runId: _rid,
 				toolCallId: _tcid,
 				onResumeClaimed: _onResumeClaimed,
+				hostMetadata,
 				...callerExecOptions
 			} = options;
 			const persisted = state.executionOptions ?? {};
@@ -423,16 +457,22 @@ export class AgentRuntime {
 				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
 
-			const resumeOptions: RuntimeExecutionOptions = {
-				persistence: state.persistence,
-				...mergedExecOptions,
-			};
-
 			const claimed = await this.runState.claimResume(this.runId, state);
 			if (!claimed) {
 				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
 			resumeClaimed = true;
+			const resumeOptions: RuntimeExecutionOptions = {
+				persistence: state.persistence
+					? {
+							...state.persistence,
+							...(state.persistence.hostMetadata || hostMetadata
+								? { hostMetadata: { ...state.persistence.hostMetadata, ...hostMetadata } }
+								: {}),
+						}
+					: undefined,
+				...mergedExecOptions,
+			};
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -753,6 +793,7 @@ export class AgentRuntime {
 	 */
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
+		await this.activeSkills?.restore(list, options?.persistence);
 		this.context.hydrateDeferredToolsFromList(list);
 		// Inject a model-facing note for any MCP servers that failed to connect
 		// during build(). The agent can mention the outage to the user when
@@ -776,6 +817,20 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const inputMessages = new Set(list.inputDelta());
+		const inputIds = new Set([...inputMessages].map((message) => message.id));
+
+		// Can we discard an input in case of an error caused by its attachment
+		const canDiscardRejectedInput =
+			ctx.isFreshRun === true &&
+			[...inputMessages].some(
+				(message) =>
+					'role' in message &&
+					message.role === 'user' &&
+					Array.isArray(message.content) &&
+					message.content.some((part) => part.type === 'file' && part.data !== undefined),
+			) &&
+			!list.messages().some((message) => !inputMessages.has(message) && inputIds.has(message.id));
 
 		const buildToolBatchContext = (toolMap: Map<string, BuiltTool>): ToolBatchContext => ({
 			toolMap,
@@ -842,6 +897,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const batch = await this.toolExecutor.iteratePendingToolCallsConcurrent({
 				...buildToolBatchContext(pendingLoopContext.toolMap),
@@ -859,6 +915,10 @@ export class AgentRuntime {
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
+			for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
+				this.deferredToolManager?.load(toolName);
+			}
+
 			const {
 				toolMap,
 				aiTools,
@@ -870,24 +930,34 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
+			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
+				.map((value) => value?.trim())
+				.filter((value): value is string => Boolean(value))
+				.join('\n\n');
 			const { system, messages } = list.forLlm(
-				effectiveInstructions,
+				// Skill content changes only on activation. Keep it cached when memory compacts.
+				[effectiveInstructions, this.activeSkills?.instructions()]
+					.filter(Boolean)
+					.join('\n\n'),
 				instructionProviderOptions,
-				volatileInstructions,
+				combinedVolatileInstructions || undefined,
+				supportsSplitSystemMessages(this.config.model),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
 			const cached = applyRuntimeCacheBreakpoints({
 				system,
-				messages,
+				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
 				aiTools,
 				promptCaching: this.config.promptCaching,
 				modelId: this.modelIdString,
 				staticToolCacheName,
 			});
 
-			const modelCallContext = {
+			const modelCallContext: ModelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -899,6 +969,14 @@ export class AgentRuntime {
 				outputSpec: staticLoopContext.outputSpec,
 				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
+				onInputRejected:
+					canDiscardRejectedInput && iterationCount === 0
+						? async () => {
+								if (abortScope.isAborted) return;
+								await this.memory.discardRejectedInput(list, options);
+								this.updateState({ messageList: list.serialize() });
+							}
+						: undefined,
 			};
 			let turn = await sink.callModel(modelCallContext);
 
@@ -929,7 +1007,7 @@ export class AgentRuntime {
 			this.assertNotAborted(abortScope);
 
 			lastFinishReason = turn.finishReason;
-			list.addResponse(turn.newMessages);
+			if (!isReasoningOnlyStop(turn)) list.addResponse(turn.newMessages);
 			// The turn is now in the list; drop any retained streamed text so a later
 			// abort's snapshot can't duplicate it (a stop before this point recovers it).
 			sink.onTurnFolded?.();
@@ -985,6 +1063,17 @@ export class AgentRuntime {
 		});
 	}
 
+	private async resolveVolatileInstructions(
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<string | undefined> {
+		try {
+			return await this.config.volatileInstructionsProvider?.({ persistence });
+		} catch (error) {
+			logger.warn('Failed to resolve volatile agent instructions', { runId: this.runId, error });
+			return undefined;
+		}
+	}
+
 	/**
 	 * Wire up a ReadableStream and start the stream loop in the background via the
 	 * StreamSession, which owns the single shutdown / cleanup path.
@@ -1035,6 +1124,7 @@ export class AgentRuntime {
 						options: ctx.options,
 						abortScope: ctx.abortScope,
 						pendingResume: ctx.pendingResume,
+						isFreshRun: ctx.list === undefined,
 					},
 					sink,
 				);

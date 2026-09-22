@@ -4,16 +4,100 @@ import {
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
 
+const FIXED_CREATED_AT = new Date('2024-01-15T10:00:00.000Z');
+
 function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
 		timeline: null,
+		createdAt: FIXED_CREATED_AT,
 		...overrides,
 	} as unknown as AgentExecution;
 }
 
 describe('execution-to-message-mapper', () => {
+	it.each(['running', 'success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps a signal-only turn with status %s',
+		(status) => {
+			const signal = {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			} as const;
+			const result = executionsToMessagesDto([
+				execution({
+					userMessage: null,
+					status,
+					timeline: [
+						{
+							type: 'background-task-signal',
+							signal: { tasks: [...signal.tasks] },
+							timestamp: 100,
+						},
+					],
+				}),
+			]);
+			expect(result).toEqual([
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					executionId: 'execution-1',
+					content: [],
+					executionStatus: status,
+					backgroundTaskSignal: signal,
+					createdAt: FIXED_CREATED_AT.toISOString(),
+				},
+			]);
+		},
+	);
+
+	it('carries the recorded run error on the assistant message of an errored turn', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'The model stream stalled: no data received for 90 seconds.',
+				timeline: [{ type: 'text', content: 'partial output', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+			executionError: 'The model stream stalled: no data received for 90 seconds.',
+		});
+	});
+
+	it('carries the integration author on the user message and omits it when absent', () => {
+		const author = { id: 'U1', name: 'alice' };
+
+		expect(executionToMessagesDto(execution({ author }))[0]).toMatchObject({
+			role: 'user',
+			author,
+		});
+		expect(executionToMessagesDto(execution({ author: null }))[0]).not.toHaveProperty('author');
+	});
+
+	it('keeps an assistant message for an errored turn that produced no output at all', () => {
+		const result = executionsToMessagesDto([
+			execution({ status: 'error', error: 'fetch failed', timeline: [] }),
+		]);
+
+		const assistant = result.find((m) => m.role === 'assistant');
+		expect(assistant).toMatchObject({ executionStatus: 'error', executionError: 'fetch failed' });
+		expect(assistant?.content).toEqual([]);
+	});
+
+	it('does not attach the recorded error to successful turns', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				error: null,
+				timeline: [{ type: 'text', content: 'ok', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
 	it('maps reasoning timeline events with timing into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -109,6 +193,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -128,6 +213,7 @@ describe('execution-to-message-mapper', () => {
 					{ type: 'text', text: 'Done.' },
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -196,6 +282,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -213,6 +300,7 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -238,6 +326,7 @@ describe('execution-to-message-mapper', () => {
 				},
 			],
 			executionId: 'execution-1',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -263,29 +352,24 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
-	it('includes the execution outcome on assistant messages', () => {
+	it('maps an execution error without model output into an assistant message', () => {
 		const result = executionToMessagesDto(
 			execution({
 				status: 'error',
-				timeline: [
-					{
-						type: 'tool-call',
-						kind: 'tool',
-						name: 'slow_tool',
-						toolCallId: 'call-1',
-						input: {},
-						output: undefined,
-						startTime: 100,
-						endTime: 0,
-						success: false,
-					},
-				],
+				error: 'Model request failed',
 			}),
 		);
 
-		expect(result[1]).toMatchObject({
+		// The error stays in `executionError`, not in `content`, so the client
+		// renders it as an error bubble instead of model output.
+		expect(result[1]).toEqual({
+			id: 'execution-1:assistant',
 			role: 'assistant',
+			content: [],
+			executionId: 'execution-1',
 			executionStatus: 'error',
+			executionError: 'Model request failed',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -367,6 +451,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Show me an action' }],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-suspended:assistant',
@@ -395,12 +480,14 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-resumed:assistant',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Approved.' }],
 				executionId: 'execution-resumed',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});

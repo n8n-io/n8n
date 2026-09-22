@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ActiveWorkflowTriggers, ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -49,6 +50,10 @@ export class PublishedWorkflowTriggerDeactivator {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
+	}
+
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**
@@ -117,9 +122,15 @@ export class PublishedWorkflowTriggerDeactivator {
 					continue;
 				}
 				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
-				const result = await this.lifecycleLock.runExclusive(workflowId, async () => {
-					if (this.instanceSettings.isLeader && !this.isShuttingDown) return false;
-					return await this.activeWorkflowTriggers.remove(workflowId);
+				const result = await this.lifecycleLock.runExclusive({
+					workflowId,
+					fn: async () => {
+						if (this.instanceSettings.isLeader && !this.isShuttingDown) return false;
+						return await this.activeWorkflowTriggers.remove(workflowId);
+					},
+					// The lock was free a moment ago; a holder that took it since is a
+					// record in flight, which settles within its lease.
+					signal: AbortSignal.timeout(this.leaseMs),
 				});
 				if (result) {
 					deactivatedWorkflows.push(workflowId);

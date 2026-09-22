@@ -1,8 +1,8 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	baseConfig,
+	backendConfig,
 	{ ignores: ['dist/**', 'coverage/**'] },
 	{
 		// Test fixtures use file paths, spec names and line numbers as object keys

@@ -1,14 +1,11 @@
 import type { RuntimeSkill } from '@n8n/agents';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { ASK_QUESTIONS_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
-import type { JSONSchema7 } from 'json-schema';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
 
-const mcpServerSchemaText = jsonSchemaToCompactText(
-	zodToJsonSchema(McpServerConfigSchema) as JSONSchema7,
-);
+const mcpServerSchemaText = jsonSchemaToCompactText(zodSchemaToJsonSchema(McpServerConfigSchema));
 
 export function externalServicesSkill(): RuntimeSkill {
 	return {
@@ -85,7 +82,10 @@ Examples:
   respond in Discord threads or DMs, or render approval buttons there.
 - Telegram integration: the agent should receive or send Telegram messages,
   continue conversations there, render supported interactive messages, or use
-  \`send_dm\` to initiate a scheduled message to a known Telegram user ID.
+  \`send_dm\` to initiate a scheduled message to a known Telegram user ID. The
+  native integration sends incoming photos to the Agent. It also provides
+  \`chat_id\` and attachment \`file_id\` values in the message context. Do not
+  create an agent-entrypoint workflow only to access these values.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.
@@ -159,7 +159,13 @@ The \`integrations\` array controls how the target agent is triggered.
 
 ### Gotchas
 
-- Chat integration types must come from \`list_integration_types\`.
+- Chat integration types must come from \`list_integration_types\`. A channel
+  absent from its result is unsupported for agents — never invent a type, never
+  draft or configure it, and never substitute a workflow node (e.g. a
+  WhatsApp/Twilio node) to fake an unsupported chat channel. Instead, explain
+  the channel is unsupported, offer the supported alternatives the tool
+  returned with their \`capabilities\`, and ask which to use (or whether the
+  user wants a workflow path after the limitation is stated).
 - Do not add a chat integration just because the agent needs CRUD or notifications
   for that product. Resolve the callable capability through \`resolve_integration\`
   unless the product itself is the chat/trigger context.

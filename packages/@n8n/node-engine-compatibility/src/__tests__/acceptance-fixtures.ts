@@ -1,5 +1,6 @@
 import type {
 	createDataSource,
+	EngineLogger,
 	ExecutionMode,
 	StartExecutionResult,
 	TriggerOutputs,
@@ -8,6 +9,8 @@ import type {
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
+	ExecutionResponseChannel,
+	noopResponseTransport,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
 	WorkflowExecution,
@@ -55,6 +58,12 @@ export const realNodeTypes: INodeTypes = {
 export const converter = new V1WorkflowConverter();
 
 const authSecret = 'a'.repeat(32);
+const silentLogger: EngineLogger = {
+	error: () => {},
+	warn: () => {},
+	info: () => {},
+	debug: () => {},
+};
 const caller = { cpId: 'cp-1', tenantId: 'tenant-1' };
 
 export type Assignment = { name: string; value: string | number; type: string };
@@ -322,6 +331,8 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(authSecret),
+			// Nothing here waits for a response; the fixture reads the run over the API.
+			responseChannel: new ExecutionResponseChannel(noopResponseTransport, silentLogger),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -347,7 +358,17 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			.post('/api/workflow-executions')
 			.set('Authorization', `Bearer ${mintIdentityToken(authSecret, caller)}`)
 			// The caller mints the execution id; the engine never mints one.
-			.send({ workflowId: 'wf-m1', graph, triggerOutputs, mode, executionId: uuidv7() })
+			.send({
+				workflowId: 'wf-m1',
+				graph,
+				// Opaque to the engine, and no acceptance case reads it back.
+				workflow: {},
+				triggerOutputs,
+				mode,
+				executionId: uuidv7(),
+				// the v1 mode of an unattended run is `trigger`
+				callerContext: { hostMode: mode === 'manual' ? 'manual' : 'trigger' },
+			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 

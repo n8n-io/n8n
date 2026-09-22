@@ -1,4 +1,4 @@
-import { DeleteExecutionsDto } from '@n8n/api-types';
+import { DeleteExecutionsDto, ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
 import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
@@ -12,6 +12,7 @@ import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { isExecutionIdV2 } from './execution-id';
+import { ExecutionListService } from './execution-list.service';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
@@ -25,6 +26,7 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
+		private readonly executionListService: ExecutionListService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -33,39 +35,21 @@ export class ExecutionsController {
 
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
-		const { rangeQuery: query } = req;
+		const { rangeQuery: query, cursor } = req;
 
 		query.user = req.user;
-		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
+		query.sharingOptions = await this.executionListService.buildSharingOptions('execution:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
 			delete query.annotationTags;
 		}
 
-		const noStatus = !query.status || query.status.length === 0;
-		const noRange = !query.range.lastId || !query.range.firstId;
-
-		if (noStatus && noRange) {
-			const [executions, concurrentExecutionsCount] = await Promise.all([
-				this.executionService.findLatestCurrentAndCompleted(query),
-				this.executionService.getConcurrentExecutionsCount(),
-			]);
-			await this.executionService.addScopes(
-				req.user,
-				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
-			);
-			return {
-				...executions,
-				concurrentExecutionsCount,
-			};
-		}
-
 		const [executions, concurrentExecutionsCount] = await Promise.all([
-			this.executionService.findRangeWithCount(query),
+			this.executionListService.listExecutionsForUI(query, cursor),
 			this.executionService.getConcurrentExecutionsCount(),
 		]);
-		await this.executionService.addScopes(
+		await this.executionListService.addScopes(
 			req.user,
 			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 		);
@@ -77,7 +61,7 @@ export class ExecutionsController {
 
 	@Get('/versions/:workflowId')
 	async getVersions(req: ExecutionRequest.GetVersions) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
 
 		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
 			return [];
@@ -90,7 +74,7 @@ export class ExecutionsController {
 	async getOne(req: ExecutionRequest.GetOne) {
 		this.assertKnownExecutionId(req.params.id);
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -132,12 +116,24 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.retry(req, workflowIds);
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+
+		return await this.executionService.retry({
+			executionId: req.params.id,
+			options: {
+				loadWorkflow: req.body.loadWorkflow,
+				redactExecutionData: redactQuery.success ? redactQuery.data.redactExecutionData : undefined,
+			},
+			sharedWorkflowIds: workflowIds,
+			user: req.user,
+		});
 	}
 
 	@Post('/delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Body payload: DeleteExecutionsDto) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		// Deleting is its own permission: a role can run and view workflows without
+		// being able to remove their execution history.
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:delete');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -148,7 +144,7 @@ export class ExecutionsController {
 	async update(req: ExecutionRequest.Update) {
 		this.assertKnownExecutionId(req.params.id);
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
 
 		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');

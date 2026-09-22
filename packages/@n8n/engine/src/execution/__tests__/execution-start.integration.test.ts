@@ -14,12 +14,14 @@ import {
 import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import { createConsoleLogger } from '../../logging';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
+import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -74,6 +76,7 @@ describe('execution start (integration)', () => {
 				stepQueue,
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
+				new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
 			),
 		);
 		worker.start();
@@ -97,8 +100,10 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
+			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
+			callerContext: {},
 		});
 		await ready;
 
@@ -143,7 +148,9 @@ describe('execution start (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph,
+			workflow: {},
 			triggerOutputs: null,
+			callerContext: {},
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

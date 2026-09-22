@@ -31,7 +31,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
@@ -44,6 +43,7 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -272,6 +272,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await Container.get(AuthRolesService).init();
 			this.logger.debug('Auth roles service init complete');
 
+			// The role sync above and data migrations write role scopes straight to the
+			// database, outside RoleService. In queue mode the role cache lives in Redis
+			// and survives a restart, so rebuild it once the sync has committed and
+			// before this main serves requests.
+			await Container.get(RoleCacheService).refreshCache();
+			this.logger.debug('Role cache refreshed');
+
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
 		}
@@ -306,12 +313,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
-
-			// Catches leadership already taken over before this instance had a
-			// takeover listener subscribed, whose one-shot event would otherwise
-			// be lost for the process lifetime.
-			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
-				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();
@@ -424,14 +425,16 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
-		Container.get(N8NCheckpointStorage).init();
-		Container.get(SystemTaskRunner).init();
-		Container.get(DurableScheduler).start();
 
 		const systemTaskMetadata = Container.get(SystemTaskMetadata);
-		for (const taskClass of mainSystemTasks()) {
+		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
 			systemTaskMetadata.register(taskClass);
 		}
+
+		// The runner provisions the durable system task jobs, so it must finish
+		// before the scheduler can claim one.
+		await Container.get(SystemTaskRunner).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(
@@ -444,9 +447,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer.js'
-			);
-			const { WorkflowPublicationOutboxCleanupService } = await import(
-				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
 			);
 			const { WorkflowPublicationReconciler } = await import(
 				'@/workflows/publication/workflow-publication-reconciler.service.js'
@@ -469,7 +469,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				});
 
-			Container.get(WorkflowPublicationOutboxCleanupService).init();
 			Container.get(WorkflowPublicationReconciler).init();
 		} else {
 			await this.activeWorkflowManager.init();

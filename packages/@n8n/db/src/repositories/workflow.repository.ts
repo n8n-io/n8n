@@ -15,9 +15,11 @@ import type {
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
 
+import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
+import { runWorkflowContentWrite } from './workflow-content-write-context';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -25,6 +27,7 @@ import {
 	WorkflowEntity,
 	WorkflowTagMapping,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	User,
 } from '../entities';
 import { SharedWorkflow } from '../entities/shared-workflow';
@@ -36,6 +39,7 @@ import type {
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
+import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -71,6 +75,26 @@ type WorkflowListResult = {
 	count: number;
 };
 
+/**
+ * The workflows an agent's workflow tools refer to: refs by id, legacy refs by
+ * name, both inside the agent's project. Shared by the runtime lookup and the
+ * agent dependency index, so the two cannot resolve a reference differently.
+ */
+export function agentToolReferenceWhere(
+	projectId: string,
+	workflowIds: string[],
+	legacyWorkflowNames: string[],
+): Array<FindOptionsWhere<WorkflowEntity>> {
+	const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+	if (workflowIds.length > 0) {
+		where.push({ id: In(workflowIds), shared: { projectId } });
+	}
+	if (legacyWorkflowNames.length > 0) {
+		where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+	}
+	return where;
+}
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -82,6 +106,106 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		transactionRunner: TransactionRunner,
 	) {
 		super(WorkflowEntity, dataSource.manager, transactionRunner);
+	}
+
+	/**
+	 * The most recently worked-on non-archived workflows in these projects, newest first, with the
+	 * total in scope.
+	 *
+	 * For telling an agent what already exists here. An event log cannot answer that: a workflow
+	 * nobody has run or edited lately produces no events at all, so it is invisible to a feed while
+	 * being exactly the work somebody might want picked up.
+	 */
+	async findRecentForProjects(
+		projectIds: ActivityProjectScope,
+		limit: number,
+		options: { mcpVisibleOnly?: boolean } = {},
+	): Promise<{ total: number; workflows: Array<{ id: string; name: string; active: boolean }> }> {
+		if (projectIds !== 'all-projects' && projectIds.length === 0) {
+			return { total: 0, workflows: [] };
+		}
+		if (!Number.isInteger(limit) || limit <= 0) return { total: 0, workflows: [] };
+
+		// A workflow can be shared into several projects, so the join multiplies rows when more than
+		// one of them is in scope. Both the count and the page are made distinct on the workflow.
+		// A whole-instance reader needs no project predicate, so it skips the join altogether.
+		const base = () => {
+			const qb = this.createQueryBuilder('workflow').where('workflow.isArchived = :archived', {
+				archived: false,
+			});
+
+			if (projectIds !== 'all-projects') {
+				qb.innerJoin(SharedWorkflow, 'shared', 'shared.workflowId = workflow.id').andWhere(
+					'shared.projectId IN (:...projectIds)',
+					{ projectIds },
+				);
+			}
+
+			// Pushed into the query rather than applied to the rows, because the caller reads a
+			// count as well as a page: filtering after the aggregate would report a total that
+			// includes workflows the caller may not see.
+			if (options.mcpVisibleOnly) {
+				applyWorkflowBooleanSettingFilter(qb, this.globalConfig, 'availableInMCP', true);
+			}
+
+			return qb;
+		};
+
+		const totalRow = await base()
+			.select('COUNT(DISTINCT workflow.id)', 'total')
+			.getRawOne<{ total: number | string }>();
+
+		const rows = await base()
+			.select('workflow.id', 'id')
+			.addSelect('MAX(workflow.name)', 'name')
+			// Published state is `activeVersionId`, not the deprecated `active` column, so this
+			// agrees with every other reader here. Aggregated as an integer because Postgres has no
+			// `max(boolean)`, which would fail there while passing on sqlite.
+			.addSelect('MAX(CASE WHEN workflow.activeVersionId IS NOT NULL THEN 1 ELSE 0 END)', 'active')
+			.groupBy('workflow.id')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.limit(limit)
+			.getRawMany<{ id: string; name: string; active: number | string | boolean }>();
+
+		return {
+			// Postgres returns COUNT as a bigint string.
+			total: Number(totalRow?.total ?? 0),
+			workflows: rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				active: Boolean(Number(row.active)),
+			})),
+		};
+	}
+
+	/**
+	 * Whether each of the given workflows is readable over MCP. An id absent from the map names a
+	 * workflow that no longer exists, which a caller must tell apart from one that is merely
+	 * withheld: a deleted workflow cannot be withheld from anything.
+	 *
+	 * Archived counts as not readable, matching every other MCP read — `validateMcpWorkflow` and
+	 * the execution search both refuse an archived workflow before they look at the setting.
+	 *
+	 * Reads the rows and tests in memory rather than filtering in SQL, because the caller needs the
+	 * withheld ids too, not only the visible ones.
+	 */
+	async findMcpAvailabilityByIds(workflowIds: string[]): Promise<Map<string, boolean>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const availability = new Map<string, boolean>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				where: { id: In(chunk) },
+				select: ['id', 'settings', 'isArchived'],
+			});
+
+			for (const row of rows) {
+				availability.set(row.id, row.settings?.availableInMCP === true && !row.isArchived);
+			}
+		}
+
+		return availability;
 	}
 
 	async get(
@@ -182,7 +306,38 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		ctx: OperationContext,
 	) {
 		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
-		await this.managerFor(ctx).update(WorkflowEntity, id, content);
+		await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).update(WorkflowEntity, id, content),
+		);
+	}
+
+	/**
+	 * Creates the workflow together with its `workflow:owner` share in one transaction.
+	 *
+	 * Deliberately outside the `workflowSave` clearance the other writes here assert: the only
+	 * caller is standalone node execution, whose row is archived, single-node and deleted after
+	 * the run. The content is still policed where it matters — `PolicyLifecycleHandler` enforces
+	 * `workflowStart` on `workflowExecuteBefore`, which every execution path reaches.
+	 */
+	async createWorkflowWithOwner(
+		workflow: WorkflowEntity,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		return await runWorkflowContentWrite(
+			async () =>
+				await this.runInTransaction(ctx, async (em) => {
+					const saved = await em.save(workflow);
+					await em.save(
+						em.create(SharedWorkflow, {
+							role: 'workflow:owner',
+							projectId,
+							workflowId: saved.id,
+						}),
+					);
+					return saved;
+				}),
+		);
 	}
 
 	/**
@@ -197,7 +352,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 */
 	async createContent(workflow: WorkflowEntity, ctx: OperationContext): Promise<WorkflowEntity> {
 		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowContentSubject(workflow));
-		return await this.managerFor(ctx).save(workflow);
+		return await runWorkflowContentWrite(async () => await this.managerFor(ctx).save(workflow));
 	}
 
 	/**
@@ -218,7 +373,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			workflowSubject({ id: content.id ?? null, nodes: content.nodes }),
 		);
 
-		const result = await this.managerFor(ctx).upsert(WorkflowEntity, content, ['id']);
+		const result = await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).upsert(WorkflowEntity, content, ['id']),
+		);
 		const id = result.identifiers.at(0)?.id;
 
 		if (typeof id !== 'string') {
@@ -322,13 +479,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		workflowIds: string[],
 		legacyWorkflowNames: string[],
 	) {
-		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
-		if (workflowIds.length > 0) {
-			where.push({ id: In(workflowIds), shared: { projectId } });
-		}
-		if (legacyWorkflowNames.length > 0) {
-			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
-		}
+		const where = agentToolReferenceWhere(projectId, workflowIds, legacyWorkflowNames);
 		if (where.length === 0) return [];
 
 		return await this.find({
@@ -337,7 +488,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// scope its check to nodes reachable from a supported trigger; without
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
-			select: ['id', 'name', 'nodes', 'connections'],
+			// `activeVersionId` tells the publish check whether the workflow is published.
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
 		});
 	}
 
@@ -1071,7 +1223,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const conditions: string[] = [];
 		const params: Record<string, string> = {
 			cpParentWorkflowId: parentWorkflowId,
-			cpCallerIdMembership: `%,${this.escapeLike(parentWorkflowId)},%`,
+			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
 		};
 
 		// Branch 1: callerPolicy = 'any'
@@ -1079,7 +1231,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
-			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ESCAPE '\\')`,
+			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
 		);
 
 		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
@@ -1103,11 +1255,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.globalConfig.database.type === 'postgresdb'
 			? `${field} ->> '${key}'`
 			: `JSON_EXTRACT(${field}, '$.${key}')`;
-	}
-
-	/** Escape LIKE metacharacters (`\`, `%`, `_`) so the value matches literally. */
-	private escapeLike(value: string): string {
-		return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 	}
 
 	/**
@@ -1689,8 +1836,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * Find workflows that need draft indexing - either unindexed (no draft entries in workflow_dependency)
-	 * or outdated (versionCounter > workflowVersionId in workflow_dependency for drafts).
+	 * Find workflows that need draft indexing - unindexed (no draft entries in workflow_dependency),
+	 * outdated (versionCounter > workflowVersionId in workflow_dependency for drafts), or indexed
+	 * by an older indexer version (indexVersionId < WORKFLOW_DEPENDENCY_INDEX_VERSION).
 	 *
 	 * NOTE: we use a simple batch limit instead of proper pagination because we use this
 	 * method to retrieve workflows and then index them immediately - so they won't be returned
@@ -1701,6 +1849,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
 		const workflowIdAlias = 'workflowId';
 		const maxVersionIdAlias = 'maxVersionId';
+		const minIndexVersionAlias = 'minIndexVersion';
 		const depAlias = 'dep';
 
 		// Only select columns needed for indexing to avoid loading large unused
@@ -1718,6 +1867,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 					subQuery
 						.select('wd.workflowId', workflowIdAlias)
 						.addSelect('MAX(wd.workflowVersionId)', maxVersionIdAlias)
+						.addSelect('MIN(wd.indexVersionId)', minIndexVersionAlias)
 						.from(WorkflowDependency, 'wd')
 						// Only consider draft dependencies (publishedVersionId IS NULL)
 						.where('wd.publishedVersionId IS NULL')
@@ -1731,9 +1881,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// Include workflows that are either:
 		// 1. Unindexed (no draft dependency entries exist)
 		// 2. Outdated (workflow version is newer than indexed version)
-		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`).orWhere(
-			`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`,
-		);
+		// 3. Indexed by an older indexer version
+		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`)
+			.orWhere(`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`)
+			.orWhere(`${qb.escape(depAlias)}.${qb.escape(minIndexVersionAlias)} < :indexVersion`, {
+				indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+			});
 		if (batchSize) {
 			qb.limit(batchSize);
 		}
@@ -1745,7 +1898,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 * Find active workflows that need published version indexing.
 	 * These are workflows where:
 	 * - activeVersionId IS NOT NULL (workflow is active/published)
-	 * - No dependency rows exist with matching publishedVersionId = activeVersionId
+	 * - No dependency rows exist with matching publishedVersionId = activeVersionId,
+	 *   or the matching rows were written by an older indexer version
 	 *
 	 * This includes the activeVersion relation for efficiency.
 	 */
@@ -1755,6 +1909,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
 		const depAlias = 'dep';
 		const publishedVersionIdAlias = 'publishedVersionId';
+		const minIndexVersionAlias = 'minIndexVersion';
 
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
@@ -1768,6 +1923,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				return subQuery
 					.select('wd.workflowId', 'workflowId')
 					.addSelect('wd.publishedVersionId', publishedVersionIdAlias)
+					.addSelect('MIN(wd.indexVersionId)', minIndexVersionAlias)
 					.from(WorkflowDependency, 'wd')
 					.where('wd.publishedVersionId IS NOT NULL')
 					.groupBy('wd.workflowId')
@@ -1777,9 +1933,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			`workflow.id = ${qb.escape(depAlias)}.${qb.escape('workflowId')} AND workflow.activeVersionId = ${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)}`,
 		);
 
-		// Only include active workflows with no matching published version dependency
+		// Only include active workflows whose published version dependency is
+		// missing or was written by an older indexer version
 		qb.where('workflow.activeVersionId IS NOT NULL').andWhere(
-			`${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL`,
+			`(${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL OR ${qb.escape(depAlias)}.${qb.escape(minIndexVersionAlias)} < :indexVersion)`,
+			{ indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION },
 		);
 
 		// Include the published version's nodes for indexing (skip connections to save memory).

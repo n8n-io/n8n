@@ -16,6 +16,16 @@ const makeDescription = (): INodeTypeDescription => ({
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
+			options: [
+				{ name: 'Message', value: 'message' },
+				{ name: 'Contact', value: 'contact' },
+			],
+			default: 'message',
+		},
+		{
+			displayName: 'Message Type',
+			name: 'messageType',
+			type: 'options',
 			options: [{ name: 'Message', value: 'message' }],
 			default: 'message',
 		},
@@ -69,11 +79,20 @@ describe('omitOperationOptions', () => {
 		expect(otherOperation.default).toBe('dispatch');
 	});
 
-	it('does not touch non-operation properties', () => {
+	it('removes the given values from resource properties', () => {
 		const result = omitOperationOptions(makeDescription(), ['message']);
 
 		const resourceProperty = result.properties.find((property) => property.name === 'resource');
-		expect(resourceProperty?.options).toEqual([{ name: 'Message', value: 'message' }]);
+		expect(resourceProperty?.options).toEqual([{ name: 'Contact', value: 'contact' }]);
+	});
+
+	it('does not touch options properties other than resource or operation', () => {
+		const result = omitOperationOptions(makeDescription(), ['message']);
+
+		const messageTypeProperty = result.properties.find(
+			(property) => property.name === 'messageType',
+		);
+		expect(messageTypeProperty?.options).toEqual([{ name: 'Message', value: 'message' }]);
 	});
 
 	it('does not mutate the input description', () => {

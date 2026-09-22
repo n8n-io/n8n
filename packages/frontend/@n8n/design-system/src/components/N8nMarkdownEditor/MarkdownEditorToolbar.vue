@@ -484,7 +484,7 @@ const setTextStyle = (value: string | number) => {
 				</template>
 			</N8nToggleGroup>
 
-			<div :class="[$style.toolbarGroup, $style.rawToggleGroup]">
+			<div v-if="mode !== 'floating'" :class="[$style.toolbarGroup, $style.rawToggleGroup]">
 				<N8nToggle
 					:model-value="isRawMode"
 					:label="

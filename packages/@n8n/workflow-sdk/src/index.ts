@@ -154,6 +154,11 @@ export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
 // Validation
 export {
+	containsExpression,
+	isSensitiveHeader,
+	isCredentialFieldName,
+} from './workflow-builder/validation-helpers';
+export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,
@@ -188,10 +193,15 @@ export type { CodeExecutionMode } from './lint/code-node/extract-snippets';
 export { generateWorkflowCode } from './codegen/index';
 export {
 	emitInstanceAi,
+	buildImports,
 	SDK_IMPORTABLE_FUNCTIONS,
 	type EmitInstanceAiOptions,
 } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
+export {
+	locateNodeDeclarations,
+	type NodeDeclarationLocation,
+} from './codegen/locate-node-declarations';
 
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';

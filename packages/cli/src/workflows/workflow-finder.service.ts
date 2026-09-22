@@ -70,7 +70,7 @@ export class WorkflowFinderService {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-	): Promise<{ versionId: string; updatedAt: Date } | null> {
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: Date } | null> {
 		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
 		const sw = await this.sharedWorkflowRepository.findOne({
 			where: { workflowId, ...where },
@@ -78,11 +78,15 @@ export class WorkflowFinderService {
 			select: {
 				workflowId: true,
 				projectId: true,
-				workflow: { id: true, versionId: true, updatedAt: true },
+				workflow: { id: true, versionId: true, activeVersionId: true, updatedAt: true },
 			},
 		});
 		if (!sw?.workflow) return null;
-		return { versionId: sw.workflow.versionId, updatedAt: sw.workflow.updatedAt };
+		return {
+			versionId: sw.workflow.versionId,
+			activeVersionId: sw.workflow.activeVersionId,
+			updatedAt: sw.workflow.updatedAt,
+		};
 	}
 
 	private async buildSingleWorkflowReadWhere(
@@ -221,7 +225,10 @@ export class WorkflowFinderService {
 		return workflows;
 	}
 
-	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
+	async findWorkflowIdsByFolder(
+		folderIds: string[],
+		options: { includeArchived?: boolean } = {},
+	): Promise<Map<string, string[]>> {
 		if (folderIds.length === 0) return new Map();
 
 		const byFolder = new Map<string, string[]>();
@@ -229,7 +236,12 @@ export class WorkflowFinderService {
 
 		for (const chunk of chunkIds(folderIds)) {
 			const rows = await this.sharedWorkflowRepository.find({
-				where: { workflow: { parentFolder: In(chunk) } },
+				where: {
+					workflow: {
+						parentFolder: In(chunk),
+						...(options.includeArchived ? {} : { isArchived: false }),
+					},
+				},
 				relations: { workflow: { parentFolder: true } },
 				select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
 			});
@@ -288,12 +300,18 @@ export class WorkflowFinderService {
 	/**
 	 * List root workflows of a project only.
 	 */
-	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {
+	async findRootWorkflowIdsInProject(
+		projectId: string,
+		options: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
 		const rows = await this.sharedWorkflowRepository.find({
 			where: {
 				project: { id: projectId },
 				role: 'workflow:owner',
-				workflow: { parentFolder: IsNull() },
+				workflow: {
+					parentFolder: IsNull(),
+					...(options.includeArchived ? {} : { isArchived: false }),
+				},
 			},
 			relations: { workflow: { parentFolder: true } },
 			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
@@ -305,12 +323,17 @@ export class WorkflowFinderService {
 	/**
 	 * Finds owned workflows in a project that may match package workflows either
 	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
-	 * authored on this instance).
+	 * authored on this instance). Archived workflows are left out unless
+	 * `includeArchived` is set.
 	 */
 	async findOwnedWorkflowsBySourceWorkflowIds(
 		projectId: string,
 		sourceWorkflowIds: string[],
-		options: { includeActiveVersion?: boolean; includeParentFolder?: boolean } = {},
+		options: {
+			includeActiveVersion?: boolean;
+			includeParentFolder?: boolean;
+			includeArchived?: boolean;
+		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (sourceWorkflowIds.length === 0) return [];
 
@@ -318,6 +341,7 @@ export class WorkflowFinderService {
 			activeVersion: options.includeActiveVersion,
 			parentFolder: options.includeParentFolder,
 		};
+		const archivedFilter = options.includeArchived ? {} : { isArchived: false };
 
 		const workflows = new Map<string, WorkflowEntity>();
 
@@ -330,7 +354,7 @@ export class WorkflowFinderService {
 					{
 						projectId,
 						role: 'workflow:owner',
-						workflow: { sourceWorkflowId: In(chunk), isArchived: false },
+						workflow: { sourceWorkflowId: In(chunk), ...archivedFilter },
 					},
 					{
 						projectId,
@@ -338,7 +362,7 @@ export class WorkflowFinderService {
 						workflow: {
 							id: In(chunk),
 							sourceWorkflowId: IsNull(),
-							isArchived: false,
+							...archivedFilter,
 						},
 					},
 				],

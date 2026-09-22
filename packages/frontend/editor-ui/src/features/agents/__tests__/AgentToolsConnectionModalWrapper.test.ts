@@ -22,12 +22,14 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 
+import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const routerResolveMock = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/new-workflow-id' })));
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: showErrorMock,
@@ -134,7 +136,14 @@ const ToolsConnectionModalStub = defineComponent({
 		modalAttrs = attrs;
 		return {};
 	},
-	template: '<div data-test-id="tools-connection-modal-stub" />',
+	template:
+		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
+});
+
+const McpRegistrySuggestionFooterStub = defineComponent({
+	name: 'McpRegistrySuggestionFooter',
+	props: ['prompt', 'action'],
+	template: '<div><span>{{ prompt }}</span><span>{{ action }}</span></div>',
 });
 
 function getItems(): ToolConnectionItem[] {
@@ -172,6 +181,7 @@ const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper
 	global: {
 		stubs: {
 			ToolsConnectionModal: ToolsConnectionModalStub,
+			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
 	},
 });
@@ -258,14 +268,22 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		onConfirm = vi.fn(),
 		mcpServers: AgentJsonMcpServerConfig[] = [],
 		projectId?: string,
+		mode: ToolPickerMode = 'tools',
 	) {
 		return renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools, mcpServers, onConfirm, projectId },
+				data: { tools, mcpServers, onConfirm, projectId, mode },
 			},
 		});
 	}
+
+	it('configures the suggestion footer copy', () => {
+		const { getByText } = render();
+
+		expect(getByText('Need another capability?')).toBeInTheDocument();
+		expect(getByText('Suggest a tool')).toBeInTheDocument();
+	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
 	// declared props. If those fall through onto ToolsConnectionModal the
@@ -275,7 +293,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools: [], onConfirm: vi.fn() },
+				data: { mode: 'tools', tools: [], onConfirm: vi.fn() },
 			},
 			attrs: { open: true, active: true, mode: '', activeId: '' },
 		});
@@ -304,7 +322,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.open).toBe(true);
 	});
 
-	it('assigns each available item the category tab it belongs to', async () => {
+	it('puts native and other node tools in the n8n nodes category', async () => {
 		const recommended: INodeTypeDescription = {
 			...WIKIPEDIA,
 			displayName: 'Gmail',
@@ -326,10 +344,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const categoryById = new Map(getItems().map((item) => [item.id, item.category]));
 
 		expect(categoryById.get(`nodeType:${SLACK.name}`)).toBe('app-action');
-		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('n8n');
+		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('app-action');
+		expect(modalAttrs.categories).toEqual(['all', 'mcp', 'app-action']);
+		expect(getItems().some((item) => item.category === 'workflows')).toBe(false);
 	});
 
-	it('assigns workflows to the workflows category', async () => {
+	it('shows only workflows in workflow mode', async () => {
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
 			{
 				id: 'wf-1',
@@ -339,11 +359,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			},
 		]);
 
-		render();
+		render([], vi.fn(), [], PROJECT_ID, 'workflows');
 		await flushPromises();
 
 		const workflow = getItems().find((item) => item.id === 'workflow:wf-1');
 		expect(workflow?.category).toBe('workflows');
+		expect(getItems().every((item) => item.category === 'workflows')).toBe(true);
+		expect(modalAttrs.categories).toEqual(['workflows']);
+		expect(modalAttrs.title).toBe('Workflows');
+		expect(modalAttrs.searchPlaceholder).toBe('Search workflows');
+		expect(modalAttrs.allowWorkflowCreation).toBe(true);
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
@@ -617,7 +642,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 		async function renderWithWorkflow(onConfirm = vi.fn()) {
 			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([WORKFLOW]);
-			render([], onConfirm);
+			render([], onConfirm, [], PROJECT_ID, 'workflows');
 			await flushPromises();
 			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
 		}
@@ -641,7 +666,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 					nodes: [{ type: 'n8n-nodes-base.set', name: 'Set' }],
 				},
 			]);
-			render();
+			render([], vi.fn(), [], PROJECT_ID, 'workflows');
 			await flushPromises();
 
 			const items = getItems();
@@ -659,7 +684,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(noTriggerDisabled).toBeTruthy();
 			expect(noTriggerDisabled?.disabled).toBe(true);
-			expect(noTriggerDisabled?.disabledReason).toContain('No supported trigger node');
+			expect(noTriggerDisabled?.disabledReason).toContain(
+				"Needs a 'When Executed by Another Workflow' trigger",
+			);
 
 			// Disabled items appear after compatible ones within the category.
 			const workflowItems = items.filter((i) => i.kind === 'workflow');
@@ -681,7 +708,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				name: 'My workflow 1',
 			} as unknown as IWorkflowDb);
 
-			render([existingTool], onConfirm, [], PROJECT_ID);
+			render([existingTool], onConfirm, [], PROJECT_ID, 'workflows');
 			await flushPromises();
 
 			emitCreateWorkflow();
@@ -742,7 +769,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			const onConfirm = vi.fn();
 			workflowsStore.createNewWorkflow.mockRejectedValueOnce(error);
 
-			render([], onConfirm, [], PROJECT_ID);
+			render([], onConfirm, [], PROJECT_ID, 'workflows');
 			await flushPromises();
 			emitCreateWorkflow();
 			await flushPromises();

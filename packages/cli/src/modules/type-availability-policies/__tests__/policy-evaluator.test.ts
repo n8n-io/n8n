@@ -1,11 +1,22 @@
-import { evaluateType } from '../policy-evaluator';
-import type { PolicyAttachment } from '../policy-rule.types';
+import {
+	evaluateComposedType,
+	evaluateType,
+	partitionTypesByAction,
+	type ScopePolicy,
+} from '../policy-evaluator';
+import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 
 const attachment = (overrides: Partial<PolicyAttachment>): PolicyAttachment => ({
 	policyId: 'policy-1',
 	rules: [],
 	priority: 0,
 	isFloor: false,
+	...overrides,
+});
+
+const scopePolicy = (overrides: Partial<ScopePolicy> = {}): ScopePolicy => ({
+	attachments: [],
+	defaultAction: 'allow',
 	...overrides,
 });
 
@@ -203,6 +214,205 @@ describe('evaluateType', () => {
 				action: 'allow',
 				matchedRuleId: null,
 			});
+		});
+
+		it('matches via a custom resolver, for a type whose package is not part of its name', () => {
+			// Stands in for the `credential-types` resolver: a credential type name (e.g.
+			// `slackApi`) carries no package prefix, unlike a node type.
+			const resolvePackage = (typeName: string) =>
+				typeName === 'slackApi' ? 'n8n-nodes-base' : null;
+			const attachments = [
+				attachment({
+					rules: [
+						{ id: 'r1', action: 'deny', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+					],
+				}),
+			];
+
+			expect(evaluateType(attachments, 'allow', 'slackApi', resolvePackage)).toEqual({
+				action: 'deny',
+				matchedRuleId: 'r1',
+			});
+			expect(evaluateType(attachments, 'allow', 'otherApi', resolvePackage)).toEqual({
+				action: 'allow',
+				matchedRuleId: null,
+			});
+		});
+	});
+});
+
+describe('evaluateComposedType', () => {
+	const TYPE = 'n8n-nodes-base.slack';
+	const allowRule = (id: string) =>
+		attachment({ rules: [{ id, action: 'allow', selector: { kind: 'name', value: TYPE } }] });
+	const denyRule = (id: string) =>
+		attachment({ rules: [{ id, action: 'deny', selector: { kind: 'name', value: TYPE } }] });
+
+	it('an instance deny is final: a project allow never overrides it', () => {
+		const instance = scopePolicy({ attachments: [denyRule('instance-deny')] });
+		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: 'instance-deny',
+			optInAvailable: false,
+		});
+	});
+
+	it('an instance delegate is satisfied by an explicit project allow rule', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'allow',
+			scope: 'project',
+			matchedRuleId: 'project-allow',
+			optInAvailable: false,
+		});
+	});
+
+	it('an instance delegate stays denied when the project has no policy row at all', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy();
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: null,
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance delegate is not satisfied by a bare project defaultAction of allow', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ defaultAction: 'allow' });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: null,
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance delegate with an explicit project deny rule is attributed to the project', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: 'project-deny',
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance delegate with a project defaultAction of deny is attributed to the project', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ defaultAction: 'deny' });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: null,
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance allow lets a project deny rule restrict further', () => {
+		const instance = scopePolicy({ attachments: [allowRule('instance-allow')] });
+		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: 'project-deny',
+			optInAvailable: false,
+		});
+	});
+
+	it('allows and attributes to the instance when neither scope is configured', () => {
+		expect(evaluateComposedType(scopePolicy(), scopePolicy(), TYPE)).toEqual({
+			action: 'allow',
+			scope: 'instance',
+			matchedRuleId: null,
+			optInAvailable: false,
+		});
+	});
+
+	it('allows and attributes to the project when the project explicitly allows on top of an instance allow', () => {
+		const instance = scopePolicy();
+		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'allow',
+			scope: 'project',
+			matchedRuleId: 'project-allow',
+			optInAvailable: false,
+		});
+	});
+});
+
+describe('partitionTypesByAction', () => {
+	const rule = (id: string, action: PolicyRule['action'], selector: PolicyRule['selector']) => ({
+		id,
+		action,
+		selector,
+	});
+
+	const TYPES = [
+		'n8n-nodes-base.code',
+		'n8n-nodes-base.executeCommand',
+		'@acme/n8n-nodes-acme.thing',
+	];
+
+	it('falls every type back to the default action when no rule matches', () => {
+		expect(partitionTypesByAction([], 'deny', TYPES)).toEqual({
+			allow: [],
+			deny: TYPES,
+			delegate: [],
+		});
+	});
+
+	it('expands a package selector across every type in that package', () => {
+		const rules = [rule('r1', 'deny', { kind: 'package', value: 'n8n-nodes-base' })];
+
+		expect(partitionTypesByAction(rules, 'allow', TYPES)).toEqual({
+			allow: ['@acme/n8n-nodes-acme.thing'],
+			deny: ['n8n-nodes-base.code', 'n8n-nodes-base.executeCommand'],
+			delegate: [],
+		});
+	});
+
+	it('keeps first-match order, so an earlier name rule survives a later package rule', () => {
+		const rules = [
+			rule('r1', 'allow', { kind: 'name', value: 'n8n-nodes-base.code' }),
+			rule('r2', 'deny', { kind: 'package', value: 'n8n-nodes-base' }),
+		];
+
+		expect(partitionTypesByAction(rules, 'allow', TYPES)).toEqual({
+			allow: ['n8n-nodes-base.code', '@acme/n8n-nodes-acme.thing'],
+			deny: ['n8n-nodes-base.executeCommand'],
+			delegate: [],
+		});
+	});
+
+	it('separates delegated types from allowed and denied ones', () => {
+		const rules = [rule('r1', 'delegate', { kind: 'name', value: 'n8n-nodes-base.code' })];
+
+		expect(partitionTypesByAction(rules, 'allow', TYPES)).toEqual({
+			allow: ['n8n-nodes-base.executeCommand', '@acme/n8n-nodes-acme.thing'],
+			deny: [],
+			delegate: ['n8n-nodes-base.code'],
+		});
+	});
+
+	it('returns empty buckets when the instance knows no types', () => {
+		expect(partitionTypesByAction([], 'deny', [])).toEqual({
+			allow: [],
+			deny: [],
+			delegate: [],
 		});
 	});
 });

@@ -7,18 +7,24 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ExecutionSnapshot } from '@n8n/engine';
+import type { ExecutionSnapshot, StepDetail } from '@n8n/engine';
+import { parse } from 'flatted';
+import type { INode } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import {
+	createExecution,
 	createSuccessfulExecution,
 	createWaitingExecution,
 	getAllExecutions,
 } from './shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createMember, createOwner } from './shared/db/users';
 import { setupTestServer } from './shared/utils';
 
@@ -83,6 +89,33 @@ describe('GET /executions', () => {
 		expect(response.body.data.count).toBe(1);
 	});
 
+	test('project viewers can list executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(1);
+	});
+
+	test('a custom project role without execution:read cannot list executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, teamProject, role.slug);
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(0);
+	});
+
 	test('should return a scopes array for each execution', async () => {
 		testServer.license.enable('feat:sharing');
 		const workflow = await createWorkflow({}, owner);
@@ -91,6 +124,86 @@ describe('GET /executions', () => {
 
 		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
 		expect(response.body.data.results[0].scopes).toContain('workflow:execute');
+	});
+
+	describe('paging without a status filter', () => {
+		/** 2 running plus `completed` successful executions, newest id last. */
+		const seed = async (completed: number) => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecution({ status: 'running', stoppedAt: undefined }, workflow);
+			await createExecution({ status: 'running', stoppedAt: undefined }, workflow);
+			for (let i = 0; i < completed; i++) {
+				await createExecution({ status: 'success' }, workflow);
+			}
+		};
+
+		test('reports the current block once and counts only completed rows', async () => {
+			await seed(5);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/executions')
+				.query({ limit: 2 })
+				.expect(200);
+
+			const { results, count, nextCursor } = response.body.data;
+			expect(results.filter((r: { status: string }) => r.status === 'running')).toHaveLength(2);
+			// The count excludes the current block, so paging is over completed rows only.
+			expect(count).toBe(5);
+			expect(nextCursor).not.toBeNull();
+		});
+
+		test('keeps running executions out of later pages', async () => {
+			await seed(5);
+
+			const first = await testServer
+				.authAgentFor(owner)
+				.get('/executions')
+				.query({ limit: 2 })
+				.expect(200);
+
+			const second = await testServer
+				.authAgentFor(owner)
+				.get('/executions')
+				.query({ limit: 2, cursor: first.body.data.nextCursor })
+				.expect(200);
+
+			expect(second.body.data.results).toHaveLength(2);
+			expect(second.body.data.results.map((r: { status: string }) => r.status)).toEqual([
+				'success',
+				'success',
+			]);
+			expect(second.body.data.count).toBe(5);
+		});
+
+		test('walks every completed row exactly once', async () => {
+			await seed(5);
+
+			const seen: string[] = [];
+			let cursor: string | null = null;
+			// 5 rows at 2 per page needs 3 requests. A cursor that fails to advance
+			// would page forever, so cap the walk and assert on the cap.
+			let requests = 0;
+
+			do {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get('/executions')
+					.query({ limit: 2, ...(cursor ? { cursor } : {}) })
+					.expect(200);
+
+				const data = response.body.data as {
+					results: Array<{ id: string; status: string }>;
+					nextCursor: string | null;
+				};
+				seen.push(...data.results.filter((r) => r.status === 'success').map((r) => r.id));
+				cursor = data.nextCursor;
+			} while (cursor && ++requests < 5);
+
+			expect(requests).toBeLessThan(4);
+			expect(seen).toHaveLength(5);
+			expect(new Set(seen).size).toBe(5);
+		});
 	});
 });
 
@@ -144,22 +257,38 @@ describe('GET /executions/:id', () => {
 		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({
+				startExecution,
+				getExecution,
+				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+			});
 		});
 
 		beforeEach(() => {
 			getExecution.mockReset();
 		});
 
-		const snapshot = (workflowId: string): ExecutionSnapshot => ({
+		/** The workflow as the data plane stored it when the run started. */
+		const ranWorkflow = (workflowId: string) => ({
+			id: workflowId,
+			name: 'As it ran',
+			nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
+			connections: {},
+			settings: {},
+			nodeGroups: [],
+		});
+
+		const snapshot = (workflowId: string, steps?: StepDetail[]): ExecutionSnapshot => ({
 			id: V2_EXECUTION_ID,
 			workflowId,
 			status: 'completed',
 			mode: 'manual',
-			graph: { nodes: [], edges: [] },
+			graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
+			workflow: ranWorkflow(workflowId),
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',
 			finishedAt: '2026-08-25T10:00:05.000Z',
+			steps,
 		});
 
 		test('serves a uuid id from the data plane', async () => {
@@ -171,7 +300,7 @@ describe('GET /executions/:id', () => {
 				.get(`/executions/${V2_EXECUTION_ID}`)
 				.expect(200);
 
-			expect(getExecution).toHaveBeenCalledWith(V2_EXECUTION_ID);
+			expect(getExecution).toHaveBeenCalledWith(V2_EXECUTION_ID, { includeSteps: true });
 			expect(response.body.data).toMatchObject({
 				id: V2_EXECUTION_ID,
 				workflowId: workflow.id,
@@ -181,6 +310,67 @@ describe('GET /executions/:id', () => {
 			});
 			// Redaction reads the policy off the workflow.
 			expect(response.body.data.workflowData.id).toBe(workflow.id);
+		});
+
+		test('reports the workflow that ran after the live one is edited', async () => {
+			const liveNode = (name: string): INode => ({
+				id: 'trigger-id',
+				name,
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+			const workflow = await createWorkflow({ nodes: [liveNode('Trigger')] }, owner);
+			getExecution.mockResolvedValue(snapshot(workflow.id));
+
+			// Rename the workflow and its node, the way a user would after the run.
+			await Container.get(WorkflowRepository).update(workflow.id, {
+				name: 'Renamed since',
+				nodes: [liveNode('Renamed Trigger')],
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${V2_EXECUTION_ID}`)
+				.expect(200);
+
+			expect(response.body.data.workflowData.name).toBe('As it ran');
+			expect(response.body.data.workflowData.nodes).toEqual([
+				{ name: 'Trigger', type: MANUAL_TRIGGER_NODE_TYPE },
+			]);
+		});
+
+		test('serves the step outputs as v1 run data', async () => {
+			const workflow = await createWorkflow({}, owner);
+			getExecution.mockResolvedValue(
+				snapshot(workflow.id, [
+					{
+						id: 'step-1',
+						nodeId: 'trigger-id',
+						iteration: 0,
+						status: 'completed',
+						outputs: [[{ json: { hello: 'world' } }]],
+						error: null,
+						createdAt: '2026-08-25T10:00:00.000Z',
+						updatedAt: '2026-08-25T10:00:00.250Z',
+					},
+				]),
+			);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${V2_EXECUTION_ID}`)
+				.expect(200);
+
+			// `data` goes out flatted, the same as a v1 execution's.
+			const data = parse(response.body.data.data);
+			expect(data.resultData.runData.Trigger[0]).toMatchObject({
+				executionStatus: 'success',
+				executionTime: 250,
+				data: { main: [[{ json: { hello: 'world' } }]] },
+			});
+			expect(data.resultData.lastNodeExecuted).toBe('Trigger');
 		});
 
 		test('does not serve an execution whose workflow the caller cannot read', async () => {
@@ -207,7 +397,7 @@ describe('GET /executions/:id', () => {
 				.expect(200);
 			const v1 = await testServer.authAgentFor(owner).get('/executions/999999').expect(200);
 
-			expect(getExecution).toHaveBeenCalledWith(V2_EXECUTION_ID);
+			expect(getExecution).toHaveBeenCalledWith(V2_EXECUTION_ID, { includeSteps: true });
 			// The id was understood; there is just nothing behind it.
 			expect(v2.body).toEqual(v1.body);
 		});
@@ -261,6 +451,74 @@ describe('POST /executions/delete', () => {
 		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
+	});
+
+	test('project editors can delete executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(200);
+
+		expect(await getAllExecutions()).toHaveLength(0);
+	});
+
+	test('project viewers cannot delete executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(404);
+
+		expect(await getAllExecutions()).toHaveLength(1);
+	});
+
+	test('a custom project role needs execution:delete to delete executions, workflow:execute is not enough', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+		const baseScopes = [
+			'workflow:read',
+			'workflow:list',
+			'workflow:execute',
+			'execution:read',
+			'execution:list',
+		];
+
+		const withoutDelete = await createCustomRoleWithScopeSlugs(baseScopes, {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, teamProject, withoutDelete.slug);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(404);
+		expect(await getAllExecutions()).toHaveLength(1);
+
+		const withDelete = await createCustomRoleWithScopeSlugs([...baseScopes, 'execution:delete'], {
+			roleType: 'project',
+		});
+		const otherMember = await createMember();
+		await linkUserToProject(otherMember, teamProject, withDelete.slug);
+
+		await testServer
+			.authAgentFor(otherMember)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(200);
+		expect(await getAllExecutions()).toHaveLength(0);
 	});
 
 	test('should hard-delete executions older than `deleteBefore`', async () => {

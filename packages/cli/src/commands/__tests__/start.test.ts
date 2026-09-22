@@ -21,6 +21,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { License } from '@/license';
@@ -31,15 +32,19 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { JwtService } from '@/services/jwt.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
 
+const roleCacheService = mockInstance(RoleCacheService);
+roleCacheService.refreshCache.mockResolvedValue(undefined);
+
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -68,6 +73,7 @@ const shutdownService = mockInstance(ShutdownService);
 shutdownService.validate.mockReturnValue(undefined);
 mockInstance(PostHogClient);
 mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(MessageEventBus);
 mockInstance(CommunityPackagesConfig);
@@ -105,6 +111,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(RoleCacheService, roleCacheService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
 		Container.set(InstanceSettings, instanceSettings);
@@ -120,6 +127,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(AuthHandlerRegistry, authHandlerRegistry);
 		Container.set(PostHogClient, mockInstance(PostHogClient));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
+		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
 			WorkflowFailureNotificationEventRelay,
 			mockInstance(WorkflowFailureNotificationEventRelay),
@@ -192,6 +200,11 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 			expect(pollJobProvider.init).toHaveBeenCalledTimes(1);
+			// The role cache is rebuilt after the role sync committed, never before it.
+			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
+			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
+				authRolesService.init.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
@@ -229,6 +242,7 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).not.toHaveBeenCalled();
+			expect(roleCacheService.refreshCache).not.toHaveBeenCalled();
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader (advisory lock serializes)', async () => {
@@ -258,73 +272,6 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	describe('init - license auto-renewal reconciliation', () => {
-		const queueGlobalConfig = () => ({
-			executions: { mode: 'queue' as const },
-			multiMainSetup: { enabled: true },
-			license: { autoRenewalEnabled: true },
-			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
-			database: { type: 'sqlite' as const },
-			sentry: {
-				backendDsn: '',
-				environment: 'test',
-				deploymentName: 'test',
-				profilesSampleRate: 0,
-				tracesSampleRate: 0,
-				eventLoopBlockThreshold: 0,
-			},
-			cache: { backend: 'memory' as const },
-			taskRunners: {},
-			outboundProxy: { mode: 'all' },
-			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
-			workflows: { useWorkflowPublicationService: false },
-		});
-
-		it('reconciles license auto-renewal when leadership was already taken over before handlers were registered', async () => {
-			setupInstanceSettings('main', true, true);
-			// @ts-expect-error - Accessing protected property for testing
-			start.globalConfig = queueGlobalConfig();
-
-			await start.init();
-
-			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
-			expect(license.enableAutoRenewals).toHaveBeenCalledTimes(1);
-		});
-
-		it('does not reconcile license auto-renewal when this instance is not leader', async () => {
-			setupInstanceSettings('main', true, false);
-			// @ts-expect-error - Accessing protected property for testing
-			start.globalConfig = queueGlobalConfig();
-
-			await start.init();
-
-			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
-			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
-		});
-
-		it('does not reconcile license auto-renewal when auto-renewal is disabled', async () => {
-			setupInstanceSettings('main', true, true);
-			const config = queueGlobalConfig();
-			config.license.autoRenewalEnabled = false;
-			// @ts-expect-error - Accessing protected property for testing
-			start.globalConfig = config;
-
-			await start.init();
-
-			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
-			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
-		});
-
-		it('does not reconcile license auto-renewal when multi-main is disabled', async () => {
-			setupInstanceSettings('main', false, false);
-
-			await start.init();
-
-			expect(multiMainSetup.registerEventHandlers).not.toHaveBeenCalled();
-			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
 		});
 	});
 

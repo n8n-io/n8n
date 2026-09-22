@@ -18,6 +18,8 @@ export const localRulesPlugin = {
 				'n8n-local-rules': plugin,
 			},
 			rules: {
+				// Seals WorkflowEntity node writes to the token-gated repository methods.
+				'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 				'n8n-local-rules/no-uncaught-json-parse': 'error',
 				'n8n-local-rules/no-json-parse-json-stringify': 'error',
 				'n8n-local-rules/no-unneeded-backticks': 'error',
@@ -35,3 +37,6 @@ export const localRulesPlugin = {
 		},
 	},
 } satisfies ESLint.Plugin;
+
+// oxlint loads a jsPlugin from the module default export.
+export default localRulesPlugin;

@@ -78,13 +78,11 @@ describe('JwtService', () => {
 	describe('initialize()', () => {
 		const makeRepo = () =>
 			mock<{
-				findActiveByType(type: string): Promise<{ value: string } | null>;
-				insertOrIgnore(entity: {
-					type: string;
-					value: string;
-					status: string;
-					algorithm: null;
-				}): Promise<void>;
+				findActiveSigningSecret(
+					type: string,
+					opts?: { rewrapLegacy?: boolean },
+				): Promise<string | null>;
+				seedSigningSecret(type: string, secret: string): Promise<void>;
 			}>();
 
 		it('should use jwtSecret from config and skip DB entirely when set', async () => {
@@ -95,45 +93,43 @@ describe('JwtService', () => {
 			await jwtService.initialize(repo);
 
 			expect(getJwtSecret(jwtService)).toEqual('env-pinned-secret');
-			expect(repo.findActiveByType).not.toHaveBeenCalled();
-			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
+			expect(repo.findActiveSigningSecret).not.toHaveBeenCalled();
+			expect(repo.seedSigningSecret).not.toHaveBeenCalled();
 		});
 
 		it('should use the value from the active DB row when one exists', async () => {
 			const repo = makeRepo();
-			repo.findActiveByType.mockResolvedValue({ value: 'db-stored-secret' });
+			repo.findActiveSigningSecret.mockResolvedValue('db-stored-secret');
 			const jwtService = new JwtService(instanceSettings, globalConfig);
 
 			await jwtService.initialize(repo);
 
 			expect(getJwtSecret(jwtService)).toEqual('db-stored-secret');
-			expect(repo.findActiveByType).toHaveBeenCalledWith('signing.jwt');
-			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
+			// Server processes may upgrade a row still in the pre-wrap form.
+			expect(repo.findActiveSigningSecret).toHaveBeenCalledWith('signing.jwt', {
+				rewrapLegacy: true,
+			});
+			expect(repo.seedSigningSecret).not.toHaveBeenCalled();
 		});
 
 		it('should persist the derived jwtSecret when no active DB row exists', async () => {
 			const repo = makeRepo();
-			repo.findActiveByType.mockResolvedValue(null);
+			repo.findActiveSigningSecret.mockResolvedValue(null);
 			const jwtService = new JwtService(instanceSettings, globalConfig);
 			const derivedSecret = getJwtSecret(jwtService);
 
 			await jwtService.initialize(repo);
 
-			expect(repo.insertOrIgnore).toHaveBeenCalledWith({
-				type: 'signing.jwt',
-				value: derivedSecret,
-				status: 'active',
-				algorithm: null,
-			});
+			expect(repo.seedSigningSecret).toHaveBeenCalledWith('signing.jwt', derivedSecret);
 			expect(getJwtSecret(jwtService)).toEqual(derivedSecret);
 		});
 
 		it('should use the winner row when a concurrent insert is ignored', async () => {
 			const repo = makeRepo();
-			repo.findActiveByType
+			repo.findActiveSigningSecret
 				.mockResolvedValueOnce(null)
-				.mockResolvedValueOnce({ value: 'winner-secret' });
-			repo.insertOrIgnore.mockResolvedValue(undefined);
+				.mockResolvedValueOnce('winner-secret');
+			repo.seedSigningSecret.mockResolvedValue(undefined);
 			const jwtService = new JwtService(instanceSettings, globalConfig);
 
 			await jwtService.initialize(repo);

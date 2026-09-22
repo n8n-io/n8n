@@ -1,6 +1,7 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 import { InstanceSettings } from 'n8n-core';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -22,13 +23,13 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 				'Support for running n8n via npm is removed. The new version must be run via the official Docker image.',
 			category: BreakingChangeCategory.infrastructure,
 			severity: 'medium',
-			documentationUrl: 'https://docs.n8n.io/deploy/host-n8n/install-options/install-with-docker',
+			documentationUrl: 'https://docs.n8n.io/deploy/host-n8n',
 		};
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (this.instanceSettings.isDocker) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

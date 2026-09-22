@@ -15,8 +15,11 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_MCP_TOOL_NODE_TYPE,
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	AI_CATEGORY_MCP_NODES,
+	REQUEST_NODE_FORM_URL,
 } from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -31,13 +34,18 @@ import {
 	getRootSearchCallouts,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
+	isNodeItemRestricted,
+	sinkRestrictedNodesLast,
 } from '../../nodeCreator.utils';
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
+import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nText } from '@n8n/design-system';
 
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 
@@ -67,14 +75,14 @@ const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
-
+const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
 const moreFromCommunity = computed(() => {
-	return filterAndSearchNodes(
+	const hits = filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
 		{
@@ -83,17 +91,25 @@ const moreFromCommunity = computed(() => {
 			aiConnectionType: activeViewStack.value.connectionType,
 		},
 	);
+	return sinkRestrictedNodesLast(hits, isNodeItemRestricted);
 });
 
 const isSearchResultEmpty = computed(() => {
+	// The pinned MCP client is a placeholder, not a result — unless it is restricted, in which
+	// case it is an ordinary search hit.
+	const hasNodeResults = (activeViewStack.value.items ?? []).some(
+		(item) =>
+			!isMcpCategory.value || item.key !== AI_MCP_TOOL_NODE_TYPE || isNodeItemRestricted(item.key),
+	);
 	return (
-		(activeViewStack.value.items || []).length === 0 &&
+		!hasNodeResults &&
 		globalCallouts.value.length +
 			globalSearchItemsDiff.value.length +
 			moreFromCommunity.value.length ===
 			0
 	);
 });
+const showSuggestionFooter = computed(() => isMcpCategory.value || isSearchResultEmpty.value);
 
 function getFilteredActions(
 	node: NodeCreateElement,
@@ -110,6 +126,10 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
+	// Insertion itself is refused in getAddedNodesAndConnections; this keeps a restricted
+	// node from opening its actions view.
+	if (item.type === 'node' && isNodeItemRestricted(item.key)) return;
+
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
@@ -343,27 +363,50 @@ registerKeyHook('MainViewArrowLeft', {
 </script>
 
 <template>
-	<span>
+	<span
+		:class="{
+			[$style.withSuggestionFooter]: showSuggestionFooter,
+		}"
+	>
 		<!-- Global Callouts-->
-		<ItemsRenderer :elements="globalCallouts" :class="$style.items" @selected="onSelected" />
+		<ItemsRenderer
+			v-if="globalCallouts.length > 0"
+			:elements="globalCallouts"
+			:class="$style.items"
+			@selected="onSelected"
+		/>
 
 		<!-- Main Node Items -->
 		<ItemsRenderer
 			v-memo="[activeViewStack.search]"
 			:elements="activeViewStack.items"
-			:class="$style.items"
+			:class="[$style.items, { [$style.emptyItems]: isSearchResultEmpty && !isMcpCategory }]"
 			@selected="onSelected"
 		>
 			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
+					:query="activeViewStack.search ?? ''"
 					:root-view="activeViewStack.rootView"
-					show-icon
-					show-request
+					:suggest-webhook="!isNodeItemRestricted(WEBHOOK_NODE_TYPE)"
+					:suggest-http-request="!isNodeItemRestricted(HTTP_REQUEST_NODE_TYPE)"
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
 					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>
 			</template>
 		</ItemsRenderer>
+
+		<!-- Render empty state for MCP separately because ItemsRenderer renders
+			the empty slot only when there are no elements. However, for MCP we
+			always have the generic client pinned at the top -->
+		<div v-if="isMcpCategory && isSearchResultEmpty" :class="$style.mcpNoResults">
+			<N8nText color="text-light">
+				{{
+					i18n.baseText('nodeCreator.noResults.noResultsFor', {
+						interpolate: { query: activeViewStack.search ?? '' },
+					})
+				}}
+			</N8nText>
+		</div>
 
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
@@ -384,11 +427,54 @@ registerKeyHook('MainViewArrowLeft', {
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
+
+		<McpRegistrySuggestionFooter
+			v-if="isMcpCategory"
+			:prompt="i18n.baseText('nodeCreator.noResults.needAnotherCapability')"
+			:action="i18n.baseText('nodeCreator.noResults.suggestTool')"
+			:class="$style.suggestionFooter"
+		/>
+		<SuggestionFooter
+			v-else-if="showSuggestionFooter"
+			:prompt="i18n.baseText('nodeCreator.noResults.needNativeIntegration')"
+			:action="i18n.baseText('nodeCreator.noResults.suggestNode')"
+			:url="REQUEST_NODE_FORM_URL"
+			:class="[$style.suggestionFooter, $style.insetSuggestionFooter]"
+		/>
 	</span>
 </template>
 
 <style lang="scss" module>
 .items {
 	margin-bottom: var(--spacing--sm);
+}
+
+.withSuggestionFooter {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+	margin-bottom: calc(-1 * var(--spacing--xl));
+}
+
+.emptyItems {
+	flex: 1;
+	min-height: 0;
+	margin-bottom: 0;
+}
+
+.mcpNoResults {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+}
+
+.suggestionFooter {
+	margin-top: auto;
+}
+
+.insetSuggestionFooter {
+	margin-inline: var(--spacing--sm);
 }
 </style>

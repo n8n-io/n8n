@@ -56,3 +56,39 @@ export const deletedExecutionPublicSchema = z.object({
 });
 
 export class DeletedExecutionPublicDto extends Z.class(deletedExecutionPublicSchema.shape) {}
+
+export const executionListItemPublicSchema = executionPublicSchema
+	.pick({
+		id: true,
+		finished: true,
+		mode: true,
+		retryOf: true,
+		retrySuccessId: true,
+		status: true,
+		startedAt: true,
+		stoppedAt: true,
+		workflowId: true,
+		waitTill: true,
+	})
+	.extend({
+		storedAt: executionPublicSchema.shape.storedAt.optional(),
+		jsonSizeBytes: executionPublicSchema.shape.jsonSizeBytes.optional(),
+		workflowVersionId: executionPublicSchema.shape.workflowVersionId.optional(),
+		data: executionPublicSchema.shape.data,
+		workflowData: executionPublicSchema.shape.workflowData,
+		customData: executionPublicSchema.shape.customData,
+		dataTooLargeToDisplay: executionPublicSchema.shape.dataTooLargeToDisplay,
+	});
+
+export class ExecutionListPublicDto extends Z.class({
+	data: z.array(executionListItemPublicSchema),
+	nextCursor: z
+		.string()
+		.nullable()
+		.openapi({
+			description:
+				'Paginate through executions by setting the cursor parameter to a nextCursor attribute ' +
+				'returned by a previous request. Default value fetches the first "page" of the collection.',
+			example: 'eyJsYXN0SWQiOiIxMDAwIiwibGltaXQiOjEwMH0=',
+		}),
+}) {}

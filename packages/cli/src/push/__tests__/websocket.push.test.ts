@@ -108,6 +108,15 @@ describe('WebSocketPush', () => {
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
+	it('excludes one connection when sending to a user', () => {
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
+		webSocketPush.sendToUsers(pushMessage, [userId], { excludePushRef: pushRef1 });
+
+		expect(mockWebSocket1.send).not.toHaveBeenCalled();
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+	});
+
 	it('skips sending when user has no connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.sendToUsers(pushMessage, ['nonexistent-user']);

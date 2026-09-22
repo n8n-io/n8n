@@ -4,13 +4,14 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
+import { computeFirstRunAt } from '@n8n/scheduler';
 import { PollJobManager } from 'n8n-core';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 
+import { nameDesiredJobs } from '../desired-job-name';
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
@@ -92,25 +93,20 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		seed: string,
 		timezone: string,
 	): DesiredJob[] {
-		const seen = new Map<string, number>();
-		return pollTimes.map((item): DesiredJob => {
-			const schedule: Schedule = {
-				kind: 'cron',
-				cronExpression: seededCron(item, seed),
-				timezone,
-			};
-			// `computeFirstRunAt` validates the expression/timezone, throwing on a
-			// malformed rule.
-			const firstRunAt = computeFirstRunAt(schedule, new Date());
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${node.id}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
-		});
+		return nameDesiredJobs(
+			workflowId,
+			node.id,
+			pollTimes.map((item) => {
+				const schedule: Schedule = {
+					kind: 'cron',
+					cronExpression: seededCron(item, seed),
+					timezone,
+				};
+				// `computeFirstRunAt` validates the expression/timezone, throwing on a
+				// malformed rule.
+				return { schedule, firstRunAt: computeFirstRunAt(schedule, new Date()) };
+			}),
+		);
 	}
 
 	/** Delete the node's poll jobs on deactivation. No-op when none exist. */

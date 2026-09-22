@@ -86,7 +86,7 @@ const makeServer = (slug: string): McpRegistryServerResponse => ({
 	version: '1.0.0',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 	icons: [],
-	credentialType: `${slug}McpOAuth2Api`,
+	credentials: [{ credentialType: `${slug}McpOAuth2Api`, name: 'OAuth2', value: 'oAuth2' }],
 	tools: [],
 	isOfficial: true,
 	status: 'active',

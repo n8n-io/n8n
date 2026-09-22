@@ -48,7 +48,13 @@ export class NodeTypes implements INodeTypes {
 		const nodeType = this.loadNodesAndCredentials.getNode(nodeTypeName);
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
 
-		return { description: { ...description }, sourcePath: nodeType.sourcePath };
+		return {
+			description: { ...description },
+			sourcePath: this.loadNodesAndCredentials.resolveNodeSourcePath(
+				nodeTypeName,
+				nodeType.sourcePath,
+			),
+		};
 	}
 
 	/**
@@ -62,13 +68,15 @@ export class NodeTypes implements INodeTypes {
 		const { description, sourcePath } = this.getWithSourcePath(nodeTypeName, version);
 
 		if (locale !== 'en') {
-			const translationPath = await this.getNodeTranslationPath({
-				nodeSourcePath: sourcePath,
-				longNodeType: description.name,
-				locale,
-			});
-
 			try {
+				// The directory read in `getNodeTranslationPath` can fail too, so it
+				// stays inside the guard: a missing translation must not fail the request.
+				const translationPath = await this.getNodeTranslationPath({
+					nodeSourcePath: sourcePath,
+					longNodeType: description.name,
+					locale,
+				});
+
 				const translation = await readFile(translationPath, 'utf8');
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				description.translation = JSON.parse(translation);

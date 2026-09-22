@@ -11,13 +11,20 @@ import {
 
 describe('validateAuth', () => {
 	const mockContext = mock<IWebhookFunctions>();
+	/** The n8n user every successful `n8nUserAuth` leg below resolves to. */
+	const authedUser = {
+		id: 'user-1',
+		email: 'user@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
 	describe('authentication = none', () => {
-		it('should pass without error', async () => {
+		it('should pass without error, and identify nobody', async () => {
 			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue('none');
 
 			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
@@ -70,7 +77,7 @@ describe('validateAuth', () => {
 			});
 		});
 
-		it('should pass with correct credentials', async () => {
+		it('should pass with correct credentials, and identify nobody', async () => {
 			mockContext.getCredentials.mockResolvedValue({
 				user: 'admin',
 				password: 'secret',
@@ -90,7 +97,7 @@ describe('validateAuth', () => {
 			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
 		});
 
-		it('should skip validation for setup webhook', async () => {
+		it('should skip validation for the setup webhook, and identify nobody', async () => {
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getHeaderData.mockReturnValue({});
 
@@ -141,14 +148,9 @@ describe('validateAuth', () => {
 			mockContext.getHeaderData.mockReturnValue({
 				cookie: 'n8n-auth=valid.jwt.token',
 			});
-			mockContext.validateCookieAuth.mockResolvedValue({
-				id: 'user-1',
-				email: 'user@example.com',
-				firstName: 'Test',
-				lastName: 'User',
-			});
+			mockContext.validateCookieAuth.mockResolvedValue(authedUser);
 
-			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+			await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 			expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 		});
 
@@ -157,14 +159,9 @@ describe('validateAuth', () => {
 			mockContext.getHeaderData.mockReturnValue({
 				cookie: 'other=value; n8n-auth=valid.jwt.token; another=thing',
 			});
-			mockContext.validateCookieAuth.mockResolvedValue({
-				id: 'user-1',
-				email: 'user@example.com',
-				firstName: 'Test',
-				lastName: 'User',
-			});
+			mockContext.validateCookieAuth.mockResolvedValue(authedUser);
 
-			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+			await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 			expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 		});
 
@@ -174,35 +171,24 @@ describe('validateAuth', () => {
 		// identity — through the shared trigger-identity pipeline.
 		describe('x-auth-token from the sandboxed frame', () => {
 			const resourceUrl = 'http://localhost:5678/webhook/abc/chat';
-			const user = {
-				id: 'user-1',
-				email: 'user@example.com',
-				firstName: 'Test',
-				lastName: 'User',
-			};
 
 			beforeEach(() => {
 				mockContext.getWebhookName.mockReturnValue('default');
 				mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('hostedChat');
 				mockContext.getWebhookResourceUrl.mockReturnValue(resourceUrl);
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
-			});
-
-			afterEach(() => {
-				vi.unstubAllEnvs();
 			});
 
 			it('establishes the trigger identity and passes for a valid token', async () => {
 				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
-				mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
 
-				await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+				await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 
 				expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
 				expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
 					'as-token',
 					resourceUrl,
-					user.id,
+					authedUser.id,
 				);
 				expect(mockContext.validateCookieAuth).not.toHaveBeenCalled();
 			});
@@ -232,19 +218,6 @@ describe('validateAuth', () => {
 				expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
 			});
 
-			// The header only means anything on the split page, so with the flag off it
-			// must not become a second way in.
-			it('should ignore the header when the flag is off', async () => {
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
-				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
-
-				await expect(validateAuth(mockContext)).rejects.toMatchObject({
-					responseCode: 401,
-					message: 'User not authenticated!',
-				});
-				expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
-			});
-
 			// Embedded (`webhook`) mode has no page to mint or carry this token, so a
 			// call to it must keep working the same way it always has (the plain
 			// session-cookie check) even if a hostedChat-minted token is replayed —
@@ -268,14 +241,9 @@ describe('validateAuth', () => {
 					'x-auth-token': 'as-token',
 					cookie: 'n8n-auth=valid.jwt.token',
 				});
-				mockContext.validateCookieAuth.mockResolvedValue({
-					id: 'user-1',
-					email: 'user@example.com',
-					firstName: 'Test',
-					lastName: 'User',
-				});
+				mockContext.validateCookieAuth.mockResolvedValue(authedUser);
 
-				await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+				await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 				expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 			});
 		});
@@ -314,6 +282,10 @@ describe('establishChatSessionIdentity', () => {
 		vi.clearAllMocks();
 		mockContext.getResponseObject.mockReturnValue(mockRes());
 		mockContext.logger = { warn: vi.fn() } as never;
+		// Default: no current n8n session to compare a cached grant against, so tests
+		// that don't care about the session-mismatch check keep their prior behaviour
+		// regardless of what an earlier test left on this mock.
+		mockContext.getHeaderData.mockReturnValue({});
 	});
 
 	it('starts the AS flow on a fresh request with no cookie', async () => {
@@ -411,6 +383,56 @@ describe('establishChatSessionIdentity', () => {
 		expect(mockContext.refreshN8nOAuth2Flow).not.toHaveBeenCalled();
 	});
 
+	// A grant issued to test@n8n.io must not keep authenticating this page after the
+	// browser's own n8n session has since logged in as someone else in another tab.
+	it('restarts the flow and discards the grant when the one-hop cookie belongs to a different user than the current n8n session', async () => {
+		const expiresAt = Date.now() + 3_600_000;
+		const cookie = `${oauthCookie('as-token', expiresAt)}; n8n-auth=session.jwt`;
+		mockContext.getRequestObject.mockReturnValue({
+			query: {},
+			headers: { cookie },
+			originalUrl: '/webhook/abc/chat',
+		} as never);
+		mockContext.getHeaderData.mockReturnValue({ cookie });
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
+		mockContext.validateCookieAuth.mockResolvedValue({ ...user, id: 'user-2' });
+		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBeNull();
+		expect(mockContext.establishTriggerIdentity).not.toHaveBeenCalled();
+		expect(mockContext.getResponseObject().clearCookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			expect.any(Object),
+		);
+		expect(mockContext.getResponseObject().clearCookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth-refresh',
+			expect.any(Object),
+		);
+		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+	});
+
+	// No current session to contradict the grant (it's a normal expired-independently
+	// case, not a different-user case), so the cached grant is trusted as before.
+	it('trusts the one-hop cookie when the current n8n-auth cookie fails to validate', async () => {
+		const expiresAt = Date.now() + 3_600_000;
+		const cookie = `${oauthCookie('as-token', expiresAt)}; n8n-auth=expired.jwt`;
+		mockContext.getRequestObject.mockReturnValue({
+			query: {},
+			headers: { cookie },
+			originalUrl: '/webhook/abc/chat',
+		} as never);
+		mockContext.getHeaderData.mockReturnValue({ cookie });
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
+		mockContext.validateCookieAuth.mockRejectedValue(new Error('expired'));
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toMatchObject({ visitor: user, authToken: 'as-token' });
+		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
+	});
+
 	it('restarts the flow when the one-hop cookie fails to validate', async () => {
 		mockContext.getRequestObject.mockReturnValue({
 			query: {},
@@ -468,6 +490,41 @@ describe('establishChatSessionIdentity', () => {
 			'rotated-token',
 			expect.objectContaining({ httpOnly: true }),
 		);
+	});
+
+	// Same identity-binding check on the refresh path: rotating the grant still
+	// resolves to test@n8n.io, but the browser is now logged in as someone else.
+	it('restarts the flow and discards the grant when the refreshed token belongs to a different user than the current n8n session', async () => {
+		const cookie = 'n8n-chat-oauth-refresh=refresh-token; n8n-auth=session.jwt';
+		mockContext.getRequestObject.mockReturnValue({
+			query: {},
+			headers: { cookie },
+			originalUrl: '/webhook/abc/chat',
+		} as never);
+		mockContext.getHeaderData.mockReturnValue({ cookie });
+		mockContext.refreshN8nOAuth2Flow.mockResolvedValue({
+			valid: true,
+			token: 'fresh-token',
+			refreshToken: 'rotated-token',
+			expiresIn: 3600,
+		});
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
+		mockContext.validateCookieAuth.mockResolvedValue({ ...user, id: 'user-2' });
+		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBeNull();
+		expect(mockContext.establishTriggerIdentity).not.toHaveBeenCalled();
+		expect(mockContext.getResponseObject().clearCookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			expect.any(Object),
+		);
+		expect(mockContext.getResponseObject().clearCookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth-refresh',
+			expect.any(Object),
+		);
+		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 	});
 
 	it('restarts the flow when the refresh cookie is refused', async () => {
@@ -566,6 +623,10 @@ describe('handleChatTokenRefresh', () => {
 		vi.clearAllMocks();
 		mockContext.getResponseObject.mockReturnValue(mockRes());
 		mockContext.logger = { warn: vi.fn() } as never;
+		// Default: no current n8n session to compare the rotated grant against, so
+		// tests that don't care about the session-mismatch check keep their prior
+		// behaviour regardless of what an earlier test left on this mock.
+		mockContext.getHeaderData.mockReturnValue({});
 	});
 
 	it('rotates the grant and returns only the access token and its lifetime', async () => {
@@ -595,6 +656,38 @@ describe('handleChatTokenRefresh', () => {
 			expect.objectContaining({ httpOnly: true }),
 		);
 		expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+	});
+
+	// Mid-conversation background refresh must not keep minting tokens for a visitor
+	// who is no longer the one logged into this browser's n8n session.
+	it('discards the grant and answers 401 when the rotated token belongs to a different user than the current n8n session', async () => {
+		const cookie = 'n8n-chat-oauth-refresh=refresh-token; n8n-auth=session.jwt';
+		mockContext.getRequestObject.mockReturnValue({ headers: { cookie } } as never);
+		mockContext.getHeaderData.mockReturnValue({ cookie });
+		mockContext.refreshN8nOAuth2Flow.mockResolvedValue({
+			valid: true,
+			token: 'fresh-token',
+			refreshToken: 'rotated-token',
+			expiresIn: 3600,
+		});
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({
+			valid: true,
+			user: { id: 'user-1', email: 'visitor@example.com', firstName: 'Vi', lastName: 'Sitor' },
+		});
+		mockContext.validateCookieAuth.mockResolvedValue({
+			id: 'user-2',
+			email: 'other@example.com',
+			firstName: 'Other',
+			lastName: 'User',
+		});
+
+		await handleChatTokenRefresh(mockContext, resourceUrl);
+
+		const res = mockContext.getResponseObject();
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(res.json).toHaveBeenCalledWith({ error: 'invalid_grant' });
+		expect(res.clearCookie).toHaveBeenCalledWith('n8n-chat-oauth', expect.any(Object));
+		expect(res.clearCookie).toHaveBeenCalledWith('n8n-chat-oauth-refresh', expect.any(Object));
 	});
 
 	it('answers 401 without calling the AS when there is no refresh cookie', async () => {

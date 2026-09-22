@@ -3,7 +3,6 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
-	TaskList,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -16,11 +15,12 @@ import {
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
+import { resolvePlanTasks } from '../planReview.utils';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
-import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
+import PlanReviewPanel, { type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
@@ -137,15 +137,6 @@ const renderBlocks = computed(() =>
 	),
 );
 
-function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
-	return (
-		tc.confirmation?.planItems ??
-		(tc.args?.tasks as PlannedTaskArg[] | undefined) ??
-		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks) ??
-		[]
-	);
-}
-
 function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 	const requestId = tc.confirmation?.requestId;
 	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
@@ -179,6 +170,16 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
 
+/**
+ * A plan card acts only for the review the composer routes into. Once a newer
+ * turn strands it, `pendingPlanReview` drops it, and resuming its requestId
+ * would revive a run the thread has moved on from.
+ */
+function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
+	if (isCardReadOnly(tc)) return true;
+	return thread.pendingPlanReview?.requestId !== tc.confirmation?.requestId;
+}
+
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
@@ -196,33 +197,19 @@ function handlePlanApprove(tc: InstanceAiToolCallState) {
 			},
 		],
 		skipped_inputs: [],
-		num_tasks: getPlanTasks(tc).length,
+		num_tasks: resolvePlanTasks(tc).length,
 		plan_feedback_type: 'accept',
 	});
 
 	thread.resolveConfirmation(requestId, 'approved');
-	if (thread.activePlanEdit?.requestId === requestId) {
-		thread.cancelPlanEdit();
-	}
 	void thread.confirmAction(requestId, { kind: 'approval', approved: true });
-}
-
-function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId || isCardReadOnly(tc)) return;
-
-	thread.startPlanEdit({
-		requestId,
-		inputThreadId: tc.confirmation?.inputThreadId,
-		taskCount: getPlanTasks(tc).length,
-	});
 }
 
 function handlePlanDeny(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
 
-	const numTasks = getPlanTasks(tc).length;
+	const numTasks = resolvePlanTasks(tc).length;
 	telemetry.track('User finished providing input', {
 		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
@@ -240,23 +227,8 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 		plan_feedback_type: 'deny',
 	});
 
-	if (thread.activePlanEdit?.requestId === requestId) {
-		thread.cancelPlanEdit();
-	}
 	thread.resolveConfirmation(requestId, 'denied');
 	void thread.confirmAction(requestId, { kind: 'planDeny' });
-}
-
-/** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
-function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
-	if (!tasks?.tasks?.length) return undefined;
-	return tasks.tasks.map((t) => ({
-		id: t.id,
-		title: t.description,
-		kind: '',
-		spec: '',
-		deps: [],
-	}));
 }
 </script>
 
@@ -286,13 +258,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 			<PlanReviewPanel
 				v-else-if="block.type === 'plan-review'"
 				:key="block.toolCall.confirmation?.requestId"
-				:planned-tasks="getPlanTasks(block.toolCall)"
+				:planned-tasks="resolvePlanTasks(block.toolCall)"
 				:status="getPlanReviewStatus(block.toolCall)"
 				:updating="isPlanReviewUpdating(block.toolCall)"
-				:read-only="isCardReadOnly(block.toolCall)"
+				:read-only="isPlanCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation?.expired"
 				@approve="handlePlanApprove(block.toolCall)"
-				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
 				@deny="handlePlanDeny(block.toolCall)"
 			/>
 

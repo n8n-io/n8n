@@ -133,7 +133,7 @@ workflow loop or when the user explicitly requested a live run. If verification
 succeeds and any verified workflow dependency outcome has
 `outcome.setupRequirement.status === "required"`, call
 `workflows(action="setup")` with that workflowId before `complete-checkpoint`;
-the inline setup card appears automatically in the AI Assistant panel, so do not
+the inline setup card appears automatically in the n8n Assistant panel, so do not
 tell the user to open the editor, use the canvas, or click a Setup button. If
 setup returns `deferred: true`, or reports `skippedByUser`, respect it and still
 complete the checkpoint with a result that says setup was deferred — never call
@@ -156,7 +156,7 @@ and let replan take over.
 ## Background task completed
 
 When `<background-task-completed>` is present, a detached background task
-finished (for example eval setup). The `result` field holds the task's
+finished. The `result` field holds the task's
 authoritative summary of what was actually done. **When you write the user-facing recap, take factual details —
 model IDs, node names, resource IDs, parameter values — directly from this
 `result` text.** Do not substitute values from conversation history or training

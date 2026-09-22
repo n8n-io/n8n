@@ -37,6 +37,11 @@ on:
         required: false
         default: 'nHHLA5'
         type: string
+      currents-record-key:
+        description: 'Currents record key. When set, Currents keeps the run artifacts and the shards do not upload their own.'
+        required: false
+        default: ''
+        type: string
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
         required: false
@@ -85,7 +90,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           fetch-depth: 1
           ref: ${{ inputs.branch || github.ref }}
@@ -182,8 +187,10 @@ jobs:
           # so a local run stays quiet unless it is asked for.
           PLAYWRIGHT_A11Y_REPORT: '1'
 
+      # Currents already keeps these artifacts for the runs it records, so the
+      # shard upload is only needed when no record key is passed.
       - name: Upload Shard Artifacts
-        if: always()
+        if: ${{ always() && inputs.currents-record-key == '' }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}

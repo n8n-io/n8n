@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ActivityLogConfig } from './configs/activity-log.config';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
@@ -7,6 +8,7 @@ import { AiGatewayConfig } from './configs/ai-gateway.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
+import { CanvasOnlyConfig } from './configs/canvas-only.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
 import { CollaborationConfig } from './configs/collaboration.config';
@@ -81,6 +83,7 @@ export {
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
@@ -90,12 +93,18 @@ export { McpClientConfig } from './configs/mcp-client.config';
 export { McpServerConfig } from './configs/mcp-server.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
+export {
+	CanvasOnlyConfig,
+	CANVAS_ONLY_PERSONAL_SPACE_DENIABLE_SCOPES,
+	type CanvasOnlyPersonalSpaceDeniableScope,
+} from './configs/canvas-only.config';
 export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ActivityLogConfig } from './configs/activity-log.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
@@ -266,9 +275,8 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
-	/** Whether to enable canvas-only mode, hiding the chrome UI. */
-	@Env('N8N_CANVAS_ONLY')
-	canvasOnly: boolean = false;
+	@Nested
+	canvasOnly: CanvasOnlyConfig;
 
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
@@ -329,4 +337,7 @@ export class GlobalConfig {
 
 	@Nested
 	featureFlags: FeatureFlagConfig;
+
+	@Nested
+	activityLog: ActivityLogConfig;
 }

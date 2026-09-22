@@ -1,4 +1,4 @@
-import type { JsonValue } from '../common';
+import type { JsonObject, JsonValue } from '../common';
 
 /** Lifecycle status of an execution. */
 export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -7,26 +7,54 @@ export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'c
 export type ExecutionMode = 'production' | 'manual';
 
 /**
+ * Facts about the caller, supplied by the host at start and stored with the
+ * execution. The engine never reads them: it passes them to the step executor,
+ * which needs them to act on the caller's behalf, for example to resolve a
+ * credential.
+ *
+ * This is caller-supplied, opaque data. It is distinct from any per-request
+ * context the engine builds for its own use (database handle, request id,
+ * principal), which is never persisted and never given to a step executor.
+ */
+export interface CallerContext {
+	/** The user on whose behalf the execution runs. */
+	userId?: string;
+	/** The project that owns the workflow. */
+	projectId?: string;
+	/**
+	 * The host's own execution mode, which is finer than `ExecutionMode`. Opaque
+	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
+	 */
+	hostMode?: string;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs.
  */
-export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled';
+export const STEP_STATUSES = [
+	'queued',
+	'running',
+	'completed',
+	'failed',
+	'skipped',
+	'cancelled',
+] as const;
+
+export type StepStatus = (typeof STEP_STATUSES)[number];
 
 /**
  * A settled step has reached a terminal state: its status and outputs are
  * immutable, and it will never produce more data. Planning decisions are made
  * over settled predecessors only, so they hold no matter when they're computed.
  */
-export const SETTLED_STEP_STATUSES: readonly StepStatus[] = [
-	'completed',
-	'failed',
-	'skipped',
-	'cancelled',
-];
+export const SETTLED_STEP_STATUSES = ['completed', 'failed', 'skipped', 'cancelled'] as const;
 
-export function isSettledStatus(status: StepStatus): boolean {
-	return SETTLED_STEP_STATUSES.includes(status);
+export type SettledStepStatus = (typeof SETTLED_STEP_STATUSES)[number];
+
+export function isSettledStatus(status: StepStatus): status is SettledStepStatus {
+	return (SETTLED_STEP_STATUSES as readonly StepStatus[]).includes(status);
 }
 
 /**
@@ -48,6 +76,13 @@ export type StepSlots = JsonValue[];
  * `INodeExecutionData[]` in each slot.
  */
 export type TriggerOutputs = StepSlots;
+
+/**
+ * The full workflow the run came from, supplied by CP. Opaque: the engine
+ * never reads a field out of it. Different from WorkflowGraph, which
+ * is only the graph that is executed (e.g. without disabled nodes).
+ */
+export type WorkflowDocument = JsonObject;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];

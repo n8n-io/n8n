@@ -22,6 +22,11 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'aiPreference:read': {
+		displayName: 'Read AI Preferences',
+		description:
+			'Allows reading the AI preferences saved for the instance, the user, and their projects.',
+	},
 	'agent:create': {
 		displayName: 'Create Agent',
 		description: 'Allows creating new agents in a project.',
@@ -58,9 +63,26 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
 	},
+	'execution:read': {
+		displayName: 'View Execution',
+		description: 'Allows viewing executions of workflows the role can view.',
+	},
+	'execution:list': {
+		displayName: 'List Executions',
+		description: 'Allows listing executions of workflows the role can view.',
+	},
+	'execution:delete': {
+		displayName: 'Delete Execution',
+		description: 'Allows deleting executions of workflows in the project.',
+	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
-		description: 'Allows managing which node types are available on the instance.',
+		description: 'Allows managing which node types are available, on the instance or in a project.',
+	},
+	'credentialTypePolicy:manage': {
+		displayName: 'Manage Credential Type Policies',
+		description:
+			'Allows managing which credential types are available, on the instance or in a project.',
 	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',

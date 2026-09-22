@@ -17,7 +17,9 @@ import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
+import { createConsoleLogger } from '../../logging';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
@@ -80,6 +82,7 @@ describe('step execution (integration)', () => {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
+			responseChannel: new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -102,7 +105,14 @@ describe('step execution (integration)', () => {
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({ workflowId, graph: workflowGraph, triggerOutputs, executionId: generateId() })
+			.send({
+				workflowId,
+				graph: workflowGraph,
+				workflow: {},
+				triggerOutputs,
+				executionId: generateId(),
+				callerContext: {},
+			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 		await finished;
@@ -175,6 +185,7 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-1',
 			mode: 'production',
 			iteration: 0,
+			callerContext: {},
 		});
 	});
 
@@ -389,7 +400,9 @@ describe('step execution (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph,
+			workflow: {},
 			triggerOutputs: null,
+			callerContext: {},
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them

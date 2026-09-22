@@ -1,114 +1,60 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
 
-// Syntactic detection: it flags WorkflowEntity writes by the shapes that actually occur — a
-// `WorkflowEntity` generic arg or first-arg identifier on an EntityManager/query-builder write,
-// a full-entity write on a workflow-repository receiver, or a `.update(…, { nodes })` payload.
-// Aliased receivers and `getRepository(WorkflowEntity)` are the known ceiling (see the rule's
-// doc comment).
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 
 const ruleTester = new RuleTester();
-
-const businessLogic = '/repo/packages/cli/src/services/foo.service.ts';
+const errors = [{ messageId: 'unsealedWrite' as const }];
 
 ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWriteRule, {
 	valid: [
-		// Persistence layer (path contains `@n8n/db`) may write WorkflowEntity directly.
+		'workflowRepository.update(id, { active: false });',
+		'workflowRepository.update(id);',
+		'workflowRepository.updateContent(id, { nodes: [] }, ctx);',
+		"manager.query('DELETE FROM workflow_entity WHERE id = ?');",
+		"manager.query('SELECT nodes FROM workflow_entity WHERE id = ?');",
+		{ code: 'workflowRepository.save(workflow);', filename: '/src/example.test.ts' },
 		{
-			code: 'manager.save<WorkflowEntity>(wf);',
-			filename: '/repo/packages/@n8n/db/src/repositories/workflow.repository.ts',
-		},
-		// The sanctioned, token-gated write method is allowed.
-		{ code: 'this.workflowRepository.updateContent(id, content, ctx);', filename: businessLogic },
-		// A non-node partial update (active/archive/folder) is untouched.
-		{ code: 'this.workflowRepository.update(id, { active: true });', filename: businessLogic },
-		// A delete changes existence, not node content — out of the node seal's scope.
-		{ code: 'this.workflowRepository.delete(id);', filename: businessLogic },
-		// A raw EntityManager update to WorkflowEntity that touches no nodes (settings/active) is
-		// out of the node seal's scope (the typeorm-boundary rule governs raw manager use).
-		{
-			code: 'trx.update(WorkflowEntity, { id: workflowId }, { settings });',
-			filename: businessLogic,
+			code: 'workflowRepository.save(workflow);',
+			filename: '/repositories/workflow.repository.ts',
 		},
 		{
-			code: 'trx.update(WorkflowEntity, { id: workflowId }, { active: false });',
-			filename: businessLogic,
-		},
-		// Writes to other entities are irrelevant.
-		{ code: 'manager.save<CredentialsEntity>(cred);', filename: businessLogic },
-		{ code: 'this.userRepository.save(user);', filename: businessLogic },
-		// A sibling repository that merely ends in "workflowRepository" is a different entity.
-		{ code: 'this.sharedWorkflowRepository.save(sw);', filename: businessLogic },
-		{
-			code: 'this.sharedWorkflowRepository.insert({ workflowId, projectId });',
-			filename: businessLogic,
-		},
-		{ code: 'this.sharedWorkflowRepo.save(sw);', filename: businessLogic },
-		// `create` builds an entity without persisting it.
-		{ code: 'this.workflowRepo.create({ id, nodes });', filename: businessLogic },
-		// Tests/fixtures write WorkflowEntity for setup — exempt.
-		{
-			code: 'await workflowRepository.save(workflow);',
-			filename: '/repo/packages/cli/test/integration/foo.test.ts',
+			code: 'workflowRepository.save(workflow);',
+			filename: '/packages/@n8n/backend-test-utils/src/db/workflows.ts',
 		},
 	],
 	invalid: [
+		{ code: 'workflowRepository.save(workflow);', errors },
+		{ code: 'this.workflowRepository.save(workflow);', errors },
+		{ code: 'this.workflowRepo.update(id, { nodes: [] });', errors },
+		{ code: "workflowRepository['save'](workflow);", errors },
+		{ code: 'workflowsRepo.insert(workflow);', errors },
+		{ code: 'Container.get(WorkflowRepository).save(workflow);', errors },
+		{ code: 'dataSource.getRepository(WorkflowEntity).save(workflow);', errors },
+		{ code: 'manager.getRepository(WorkflowEntity).insert(workflow);', errors },
+		{ code: "manager.getRepository(WorkflowEntity).upsert(workflow, ['id']);", errors },
+		{ code: 'manager.getRepository(WorkflowEntity).update(id, { nodes: [] });', errors },
+		{ code: 'workflowRepository?.save(workflow);', errors },
+		{ code: 'workflowRepo.insert(workflow);', errors },
+		{ code: 'workflowRepository.update(id, { nodes: [] });', errors },
+		{ code: "workflowRepository.update(id, { 'nodes': [] });", errors },
+		{ code: 'manager.save(WorkflowEntity, workflow);', errors },
+		{ code: "manager.upsert(WorkflowEntity, workflow, ['id']);", errors },
+		{ code: 'manager.update(WorkflowEntity, id, { nodes: [] });', errors },
+		{ code: 'manager.update<WorkflowEntity>(id, { nodes: [] });', errors },
+		{ code: 'queryBuilder.insert().into(WorkflowEntity);', errors },
 		{
-			code: 'manager.save<WorkflowEntity>(wf);',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
+			code: 'manager.createQueryBuilder().update(WorkflowEntity).set({ nodes: [] });',
+			errors,
 		},
 		{
-			code: "tx.upsert(WorkflowEntity, wf, ['id']);",
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
+			code: 'workflowRepository.createQueryBuilder().update().set({ nodes: [] });',
+			errors,
 		},
-		{
-			code: 'transactionManager.save(WorkflowEntity, wf);',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		{
-			code: 'manager.createQueryBuilder().update(WorkflowEntity).set({ nodes: [] }).execute();',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		{
-			code: 'this.workflowRepository.save(wf);',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		{
-			code: 'this.workflowRepository.update(id, { nodes: [] });',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		// The repository injected under a shorter name is the same write.
-		{
-			code: 'this.workflowRepo.save(this.workflowRepo.create({ id, nodes }));',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		{
-			code: 'this.workflowsRepository.insert(wf);',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		{
-			code: 'workflowRepo.update(id, { nodes: [] });',
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		// A string-literal or computed `nodes` key is the same node write as `{ nodes }`.
-		{
-			code: "this.workflowRepository.update(id, { 'nodes': [] });",
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
-		{
-			code: "this.workflowRepository.update(id, { ['nodes']: [] });",
-			filename: businessLogic,
-			errors: [{ messageId: 'unsealedWrite' }],
-		},
+		{ code: "manager.query('UPDATE workflow_entity SET nodes = ?');", errors },
+		{ code: 'manager.query(`INSERT INTO workflow_entity (nodes) VALUES (?)`);', errors },
+		{ code: 'manager.query(`UPDATE ${prefix}workflow_entity SET nodes = ?`);', errors },
+		{ code: 'manager.query(`UPDATE\\x20workflow_entity SET nodes = ?`);', errors },
+		{ code: "manager.query('UPDATE public.workflow_entity SET nodes = ?');", errors },
+		{ code: 'manager.query(`UPDATE "public"."workflow_entity" SET nodes = ?`);', errors },
 	],
 });

@@ -18,6 +18,12 @@ import {
 } from '../GenericFunctions';
 import { JiraTrigger } from '../JiraTrigger.node';
 
+// ENT-408: the gateway answers 403/404 instead of 401 on an expired token, and
+// `skipRefreshWhileTokenIsFresh` keeps a genuinely missing issue from forcing a refresh.
+const OAUTH2_RETRY_OPTIONS = {
+	oauth2: { tokenExpiredStatusCode: [401, 403, 404], skipRefreshWhileTokenIsFresh: true },
+};
+
 describe('JiraTrigger', () => {
 	describe('Webhook lifecycle', () => {
 		let staticData: IDataObject;
@@ -80,10 +86,12 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+				undefined,
 			);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ uri: 'https://jira.local/rest/jira-webhook/1.0/webhooks' }),
+				undefined,
 			);
 			expect(staticData.endpoint).toBe('/jira-webhook/1.0/webhooks');
 			expect(exists).toBe(false);
@@ -108,6 +116,7 @@ describe('JiraTrigger', () => {
 						url: 'https://n8n.local/webhook/id',
 					}),
 				}),
+				undefined,
 			);
 			expect(created).toBe(true);
 
@@ -124,6 +133,7 @@ describe('JiraTrigger', () => {
 					method: 'DELETE',
 					uri: 'https://jira.local/rest/jira-webhook/1.0/webhooks/1',
 				}),
+				undefined,
 			);
 		});
 
@@ -143,10 +153,12 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+				undefined,
 			);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ uri: 'https://jira.local/rest/webhooks/1.0/webhook' }),
+				undefined,
 			);
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
 			expect(exists).toBe(false);
@@ -171,6 +183,7 @@ describe('JiraTrigger', () => {
 						url: 'https://n8n.local/webhook/id',
 					}),
 				}),
+				undefined,
 			);
 			expect(created).toBe(true);
 
@@ -187,6 +200,7 @@ describe('JiraTrigger', () => {
 					method: 'DELETE',
 					uri: 'https://jira.local/rest/webhooks/1.0/webhook/1',
 				}),
+				undefined,
 			);
 		});
 
@@ -242,6 +256,7 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({ uri: baseApiUrl, method: 'GET' }),
+				OAUTH2_RETRY_OPTIONS,
 			);
 			expect(staticData.endpoint).toBe('/api/3/webhook');
 			expect(exists).toBe(false);
@@ -267,6 +282,7 @@ describe('JiraTrigger', () => {
 						webhooks: [{ events: ['comment_created'], jqlFilter: 'project = TEST' }],
 					},
 				}),
+				OAUTH2_RETRY_OPTIONS,
 			);
 			expect(created).toBe(true);
 			expect(staticData.webhookId).toBe('1000');
@@ -287,6 +303,7 @@ describe('JiraTrigger', () => {
 					uri: baseApiUrl,
 					body: { webhookIds: [1000] },
 				}),
+				OAUTH2_RETRY_OPTIONS,
 			);
 		});
 
@@ -347,6 +364,7 @@ describe('JiraTrigger', () => {
 					uri: `${baseApiUrl}/refresh`,
 					body: { webhookIds: [2000] },
 				}),
+				OAUTH2_RETRY_OPTIONS,
 			);
 		});
 
@@ -435,6 +453,7 @@ describe('JiraTrigger', () => {
 					uri: `${baseApiUrl}/refresh`,
 					body: { webhookIds: [3000] },
 				}),
+				OAUTH2_RETRY_OPTIONS,
 			);
 			expect(staleData.lastRefreshed).toBeGreaterThan(
 				Date.now() - OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS,
@@ -520,6 +539,7 @@ describe('JiraTrigger', () => {
 						webhooks: [{ events: expectedFiltered, jqlFilter: 'project = TEST' }],
 					}),
 				}),
+				OAUTH2_RETRY_OPTIONS,
 			);
 		});
 
@@ -747,10 +767,12 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+				undefined,
 			);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ uri: 'https://jira.local/rest/webhooks/1.0/webhook' }),
+				undefined,
 			);
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
 			expect(exists).toBe(false);
@@ -775,6 +797,7 @@ describe('JiraTrigger', () => {
 						url: 'https://n8n.local/webhook/id',
 					}),
 				}),
+				undefined,
 			);
 			expect(created).toBe(true);
 
@@ -791,6 +814,7 @@ describe('JiraTrigger', () => {
 					method: 'DELETE',
 					uri: 'https://jira.local/rest/webhooks/1.0/webhook/1',
 				}),
+				undefined,
 			);
 		});
 	});

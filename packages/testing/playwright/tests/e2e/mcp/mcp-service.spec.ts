@@ -1,6 +1,18 @@
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
+import type { ApiHelpers } from '../../../services/api-helper';
+
+async function activateAndWaitForPublishedVersion(
+	api: ApiHelpers,
+	workflowId: string,
+	versionId: string,
+) {
+	await api.workflows.activate(workflowId, versionId);
+	await expect
+		.poll(async () => await api.workflows.getPublicationStatus(workflowId), { timeout: 10_000 })
+		.toMatchObject({ status: 'published', liveVersionId: versionId });
+}
 
 /**
  * E2E tests for the Internal MCP Service (/mcp-server/http).
@@ -91,7 +103,7 @@ test.describe(
 		});
 
 		test.describe('MCP Settings', () => {
-			test('should reject when MCP access is disabled', async ({ api }) => {
+			test('should hide the MCP server when MCP access is disabled', async ({ api }) => {
 				await api.setMcpAccess(false);
 
 				try {
@@ -99,7 +111,8 @@ test.describe(
 					const message = api.mcp.createMessage('tools/list');
 					const response = await api.mcp.internalMcpSendMessage(apiKey, message);
 
-					expect(response.status()).toBe(403);
+					expect(response.status()).toBe(404);
+					expect(response.headers()['www-authenticate']).toBeUndefined();
 					const body = await response.json();
 					expect(body.message).toContain('MCP access is disabled');
 				} finally {
@@ -293,7 +306,7 @@ test.describe(
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await activateAndWaitForPublishedVersion(api, workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
@@ -333,7 +346,7 @@ test.describe(
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-webhook.json',
 				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await activateAndWaitForPublishedVersion(api, workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(
@@ -359,7 +372,7 @@ test.describe(
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await activateAndWaitForPublishedVersion(api, workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
 

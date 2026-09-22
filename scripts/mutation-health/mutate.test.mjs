@@ -8,22 +8,29 @@ import path from 'node:path';
 
 import {
 	buildNoTestsSummary,
+	buildStrykerConfig,
 	buildSummary,
 	classifyRun,
+	cliScopeError,
 	coverageFromCounts,
 	createCleanup,
+	defaultConfigNameFor,
 	filesToCheckout,
 	findStrykerSetupFiles,
 	formatMutateArg,
 	isMutableSource,
 	mergeRanges,
+	parseArgs,
 	parseHunkRanges,
+	parseTestFiles,
 	registerCleanupHandlers,
 	removeStrykerSetupFiles,
 	restoreFiles,
 	scoreFromCounts,
 	snapshotFiles,
 	splitRange,
+	strykerCliArgs,
+	toPackageRelative,
 } from './mutate.mjs';
 
 // A minimal Stryker Mutation Testing Elements report for one source file. Mix
@@ -358,6 +365,233 @@ describe('splitRange', () => {
 
 	it('does not mistake a Windows drive letter or a colon in a dirname for a range', () => {
 		assert.deepEqual(splitRange('src/a:b/cron.ts'), { file: 'src/a:b/cron.ts', range: null });
+	});
+});
+
+describe('parseTestFiles', () => {
+	it('splits a comma-separated value', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts,b.test.ts']), ['a.test.ts', 'b.test.ts']);
+	});
+
+	it('collects a repeated flag', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts', 'b.test.ts']), ['a.test.ts', 'b.test.ts']);
+	});
+
+	it('accepts both forms at once, and trims the spaces around a comma', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts, b.test.ts', 'c.test.ts']), [
+			'a.test.ts',
+			'b.test.ts',
+			'c.test.ts',
+		]);
+	});
+
+	// A duplicate would make Stryker run the same file twice for every mutant.
+	it('drops blanks and duplicates', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts,,a.test.ts', '  ', 'b.test.ts']), [
+			'a.test.ts',
+			'b.test.ts',
+		]);
+	});
+
+	it('returns nothing when the flag was not given', () => {
+		assert.deepEqual(parseTestFiles([]), []);
+	});
+});
+
+describe('parseArgs', () => {
+	it('reads --test-files as a comma-separated list', () => {
+		const parsed = parseArgs([
+			'packages/cli/src/foo.ts:10-40',
+			'--test-files',
+			'packages/cli/src/__tests__/foo.test.ts,packages/cli/src/__tests__/bar.test.ts',
+		]);
+		assert.equal(parsed.targetArg, 'packages/cli/src/foo.ts:10-40');
+		assert.deepEqual(parsed.testFiles, [
+			'packages/cli/src/__tests__/foo.test.ts',
+			'packages/cli/src/__tests__/bar.test.ts',
+		]);
+	});
+
+	it('reads a repeated --test-files flag', () => {
+		const parsed = parseArgs([
+			'src/foo.ts',
+			'--test-files',
+			'src/__tests__/foo.test.ts',
+			'--test-files',
+			'src/__tests__/bar.test.ts',
+		]);
+		assert.deepEqual(parsed.testFiles, ['src/__tests__/foo.test.ts', 'src/__tests__/bar.test.ts']);
+	});
+
+	it('leaves testFiles empty when the flag is absent', () => {
+		assert.deepEqual(parseArgs(['src/foo.ts']).testFiles, []);
+	});
+
+	it('keeps reading the other flags', () => {
+		const parsed = parseArgs([
+			'src/cron.ts',
+			'--package-dir',
+			'packages/workflow',
+			'--config',
+			'custom.mjs',
+			'--base',
+			'upstream/master',
+		]);
+		assert.equal(parsed.packageDirArg, 'packages/workflow');
+		assert.equal(parsed.configArg, 'custom.mjs');
+		assert.equal(parsed.baseArg, 'upstream/master');
+		assert.equal(parsed.diffMode, false);
+	});
+
+	it('defaults the base ref and reads --diff', () => {
+		const parsed = parseArgs(['--diff']);
+		assert.equal(parsed.diffMode, true);
+		assert.equal(parsed.baseArg, 'origin/master');
+		assert.equal(parsed.targetArg, undefined);
+	});
+
+	it('reads --help', () => {
+		assert.equal(parseArgs(['--help']).helpMode, true);
+		assert.equal(parseArgs(['-h']).helpMode, true);
+		assert.equal(parseArgs(['src/foo.ts']).helpMode, false);
+	});
+});
+
+describe('toPackageRelative', () => {
+	// Stryker matches testFiles against the files under its run cwd, which is
+	// the package dir.
+	it('strips the package prefix off a repo-relative path', () => {
+		assert.equal(
+			toPackageRelative('packages/cli/src/__tests__/foo.test.ts', 'packages/cli'),
+			'src/__tests__/foo.test.ts',
+		);
+	});
+
+	it('leaves an already package-relative path alone', () => {
+		assert.equal(
+			toPackageRelative('src/__tests__/foo.test.ts', 'packages/cli'),
+			'src/__tests__/foo.test.ts',
+		);
+	});
+
+	it('leaves a glob alone', () => {
+		assert.equal(toPackageRelative('src/**/*.test.ts', 'packages/cli'), 'src/**/*.test.ts');
+	});
+
+	it('drops a leading ./', () => {
+		assert.equal(toPackageRelative('./src/foo.test.ts', 'packages/cli'), 'src/foo.test.ts');
+	});
+
+	// `packages/cli-utils` must not lose its prefix to `packages/cli`.
+	it('only strips a whole path segment', () => {
+		assert.equal(
+			toPackageRelative('packages/cli-utils/src/foo.test.ts', 'packages/cli'),
+			'packages/cli-utils/src/foo.test.ts',
+		);
+	});
+});
+
+describe('buildStrykerConfig', () => {
+	it('puts the supplied test files in the testFiles config field', () => {
+		const config = buildStrykerConfig({
+			targets: ['src/credentials/external-secrets.utils.ts:32-68'],
+			testFiles: ['src/credentials/__tests__/external-secrets.utils.test.ts'],
+		});
+		assert.deepEqual(config.testFiles, [
+			'src/credentials/__tests__/external-secrets.utils.test.ts',
+		]);
+		assert.deepEqual(config.mutate, ['src/credentials/external-secrets.utils.ts:32-68']);
+	});
+
+	// An empty `testFiles` is not the same as an absent one: Stryker reads a
+	// non-empty list as "run only these", so an empty one must not be sent.
+	it('leaves testFiles out when no test file was named', () => {
+		const config = buildStrykerConfig({ targets: ['src/cron.ts'] });
+		assert.equal('testFiles' in config, false);
+	});
+});
+
+describe('strykerCliArgs', () => {
+	it('forwards testFiles as one comma-joined flag', () => {
+		const args = strykerCliArgs(
+			buildStrykerConfig({
+				targets: ['src/a.ts:1-4', 'src/b.ts'],
+				testFiles: ['src/__tests__/a.test.ts', 'src/__tests__/b.test.ts'],
+			}),
+		);
+		assert.deepEqual(args, [
+			'--mutate',
+			'src/a.ts:1-4,src/b.ts',
+			'--testFiles',
+			'src/__tests__/a.test.ts,src/__tests__/b.test.ts',
+		]);
+	});
+
+	it('sends no --testFiles flag when no test file was named', () => {
+		const args = strykerCliArgs(buildStrykerConfig({ targets: ['src/cron.ts'] }));
+		assert.deepEqual(args, ['--mutate', 'src/cron.ts']);
+	});
+});
+
+describe('cliScopeError', () => {
+	it('refuses a packages/cli target with no --test-files', () => {
+		const error = cliScopeError('packages/cli', []);
+		assert.match(error, /--test-files/);
+	});
+
+	it('allows a packages/cli target once test files are named', () => {
+		assert.equal(cliScopeError('packages/cli', ['src/__tests__/foo.test.ts']), null);
+	});
+
+	it('leaves every other package alone', () => {
+		assert.equal(cliScopeError('packages/workflow', []), null);
+		// A prefix match would sweep in an unrelated package.
+		assert.equal(cliScopeError('packages/cli-utils', []), null);
+	});
+});
+
+describe('defaultConfigNameFor', () => {
+	it('gives packages/cli its own config, so related-test discovery stays off', () => {
+		assert.equal(defaultConfigNameFor('packages/cli'), 'stryker.cli.mjs');
+	});
+
+	it('gives every other package the shared default', () => {
+		assert.equal(defaultConfigNameFor('packages/workflow'), 'stryker.default.mjs');
+		assert.equal(defaultConfigNameFor('packages/@n8n/decorators'), 'stryker.default.mjs');
+	});
+});
+
+describe('the cli scope guard end to end', () => {
+	const wrapper = path.join(import.meta.dirname, 'mutate.mjs');
+	const target = 'packages/cli/src/credentials/external-secrets.utils.ts:32-68';
+
+	function run(args) {
+		return spawnSync(process.execPath, [wrapper, ...args], {
+			cwd: path.resolve(import.meta.dirname, '../..'),
+			encoding: 'utf8',
+		});
+	}
+
+	// The run must stop before Stryker starts, so a mistyped command costs
+	// nothing instead of forking a process for each of the package's test files.
+	it('exits non-zero and names the flag when a cli target has no --test-files', () => {
+		const res = run([target]);
+		assert.equal(res.status, 2);
+		assert.match(res.stderr, /--test-files/);
+		// Stryker never started.
+		assert.doesNotMatch(res.stderr, /Running Stryker/);
+	});
+
+	it('refuses --test-files together with --diff', () => {
+		const res = run(['--diff', '--test-files', 'packages/cli/src/__tests__/foo.test.ts']);
+		assert.equal(res.status, 2);
+		assert.match(res.stderr, /--diff/);
+	});
+
+	it('documents the flag in --help', () => {
+		const res = run(['--help']);
+		assert.equal(res.status, 0);
+		assert.match(res.stdout, /--test-files/);
 	});
 });
 

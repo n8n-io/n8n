@@ -405,7 +405,7 @@ async function probeOneCredential(options: {
 		});
 		if (result.status === 'OK') return { kind: 'passed', target: local ? 'real' : 'stand-in' };
 
-		if (!local && fixture && fixture.verifyAttempts === attemptsBefore) {
+		if (!local && fixture?.verifyAttempts === attemptsBefore) {
 			const reason = `n8n never reached the provider stand-in at ${verifyBaseUrl} (${result.message ?? result.status})`;
 			logger.verbose(`  [fixture] value check discarded — ${reason}`);
 			return { kind: 'unsupported', reason };

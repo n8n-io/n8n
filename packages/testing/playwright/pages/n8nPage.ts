@@ -163,6 +163,9 @@ export class n8nPage {
 
 	constructor(page: Page, api?: ApiHelpers) {
 		this.page = page;
+		// The fallback helper carries no options, so it applies no stack workflow
+		// settings and its engine 2.0 routing check stays quiet. Pass a helper, or
+		// use `start.newTab()`, for a page that creates or runs workflows.
 		this.api = api ?? new ApiHelpers(page.context().request);
 
 		// Pages
@@ -250,7 +253,7 @@ export class n8nPage {
 
 	/**
 	 * Navigate to the workflow overview. Goes there directly rather than via `/`,
-	 * because the root route lands users on the AI Assistant when the `instance-ai`
+	 * because the root route lands users on the n8n Assistant when the `instance-ai`
 	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
 	 */
 	async goHome() {

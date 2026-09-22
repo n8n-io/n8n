@@ -1,5 +1,5 @@
 import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
-// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: move this package off undici v6, then route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Readable } from 'node:stream';
 
@@ -17,6 +17,9 @@ import {
 
 /** Maximum number of redirects axios will follow before aborting. */
 const WEB_FETCH_MAX_REDIRECTS = 5;
+
+/** Maximum number of table cells expanded by the GFM Turndown plugin. */
+const WEB_FETCH_MAX_TABLE_CELLS = 1_000;
 
 // ============================================================================
 // URL PROVENANCE
@@ -85,6 +88,64 @@ export interface ExtractedContent {
 	truncateReason?: string;
 }
 
+function replaceOversizedTablesWithPlainText(root: Element): void {
+	let remainingCells = WEB_FETCH_MAX_TABLE_CELLS;
+
+	for (const table of root.querySelectorAll('table')) {
+		if (!root.contains(table)) continue;
+
+		let cellCount = 0;
+
+		for (const cell of table.querySelectorAll('th, td')) {
+			if (cell.closest('table') !== table) continue;
+
+			const colspan = Number(cell.getAttribute('colspan') ?? 1);
+			cellCount += Number.isNaN(colspan) || colspan < 1 ? 1 : Math.ceil(colspan);
+
+			if (cellCount > remainingCells) break;
+		}
+
+		if (cellCount <= remainingCells) {
+			remainingCells -= cellCount;
+			continue;
+		}
+
+		const plainText = Array.from(table.querySelectorAll('tr'))
+			.filter((row) => row.closest('table') === table)
+			.map((row) =>
+				Array.from(row.children)
+					.filter((cell) => cell.tagName === 'TH' || cell.tagName === 'TD')
+					.map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+					.filter(Boolean)
+					.join(' '),
+			)
+			.filter(Boolean)
+			.join('\n');
+		table.replaceWith(root.ownerDocument.createTextNode(plainText));
+	}
+}
+
+function promoteFirstRowInHeaderlessTables(root: Element): void {
+	for (const table of root.querySelectorAll('table')) {
+		if (table.querySelector('th')) continue;
+
+		const firstRow = table.querySelector('tr');
+		if (!firstRow) continue;
+
+		for (const cell of Array.from(firstRow.children)) {
+			if (cell.tagName !== 'TD') continue;
+
+			const headerCell = root.ownerDocument.createElement('th');
+
+			for (const attribute of Array.from(cell.attributes)) {
+				headerCell.setAttribute(attribute.name, attribute.value);
+			}
+			headerCell.innerHTML = cell.innerHTML;
+			cell.replaceWith(headerCell);
+		}
+	}
+}
+
 // ============================================================================
 // HOST NORMALIZATION
 // ============================================================================
@@ -138,11 +199,7 @@ async function readStreamWithCap(stream: Readable, maxBytes: number): Promise<st
  * is the only client that exposes both today.
  *
  * Prerequisites to migrate this onto the factory:
- *   1. Move this package off undici v6 (it pins `catalog:undici-v6`). The factory's
- *      `getDispatcher()` returns a v7 `Dispatcher`, and the v6/v7 dispatch-handler
- *      protocols are not interoperable. This is gated on the langchain providers
- *      dropping their undici v6 pin (CAT-3377 Phase 5).
- *   2. Then route via `getDispatcher()` + `undici.request(url, { dispatcher,
+ *   1. Route via `getDispatcher()` + `undici.request(url, { dispatcher,
  *      maxRedirections: 0 })` for the manual redirect loop. `asCustomFetch()` is not
  *      usable: WHATWG `fetch` with `redirect: 'manual'` returns an opaque-redirect
  *      response with no readable `Location`, which breaks the cross-host approval.
@@ -236,8 +293,13 @@ export async function fetchUrl(
  * Libraries are lazy-loaded to avoid pulling jsdom (~15-20MB) into memory at startup.
  */
 export async function extractReadableContent(html: string, url: string): Promise<ExtractedContent> {
-	const [{ JSDOM, VirtualConsole }, { Readability }, { default: TurndownService }] =
-		await Promise.all([import('jsdom'), import('@mozilla/readability'), import('turndown')]);
+	const [{ JSDOM, VirtualConsole }, { Readability }, { default: TurndownService }, { gfm }] =
+		await Promise.all([
+			import('jsdom'),
+			import('@mozilla/readability'),
+			import('turndown'),
+			import('@joplin/turndown-plugin-gfm'),
+		]);
 
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { url, virtualConsole });
@@ -245,11 +307,16 @@ export async function extractReadableContent(html: string, url: string): Promise
 
 	const title = article?.title ?? '';
 	const articleHtml = article?.content ?? '';
+	const articleRoot = dom.window.document.createElement('div');
+	articleRoot.innerHTML = articleHtml;
+	replaceOversizedTablesWithPlainText(articleRoot);
+	promoteFirstRowInHeaderlessTables(articleRoot);
 	const turndownService = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
 	});
-	let content = articleHtml ? turndownService.turndown(articleHtml) : '';
+	turndownService.use(gfm);
+	let content = articleHtml ? turndownService.turndown(articleRoot.innerHTML) : '';
 	let truncated = false;
 	let truncateReason: string | undefined;
 

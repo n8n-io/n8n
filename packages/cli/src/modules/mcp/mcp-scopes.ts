@@ -1,6 +1,8 @@
 import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
+import { MCP_GET_USER_PREFERENCES_TOOL_NAME } from './mcp.constants';
+
 /**
  * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
  * available if ANY granted scope covers it, so support tools (node search,
@@ -24,6 +26,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
+		// Instance-context reads. Both describe workflows, so `workflow:read` is the bar; the
+		// activity tools drop credential entries for a grant that lacks `credential:read`.
+		'get_instance_context',
+		'get_instance_activity',
+		'expand_instance_activity',
+		'get_node_usage',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -90,6 +98,15 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// so the search tools ride along on a write-only grant.
 	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	// Installing a package changes what the instance can run, so it gets its own
+	// scope rather than riding along on a workflow write grant. The tool is also
+	// gated on the user's `communityPackage:install` global scope at
+	// registration, so granting this to a member still exposes nothing.
+	'communityPackage:install': ['install_community_node'],
+	// `ai_preference` is a first-class resource, so reading it rides on a normal scope rather
+	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
+	// folders too, none of which need the builder.
+	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
 };
 
 /**
@@ -124,7 +141,33 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+	'install_community_node',
 	...FOLDER_FEATURE_TOOLS,
+]);
+
+/**
+ * Tools that additionally require the `community-packages` module to be active,
+ * verified packages to be enabled, and the caller to hold the
+ * `communityPackage:install` global scope. Excluded from the "every mapped tool
+ * is registered" drift guard for the same reason as {@link AGENT_TOOLS}: none of
+ * those conditions hold in a bare service under test. The gate itself is covered
+ * by `isCommunityNodeInstallAvailable` in mcp-tool-availability.test.ts.
+ */
+export const COMMUNITY_PACKAGE_TOOLS: ReadonlySet<string> = new Set(['install_community_node']);
+
+/** Context tools that also require the instance-ai module. */
+export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_context',
+	'get_instance_activity',
+	'expand_instance_activity',
+]);
+
+/** Tools that require the shared instance activity gate. */
+export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_context',
+	'get_instance_activity',
+	'expand_instance_activity',
+	'get_node_usage',
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

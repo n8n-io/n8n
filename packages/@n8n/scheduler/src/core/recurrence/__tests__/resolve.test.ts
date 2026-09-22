@@ -24,7 +24,7 @@ function makeJob(overrides: Partial<ScheduledJob> = {}): ScheduledJob {
 		maxAttempts: 1,
 		misfirePolicy: 'coalesce',
 		misfireGraceSeconds: 60,
-		ownerKey: null,
+		ownerKey: 'owner-1',
 		...overrides,
 	};
 }

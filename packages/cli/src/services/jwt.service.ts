@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, type DeploymentStateRepo } from 'n8n-core';
 
 @Service()
 export class JwtService {
@@ -30,31 +30,22 @@ export class JwtService {
 	 * Must be called after DB migrations complete, before request handlers register.
 	 * Precedence: N8N_USER_MANAGEMENT_JWT_SECRET env → DB active row → derive-from-key (and persist)
 	 */
-	async initialize(repo: {
-		findActiveByType(type: string): Promise<{ value: string } | null>;
-		insertOrIgnore(entity: {
-			type: string;
-			value: string;
-			status: string;
-			algorithm: null;
-		}): Promise<void>;
-	}): Promise<void> {
+	async initialize(
+		repo: Pick<DeploymentStateRepo, 'findActiveSigningSecret' | 'seedSigningSecret'>,
+	): Promise<void> {
 		if (this.jwtSecretFromEnv) {
 			return;
 		}
-		const existing = await repo.findActiveByType('signing.jwt');
-		if (existing) {
-			this.jwtSecret = existing.value;
+		const existing = await repo.findActiveSigningSecret('signing.jwt', { rewrapLegacy: true });
+		if (existing !== null) {
+			this.jwtSecret = existing;
 			return;
 		}
-		await repo.insertOrIgnore({
-			type: 'signing.jwt',
-			value: this.jwtSecret,
-			status: 'active',
-			algorithm: null,
-		});
-		const winner = await repo.findActiveByType('signing.jwt');
-		if (winner) this.jwtSecret = winner.value;
+		await repo.seedSigningSecret('signing.jwt', this.jwtSecret);
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret('signing.jwt', { rewrapLegacy: true });
+		if (winner !== null) this.jwtSecret = winner;
 	}
 
 	sign(payload: object, options: jwt.SignOptions = {}): string {

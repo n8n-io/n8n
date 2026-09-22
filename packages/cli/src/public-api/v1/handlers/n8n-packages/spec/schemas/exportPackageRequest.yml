@@ -96,3 +96,12 @@ properties:
       and type.
     example: expression-values-only
     default: expression-values-only
+  includeArchivedWorkflows:
+    type: boolean
+    description: >-
+      Whether folder and project exports include their archived workflows. When
+      `false` (default) they are left out. When `true` they travel with
+      `isArchived: true` and are archived on import. Workflows listed in
+      `workflowIds` always export, also when archived.
+    example: false
+    default: false

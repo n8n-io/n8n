@@ -57,6 +57,7 @@ function makeLane(): LaneState {
 			baseUrl: 'http://lane1.test',
 			preRunWorkflowIds: new Set<string>(),
 			preRunDataTableIds: new Set<string>(),
+			preRunFolderIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),
@@ -164,6 +165,67 @@ describe('createCasePipeline', () => {
 		// Single-scenario case → this was the last row → artifacts deleted eagerly.
 		expect(vi.mocked(cleanupBuild)).toHaveBeenCalledTimes(1);
 		expect(orchestrator.buildCache.size).toBe(0);
+	});
+
+	// A staged prior run that produced no execution record leaves the case grading
+	// against history the instance does not have. The biting case is a build that
+	// SUCCEEDED: `buildFailedOnInfra` returns false there, so without this branch the
+	// row would be scored as an agent failure on a premise that never existed.
+	it('routes a successful build with a failed prior run to framework_issue', async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), priorRunFailed: 'seedWf1: fetch failed' },
+			lane,
+			buildDurationMs: 42,
+		};
+		const orchestrator = makeOrchestrator(cached);
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			buildSuccess: true,
+			passed: false,
+			// Not graded rather than failed — stays out of the builder's baseline.
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('premise is missing');
+		// The scenario must never run: its result would describe absent history.
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
+	it('preserves agent metadata when a prior run failed', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			priorRunFailed: 'seedWf1: fetch failed',
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 42 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent' },
+			skills: {},
+		};
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			agentId: 'agent-1',
+			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
+		});
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
 	it('keeps everything when --keep-workflows is set', async () => {
@@ -336,9 +398,16 @@ describe('createCasePipeline', () => {
 			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
 		});
 		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent', model: 'openai/gpt-5-mini' },
+			skills: {},
+		};
 		const pipeline = createCasePipeline(
 			makeDeps(orchestrator, {
-				agentContextByKey: new Map([['0:case-a', Promise.resolve('AGENT CONTEXT')]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
 			}),
 		);
 
@@ -349,10 +418,91 @@ describe('createCasePipeline', () => {
 			passed: true,
 			agentId: 'agent-1',
 			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
 			reasoning: 'agent did it',
 		});
 		expect(lane.tracedExecute).not.toHaveBeenCalled();
 		expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not run a draft Agent and owns the red as framework_issue when no LLM credential was declared', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			agentId: 'agent-1',
+			attribution: 'framework_issue',
+			failureCategory: 'framework_issue',
+		});
+		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+	});
+
+	it('counts googlePalmApi as a declared LLM credential', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const testCase = { ...scenarioCase(['happy-path']), credentials: [{ type: 'googlePalmApi' }] };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', testCase]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ passed: false, attribution: 'builder_issue' });
+	});
+
+	it('owns a draft Agent as builder_issue when the case declared an LLM credential', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const testCase = { ...scenarioCase(['happy-path']), credentials: [{ type: 'openAiApi' }] };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', testCase]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ passed: false, attribution: 'builder_issue' });
+		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
 	});
 });
 

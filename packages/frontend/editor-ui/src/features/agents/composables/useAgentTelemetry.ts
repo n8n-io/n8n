@@ -102,6 +102,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackDuplicatedAgent(params: {
+		sourceAgentId: string;
+		agentId: string;
+		projectId: string;
+	}) {
+		try {
+			telemetry.track('User duplicated agent', {
+				source_agent_id: params.sourceAgentId,
+				agent_id: params.agentId,
+				project_id: params.projectId,
+				...common(),
+			});
+		} catch {
+			// Swallow — telemetry must not break user-facing flows.
+		}
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -110,5 +127,6 @@ export function useAgentTelemetry() {
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
 		trackImportedSkill,
+		trackDuplicatedAgent,
 	};
 }

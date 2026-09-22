@@ -4,10 +4,11 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/scheduler';
+import { computeFirstRunAt, validateSchedule } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { nameDesiredJobs } from '../desired-job-name';
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task';
@@ -310,17 +311,7 @@ export class ScheduleTriggerJobRegistrar {
 		misfirePolicy: ScheduledJobMisfirePolicy,
 		misfireGraceSeconds: number | undefined,
 	): Promise<void> {
-		const seen = new Map<string, number>();
-		const desired = collected.map(({ schedule, firstRunAt }) => {
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
-		});
+		const desired = nameDesiredJobs(workflowId, nodeId, collected);
 
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
 		// `skip` matches the legacy engine, which never runs a missed occurrence

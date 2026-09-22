@@ -423,6 +423,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			workerPools: {
+				enabled: false,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
@@ -430,11 +433,12 @@ export class FrontendService {
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
-			canvasOnly: this.globalConfig.canvasOnly,
+			canvasOnly: this.globalConfig.canvasOnly.enabled,
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,
 			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
+			expressionEngine: this.globalConfig.expressionEngine.frontendEngine,
 		};
 	}
 
@@ -543,6 +547,9 @@ export class FrontendService {
 			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
 			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
+
+		this.settings.workerPools.enabled =
+			this.globalConfig.queue.workerPool.enabled && this.licenseState.isWorkerPoolsLicensed();
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {

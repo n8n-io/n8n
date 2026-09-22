@@ -5,7 +5,7 @@ import { credentials } from '../../../credentials';
 
 describe('Test MicrosoftTeamsV2, onlineMeeting => create', () => {
 	nock('https://graph.microsoft.com')
-		// Exact body: proves option mapping, including booleans explicitly set to false.
+		.matchHeader('Prefer', 'include-unknown-enum-members')
 		.post('/v1.0/me/onlineMeetings', {
 			subject: 'Quarterly Sync',
 			startDateTime: '2026-09-10T10:00:00Z',
@@ -18,7 +18,7 @@ describe('Test MicrosoftTeamsV2, onlineMeeting => create', () => {
 			isEntryExitAnnounced: true,
 			lobbyBypassSettings: { scope: 'organizationAndFederated' },
 			recordAutomatically: false,
-			joinMeetingIdSettings: { isPasscodeRequired: true },
+			joinMeetingIdSettings: { isPasscodeRequired: false },
 		})
 		.reply(201, {
 			'@odata.context':
@@ -39,15 +39,14 @@ describe('Test MicrosoftTeamsV2, onlineMeeting => create', () => {
 				},
 			},
 			joinMeetingIdSettings: {
-				isPasscodeRequired: true,
+				isPasscodeRequired: false,
 				joinMeetingId: '1234567890',
-				passcode: 'xK7mp2',
+				passcode: null,
 			},
 		});
 
-	// Minimal create: options collection omitted entirely — exact body proves no
-	// option keys leak into the request.
 	nock('https://graph.microsoft.com')
+		.matchHeader('Prefer', 'include-unknown-enum-members')
 		.post('/v1.0/me/onlineMeetings', {
 			subject: 'Standup',
 			startDateTime: '2026-09-11T09:00:00Z',

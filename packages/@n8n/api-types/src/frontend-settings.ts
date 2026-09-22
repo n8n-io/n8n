@@ -233,6 +233,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	workerPools: {
+		enabled: boolean;
+	};
 	collaboration: {
 		crdt: 'off' | 'local' | 'server';
 	};
@@ -302,6 +305,14 @@ export interface FrontendSettings {
 	activeModules: string[];
 	canvasOnly: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
+
+	/**
+	 * Which expression engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read at runtime rather than baked in at
+	 * build time, so one image serves either engine. Independent of the engine the
+	 * backend evaluates with, and never `vm`: isolated-vm is a native module.
+	 */
+	expressionEngine: 'legacy' | 'quickjs';
 }
 
 export type FrontendModuleSettings = {
@@ -334,6 +345,25 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the instance-reporting module. Present only when the
+	 * module is enabled on this instance.
+	 */
+	'instance-reporting'?: {
+		/** Whether a receiver is configured, i.e. whether reports are actually sent. */
+		enabled: boolean;
+		/** Minute of the UTC day the daily report fires at, as `HH:mm`. Absent when disabled. */
+		reportTime?: string;
+	};
+
+	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -348,6 +378,7 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
+		mcpConnectionsAvailable: boolean;
 		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;

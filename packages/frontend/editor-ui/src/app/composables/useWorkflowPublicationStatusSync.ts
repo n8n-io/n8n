@@ -41,7 +41,12 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	}
 
 	async function refetch() {
-		if (disposed || !settingsStore.isWorkflowPublicationServiceEnabled) return;
+		if (
+			disposed ||
+			!settingsStore.isWorkflowPublicationServiceEnabled ||
+			workflowsStore.isNewWorkflow
+		)
+			return;
 
 		// Resolve the store from the current documentId on every call so a
 		// workflow switch is immediately reflected without remounting.

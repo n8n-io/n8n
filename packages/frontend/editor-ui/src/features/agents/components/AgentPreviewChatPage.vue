@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
+		visible?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -24,13 +25,14 @@ withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ layout: 'page' },
+	{ visible: true, layout: 'dock' },
 );
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const inputDraft = ref('');
@@ -40,13 +42,26 @@ function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
 }
 
-defineExpose({ focusInput });
+function getConversationMarkdown(): string {
+	return chatPanel.value?.getConversationMarkdown() ?? '';
+}
+
+watch(
+	[() => props.initialPrompt, chatPanel],
+	([prompt, panel]) => {
+		if (!prompt || !panel) return;
+		panel.sendMessageFromOutside(prompt);
+	},
+	{ immediate: true, flush: 'post' },
+);
+
+defineExpose({ focusInput, getConversationMarkdown });
 </script>
 
 <template>
 	<component
-		:is="layout === 'dock' ? 'div' : 'main'"
-		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
+		:is="layout === 'page' ? 'main' : 'div'"
+		:class="[$style.previewPage, { [$style.pageLayout]: layout === 'page' }]"
 		data-testid="agent-preview-chat-page"
 	>
 		<div :class="$style.chatFrame">
@@ -57,6 +72,8 @@ defineExpose({ focusInput });
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:visible="visible"
+				:background-jobs-active="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
@@ -65,6 +82,7 @@ defineExpose({ focusInput });
 				:can-send-to-assistant="canSendToAssistant"
 				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
@@ -78,17 +96,17 @@ defineExpose({ focusInput });
 	min-height: 0;
 	display: flex;
 	justify-content: center;
-	background-color: var(--background--surface);
+	background-color: transparent;
 	overflow: hidden;
+}
+
+.pageLayout {
+	background-color: var(--background--surface);
 }
 
 .chatFrame {
 	width: 100%;
 	min-height: 0;
 	display: flex;
-}
-
-.dockLayout {
-	background-color: transparent;
 }
 </style>

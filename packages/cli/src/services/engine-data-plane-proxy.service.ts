@@ -1,5 +1,11 @@
 import { Service } from '@n8n/di';
-import type { ExecutionSnapshot, StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
+import type {
+	ExecutionSnapshot,
+	StartExecutionRequest,
+	StartExecutionResult,
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
+} from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -11,10 +17,18 @@ import type { ExecutionIdV2 } from '@/executions/execution-id';
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
-	/** `undefined` when the data plane holds no execution under that id. */
-	getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined>;
+	/**
+	 * `undefined` when the data plane holds no execution under that id.
+	 *
+	 * @param options.includeSteps Also report the steps, on the same round trip.
+	 */
+	getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined>;
 }
 
 /**
@@ -37,6 +51,11 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		return this.provider !== null;
 	}
 
+	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
+		if (!this.provider) return { items: [], nextCursor: null, total: 0 };
+		return await this.provider.searchExecutions(request);
+	}
+
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
 			throw new UserError(
@@ -48,9 +67,12 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	}
 
 	/** No provider means no v2 execution can exist, so this is a miss, not an error. */
-	async getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined> {
+	async getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined> {
 		if (!this.provider) return undefined;
 
-		return await this.provider.getExecution(id);
+		return await this.provider.getExecution(id, options);
 	}
 }

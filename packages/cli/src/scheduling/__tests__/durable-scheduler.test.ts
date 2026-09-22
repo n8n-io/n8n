@@ -14,6 +14,8 @@ import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
+import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 // Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
@@ -52,6 +54,8 @@ describe('DurableScheduler', () => {
 		const tasks = mock<ScheduledTaskRepository>();
 		tasks.readDbTime.mockResolvedValue(new Date());
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
+		const agentOwner = mock<AgentScheduledJobOwner>();
+		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -86,8 +90,10 @@ describe('DurableScheduler', () => {
 			pollTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
 			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner };
+		return { scheduler, inner, logger, tracing, tasks, workflowOwner, agentOwner, systemTaskOwner };
 	}
 
 	describe('composition', () => {
@@ -325,18 +331,30 @@ describe('DurableScheduler', () => {
 	});
 
 	describe('owner registration', () => {
-		it('composes the reconciliation pass over a registry declaring the workflow owner', () => {
-			const { workflowOwner } = makeScheduler();
+		it('composes the reconciliation pass over a registry declaring the workflow and agent owners', () => {
+			const { workflowOwner, agentOwner } = makeScheduler();
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.Workflow)).toBe(
 				workflowOwner,
+			);
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.Agent)).toBe(
+				agentOwner,
 			);
 			expect(deps?.reconciliation?.options).toMatchObject({
 				settleSeconds: 300,
 				quarantineGraceSeconds: 86_400,
 				batchSize: 500,
 			});
+		});
+
+		it('composes the reconciliation pass over a registry declaring the system-task owner', () => {
+			const { systemTaskOwner } = makeScheduler();
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.SystemTask)).toBe(
+				systemTaskOwner,
+			);
 		});
 
 		it('composes no reconciliation pass when it is disabled', () => {

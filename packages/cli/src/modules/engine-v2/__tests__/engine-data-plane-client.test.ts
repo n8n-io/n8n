@@ -21,7 +21,9 @@ describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		workflow: {},
 		executionId: EXECUTION_ID,
+		callerContext: {},
 	};
 
 	let http: HttpRequestClient;
@@ -58,6 +60,28 @@ describe('EngineDataPlaneClient', () => {
 
 	beforeEach(() => {
 		client = newClient();
+	});
+
+	it('posts search filters without following redirects', async () => {
+		const body = { workflowIds: ['wf'], mode: 'webhook', includeTotal: true, limit: 20 };
+		const result = { items: [], hasMore: false, total: 0 };
+		respondWith(200, result);
+		await expect(client.searchExecutions(body)).resolves.toEqual(result);
+		expect(http.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: '/api/workflow-executions/search',
+				method: 'POST',
+				body,
+				disableFollowRedirect: true,
+			}),
+		);
+	});
+
+	it('propagates search failures', async () => {
+		respondWith(503, {});
+		await expect(client.searchExecutions({ workflowIds: 'all', limit: 20 })).rejects.toThrow(
+			OperationalError,
+		);
 	});
 
 	describe('startExecution', () => {
@@ -189,8 +213,22 @@ describe('EngineDataPlaneClient', () => {
 				expect.objectContaining({
 					url: `/api/workflow-executions/${EXECUTION_ID}`,
 					method: 'GET',
+					qs: undefined,
 					disableFollowRedirect: true,
 				}),
+			);
+		});
+
+		it('asks for the steps on the same request, so a read is one round trip', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID, { includeSteps: true })).resolves.toEqual(
+				snapshot,
+			);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ qs: { includeSteps: 'true' } }),
 			);
 		});
 

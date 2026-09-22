@@ -1,7 +1,7 @@
 {
   "name": "@n8n/i18n",
   "type": "module",
-  "version": "2.37.0",
+  "version": "2.41.0",
   "files": [
     "dist"
   ],
@@ -46,12 +46,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
-    "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
-    "@vitejs/plugin-vue": "catalog:frontend",
-    "@vue/tsconfig": "catalog:frontend",
-    "@vueuse/core": "catalog:frontend",
-    "vue": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

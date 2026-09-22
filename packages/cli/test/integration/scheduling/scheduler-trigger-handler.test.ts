@@ -73,7 +73,7 @@ describe('schedule-trigger occurrence to a real execution', () => {
 	});
 
 	// A published workflow whose Schedule Trigger the handler fires. The published
-	// version mapping is what `loadPublishedWorkflowData` reads, so all three parts
+	// version mapping is what `findPublishedWorkflowData` reads, so all three parts
 	// (workflow, history, mapping) must exist.
 	const createPublishedScheduleWorkflow = async () => {
 		const triggerNodeId = uuid();

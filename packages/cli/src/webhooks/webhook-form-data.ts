@@ -1,5 +1,6 @@
 import formidable from 'formidable';
-import type { IncomingMessage } from 'http';
+import { rm } from 'node:fs/promises';
+import type { IncomingMessage } from 'node:http';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
@@ -36,14 +37,19 @@ const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 };
 
 /**
- * Creates a function that parses the multipart form data into the request's `body` property
+ * Creates a function that parses multipart form data and returns its body with a cleanup callback.
  */
 export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 	return async function parseMultipartFormData(req: IncomingMessage): Promise<{
-		data: formidable.Fields;
-		files: formidable.Files;
+		body: {
+			data: formidable.Fields;
+			files: formidable.Files;
+		};
+		/** Removes parser-owned files after the webhook or its response stream consumes them. */
+		cleanup: () => Promise<void>;
 	}> {
 		const { encoding } = req;
+		const temporaryFilePaths = new Set<string>();
 
 		const form = formidable({
 			multiples: true,
@@ -58,21 +64,33 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 			minFileSize: 0,
 			// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 		});
+		// Track files when they are created so cleanup does not depend on the normalized field map.
+		form.on('fileBegin', (_formName, file) => temporaryFilePaths.add(file.filepath));
+
+		const cleanup = async () => {
+			await Promise.all(
+				[...temporaryFilePaths].map(async (filePath) => {
+					try {
+						await rm(filePath, { force: true });
+					} catch {
+						// Cleanup must not change the webhook response.
+					}
+				}),
+			);
+		};
 
 		// `parse` returns a promise when it is called without a callback.
-		let parsed: [formidable.Fields, formidable.Files];
 		try {
-			parsed = await form.parse(req);
+			const [data, parsedFiles] = await form.parse(req);
+			const files = await discardBlankFileInputs(parsedFiles);
+
+			normalizeFormData(data);
+			normalizeFormData(files);
+
+			return { body: { data, files }, cleanup };
 		} catch (error) {
+			await cleanup();
 			throw mapFormParseError(error);
 		}
-
-		const [data, parsedFiles] = parsed;
-		const files = await discardBlankFileInputs(parsedFiles);
-
-		normalizeFormData(data);
-		normalizeFormData(files);
-
-		return { data, files };
 	};
 };

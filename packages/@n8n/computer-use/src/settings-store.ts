@@ -197,7 +197,7 @@ export class SettingsStore {
 			// Normalise: zod schema marks allow/deny as optional; ensure they exist.
 			existing.allow ??= [];
 			existing.deny ??= [];
-			return existing as ResourcePermissions;
+			return existing;
 		}
 		const fresh: ResourcePermissions = { allow: [], deny: [] };
 		this.persistent.resourcePermissions[toolGroup] = fresh;

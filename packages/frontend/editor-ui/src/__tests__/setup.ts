@@ -103,6 +103,34 @@ Object.defineProperty(window, 'matchMedia', {
 	})),
 });
 
+// jsdom declares `HTMLDialogElement` but implements none of its methods, so a
+// component that opens its own `<dialog>` — NodeDetailsView calls
+// `dialogRef.show()` when a node becomes active — throws a TypeError that
+// escapes Vue and poisons the environment: every later test in the same file
+// then fails on a null component. Fill in the missing methods and keep `open`
+// in sync so `dialog[open]` selectors and assertions still behave.
+//
+// Each assignment is guarded, so a real implementation (a newer jsdom) wins;
+// a suite that stubs or spies on these per test still overrides the polyfill,
+// because it assigns later.
+if (!HTMLDialogElement.prototype.show) {
+	HTMLDialogElement.prototype.show = vi.fn(function (this: HTMLDialogElement) {
+		this.open = true;
+	});
+}
+
+if (!HTMLDialogElement.prototype.showModal) {
+	HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+		this.open = true;
+	});
+}
+
+if (!HTMLDialogElement.prototype.close) {
+	HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+		this.open = false;
+	});
+}
+
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {
 	// Create app-grid container for toasts

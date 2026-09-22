@@ -239,6 +239,35 @@ describe('AiGatewayService', () => {
 			).rejects.toThrow(UserError);
 		});
 
+		it('throws UserError when the node type is not covered by the gateway, even for a served credential type', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					...MOCK_GATEWAY_CONFIG,
+					credentialTypes: [...MOCK_GATEWAY_CONFIG.credentialTypes, 'openAiApi'],
+					providerConfig: {
+						...MOCK_GATEWAY_CONFIG.providerConfig,
+						openAiApi: {
+							gatewayPath: '/v1/gateway/openai',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'openAiApi',
+					userId: USER_ID,
+					node: {
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.5,
+						parameters: {},
+					},
+				}),
+			).rejects.toThrow(UserError);
+		});
+
 		it('returns synthetic credential with apiKey (JWT) and host (gateway URL)', async () => {
 			mockConfigThenToken('mock-jwt-token');
 			const service = makeService();
@@ -578,6 +607,57 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('embeds agentId under the literal "agent" execution segment when no workflowId', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('embeds agentId without projectId when project is absent', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/agent/AG123/google`,
+			});
+		});
+
+		it('prefers workflowId over agentId when both are provided', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				agentId: 'AG123',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
 		it('fans a single credential out to multiple gateway URLs when routing is present', async () => {
 			const routingConfig = {
 				...MOCK_GATEWAY_CONFIG,
@@ -643,6 +723,41 @@ describe('AiGatewayService', () => {
 				browserbaseApiKey: 'mock-jwt-token',
 				baseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbase`,
 				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbaseStagehand`,
+			});
+		});
+
+		it('embeds agent context in every routed gateway URL', async () => {
+			const routingConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['browserbaseApi'],
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						urlField: 'baseUrl',
+						apiKeyField: 'browserbaseApiKey',
+						routing: {
+							baseUrl: '/v1/gateway/browserbase',
+							stagehandBaseUrl: '/v1/gateway/browserbaseStagehand',
+						},
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(routingConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				browserbaseApiKey: 'mock-jwt-token',
+				baseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbase`,
+				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbaseStagehand`,
 			});
 		});
 

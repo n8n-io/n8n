@@ -9,6 +9,8 @@ import type {
 	ExecutionSnapshot,
 	StartExecutionRequest,
 	StartExecutionResult,
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
 } from '@n8n/engine';
 import { mintIdentityToken } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
@@ -83,10 +85,15 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		return response.body as StartExecutionResult;
 	}
 
-	async getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined> {
+	async getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined> {
 		const response = await this.http.request<ExecutionSnapshot | EngineErrorResponse>({
 			url: `/api/workflow-executions/${encodeURIComponent(id)}`,
 			method: 'GET',
+			// The engine accepts only `true` or `false`.
+			qs: options?.includeSteps ? { includeSteps: 'true' } : undefined,
 			json: true,
 			returnFullResponse: true,
 			ignoreHttpStatusErrors: true,
@@ -98,6 +105,21 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 
 		return response.body as ExecutionSnapshot;
+	}
+
+	/** Lists executions stored in the engine's data plane, matching `request`. */
+	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
+		const response = await this.http.request<SearchExecutionsResponse | EngineErrorResponse>({
+			url: '/api/workflow-executions/search',
+			method: 'POST',
+			body: request,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+		return response.body as SearchExecutionsResponse;
 	}
 
 	private toError(statusCode: number, body: unknown): Error {
@@ -124,6 +146,6 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	private parseErrorResponse(body: unknown): Partial<EngineErrorResponse> {
 		if (!isObjectLiteral(body)) return {};
 
-		return body as Partial<EngineErrorResponse>;
+		return body;
 	}
 }

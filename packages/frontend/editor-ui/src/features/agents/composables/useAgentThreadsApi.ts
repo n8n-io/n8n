@@ -1,4 +1,5 @@
 import type {
+	AgentMessageAuthor,
 	AgentSessionLangSmithExportResponse,
 	AgentSessionOrigin,
 	AgentSessionStatus,
@@ -89,6 +90,8 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	/** Chat platform user who wrote the turn; null outside chat integrations. */
+	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
 	promptTokens: number | null;
@@ -112,6 +115,10 @@ export interface ThreadsPage {
 	nextCursor: string | null;
 }
 
+/** `/projects/:projectId/agents/v2/:agentId`, with both segments percent-encoded. */
+const agentBasePath = (projectId: string, agentId: string): string =>
+	`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}`;
+
 export const listThreads = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -132,7 +139,7 @@ export const listThreads = async (
 	return await makeRestApiRequest<ThreadsPage>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/threads?${params.toString()}`,
+		`${agentBasePath(projectId, agentId)}/threads?${params.toString()}`,
 	);
 };
 
@@ -145,7 +152,7 @@ export const getThreadDetail = async (
 	return await makeRestApiRequest<ThreadDetail>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
 	);
 };
 
@@ -158,7 +165,7 @@ export const deleteThread = async (
 	return await makeRestApiRequest<{ success: boolean }>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
 	);
 };
 
@@ -171,6 +178,6 @@ export const exportThreadToLangSmith = async (
 	return await makeRestApiRequest<AgentSessionLangSmithExportResponse>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}/langsmith-export`,
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/langsmith-export`,
 	);
 };

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -10,11 +11,10 @@ import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import type { FrontendModuleSettings } from '@n8n/api-types';
+import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
@@ -33,18 +33,14 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
-	templateExamplesStoreMock,
-	templateExamplesEnabled,
 	telemetryTrack,
 } = vi.hoisted(() => ({
-	templateExamplesStoreMock: {
-		hasLoadFailed: false,
-	},
-	templateExamplesEnabled: { value: false },
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
 		splitBelowInputVariant: { value: false },
+		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
+		inspirationFromTaxonomyTreatmentEnabled: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
 		personalizedPromptTreatmentEnabled: { value: false },
@@ -161,6 +157,7 @@ vi.mock('@/experiments/instanceAiSplitEmptyState', async () => {
 										suggestionId: 'score-my-leads',
 										suggestionKind: 'quick_example',
 										position: 1,
+										prefillType: 'suggestion_catalog',
 									}),
 							},
 							'submit',
@@ -221,6 +218,14 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
 }));
 
+vi.mock('@/experiments/instanceAiInspirationFromTaxonomy', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useInstanceAiInspirationFromTaxonomyExperiment: () => ({
+		currentVariant: experimentMocks.inspirationFromTaxonomyVariant,
+		isTreatmentVariant: experimentMocks.inspirationFromTaxonomyTreatmentEnabled,
+	}),
+}));
+
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: workflowPreviewSuggestions,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION: 'v3-workflow-preview',
@@ -228,39 +233,6 @@ vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	WorkflowPreviewCanvas: { name: 'WorkflowPreviewCanvasStub', template: '<div />' },
 	getPreviewWorkflow: () => null,
 }));
-
-vi.mock('@/experiments/instanceAiTemplateExamples', async () => {
-	const { computed, h } = await import('vue');
-	type VueSetupContext = {
-		emit: (event: string, ...args: unknown[]) => void;
-	};
-	return {
-		useInstanceAiTemplateExamplesExperiment: () => ({
-			isFeatureEnabled: computed(() => templateExamplesEnabled.value),
-			currentVariant: computed(() => (templateExamplesEnabled.value ? 'variant' : 'control')),
-		}),
-		useInstanceAiTemplateExamplesStore: () => templateExamplesStoreMock,
-		TEMPLATE_PROMPT_SUFFIX:
-			'\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
-		TemplateExamplesCatalog: {
-			name: 'TemplateExamplesCatalogStub',
-			emits: ['hover-prompt', 'hover-end', 'select-prompt'],
-			setup(_props: Record<string, unknown>, { emit }: VueSetupContext) {
-				return () =>
-					h('div', { 'data-test-id': 'template-examples-catalog' }, [
-						h(
-							'button',
-							{
-								'data-test-id': 'template-example-card',
-								onClick: () => emit('select-prompt', 'Build me an invoice automation'),
-							},
-							'example card',
-						),
-					]);
-			},
-		},
-	};
-});
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
@@ -314,14 +286,66 @@ const InstanceAiInputStub = defineComponent({
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
 		const currentText = ref('');
+		// Mirrors the real composer: whatever pre-filled the box is reported on submit.
+		const activePrefill = ref<{
+			text: string;
+			prefillType: InstanceAiPrefillType;
+			prefillId?: string;
+		} | null>(null);
+		const submit = (message: string) => {
+			const prefill = activePrefill.value;
+			// Mirrors the real composer: the restore callback is always provided, and
+			// it puts the pre-fill back with the text so a retry stays attributed.
+			const restoreDraft = () => {
+				if (currentText.value.trim()) return false;
+				currentText.value = message;
+				activePrefill.value = prefill;
+				return true;
+			};
+			emit(
+				'submit',
+				message,
+				undefined,
+				restoreDraft,
+				prefill
+					? {
+							kind: 'prefill',
+							prefillType: prefill.prefillType,
+							...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+							promptModified: message !== prefill.text.trim(),
+						}
+					: USER_TYPED_MESSAGE,
+			);
+			currentText.value = '';
+			activePrefill.value = null;
+		};
 		expose({
 			focus: vi.fn(),
+			setTextIfEmpty: (text: string) => {
+				if (!currentText.value.trim()) currentText.value = text;
+			},
 			setText: (text: string) => {
 				currentText.value = text;
 			},
+			setPrefill: (prefill: { text: string; prefillType: InstanceAiPrefillType }) => {
+				currentText.value = prefill.text;
+				activePrefill.value = { ...prefill };
+			},
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
-			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
-				emit('submit', i18n.baseText(payload.promptKey)),
+			submitSuggestion: (payload: {
+				promptKey: BaseTextKey;
+				suggestionId: string;
+				prefillType: InstanceAiPrefillType;
+			}) => {
+				const prompt = i18n.baseText(payload.promptKey);
+				// Mirrors the real submitSuggestion, which reports the entry id.
+				activePrefill.value = {
+					text: prompt,
+					prefillType: payload.prefillType,
+					prefillId: payload.suggestionId,
+				};
+				submit(prompt);
+			},
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
@@ -374,7 +398,7 @@ const InstanceAiInputStub = defineComponent({
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
-						onClick: () => emit('submit', currentText.value || 'hello'),
+						onClick: () => submit(currentText.value || 'hello'),
 					},
 					'submit',
 				),
@@ -399,29 +423,12 @@ const InstanceAiFreeNudgeStub = defineComponent({
 
 const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	global: {
-		provide: {
-			[SidebarStateKey as symbol]: { collapsed: ref(false), toggle: vi.fn() },
-		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiFreeNudge: InstanceAiFreeNudgeStub,
 		},
 	},
 });
-
-type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
-
-const defaultModuleSettings: InstanceAiModuleSettings = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
 
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
@@ -452,15 +459,18 @@ describe('InstanceAiEmptyView', () => {
 			isAwaitingConfirmation: false,
 			amendContext: null,
 			contextualSuggestion: null,
-			sendMessage: vi.fn().mockResolvedValue(undefined),
+			sendMessage: vi.fn().mockResolvedValue(true),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.deleteThread.mockResolvedValue(true);
 		store.creditsQuota = 100;
 		store.showCreditWarning = false;
 		store.quotaLocked = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.splitBelowInputVariant.value = false;
+		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
 		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
@@ -470,8 +480,6 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
-		templateExamplesStoreMock.hasLoadFailed = false;
-		templateExamplesEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -485,7 +493,7 @@ describe('InstanceAiEmptyView', () => {
 
 		renderView();
 
-		expect(document.title).toBe('AI Assistant - n8n');
+		expect(document.title).toBe('n8n Assistant - n8n');
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
@@ -629,6 +637,111 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 	});
 
+	it('shows taxonomy list suggestions and exposes the treatment for a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v5-taxonomy',
+		);
+		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+			'"format":"list"',
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI inspiration from taxonomy exposed', {
+			variant: 'variant',
+			'$feature/112_aia_inspiration_from_taxonomy': 'variant',
+		});
+	});
+
+	it('treats an unmapped taxonomy role as control and does not expose the treatment', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
+			expect.anything(),
+		);
+	});
+
+	it('waits for taxonomy metadata before falling back to the control catalog', async () => {
+		vi.useFakeTimers();
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = false;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+
+		await vi.advanceTimersByTimeAsync(2000);
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+
+		vi.useRealTimers();
+	});
+
+	it('lets the taxonomy treatment win the empty state over the 093 treatment', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v5-taxonomy',
+		);
+		expect(experimentMocks.resolvePersonalizedPromptSuggestions).not.toHaveBeenCalled();
+	});
+
+	it('lets the 093 treatment win when the taxonomy treatment falls back to control', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v4-personalized',
+		);
+		expect(experimentMocks.resolvePersonalizedPromptSuggestions).toHaveBeenCalled();
+	});
+
 	it('passes workflow preview suggestions, component, and catalog version', () => {
 		const { getByTestId, getByText } = renderView();
 
@@ -732,8 +845,16 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'When a new lead is created in my CRM, enrich it with Lemlist, score it based on fit, then update the lead if qualified and notify the sales team on Slack.',
-			undefined,
-			'test-push-ref',
+			{
+				authorship: {
+					kind: 'prefill',
+					prefillType: 'suggestion_catalog',
+					prefillId: 'score-my-leads',
+					promptModified: false,
+				},
+				attachments: undefined,
+				pushRef: 'test-push-ref',
+			},
 		);
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
@@ -839,6 +960,68 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
+	it('tracks inspiration from taxonomy exposure for a control user with a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+
+		renderView();
+
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI inspiration from taxonomy exposed', {
+			variant: 'control',
+			'$feature/112_aia_inspiration_from_taxonomy': 'control',
+		});
+	});
+
+	it('does not track inspiration from taxonomy exposure for a control user without a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		{
+			name: 'split empty state',
+			setup: () => {
+				experimentMocks.splitBelowInputVariant.value = true;
+			},
+		},
+		{
+			name: 'the proactive starter',
+			setup: () => {
+				experimentMocks.proactiveAgentEnabled.value = true;
+			},
+		},
+	])('does not track inspiration from taxonomy exposure when $name is active', ({ setup }) => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+		setup();
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
+			expect.anything(),
+		);
+	});
+
 	it('does not track personalized prompt suggestions exposure when workflow builder is unavailable', () => {
 		experimentMocks.personalizedPromptVariant.value = 'control';
 		useSettingsStore().moduleSettings = {
@@ -888,12 +1071,68 @@ describe('InstanceAiEmptyView', () => {
 			'thread-placeholder',
 			PERSONAL_PROJECT_ID,
 		);
-		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: 'test-push-ref',
+		});
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('stays on the empty view and restores the draft when the send is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: 'test-push-ref',
+		});
+		// Navigating would drop the user into a blank thread, and the destination cannot be
+		// handed the draft either: it reads localStorage once, synchronously, on mount.
+		expect(replaceMock).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+		// syncThread already persisted the thread and sendMessage opened its SSE; leaving
+		// them behind would strand a blank sidebar entry and an EventSource per attempt.
+		// Silent: the refusal was already reported, so a second toast would only confuse.
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder', { silent: true });
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+	});
+
+	// A refused delete returns before the store's own teardown, so the SSE would otherwise
+	// stay open -- the exact leak this cleanup exists to prevent.
+	it('still disposes the runtime when the cleanup delete is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		store.deleteThread.mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(store.disposeRuntime).toHaveBeenCalledWith('thread-placeholder');
+		// The draft still comes back: cleanup must never cost the user their message.
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+	});
+
+	it('keeps the provisional thread when the send is accepted', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.deleteThread).not.toHaveBeenCalled();
 	});
 
 	it('attributes syncThread to ?source= from an unsaved-canvas hand-off', async () => {
@@ -967,17 +1206,71 @@ describe('InstanceAiEmptyView', () => {
 		});
 	});
 
-	it('shows a toast and stays on the empty view when syncThread rejects', async () => {
+	it('restores the submitted draft when syncThread rejects', async () => {
 		store.syncThread.mockRejectedValue(new Error('persist failed'));
-		const { getByTestId } = renderView();
+		const { getByRole, getByTestId } = renderView({
+			global: { stubs: { InstanceAiInput: false } },
+		});
+		const textbox = getByRole('textbox');
 
-		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await fireEvent.update(textbox, 'Build me an invoice automation');
+		await fireEvent.click(getByTestId('instance-ai-send-button'));
 		await flushPromises();
 
+		expect(textbox).toHaveValue('Build me an invoice automation');
 		expect(showErrorMock).toHaveBeenCalled();
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ newText: '', expectedText: 'Build me an invoice automation' },
+		{ newText: 'A new prompt', expectedText: 'A new prompt' },
+	])(
+		'keeps a pasted attachment and text $expectedText after failure',
+		async ({ newText, expectedText }) => {
+			const sync = Promise.withResolvers<void>();
+			store.syncThread.mockReturnValue(sync.promise);
+			const { getByRole, getByTestId } = renderView({
+				global: { stubs: { InstanceAiInput: false } },
+			});
+			const textbox = getByRole('textbox');
+
+			await fireEvent.update(textbox, 'Build me an invoice automation');
+			await fireEvent.click(getByTestId('instance-ai-send-button'));
+			expect(textbox).toHaveValue('');
+
+			await fireEvent.paste(textbox, {
+				clipboardData: { files: [new File(['image'], 'context.png', { type: 'image/png' })] },
+			});
+			await fireEvent.update(textbox, newText);
+			expect(getByRole('img', { name: 'context.png' })).toBeInTheDocument();
+
+			sync.reject(new Error('persist failed'));
+			await flushPromises();
+
+			expect(textbox).toHaveValue(expectedText);
+			expect(getByRole('img', { name: 'context.png' })).toBeInTheDocument();
+			expect(replaceMock).not.toHaveBeenCalled();
+		},
+	);
+
+	it('restores the submitted draft when no project is selected', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = null;
+		const { getByRole, getByTestId } = renderView({
+			global: { stubs: { InstanceAiInput: false } },
+		});
+		const textbox = getByRole('textbox');
+
+		await fireEvent.update(textbox, 'Build me an invoice automation');
+		await fireEvent.click(getByTestId('instance-ai-send-button'));
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(textbox).toHaveValue('Build me an invoice automation');
+		expect(showErrorMock).toHaveBeenCalled();
 	});
 
 	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {
@@ -1002,23 +1295,5 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
-	});
-
-	it('injects the prompt into the input when a template example card is clicked', async () => {
-		templateExamplesEnabled.value = true;
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
-
-		await fireEvent.click(getByTestId('template-example-card'));
-		await flushPromises();
-
-		expect(getByTestId('instance-ai-input-stub')).toHaveClass('inputPulse');
-		expect(getByTestId('instance-ai-free-nudge-stub')).not.toHaveClass('inputPulse');
-		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
-			'Build me an invoice automation',
-		);
 	});
 });

@@ -45,6 +45,16 @@ export interface EvaluatorConfig {
 	/** If set, scale the pool to 0 warm bridges after this many ms with no isolate acquire. */
 	idleTimeoutMs?: number;
 
+	/**
+	 * Lazy acquisition mode (prototype): acquire() only opens a scope for the
+	 * caller; the bridge is created synchronously on the first evaluate() that
+	 * actually needs the engine. Callers whose expressions never reach the
+	 * engine (e.g. handled by a host-side fast path) never consume a bridge.
+	 * On pool exhaustion the bridge is cold-started synchronously via
+	 * RuntimeBridge.initializeSync().
+	 */
+	lazyAcquire?: boolean;
+
 	/** Optional logger. Passed through to pool. Falls back to no-op. */
 	logger?: Logger;
 }

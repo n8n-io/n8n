@@ -7,7 +7,11 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
-import { resolveMcpRegistryConnection, toAgentMcpTransport } from '../mcp-registry-connection';
+import {
+	getConfiguredEndpointUrl,
+	resolveMcpRegistryConnection,
+	toAgentMcpTransport,
+} from '../mcp-registry-connection';
 
 export interface McpRegistrySearchResult {
 	slug: string;
@@ -20,25 +24,31 @@ export interface McpRegistrySearchResult {
 	credentialType: string;
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
+	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
+	 *  that cannot resolve it against a credential have to skip the row. */
+	isTemplated: boolean;
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
+	const defaultCredential = connection.credentialBindings[0];
+	if (!defaultCredential) return null;
 	return {
 		slug: server.slug,
 		name: camelCase(server.slug),
 		title: server.title,
 		description: server.tagline,
-		url: connection.endpointUrl,
+		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
-		authentication: connection.credentialType,
-		credentialType: connection.credentialType,
+		authentication: defaultCredential.credentialType,
+		credentialType: defaultCredential.credentialType,
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),
 		})),
 		metadata: { nodeTypeName: connection.nodeTypeName },
+		isTemplated: connection.isTemplated === true,
 	};
 }
 

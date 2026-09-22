@@ -50,6 +50,9 @@ function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
 	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
 	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
+	pendingWorkflowAttachment?: () =>
+		| { type: 'workflow'; id: string; name?: string; executionId?: string }
+		| undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -58,6 +61,7 @@ function setup(
 		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
+		pendingWorkflowAttachment,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -90,6 +94,33 @@ describe('useResourceRegistry', () => {
 			);
 			expect(resourceNameIndex.get('my workflow')?.id).toBe('wf-1');
 			expect(linkableResourceNameIndex.get('my workflow')?.id).toBe('wf-1');
+		});
+
+		test('keeps the known name when a follow-up call reports a blank name', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: 'Lead routing' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: '' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Lead routing');
+			expect(linkableResourceNameIndex.get('lead routing')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.has('')).toBe(false);
 		});
 
 		test('falls back to args.name when result has no workflowName', async () => {
@@ -139,7 +170,7 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
-		test('registers successful workflow updates from workflowId in args', async () => {
+		test('replays historical raw workflow update results', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -166,7 +197,7 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
-		test('registers workflow document returned by workflows get-json', async () => {
+		test('replays historical workflows get-json results', async () => {
 			const { messages, producedArtifacts, resourceNameIndex } = setup();
 
 			messages.value = [
@@ -256,6 +287,60 @@ describe('useResourceRegistry', () => {
 				pending: true,
 			});
 			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
+		});
+
+		test('registers a pending workflow attachment as a produced tab', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' });
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toEqual({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			expect(linkableResourceNameIndex.get('faq responder')?.id).toBe('wf-1');
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [{ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' }],
+				}),
+			];
+			pending.value = undefined;
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toEqual({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			expect(producedArtifacts.size).toBe(1);
+		});
+
+		test('falls back to Untitled when the pending workflow name is blank', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-blank', name: '   ' });
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-blank')?.name).toBe('Untitled');
+			expect(linkableResourceNameIndex.get('untitled')?.id).toBe('wf-blank');
 		});
 	});
 

@@ -1,7 +1,7 @@
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { type ProviderId } from './provider-credentials';
-import { providerIdFromModelId } from './provider-quirks';
 import type { TokenUsage } from '../../types';
 
 /**
@@ -83,6 +83,6 @@ const RAW_USAGE_READERS: Partial<Record<ProviderId, () => RawUsageReader>> = {
  * (same convention as `createModel`).
  */
 export function createRawUsageReader(modelId: string): RawUsageReader | undefined {
-	const provider = providerIdFromModelId(modelId) as ProviderId;
+	const provider = getProviderPrefix(modelId) as ProviderId;
 	return RAW_USAGE_READERS[provider]?.();
 }

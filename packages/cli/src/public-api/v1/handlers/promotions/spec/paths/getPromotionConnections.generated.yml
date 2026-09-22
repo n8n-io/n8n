@@ -1,0 +1,203 @@
+operationId: getPromotionConnections
+tags:
+  - Promotions
+summary: List promotion connections
+description: Returns a cursor-paginated list of connections with their configurations. Filter by `scope` for the instance connection, or by `providerId` to see which connections a provider edit affects.
+x-required-scope: gitConnection:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      enum:
+        - instance
+        - projects
+    required: false
+    name: scope
+    in: query
+  - schema:
+      type: string
+      minLength: 1
+      maxLength: 36
+    required: false
+    name: providerId
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                  name:
+                    type: string
+                  scope:
+                    type: string
+                    enum:
+                      - instance
+                      - projects
+                  target:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      remoteUrl:
+                        type: string
+                        minLength: 1
+                    required:
+                      - schemaVersion
+                      - remoteUrl
+                    additionalProperties: false
+                  provider:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        minLength: 1
+                        maxLength: 36
+                      name:
+                        type: string
+                      type:
+                        type: string
+                        enum:
+                          - git
+                      authType:
+                        type: string
+                        enum:
+                          - ssh-key
+                          - token
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - id
+                      - name
+                      - type
+                      - authType
+                      - createdAt
+                      - updatedAt
+                  configs:
+                    type: object
+                    properties:
+                      apply:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                            maxLength: 36
+                          name:
+                            type: string
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          settings:
+                            type: object
+                            properties:
+                              schemaVersion:
+                                type: number
+                                enum:
+                                  - 1
+                              branchName:
+                                type: string
+                                minLength: 1
+                                maxLength: 255
+                            required:
+                              - schemaVersion
+                              - branchName
+                            additionalProperties: false
+                        required:
+                          - id
+                          - name
+                          - createdAt
+                          - updatedAt
+                          - settings
+                      promote:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                            maxLength: 36
+                          name:
+                            type: string
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          settings:
+                            type: object
+                            properties:
+                              schemaVersion:
+                                type: number
+                                enum:
+                                  - 1
+                              baseBranchName:
+                                type: string
+                                minLength: 1
+                                maxLength: 255
+                              createBranchOnPromotion:
+                                type: boolean
+                            required:
+                              - schemaVersion
+                              - baseBranchName
+                              - createBranchOnPromotion
+                            additionalProperties: false
+                        required:
+                          - id
+                          - name
+                          - createdAt
+                          - updatedAt
+                          - settings
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - name
+                  - scope
+                  - target
+                  - provider
+                  - configs
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

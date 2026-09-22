@@ -237,8 +237,10 @@ describe('emit-instance-ai', () => {
 			'isSwitchNodeType',
 			'isWebhookType',
 			// Codegen + parse round-trip
+			'buildImports',
 			'emitInstanceAi',
 			'generateWorkflowCode',
+			'locateNodeDeclarations',
 			'parseWorkflowCode',
 			'parseWorkflowCodeToBuilder',
 			// Code-step helpers — appear as arguments to `.code()` callbacks, not as
@@ -250,6 +252,9 @@ describe('emit-instance-ai', () => {
 			'hasProperty',
 			'isPlainObject',
 			// Validation
+			'containsExpression',
+			'isSensitiveHeader',
+			'isCredentialFieldName',
 			'validateNodeConfig',
 			'validateWorkflow',
 			'getSchemaBaseDirs',
@@ -269,11 +274,13 @@ describe('emit-instance-ai', () => {
 			'normalizePinData',
 			// Mock/pin-data generation building blocks (src/mock-data/) — eval
 			// and simulated-verification tooling, never in workflow bodies
+			'buildAiRootPlaceholder',
 			'buildDateAnchors',
 			'buildFieldViolationRetryMessage',
 			'buildNodeSchemaSection',
 			'buildPinDataUserPrompt',
 			'buildSchemaContexts',
+			'buildSchemaPlaceholderItem',
 			'collectDownstreamConsumers',
 			'collectPinFieldViolations',
 			'describeAiRootShape',
