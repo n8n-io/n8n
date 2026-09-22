@@ -1,11 +1,16 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import nock from 'nock';
 import { randomUUID } from 'node:crypto';
 
 import { createOwnerWithApiKey } from '../shared/db/users';
+import { simulateUpToDateInstance } from '../security-audit/utils';
 import * as utils from '../shared/utils';
 
-const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['publicApi'],
+	modules: ['community-packages'],
+});
 
 let scopedOwner: User;
 let unscopedOwner: User;
@@ -17,6 +22,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity']);
+	nock.cleanAll();
 });
 
 describe('POST /audit', () => {
@@ -67,6 +73,19 @@ describe('POST /audit', () => {
 			.expect(200);
 
 		expect(response.body).toEqual([]);
+	});
+
+	test('generates the default audit when no body is sent', async () => {
+		simulateUpToDateInstance();
+
+		const response = await testServer.publicApiAgentFor(scopedOwner).post('/audit').expect(200);
+
+		expect(response.body).toEqual({
+			'Instance Risk Report': {
+				risk: 'instance',
+				sections: [expect.objectContaining({ title: 'Security settings' })],
+			},
+		});
 	});
 
 	test('rejects an unknown request field', async () => {

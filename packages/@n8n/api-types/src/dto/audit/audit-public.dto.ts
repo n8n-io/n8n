@@ -28,7 +28,16 @@ export class GenerateAuditPublicDto extends Z.class(
 			.optional(),
 	},
 	{ strict: true },
-) {}
+) {
+	// Every field is optional, so an omitted body should generate the default audit
+	static override safeParse(data: unknown) {
+		return super.safeParse(data ?? {});
+	}
+
+	static override parse(data: unknown) {
+		return super.parse(data ?? {});
+	}
+}
 
 const riskLocationSchema = z.discriminatedUnion('kind', [
 	z.object({
