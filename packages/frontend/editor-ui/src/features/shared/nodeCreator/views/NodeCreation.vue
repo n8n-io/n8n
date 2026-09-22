@@ -5,6 +5,7 @@ import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
+	isNodeCreatorOpenFromConnection,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
@@ -71,12 +72,6 @@ const workflowId = useWorkflowId();
 const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 
-const connectionOpenSources = new Set([
-	NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-	NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-]);
-
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
 
@@ -113,7 +108,7 @@ function addEmptyGroup() {
 		(document.activeElement as HTMLElement).blur();
 	}
 
-	emit('addEmptyGroup', connectionOpenSources.has(nodeCreatorStore.openSource));
+	emit('addEmptyGroup', isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource));
 }
 
 function closeNodeCreator(hasAddedNodes = false) {
