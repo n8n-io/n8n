@@ -24,7 +24,6 @@ export class Zendesk implements INodeType {
 		icon: 'file:zendesk.svg',
 		group: ['output'],
 		version: [1, 1.1],
-		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Zendesk API',
 		defaults: {

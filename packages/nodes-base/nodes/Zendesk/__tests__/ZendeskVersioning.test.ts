@@ -15,9 +15,11 @@ describe.each([
 	['Zendesk', new Zendesk().description],
 	['Zendesk Trigger', new ZendeskTrigger().description],
 ])('%s authentication default', (_name, description) => {
-	it('offers versions 1 and 1.1 and defaults new nodes to 1.1', () => {
+	// No `defaultVersion`: every consumer falls back to the last/highest entry
+	// in the array, and setting it would suppress the Custom API Call option.
+	it('offers versions 1 and 1.1 so new nodes get 1.1', () => {
 		expect(description.version).toEqual([1, 1.1]);
-		expect(description.defaultVersion).toBe(1.1);
+		expect(description.defaultVersion).toBeUndefined();
 	});
 
 	it('keeps API Token for v1 and uses OAuth2 for v1.1', () => {

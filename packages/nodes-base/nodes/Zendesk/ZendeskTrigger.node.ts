@@ -22,7 +22,6 @@ export class ZendeskTrigger implements INodeType {
 		icon: 'file:zendesk.svg',
 		group: ['trigger'],
 		version: [1, 1.1],
-		defaultVersion: 1.1,
 		description: 'Handle Zendesk events via webhooks',
 		defaults: {
 			name: 'Zendesk Trigger',
