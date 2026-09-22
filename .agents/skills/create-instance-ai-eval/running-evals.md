@@ -259,7 +259,8 @@ gh workflow run test-evals-instance-ai.yml --repo n8n-io/n8n \
 
 CI reads cases from LangTracer only, with no disk fallback. A case that exists only
 on disk goes into a throwaway suite first
-(`eval:langtracer-push --suite <scratch-suite> --dir <dir>`). Never pass
+(put it in `data/workflows` and push it by slug:
+`eval:langtracer-push --suite <scratch-suite> <slug>`). Never pass
 `experiment-name=instance-ai-baseline`: that name refreshes the shared baseline.
 Results land in the GitHub Actions run summary and in LangTracer as `ci_eval`
 runs, readable with `list_eval_runs` → `get_eval_run`.
