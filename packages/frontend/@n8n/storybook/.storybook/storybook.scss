@@ -2,16 +2,6 @@
 @use '../../design-system/src/css/reset.scss';
 @use '../../design-system/src/css/index.scss';
 
-// Fill the canvas width and hug the content height.
-// A block root places inline components on a text line and adds space.
-// Shrink-wrapping the root caps width: 100% fields at the input's intrinsic width.
-#storybook-root {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	width: 100%;
-}
-
 .sbdocs.sbdocs-content {
 	:is(h1, h2, h3, h4, h5, h6):not(:where(.sb-unstyled, .sb-unstyled *)) {
 		border-bottom: none;

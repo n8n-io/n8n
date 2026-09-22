@@ -35,7 +35,6 @@ const meta = {
 	title: 'Experimental/Select',
 	component: Select,
 	parameters: {
-		layout: 'fullscreen',
 		docs: {
 			source: { type: 'dynamic' },
 		},
@@ -115,11 +114,7 @@ export const Items = {
 			const value = ref(args.modelValue);
 			return { args, value };
 		},
-		template: `
-		<div>
-			<Select v-bind="args" v-model="value"/>
-		</div>
-		`,
+		template: '<Select v-bind="args" v-model="value"/>',
 	}),
 	args: {
 		items: plainItems,
@@ -134,11 +129,7 @@ export const ItemsObjectArray = {
 			const value = ref(args.modelValue);
 			return { args, value };
 		},
-		template: `
-		<div>
-			<Select v-bind="args" v-model="value" />
-		</div>
-		`,
+		template: '<Select v-bind="args" v-model="value" />',
 	}),
 	args: {
 		items: [
@@ -157,11 +148,7 @@ export const ItemsTypes = {
 			const value = ref(args.modelValue);
 			return { args, value };
 		},
-		template: `
-		<div>
-			<Select v-bind="args" v-model="value" />
-		</div>
-		`,
+		template: '<Select v-bind="args" v-model="value" />',
 	}),
 	args: {
 		items: fruitItems,
@@ -472,7 +459,6 @@ export const Multiple = {
 			return { args, value, onUpdate: action('update:modelValue') };
 		},
 		template: `
-		<div>
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -480,7 +466,6 @@ export const Multiple = {
 				:style="{ width: '240px' }"
 				@update:model-value="onUpdate"
 			/>
-		</div>
 		`,
 	}),
 	args: {
