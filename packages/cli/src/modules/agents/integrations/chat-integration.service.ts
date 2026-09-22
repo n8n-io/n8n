@@ -9,7 +9,6 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@/services/url.service';
 
@@ -31,7 +30,8 @@ import {
 import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
 import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
-import type { AgentChannelRef } from '../repositories/agent-channel-status.repository';
+import { AgentChangePublisher } from '../agent-change-publisher.service';
+import { agentChannelKey, agentChannelRef, type AgentChannelRef } from '../utils/agent-channel';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 
@@ -141,7 +141,7 @@ export class ChatIntegrationService {
 		private readonly urlService: UrlService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly publisher: Publisher,
+		private readonly changePublisher: AgentChangePublisher,
 		private readonly globalConfig: GlobalConfig,
 		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
 		private readonly statusReporter: AgentChannelStatusReporter,
@@ -161,22 +161,10 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
-		if (!this.globalConfig.multiMainSetup.enabled) return;
-		try {
-			const payload = { agentId, integration, action };
-			await this.publisher.publishCommand({
-				command: 'agent-chat-integration-changed',
-				payload,
-			});
-		} catch (error) {
-			this.logger.warn(
-				`[ChatIntegrationService] Failed to publish ${action} for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
-	}
-
-	private connectionKey(agentId: string, type: string, credentialId: string): string {
-		return `${agentId}:${type}:${credentialId}`;
+		await this.changePublisher.publish({
+			command: 'agent-chat-integration-changed',
+			payload: { agentId, integration, action },
+		});
 	}
 
 	private integrationFromConnectionKey(key: string): AgentChatIntegration | undefined {
@@ -302,7 +290,7 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		const ref = this.channelRef(agentId, integration);
+		const ref = agentChannelRef(agentId, integration);
 		try {
 			await this.establishConnection(agentId, integration, projectId, options);
 		} catch (error) {
@@ -324,7 +312,7 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
-		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const key = agentChannelKey(agentChannelRef(agentId, integration));
 		const ingressEnabled = options.ingressEnabled ?? true;
 
 		if (ingressEnabled) {
@@ -353,7 +341,7 @@ export class ChatIntegrationService {
 			chat,
 			bridge,
 			context: ctx,
-			ref: this.channelRef(agentId, integration),
+			ref: agentChannelRef(agentId, integration),
 		});
 
 		// Runs on every main, never gated on `skipExternalHooks`: this builds
@@ -552,7 +540,7 @@ export class ChatIntegrationService {
 		}
 
 		for (const integration of additions) {
-			const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
+			const key = agentChannelKey(agentChannelRef(agent.id, integration));
 			if (this.connections.has(key)) continue;
 
 			try {
@@ -577,9 +565,7 @@ export class ChatIntegrationService {
 		integration?: { type: string; credentialId: string },
 	): ChatInstance | undefined {
 		if (integration) {
-			return this.connections.get(
-				this.connectionKey(agentId, integration.type, integration.credentialId),
-			)?.chat;
+			return this.connections.get(agentChannelKey(agentChannelRef(agentId, integration)))?.chat;
 		}
 		return this.findConnection(agentId)?.chat;
 	}
@@ -597,7 +583,7 @@ export class ChatIntegrationService {
 		// connections on one platform would otherwise reply into the wrong workspace.
 		// No fallback in that case, for the same reason.
 		if (credentialId !== undefined) {
-			return this.connections.get(this.connectionKey(agentId, integrationType, credentialId))
+			return this.connections.get(agentChannelKey({ agentId, integrationType, credentialId }))
 				?.bridge;
 		}
 		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
@@ -642,7 +628,7 @@ export class ChatIntegrationService {
 		const live = this.getChatInstance(agentId, integration);
 		if (live) return live;
 
-		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const key = agentChannelKey(agentChannelRef(agentId, integration));
 		const handleInitializationError = (error: unknown) =>
 			this.reportOutboundError(agentId, integration, error);
 		const agent = await this.agentRepository
@@ -672,7 +658,7 @@ export class ChatIntegrationService {
 		metadata?: CallbackMetadata,
 	): ShortenCallback | undefined {
 		return this.connections
-			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
+			.get(agentChannelKey(agentChannelRef(agentId, integration)))
 			?.bridge?.getShortenCallback(metadata);
 	}
 
@@ -713,9 +699,7 @@ export class ChatIntegrationService {
 	}
 
 	hasLiveChannel(ref: AgentChannelRef): boolean {
-		return this.connections.has(
-			this.connectionKey(ref.agentId, ref.integrationType, ref.credentialId),
-		);
+		return this.connections.has(agentChannelKey(ref));
 	}
 
 	/**
@@ -778,7 +762,7 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		const key = this.connectionKey(agentId, type, credentialId);
+		const key = agentChannelKey({ agentId, integrationType: type, credentialId });
 		if (this.connections.has(key)) return;
 
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
@@ -819,7 +803,7 @@ export class ChatIntegrationService {
 		payload: PubSubCommandMap['agent-chat-leader-channel-request'],
 	): Promise<void> {
 		const { agentId, integration, action } = payload;
-		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const key = agentChannelKey(agentChannelRef(agentId, integration));
 
 		try {
 			await this.runLeaderOperation(
@@ -840,14 +824,6 @@ export class ChatIntegrationService {
 	// ---------------------------------------------------------------------------
 	// Private helpers
 	// ---------------------------------------------------------------------------
-
-	private channelRef(agentId: string, integration: AgentIntegrationConfig): AgentChannelRef {
-		return {
-			agentId,
-			integrationType: integration.type,
-			credentialId: integration.credentialId,
-		};
-	}
 
 	/**
 	 * Whether this main has to hand the operation to the leader instead of running
@@ -933,7 +909,7 @@ export class ChatIntegrationService {
 		integration: { credentialId: string; type: string },
 		options: DisconnectOptions = {},
 	): Promise<void> {
-		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const key = agentChannelKey(agentChannelRef(agentId, integration));
 		await this.disconnectOne(key, options);
 		await this.disconnectOutboundOne(key);
 	}

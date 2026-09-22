@@ -46,6 +46,20 @@ export interface SlackAppSetupSession {
 	teamName?: string;
 }
 
+export function hasSessionShape(value: unknown): value is SlackAppSetupSession {
+	const keys: Array<keyof SlackAppSetupSession> = [
+		'projectId',
+		'agentId',
+		'userId',
+		'appId',
+		'clientId',
+		'clientSecret',
+		'signingSecret',
+		'redirectUrl',
+	];
+	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
+}
+
 export function slackSetupCacheKey(state: string): string {
 	return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
 }

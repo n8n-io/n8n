@@ -41,6 +41,7 @@ import {
 import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
+	buildAgentTurnMetrics,
 } from './agent-telemetry';
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import type { Agent } from './entities/agent.entity';
@@ -860,10 +861,7 @@ export class AgentWorkflowExecutionService {
 						? 'failed'
 						: 'succeeded',
 				configuration: buildAgentConfigurationTelemetryFromConfig(runtimeConfig),
-				latency_ms: run.messageRecord.duration,
-				cost: run.messageRecord.totalCost ?? 0,
-				token_count: run.messageRecord.usage?.totalTokens ?? 0,
-				tool_call_count: run.messageRecord.timeline.filter((t) => t.type === 'tool-call').length,
+				...buildAgentTurnMetrics(run.messageRecord),
 			});
 		} catch (error) {
 			this.logger.warn('Failed to track inline agent execution telemetry', {

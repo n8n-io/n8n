@@ -23,6 +23,7 @@ import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
@@ -36,8 +37,12 @@ export class AgentSkillsService {
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		return entity.skills ?? {};
 	}
@@ -101,8 +106,12 @@ export class AgentSkillsService {
 			throw new UserError('At least one skill is required.');
 		}
 
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 		if (attach && !entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		for (const skill of skills) {
@@ -140,8 +149,12 @@ export class AgentSkillsService {
 		context: AgentMutationTelemetryContext,
 		baseSkillHash?: string,
 	): Promise<AgentSkillMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const existing = entity.skills?.[skillId];
 		if (!existing) throw new NotFoundError('Skill not found');
@@ -189,8 +202,12 @@ export class AgentSkillsService {
 		skillId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const skills = { ...(entity.skills ?? {}) };
 		if (!skills[skillId]) throw new NotFoundError('Skill not found');

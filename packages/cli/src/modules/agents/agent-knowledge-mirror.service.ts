@@ -2,6 +2,7 @@ import type { CommandResult } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { OperationalError, safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -119,7 +120,7 @@ function assertKnowledgeFilesDirectoryAvailable(
 
 @Service()
 export class AgentKnowledgeMirrorService {
-	private readonly pendingMirrorSyncs = new Map<string, Promise<void>>();
+	private readonly pendingMirrorSyncs = new Map<string, Promise<unknown>>();
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
@@ -266,19 +267,11 @@ export class AgentKnowledgeMirrorService {
 		runtime: AgentKnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
-		const previous = this.pendingMirrorSyncs.get(runtime.cacheKey) ?? Promise.resolve();
-		const next = previous
-			.catch(() => undefined)
-			.then(async () => await this.syncMirror(runtime, files));
-		this.pendingMirrorSyncs.set(runtime.cacheKey, next);
-
-		try {
-			await next;
-		} finally {
-			if (this.pendingMirrorSyncs.get(runtime.cacheKey) === next) {
-				this.pendingMirrorSyncs.delete(runtime.cacheKey);
-			}
-		}
+		await runSerially(
+			this.pendingMirrorSyncs,
+			runtime.cacheKey,
+			async () => await this.syncMirror(runtime, files),
+		);
 	}
 
 	private async syncMirror(

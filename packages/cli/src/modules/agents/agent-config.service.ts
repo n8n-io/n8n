@@ -16,7 +16,6 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 
 import {
@@ -37,6 +36,7 @@ import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.ser
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -87,8 +87,12 @@ export class AgentConfigService {
 	 * Get the JSON config for an agent.
 	 */
 	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 		const config = composeJsonConfig(entity);
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
@@ -169,8 +173,12 @@ export class AgentConfigService {
 		user: User,
 		options: AgentConfigUpdateOptions,
 	): Promise<AgentConfigMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 		if (options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity))) {
 			throw new ConflictError(
 				'Agent config was changed elsewhere; reload to get the latest version',

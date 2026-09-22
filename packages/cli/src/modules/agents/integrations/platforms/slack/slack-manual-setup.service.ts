@@ -2,9 +2,6 @@ import type { CreateSlackAgentAppResponse, SlackAgentAppManifestResponse } from 
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
-import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -41,27 +38,12 @@ export interface CompleteSlackAppInstallOptions {
 	state: string;
 }
 
-function hasSessionShape(value: unknown): value is SlackAppSetupSession {
-	const keys: Array<keyof SlackAppSetupSession> = [
-		'projectId',
-		'agentId',
-		'userId',
-		'appId',
-		'clientId',
-		'clientSecret',
-		'signingSecret',
-		'redirectUrl',
-	];
-	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
-}
-
 @Service()
 export class SlackManualSetupService {
 	constructor(
 		private readonly methods: SlackMethodsService,
 		private readonly userRepository: UserRepository,
 		private readonly cacheService: CacheService,
-		private readonly cipher: Cipher,
 		private readonly projectService: ProjectService,
 	) {}
 
@@ -116,13 +98,8 @@ export class SlackManualSetupService {
 			throw new BadRequestError('Slack app setup state has expired or is invalid');
 		}
 
-		try {
-			const decrypted = await this.cipher.decryptV2(cached);
-			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
-			if (hasSessionShape(session)) return session;
-		} catch {
-			// Invalid encrypted state falls through to the shared callback error.
-		}
+		const session = await this.methods.decodeSession(cached);
+		if (session) return session;
 
 		throw new BadRequestError('Slack app setup state has expired or is invalid');
 	}

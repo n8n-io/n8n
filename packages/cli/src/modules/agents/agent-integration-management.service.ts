@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { runSerially } from '@n8n/utils/run-serially';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -43,7 +44,7 @@ interface IntegrationRuntimeState {
 
 @Service()
 export class AgentIntegrationManagementService {
-	/** One in-flight channel mutation per agent; see {@link serializePerAgent}. */
+	/** Serialize channel changes per agent within this process. */
 	private readonly mutations = new Map<string, Promise<unknown>>();
 
 	constructor(
@@ -132,31 +133,12 @@ export class AgentIntegrationManagementService {
 	private async applyChange(
 		options: IntegrationChangeOptions,
 	): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
-		return await this.serializePerAgent(
+		// Keep startup, persistence, and teardown in one queue to prevent interleaved changes.
+		return await runSerially(
+			this.mutations,
 			options.agent.id,
 			async () => await this.runChange(options),
 		);
-	}
-
-	/**
-	 * Run one channel mutation per agent at a time.
-	 *
-	 * Steps 1 and 3 straddle the write, so two mutations on the same channel can
-	 * interleave: a removal releasing after its write can tear down the
-	 * connection a concurrent re-connect established before its own write, leaving
-	 * the channel persisted with nothing running. Queueing them removes the
-	 * interleaving outright. This is per-process — durable state is still
-	 * protected by the compare-and-set, and runtime state is per-main anyway.
-	 */
-	private async serializePerAgent<T>(agentId: string, work: () => Promise<T>): Promise<T> {
-		const previous = this.mutations.get(agentId) ?? Promise.resolve();
-		const run = previous.catch(() => {}).then(work);
-		this.mutations.set(agentId, run);
-		try {
-			return await run;
-		} finally {
-			if (this.mutations.get(agentId) === run) this.mutations.delete(agentId);
-		}
 	}
 
 	private async runChange(
