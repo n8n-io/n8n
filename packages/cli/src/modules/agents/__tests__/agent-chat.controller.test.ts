@@ -14,10 +14,8 @@ import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import type { AgentExecutionService } from '../agent-execution.service';
-import {
-	AgentChatExecutionService,
-	AgentTurnAlreadyRunningError,
-} from '../agent-chat-execution.service';
+import { AgentTurnAlreadyRunningError } from '../agent-chat-execution.service';
+import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -475,8 +473,7 @@ describe('AgentChatController SSE done payload', () => {
 	});
 
 	it.each(operations)('sends done after the $name settles', async ({ method, start, done }) => {
-		const { controller, agentExecutionOrchestratorService, chatExecutionService } =
-			makeController();
+		const { controller, agentExecutionOrchestratorService } = makeController();
 		const finalization = createDeferredPromise();
 		const finalizationStarted = createDeferredPromise();
 		let receivedSignal: AbortSignal | undefined;
@@ -490,10 +487,7 @@ describe('AgentChatController SSE done payload', () => {
 		});
 
 		const writes: string[] = [];
-		const res = makeSseResponse(writes, (chunk) => {
-			if (chunk.includes('execution-started'))
-				expect(chatExecutionService.register).toHaveBeenCalledOnce();
-		});
+		const res = makeSseResponse(writes);
 		const request = start(controller, res);
 		await finalizationStarted.promise;
 		expect(res.end).not.toHaveBeenCalled();

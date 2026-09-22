@@ -62,30 +62,21 @@ export class AgentChatController {
 		private readonly chatExecutionService: AgentChatExecutionService,
 	) {}
 
-	private createChatExecution(
-		res: FlushableResponse,
-		projectId: string,
-		agentId: string,
-		userId: string,
-	) {
+	private createChatExecution(res: FlushableResponse) {
 		const delivery = initSseStream(res);
-		const controller = new AbortController();
-		const abandon = () => controller.abort();
+		const requestController = new AbortController();
+		const abandon = () => requestController.abort();
 		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
 		if (delivery.abortSignal.aborted) abandon();
 		let executionId: string | undefined;
 		return {
 			send: delivery.send,
-			abortSignal: controller.signal,
+			abortSignal: requestController.signal,
 			get executionId() {
 				return executionId;
 			},
 			onExecutionStarted: (id: string, sessionId: string) => {
 				executionId = id;
-				this.chatExecutionService.register(
-					{ projectId, agentId, userId, threadId: sessionId, executionId: id },
-					controller,
-				);
 				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId });
 			},
@@ -166,7 +157,7 @@ export class AgentChatController {
 			agentId,
 		);
 
-		const execution = this.createChatExecution(res, projectId, agentId, req.user.id);
+		const execution = this.createChatExecution(res);
 		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		let executionId: string | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
@@ -258,7 +249,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const execution = this.createChatExecution(res, projectId, agentId, req.user.id);
+		const execution = this.createChatExecution(res);
 		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		try {
 			abortSignal.throwIfAborted();

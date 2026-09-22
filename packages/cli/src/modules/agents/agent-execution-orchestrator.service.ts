@@ -156,6 +156,8 @@ export interface ResumeForChatConfig {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
+	automaticPreviewContinuation?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
@@ -441,7 +443,15 @@ export class AgentExecutionOrchestratorService {
 						...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 						previewChat: config.previewChat,
 					},
-					{ threadId, userMessage: null, source, onExecutionRecorded, abortSignal, access },
+					{
+						threadId,
+						userMessage: null,
+						source,
+						onExecutionRecorded,
+						abortSignal,
+						access,
+						automaticPreviewContinuation: config.automaticPreviewContinuation,
+					},
 				),
 			(runtime) =>
 				this.turnExecutionService.execute({
@@ -451,6 +461,7 @@ export class AgentExecutionOrchestratorService {
 					context: { projectId, agentId, threadId },
 					includeHitlToolDetails: !usePublishedVersion,
 					previewChat: config.previewChat,
+					automaticPreviewContinuation: config.automaticPreviewContinuation,
 					onExecutionStarted: config.onExecutionStarted,
 					onExecutionRecorded,
 					onSettled: async (suspended) => {
@@ -1086,9 +1097,11 @@ export class AgentExecutionOrchestratorService {
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
+			automaticPreviewContinuation?: boolean;
 		},
 	): Promise<AgentRuntime> {
-		const { onExecutionRecorded, abortSignal, ...recording } = session;
+		const { onExecutionRecorded, abortSignal, automaticPreviewContinuation, ...recording } =
+			session;
 		abortSignal?.throwIfAborted();
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
@@ -1121,7 +1134,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					error,
 					onExecutionRecorded,
-					params.previewChat,
+					{ previewChat: params.previewChat, automaticPreviewContinuation },
 				);
 			}
 			throw error;

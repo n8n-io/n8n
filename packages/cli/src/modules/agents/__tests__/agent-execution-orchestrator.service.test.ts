@@ -1,6 +1,7 @@
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
+	ExecutionOptions,
 	JSONValue,
 	ResumeOptions,
 	SerializableAgentState,
@@ -302,7 +303,17 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	describe.each(['start', 'resume'] as const)('%s turn lifecycle', (operation) => {
-		function makeTurn(abortSignal?: AbortSignal, previewChat = false) {
+		function makeTurn({
+			abortSignal,
+			previewChat = false,
+			automaticPreviewContinuation = false,
+			announceExecution = true,
+		}: {
+			abortSignal?: AbortSignal;
+			previewChat?: boolean;
+			automaticPreviewContinuation?: boolean;
+			announceExecution?: boolean;
+		} = {}) {
 			const fixtures = makeService();
 			const runtime = makeRuntime();
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
@@ -321,7 +332,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							message: 'hello',
 							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 							onExecutionRecorded,
-							onExecutionStarted,
+							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
 							abortSignal,
 						})
@@ -334,8 +345,9 @@ describe('AgentExecutionOrchestratorService', () => {
 							toolCallId: 'tc-1',
 							resumeData: { approved: true },
 							onExecutionRecorded,
-							onExecutionStarted,
+							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
+							automaticPreviewContinuation,
 							abortSignal,
 						});
 			return {
@@ -349,7 +361,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		}
 
 		it('announces the recorded execution before the SDK starts', async () => {
-			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn(undefined, true);
+			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn({
+				previewChat: true,
+			});
 			onExecutionStarted.mockImplementation(() => {
 				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
 				expect(sdkStart).not.toHaveBeenCalled();
@@ -366,7 +380,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				executionService,
 				executionRepository,
 				runtimeCacheService,
-			} = makeTurn(undefined, true);
+			} = makeTurn({ previewChat: true });
 			executionRepository.existsRunningByThread.mockResolvedValue(true);
 			await expect(collect(stream)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 			expect(onExecutionStarted).not.toHaveBeenCalled();
@@ -375,13 +389,73 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
 		});
 
+		if (operation === 'resume') {
+			it('admits and registers an automatic preview continuation', async () => {
+				const started = createDeferredPromise<AbortSignal>();
+				const release = createDeferredPromise();
+				const {
+					stream,
+					runtime,
+					chatExecutionService,
+					executionService,
+					executionRepository,
+					onExecutionStarted,
+				} = makeTurn({
+					previewChat: true,
+					automaticPreviewContinuation: true,
+					announceExecution: false,
+				});
+				executionRepository.existsRunningByThread.mockResolvedValue(true);
+				runtime.agent.resume.mockImplementation(
+					async (_method, _data, options: ResumeOptions & ExecutionOptions) => {
+						await options.onResumeClaimed?.();
+						if (!options.abortSignal) throw new Error('Expected an execution abort signal.');
+						started.resolve(options.abortSignal);
+						await release.promise;
+						return {
+							runId: 'runtime-run-1',
+							stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+						};
+					},
+				);
+				const result = collect(stream);
+				const signal = await started.promise;
+
+				await chatExecutionService.handleCancel({
+					projectId,
+					agentId,
+					threadId: 'thread-1',
+					executionId: 'execution-1',
+					userId,
+				});
+
+				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+				expect(runtime.agent.resume).toHaveBeenCalledOnce();
+				expect(onExecutionStarted).not.toHaveBeenCalled();
+				expect(signal.aborted).toBe(true);
+				release.resolve();
+				await result;
+				expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+					'execution-1',
+					expect.objectContaining({
+						record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+					}),
+				);
+			});
+		}
+
 		it('records cancellation when Stop follows acceptance before the SDK starts', async () => {
-			const controller = new AbortController();
-			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn(
-				controller.signal,
-				true,
-			);
-			onExecutionStarted.mockImplementation(() => controller.abort());
+			const { stream, onExecutionStarted, sdkStart, executionService, chatExecutionService } =
+				makeTurn({ previewChat: true });
+			onExecutionStarted.mockImplementation(() => {
+				void chatExecutionService.handleCancel({
+					projectId,
+					agentId,
+					threadId: 'thread-1',
+					executionId: 'execution-1',
+					userId,
+				});
+			});
 			await expect(collect(stream)).rejects.toMatchObject({ name: 'AbortError' });
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
@@ -474,9 +548,9 @@ describe('AgentExecutionOrchestratorService', () => {
 			'does not invoke the SDK when cancelled %s',
 			async (when) => {
 				const controller = new AbortController();
-				const { stream, sdkStart, executionService, runtimeCacheService } = makeTurn(
-					controller.signal,
-				);
+				const { stream, sdkStart, executionService, runtimeCacheService } = makeTurn({
+					abortSignal: controller.signal,
+				});
 				if (when === 'before recording') {
 					controller.abort();
 				} else {

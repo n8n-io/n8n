@@ -9,6 +9,7 @@ import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
@@ -46,6 +47,7 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
+	automaticPreviewContinuation?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
@@ -56,6 +58,12 @@ interface TurnExecutionState {
 	executionError?: unknown;
 	receivedFinish: boolean;
 	suspendedRunId?: string;
+}
+
+interface PreviewExecutionControl {
+	controller: AbortController;
+	detachRequest: () => void;
+	userId: string;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -98,6 +106,7 @@ export class AgentTurnExecutionService {
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
 		let executionId: string | undefined;
 		let turn: AgentTurnRequest | undefined;
+		let previewControl: PreviewExecutionControl | undefined;
 		const state: TurnExecutionState = { executionStarted: false, receivedFinish: false };
 		const recorder = this.createRecorder(
 			config.toolRegistry,
@@ -109,9 +118,13 @@ export class AgentTurnExecutionService {
 		try {
 			turn = await config.prepare();
 			const preparedTurn = turn;
+			if (config.previewChat) {
+				previewControl = this.createPreviewExecutionControl(preparedTurn);
+				preparedTurn.options.abortSignal = previewControl.controller.signal;
+			}
 			const recordStart = async () => {
 				preparedTurn.options.abortSignal?.throwIfAborted();
-				executionId = await this.startExecution(
+				const id = await this.startExecution(
 					{
 						...preparedTurn.recording,
 						...(config.backgroundJobSignal
@@ -120,14 +133,27 @@ export class AgentTurnExecutionService {
 					},
 					recorder.startedAt,
 				);
+				executionId = id;
 				preparedTurn.options.abortSignal?.throwIfAborted();
-				config.onExecutionStarted?.(executionId, config.context.threadId);
+				return id;
 			};
-			if (config.previewChat) {
-				await this.chatExecutionService.admit(config.context.threadId, recordStart);
+			if (previewControl) {
+				executionId = await this.chatExecutionService.admit(config.context.threadId, recordStart, {
+					automaticContinuation: config.automaticPreviewContinuation,
+				});
+				this.chatExecutionService.register(
+					{
+						...config.context,
+						userId: previewControl.userId,
+						executionId,
+					},
+					previewControl.controller,
+				);
+				previewControl.detachRequest();
 			} else {
-				await recordStart();
+				executionId = await recordStart();
 			}
+			config.onExecutionStarted?.(executionId, config.context.threadId);
 			turn.options.abortSignal?.throwIfAborted();
 			const stream = await this.startTurn(turn, config, recorder, state);
 			yield* this.streamTurn(stream, turn, config, recorder, state);
@@ -137,11 +163,29 @@ export class AgentTurnExecutionService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			previewControl?.detachRequest();
 			if (turn && executionId) {
 				await this.settleTurn(turn, config, recorder, executionId, state);
 				await config.onSettled?.(recorder.suspended);
 			}
 		}
+	}
+
+	private createPreviewExecutionControl(turn: AgentTurnRequest): PreviewExecutionControl {
+		const userId = turn.recording.access.ownerId;
+		if (turn.recording.access.accessScope !== 'user' || !userId) {
+			throw new UnexpectedError('A preview execution must have an owning user.');
+		}
+		const requestSignal = turn.options.abortSignal;
+		const controller = new AbortController();
+		const abort = () => controller.abort(requestSignal?.reason);
+		if (requestSignal?.aborted) abort();
+		else requestSignal?.addEventListener('abort', abort, { once: true });
+		return {
+			controller,
+			userId,
+			detachRequest: () => requestSignal?.removeEventListener('abort', abort),
+		};
 	}
 
 	private async startTurn(
@@ -317,15 +361,17 @@ export class AgentTurnExecutionService {
 		params: StartExecutionParams,
 		executionError: unknown,
 		onExecutionRecorded?: (executionId: string) => void,
-		previewChat = false,
+		options: { previewChat?: boolean; automaticPreviewContinuation?: boolean } = {},
 	): Promise<void> {
 		const recorder = this.createRecorder();
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
 		const recordStart = async () =>
 			await this.startExecution(params, recorder.startedAt, executionError);
-		const executionId = previewChat
-			? await this.chatExecutionService.admit(params.threadId, recordStart)
+		const executionId = options.previewChat
+			? await this.chatExecutionService.admit(params.threadId, recordStart, {
+					automaticContinuation: options.automaticPreviewContinuation,
+				})
 			: await recordStart();
 		await this.finalizeExecution({
 			executionId,

@@ -44,13 +44,20 @@ export class AgentChatExecutionService {
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 	) {}
 
-	async admit<T>(threadId: string, create: () => Promise<T>): Promise<T> {
+	async admit<T>(
+		threadId: string,
+		create: () => Promise<T>,
+		options: { automaticContinuation?: boolean } = {},
+	): Promise<T> {
 		try {
 			return await this.lockService.withLease(
 				LockNamespace.KNOWN_LOCKS,
 				`agent-preview-turn:${threadId}`,
 				async (signal) => {
-					if (await this.executionRepository.existsRunningByThread(threadId)) {
+					if (
+						!options.automaticContinuation &&
+						(await this.executionRepository.existsRunningByThread(threadId))
+					) {
 						throw new AgentTurnAlreadyRunningError();
 					}
 					signal.throwIfAborted();
