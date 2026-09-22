@@ -1,0 +1,24 @@
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePanel.vue
+  s_1e88b5cb1599b2::t_8f04825786b2cf 5,7,28-29,36-43,52,54-62,74
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.vue
+  s_1e88b5cb1599b2::t_8f04825786b2cf 3,8,33-34,71,75-76,78-80,84-85
+packages/modules/type-availability-policies/frontend/README.md
+  s_1e88b5cb1599b2::t_536620ad05c95e 33-36
+  s_1e88b5cb1599b2::t_71ecfa0528eea0 30-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "696d2258bd3637123dec426563c60f9632a7cd2f",
+  "prompts": {},
+  "sessions": {
+    "s_1e88b5cb1599b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84591b3c-1bb6-4340-8d34-5e2bbe4c5d00",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
