@@ -1,10 +1,13 @@
-# Node type availability policies
+# Type availability policies
 
-Rules that say which node types a project may use. An admin writes the rules. The policy
-infrastructure enforces them at the points that handle a workflow — save, publish, start,
-transfer and import — and at the point where a node asks for a credential.
+Rules that say which node types and which credential types a project may use. An admin writes
+the rules. The policy infrastructure enforces them at the points that handle a workflow — save,
+publish, start, transfer and import — and at the points that handle a credential.
 
-This module is the first tenant of that infrastructure. It adds a check and a store, and
+Most of this document describes the node type check, which came first. "The credential type
+check" below covers the second one and only the ways it differs.
+
+This module is the first tenant of that infrastructure. It adds two checks and one store, and
 nothing else: no enforcement path of its own, no error shape, no audit line. Read
 `../policy-infrastructure/README.md` for the substrate, and the policy infrastructure RFC in
 Notion for why the substrate looks the way it does.
@@ -86,6 +89,46 @@ decryptions no run covers:
 A refusal fails the decryption with the same `node-type-unavailable` violation the workflow
 points report, naming the **node type** as `subject`. The audit line carries the credential's
 id and type from the context.
+
+## The credential type check
+
+`CredentialTypePolicyCheck` is the second check in this module. It reads the same store under
+the `credential-types` kind, where a type name is bare (`slackApi`) rather than
+package-qualified. The two checks stack: either veto blocks, so a rule on the Slack node and a
+rule on `slackApi` are independent decisions.
+
+It implements all seven points:
+
+| Point               | What it reads                                      |
+| ------------------- | -------------------------------------------------- |
+| the five workflow points | the keys of every node's `credentials` map    |
+| `credentialSave`    | the type of the credential being written           |
+| `credentialDecrypt` | `credentialType` — the credential's own type       |
+
+Two differences from the node check are the point of the whole thing:
+
+- **`credentialDecrypt` ignores the asking node.** A blocked `slackApi` is refused to the Slack
+  node and to an HTTP Request node alike, which is the hole a node rule alone leaves. A null
+  `consumer` changes nothing either: an OAuth flow or a credential test has no node to police,
+  but it does have a credential type.
+- **`credentialSave` refuses creating a credential of a blocked type.** That is a build
+  experience guard, not a boundary — decryption already makes such a credential inert. An edit
+  that keeps the stored type is grandfathered, so a type blocked after the fact stays openable
+  and renameable.
+
+A violation is `credential-type-unavailable` with `subjectType: 'credentialType'`; everything
+else about the shape matches the node check.
+
+Workflow-point grandfathering works the same way, one level down: the save diff compares
+credential **types**, so swapping which `slackApi` credential a node uses, or copying the node,
+adds nothing to police.
+
+### What the second kind costs
+
+The cache is keyed per kind, so the two kinds share nothing. A cold decision on a project with
+both scopes configured and attached costs 12 queries where one kind cost 6, and a warm one
+costs none — pinned in `node-type-policy.store-reads.test.ts`. The decision service runs the
+checks together, so the second kind costs queries rather than latency.
 
 ## What a violation looks like
 
@@ -228,7 +271,8 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the six points, the save diff, the violations       |
+| `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
+| `credential-type-policy.check.ts`                 | Credential types: all seven points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
