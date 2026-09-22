@@ -14,6 +14,7 @@ import {
 	MODAL_CONFIRM,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
+import { findGroupIdsWithTrigger } from '../nodeGroups.utils';
 import { useFlexibleGroups } from '@/app/composables/useFlexibleGroups';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@n8n/composables/useToast';
@@ -462,14 +463,11 @@ const groupIdsWithTrigger = computed(() => {
 		return new Set<string>();
 	}
 
-	const groupsContainingTriggers = workflowDocumentStore.value.allGroups.filter((group) =>
-		group.nodeIds.some((nodeId) => {
-			const node = workflowDocumentStore.value.getNodeById(nodeId);
-			return node ? nodeTypesStore.isTriggerNode(node.type) : false;
-		}),
+	return findGroupIdsWithTrigger(
+		workflowDocumentStore.value.allGroups,
+		(nodeId) => workflowDocumentStore.value.getNodeById(nodeId),
+		(nodeType) => nodeTypesStore.isTriggerNode(nodeType),
 	);
-
-	return new Set(groupsContainingTriggers.map((group) => group.id));
 });
 
 // Groups that can be extracted to sub-workflows
