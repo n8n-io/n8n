@@ -16,7 +16,6 @@ export type TestRunStatusPublic = z.infer<typeof testRunStatusSchema>;
 
 export const testRunFinalResultSchema = z.enum(['success', 'error', 'warning']);
 
-/** The test run as the Public API publishes it, in the list and on its own route. */
 export const testRunSummaryPublicSchema = z.object({
 	id: z.string().openapi(testRunFieldDocs.id),
 	status: testRunStatusSchema,
