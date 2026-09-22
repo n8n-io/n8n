@@ -1724,12 +1724,12 @@ describe('PATCH /credentials/:id', () => {
 
 describe('credential description', () => {
 	beforeEach(() => {
-		vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue({
-			[CREDENTIAL_DESCRIPTIONS_FLAG]: true,
-		});
+		vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+			async (flag) => (flag === CREDENTIAL_DESCRIPTIONS_FLAG ? true : undefined),
+		);
 	});
 	afterEach(() => {
-		vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue({});
+		vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockResolvedValue(undefined);
 	});
 	const saveOwned = async () =>
 		await saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' });
@@ -1745,8 +1745,8 @@ describe('credential description', () => {
 			const saved = await saveOwned();
 			const description = 'Read-only reporting account';
 			await patchDescription(saved.id, description);
-			vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue(
-				enabled === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: enabled },
+			vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+				async (flag) => (flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined),
 			);
 
 			for (const ignored of [null, 42, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)]) {
@@ -1768,9 +1768,9 @@ describe('credential description', () => {
 				expect(listed.body.data[0]).not.toHaveProperty('description');
 			}
 
-			vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue({
-				[CREDENTIAL_DESCRIPTIONS_FLAG]: true,
-			});
+			vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+				async (flag) => (flag === CREDENTIAL_DESCRIPTIONS_FLAG ? true : undefined),
+			);
 			const restored = await authOwnerAgent.get(`/credentials/${saved.id}`);
 			expect(restored.body.data.description).toBe(description);
 		},
@@ -1779,8 +1779,8 @@ describe('credential description', () => {
 	test.each([false, undefined])(
 		'ignores invalid description input on create when the flag is %s',
 		async (enabled) => {
-			vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue(
-				enabled === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: enabled },
+			vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+				async (flag) => (flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined),
 			);
 			const response = await authOwnerAgent
 				.post('/credentials')

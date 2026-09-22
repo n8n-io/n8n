@@ -24,6 +24,8 @@ export type {
 	DropdownMenuSlots,
 	DropdownMenuItemSlots,
 	DropdownMenuEmits,
+	DropdownMenuExposed,
+	DropdownMenuSearchMode,
 	DropdownMenuTrigger,
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';

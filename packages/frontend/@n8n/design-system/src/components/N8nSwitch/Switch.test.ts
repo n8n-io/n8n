@@ -272,6 +272,14 @@ describe('components/N8nSwitch', () => {
 			expect(label).toHaveAttribute('for', 'test-switch');
 		});
 
+		it('should preserve an explicit accessible label', () => {
+			const wrapper = render(Switch, {
+				attrs: { 'aria-label': 'Pause schedule' },
+			});
+
+			expect(wrapper.getByRole('switch', { name: 'Pause schedule' })).toBeInTheDocument();
+		});
+
 		it('should be keyboard accessible with Space', async () => {
 			const wrapper = render(Switch, {
 				props: {

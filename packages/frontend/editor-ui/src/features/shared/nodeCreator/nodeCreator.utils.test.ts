@@ -22,7 +22,11 @@ import {
 	matchesAliasForConnectBoost,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
+	getNodeItemRestriction,
+	isNodeItemRestricted,
 	searchNodes,
+	sinkRestrictedNodesLast,
+	withoutRestrictedNodes,
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
@@ -30,6 +34,7 @@ import {
 	mockSectionCreateElement,
 	mockSimplifiedNodeType,
 } from './__tests__/utils';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -1397,6 +1402,85 @@ describe('NodeCreator - utils', () => {
 
 		it('does not surface the rag starter callout unless it is enabled', () => {
 			expect(getRootSearchCallouts('rag', {}, [])).toEqual([]);
+		});
+	});
+});
+
+describe('node item restriction lookups', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	it('reports a restricted type with its scope', () => {
+		mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'project' });
+
+		expect(getNodeItemRestriction('n8n-nodes-base.gmail')).toMatchObject({ scope: 'project' });
+		expect(isNodeItemRestricted('n8n-nodes-base.gmail')).toBe(true);
+		expect(isNodeItemRestricted('n8n-nodes-base.slack')).toBe(false);
+	});
+
+	it('maps a credential-only node to the HTTP Request node it wraps', () => {
+		mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
+
+		expect(isNodeItemRestricted('n8n-creds-base.sysdigApi')).toBe(true);
+	});
+});
+
+describe('restricted node helpers', () => {
+	const node = (key: string) => mockNodeCreateElement({ key });
+	const isRestricted = (name: string) => name.startsWith('blocked');
+
+	describe('withoutRestrictedNodes', () => {
+		it('drops restricted nodes at the top level', () => {
+			const items = [node('a'), node('blocked-1'), node('c')];
+
+			expect(withoutRestrictedNodes(items, isRestricted).map((i) => i.key)).toEqual(['a', 'c']);
+		});
+
+		it('drops restricted nodes inside a section and keeps the section', () => {
+			const section = mockSectionCreateElement({ children: [node('a'), node('blocked-1')] });
+
+			const [result] = withoutRestrictedNodes([section], isRestricted);
+
+			expect(result.type).toBe('section');
+			expect((result as SectionCreateElement).children.map((c) => c.key)).toEqual(['a']);
+		});
+
+		it('drops a section whose every child is restricted', () => {
+			const section = mockSectionCreateElement({ children: [node('blocked-1')] });
+
+			expect(withoutRestrictedNodes([node('a'), section], isRestricted).map((i) => i.key)).toEqual([
+				'a',
+			]);
+		});
+	});
+
+	describe('sinkRestrictedNodesLast', () => {
+		it('moves restricted nodes after every available node and keeps both orders', () => {
+			const items = [node('blocked-1'), node('a'), node('blocked-2'), node('b')];
+
+			expect(sinkRestrictedNodesLast(items, isRestricted).map((i) => i.key)).toEqual([
+				'a',
+				'b',
+				'blocked-1',
+				'blocked-2',
+			]);
+		});
+
+		it('sinks inside a section and keeps the section in place', () => {
+			const section = mockSectionCreateElement({
+				key: 'section',
+				children: [node('blocked-1'), node('a')],
+			});
+			const items = [section, node('b'), node('blocked-2')];
+
+			const result = sinkRestrictedNodesLast(items, isRestricted);
+
+			expect(result.map((i) => i.key)).toEqual(['section', 'b', 'blocked-2']);
+			expect((result[0] as SectionCreateElement).children.map((c) => c.key)).toEqual([
+				'a',
+				'blocked-1',
+			]);
 		});
 	});
 });

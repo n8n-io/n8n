@@ -4,6 +4,7 @@ import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
@@ -77,6 +78,7 @@ describe('node type policy document fan-out', () => {
 				ROOT,
 			);
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',
@@ -149,6 +151,7 @@ describe('node type policy document fan-out', () => {
 			Container.get(TransactionRunner),
 			Container.get(EventService),
 			Container.get(CacheService),
+			Container.get(LoadNodesAndCredentials),
 			Container.get(Logger),
 		);
 

@@ -453,6 +453,32 @@ describe('partitionAiRoots', () => {
 			});
 		});
 
+		it.each([
+			'@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			'@n8n/n8n-nodes-langchain.embeddingsCohere',
+			'@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+			'@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
+		])('auto-pins a root backed by embeddings sub-node %s', (embeddingsType) => {
+			// Embeddings speak the vendor SDK, so the HTTP mock never sees them, and
+			// no `EVAL_PROVIDER_URL_FIELD` entry rewrites their credentials. Left
+			// unpinned the root reaches the real provider on real credentials.
+			const nodes = [
+				makeNode({ name: 'Embeddings', type: embeddingsType }),
+				makeNode({ name: 'Store', type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory' }),
+			];
+			const connections: IConnections = {
+				Embeddings: { ai_embedding: [[{ node: 'Store', type: 'ai_embedding', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual(['Store']);
+			expect(result.autoPinned[0]).toMatchObject({
+				root: 'Store',
+				subNodeType: embeddingsType,
+				reason: 'unsupported_vendor_embeddings',
+			});
+		});
+
 		it('ignores disabled vendor LLM sub-nodes when partitioning', () => {
 			const nodes = [
 				makeNode({
@@ -1157,6 +1183,26 @@ describe('generateMockHints', () => {
 		expect(generate).toHaveBeenCalledTimes(2);
 		expect(result.warnings).toEqual([expect.stringContaining('invalid nodeHints')]);
 	});
+
+	it.each([true, 'true'])(
+		'accepts empty triggerContent when triggerEmitsNoItems is %j, and forwards the flag',
+		async (flag) => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					globalContext: '',
+					nodeHints: { Slack: 'foo' },
+					triggerEmitsNoItems: flag,
+				}),
+			);
+
+			const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.triggerEmitsNoItems).toBe(true);
+			expect(result.warnings).toEqual([]);
+		},
+	);
 
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');

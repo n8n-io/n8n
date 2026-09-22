@@ -188,6 +188,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			projectRepository,
 			dataTableOps as never,
 			aiGatewayService,
+			{},
 			logger,
 			postSaveMetrics,
 		);

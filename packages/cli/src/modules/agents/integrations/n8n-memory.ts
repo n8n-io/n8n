@@ -42,6 +42,7 @@ import {
 	type Thread,
 	stripHydratedFileData,
 } from '@n8n/agents';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
@@ -204,8 +205,8 @@ export class N8nMemoryImpl
 			.execute();
 	}
 
-	async deleteThread(threadId: string): Promise<void> {
-		await this.threadRepository.manager.transaction(async (trx) => {
+	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.threadRepository.runInTransaction(ctx, async (trx) => {
 			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
 			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
 			await trx.delete(AgentObservationEntity, observationScope);

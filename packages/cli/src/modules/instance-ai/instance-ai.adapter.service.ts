@@ -8,11 +8,10 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
@@ -439,12 +438,13 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
-			 *  mcp service/tool not wired. */
-			mcpConnectionsEnabled?: boolean;
+			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
+			mcpConnectionsAvailable?: boolean;
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
+			/** Instance activity gate. False disables the activity tool. */
+			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
@@ -467,8 +467,9 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
@@ -508,13 +509,13 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
-			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
 				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
 				: undefined,
 			conversationHistoryService: conversationHistory,
-			// Presence is the gate, as with the services above: no reader, no `activity` tool.
-			...(this.instanceContext?.enabled
+			// The tool and context block use the same instance gate result.
+			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -590,18 +591,10 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/**
-	 * Every experiment gate from one PostHog fetch, so a caller wires its context
-	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
-	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
-	 * outage, and an unexpected throw here still fails every gate closed rather
-	 * than failing the whole context build.
-	 */
+	/** Resolves user experience flags and the shared activity gate. Unreadable flags stay off. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
-		/** MCP registry discovery: module active, MCP access allowed, user in the experiment. */
-		mcpConnectionsEnabled: boolean;
 		/** Past-conversation recall: tool, prompt section and first-turn hint. */
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
@@ -612,23 +605,28 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on the opening turn. */
+		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
 		credentialDescriptionsEnabled: boolean;
+		/** Shared activity recording and retrieval use the same instance gate. */
+		instanceContextEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
+		let instanceContextEnabled = false;
 		try {
-			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			const postHog = Container.get(PostHogClient);
+			const [userFlags, instanceFlag] = await Promise.allSettled([
+				postHog.getFeatureFlags(user),
+				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+			]);
+			if (userFlags.status === 'fulfilled') flags = userFlags.value;
+			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// getFeatureFlags already swallows PostHog errors and returns {}; this
-			// second layer is for an unexpected throw elsewhere in the call.
+			// Keep the gates closed if the client cannot start an evaluation.
 		}
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
-			mcpConnectionsEnabled:
-				this.mcpPreconditionsHold() &&
-				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
@@ -640,14 +638,8 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			instanceContextEnabled,
 		};
-	}
-
-	private mcpPreconditionsHold(): boolean {
-		return (
-			Container.get(ModuleRegistry).isActive('mcp-registry') &&
-			this.settingsService.isMcpAccessEnabled()
-		);
 	}
 
 	/**

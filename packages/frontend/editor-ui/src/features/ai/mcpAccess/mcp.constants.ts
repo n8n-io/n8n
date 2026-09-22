@@ -14,6 +14,7 @@ export const MCP_SCOPE_GROUPS: ScopeGroupDefinition[] = [
 	{ key: 'credentials', resources: ['credential'] },
 	{ key: 'dataTables', resources: ['dataTable'] },
 	{ key: 'projectsAndFolders', resources: ['project'] },
+	{ key: 'communityNodes', resources: ['communityPackage'] },
 	{ key: 'preferences', resources: ['aiPreference'] },
 ];
 
@@ -26,6 +27,7 @@ export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
 	dataTable: 'table',
 	project: 'folder',
 	tag: 'tags',
+	communityPackage: 'package-open',
 	aiPreference: 'sliders-horizontal',
 };
 export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';

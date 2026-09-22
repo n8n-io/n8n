@@ -8,8 +8,6 @@ import {
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
@@ -17,7 +15,7 @@ import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlagPayloads, FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
-import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
+import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-node';
 
 import { N8N_VERSION } from '@/constants';
 
@@ -143,70 +141,83 @@ export class PostHogClient {
 		return (await this.getFeatureFlagsAndPayloads(user)).featureFlags;
 	}
 
+	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
+		const { instanceId } = this.instanceSettings;
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
+
+		try {
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: ['instance', instanceId, flagName].join('#'),
+				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+				options: {
+					flagKeys: [flagName],
+					groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
+		}
+
+		return this.applyEnvOverrides(data).featureFlags[flagName];
+	}
+
 	async getFeatureFlagsAndPayloads(
 		user: Pick<PublicUser, 'id' | 'createdAt'>,
 	): Promise<FeatureFlagData> {
-		// The editor and instance services must use the same enrollment result.
-		const [data, instanceFlags] = await Promise.all([
-			this.getFlagsWithOverrides(user),
-			this.getInstanceFeatureFlags(),
-		]);
+		// Apply local overrides when PostHog is not available.
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
+		try {
+			const { instanceId } = this.instanceSettings;
+			const distinctId = [instanceId, user.id].join('#');
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: distinctId,
+				distinctId,
+				options: {
+					personProperties: {
+						created_at_timestamp: user.createdAt.getTime().toString(),
+						instance_id: instanceId,
+						version_cli: N8N_VERSION,
+					},
+					...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
+		}
+		const overridden = this.applyEnvOverrides(data);
+		// The editor and backend must use the same instance result.
+		const credentialDescriptionsEnabled =
+			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
 		return {
-			...data,
+			...overridden,
 			featureFlags: {
-				...data.featureFlags,
-				[CREDENTIAL_DESCRIPTIONS_FLAG]: instanceFlags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
+				...overridden.featureFlags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
 			},
 		};
 	}
 
-	async getInstanceFeatureFlags(): Promise<FeatureFlags> {
-		return (await this.getFlagsWithOverrides()).featureFlags;
-	}
-
-	private async getFlagsWithOverrides(
-		user?: Pick<PublicUser, 'id' | 'createdAt'>,
-	): Promise<FeatureFlagData> {
-		// Catch PostHog errors here (rather than letting them propagate) so
-		// env-var overrides still apply when PostHog is unreachable. Without
-		// this, a transient PostHog outage would short-circuit the override
-		// path and leave operators without an escape hatch.
-		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
-		try {
-			data = await this.fetchFlagsFromPostHog(user);
-		} catch {
-			// fall through to env overrides
-		}
-		return this.applyEnvOverrides(data);
-	}
-
-	private async fetchFlagsFromPostHog(
-		user?: Pick<PublicUser, 'id' | 'createdAt'>,
-	): Promise<FeatureFlagData> {
+	private async fetchFlagsFromPostHog({
+		cacheKey,
+		distinctId,
+		options,
+	}: {
+		cacheKey: string;
+		distinctId: string;
+		options: AllFlagsOptions;
+	}): Promise<FeatureFlagData> {
 		if (!this.postHog) return { featureFlags: {}, featureFlagPayloads: {} };
 
-		const { instanceId } = this.instanceSettings;
-		const fullId = user
-			? [instanceId, user.id].join('#')
-			: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`;
-
-		const cached = this.flagsCache.get(fullId);
+		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
 			return cached;
 		}
 
-		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
-			personProperties: {
-				...(user && { created_at_timestamp: user.createdAt.getTime().toString() }),
-				instance_id: instanceId,
-				version_cli: N8N_VERSION,
-			},
-			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
-		});
+		const evaluatedFlags = await this.postHog.evaluateFlags(distinctId, options);
 		const data = this.resolveFeatureFlagData(evaluatedFlags);
 
 		if (Object.keys(data.featureFlags).length > 0) {
-			this.flagsCache.set(fullId, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+			this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
 		}
 
 		return data;
@@ -233,19 +244,7 @@ export class PostHogClient {
 		return { featureFlags, featureFlagPayloads };
 	}
 
-	/**
-	 * Applies env-var overrides on top of PostHog-resolved flags. Cached PostHog
-	 * data is stored without overrides so changing an env var (across restarts)
-	 * doesn't poison the cache.
-	 *
-	 * Both tiers win over PostHog. Between themselves, the generic map goes
-	 * first so a dedicated per-feature env var always has the final say:
-	 * 1. The generic map (`N8N_FEATURE_FLAG_OVERRIDES`) — sets a flag to any
-	 *    value, so unlike tier 2 it can force a flag *off* as well as on.
-	 * 2. Per-feature booleans (`N8N_CONFIG_EVALS_ENABLED`, …) — force-enable
-	 *    only; `false` defers to PostHog. Applied last so the generic map
-	 *    cannot undo a feature an operator enabled explicitly.
-	 */
+	/** Applies local settings after PostHog. Dedicated feature settings take priority. */
 	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
 		const overrides = { ...this.globalConfig.featureFlags.override };
 
@@ -261,10 +260,6 @@ export class PostHogClient {
 
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
-		}
-
-		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
-			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
 		}
 
 		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {

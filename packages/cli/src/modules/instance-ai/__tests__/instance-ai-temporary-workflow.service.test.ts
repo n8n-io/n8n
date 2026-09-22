@@ -44,12 +44,12 @@ function createService() {
 	adapterService.resolveExperimentGates.mockResolvedValue({
 		credentialDescriptionsEnabled: false,
 		configEvalsEnabled: false,
-		mcpConnectionsEnabled: false,
 		conversationHistoryEnabled: false,
 		progressiveBuildingEnabled: false,
 		nodeUsageEnabled: false,
 		folderExplorationEnabled: false,
 		aiPreferencesEnabled: false,
+		instanceContextEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(

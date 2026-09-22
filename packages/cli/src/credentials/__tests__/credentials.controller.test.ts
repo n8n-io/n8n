@@ -1,5 +1,4 @@
 import type { Response } from 'express';
-import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { PostHogClient } from '@/posthog';
 import type { MockInstance } from 'vitest';
@@ -73,6 +72,7 @@ describe('CredentialsController', () => {
 		mock(), // dbLockService
 		mock(), // eventService
 		mock(), // transactionRunner
+		mock(), // policyEnforcementService
 		credentialDescriptions,
 	);
 
@@ -115,9 +115,7 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		postHogClient.getInstanceFeatureFlags.mockResolvedValue({
-			[CREDENTIAL_DESCRIPTIONS_FLAG]: true,
-		});
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
 		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
 		prepareUpdateDataSpy = vi.spyOn(credentialsService, 'prepareUpdateData');

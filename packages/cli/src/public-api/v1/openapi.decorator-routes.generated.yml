@@ -52,6 +52,8 @@ paths:
   /projects/{projectId}/folders/{folderId}:
     get:
       $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
+    patch:
+      $ref: ./handlers/projects/spec/paths/updateFolder.generated.yml
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml

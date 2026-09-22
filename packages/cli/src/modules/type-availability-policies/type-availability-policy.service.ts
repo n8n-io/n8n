@@ -9,6 +9,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { TypeAvailabilityPolicyAttachmentRepository } from './database/repositories/type-availability-policy-attachment.repository';
@@ -16,6 +17,7 @@ import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/t
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
+import { isPackageInstalled, packageResolverFor } from './package-resolver';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
 	PolicyAction,
@@ -199,6 +201,33 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
+/**
+ * A `package` rule that names a package this instance never loaded can never match anything —
+ * worse than not supporting the rule at all, since it looks like it works. Checked at every
+ * write so a policy is never saved with one.
+ */
+function assertPackagesInstalled(
+	rules: readonly PolicyRule[],
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+): void {
+	const missing = new Set<string>();
+
+	for (const rule of rules) {
+		if (
+			rule.selector.kind === 'package' &&
+			!isPackageInstalled(loadNodesAndCredentials, rule.selector.value)
+		) {
+			missing.add(rule.selector.value);
+		}
+	}
+
+	if (missing.size > 0) {
+		throw new UserError(
+			`Package rule names a package that is not installed: ${[...missing].join(', ')}`,
+		);
+	}
+}
+
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
 function assertNoDuplicateAttachmentSlots(attachments: readonly AttachmentInput[]): void {
 	const seenPolicyIds = new Set<string>();
@@ -234,6 +263,7 @@ export class TypeAvailabilityPolicyService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly eventService: EventService,
 		private readonly cacheService: CacheService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('policy');
@@ -400,7 +430,11 @@ export class TypeAvailabilityPolicyService {
 		rules: readonly PolicyRule[],
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		const warnings = lintRulesForShadowing(rules);
+		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
+		const warnings = lintRulesForShadowing(
+			rules,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+		);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
 
@@ -433,7 +467,11 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		const warnings = lintRulesForShadowing(rules);
+		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
+		const warnings = lintRulesForShadowing(
+			rules,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			let invalidated: PolicyScopeKey[] = [];
@@ -574,6 +612,11 @@ export class TypeAvailabilityPolicyService {
 	 * `getEffectivePolicy`/`setDefaultAction` call, and a scope row is shared by both instance
 	 * and project scope, so this stays reusable without resolving `(kind, projectId)` again.
 	 *
+	 * `kind` scopes that lookup the same way `getPolicyDocument` scopes its own id lookup: a
+	 * caller authorized for one kind (e.g. `credentialTypePolicy:manage`, not
+	 * `nodeTypePolicy:manage`) must not reach a scope of a different kind by id, even with an
+	 * empty or same-kind-only attachment list that `assertAttachableToScope` would not catch.
+	 *
 	 * No `expectedVersion` check: the real `ReplaceAttachmentsDto` from IAM-1328 carries no
 	 * version field (unlike `PutInstancePolicyDto`), so this endpoint is last-write-wins. The
 	 * write still runs in one transaction with the scope's version bump, so a concurrent
@@ -584,6 +627,7 @@ export class TypeAvailabilityPolicyService {
 	 * policies), the same scope → policy order every other write path uses.
 	 */
 	async replaceAttachments(
+		kind: string,
 		scopeId: string,
 		attachments: readonly AttachmentInput[],
 		updatedBy: string,
@@ -591,7 +635,7 @@ export class TypeAvailabilityPolicyService {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeById(scopeId, ctx, true);
+			const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx, true);
 			if (!scope) {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
 			}
@@ -676,8 +720,12 @@ export class TypeAvailabilityPolicyService {
 		warnings: readonly ShadowWarning[];
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
+		assertPackagesInstalled(input.rules, this.loadNodesAndCredentials);
 
-		const warnings = lintRulesForShadowing(input.rules);
+		const warnings = lintRulesForShadowing(
+			input.rules,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -884,7 +932,12 @@ export class TypeAvailabilityPolicyService {
 	): Promise<ComposedVerdict> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
 
-		return evaluateComposedType(instance, project, typeName);
+		return evaluateComposedType(
+			instance,
+			project,
+			typeName,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+		);
 	}
 
 	/**
@@ -917,11 +970,12 @@ export class TypeAvailabilityPolicyService {
 		typeNames: readonly string[],
 	): Promise<ComposedTypeEvaluation> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		return {
 			verdicts: typeNames.map((name) => ({
 				name,
-				...evaluateComposedType(instance, project, name),
+				...evaluateComposedType(instance, project, name, resolvePackage),
 			})),
 			versions: [
 				{ scope: 'instance', version: instance.version },

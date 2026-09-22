@@ -577,6 +577,7 @@ export class AgentWorkflowExecutionService {
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
 		const recordingParams: StartExecutionParams = {
+			access: { accessScope: 'project', ownerId: null },
 			threadId,
 			agentId,
 			agentName: agentData.schema?.name ?? agentData.name,

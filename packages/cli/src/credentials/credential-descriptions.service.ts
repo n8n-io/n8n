@@ -8,8 +8,9 @@ export class CredentialDescriptionsService {
 	constructor(private readonly postHogClient: PostHogClient) {}
 
 	async isEnabled(): Promise<boolean> {
-		const flags = await this.postHogClient.getInstanceFeatureFlags();
-		return flags?.[CREDENTIAL_DESCRIPTIONS_FLAG] === true;
+		return (
+			(await this.postHogClient.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true
+		);
 	}
 
 	/** Remove the field from a response or write payload. Stored values stay intact. */
