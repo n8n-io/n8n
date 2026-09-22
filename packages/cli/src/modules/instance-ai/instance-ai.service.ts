@@ -2540,6 +2540,7 @@ export class InstanceAiService {
 			conversationHistory,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
 			modelId,
 		});
 

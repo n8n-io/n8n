@@ -1582,10 +1582,13 @@ import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/e
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
+import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -5415,6 +5418,8 @@ function createAdapterWithGatewayMock(
 		settingsService?: unknown;
 		getWallet?: Mock;
 		instanceContext?: InstanceContextService;
+		aiPreferenceService?: unknown;
+		logger?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5429,11 +5434,11 @@ function createAdapterWithGatewayMock(
 		{ length: 34 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
 	);
-	args[0] = {
+	args[0] = (overrides?.logger ?? {
 		error: vi.fn(),
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
-	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
+	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
 	args[1] = globalConfigStub();
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
@@ -5465,6 +5470,14 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[32];
 	args[42] = overrides?.instanceContext;
+	if (overrides?.aiPreferenceService) {
+		// Last constructor parameter — extending the array beyond index 33 leaves
+		// every index in between as an unassigned (undefined) hole, same as when
+		// this override is not given.
+		args[45] = overrides.aiPreferenceService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[45];
+	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
@@ -6709,6 +6722,83 @@ describe('createContext — run model wiring', () => {
 		const service = createAdapterWithGatewayMock(vi.fn());
 
 		expect(service.createContext(mockUser).modelId).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — aiPreferenceService
+// ---------------------------------------------------------------------------
+
+describe('createContext: aiPreferenceService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService() {
+		const aiPreferenceService = mock<AiPreferenceService>();
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { aiPreferenceService, logger });
+		return { service, aiPreferenceService, logger };
+	}
+
+	it('is absent when the preferences gate is closed', () => {
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		expect(context.aiPreferenceService).toBeUndefined();
+	});
+
+	it('is present when the gate is open', () => {
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		expect(context.aiPreferenceService).toBeDefined();
+	});
+
+	it('writes with source aia and returns the saved row', async () => {
+		const { service, aiPreferenceService } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(aiPreferenceService.create).toHaveBeenCalledWith(
+			user,
+			{ content: 'Keep replies short.', scope: 'user' },
+			'aia',
+		);
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+	});
+
+	it.each([
+		[new ConflictError('dup'), 'duplicate', 'dup'],
+		[new BadRequestError('cap'), 'scope_full', 'cap'],
+		[new ForbiddenError('no'), 'not_permitted', 'no'],
+		[new Error('boom'), 'failed', 'The preference could not be saved.'],
+	])('maps %s to reason %s without throwing', async (error, reason, message) => {
+		const { service, aiPreferenceService, logger } = buildService();
+		aiPreferenceService.create.mockRejectedValue(error);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
+
+		// The three mapped classes carry their own user-facing text; anything
+		// else keeps its message internal and gets logged instead.
+		expect(result).toEqual({ ok: false, reason, message });
+		if (reason === 'failed') {
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Saving an AI preference from the assistant failed',
+				{ error },
+			);
+		} else {
+			expect(logger.error).not.toHaveBeenCalled();
+		}
 	});
 });
 
