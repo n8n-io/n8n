@@ -32,7 +32,7 @@ interface ReportPayload {
 	label?: string;
 	n8nVersion: string;
 	dataPoints: Array<{ kind: string; name: string; value: number; date?: string }>;
-	licenseCert: string;
+	licenseCert?: string;
 }
 
 const REPORT_DATE = '2026-03-25';
@@ -173,6 +173,15 @@ describe('InstanceReportingService', () => {
 			return sentOptions(http, callIndex).body as unknown as ReportPayload;
 		}
 
+		/** The default headers the client was built with, as the transport receives them. */
+		function clientHeaders(
+			clientOptions: HttpRequestClientOptions | undefined,
+		): Record<string, string | undefined> {
+			const { headers } = clientOptions ?? {};
+
+			return (typeof headers === 'function' ? headers() : headers) ?? {};
+		}
+
 		test('posts the report to the receiver endpoint under the configured base URL', async () => {
 			const { service, http, clientOptions } = makeHarness();
 
@@ -206,7 +215,7 @@ describe('InstanceReportingService', () => {
 			expect(clientOptions?.timeout).toBe(30_000);
 		});
 
-		test('does not follow redirects, so the license certificate reaches only the configured host', async () => {
+		test('does not follow redirects, so the credential reaches only the configured host', async () => {
 			const { service, http } = makeHarness();
 
 			await service.sendReport();
@@ -245,8 +254,9 @@ describe('InstanceReportingService', () => {
 			await service.sendReport();
 
 			expect(body(http).licenseCert).toBe(LICENSE_CERT);
-			// No token: the certificate is the whole credential.
-			expect(clientOptions?.headers).toBeUndefined();
+			// No token: the certificate is the whole credential, and an `undefined`
+			// default header is dropped before the request goes out.
+			expect(clientHeaders(clientOptions).authorization).toBeUndefined();
 		});
 
 		test('reads the certificate fresh for every report, so a renewed license is sent', async () => {
@@ -271,6 +281,35 @@ describe('InstanceReportingService', () => {
 			expect(http.request).not.toHaveBeenCalled();
 			expect(insightsService.getInsightsByTime).not.toHaveBeenCalled();
 			expect(reportRepository.createPending).not.toHaveBeenCalled();
+		});
+
+		describe('with an auth token configured', () => {
+			const tokenConfig = () => makeConfig({ instanceReportingAuthToken: 'secret-token' });
+
+			test('sends the token as a bearer token', () => {
+				const { clientOptions } = makeHarness(tokenConfig());
+
+				expect(clientHeaders(clientOptions).authorization).toBe('Bearer secret-token');
+			});
+
+			test('does not send or read the license certificate', async () => {
+				const { service, http, license } = makeHarness(tokenConfig());
+
+				await service.sendReport();
+
+				expect(body(http)).not.toHaveProperty('licenseCert');
+				expect(license.loadCertStr).not.toHaveBeenCalled();
+			});
+
+			// The token is the whole credential, so an unlicensed instance still reports.
+			test('reports without a license certificate', async () => {
+				const { service, http, license } = makeHarness(tokenConfig());
+				license.loadCertStr.mockResolvedValue('');
+
+				await service.sendReport();
+
+				expect(http.request).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		test('queries the instance owner insights for the reported UTC day', async () => {

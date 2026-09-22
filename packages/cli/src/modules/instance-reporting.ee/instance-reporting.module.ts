@@ -39,9 +39,9 @@ export class InstanceReportingModule implements ModuleInterface {
 			return;
 		}
 
-		if (!(await this.hasLicenseCert())) {
+		if (!(await this.hasCredential())) {
 			logger.warn(
-				'Instance reporting is enabled but this instance has no license certificate, so no reports will be sent. The receiver accepts reports only from licensed instances. Set N8N_LICENSE_CERT or activate a license.',
+				'Instance reporting is enabled but this instance has no license certificate, so no reports will be sent. The receiver accepts reports only from licensed instances. Set N8N_LICENSE_CERT, activate a license, or set N8N_INSTANCE_REPORTING_AUTH_TOKEN.',
 			);
 			return;
 		}
@@ -57,8 +57,8 @@ export class InstanceReportingModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
 	 * Return values:
-	 * { enabled: false } - module loaded but no receiver configured, or no license certificate
-	 * { enabled: true, reportTime: 'HH:mm' } - module loaded, receiver configured, certificate present
+	 * { enabled: false } - module loaded but no receiver configured, or neither an auth token nor a license certificate
+	 * { enabled: true, reportTime: 'HH:mm' } - module loaded, receiver configured, credential present
 	 *
 	 * Built once at startup and cached for the process lifetime.
 	 **/
@@ -82,9 +82,9 @@ export class InstanceReportingModule implements ModuleInterface {
 		return [InstanceMonitoringReport];
 	}
 
-	/** Whether reports are actually sent: a receiver is configured and there is a certificate to authenticate with. */
+	/** Whether reports are actually sent: a receiver is configured and there is a credential to authenticate with. */
 	private async isConfigured(): Promise<boolean> {
-		return (await this.hasReceiver()) && (await this.hasLicenseCert());
+		return (await this.hasReceiver()) && (await this.hasCredential());
 	}
 
 	private async hasReceiver(): Promise<boolean> {
@@ -94,10 +94,14 @@ export class InstanceReportingModule implements ModuleInterface {
 	}
 
 	/**
-	 * The license certificate is the credential the receiver checks, so an
+	 * A configured auth token is a credential on its own. Without one, the
+	 * license certificate is the credential the receiver checks, so an
 	 * unlicensed (community) instance cannot report.
 	 */
-	private async hasLicenseCert(): Promise<boolean> {
+	private async hasCredential(): Promise<boolean> {
+		const { InstanceReportingConfig } = await import('./instance-reporting.config.js');
+		if (Container.get(InstanceReportingConfig).instanceReportingAuthToken !== '') return true;
+
 		const { License } = await import('@/license.js');
 
 		return (await Container.get(License).loadCertStr()) !== '';

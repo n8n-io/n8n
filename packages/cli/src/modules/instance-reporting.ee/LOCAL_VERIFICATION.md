@@ -15,7 +15,9 @@ the test.
 - The receiver runs on `http://127.0.0.1:3456` and answers `POST
   /api/v1/instance-reports` with **201** on success. Any other status counts as
   a rejection.
-- The receiver trusts the license certificate this instance sends. The
+- The receiver trusts the license certificate this instance sends. This applies
+  to the default run; with `N8N_INSTANCE_REPORTING_AUTH_TOKEN` set (scenario
+  5.4c) no certificate is needed. The
   instance sends whatever `N8N_LICENSE_CERT` holds, so either use a real
   n8n-issued certificate, or a certificate minted by a development CA that the
   receiver is configured to trust (see the receiver's `mock-license` tooling
@@ -144,7 +146,7 @@ ahead and the tick correctly skips.
 **Receiver side.** The receiver must log one `POST /api/v1/instance-reports`
 with:
 
-- no `Authorization` header
+- no `Authorization` header (the token is unset in this run)
 - `licenseCert`: the exact value of `N8N_LICENSE_CERT`
 - `instanceId`: a 64-character hex string, equal to the instance id in
   `~/.n8n/config`
@@ -181,7 +183,8 @@ Run these after step 4. Each is short.
 | 5.2 | Retry resends the same measurement | Make the receiver answer 500. Delete today's delivered row, then restart | Request arrives, `lastError` holds `rejected with status 500`, `deliveredAt` NULL, `attempts` grows. Retries land ~5 minutes apart, 3 attempts in total, then `Giving up on the instance report for today`. Every retry carries the **same** `batchId` and the same values — no re-measurement |
 | 5.3 | Recovery keeps the pending row | During 5.2, switch the receiver back to 201 before the third attempt | The next attempt reuses the pending row and marks it delivered. No second row for the day |
 | 5.4 | Untrusted certificate | Set `N8N_LICENSE_CERT` to a certificate the receiver does not trust (any well-formed one from another CA), clear today's row, restart | The receiver answers 401, delivery fails, `lastError` names the status. Nothing is marked delivered |
-| 5.4b | No certificate | On an instance with no activated license, unset `N8N_LICENSE_CERT`, clear today's row, restart | Warning `no license certificate, so no reports will be sent`; no timer, no request, no row |
+| 5.4b | No certificate | Unset `N8N_LICENSE_CERT`, clear today's row, restart | Warning `no license certificate, so no reports will be sent`; no timer, no request, no row |
+| 5.4c | Token set | Set `N8N_INSTANCE_REPORTING_AUTH_TOKEN` to a token the receiver accepts, unset `N8N_LICENSE_CERT`, clear today's row, restart | No certificate warning. The request carries `Authorization: Bearer <token>` and the body has no `licenseCert`. The receiver answers 201 and the row is marked delivered |
 | 5.5 | Non-201 success code is a failure | Make the receiver answer 200 | Treated as a rejection: `Instance report was rejected with status 200` |
 | 5.6 | Receiver down | Stop the receiver, clear today's row, restart | Delivery fails with a connection error in `lastError`; the instance stays healthy and keeps serving |
 | 5.7 | Redirect is not followed | Make the receiver answer 302 to another local port | The report is rejected with status 302. The second port never sees the license certificate |

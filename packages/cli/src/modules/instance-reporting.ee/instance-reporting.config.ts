@@ -16,4 +16,13 @@ export class InstanceReportingConfig {
 	 */
 	@Env('N8N_INSTANCE_REPORTING_BASE_URL')
 	instanceReportingBaseUrl: string = '';
+
+	/**
+	 * Optional. When set, it is sent as `Authorization: Bearer …` and the license
+	 * certificate is not sent. Leave unset to authenticate with the certificate.
+	 *
+	 * @beta - breaking changes may still occur
+	 */
+	@Env('N8N_INSTANCE_REPORTING_AUTH_TOKEN')
+	instanceReportingAuthToken: string = '';
 }

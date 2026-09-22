@@ -68,6 +68,12 @@ export class InstanceReportingService {
 			// collector, so the URL is never user-controlled.
 			useDefaultSsrfPolicy: 'unsafe',
 			baseURL: this.config.instanceReportingBaseUrl.replace(/\/+$/, ''),
+			// An unset token drops the header; the license certificate is the credential then.
+			headers: () => ({
+				authorization: this.config.instanceReportingAuthToken
+					? `Bearer ${this.config.instanceReportingAuthToken}`
+					: undefined,
+			}),
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
@@ -89,14 +95,17 @@ export class InstanceReportingService {
 	 * daily point while every sample sits 24 hours apart; re-measuring hours later
 	 * would stretch one interval and skew the whole series.
 	 *
-	 * The license certificate is the credential: the receiver accepts a report
-	 * only from an instance that holds a certificate n8n issued.
+	 * The credential is the license certificate, sent in the body, unless a
+	 * bearer token is configured; then the token goes in the header and the
+	 * certificate is not sent at all.
 	 *
 	 * @throws when delivery fails, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
-		const licenseCert = await this.license.loadCertStr();
-		if (!licenseCert) {
+		const licenseCert = this.config.instanceReportingAuthToken
+			? undefined
+			: await this.license.loadCertStr();
+		if (licenseCert === '') {
 			this.logger.warn(
 				'Skipping the instance report because this instance has no license certificate.',
 			);
@@ -133,7 +142,7 @@ export class InstanceReportingService {
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
 			n8nVersion: N8N_VERSION,
 			dataPoints: report.dataPoints,
-			licenseCert,
+			...(licenseCert ? { licenseCert } : {}),
 		};
 
 		try {
@@ -145,7 +154,7 @@ export class InstanceReportingService {
 				returnFullResponse: true,
 				// Inspect the status here rather than catching a generic request error.
 				ignoreHttpStatusErrors: true,
-				// A redirect would forward the license certificate to whatever host it names.
+				// A redirect would forward the credential to whatever host it names.
 				disableFollowRedirect: true,
 			});
 
