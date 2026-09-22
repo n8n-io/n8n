@@ -151,7 +151,7 @@ function toLegacyFilter(
 	return blockedTools.length > 0 ? { mode: 'exclude', tools: blockedTools } : null;
 }
 
-export class MigrateMcpToolPermissions1790001072656 implements ReversibleMigration {
+export class MigrateMcpToolPermissions1790100563525 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		try {
 			await this.migratePermissions(ctx);
@@ -225,8 +225,7 @@ export class MigrateMcpToolPermissions1790001072656 implements ReversibleMigrati
 					const path = `instance_ai_mcp_registry_connections.${row.id}.toolFilter`;
 					let converted: ToolPermissions;
 					try {
-						const filter =
-							row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
+						const filter = row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
 						converted = convertConnectionPolicy(
 							filter,
 							defaultPolicy,
