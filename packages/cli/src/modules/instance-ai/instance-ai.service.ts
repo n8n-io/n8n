@@ -2447,7 +2447,7 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
-			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
