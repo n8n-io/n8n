@@ -304,14 +304,14 @@ describe('Users in Public API', () => {
 			await expect(getUserById(member.id)).rejects.toThrow();
 		});
 
-		it('if the identifier is neither a valid ID nor a valid email, should reject', async () => {
+		it('if the id is not a valid UUID, should reject', async () => {
 			const owner = await createOwnerWithApiKey();
 
 			const response = await testServer.publicApiAgentFor(owner).delete('/users/not-an-id');
 
 			expect(response.status).toBe(400);
 			expect(response.body).toStrictEqual({
-				message: 'request/params/userId must be a valid ID or email',
+				message: 'request/params/userId must be a valid ID',
 			});
 		});
 	});
@@ -373,7 +373,7 @@ describe('Users in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
-		it('if the identifier is neither a valid ID nor a valid email, should reject', async () => {
+		it('if the id is not a valid UUID, should reject', async () => {
 			testServer.license.enable('feat:advancedPermissions');
 			const owner = await createOwnerWithApiKey();
 			const payload = { newRoleName: 'global:admin' };
@@ -385,7 +385,7 @@ describe('Users in Public API', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body).toStrictEqual({
-				message: 'request/params/userId must be a valid ID or email',
+				message: 'request/params/userId must be a valid ID',
 			});
 		});
 
