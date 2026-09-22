@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue';
 import type { PromotionBindingConsumer, ContinueApplyPackageDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { continueApplyPackage } from '../promotionsApply.api';
+import { continueApplyPromotion } from '../promotionsSettings.api';
 import type {
 	BlockedApplyResult,
 	CreatedPromotionBinding,
@@ -192,7 +192,7 @@ export function usePromotionBindings() {
 		isSubmitting.value = true;
 		error.value = null;
 		try {
-			const result = await continueApplyPackage(rootStore.publicApiContext, connectionId, {
+			const result = await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 				expectedSource: { ...expectedSource },
 			});
 			if (currentSession !== session) return;

@@ -2,7 +2,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ResponseError } from '@n8n/rest-api-client';
 import type { ApplyPackageResultDto } from '@n8n/api-types';
 import { promotionBindingKey, usePromotionBindings } from './usePromotionBindings';
-import { continueApplyPackage } from '../promotionsApply.api';
+import { continueApplyPromotion } from '../promotionsSettings.api';
 import {
 	applied,
 	blocked,
@@ -16,7 +16,7 @@ import type { CreatedPromotionBinding, MissingPromotionBinding } from '../promot
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' } }),
 }));
-vi.mock('../promotionsApply.api');
+vi.mock('../promotionsSettings.api');
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -98,7 +98,7 @@ it('guards creation and Continue while the editor is open and recovers after fai
 	await session.createBinding(promotionBindingKey(credential), create);
 	await session.continueApply();
 	expect(create).toHaveBeenCalledTimes(1);
-	expect(continueApplyPackage).not.toHaveBeenCalled();
+	expect(continueApplyPromotion).not.toHaveBeenCalled();
 	expect(session.isCreating.value).toBe(true);
 	pending.reject(new Error('Save failed'));
 	await first;
@@ -130,7 +130,7 @@ it.each(['access', 'conflict'] as const)('blocks Continue for %s requirements', 
 	expect(session.canContinue.value).toBe(false);
 	expect(session.unresolvedCount.value).toBe(1);
 	await session.continueApply();
-	expect(continueApplyPackage).not.toHaveBeenCalled();
+	expect(continueApplyPromotion).not.toHaveBeenCalled();
 });
 
 it('counts credentials with the same name and different types separately', () => {
@@ -155,15 +155,15 @@ it('counts credentials with the same name and different types separately', () =>
 
 it('submits once with the original source and allows warnings', async () => {
 	const pending = createDeferredPromise<ApplyPackageResultDto>();
-	vi.mocked(continueApplyPackage).mockReturnValue(pending.promise);
+	vi.mocked(continueApplyPromotion).mockReturnValue(pending.promise);
 	const session = usePromotionBindings();
 	const result = blocked({ missingBindings: [], warnings: applied.warnings });
 	session.start(result);
 	expect(session.canContinue.value).toBe(true);
 	const first = session.continueApply();
 	await session.continueApply();
-	expect(continueApplyPackage).toHaveBeenCalledTimes(1);
-	expect(continueApplyPackage).toHaveBeenCalledWith(
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
 		{ baseUrl: '/custom/api/v1' },
 		result.connectionId,
 		{ expectedSource: { configId: result.configId, ...result.git } },
@@ -172,7 +172,7 @@ it('submits once with the original source and allows warnings', async () => {
 	expect(await first).toBe(applied);
 	expect(session.canContinue.value).toBe(false);
 	await session.continueApply();
-	expect(continueApplyPackage).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 });
 
 it('replaces blockers and preserves saved rows after another blocked result', async () => {
@@ -190,7 +190,7 @@ it('replaces blockers and preserves saved rows after another blocked result', as
 		accessRequirements: [{ ...credential, sourceId: 'other-credential', code: 'access-required' }],
 		warnings: applied.warnings,
 	});
-	vi.mocked(continueApplyPackage).mockResolvedValue(next);
+	vi.mocked(continueApplyPromotion).mockResolvedValue(next);
 	await session.continueApply();
 	expect(session.preflight.value).toBe(next.preflight);
 	expect(session.originalResult.value).toBe(result);
@@ -211,12 +211,12 @@ it('stops after a source change without retrying', async () => {
 		status: 'source-changed' as const,
 		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 	};
-	vi.mocked(continueApplyPackage).mockResolvedValue(changed);
+	vi.mocked(continueApplyPromotion).mockResolvedValue(changed);
 	expect(await session.continueApply()).toBe(changed);
 	expect(session.sourceChanged.value).toBe(true);
 	expect(session.originalResult.value).toBe(initial);
 	await session.continueApply();
-	expect(continueApplyPackage).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 });
 
 it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 403 })])(
@@ -225,12 +225,12 @@ it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 
 		const session = usePromotionBindings();
 		session.start(blocked());
 		await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
-		vi.mocked(continueApplyPackage).mockRejectedValue(error);
+		vi.mocked(continueApplyPromotion).mockRejectedValue(error);
 		await session.continueApply();
 		expect(session.error.value).toBe('continue');
 		expect(session.savedResources.value).toEqual([savedCredential]);
 		expect(session.canContinue.value).toBe(true);
-		expect(continueApplyPackage).toHaveBeenCalledTimes(1);
+		expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 	},
 );
 

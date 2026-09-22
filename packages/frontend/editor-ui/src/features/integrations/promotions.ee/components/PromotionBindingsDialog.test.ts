@@ -4,7 +4,7 @@ import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ApplyPackageResultDto } from '@n8n/api-types';
 import PromotionBindingsDialog from './PromotionBindingsDialog.vue';
-import { continueApplyPackage } from '../promotionsApply.api';
+import { continueApplyPromotion } from '../promotionsSettings.api';
 import {
 	applied,
 	blocked,
@@ -17,7 +17,7 @@ import {
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' } }),
 }));
-vi.mock('../promotionsApply.api');
+vi.mock('../promotionsSettings.api');
 
 const renderComponent = createComponentRenderer(PromotionBindingsDialog);
 
@@ -75,7 +75,7 @@ it('shows all projects, scopes, and blocker reasons without exposing source valu
 
 it('creates the original binding, restores focus, and emits the full applied result', async () => {
 	const createBinding = vi.fn().mockResolvedValue(savedCredential);
-	vi.mocked(continueApplyPackage).mockResolvedValue(applied);
+	vi.mocked(continueApplyPromotion).mockResolvedValue(applied);
 	const { getAllByRole, getByRole, getAllByText, emitted } = await renderDialog({
 		props: { open: true, blockedResult: blocked(), createBinding },
 	});
@@ -108,13 +108,13 @@ it.each(['Close', 'Close dialog', 'Back', 'Escape'] as const)(
 		else await userEvent.click(getByRole('button', { name: action }));
 		expect(emitted('close-requested')).toEqual([[[savedCredential]]]);
 		expect(emitted('update:open')).toEqual([[false]]);
-		expect(continueApplyPackage).not.toHaveBeenCalled();
+		expect(continueApplyPromotion).not.toHaveBeenCalled();
 	},
 );
 
 it('blocks dismissal and repeated form submissions while Continue is pending', async () => {
 	const pending = createDeferredPromise<ApplyPackageResultDto>();
-	vi.mocked(continueApplyPackage).mockReturnValue(pending.promise);
+	vi.mocked(continueApplyPromotion).mockReturnValue(pending.promise);
 	const { getByRole, queryByRole, emitted } = await renderDialog({
 		props: { open: true, blockedResult: blocked({ missingBindings: [] }), createBinding: vi.fn() },
 	});
@@ -127,7 +127,7 @@ it('blocks dismissal and repeated form submissions while Continue is pending', a
 	expect(getByRole('button', { name: 'Close' })).toBeDisabled();
 	expect(queryByRole('button', { name: 'Close dialog' })).not.toBeInTheDocument();
 	expect(emitted('update:open')).toBeUndefined();
-	expect(continueApplyPackage).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 	pending.resolve(applied);
 	await waitFor(() => expect(emitted('applied')).toEqual([[applied]]));
 });
@@ -140,7 +140,7 @@ it('returns a changed source to the caller and stops the session', async () => {
 		configId: initial.configId,
 		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 	};
-	vi.mocked(continueApplyPackage).mockResolvedValue(result);
+	vi.mocked(continueApplyPromotion).mockResolvedValue(result);
 	const { getByRole, getByText, emitted } = await renderDialog({
 		props: { open: true, blockedResult: initial, createBinding: vi.fn() },
 	});
@@ -148,11 +148,11 @@ it('returns a changed source to the caller and stops the session', async () => {
 	expect(emitted('source-changed')).toEqual([[result]]);
 	expect(getByText(/The source changed/)).toBeInTheDocument();
 	expect(getByRole('button', { name: 'Continue' })).toBeDisabled();
-	expect(continueApplyPackage).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 });
 
 it('shows recovery guidance after a request fails and keeps the saved row', async () => {
-	vi.mocked(continueApplyPackage).mockRejectedValue(new Error('Offline'));
+	vi.mocked(continueApplyPromotion).mockRejectedValue(new Error('Offline'));
 	const { getByRole, getByText } = await renderDialog({
 		props: {
 			open: true,
