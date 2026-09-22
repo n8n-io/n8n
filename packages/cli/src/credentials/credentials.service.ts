@@ -1681,9 +1681,12 @@ export class CredentialsService {
 				// are required for decrypting the data.
 				await this.getSharing(user, credentialId, [
 					'credential:read',
-					// TODO: Enable this once the scope exists and has been added to the
-					// global:owner role.
-					// 'credential:decrypt',
+					// Decryption needs edit rights, exactly as the enterprise path requires.
+					// A see-only instance role holds read but not update, so it falls
+					// through to the metadata-only lookup below.
+					'credential:update',
+					// TODO: Replace credential:update with credential:decrypt once the scope
+					// exists and has been added to the global:owner role.
 				])
 			: null;
 

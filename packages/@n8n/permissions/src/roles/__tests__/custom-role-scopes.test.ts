@@ -1,4 +1,5 @@
 import { API_KEY_RESOURCES } from '@/constants.ee';
+import type { Scope } from '@/types.ee';
 import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
 	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
@@ -215,7 +216,7 @@ describe('custom role scope whitelists', () => {
 		// instance, `manageInstance` is a separate lane for provider connections,
 		// `createEndUser` is an owner-level *project* capability, and `connect` is
 		// per-user and per-credential.
-		const excluded = [
+		const excluded: Scope[] = [
 			'credential:shareGlobally',
 			'credential:manageInstance',
 			'credential:createEndUser',
@@ -403,12 +404,17 @@ describe('`credential:use` is global-only by construction', () => {
 		expect(API_KEY_RESOURCES.credential).not.toContain('use');
 	});
 
-	it('is the one credential scope the two custom-role whitelists do not share', () => {
+	it('is the one global credential scope absent from the project whitelist', () => {
 		// The 'scopes are partitioned by role type' test above only asserts
 		// workflow:create and user:create, so a credential scope living in both
-		// whitelists does not fail it. Most do live in both, by design: the same right
-		// can be granted per project and instance-wide. `credential:use` is the
-		// exception, and the enforcement split depends on it staying so.
+		// whitelists does not fail it. Most credential scopes live in both by design:
+		// the same right can be granted per project and instance-wide. `credential:use`
+		// is the only global one that does not, and the enforcement split depends on it
+		// staying so.
+		//
+		// The reverse direction is not claimed here — `credential:connect` and
+		// `credential:createEndUser` are project-only, deliberately excluded from every
+		// instance-role option (see the comment on the credential group).
 		const credentialScopesInBoth = [...GLOBAL_CUSTOM_ROLE_SCOPES].filter(
 			(scope) => scope.startsWith('credential:') && PROJECT_CUSTOM_ROLE_SCOPES.has(scope),
 		);

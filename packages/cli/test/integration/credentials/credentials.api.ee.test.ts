@@ -14,9 +14,11 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
@@ -1551,6 +1553,15 @@ describe('instance role with credential visibility but not use', () => {
 	const VIEW_SCOPES = ['credential:list', 'credential:read'];
 	const USE_SCOPES = [...VIEW_SCOPES, 'credential:use'];
 
+	// Stand in for the real tester so the assertions stay a permission signal and
+	// never reach the network.
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
 	const agentForRoleWith = async (scopeSlugs: string[]) => {
 		const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'global' });
 		const user = await createUser({ role });
@@ -1609,6 +1620,7 @@ describe('instance role with credential visibility but not use', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+		expect(mockCredentialsTester.testCredentials).not.toHaveBeenCalled();
 	});
 
 	test('POST /credentials/:id/probe is refused', async () => {
@@ -1634,6 +1646,10 @@ describe('instance role with credential visibility but not use', () => {
 	});
 
 	test('adding credential:use lets the credential be tested', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
 		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 		const { agent } = await agentForRoleWith(USE_SCOPES);
 
@@ -1646,6 +1662,7 @@ describe('instance role with credential visibility but not use', () => {
 			},
 		});
 
-		expect(response.statusCode).not.toBe(403);
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
 	});
 });

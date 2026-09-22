@@ -671,21 +671,22 @@ describe('CredentialsPermissionChecker', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(
 				mock<User>({ role: viewOnlyRole }),
 			);
-			projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce(['project-1']);
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
 			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
 
 			const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
 
 			expect(result.inaccessibleIds).toEqual([credentialId]);
-			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalled();
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+				[personalProject.id],
+				[credentialId],
+			);
 		});
 
 		it('check throws for a view-only home project owner whose credential is not shared', async () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(
 				mock<User>({ role: viewOnlyRole }),
 			);
-			projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce(['project-1']);
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
 			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
 

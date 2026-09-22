@@ -23,7 +23,7 @@ import {
 	type Role,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import {
@@ -34,6 +34,7 @@ import {
 	type ICredentialType,
 	type INodeProperties,
 } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -1206,6 +1207,78 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
 				id: instanceCredential.id,
 				usageScope: 'instance',
+			});
+		});
+
+		describe('decryption gate', () => {
+			// `getOne` is the non-enterprise path, taken when sharing is unlicensed. It
+			// decrypts only when `getSharing` matches on both `credential:read` and
+			// `credential:update`, exactly as the enterprise path does. A see-only
+			// instance role holds read but not update, so it gets metadata only.
+			const credentialOwner = mock<User>({ id: 'cred-owner-id', role: GLOBAL_MEMBER_ROLE });
+			const credential = mock<CredentialsEntity>({
+				id: 'shared-credential',
+				data: 'encrypted-data',
+				isResolvable: false,
+			});
+			const sharing = mock<SharedCredentials>({ credentials: credential });
+			const decryptedData = { clientSecret: 'plaintext-secret' };
+
+			let decryptSpy: MockInstance<CredentialsService['decrypt']>;
+
+			beforeEach(() => {
+				decryptSpy = vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+
+				// Stand in for the database: `getSharing` drops the ownership filter when
+				// the caller holds every global scope it asked for, so an unfiltered
+				// lookup matches, and a filtered one matches only for the owner.
+				sharedCredentialsRepository.findOne.mockImplementation(async (options) => {
+					const where = options.where as FindOptionsWhere<SharedCredentials>;
+					if (where.role !== 'credential:owner') return sharing;
+					const { projectRelations } = where.project as {
+						projectRelations: { userId: string };
+					};
+					return projectRelations.userId === credentialOwner.id ? sharing : null;
+				});
+			});
+
+			afterEach(() => {
+				decryptSpy.mockRestore();
+			});
+
+			it('withholds the secret from a role with global read but not update', async () => {
+				const result = await service.getOne(viewOnlyUser, credential.id, true);
+
+				expect(result).not.toHaveProperty('data');
+				expect(decryptSpy).not.toHaveBeenCalled();
+				// The decrypt lookup asked for update as well, which this role lacks, so
+				// it fell back to the ownership filter and matched nothing.
+				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({
+						where: expect.objectContaining({ role: 'credential:owner' }),
+					}),
+				);
+			});
+
+			it('returns the secret to a role with both global scopes', async () => {
+				const result = await service.getOne(ownerUser, credential.id, true);
+
+				expect(result).toMatchObject({ data: decryptedData });
+				expect(decryptSpy).toHaveBeenCalledWith(credential);
+				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({
+						where: expect.not.objectContaining({ role: 'credential:owner' }),
+					}),
+				);
+			});
+
+			it('returns the secret to the credential owner without any global scope', async () => {
+				const result = await service.getOne(credentialOwner, credential.id, true);
+
+				expect(result).toMatchObject({ data: decryptedData });
+				expect(decryptSpy).toHaveBeenCalledWith(credential);
 			});
 		});
 	});
