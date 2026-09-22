@@ -61,6 +61,7 @@ const SCOPE_BY_NAMESPACE = {
 /** Namespaces oxlint can only reach through a jsPlugin, so ids stay as ESLint wrote them. */
 const JS_PLUGIN_NAMESPACES = new Set([
 	'@stylistic',
+	'import-x-alias',
 	'lodash',
 	'unused-imports',
 	'n8n-local-rules',
@@ -77,13 +78,17 @@ function oxlintRuleIds() {
 		encoding: 'utf8',
 		maxBuffer: 32 * 1024 * 1024,
 	});
-	const start = out.stdout.indexOf('[');
+	const arrayLine = out.stdout.lastIndexOf('\n[');
+	const start = arrayLine === -1 ? out.stdout.indexOf('[') : arrayLine + 1;
 	if (start === -1) throw new Error(`oxlint --rules failed: ${(out.stderr || out.stdout).trim()}`);
 	return new Set(JSON.parse(out.stdout.slice(start)).map((r) => `${r.scope}/${r.value}`));
 }
 
 /** ESLint id -> the oxlint id we would write in a config, or null if oxlint has no such rule. */
 function toOxlintId(eslintId, native) {
+	if (eslintId === 'import-x/no-extraneous-dependencies') {
+		return 'import-x-alias/no-extraneous-dependencies';
+	}
 	const [ns, name] = splitId(eslintId);
 	if (JS_PLUGIN_NAMESPACES.has(ns)) return eslintId;
 	if (ns === '') return native.has(`eslint/${name}`) ? name : null;

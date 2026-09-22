@@ -135,6 +135,7 @@ export class AgentChatController {
 				projectId,
 				user: req.user,
 				sessionId,
+				previewChat: true,
 				credentialProvider,
 			});
 			if (abortSignal.aborted) return;
@@ -319,7 +320,7 @@ export class AgentChatController {
 					undefined
 				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
 					(!thread &&
-						!(await this.agentExecutionService.canUsePreviewThread(
+						!(await this.agentExecutionService.canUseDraftThread(
 							threadId,
 							projectId,
 							agentId,
@@ -346,7 +347,7 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
-			!(await this.agentExecutionService.canUsePreviewThread(
+			!(await this.agentExecutionService.canUseDraftThread(
 				chatThreadId(agentId, req.user.id),
 				projectId,
 				agentId,
@@ -436,7 +437,7 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
-			!(await this.agentExecutionService.canUsePreviewThread(
+			!(await this.agentExecutionService.canUseDraftThread(
 				chatThreadId(agentId, req.user.id),
 				projectId,
 				agentId,

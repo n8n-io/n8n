@@ -21,13 +21,6 @@
 		"impact": "Near zero.",
 		"replacement": "No action unless non-module source becomes supported."
 	},
-	"import-x/no-extraneous-dependencies": {
-		"layer": "base",
-		"native": null,
-		"reason": "`import-x` is a reserved plugin name in oxlint, so `eslint-plugin-import-x` cannot load as a jsPlugin under its own name (`Plugin name 'import-x' is reserved`). An alias would permanently change the rule ids, and these rules are the slowest in ESLint and unvalidated through the alpha bridge.",
-		"impact": "A package can import a dependency it does not declare. Left out of the spike deliberately.",
-		"replacement": "Validate eslint-plugin-import-x with an alias, or replace the dependency check with a native package-manifest rule."
-	},
 	"typescript/prefer-optional-chain": {
 		"layer": "base",
 		"native": "typescript/prefer-optional-chain",

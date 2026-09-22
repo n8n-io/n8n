@@ -16,7 +16,3 @@ WorkflowList:
   $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
-UserList:
-  $ref: './../../../handlers/users/spec/schemas/userList.yml'
-User:
-  $ref: './../../../handlers/users/spec/schemas/user.yml'

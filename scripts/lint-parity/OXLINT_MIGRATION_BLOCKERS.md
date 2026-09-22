@@ -1,6 +1,6 @@
 # Oxlint migration blockers
 
-Last reviewed: 2026-09-18  
+Last reviewed: 2026-09-22
 Oxlint version: 1.78.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
@@ -21,7 +21,6 @@ These rules come from the shared base or backend layers. Resolve these first bec
 
 | Priority | Rule | Blocker | Suggested next action |
 | --- | --- | --- | --- |
-| P0 | `import-x/no-extraneous-dependencies` | Oxlint reserves the `import-x` plugin name. The JS plugin bridge has not been validated with an alias. | Test `eslint-plugin-import-x` under an alias. If that is unstable, implement a native package-manifest check. |
 | P1 | `no-restricted-syntax` | Oxlint has no AST-selector rule. The base layer uses it for the raw-enum restriction. | Add a purpose-built syntax rule for each active selector. Start with the raw-enum rule. |
 | P1 | `typescript/consistent-type-imports` | Oxlint does not honor the `emitDecoratorMetadata` exception. Its fixer can remove imports that DI needs at runtime. | Wait for upstream support or add a tested shim that skips decorated files. Do not enable the current fixer. |
 | P1 | `typescript/prefer-optional-chain` | The native nursery rule changes guarded undeclared globals incorrectly. | Re-test after the rule leaves nursery or after the upstream fixer issue is resolved. |
@@ -150,13 +149,12 @@ The main exceptions are:
 
 ## Work order
 
-1. Resolve or isolate `import-x/no-extraneous-dependencies`.
-2. Replace active `no-restricted-syntax` selectors with focused rules.
-3. Resolve decorator-safe `consistent-type-imports` behavior.
-4. Audit and reduce `naming-convention` package overrides.
-5. Re-test the two nursery rules.
-6. Run a JS-plugin bridge spike for `n8n-nodes-base`.
-7. Keep a template-only ESLint pass for Vue until native template support exists.
+1. Replace active `no-restricted-syntax` selectors with focused rules.
+2. Resolve decorator-safe `consistent-type-imports` behavior.
+3. Audit and reduce `naming-convention` package overrides.
+4. Re-test the two nursery rules.
+5. Run a JS-plugin bridge spike for `n8n-nodes-base`.
+6. Keep a template-only ESLint pass for Vue until native template support exists.
 
 ## Validation commands
 
