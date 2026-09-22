@@ -23,6 +23,15 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	INSTANCE_AI: 'instance_ai',
 	'': '',
 };
+
+export function isNodeCreatorOpenFromConnection(source: NodeCreatorOpenSource) {
+	return [
+		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+	].includes(source);
+}
+
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const HUMAN_IN_THE_LOOP_CATEGORY = 'HITL';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
