@@ -73,6 +73,20 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
+	// `extendsCredential` is the only record that a node came from the app/service picker, and
+	// nothing re-derives it, so it has to survive the write intact.
+	test('keeps extendsCredential on a node', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			nodes: [{ ...validPayload.nodes[0], extendsCredential: 'datadogApi' }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.nodes[0].extendsCredential).toBe('datadogApi');
+		}
+	});
+
 	test.each([
 		['accepts', 155, true],
 		['rejects', 156, false],

@@ -51,6 +51,11 @@ const workflowNodeWritePublicSchema = z
 			.object({ tag: z.array(customTelemetryTagPublicSchema).optional() })
 			.strict()
 			.optional(),
+		// Set by the editor on credential-only HTTP Request nodes, and the only record that a node
+		// came from the app/service picker: the editor reads it back to redraw the node under its
+		// app-specific type. Nothing re-derives it, so it must survive a write or the node silently
+		// degrades to a generic HTTP Request node.
+		extendsCredential: z.string().optional(),
 		createdAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 		updatedAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 	})
