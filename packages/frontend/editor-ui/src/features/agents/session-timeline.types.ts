@@ -1,4 +1,5 @@
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
 
 export type EventKind =
 	| 'user'
@@ -87,5 +88,5 @@ export type FilterOption =
 	| (BaseFilterOption & { presentation: 'swatch'; color: string })
 	| (BaseFilterOption & {
 			presentation: 'badge';
-			badgeTheme: 'outline' | 'success' | 'danger';
+			badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 	  });

@@ -1243,10 +1243,7 @@ onMounted(async () => {
 																:disabled="!renderMovedTooltip(row.file)"
 																placement="top"
 															>
-																<N8nBadge
-																	:variant="getStatusTheme(row.file.status)"
-																	style="height: 25px"
-																>
+																<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
 																	{{ getStatusText(row.file.status) }}
 																</N8nBadge>
 															</N8nTooltip>

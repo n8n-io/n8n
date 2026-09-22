@@ -9,7 +9,7 @@ import {
 	N8nBadge,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { ElSkeletonItem } from 'element-plus';
 import { ALLOWED_AGENT_FILE_EXTENSIONS, type AgentFileDto } from '@n8n/api-types';
 
@@ -164,7 +164,7 @@ function onFilesSelected(event: Event) {
 						</td>
 						<td :class="$style.originCell" data-testid="agent-file-origin">
 							<N8nBadge leading-icon="user" data-testid="agent-file-origin-pill">
-								{{ i18n.baseText('agents.builder.files.origin.user' as BaseTextKey) }}
+								{{ i18n.baseText('agents.builder.files.origin.user') }}
 							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-testid="agent-file-created-at">

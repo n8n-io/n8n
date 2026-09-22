@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { N8nBadge, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nText, type BadgeVariant } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { TestRunRecord } from '../../evaluation.api';
 import { averageNormalizedScore } from '../../evaluation.utils';
 
-const STATUS_PILL_THEME: Record<string, 'success' | 'warning' | 'danger' | 'outline'> = {
+const STATUS_PILL_THEME: Record<
+	string,
+	Extract<BadgeVariant, 'success' | 'warning' | 'danger' | 'outline'>
+> = {
 	completed: 'success',
 	running: 'outline',
 	new: 'outline',

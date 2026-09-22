@@ -125,7 +125,7 @@ const scrollRight = () => scroll(50);
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewBadge v-if="option.preview" />
+							<PreviewBadge v-if="option.preview" :class="$style.badge" />
 							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 						</div>
 					</a>
@@ -139,7 +139,7 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewBadge v-if="option.preview" />
+						<PreviewBadge v-if="option.preview" :class="$style.badge" />
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</RouterLink>
 					<div
@@ -175,7 +175,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewBadge v-if="option.preview" />
+						<PreviewBadge v-if="option.preview" :class="$style.badge" />
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>

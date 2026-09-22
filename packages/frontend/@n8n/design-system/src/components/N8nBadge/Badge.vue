@@ -73,6 +73,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/utils';
 
 .badge {
 	display: inline-flex;
@@ -99,9 +100,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 }
 
 .label {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	@include utils.utils-ellipsis;
 }
 
 .clickable {
@@ -110,12 +109,10 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 	&:not(:disabled):hover {
 		background-color: color-mix(in srgb, var(--n8n-badge--background), black 5%);
-		border-color: color-mix(in srgb, var(--n8n-badge--background), black 5%);
 	}
 
 	&:not(:disabled):active {
 		background-color: color-mix(in srgb, var(--n8n-badge--background), black 10%);
-		border-color: color-mix(in srgb, var(--n8n-badge--background), black 10%);
 	}
 
 	&:disabled {
@@ -156,6 +153,12 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 .xlarge {
 	--n8n-badge--height: var(--height--xl);
 	--n8n-badge--padding: var(--spacing--sm);
+}
+
+.filled {
+	--n8n-badge--background: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+	--n8n-badge--border-color: var(--n8n-badge--background);
+	--n8n-badge--text-color: var(--text-color--subtle);
 }
 
 .primary {

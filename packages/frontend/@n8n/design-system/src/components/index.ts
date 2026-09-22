@@ -51,6 +51,8 @@ export type {
 export { default as N8nAlert } from './N8nAlert';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
+export { BADGE_SIZE, BADGE_VARIANT } from './N8nBadge/Badge.type';
+export type { BadgeProps, BadgeSize, BadgeVariant } from './N8nBadge/Badge.type';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
 export { default as N8nSetupPanel } from './N8nSetupPanel/SetupPanel.vue';

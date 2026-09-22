@@ -3,7 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TestTableColumn } from './TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { N8nBadge, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nTooltip, type BadgeVariant } from '@n8n/design-system';
 defineProps<{
 	column: TestTableColumn<T>;
 	row: T & { status: string };
@@ -39,7 +39,7 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 // FIXME: move status logic to a parent component
 const statusThemeMap: Record<
 	string,
-	'primary' | 'secondary' | 'outline' | 'warning' | 'danger' | 'success'
+	Extract<BadgeVariant, 'primary' | 'secondary' | 'outline' | 'warning' | 'danger' | 'success'>
 > = {
 	new: 'outline',
 	running: 'warning',

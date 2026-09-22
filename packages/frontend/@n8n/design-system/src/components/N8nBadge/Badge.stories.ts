@@ -1,20 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
-import { BADGE_SIZE } from './Badge.type';
+import { BADGE_SIZE, BADGE_VARIANT } from './Badge.type';
 import N8nBadge from './Badge.vue';
-
-const BADGE_VARIANTS = [
-	'filled',
-	'primary',
-	'secondary',
-	'subtle',
-	'outline',
-	'ghost',
-	'warning',
-	'danger',
-	'success',
-	'info',
-] as const;
 
 const VARIANT_EXAMPLES = [
 	{ variant: 'filled', label: 'Draft', icon: 'file' },
@@ -42,7 +29,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: BADGE_VARIANTS,
+			options: BADGE_VARIANT,
 		},
 		size: {
 			control: 'select',

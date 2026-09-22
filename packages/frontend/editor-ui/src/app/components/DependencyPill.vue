@@ -107,13 +107,11 @@ async function onDropdownToggle(open: boolean) {
 		@update:model-value="onDropdownToggle"
 	>
 		<template #trigger>
-			<div>
-				<N8nTooltip :content="tooltipText" placement="top">
-					<N8nBadge variant="outline" leading-icon="link">
-						{{ effectiveCount }}
-					</N8nBadge>
-				</N8nTooltip>
-			</div>
+			<N8nTooltip :content="tooltipText" placement="top" as-child>
+				<N8nBadge variant="outline" leading-icon="link" clickable>
+					{{ effectiveCount }}
+				</N8nBadge>
+			</N8nTooltip>
 		</template>
 		<template v-if="hasHiddenDeps" #footer>
 			<div :class="$style.hiddenNotice">

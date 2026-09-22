@@ -613,7 +613,7 @@ onMounted(() => {
 													</div>
 												</div>
 												<span :class="[$style.badges]">
-													<N8nBadge :variant="getStatusTheme(row.file.status)" style="height: 25px">
+													<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
 														{{ getStatusText(row.file.status) }}
 													</N8nBadge>
 													<template v-if="isWorkflowDiffsEnabled">

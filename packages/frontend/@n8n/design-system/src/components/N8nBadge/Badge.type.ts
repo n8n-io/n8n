@@ -1,17 +1,22 @@
 import type { IconName } from '../N8nIcon';
 
+export const BADGE_VARIANT = [
+	'filled',
+	'primary',
+	'secondary',
+	'subtle',
+	'outline',
+	'ghost',
+	'warning',
+	'danger',
+	'success',
+	'info',
+] as const;
+
+export type BadgeVariant = (typeof BADGE_VARIANT)[number];
+
 export interface BadgeProps {
-	variant?:
-		| 'filled'
-		| 'primary'
-		| 'secondary'
-		| 'subtle'
-		| 'outline'
-		| 'ghost'
-		| 'warning'
-		| 'danger'
-		| 'success'
-		| 'info';
+	variant?: BadgeVariant;
 	size?: BadgeSize;
 	clickable?: boolean;
 	disabled?: boolean;
