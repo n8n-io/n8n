@@ -143,12 +143,17 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			// One list, served live and sealed into the grant, so the audiences a run is
 			// verified against don't change when the registration goes away.
 			const audiences = methods.map(urlFor);
+			const nodeOptions = node.parameters.options as { oauthClient?: string } | undefined;
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
 				getResourceUrl: () => urlFor(requestedMethod),
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				// Same as the production resolver: first-party lets the trigger URL act as
+				// its own virtual client so a browser can be redirected through
+				// /oauth/authorize. A node forced to "Bearer Token Only" opts out.
+				...(nodeOptions?.oauthClient !== 'bearer' && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,

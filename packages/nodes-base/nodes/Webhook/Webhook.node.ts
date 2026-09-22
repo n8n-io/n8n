@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	INodeProperties,
+	N8nOAuth2BrowserFlowMode,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node, n8nOAuth2Auth } from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
@@ -229,6 +230,7 @@ export class Webhook extends Node {
 			rawBody: boolean;
 			responseData?: string;
 			ipWhitelist?: string;
+			oauthClient?: N8nOAuth2BrowserFlowMode;
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
@@ -255,6 +257,11 @@ export class Webhook extends Node {
 				const authResult = await n8nOAuth2Auth(context, {
 					realm: 'n8n Webhook',
 					method: req.method,
+					// A tokenless browser GET is bounced through this instance's own
+					// authorization server instead of being 401'd, so a human can just
+					// click the link. Machine callers still need a bearer token up front.
+					// `options.oauthClient` overrides the auto-detection when set.
+					browserFlow: options.oauthClient ?? 'auto',
 				});
 				if (authResult === 'handled') {
 					// Token missing/invalid: the helper already sent the response.

@@ -1,6 +1,16 @@
 import { recordConsumedAuth } from './auth-redaction';
 import { UnexpectedError } from './errors';
 import type { IUser, IWebhookFunctions } from './interfaces';
+import { n8nBrowserOAuth2Flow } from './n8n-browser-oauth2-flow';
+
+/**
+ * How a tokenless request is handled:
+ * - `auto` (default): redirect a browser navigation, 401 everything else.
+ * - `browser`: always redirect a GET, skipping the navigation heuristic.
+ * - `bearer`: never redirect, always 401 — the resource is also not first-party
+ *   (see the webhook resolvers), so the AS refuses its URL as a virtual client too.
+ */
+export type N8nOAuth2BrowserFlowMode = 'auto' | 'browser' | 'bearer';
 
 function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -46,10 +56,16 @@ function sendUnauthorizedResponse(
  * header (e.g. `n8n Webhook` vs `n8n MCP Server`); everything else — token
  * parsing, protected-resource-metadata URL, error-code mapping — is identical and
  * kept here so the two auth modes can't drift.
+ *
+ * With `browserFlow` set to anything but `'bearer'`, a tokenless request that
+ * looks like a browser navigation is redirected through this instance's own
+ * authorization server instead of being 401'd (see {@link n8nBrowserOAuth2Flow}).
+ * Machine callers are unaffected: anything that isn't a browser navigation still
+ * gets the 401.
  */
 export const n8nOAuth2Auth = async (
 	context: IWebhookFunctions,
-	options: { realm: string; method?: string },
+	options: { realm: string; method?: string; browserFlow?: N8nOAuth2BrowserFlowMode },
 ): Promise<
 	| {
 			status: 'ok';
@@ -81,6 +97,18 @@ export const n8nOAuth2Auth = async (
 
 	const token = getBearerToken(req.headers.authorization);
 	if (!token) {
+		if (options.browserFlow && options.browserFlow !== 'bearer') {
+			const outcome = await n8nBrowserOAuth2Flow(
+				context,
+				resourceUrl,
+				options.browserFlow === 'browser',
+			);
+			if (outcome === 'handled') return 'handled';
+			if (outcome !== 'not-applicable') {
+				recordConsumedAuth(req, ['cookie']);
+				return { status: 'ok', token: outcome.token, resource: resourceUrl, user: outcome.user };
+			}
+		}
 		sendUnauthorizedResponse(resp, 401, prmUrl, options.realm);
 		return 'handled';
 	}

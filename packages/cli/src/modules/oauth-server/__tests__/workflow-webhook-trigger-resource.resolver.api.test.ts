@@ -41,11 +41,13 @@ const webhookNode = ({
 	authentication = 'n8nOAuth2',
 	disabled = false,
 	requireExecuteAccess,
+	options,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	options?: { oauthClient?: string };
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -58,6 +60,7 @@ const webhookNode = ({
 		httpMethod: 'POST',
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(options === undefined ? {} : { options }),
 	},
 });
 
@@ -243,19 +246,33 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should resolve as a non-first-party resource (arbitrary OAuth clients)', async () => {
+	test('should resolve as first-party by default, letting the trigger URL act as its own virtual client', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode());
 
 		const resource = await resolveResource(webhookPath);
 
-		// Unlike the form trigger, a webhook is called by external clients, so it is
-		// not first-party and imposes no redirect-URI restriction of its own.
-		expect(resource?.isFirstParty).toBeUndefined();
+		// No redirect-URI restriction of its own: unlike a DCR client, the single
+		// registered redirect_uri (the trigger URL) is what constrains the flow.
+		expect(resource?.isFirstParty).toBe(true);
 		expect(resource?.getAllowedRedirectUris).toBeUndefined();
 		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
 		expect(resource?.getAudiences()).toEqual([resourceUrlFor(webhookPath)]);
 		expect(resource?.getResourceUrl()).toContain('?method=POST');
+	});
+
+	test('should resolve as non-first-party when the node is set to Bearer Token Only', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(
+			webhookPath,
+			webhookNode({ options: { oauthClient: 'bearer' } }),
+		);
+
+		const resource = await resolveResource(webhookPath);
+
+		// Arbitrary OAuth clients (DCR) still work; the trigger URL just can't act as
+		// its own virtual client, so a browser can never be redirected through it.
+		expect(resource?.isFirstParty).toBeUndefined();
 	});
 
 	test('should expose the workflow name for the consent screen', async () => {

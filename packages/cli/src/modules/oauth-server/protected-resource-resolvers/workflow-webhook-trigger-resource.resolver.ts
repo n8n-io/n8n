@@ -158,6 +158,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			// One list, served live and sealed into the grant, so the audiences a run is
 			// verified against don't change when the resource stops resolving.
 			const audiences = methods.map(urlFor);
+			const nodeOptions = node.parameters.options as { oauthClient?: string } | undefined;
 			return {
 				// Identity = the trigger, so the method is deliberately absent: editing the
 				// node's method list must not rotate the id and drop the user's consent.
@@ -173,6 +174,12 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				// First-party lets the trigger URL act as its own virtual client, so a
+				// browser can be redirected through /oauth/authorize with no client
+				// registration. A node forced to "Bearer Token Only" opts out, so the AS
+				// refuses that client_id outright — no getAllowedRedirectUris: a DCR client
+				// keeps its own registered redirect URIs.
+				...(nodeOptions?.oauthClient !== 'bearer' && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,

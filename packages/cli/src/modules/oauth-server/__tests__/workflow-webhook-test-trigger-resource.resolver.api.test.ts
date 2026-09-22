@@ -44,11 +44,13 @@ const webhookNode = ({
 	authentication = 'n8nOAuth2',
 	disabled = false,
 	requireExecuteAccess,
+	options,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	options?: { oauthClient?: string };
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -61,6 +63,7 @@ const webhookNode = ({
 		httpMethod: 'POST',
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(options === undefined ? {} : { options }),
 	},
 });
 
@@ -170,6 +173,25 @@ describe('protected resource metadata for test webhook triggers', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(workflowName).toBe('Unsaved workflow');
+	});
+
+	test('should resolve as first-party by default, letting the trigger URL act as its own virtual client', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, webhookNode());
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.isFirstParty).toBe(true);
+		expect(resource?.getAllowedRedirectUris).toBeUndefined();
+	});
+
+	test('should resolve as non-first-party when the node is set to Bearer Token Only', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, webhookNode({ options: { oauthClient: 'bearer' } }));
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.isFirstParty).toBeUndefined();
 	});
 
 	test('should not resolve an unknown test path', async () => {
