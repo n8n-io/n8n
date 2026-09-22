@@ -19,8 +19,6 @@ import AgentApprovalSelector from './AgentApprovalSelector.vue';
  * falls back to its raw name rather than to a missing-key placeholder.
  */
 const ACTION_LABEL_KEYS = {
-	respond: 'agents.channels.approval.action.respond',
-	do_not_respond: 'agents.channels.approval.action.do_not_respond',
 	send_dm: 'agents.channels.approval.action.send_dm',
 	send_channel_message: 'agents.channels.approval.action.send_channel_message',
 	edit_message: 'agents.channels.approval.action.edit_message',
@@ -54,8 +52,15 @@ const isValid = computed(
 );
 watch(isValid, (valid) => emit('update:valid', valid), { immediate: true });
 
+// `respond` replies in the current conversation and `do_not_respond` stays
+// silent — neither reaches outside it, so offering them for approval is
+// misleading. The backend already skips gating `do_not_respond`.
+const approvableActions = computed(() =>
+	props.actions.filter((action) => action.name !== 'respond' && action.name !== 'do_not_respond'),
+);
+
 const options = computed(() =>
-	props.actions.map((action) => {
+	approvableActions.value.map((action) => {
 		const labelKey: BaseTextKey | undefined =
 			ACTION_LABEL_KEYS[action.name as keyof typeof ACTION_LABEL_KEYS];
 		return {
@@ -66,7 +71,9 @@ const options = computed(() =>
 );
 
 const defaultApproval = computed<AgentApproval>(() => {
-	const sensitive = props.actions.filter((action) => action.sensitive).map(({ name }) => name);
+	const sensitive = approvableActions.value
+		.filter((action) => action.sensitive)
+		.map(({ name }) => name);
 	return sensitive.length > 0 ? { mode: 'selected', tools: sensitive } : { mode: 'global' };
 });
 

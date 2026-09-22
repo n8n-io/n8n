@@ -8749,8 +8749,6 @@
 	"agents.channels.approval.actions.label": "Actions that need approval",
 	"agents.channels.approval.actions.hint": "Choose which of this channel's actions need your approval before they run.",
 	"agents.channels.approval.actions.placeholder": "Select actions",
-	"agents.channels.approval.action.respond": "Reply in the current conversation",
-	"agents.channels.approval.action.do_not_respond": "Stay silent",
 	"agents.channels.approval.action.send_dm": "Send a direct message",
 	"agents.channels.approval.action.send_channel_message": "Send a message to a channel",
 	"agents.channels.approval.action.edit_message": "Edit a message",

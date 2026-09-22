@@ -124,7 +124,7 @@ describe('AgentChannelApprovalSetting', () => {
 		expect(wrapper.find('[data-testid="agent-channel-approval-tools"]').exists()).toBe(true);
 	});
 
-	it('offers every action of the channel, not only the sensitive ones', async () => {
+	it('offers only the actions that reach outside the conversation', async () => {
 		const wrapper = renderComponent({
 			modelValue: { mode: 'selected', tools: ['send_dm'] },
 		});
@@ -135,7 +135,7 @@ describe('AgentChannelApprovalSetting', () => {
 			.findAll('[data-testid="channel-approval-option"]')
 			.map((option) => option.attributes('data-value'));
 
-		expect(offered).toEqual(SLACK_ACTIONS.map((action) => action.name));
+		expect(offered).toEqual(['send_dm', 'send_channel_message', 'add_reaction']);
 	});
 
 	it('reports an empty selection as invalid, and valid again once switched off', async () => {
@@ -153,7 +153,7 @@ describe('AgentChannelApprovalSetting', () => {
 
 	it('asks for every action when the channel flags none as sensitive', async () => {
 		const wrapper = renderComponent({
-			actions: [{ name: 'respond', sensitive: false }],
+			actions: [{ name: 'add_reaction', sensitive: false }],
 		});
 
 		await toggle(wrapper).trigger('click');
