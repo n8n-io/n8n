@@ -16,7 +16,7 @@ import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
 import { comparableDiff, planPush, toUpdatePatch } from '../langtracer/push';
 import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
-import { loadEvalCasesFromDir, type LoadEvalCasesOptions } from '../utils/load-eval-cases';
+import type { LoadEvalCasesOptions } from '../utils/load-eval-cases';
 
 interface CliArgs {
 	suite: string;
@@ -24,7 +24,6 @@ interface CliArgs {
 	filter?: string;
 	exclude?: string;
 	tier?: string;
-	dir?: string;
 	changed: boolean;
 	setKind: 'regression' | 'capability_gap';
 	synthetic: boolean;
@@ -41,12 +40,11 @@ Selectors (at least one required — no accidental push-all):
   --changed             New/untracked + staged + modified data/{workflows,agents}/*.json
   --filter <csv>        Substring match on file slug
   --tier <name>         Cases whose datasets include <name>
-  --dir <path>          Every case file in <path> instead of data/{workflows,agents}
   --exclude <csv>       Substring exclude (modifier, not a selector on its own)
 
 Exact slugs and --changed read only the named files, so an unrelated invalid file
-never blocks the push. --filter, --tier and --dir report an invalid file they match
-as a warning and skip it.
+never blocks the push. --filter and --tier report an invalid file they match as a
+warning and skip it.
 
 Options:
   --suite <slug|id>     Target suite (required)
@@ -89,10 +87,6 @@ function parseArgs(
 				result.tier = nextArg(argv, i, arg);
 				i += 2;
 				break;
-			case '--dir':
-				result.dir = nextArg(argv, i, arg);
-				i += 2;
-				break;
 			case '--changed':
 				result.changed = true;
 				i += 1;
@@ -132,10 +126,9 @@ function parseArgs(
 		result.slugs.length > 0 ||
 		result.changed ||
 		result.filter !== undefined ||
-		result.tier !== undefined ||
-		result.dir !== undefined;
+		result.tier !== undefined;
 	if (!hasSelector) {
-		throw new Error('select cases to push: pass <slugs...>, --changed, --filter, --tier, or --dir');
+		throw new Error('select cases to push: pass <slugs...>, --changed, --filter, or --tier');
 	}
 
 	return { helpRequested: false, args: result };
@@ -199,12 +192,10 @@ async function main() {
 					onInvalid: (file, error) =>
 						console.warn(`⚠ skipped invalid case file ${basename(file)}: ${error.message}`),
 				};
-	const loaded = args.dir
-		? loadEvalCasesFromDir(args.dir, args.filter, args.exclude, undefined, loadOptions)
-		: [
-				...loadWorkflowTestCasesWithFiles(args.filter, args.exclude, loadOptions),
-				...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude, loadOptions),
-			];
+	const loaded = [
+		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude, loadOptions),
+		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude, loadOptions),
+	];
 	const dupes = loaded.filter((c, i) => loaded.findIndex((o) => o.fileSlug === c.fileSlug) !== i);
 	if (dupes.length > 0) {
 		throw new Error(

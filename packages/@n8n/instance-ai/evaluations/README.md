@@ -200,7 +200,7 @@ In langtracer mode, `--dataset` / `--baseline-prefix` default to a suite-scoped,
 
 #### Pushing cases to a suite (`eval:langtracer-push`)
 
-`pnpm eval:langtracer-push --suite <slug|id> <slugs...> [--dry-run]` upserts on-disk cases into a suite: create missing, update changed, leave unchanged. Select with exact slugs, `--changed` (git-new or modified case files), `--filter <csv>`, `--tier <name>`, or `--dir <path>` to read every case file in a directory outside `data/`. Validation is selective: exact slugs and `--changed` read only the named files, so an unrelated invalid file in `data/workflows` (a case authored on a newer branch) never blocks a push. `--filter`, `--tier` and `--dir` have to parse what they match; an invalid file there is reported as a warning and skipped. A file you named still fails the push when it is invalid.
+`pnpm eval:langtracer-push --suite <slug|id> <slugs...> [--dry-run]` upserts on-disk cases into a suite: create missing, update changed, leave unchanged. Select with exact slugs, `--changed` (git-new or modified case files), `--filter <csv>` or `--tier <name>`. Validation is selective: exact slugs and `--changed` read only the named files, so an unrelated invalid file in `data/workflows` (a case authored on a newer branch) never blocks a push. `--filter` and `--tier` have to parse what they match; an invalid file there is reported as a warning and skipped. A file you named still fails the push when it is invalid.
 
 ### Outputs
 
