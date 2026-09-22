@@ -4,7 +4,7 @@ import { waitFor } from '@testing-library/vue';
 import { createServer, Response } from 'miragejs';
 import { mock } from 'vitest-mock-extended';
 import { createRouter, createWebHistory } from 'vue-router';
-import { ResponseError, type IUser } from '@n8n/rest-api-client';
+import type { IUser } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -14,17 +14,11 @@ import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { Project } from '@/features/collaboration/projects/projects.types';
 
 import PromotionBanners from './PromotionBanners.vue';
 import { invalidatePromotionConnection } from '../composables/usePromotionConnection';
 import { promotionEventBus } from '../promotions.eventBus';
 import * as settingsApi from '../promotionsSettings.api';
-
-const showMessage = vi.fn();
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage }),
-}));
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -75,6 +69,8 @@ describe('PromotionBanners', () => {
 			id: 'project-1',
 			scopes: ['project:export'],
 		});
+		// The store reads this from the route, which the mocked store cannot see.
+		projectsStore.currentProjectId = 'project-1';
 		// The connection is cached per page load; tests must not share it.
 		invalidatePromotionConnection();
 	});
@@ -187,51 +183,15 @@ describe('PromotionBanners', () => {
 		await findByTestId('promotion-incoming-banner');
 
 		const renamed = createTestProject({ id: 'project-1', name: 'Renamed' });
-		projectsStore.fetchProject.mockResolvedValue(renamed);
-
-		promotionEventBus.emit('applied');
+		promotionEventBus.emit('applied', { projectId: 'project-1', project: renamed });
 
 		await waitFor(() => expect(promoteChanges).toHaveBeenCalledTimes(2));
 		await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
 		// The header shows the project name, which the package may have changed.
-		await waitFor(() => expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(renamed));
-	});
-
-	it('keeps the project the user moved to while the refetch was pending', async () => {
-		let resolveProject: (project: Project) => void = () => {};
-		projectsStore.fetchProject.mockReturnValue(
-			new Promise<Project>((resolve) => {
-				resolveProject = resolve;
-			}),
-		);
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
-		server.get('/rest/promotions/:projectId/changes/apply', () =>
-			oneChange('Incoming workflow', 'new'),
-		);
-		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
-		});
-		const { findByTestId } = renderComponent();
-		await findByTestId('promotion-incoming-banner');
-
-		promotionEventBus.emit('applied');
-		await waitFor(() => expect(projectsStore.fetchProject).toHaveBeenCalledWith('project-1'));
-		projectsStore.currentProject = createTestProject({
-			id: 'project-2',
-			scopes: ['project:export'],
-		});
-		resolveProject(createTestProject({ id: 'project-1', name: 'Renamed' }));
-		await waitAllPromises();
-
-		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
+		expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(renamed);
 	});
 
 	it('leaves the page when the applied package removed the project', async () => {
-		projectsStore.fetchProject.mockRejectedValue(
-			new ResponseError('Not found', { httpStatusCode: 404 }),
-		);
 		server.get('/api/v1/promotions/connections', () =>
 			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
 		);
@@ -244,31 +204,36 @@ describe('PromotionBanners', () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-incoming-banner');
 
-		promotionEventBus.emit('applied');
+		promotionEventBus.emit('projectRemoved', { projectId: 'project-1' });
 
 		await waitFor(() => expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE));
-		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
-		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
 	});
 
-	it('keeps the page and still refetches the counts when the project lookup fails', async () => {
-		projectsStore.fetchProject.mockRejectedValue(new Error('offline'));
-		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
+	it('ignores results for a project the user already left', async () => {
 		server.get('/api/v1/promotions/connections', () =>
 			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
 		);
-		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
+		server.get('/rest/promotions/:projectId/changes/apply', () =>
+			oneChange('Incoming workflow', 'new'),
+		);
 		usersStore.currentUser = mock<IUser>({
 			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
 		});
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-incoming-banner');
+		// The route moves at once, the store still holds the old project until it loaded.
+		await router.push('/project-2');
+		projectsStore.currentProjectId = 'project-2';
 
-		promotionEventBus.emit('applied');
+		promotionEventBus.emit('applied', {
+			projectId: 'project-1',
+			project: createTestProject({ id: 'project-1', name: 'Renamed' }),
+		});
+		promotionEventBus.emit('projectRemoved', { projectId: 'project-1' });
+		await waitAllPromises();
 
-		await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
-		expect(router.currentRoute.value.params.projectId).toBe('project-1');
-		expect(showMessage).not.toHaveBeenCalled();
+		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
+		expect(router.currentRoute.value.params.projectId).toBe('project-2');
 	});
 
 	it('retries a failed connection lookup on the next project', async () => {

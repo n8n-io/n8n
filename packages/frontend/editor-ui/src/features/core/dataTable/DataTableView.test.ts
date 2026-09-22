@@ -197,7 +197,7 @@ describe('DataTableView', () => {
 			await waitAllPromises();
 			const fetches = dataTableStore.fetchDataTables.mock.calls.length;
 
-			promotionEventBus.emit('applied');
+			promotionEventBus.emit('applied', { projectId: 'test-project' });
 
 			await waitFor(() =>
 				expect(dataTableStore.fetchDataTables.mock.calls.length).toBeGreaterThan(fetches),

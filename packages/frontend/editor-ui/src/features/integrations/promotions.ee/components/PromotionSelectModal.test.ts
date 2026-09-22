@@ -1,10 +1,14 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import PromotionSelectModal from './PromotionSelectModal.vue';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
 import { promotionEventBus } from '../promotions.eventBus';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, Response, type Request } from 'miragejs';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import userEvent from '@testing-library/user-event';
@@ -333,6 +337,8 @@ describe('PromotionSelectModal', () => {
 		});
 
 		it('should apply the branch, report the counts and close the modal', async () => {
+			const project = createTestProject({ id: 'project-1', name: 'Renamed' });
+			mockedStore(useProjectsStore).fetchProject.mockResolvedValue(project);
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
@@ -356,7 +362,7 @@ describe('PromotionSelectModal', () => {
 			);
 			// A closed modal has no list to refresh; the open views learn about the apply instead.
 			expect(applyChanges).toHaveBeenCalledTimes(1);
-			expect(applied).toHaveBeenCalledWith('applied');
+			expect(applied).toHaveBeenCalledWith('applied', { projectId: 'project-1', project });
 		});
 
 		it('should warn when applied workflows could not be published', async () => {
@@ -391,9 +397,48 @@ describe('PromotionSelectModal', () => {
 				),
 			);
 			// The import went through, so the views still refresh and the modal closes.
-			expect(applied).toHaveBeenCalledWith('applied');
+			expect(applied).toHaveBeenCalledWith(
+				'applied',
+				expect.objectContaining({ projectId: 'project-1' }),
+			);
 			await waitFor(() =>
 				expect(useUIStore().closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY),
+			);
+		});
+
+		it('should announce a removed project instead of an applied one', async () => {
+			mockedStore(useProjectsStore).fetchProject.mockRejectedValue(
+				new ResponseError('Not found', { httpStatusCode: 404 }),
+			);
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			await waitFor(() =>
+				expect(applied).toHaveBeenCalledWith('projectRemoved', { projectId: 'project-1' }),
+			);
+			expect(applied).not.toHaveBeenCalledWith('applied', expect.anything());
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Apply removed this project from the instance.',
+					type: 'info',
+				}),
+			);
+			await waitFor(() =>
+				expect(useUIStore().closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY),
+			);
+		});
+
+		it('should still announce the apply when the project lookup fails', async () => {
+			mockedStore(useProjectsStore).fetchProject.mockRejectedValue(new Error('offline'));
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			await waitFor(() =>
+				expect(applied).toHaveBeenCalledWith('applied', { projectId: 'project-1' }),
 			);
 		});
 

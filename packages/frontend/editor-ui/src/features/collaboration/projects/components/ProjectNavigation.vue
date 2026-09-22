@@ -196,11 +196,13 @@ onBeforeMount(async () => {
 	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
 	sourceControlEventBus.on('pull', reloadMyProjects);
 	promotionEventBus.on('applied', reloadMyProjects);
+	promotionEventBus.on('projectRemoved', reloadMyProjects);
 });
 
 onBeforeUnmount(() => {
 	sourceControlEventBus.off('pull', reloadMyProjects);
 	promotionEventBus.off('applied', reloadMyProjects);
+	promotionEventBus.off('projectRemoved', reloadMyProjects);
 });
 </script>
 

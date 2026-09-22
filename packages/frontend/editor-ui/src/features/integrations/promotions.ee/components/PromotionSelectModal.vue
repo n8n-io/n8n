@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
@@ -27,6 +29,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -119,6 +122,27 @@ async function onRefresh() {
 	await fetchChanges();
 }
 
+// The open views refresh once the outcome for this project is known, so none of them
+// asks for a project the package removed.
+async function announceApplied() {
+	const { projectId } = props.data;
+	try {
+		const project = await projectsStore.fetchProject(projectId);
+		promotionEventBus.emit('applied', { projectId, project });
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+			toast.showMessage({
+				title: i18n.baseText('promotions.applied.projectRemoved'),
+				type: 'info',
+			});
+			promotionEventBus.emit('projectRemoved', { projectId });
+			return;
+		}
+		// The apply went through, so the views still refresh. Only the header keeps its name.
+		promotionEventBus.emit('applied', { projectId });
+	}
+}
+
 /** Applies the whole branch. The selection is kept for the selective apply that follows. */
 async function onApplyAll() {
 	const { apply } = props.data;
@@ -145,7 +169,6 @@ async function onApplyAll() {
 			expectedSource && { expectedSource },
 		);
 		if (result.status === 'applied') {
-			promotionEventBus.emit('applied');
 			const { workflows } = result.counts;
 			const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
 			const summary = i18n.baseText('promotions.modal.incoming.applied.message', {
@@ -166,6 +189,7 @@ async function onApplyAll() {
 					: summary,
 				type: notPublished ? 'warning' : 'success',
 			});
+			await announceApplied();
 			onClose();
 			return;
 		}

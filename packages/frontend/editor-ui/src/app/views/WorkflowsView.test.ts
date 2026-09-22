@@ -475,7 +475,7 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 			const fetches = workflowsListStore.fetchWorkflowsPage.mock.calls.length;
 
-			promotionEventBus.emit('applied');
+			promotionEventBus.emit('applied', { projectId: 'project-1' });
 
 			await waitFor(() =>
 				expect(workflowsListStore.fetchWorkflowsPage.mock.calls.length).toBeGreaterThan(fetches),

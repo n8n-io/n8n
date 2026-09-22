@@ -145,7 +145,18 @@ describe('ProjectsNavigation', () => {
 		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
 		await nextTick();
 
-		promotionEventBus.emit('applied');
+		promotionEventBus.emit('applied', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
+	});
+
+	it('should reload the projects after a package removed one', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('projectRemoved', { projectId: 'project-1' });
 
 		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
 	});
