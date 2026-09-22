@@ -101,6 +101,23 @@ describe('usePromotionChanges', () => {
 		expect(isLoading.value).toBe(false);
 	});
 
+	it('should advance the last refreshed timestamp on each successful fetch', async () => {
+		vi.useFakeTimers();
+		try {
+			const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
+			await fetchChanges();
+			const firstRefresh = lastRefreshedAt.value;
+			expect(firstRefresh).not.toBeNull();
+
+			vi.advanceTimersByTime(60_000);
+			await fetchChanges();
+
+			expect(lastRefreshedAt.value).not.toBe(firstRefresh);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('should set the last refreshed timestamp only on a successful fetch', async () => {
 		const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
 		expect(lastRefreshedAt.value).toBeNull();

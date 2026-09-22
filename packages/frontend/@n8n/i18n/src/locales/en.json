@@ -8832,7 +8832,7 @@
 	"promotions.banner.changesAvailable": "{count} changes available to promote.",
 	"promotions.banner.singleChangeAvailable": "1 change available to promote.",
 	"promotions.banner.viewChanges": "View changes",
-	"promotions.banner.refresh": "Refresh",
+	"promotions.banner.error": "Could not check for changes to promote.",
 	"promotions.banner.incoming.changesAvailable": "{count} incoming changes.",
 	"promotions.banner.incoming.singleChangeAvailable": "1 incoming change.",
 	"promotions.banner.incoming.error": "Could not check for incoming changes.",

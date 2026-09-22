@@ -191,6 +191,32 @@ describe('PromotionBanners', () => {
 		expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(renamed);
 	});
 
+	it('reports a failed outgoing refresh instead of keeping the stale count', async () => {
+		const promoteChanges = vi.fn(() => oneChange('Changed workflow', 'modified'));
+		server.get('/api/v1/promotions/connections', () =>
+			connections({ promote: { id: 'config-1' } }),
+		);
+		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:push'],
+		});
+		const { findByTestId } = renderComponent();
+
+		const banner = await findByTestId('promotion-banner');
+		expect(banner).toHaveTextContent('1 change');
+
+		promoteChanges.mockImplementation(
+			() => new Response(503, {}, { message: 'Preview unavailable' }),
+		);
+		await userEvent.click(await findByTestId('promotion-banner-refresh'));
+
+		// A stale count presented as current would be worse than saying the check failed.
+		await waitFor(() => {
+			expect(banner).toHaveTextContent('Could not check for changes to promote');
+			expect(banner).not.toHaveTextContent('1 change available');
+		});
+	});
+
 	it('leaves the page when the applied package removed the project', async () => {
 		server.get('/api/v1/promotions/connections', () =>
 			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
