@@ -97,6 +97,10 @@ the `credential-types` kind, where a type name is bare (`slackApi`) rather than
 package-qualified. The two checks stack: either veto blocks, so a rule on the Slack node and a
 rule on `slackApi` are independent decisions.
 
+Only the enforcement side is here. Every controller in this module still passes
+`NODE_TYPES_KIND`, so no route reads or writes a `credential-types` policy yet: write one
+through `TypeAvailabilityPolicyService.setEffectivePolicy` until that surface lands.
+
 It implements all seven points:
 
 | Point               | What it reads                                      |

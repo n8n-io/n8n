@@ -134,6 +134,8 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		storedCredential,
 		projectId,
 	}: CredentialSaveContext): Promise<PolicyCheckResult> {
+		// Returns before the license read because this branch can report nothing either way, so
+		// a lapsed license cannot change the answer.
 		if (storedCredential?.type === credential.type) return NO_VIOLATIONS;
 
 		return await this.checkTypes([credential.type], projectId);
