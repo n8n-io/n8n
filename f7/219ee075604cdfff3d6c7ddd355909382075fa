@@ -22,6 +22,7 @@ packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
   s_a52facf53351c5::t_dc231ed70bd350 708
   s_a52facf53351c5::t_e0391002fa8165 895
   s_a52facf53351c5::t_782f63e12eec96 1018
+  s_a52facf53351c5::t_b57abb4e2a1750 544,737-741,762,935-937,994-996
 packages/@n8n/db/src/migrations/common/1789736885838-AddAgentThreadOwnership.ts
   s_a52facf53351c5::t_db736af30bab30 3-4,50,53-77,80-83,86-98
 ---
