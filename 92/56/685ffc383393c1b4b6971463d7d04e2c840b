@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Databricks/transport/index.ts
+  s_1f1ec980d9998c::t_edf3091dd73271 1
+packages/nodes-base/nodes/Databricks/actions/job/run.operation.ts
+  s_1f1ec980d9998c::t_f4a8ab74da7818 6-7,32,47,56,76
+packages/nodes-base/nodes/Databricks/actions/job/getRun.operation.ts
+  s_1f1ec980d9998c::t_90705a504345ed 3-4,11
+packages/nodes-base/nodes/Databricks/transport/client.ts
+  s_1f1ec980d9998c::t_973d39a3ff4bc9 1-228
+packages/nodes-base/nodes/Databricks/actions/job/getJob.operation.ts
+  s_1f1ec980d9998c::t_7fd9a21356b823 5-6,11-13
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_1f1ec980d9998c::t_10a35e8bfd9713 499
+  s_1f1ec980d9998c::t_6902858eed9473 507,511,521,525
+  s_1f1ec980d9998c::t_51025d9b770ccd 16
+  s_1f1ec980d9998c::t_03d3baa64f9b77 435,437,446,452,456-459,469-470,474
+  s_1f1ec980d9998c::t_efad599fb8967a 18
+  s_1f1ec980d9998c::t_31d932e85eec10 444-445
+packages/nodes-base/nodes/Databricks/actions/job/getRunOutput.operation.ts
+  s_1f1ec980d9998c::t_5e50bef15010ab 5-7,11,15,27,30-41,44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9256685ffc383393c1b4b6971463d7d04e2c840b",
+  "prompts": {},
+  "sessions": {
+    "s_1f1ec980d9998c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ca6cf34-09a9-48ed-b0de-28e10a1d85ba",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
