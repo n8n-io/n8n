@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseChannel } from '@n8n/engine';
+import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
@@ -59,11 +59,11 @@ export class EngineV2Runtime {
 		this.logger = this.logger.scoped('engine-v2');
 	}
 
-	async init(responseChannel: ExecutionResponseChannel): Promise<void> {
+	async init(responseSender: ExecutionResponseSender): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(responseChannel);
+			this.initEngine(responseSender);
 
 			await this.initServer();
 		} catch (error) {
@@ -92,7 +92,7 @@ export class EngineV2Runtime {
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine(responseChannel: ExecutionResponseChannel): void {
+	private initEngine(responseSender: ExecutionResponseSender): void {
 		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -105,9 +105,7 @@ export class EngineV2Runtime {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
-			// Whoever waits for a response subscribes to the same channel, so the
-			// host owns it and hands it in.
-			responseChannel,
+			responseSender,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),

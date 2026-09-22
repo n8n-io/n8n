@@ -114,6 +114,7 @@ const stubs = {
 
 const thread = {
 	id: 'thread-1',
+	canContinueInPreview: false,
 	agentId: 'agent-1',
 	agentName: 'Agent',
 	parentThreadId: null,

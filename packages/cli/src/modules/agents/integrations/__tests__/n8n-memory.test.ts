@@ -158,6 +158,13 @@ describe('N8nMemory', () => {
 		Object.defineProperty(threadRepository, 'manager', {
 			value: { transaction: runInTransaction },
 		});
+		threadRepository.runInTransaction.mockImplementation(
+			async (ctx, callback) =>
+				await runInTransaction(
+					async (trx: { delete: typeof transactionDelete; getRepository: Mock }) =>
+						await callback(trx as never, ctx),
+				),
+		);
 		memoryEntryRunInTransaction = vi.fn(
 			async (callback: (trx: { getRepository: Mock }) => Promise<unknown>) =>
 				await callback({

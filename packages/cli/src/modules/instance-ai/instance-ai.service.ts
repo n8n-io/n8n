@@ -31,6 +31,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -228,6 +229,8 @@ import {
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
+import { InstanceAiObservationCursorRepository } from './repositories/instance-ai-observation-cursor.repository';
+import { InstanceAiObservationRepository } from './repositories/instance-ai-observation.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
@@ -755,6 +758,8 @@ export class InstanceAiService {
 		private readonly aiService: AiService,
 		private readonly threadGrantRepo: InstanceAiThreadGrantRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
+		private readonly observationRepo: InstanceAiObservationRepository,
+		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly urlService: UrlService,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
@@ -1286,6 +1291,35 @@ export class InstanceAiService {
 		};
 	}
 
+	/** What observational memory holds for a thread: the live observations and the
+	 *  compaction cursor. An eval asserts on these rows instead of parsing the
+	 *  rendered system prompt. Refuses a thread the caller does not own, so the
+	 *  check does not depend on the route. */
+	async getThreadMemory(
+		userId: string,
+		threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread || thread.resourceId !== userId) {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
+		const [observations, cursor] = await Promise.all([
+			this.observationRepo.findActiveForThread(threadId),
+			this.observationCursorRepo.findForThread(threadId),
+		]);
+		return {
+			observations: observations.map(({ marker, text, tokenCount }) => ({
+				marker,
+				text,
+				tokenCount,
+			})),
+			cursor: cursor && {
+				lastObservedMessageId: cursor.lastObservedMessageId,
+				lastObservedAt: cursor.lastObservedAt.toISOString(),
+			},
+		};
+	}
+
 	getRunDebug(runId: string) {
 		return this.runDebugBuffer.get(runId);
 	}
@@ -1386,6 +1420,7 @@ export class InstanceAiService {
 		promptVersion?: string,
 		computerUseChannels?: ComputerUseChannel[],
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
+		observerThresholdTokens?: number,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1415,6 +1450,7 @@ export class InstanceAiService {
 		// otherwise environment creation selects and stores the backend assignment.
 		this.runState.setBuildMode(threadId, mode);
 		this.runState.setPromptVersion(threadId, promptVersion);
+		this.runState.setObserverThresholdTokens(threadId, observerThresholdTokens);
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -2133,7 +2169,9 @@ export class InstanceAiService {
 	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
 		return {
 			observationalMemory: {
-				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
+				observerThresholdTokens:
+					this.runState.getObserverThresholdTokens(threadId) ??
+					this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
 				midRunObservation: this.instanceAiConfig.midRunObservation,
 				// Observer/reflector calls run in the background outside the run's
@@ -2384,6 +2422,13 @@ export class InstanceAiService {
 		}
 	}
 
+	areMcpConnectionsAvailable(): boolean {
+		return (
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
+		);
+	}
+
 	private async createExecutionEnvironment(
 		user: User,
 		threadId: string,
@@ -2404,6 +2449,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
+		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -2423,7 +2469,6 @@ export class InstanceAiService {
 
 		const {
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
 			nodeUsageEnabled,
@@ -2453,7 +2498,7 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			instanceContextEnabled,
 			conversationHistory,
@@ -2794,7 +2839,7 @@ export class InstanceAiService {
 		context.resolvePreviewSession = async (ref) => {
 			const service = this.getAgentExecutionService();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -3927,6 +3972,7 @@ export class InstanceAiService {
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
+					userId: user.id,
 					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
 				});
 				handoffContextBlock = resolved.block;
