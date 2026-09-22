@@ -1551,6 +1551,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	beforeAgentMutation: flushAutosave,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
@@ -1604,7 +1605,7 @@ function persistMissingPersonalisationGradient() {
 async function onConfigUpdated(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
-) {
+): Promise<boolean> {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
 	agentsEventBus.emit('agentUpdated', { agentId: targetAgentId, source: 'agent-builder' });
@@ -1613,14 +1614,17 @@ async function onConfigUpdated(
 		fetchConfig(targetProjectId, targetAgentId),
 		refreshConfigValidation(targetProjectId, targetAgentId),
 	]);
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	if (connected) connectedTriggers.value = connected;
 	tasksReloadKey.value += 1;
+	return true;
 }
 
 async function refreshArtifactShell() {

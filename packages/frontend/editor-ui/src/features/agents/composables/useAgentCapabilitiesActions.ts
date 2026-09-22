@@ -86,11 +86,17 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
 	/**
+	 * Flushes pending agent edits before an API mutation that also writes the
+	 * agent config. This prevents the mutation from advancing the config hash
+	 * ahead of a queued config save.
+	 */
+	beforeAgentMutation?: () => Promise<void>;
+	/**
 	 * Reloads agent-owned state after an API mutation that writes both a sidecar
 	 * resource and the agent config. The reload updates the config hash without
 	 * scheduling a duplicate config write.
 	 */
-	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<void>;
+	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
@@ -113,6 +119,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
 		telemetry,
@@ -450,7 +457,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							await beforeAgentMutation?.();
+						} catch {
+							// The host owns the autosave error message. Do not also report
+							// this as a skill-creation failure.
+							return;
+						}
+						if (agentId.value !== targetAgentId) return;
+						try {
 							await ensureAgentPersisted?.();
+							if (agentId.value !== targetAgentId) return;
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,
@@ -478,12 +494,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								[skillId]: created,
 							},
 						};
+						let refreshed = true;
 						try {
-							await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+							refreshed =
+								(await refreshAgentAfterMutation?.(targetProjectId, targetAgentId)) ?? true;
 						} catch (error) {
 							showError(error, locale.baseText('agents.builder.loadError'));
+							return;
 						}
-						if (agentId.value === targetAgentId && localConfig.value) {
+						if (refreshed && agentId.value === targetAgentId && localConfig.value) {
 							localConfig.value = {
 								...localConfig.value,
 								skills: [
