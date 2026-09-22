@@ -196,6 +196,11 @@ of the two ends the wait.
   Whether a resume must fail for these reasons is a product decision. To apply
   that decision, the engine needs a cross-plane check. This design has no such
   check.
+- The control plane keeps the editor's live view of a waiting execution in
+  memory, keyed by the execution id. That memory does not survive a restart, and
+  the wait does. This is not a copy of the wait state (decision 5). It is the
+  state of a UI session. A lost one costs the canvas its live view of the
+  resumed run and nothing else.
 
 ## Links
 
