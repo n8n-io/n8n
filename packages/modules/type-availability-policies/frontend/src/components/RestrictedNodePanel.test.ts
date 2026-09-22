@@ -36,7 +36,16 @@ describe('RestrictedNodePanel', () => {
 		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('node-restricted-panel')).toHaveTextContent(
-			"An administrator blocked 'Slack'. Contact",
+			"An administrator blocked 'Slack'. Contact an instance admin or replace the node to continue.",
+		);
+	});
+
+	it('hides the replace action and drops it from the copy', () => {
+		const { getByTestId, queryByTestId } = renderComponent({ props: { showReplace: false } });
+
+		expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
+		expect(getByTestId('node-restricted-panel')).toHaveTextContent(
+			"An administrator blocked 'Slack'. Contact an instance admin to continue.",
 		);
 	});
 
