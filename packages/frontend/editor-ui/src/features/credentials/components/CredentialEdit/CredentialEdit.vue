@@ -386,7 +386,9 @@ const showAiGatewayErrorNudge = computed(() => {
 		!node ||
 		!type ||
 		!nodeType ||
-		!aiGateway.isEnabled.value
+		!aiGateway.isEnabled.value ||
+		aiGateway.balance.value === undefined ||
+		aiGateway.balance.value <= 0
 	) {
 		return false;
 	}

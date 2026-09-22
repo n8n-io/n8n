@@ -211,6 +211,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return typeVersion >= minVersion;
 	}
 
+	/** Checks whether AI Gateway can replace the node's custom credential. */
 	function isNodeEligible(
 		node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
 		credentialType: string,

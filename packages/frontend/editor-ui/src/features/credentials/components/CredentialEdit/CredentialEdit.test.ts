@@ -31,12 +31,14 @@ const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(()
 	routerReplaceMock: vi.fn(),
 }));
 const {
+	aiGatewayBalance,
 	aiGatewayEnabled,
 	fetchGatewayConfigMock,
 	fetchGatewayWalletMock,
 	saveAfterGatewayToggleMock,
 	toastShowMessageMock,
 } = vi.hoisted(() => ({
+	aiGatewayBalance: { value: 1 },
 	aiGatewayEnabled: { value: false },
 	fetchGatewayConfigMock: vi.fn(),
 	fetchGatewayWalletMock: vi.fn(),
@@ -72,6 +74,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: () => ({
 		isEnabled: aiGatewayEnabled,
+		balance: aiGatewayBalance,
 		creditsLabelKey: { value: 'generic.freeCredits' },
 		fetchConfig: fetchGatewayConfigMock,
 		fetchWallet: fetchGatewayWalletMock,
@@ -365,6 +368,7 @@ describe('CredentialEdit', () => {
 	beforeEach(() => {
 		broadcastMessageListener = undefined;
 		routerCurrentRouteMock.value = { query: {} };
+		aiGatewayBalance.value = 1;
 		aiGatewayEnabled.value = false;
 		fetchGatewayConfigMock.mockResolvedValue(undefined);
 		fetchGatewayWalletMock.mockResolvedValue(undefined);
@@ -1335,11 +1339,13 @@ describe('CredentialEdit', () => {
 				},
 			},
 			activeTab = 'connection',
+			balance = 1,
 			eligible = true,
 			includeAssignmentContext = true,
 		}: {
 			contextNode?: INode;
 			activeTab?: 'connection' | 'sharing';
+			balance?: number;
 			eligible?: boolean;
 			includeAssignmentContext?: boolean;
 		} = {}) => {
@@ -1359,6 +1365,7 @@ describe('CredentialEdit', () => {
 				status: 'Error',
 				message: 'Could not connect',
 			});
+			aiGatewayBalance.value = balance;
 			aiGatewayEnabled.value = true;
 			mockedStore(useAiGatewayStore).isNodeEligible.mockReturnValue(eligible);
 
@@ -1782,6 +1789,16 @@ describe('CredentialEdit', () => {
 			const { queryByTestId } = await setupGatewayCredentialError({
 				eligible: false,
 			});
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+			expect(telemetryTrackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE,
+				expect.anything(),
+			);
+		});
+
+		test('does not show the Gateway credits nudge without an available balance', async () => {
+			const { queryByTestId } = await setupGatewayCredentialError({ balance: 0 });
 
 			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
 			expect(telemetryTrackMock).not.toHaveBeenCalledWith(
