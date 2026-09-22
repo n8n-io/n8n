@@ -534,7 +534,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		// edited it or undid it from the card. It folds onto the tool call so the card
 		// renders the current state after a reload, without asking the database.
 		case 'preference-card': {
-			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			// The id comes from a request body, so an inherited name like `toString`
+			// must not resolve to a function on the prototype.
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
 				tc.preferenceCard = {

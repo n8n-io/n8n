@@ -319,6 +319,46 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
+	test('applyEvent folds a preference-card fact onto its tool call before the stream delivers it', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					result: {
+						ok: true,
+						preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+					},
+				},
+			}),
+		);
+
+		// The endpoint returned the fact; the card applies it without waiting for SSE.
+		activeRuntime(registry).applyEvent({
+			type: 'preference-card',
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+		});
+
+		const toolCall = activeRuntime(registry).messages[0].agentTree?.toolCalls.find(
+			(tc) => tc.toolCallId === 'tc-1',
+		);
+		expect(toolCall?.preferenceCard).toEqual({ state: 'undone', content: undefined });
+		expect(activeRuntime(registry).activeRunId).toBe('run-1');
+	});
+
 	test('setup-items SSE events fold last-wins per workflowId', () => {
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
 		capturedOnMessage!(

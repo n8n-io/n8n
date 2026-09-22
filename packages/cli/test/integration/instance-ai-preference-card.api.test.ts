@@ -100,6 +100,19 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/undo', (
 		expect(await preferenceRepository().findOneBy({ id: preference.id })).not.toBeNull();
 	});
 
+	// The thread is the caller's, but the row is not: `AiPreferenceService` answers as
+	// if the row did not exist, the same as the settings page does.
+	test('refuses a preference that belongs to another user, even from the caller thread', async () => {
+		const preference = await seedPreference(otherUser.id, 'Use British English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/undo`)
+			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID })
+			.expect(404);
+
+		expect(await preferenceRepository().findOneBy({ id: preference.id })).not.toBeNull();
+	});
+
 	test('deletes the row and hands back the undone fact', async () => {
 		const preference = await seedPreference(owner.id, 'Use British English.');
 
@@ -155,6 +168,33 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
 			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
 			.expect(403);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row?.content).toBe('Use British English.');
+	});
+
+	test('refuses a preference that belongs to another user, even from the caller thread', async () => {
+		const preference = await seedPreference(otherUser.id, 'Use British English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.expect(404);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row?.content).toBe('Use British English.');
+	});
+
+	// The duplicate check lives in `AiPreferenceService`, so the card endpoint refuses
+	// the same text the settings page refuses.
+	test('refuses an edit that duplicates another preference in the same scope', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+		await seedPreference(owner.id, 'Use American English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.expect(409);
 
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
 		expect(row?.content).toBe('Use British English.');

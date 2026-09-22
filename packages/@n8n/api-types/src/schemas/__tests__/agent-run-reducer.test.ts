@@ -1216,6 +1216,21 @@ describe('agent-run-reducer', () => {
 
 			expectStateMapsNotPolluted(state);
 		});
+
+		it('ignores a toolCallId that names an inherited property', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'toString', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.hasOwn(state.toolCallsById, 'toString')).toBe(false);
+			expect('preferenceCard' in Object.prototype.toString).toBe(false);
+			expect(state.toolCallsById['tc-1'].preferenceCard).toBeUndefined();
+		});
 	});
 
 	describe('error routing', () => {

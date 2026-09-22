@@ -1574,6 +1574,56 @@ describe('InstanceAiController', () => {
 			);
 		});
 
+		it('undo refuses a thread that belongs to another user before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(preferenceCardService.undo).not.toHaveBeenCalled();
+		});
+
+		it('undo reports a missing thread before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(preferenceCardService.undo).not.toHaveBeenCalled();
+		});
+
+		it('edit refuses a thread that belongs to another user before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(preferenceCardService.edit).not.toHaveBeenCalled();
+		});
+
+		it('edit reports a missing thread before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(preferenceCardService.edit).not.toHaveBeenCalled();
+		});
+
 		it('edit checks thread access, then returns the preference with the published fact', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const payload = { runId: 'run-1', toolCallId: 'tc-1', content: 'Keep replies brief.' };
