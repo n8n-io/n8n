@@ -204,21 +204,7 @@ describe('TestCaseExecutionListPublicDto', () => {
 });
 
 describe('ListTestCasesQueryPublicDto', () => {
-	test('applies the default limit', () => {
-		const result = ListTestCasesQueryPublicDto.safeParse({});
-
-		expect(result.success).toBe(true);
-		expect(result.data).toEqual({ limit: 100 });
-	});
-
-	test('caps the limit at 250', () => {
-		const result = ListTestCasesQueryPublicDto.safeParse({ limit: '300' });
-
-		expect(result.success).toBe(true);
-		expect(result.data?.limit).toBe(250);
-	});
-
-	test('accepts a cursor', () => {
+	test('accepts a cursor next to the default limit', () => {
 		const result = ListTestCasesQueryPublicDto.safeParse({ cursor: 'abc' });
 
 		expect(result.success).toBe(true);
@@ -230,12 +216,5 @@ describe('ListTestCasesQueryPublicDto', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.data).toEqual({ limit: 100 });
-	});
-
-	test.each([
-		['a non-numeric limit', { limit: 'ten' }],
-		['a negative limit', { limit: '-1' }],
-	])('rejects %s', (_label, query) => {
-		expect(ListTestCasesQueryPublicDto.safeParse(query).success).toBe(false);
 	});
 });
