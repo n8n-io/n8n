@@ -104,13 +104,13 @@ export class ProjectsPublicController {
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('project:create')
 	@ApiSummary('Create a project')
-	@ApiDescription(
-		'Create a team project on your instance. An occupied ID returns HTTP 409. ' +
-			'The request does not change the existing project or its members.',
-	)
+	@ApiDescription('Create a team project on your instance.')
 	@ApiTags(tags)
 	@ApiResponse(201, CreatedProjectPublicDto)
-	@ApiErrorResponse(409)
+	@ApiErrorResponse(409, {
+		description:
+			'A project with this ID exists already. The request does not change the existing project or its members.',
+	})
 	@ApiErrorResponse(400)
 	async createProject(
 		req: AuthenticatedRequest,

@@ -65,7 +65,8 @@ export class CreateProjectPublicDto extends Z.class(
 	{
 		name: projectNameSchema.openapi(projectFieldDocs.name),
 		id: n8nIdSchema.optional().openapi({
-			description: 'Project ID. The server generates an ID when omitted.',
+			description:
+				'Project ID. The server generates an ID when omitted. An ID that is in use returns HTTP 409.',
 			example: projectFieldDocs.id.example,
 		}),
 		icon: projectIconSchema.nullable().optional(),

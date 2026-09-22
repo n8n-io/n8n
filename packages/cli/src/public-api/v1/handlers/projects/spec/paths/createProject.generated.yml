@@ -2,7 +2,7 @@ operationId: createProject
 tags:
   - Projects
 summary: Create a project
-description: Create a team project on your instance. An occupied ID returns HTTP 409. The request does not change the existing project or its members.
+description: Create a team project on your instance.
 x-required-scope: project:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -23,7 +23,7 @@ requestBody:
             type: string
             minLength: 1
             maxLength: 36
-            description: Project ID. The server generates an ID when omitted.
+            description: Project ID. The server generates an ID when omitted. An ID that is in use returns HTTP 409.
             example: VmwOO9HeTEj20kxM
           icon:
             type: object
@@ -160,6 +160,6 @@ responses:
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '409':
-    $ref: ../../../../shared/spec/responses/conflict.yml
+    description: A project with this ID exists already. The request does not change the existing project or its members.
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
