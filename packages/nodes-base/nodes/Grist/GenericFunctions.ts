@@ -103,7 +103,7 @@ export function isSafeInteger(val: number) {
 }
 
 // Grist reference types can include a target table name after a colon (e.g. Ref:Table1).
-const NUMERIC_COLUMN_TYPES = new Set(['Numeric', 'Int', 'Ref', 'RefList']);
+const NUMERIC_COLUMN_TYPES = new Set(['Numeric', 'Int', 'Ref', 'RefList', 'Date', 'DateTime']);
 
 function isNumericColumnType(type?: string): boolean {
 	if (!type) {
@@ -113,26 +113,45 @@ function isNumericColumnType(type?: string): boolean {
 	return NUMERIC_COLUMN_TYPES.has(baseType);
 }
 
+const NON_NUMERIC_COLUMN_TYPES = new Set(['Text', 'Bool', 'Choice', 'ChoiceList', 'Attachments']);
+
+function isNonNumericColumnType(type?: string): boolean {
+	if (!type) {
+		return false;
+	}
+	const [baseType] = type.split(':');
+	return NON_NUMERIC_COLUMN_TYPES.has(baseType);
+}
+
 export function buildColumnTypeMap(columns: GristColumns['columns'] = []): {
 	[columnId: string]: string;
 } {
+	if (!Array.isArray(columns)) {
+		return Object.create(null);
+	}
 	return columns.reduce<{ [columnId: string]: string }>((acc, col) => {
 		if (col.fields?.type) {
 			acc[col.id] = col.fields.type;
 		}
 		return acc;
-	}, {});
+	}, Object.create(null));
 }
 
 export function parseFilterProperties(
 	filterProperties: GristFilterProperties,
-	columnTypes: { [columnId: string]: string } = {},
+	columnTypes: { [columnId: string]: string } = Object.create(null),
 ) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
 		const columnType = columnTypes[cur.field];
 		let value: string | number;
-		if (columnType === undefined || columnType === 'Any') {
+		if (cur.values.trim() === '') {
+			value = cur.values;
+		} else if (
+			columnType === undefined ||
+			columnType === 'Any' ||
+			(!isNumericColumnType(columnType) && !isNonNumericColumnType(columnType))
+		) {
 			value = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
 		} else if (isNumericColumnType(columnType) && isSafeInteger(Number(cur.values))) {
 			value = Number(cur.values);

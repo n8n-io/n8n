@@ -2,6 +2,7 @@ import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
+	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
@@ -355,6 +356,36 @@ describe('parseFilterProperties', () => {
 		expect(typeof result.price[0]).toBe('number');
 	});
 
+	it('coerces zero to number for a Numeric column', () => {
+		const result = parseFilterProperties([{ field: 'price', values: '0' }], {
+			price: 'Numeric',
+		});
+		expect(result).toEqual({ price: [0] });
+		expect(typeof result.price[0]).toBe('number');
+	});
+
+	it('keeps empty string as string for a Numeric column', () => {
+		const result = parseFilterProperties([{ field: 'price', values: '' }], {
+			price: 'Numeric',
+		});
+		expect(result).toEqual({ price: [''] });
+		expect(typeof result.price[0]).toBe('string');
+	});
+
+	it('keeps whitespace-only string as string for a Numeric column', () => {
+		const result = parseFilterProperties([{ field: 'price', values: '   ' }], {
+			price: 'Numeric',
+		});
+		expect(result).toEqual({ price: ['   '] });
+		expect(typeof result.price[0]).toBe('string');
+	});
+
+	it('keeps empty string as string for a Text column', () => {
+		const result = parseFilterProperties([{ field: 'name', values: '' }], { name: 'Text' });
+		expect(result).toEqual({ name: [''] });
+		expect(typeof result.name[0]).toBe('string');
+	});
+
 	it('coerces negative value to number for an Int column', () => {
 		const result = parseFilterProperties([{ field: 'count', values: '-5' }], { count: 'Int' });
 		expect(result).toEqual({ count: [-5] });
@@ -383,12 +414,18 @@ describe('parseFilterProperties', () => {
 		expect(typeof result.members[0]).toBe('number');
 	});
 
-	it('keeps value as string for a DateTime:America/New_York column', () => {
+	it('coerces to number for a DateTime:America/New_York column', () => {
 		const result = parseFilterProperties([{ field: 'ts', values: '123' }], {
 			ts: 'DateTime:America/New_York',
 		});
-		expect(result).toEqual({ ts: ['123'] });
-		expect(typeof result.ts[0]).toBe('string');
+		expect(result).toEqual({ ts: [123] });
+		expect(typeof result.ts[0]).toBe('number');
+	});
+
+	it('coerces to number for a Date column', () => {
+		const result = parseFilterProperties([{ field: 'date', values: '123' }], { date: 'Date' });
+		expect(result).toEqual({ date: [123] });
+		expect(typeof result.date[0]).toBe('number');
 	});
 
 	it('keeps value as string for a Choice column', () => {
@@ -421,6 +458,22 @@ describe('parseFilterProperties', () => {
 		expect(typeof result.data[0]).toBe('number');
 	});
 
+	it('auto-detects for an unrecognized column type', () => {
+		const result = parseFilterProperties([{ field: 'future', values: '123' }], {
+			future: 'SomeFutureType',
+		});
+		expect(result).toEqual({ future: [123] });
+		expect(typeof result.future[0]).toBe('number');
+	});
+
+	it('keeps string for a recognized non-numeric type', () => {
+		const result = parseFilterProperties([{ field: 'files', values: '123' }], {
+			files: 'Attachments',
+		});
+		expect(result).toEqual({ files: ['123'] });
+		expect(typeof result.files[0]).toBe('string');
+	});
+
 	it('keeps non-numeric string as string even for a Numeric column', () => {
 		const result = parseFilterProperties([{ field: 'price', values: 'abc' }], {
 			price: 'Numeric',
@@ -437,9 +490,9 @@ describe('parseFilterProperties', () => {
 		expect(typeof result.price[0]).toBe('string');
 	});
 
-	it('keeps value exceeding MAX_SAFE_INTEGER as string for a Text column', () => {
+	it('keeps value exceeding MAX_SAFE_INTEGER as string for a Numeric column', () => {
 		const result = parseFilterProperties([{ field: 'bigId', values: '99999999999999999999' }], {
-			bigId: 'Text',
+			bigId: 'Numeric',
 		});
 		expect(result).toEqual({ bigId: ['99999999999999999999'] });
 		expect(typeof result.bigId[0]).toBe('string');
@@ -498,5 +551,162 @@ describe('buildColumnTypeMap', () => {
 
 	it('returns an empty object for empty input', () => {
 		expect(buildColumnTypeMap([])).toEqual({});
+	});
+});
+
+describe('getAll operation', () => {
+	beforeEach(() => {
+		vi.mocked(gristApiRequest).mockReset();
+	});
+
+	const executeGetAll = async ({
+		inputItems = [{ json: {} }],
+		filterProperties,
+		columnsResponse = { columns: [] },
+	}: {
+		inputItems?: INodeExecutionData[];
+		filterProperties?: Array<{ field: string; values: string }>;
+		columnsResponse?: unknown;
+	} = {}) => {
+		vi.mocked(gristApiRequest).mockImplementation(async (_method, endpoint) => {
+			if (endpoint.endsWith('/columns')) {
+				return columnsResponse;
+			}
+			if (endpoint.endsWith('/records')) {
+				return { records: [] };
+			}
+			return null;
+		});
+
+		const ctx = mockDeep<IExecuteFunctions>();
+		ctx.getInputData.mockReturnValue(inputItems);
+		ctx.helpers.constructExecutionMetaData.mockImplementation(constructExecutionMetaData);
+		ctx.helpers.returnJsonArray.mockImplementation(returnJsonArray);
+		ctx.getNodeParameter.mockImplementation(((name: string) => {
+			switch (name) {
+				case 'operation':
+					return 'getAll';
+				case 'docId':
+					return 'doc1';
+				case 'tableId':
+					return 'Table1';
+				case 'returnAll':
+					return true;
+				case 'additionalOptions':
+					return filterProperties ? { filter: { filterProperties } } : {};
+				default:
+					throw new Error(`Unexpected getNodeParameter call: ${name}`);
+			}
+		}) as IExecuteFunctions['getNodeParameter']);
+
+		return await new Grist().execute.call(ctx);
+	};
+
+	it('preserves string value for Text column in filtered getAll', async () => {
+		await executeGetAll({
+			filterProperties: [{ field: 'name', values: '123' }],
+			columnsResponse: {
+				columns: [{ id: 'name', fields: { type: 'Text' } }],
+			},
+		});
+
+		expect(gristApiRequest).toHaveBeenCalledTimes(2);
+
+		const [firstMethod, firstEndpoint] = vi.mocked(gristApiRequest).mock.calls[0];
+		expect(firstMethod).toBe('GET');
+		expect(firstEndpoint).toBe('/docs/doc1/tables/Table1/columns');
+
+		const [secondMethod, secondEndpoint, , secondQs] = vi.mocked(gristApiRequest).mock.calls[1];
+		expect(secondMethod).toBe('GET');
+		expect(secondEndpoint).toBe('/docs/doc1/tables/Table1/records');
+
+		const filter = JSON.parse((secondQs as IDataObject).filter as string);
+		expect(filter).toEqual({ name: ['123'] });
+		expect(typeof filter.name[0]).toBe('string');
+	});
+
+	it('coerces numeric value to number for Numeric column in filtered getAll', async () => {
+		await executeGetAll({
+			filterProperties: [{ field: 'name', values: '123' }],
+			columnsResponse: {
+				columns: [{ id: 'name', fields: { type: 'Numeric' } }],
+			},
+		});
+
+		expect(gristApiRequest).toHaveBeenCalledTimes(2);
+
+		const [firstMethod, firstEndpoint] = vi.mocked(gristApiRequest).mock.calls[0];
+		expect(firstMethod).toBe('GET');
+		expect(firstEndpoint).toBe('/docs/doc1/tables/Table1/columns');
+
+		const [secondMethod, secondEndpoint, , secondQs] = vi.mocked(gristApiRequest).mock.calls[1];
+		expect(secondMethod).toBe('GET');
+		expect(secondEndpoint).toBe('/docs/doc1/tables/Table1/records');
+
+		const filter = JSON.parse((secondQs as IDataObject).filter as string);
+		expect(filter).toEqual({ name: [123] });
+		expect(typeof filter.name[0]).toBe('number');
+	});
+
+	it('does not fetch columns when filter is absent or empty', async () => {
+		await executeGetAll();
+
+		expect(gristApiRequest).toHaveBeenCalledTimes(1);
+
+		const [method, endpoint] = vi.mocked(gristApiRequest).mock.calls[0];
+		expect(method).toBe('GET');
+		expect(endpoint).toBe('/docs/doc1/tables/Table1/records');
+
+		const columnsCalls = vi
+			.mocked(gristApiRequest)
+			.mock.calls.filter(([, callEndpoint]) => callEndpoint.endsWith('/columns'));
+		expect(columnsCalls).toHaveLength(0);
+
+		vi.mocked(gristApiRequest).mockClear();
+		await executeGetAll({ filterProperties: [] });
+		expect(gristApiRequest).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(gristApiRequest).mock.calls[0][1]).toBe('/docs/doc1/tables/Table1/records');
+		expect(
+			vi
+				.mocked(gristApiRequest)
+				.mock.calls.filter(([, callEndpoint]) => callEndpoint.endsWith('/columns')),
+		).toHaveLength(0);
+	});
+
+	it('fetches columns only once across multiple input items with filtered getAll', async () => {
+		const inputItems: INodeExecutionData[] = [
+			{ json: { id: 1 } },
+			{ json: { id: 2 } },
+			{ json: { id: 3 } },
+		];
+
+		await executeGetAll({
+			inputItems,
+			filterProperties: [{ field: 'name', values: '123' }],
+			columnsResponse: {
+				columns: [{ id: 'name', fields: { type: 'Text' } }],
+			},
+		});
+
+		expect(gristApiRequest).toHaveBeenCalledTimes(4);
+
+		const columnsCalls = vi
+			.mocked(gristApiRequest)
+			.mock.calls.filter(([, endpoint]) => endpoint === '/docs/doc1/tables/Table1/columns');
+		expect(columnsCalls).toHaveLength(1);
+		expect(columnsCalls[0][0]).toBe('GET');
+
+		const recordsCalls = vi
+			.mocked(gristApiRequest)
+			.mock.calls.filter(([, endpoint]) => endpoint === '/docs/doc1/tables/Table1/records');
+		expect(recordsCalls).toHaveLength(3);
+
+		for (const call of recordsCalls) {
+			expect(call[0]).toBe('GET');
+			const qs = call[3] as IDataObject;
+			const filter = JSON.parse(qs.filter as string);
+			expect(filter).toEqual({ name: ['123'] });
+			expect(typeof filter.name[0]).toBe('string');
+		}
 	});
 });
