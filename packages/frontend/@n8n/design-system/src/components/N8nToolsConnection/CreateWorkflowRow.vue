@@ -40,7 +40,7 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	height: 64px;
+	height: var(--height--4xl); /** 64px **/
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	width: 100%;
 	border: 0;
