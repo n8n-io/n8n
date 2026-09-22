@@ -41,6 +41,7 @@ add to it.
 
 ## Team defaults
 
+- Write code that acts as its own documentation. The schema, the decorator, and the test should make the rule clear on their own without a comment.
 - List endpoints: cursor-based pagination (internal API uses both cursor- and
   page-based — don't copy an internal endpoint's model).
 - Pagination args are always `offset` and `limit` — on service methods, handler

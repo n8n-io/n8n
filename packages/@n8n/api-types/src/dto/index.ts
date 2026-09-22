@@ -267,6 +267,7 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	DeleteFolderQueryPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
 	FolderDetailsPublicDto,
