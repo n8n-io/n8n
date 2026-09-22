@@ -20,7 +20,7 @@ export class InsightsCompactionTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
 	constructor(
 		private readonly insightsConfig: InsightsConfig,

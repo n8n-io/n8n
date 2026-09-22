@@ -16,7 +16,7 @@ describe('InsightsCompactionTask', () => {
 			intervalSeconds: insightsConfig.compactionIntervalMinutes * 60,
 		});
 		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: false });
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 	});
 
 	it('should compact insights on run, handing it the run signal', async () => {
