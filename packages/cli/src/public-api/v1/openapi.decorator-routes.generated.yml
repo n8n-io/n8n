@@ -24,6 +24,9 @@ paths:
   /credentials/schema/{credentialTypeName}:
     get:
       $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
+  /discover:
+    get:
+      $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
@@ -52,6 +55,8 @@ paths:
   /projects/{projectId}/folders/{folderId}:
     get:
       $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
+    patch:
+      $ref: ./handlers/projects/spec/paths/updateFolder.generated.yml
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
@@ -205,6 +210,12 @@ paths:
       $ref: ./handlers/tags/spec/paths/updateTag.generated.yml
     delete:
       $ref: ./handlers/tags/spec/paths/deleteTag.generated.yml
+  /users:
+    get:
+      $ref: ./handlers/users/spec/paths/getUsers.generated.yml
+  /users/{userId}:
+    get:
+      $ref: ./handlers/users/spec/paths/getUser.generated.yml
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml

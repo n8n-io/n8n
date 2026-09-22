@@ -9,7 +9,7 @@ import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 import { useDropdownSearch } from './composables/useDropdownSearch';
-import type { DropdownMenuItemProps } from './DropdownMenu.types';
+import type { DropdownMenuExposed, DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
@@ -435,6 +435,39 @@ export const NestedMenu: Story = {
 	},
 };
 
+export const SelectableSubmenuParent: Story = {
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div>
+			<p>
+				Select the workflow from its label or with Enter. Open its nodes from the chevron or with ArrowRight.
+			</p>
+			<DropdownMenu :items="args.items" @select="handleSelect" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{
+				id: 'orders',
+				label: 'Orders workflow',
+				selectable: true,
+				children: [
+					{ id: 'webhook', label: 'Webhook' },
+					{ id: 'create-order', label: 'Create order' },
+				],
+			},
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
 export const WithTooltips: Story = {
 	render: (args) => ({
 		components: { DropdownMenu, N8nIcon, N8nTooltip },
@@ -639,6 +672,67 @@ export const SearchableRoot: Story = {
 		items: [] as Array<DropdownMenuItemProps<string>>,
 		searchPlaceholder: 'Search items',
 		searchDebounce: 0,
+	},
+};
+
+export const ExternalSearch: Story = {
+	render: () => ({
+		components: { DropdownMenu },
+		setup() {
+			const dropdownRef = ref<DropdownMenuExposed | null>(null);
+			const textareaRef = ref<HTMLTextAreaElement | null>(null);
+			const isOpen = ref(true);
+			const query = ref('');
+			const allItems: Array<DropdownMenuItemProps<string>> = [
+				{ id: 'orders', label: 'Orders workflow' },
+				{ id: 'invoices', label: 'Invoices workflow' },
+				{ id: 'customers', label: 'Customers workflow' },
+			];
+			const filteredItems = computed(() =>
+				allItems.filter((item) => item.label.toLowerCase().includes(query.value.toLowerCase())),
+			);
+
+			const handleKeydown = (event: KeyboardEvent) => {
+				dropdownRef.value?.handleExternalKeydown(event);
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			return {
+				dropdownRef,
+				textareaRef,
+				isOpen,
+				query,
+				filteredItems,
+				handleKeydown,
+				handleSelect,
+			};
+		},
+		template: `
+		<div style="display: flex; align-items: flex-start; gap: var(--spacing--xs);">
+			<textarea
+				ref="textareaRef"
+				v-model="query"
+				placeholder="Type to filter workflows"
+				@focus="isOpen = true"
+				@keydown="handleKeydown"
+			/>
+			<DropdownMenu
+				ref="dropdownRef"
+				v-model="isOpen"
+				:items="filteredItems"
+				:external-focus-target="textareaRef"
+				searchable
+				search-mode="external"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
 	},
 };
 

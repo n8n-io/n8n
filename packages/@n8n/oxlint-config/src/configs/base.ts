@@ -19,6 +19,7 @@ export const baseConfig = defineConfig({
 	plugins: ['typescript', 'import', 'unicorn', 'oxc'],
 	jsPlugins: [
 		'@n8n/eslint-config/plugin',
+		'@n8n/oxlint-config/import-x-alias',
 		'@stylistic/eslint-plugin',
 		'eslint-plugin-unused-imports',
 		'eslint-plugin-lodash',
@@ -173,6 +174,26 @@ export const baseConfig = defineConfig({
 		// ----------------------------------
 		'import/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 		'import/no-duplicates': 'error',
+		'import-x-alias/no-extraneous-dependencies': [
+			'error',
+			{
+				devDependencies: [
+					'**/test/**',
+					'**/__tests__/**',
+					'**/*.test.ts',
+					'**/*.test.utils.ts',
+					'**/*.spec.ts',
+					'**/integration-tests/**',
+					'**/test-utils/**',
+					'**/*.config.ts',
+					'**/*.config.js',
+					'**/scripts/*.ts',
+					'**/scripts/*.js',
+					'**/*.stories.ts',
+				],
+				optionalDependencies: false,
+			},
+		],
 
 		// ----------------------------------
 		//              unicorn
@@ -203,11 +224,19 @@ export const baseConfig = defineConfig({
 		'n8n-local-rules/no-restricted-sleep-definition': 'error',
 		'n8n-local-rules/no-restricted-sleep-import': 'error',
 		'n8n-local-rules/no-type-only-import-in-di': 'error',
+		'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 		'n8n-local-rules/no-unneeded-backticks': 'error',
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
 		'n8n-local-rules/no-useless-catch-throw': 'error',
 	},
 	overrides: [
+		{
+			files: ['eslint.config.mjs', 'eslint.*.config.mjs', 'oxlint.config.mts'],
+			jsPlugins: ['@n8n/oxlint-config/import-x-alias'],
+			rules: {
+				'import-x-alias/no-extraneous-dependencies': 'off',
+			},
+		},
 		{
 			files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts'],
 			// An override that names a jsPlugin rule must re-declare the plugin.

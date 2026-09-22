@@ -42,6 +42,12 @@ CREATE TABLE "deployment_key" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" var
 | IDX_deployment_key_signing_jwt_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_jwt_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.jwt' |
 | sqlite_autoindex_deployment_key_1 | PRIMARY KEY (id) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| prevent_deployment_key_delete | CREATE TRIGGER "prevent_deployment_key_delete"<br />				BEFORE DELETE ON "deployment_key"<br />				BEGIN<br />					SELECT RAISE(ABORT, 'Deployment keys must not be deleted');<br />				END |
+
 ## Relations
 
 ```mermaid

@@ -1,6 +1,4 @@
 import {
-	INLINE_SUB_AGENT_ID,
-	parseDelegateSubAgentContinuation,
 	type Agent as RuntimeAgent,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -15,7 +13,6 @@ import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -23,6 +20,13 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
+import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
+import {
+	draftChatMemoryResourceId,
+	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+} from './utils/agent-memory-scope';
+import { threadBelongsTo } from './utils/agent-thread-access';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import {
 	AgentRuntimeCacheService,
@@ -56,6 +60,7 @@ import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -203,6 +208,7 @@ export interface ExecuteForWakeConfig {
 }
 
 export interface StreamChatResponseConfig {
+	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -237,50 +243,6 @@ export interface StreamChatResponseConfig {
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
-}
-
-function getDelegatedChildCheckpoints(
-	checkpoint: SerializableAgentState,
-	parentAgentId: string,
-): Array<{ runId: string; agentId: string }> {
-	const childCheckpoints: Array<{ runId: string; agentId: string }> = [];
-	const seen = new Set<string>();
-
-	for (const pendingToolCall of Object.values(checkpoint.pendingToolCalls)) {
-		if (!pendingToolCall.suspended) continue;
-		const childCheckpoint = parseDelegateSubAgentContinuation(pendingToolCall.continuation);
-		if (!childCheckpoint) continue;
-
-		let ownerAgentId: string;
-		if (childCheckpoint.resumeContext === undefined) {
-			if (childCheckpoint.subAgentId !== INLINE_SUB_AGENT_ID) continue;
-			ownerAgentId = parentAgentId;
-		} else {
-			if (
-				!isRecord(childCheckpoint.resumeContext) ||
-				typeof childCheckpoint.resumeContext.agentId !== 'string' ||
-				childCheckpoint.resumeContext.agentId.length === 0 ||
-				(childCheckpoint.resumeContext.versionId !== undefined &&
-					(typeof childCheckpoint.resumeContext.versionId !== 'string' ||
-						childCheckpoint.resumeContext.versionId.length === 0))
-			) {
-				continue;
-			}
-			const expectedOwnerAgentId =
-				childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID
-					? parentAgentId
-					: childCheckpoint.subAgentId;
-			if (childCheckpoint.resumeContext.agentId !== expectedOwnerAgentId) continue;
-			ownerAgentId = expectedOwnerAgentId;
-		}
-
-		const identity = `${ownerAgentId}\0${childCheckpoint.runId}`;
-		if (seen.has(identity)) continue;
-		seen.add(identity);
-		childCheckpoints.push({ runId: childCheckpoint.runId, agentId: ownerAgentId });
-	}
-
-	return childCheckpoints;
 }
 
 /**
@@ -318,9 +280,15 @@ export class AgentExecutionOrchestratorService {
 		threadId: string;
 		projectId: string;
 		agentId: string;
+		userId: string;
 	}): Promise<AgentPersistedMessageDto[] | null> {
-		const { threadId, projectId, agentId } = params;
-		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId);
+		const { threadId, projectId, agentId, userId } = params;
+		const detail = await this.agentExecutionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
 		if (!detail) return null;
 		return executionsToMessagesDto(detail.executions);
 	}
@@ -344,6 +312,11 @@ export class AgentExecutionOrchestratorService {
 			checkpoint.persistence?.delegated === true ||
 			checkpoint.persistence?.resourceId !== params.resourceId
 		) {
+			return false;
+		}
+		const thread = await this.agentExecutionService.findThreadById(checkpoint.persistence.threadId);
+		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId);
+		if (thread && (!userId || !threadBelongsTo(thread, thread.projectId, params.agentId, userId))) {
 			return false;
 		}
 
@@ -373,11 +346,14 @@ export class AgentExecutionOrchestratorService {
 		expectedMemory: Partial<AgentMemoryScope> | undefined;
 		user: User | undefined;
 		usePublishedVersion: boolean;
+		previewChat: boolean | undefined;
 	}): Promise<{
 		memoryScope: NonNullable<SerializableAgentState['persistence']>;
 		sandboxPrincipalHash: AgentSandboxPrincipalHash | undefined;
+		access: AgentThreadAccess;
 	}> {
-		const { agentId, projectId, runId, expectedMemory, user, usePublishedVersion } = params;
+		const { agentId, projectId, runId, expectedMemory, user, usePublishedVersion, previewChat } =
+			params;
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
@@ -402,6 +378,35 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
 		}
+		const isPreview = !usePublishedVersion && !isTaskRunMemoryResourceId(memoryScope.resourceId);
+		let access: AgentThreadAccess = { accessScope: 'project', ownerId: null };
+		if (isPreview) {
+			if (
+				!user ||
+				memoryScope.resourceId !== draftChatMemoryResourceId(user.id) ||
+				!(await this.agentExecutionService.canUseDraftThread(
+					memoryScope.threadId,
+					projectId,
+					agentId,
+					user.id,
+					{ previewChat },
+				))
+			) {
+				throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
+			}
+			access = { accessScope: 'user', ownerId: user.id };
+		} else {
+			const thread = await this.agentExecutionService.findThreadById(memoryScope.threadId);
+			if (
+				userIdFromDraftChatMemoryResourceId(memoryScope.resourceId) ||
+				(thread &&
+					(thread.projectId !== projectId ||
+						thread.agentId !== agentId ||
+						thread.accessScope !== 'project'))
+			) {
+				throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
+			}
+		}
 
 		const sandboxScope = decodeAgentSandboxHostMetadata(memoryScope.hostMetadata);
 		const sandboxPrincipalHash = sandboxScope?.principalHash;
@@ -418,7 +423,7 @@ export class AgentExecutionOrchestratorService {
 			throw new UserError(`Checkpoint ${runId} is unavailable and cannot be resumed`);
 		}
 
-		return { memoryScope, sandboxPrincipalHash };
+		return { memoryScope, sandboxPrincipalHash, access };
 	}
 
 	/**
@@ -441,13 +446,14 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
-		const { memoryScope, sandboxPrincipalHash } = await this.loadResumeCheckpoint({
+		const { memoryScope, sandboxPrincipalHash, access } = await this.loadResumeCheckpoint({
 			agentId,
 			projectId,
 			runId,
 			expectedMemory,
 			user,
 			usePublishedVersion,
+			previewChat: config.previewChat,
 		});
 
 		const threadId = memoryScope.threadId;
@@ -465,7 +471,7 @@ export class AgentExecutionOrchestratorService {
 						...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 						previewChat: config.previewChat,
 					},
-					{ threadId, userMessage: null, source, onExecutionRecorded, abortSignal },
+					{ threadId, userMessage: null, source, onExecutionRecorded, abortSignal, access },
 				),
 			(runtime) =>
 				this.turnExecutionService.execute({
@@ -534,6 +540,7 @@ export class AgentExecutionOrchestratorService {
 								...(abortSignal ? { abortSignal } : {}),
 							},
 							recording: {
+								access,
 								threadId,
 								agentId,
 								agentName: runtime.agent.name,
@@ -575,6 +582,19 @@ export class AgentExecutionOrchestratorService {
 			type: 'n8n-user',
 			userId: user.id,
 		});
+		if (
+			memory.resourceId !== draftChatMemoryResourceId(user.id) ||
+			!(await this.agentExecutionService.canUseDraftThread(
+				memory.threadId,
+				projectId,
+				agentId,
+				user.id,
+				{ previewChat },
+			))
+		) {
+			throw new UserError('Session not found');
+		}
+		const access: AgentThreadAccess = { accessScope: 'user', ownerId: user.id };
 		yield* this.withRuntimeLease(
 			async () =>
 				await this.getRuntimeOrRecordFailure(
@@ -588,6 +608,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						access,
 						userMessage: message,
 						attachments,
 						source,
@@ -610,6 +631,7 @@ export class AgentExecutionOrchestratorService {
 				);
 
 				return this.streamChatResponse({
+					access,
 					messageContext,
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
@@ -673,6 +695,7 @@ export class AgentExecutionOrchestratorService {
 						author,
 						attachments,
 						source: integrationType,
+						access: { accessScope: 'project', ownerId: null },
 					},
 				),
 			async (runtime) => {
@@ -690,6 +713,7 @@ export class AgentExecutionOrchestratorService {
 				}
 				return this.streamChatResponse({
 					messageContext,
+					access: { accessScope: 'project', ownerId: null },
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
@@ -740,6 +764,7 @@ export class AgentExecutionOrchestratorService {
 						source: 'task',
 						taskId,
 						taskVersionId,
+						access: { accessScope: 'project', ownerId: null },
 					},
 				),
 			(runtime) =>
@@ -754,6 +779,7 @@ export class AgentExecutionOrchestratorService {
 					source: 'task',
 					taskId,
 					taskVersionId,
+					access: { accessScope: 'project', ownerId: null },
 					telemetry: {
 						runType: 'production',
 						configuration: runtime.telemetryConfiguration,
@@ -787,7 +813,13 @@ export class AgentExecutionOrchestratorService {
 						sandboxPrincipalHash,
 						allowBackgroundTasks: false,
 					},
-					{ threadId: memory.threadId, userMessage: message, source: 'task', taskId },
+					{
+						threadId: memory.threadId,
+						userMessage: message,
+						source: 'task',
+						taskId,
+						access: { accessScope: 'project', ownerId: null },
+					},
 				),
 			(runtime) =>
 				this.streamChatResponse({
@@ -801,6 +833,7 @@ export class AgentExecutionOrchestratorService {
 					projectId: runtime.projectId,
 					source: 'task',
 					taskId,
+					access: { accessScope: 'project', ownerId: null },
 					telemetry: {
 						runType: 'test',
 						configuration: runtime.telemetryConfiguration,
@@ -813,6 +846,21 @@ export class AgentExecutionOrchestratorService {
 	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
 		const { agentId, projectId, message, memory, identity, abortSignal } = config;
 		const isDraft = identity.type === 'draft';
+		const access: AgentThreadAccess = isDraft
+			? { accessScope: 'user', ownerId: identity.user.id }
+			: { accessScope: 'project', ownerId: null };
+		if (
+			isDraft &&
+			(memory.resourceId !== draftChatMemoryResourceId(identity.user.id) ||
+				!(await this.agentExecutionService.canUseDraftThread(
+					memory.threadId,
+					projectId,
+					agentId,
+					identity.user.id,
+				)))
+		) {
+			throw new UserError('Session not found');
+		}
 
 		// Draft wakes skip the quota hook, like other test chat runs.
 		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
@@ -833,11 +881,18 @@ export class AgentExecutionOrchestratorService {
 						...(isDraft ? { user: identity.user } : {}),
 						sandboxPrincipalHash: identity.principalHash,
 					},
-					{ threadId: memory.threadId, userMessage: null, source: integrationType, abortSignal },
+					{
+						threadId: memory.threadId,
+						userMessage: null,
+						source: integrationType,
+						abortSignal,
+						access,
+					},
 				),
 			(runtime) =>
 				this.streamWakeResponse(
 					this.streamChatResponse({
+						access,
 						messageContext,
 						agentInstance: runtime.agent,
 						toolRegistry: runtime.toolRegistry,
@@ -999,6 +1054,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					recording: {
 						threadId,
+						access: config.access,
 						agentId,
 						agentName: agentInstance.name,
 						projectId,
@@ -1043,7 +1099,14 @@ export class AgentExecutionOrchestratorService {
 		params: GetRuntimeParams,
 		session: Pick<
 			StartExecutionParams,
-			'threadId' | 'userMessage' | 'author' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+			| 'threadId'
+			| 'userMessage'
+			| 'author'
+			| 'attachments'
+			| 'source'
+			| 'taskId'
+			| 'taskVersionId'
+			| 'access'
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;

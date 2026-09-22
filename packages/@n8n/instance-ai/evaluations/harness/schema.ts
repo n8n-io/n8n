@@ -174,6 +174,9 @@ const evalTestCaseObjectSchema = z
 		buildMode: z.enum(['progressive', 'default']).optional(),
 		promptVersion: z.string().trim().min(1).max(128).optional(),
 		allowUserExecution: z.boolean().optional(),
+		/** Harness lowers the observer threshold for this thread, and reports the case
+		 *  not judged if compaction never ran. */
+		requiresMemoryCompaction: z.boolean().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
