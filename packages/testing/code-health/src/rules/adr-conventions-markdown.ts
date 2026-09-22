@@ -61,10 +61,10 @@ export function parseMarkdown(source: string): ParsedMarkdown {
 	};
 }
 
-/** Gets all parsed Markdown headings. */
+/** Gets all top-level Markdown headings. */
 export function getHeadings(tokens: Token[]): Heading[] {
 	return tokens.flatMap((token, index) => {
-		if (token.type !== 'heading_open' || !token.map) return [];
+		if (token.type !== 'heading_open' || token.level !== 0 || !token.map) return [];
 		const inline = tokens[index + 1];
 		if (inline?.type !== 'inline') return [];
 		return [{ level: Number(token.tag.slice(1)), content: inline.content, line: token.map[0] }];

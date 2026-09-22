@@ -30,8 +30,8 @@ function createFileAccess(rootDir: string): AdrFileAccess {
 			if (typeof patterns === 'string') {
 				return filePaths.filter((filePath) => path.basename(filePath).startsWith('ADR-'));
 			}
-			return filePaths.filter((filePath) =>
-				/^packages\/[^/]+\/package\.json$/.test(path.relative(rootDir, filePath)),
+			return filePaths.filter(
+				(filePath) => filePath === path.join(rootDir, 'packages/engine/package.json'),
 			);
 		}),
 		readFile: vi.fn((filePath: string) => {
@@ -137,18 +137,48 @@ describe('AdrConventionsRule', () => {
 		'packages/engine/docs/adr/ADR-20260922-adopt-a-stable-interface.md',
 	])('accepts a complete ADR at %s', async (relativePath) => {
 		const diskRoot = createTempDir();
-		writeDiskFile(
-			diskRoot,
-			'pnpm-workspace.yaml',
-			'packages:\n  - packages/*\n  - packages/modules/**\n',
-		);
-		writeDiskFile(diskRoot, 'packages/engine/package.json', '{"name":"engine"}\n');
-		writeDiskFile(diskRoot, relativePath, validAdr());
-		const diskRule = new AdrConventionsRule();
-		diskRule.configure({ options: { allowedOwners: ['Catalysts'] } });
 
 		try {
+			writeDiskFile(
+				diskRoot,
+				'pnpm-workspace.yaml',
+				'packages:\n  - packages/*\n  - packages/modules/**\n',
+			);
+			writeDiskFile(diskRoot, 'packages/engine/package.json', '{"name":"engine"}\n');
+			writeDiskFile(diskRoot, relativePath, validAdr());
+			const diskRule = new AdrConventionsRule();
+			diskRule.configure({ options: { allowedOwners: ['Catalysts'] } });
+
 			await expect(diskRule.analyze({ rootDir: diskRoot })).resolves.toEqual([]);
+		} finally {
+			fs.rmSync(diskRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('discovers invalid locations, malformed names, and duplicate IDs on disk', async () => {
+		const diskRoot = createTempDir();
+
+		try {
+			const duplicateName = 'ADR-20260922-adopt-a-stable-interface.md';
+			writeDiskFile(diskRoot, 'pnpm-workspace.yaml', 'packages:\n  - packages/*\n');
+			writeDiskFile(diskRoot, 'packages/engine/package.json', '{"name":"engine"}\n');
+			writeDiskFile(diskRoot, `docs/adr/${duplicateName}`, validAdr());
+			writeDiskFile(diskRoot, `packages/engine/docs/adr/${duplicateName}`, validAdr());
+			writeDiskFile(diskRoot, 'docs/decisions/ADR-2026-09-22-A-Stable-Interface.md', validAdr());
+			const diskRule = new AdrConventionsRule();
+			diskRule.configure({ options: { allowedOwners: ['Catalysts'] } });
+
+			const violations = await diskRule.analyze({ rootDir: diskRoot });
+
+			expect(
+				violations.filter((violation) => violation.message.includes('not unique')),
+			).toHaveLength(2);
+			expect(violations.some((violation) => violation.message.includes('outside an allowed'))).toBe(
+				true,
+			);
+			expect(violations.some((violation) => violation.message.includes('does not match'))).toBe(
+				true,
+			);
 		} finally {
 			fs.rmSync(diskRoot, { recursive: true, force: true });
 		}
@@ -271,7 +301,14 @@ describe('AdrConventionsRule', () => {
 
 		const violations = await rule.analyze(context());
 
-		expect(violations.some((violation) => violation.message.includes('Decision Owner'))).toBe(true);
+		expect(violations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					message: expect.stringContaining('Decision Owner'),
+					suggestion: expect.stringContaining('packages/testing/code-health/src/index.ts'),
+				}),
+			]),
+		);
 	});
 
 	it.each([

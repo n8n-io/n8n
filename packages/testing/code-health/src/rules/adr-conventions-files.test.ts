@@ -22,6 +22,21 @@ describe('ADR convention files', () => {
 
 			const files = await findAdrFiles(rootDir, fileAccess);
 
+			expect(fileAccess.glob).toHaveBeenCalledWith('**/ADR-*.md', {
+				cwd: rootDir,
+				absolute: true,
+				onlyFiles: true,
+				ignore: [
+					'**/node_modules/**',
+					'**/dist/**',
+					'**/build/**',
+					'**/out/**',
+					'**/coverage/**',
+					'**/.cache/**',
+					'**/.turbo/**',
+					'.git/**',
+				],
+			});
 			expect(files).toHaveLength(2);
 			expect(files).toEqual(
 				expect.arrayContaining([

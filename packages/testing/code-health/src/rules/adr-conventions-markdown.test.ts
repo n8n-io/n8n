@@ -60,12 +60,14 @@ describe('ADR convention Markdown', () => {
 	});
 
 	describe('getHeadings', () => {
-		it('gets Markdown headings but ignores headings in code blocks', () => {
-			const parsed = parseMarkdown('# Title\n\n```md\n## Not a section\n```\n\n## Context\n');
+		it('gets only top-level Markdown headings', () => {
+			const parsed = parseMarkdown(
+				'# Title\n\n```md\n## In code\n```\n\n> ## In a quote\n\n- ### In a list\n\n## Context\n',
+			);
 
 			expect(getHeadings(parsed.tokens)).toEqual([
 				{ level: 1, content: 'Title', line: 0 },
-				{ level: 2, content: 'Context', line: 6 },
+				{ level: 2, content: 'Context', line: 10 },
 			]);
 		});
 	});
@@ -122,6 +124,15 @@ describe('ADR convention Markdown', () => {
 
 			expect(valid).toEqual({ valid: true, indexes: [0, 4, 8, 12, 16], line: 1 });
 			expect(invalid.valid).toBe(false);
+		});
+
+		it('does not accept required sections nested in blockquotes', () => {
+			const nestedSections = sectionsSource
+				.split('\n')
+				.map((line) => `> ${line}`)
+				.join('\n');
+
+			expect(validateHeadings(parseMarkdown(nestedSections).tokens).valid).toBe(false);
 		});
 	});
 

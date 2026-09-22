@@ -245,6 +245,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 					lineForField(metadata, 'Decision Owner'),
 					1,
 					`Decision Owner must be one of: ${[...owners].join(', ')}.`,
+					'If your team is missing, add it to allowedOwners in packages/testing/code-health/src/index.ts.',
 				),
 			);
 		}
