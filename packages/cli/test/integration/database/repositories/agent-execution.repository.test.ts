@@ -101,24 +101,24 @@ describe('AgentExecutionRepository', () => {
 		await testDb.terminate();
 	});
 
-	function recordingServices(memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>()) {
+	function recordingServices(memoryBackend: ReturnType<N8nMemory['getImplementation']> = mock()) {
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
 			mockLogger(),
-				repository,
-				threadRepo,
-				memory,
+			repository,
+			threadRepo,
+			memory,
 			mock<Telemetry>(),
 			attachmentService,
 			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
-				mock<ErrorReporter>(),
-				mock<AgentExecutionUpdateBroadcaster>(),
-				Container.get(N8NCheckpointStorage),
-				Container.get(TransactionRunner),
+			mock<ErrorReporter>(),
+			mock<AgentExecutionUpdateBroadcaster>(),
+			Container.get(N8NCheckpointStorage),
+			Container.get(TransactionRunner),
 		);
 		return {
 			executionService,
@@ -460,11 +460,16 @@ describe('AgentExecutionRepository', () => {
 		]);
 		const before = await checkpointRepo.find({ order: { runId: 'ASC' } });
 		const otherProject = await createTeamProject();
+		const userId = uuid();
 
-		expect(await executionService.deleteThread(projectId, otherAgent.id, threadId)).toBe(false);
-		expect(await executionService.deleteThread(otherProject.id, agentId, threadId)).toBe(false);
+		expect(await executionService.deleteThread(projectId, otherAgent.id, threadId, userId)).toBe(
+			false,
+		);
+		expect(await executionService.deleteThread(otherProject.id, agentId, threadId, userId)).toBe(
+			false,
+		);
 		expect(await checkpointRepo.find({ order: { runId: 'ASC' } })).toEqual(before);
-		expect(await executionService.deleteThread(projectId, agentId, threadId)).toBe(true);
+		expect(await executionService.deleteThread(projectId, agentId, threadId, userId)).toBe(true);
 
 		for (const runId of [suspension.runId, retainedRunId, childRunId, nestedRunId]) {
 			expect(await checkpointRepo.findByRunId(runId)).toBeNull();
@@ -511,7 +516,7 @@ describe('AgentExecutionRepository', () => {
 		}));
 		for (const batch of chunk(childCheckpoints, 400)) await checkpointRepo.insert(batch);
 
-		expect(await executionService.deleteThread(projectId, agentId, threadId)).toBe(true);
+		expect(await executionService.deleteThread(projectId, agentId, threadId, uuid())).toBe(true);
 		expect(await checkpointRepo.findByRunId(suspension.runId)).toBeNull();
 		expect(await checkpointRepo.find({ where: { threadId: childThreadId } })).toEqual([]);
 	});
@@ -527,7 +532,7 @@ describe('AgentExecutionRepository', () => {
 		const interceptor = insertAttachmentAfterSnapshot(late);
 
 		try {
-			expect(await executionService.deleteThread(projectId, agentId, thread.id)).toBe(true);
+			expect(await executionService.deleteThread(projectId, agentId, thread.id, uuid())).toBe(true);
 		} finally {
 			interceptor.mockRestore();
 		}
@@ -552,9 +557,9 @@ describe('AgentExecutionRepository', () => {
 			recordingServices(memoryBackend);
 		const executionsBefore = await repository.findByThreadIdOrdered(threadId);
 
-		await expect(executionService.deleteThread(projectId, agentId, threadId)).rejects.toThrow(
-			'Memory cleanup failed',
-		);
+		await expect(
+			executionService.deleteThread(projectId, agentId, threadId, uuid()),
+		).rejects.toThrow('Memory cleanup failed');
 
 		expect(await checkpointRepo.findByRunId(suspension.runId)).not.toBeNull();
 		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
@@ -857,8 +862,8 @@ describe('AgentExecutionRepository', () => {
 	it.each(['custom', 'legacy'])('uses persisted ownership for a %s preview ID', async (format) => {
 		const owner = await createMember();
 		const other = await createAdmin();
-		const { executionService } = recordingServices();
 		const memory = Container.get(N8nMemory).getImplementation(agentId);
+		const { executionService } = recordingServices(memory);
 		const threadId = format === 'legacy' ? `test-${agentId}:${other.id}` : 'test-demo';
 		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
 			true,
