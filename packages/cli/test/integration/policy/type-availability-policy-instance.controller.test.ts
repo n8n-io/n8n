@@ -2,8 +2,12 @@ import { testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { NodeLoader } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -26,6 +30,12 @@ const OTHER_KIND_RULE = {
 beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
+
+	// A `package` rule is rejected at write time unless the package is actually loaded — see
+	// `n8n-nodes-base` used as a stand-in for "an installed package" below.
+	Container.get(LoadNodesAndCredentials).loaders = {
+		'n8n-nodes-base': mock<NodeLoader>({ known: { nodes: {}, credentials: {} } }),
+	};
 });
 
 afterEach(async () => {
@@ -165,7 +175,9 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.put('/node-type-policies/instance')
 			.send({
-				rules: [{ id: 'r2', action: 'allow', selector: { kind: 'package', value: 'x' } }],
+				rules: [
+					{ id: 'r2', action: 'allow', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+				],
 				defaultAction: 'deny',
 				version: first.body.data.version,
 			});
@@ -274,6 +286,28 @@ describe('node type availability policy instance controller admin happy path', (
 			.send({ attachments: [{ policyId: other.id, priority: 0, isFloor: false }] });
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	/**
+	 * `assertAttachableToScope` only compares an attached document's kind to the scope's, so an
+	 * empty attachment list would sail past it — this proves the scope lookup itself is
+	 * kind-scoped, closing the gap a `credentialTypePolicy:manage`-only caller could otherwise
+	 * use to clear or rewrite a node-types scope's attachments by guessing its scope id.
+	 */
+	test('PUT /scopes/:scopeId/attachments refuses a scope of another kind, even with no attachments', async () => {
+		const { scope: otherScope } = await Container.get(
+			TypeAvailabilityPolicyScopeRepository,
+		).createScopeIfAbsent(
+			{ kind: 'other-kind', projectId: null, defaultAction: 'allow', updatedBy: owner.id },
+			{},
+		);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(`/node-type-policies/scopes/${otherScope.id}/attachments`)
+			.send({ attachments: [] });
+
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('PATCH /policies/:policyId with a stale version returns 409 and writes nothing', async () => {

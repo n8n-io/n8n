@@ -16,6 +16,7 @@ import type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedAgent,
@@ -348,6 +349,7 @@ export class N8nClient {
 		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
+		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
@@ -357,6 +359,8 @@ export class N8nClient {
 				mode,
 				...(promptVersion ? { promptVersion } : {}),
 				...(handoffContext ? { context: handoffContext } : {}),
+				// Per-thread, so other cases in the suite keep the instance default.
+				...(observerThresholdTokens ? { observerThresholdTokens } : {}),
 			} satisfies InstanceAiSendMessageRequest,
 		});
 		return this.unwrapRestData<{ runId: string }>(result);
@@ -436,6 +440,16 @@ export class N8nClient {
 	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
 			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
+		);
+	}
+
+	/** Live observations + the compaction cursor for a thread. */
+	async getThreadMemory(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
+			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
 		);
 	}
 

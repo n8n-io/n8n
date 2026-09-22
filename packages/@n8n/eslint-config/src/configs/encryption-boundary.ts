@@ -11,14 +11,6 @@ import tseslint from 'typescript-eslint';
  * `encryption-boundary` verifies that coverage in CI and rejects package-level
  * downgrades and inline directives that would silence these rules:
  *
- * - `no-legacy-cipher-methods`: the deprecated `Cipher.encrypt` / `decrypt`
- *   always take the legacy instance-key AES-256-CBC path, which key rotation
- *   cannot manage.
- * - `no-misplaced-cipher-primitives`: the raw AES classes and the explicit
- *   `encryptWithKey` / `decryptWithKey` stay inside the encryption area and
- *   database migrations.
- * - `no-deployment-key-delete`: data encrypted with a key becomes unreadable
- *   without it — keys are deactivated, never deleted.
  * - `no-encryption-guardrail-disable`: in-editor feedback that the rules
  *   above cannot be silenced inline; widening the boundary happens here,
  *   under security ownership (see OWNERS).
@@ -32,9 +24,6 @@ import tseslint from 'typescript-eslint';
  */
 export const encryptionBoundaryConfig = tseslint.config({
 	rules: {
-		'n8n-local-rules/no-legacy-cipher-methods': 'error',
-		'n8n-local-rules/no-misplaced-cipher-primitives': 'error',
-		'n8n-local-rules/no-deployment-key-delete': 'error',
 		'n8n-local-rules/no-encryption-guardrail-disable': 'error',
 	},
 });

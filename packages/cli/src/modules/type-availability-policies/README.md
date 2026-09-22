@@ -231,8 +231,11 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the six points, the save diff, the violations       |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
-| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments                                       |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins                                       |
+| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |

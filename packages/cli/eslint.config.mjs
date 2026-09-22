@@ -45,8 +45,7 @@ export default defineConfig(
 		rules: {
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
-			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{
@@ -152,7 +151,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
@@ -240,7 +238,6 @@ export default defineConfig(
 		// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
 		files: [
 			// credentials/
-			'./src/credentials-helper.ts',
 			'./src/credentials/credential-connection-status-provider.interface.ts',
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
@@ -331,7 +328,6 @@ export default defineConfig(
 			'./src/executions/execution-data/db-store.ts',
 			'./src/executions/execution-persistence.ts',
 			'./src/executions/execution-recovery.service.ts',
-			'./src/executions/execution.service.ts',
 			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
 			'./src/modules/agents/agents.service.ts',
 			'./src/modules/chat-hub/chat-hub-agent.service.ts',

@@ -90,13 +90,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
-	>;
-
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthlessRequest<
@@ -110,8 +103,6 @@ export declare namespace UserRequest {
 		}
 	>;
 }
-
-export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
 

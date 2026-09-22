@@ -1,12 +1,12 @@
 import {
 	CreatePolicyDocumentDto,
 	ListNodeTypePolicyDocumentsQueryDto,
-	NodeTypePolicyAttachmentsPublicDto,
-	NodeTypePolicyDocumentListPublicDto,
-	NodeTypePolicyDocumentPublicDto,
-	NodeTypePolicyDocumentWriteResultPublicDto,
-	NodeTypePolicyEffectivePublicDto,
-	NodeTypePolicyEffectiveWriteResultPublicDto,
+	PolicyAttachmentsPublicDto,
+	PolicyDocumentListPublicDto,
+	PolicyDocumentPublicDto,
+	PolicyDocumentWriteResultPublicDto,
+	PolicyEffectivePublicDto,
+	PolicyEffectiveWriteResultPublicDto,
 	PutInstancePolicyDto,
 	PutProjectPolicyDto,
 	ReplaceAttachmentsDto,
@@ -51,7 +51,7 @@ import {
 
 const tags = ['NodeTypePolicy'];
 
-function toPublicDocument(policy: TypeAvailabilityPolicy): NodeTypePolicyDocumentPublicDto {
+function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicDto {
 	return {
 		id: policy.id,
 		kind: policy.kind,
@@ -92,9 +92,9 @@ export class NodeTypePoliciesPublicController {
 		'Returns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyEffectivePublicDto)
+	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getInstancePolicy(): Promise<NodeTypePolicyEffectivePublicDto> {
+	async getInstancePolicy(): Promise<PolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(NODE_TYPES_KIND, null);
 
 		return {
@@ -114,14 +114,14 @@ export class NodeTypePoliciesPublicController {
 		'Sets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyEffectiveWriteResultPublicDto)
+	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async putInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: PutInstancePolicyDto,
-	): Promise<NodeTypePolicyEffectiveWriteResultPublicDto> {
+	): Promise<PolicyEffectiveWriteResultPublicDto> {
 		const result = await (await this.service()).setEffectivePolicy(
 			NODE_TYPES_KIND,
 			null,
@@ -148,13 +148,13 @@ export class NodeTypePoliciesPublicController {
 		"Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyEffectivePublicDto)
+	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
 	async getProjectPolicy(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-	): Promise<NodeTypePolicyEffectivePublicDto> {
+	): Promise<PolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(NODE_TYPES_KIND, projectId);
 
 		return {
@@ -174,7 +174,7 @@ export class NodeTypePoliciesPublicController {
 		"Sets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyEffectiveWriteResultPublicDto)
+	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async putProjectPolicy(
@@ -182,7 +182,7 @@ export class NodeTypePoliciesPublicController {
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body dto: PutProjectPolicyDto,
-	): Promise<NodeTypePolicyEffectiveWriteResultPublicDto> {
+	): Promise<PolicyEffectiveWriteResultPublicDto> {
 		const result = await (await this.service()).setEffectivePolicy(
 			NODE_TYPES_KIND,
 			projectId,
@@ -207,13 +207,13 @@ export class NodeTypePoliciesPublicController {
 	@ApiSummary('List node type policy documents')
 	@ApiDescription('Returns a cursor-paginated list of reusable policy documents.')
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyDocumentListPublicDto)
+	@ApiResponse(200, PolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
 	async listPolicyDocuments(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListNodeTypePolicyDocumentsQueryDto,
-	): Promise<NodeTypePolicyDocumentListPublicDto> {
+	): Promise<PolicyDocumentListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
 
 		const { items, count } = await (await this.service()).listPolicyDocumentsPage(
@@ -237,13 +237,13 @@ export class NodeTypePoliciesPublicController {
 		'Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(201, NodeTypePolicyDocumentWriteResultPublicDto)
+	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(503)
 	async createPolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreatePolicyDocumentDto,
-	): Promise<NodeTypePolicyDocumentWriteResultPublicDto> {
+	): Promise<PolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).createPolicyDocument(
 			NODE_TYPES_KIND,
 			dto.rules,
@@ -259,14 +259,14 @@ export class NodeTypePoliciesPublicController {
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Retrieve a node type policy document')
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyDocumentPublicDto)
+	@ApiResponse(200, PolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async getPolicyDocument(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
-	): Promise<NodeTypePolicyDocumentPublicDto> {
+	): Promise<PolicyDocumentPublicDto> {
 		const policy = await (await this.service()).getPolicyDocument(NODE_TYPES_KIND, policyId);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
@@ -284,7 +284,7 @@ export class NodeTypePoliciesPublicController {
 		"Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyDocumentWriteResultPublicDto)
+	@ApiResponse(200, PolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
@@ -293,7 +293,7 @@ export class NodeTypePoliciesPublicController {
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
 		@Body dto: UpdatePolicyDocumentDto,
-	): Promise<NodeTypePolicyDocumentWriteResultPublicDto> {
+	): Promise<PolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).updatePolicyDocument(
 			NODE_TYPES_KIND,
 			policyId,
@@ -335,7 +335,7 @@ export class NodeTypePoliciesPublicController {
 		"Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, NodeTypePolicyAttachmentsPublicDto)
+	@ApiResponse(200, PolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async replaceAttachments(
@@ -343,8 +343,9 @@ export class NodeTypePoliciesPublicController {
 		_res: Response,
 		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,
 		@Body dto: ReplaceAttachmentsDto,
-	): Promise<NodeTypePolicyAttachmentsPublicDto> {
+	): Promise<PolicyAttachmentsPublicDto> {
 		const result = await (await this.service()).replaceAttachments(
+			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
 			req.user.id,
