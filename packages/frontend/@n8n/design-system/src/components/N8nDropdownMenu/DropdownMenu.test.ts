@@ -474,6 +474,34 @@ describe('N8nDropdownMenu', () => {
 				expect(dropdown).toBeInTheDocument();
 			});
 		});
+
+		it('should preserve the configured width in a portaled loading sub-menu', async () => {
+			const wrapper = render(DropdownMenu, {
+				props: {
+					items: [
+						{
+							id: 'loading-parent',
+							label: 'Loading parent',
+							loading: true,
+							loadingItemCount: 4,
+						},
+					],
+					modelValue: true,
+					width: '20rem',
+				},
+			});
+			const parent = await wrapper.findByRole('menuitem', { name: 'Loading parent' });
+
+			await userEvent.hover(parent);
+
+			const subMenu = await waitFor(() => {
+				const menus = document.querySelectorAll<HTMLElement>('[role="menu"]');
+				if (menus.length < 2) throw new Error('Sub-menu not found');
+				return menus[1];
+			});
+			expect(subMenu.style.getPropertyValue('--n8n--dropdown-menu-width')).toBe('20rem');
+			expect(subMenu.querySelectorAll('.n8n-loading')).toHaveLength(4);
+		});
 	});
 
 	describe('empty state', () => {

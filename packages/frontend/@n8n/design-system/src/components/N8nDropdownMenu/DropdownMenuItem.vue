@@ -16,6 +16,7 @@ import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
+	DropdownMenuWidthKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
+const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
@@ -338,6 +340,7 @@ onBeforeUnmount(() => {
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
+						{ '--n8n--dropdown-menu-width': menuWidth },
 					]"
 					:side-offset="1"
 					:prioritize-position="true"
@@ -645,8 +648,8 @@ onBeforeUnmount(() => {
 	background-color: var(--background--surface);
 	z-index: var.$index-popper;
 	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
-	max-width: var(--n8n--dropdown-menu-width);
+	min-width: calc(var(--n8n--dropdown-menu-width, 24rem) / 4);
+	max-width: var(--n8n--dropdown-menu-width, 24rem);
 	max-height: min(
 		var(--reka-dropdown-menu-content-available-height),
 		var(--n8n-dropdown-sub-max-height, 75vh)

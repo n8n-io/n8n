@@ -13,6 +13,7 @@ import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
+	DropdownMenuWidthKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuExternalNavigationController,
 	type DropdownMenuItemProps,
@@ -68,6 +69,11 @@ provide(
 				? `${props.subMenuMaxHeight}px`
 				: props.subMenuMaxHeight,
 	),
+);
+
+provide(
+	DropdownMenuWidthKey,
+	computed(() => props.width),
 );
 
 // Handle controlled/uncontrolled state

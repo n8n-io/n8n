@@ -15,6 +15,9 @@ export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> 
 	'DropdownMenuSubMaxHeight',
 );
 
+/** Injection key for preserving the root menu width across portaled sub-menus. */
+export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownMenuWidth');
+
 export interface DropdownMenuExternalNavigationController {
 	/** Handles a key for one visible menu level. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
