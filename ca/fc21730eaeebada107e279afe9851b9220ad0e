@@ -1,0 +1,31 @@
+packages/cli/src/environments.ee/source-control/source-control-import.service.ee.ts
+  s_376467413b3cb9::t_17c6db3a3328de 176,332,439,463,519,568
+packages/cli/src/environments.ee/source-control/__tests__/source-control-git.service.integration.test.ts
+  s_376467413b3cb9::t_eaa36cd4f528a7 57
+  s_376467413b3cb9::t_740b933f37c3fd 10-12
+  s_376467413b3cb9::t_a371340d5ee164 1-9,13-56,58-146
+packages/cli/src/environments.ee/source-control/__tests__/source-control-import.service.ee.test.ts
+  s_376467413b3cb9::t_27a088c275f15c 111-115,649-653,765-769,796-800,889-893,1266-1270
+packages/cli/src/environments.ee/source-control/constants.ts
+  s_376467413b3cb9::t_18eb6ec86ef759 10-25
+packages/cli/src/environments.ee/source-control/source-control-git.service.ee.ts
+  s_376467413b3cb9::t_18eb6ec86ef759 5,24-25,126,141,281-282,314-315,358-360,408-534,539-542,583-592
+packages/cli/src/environments.ee/source-control/__tests__/source-control-git.service.test.ts
+  s_376467413b3cb9::t_56d2542e047bb4 6,52-235,251-254,264,381-384,388,444,480-484,511-515,533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cafc21730eaeebada107e279afe9851b9220ad0e",
+  "prompts": {},
+  "sessions": {
+    "s_376467413b3cb9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b3b4-07dc-7110-8ab5-df2d155c48b0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
