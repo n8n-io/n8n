@@ -744,12 +744,56 @@ describe('OtelLifecycleHandler', () => {
 				executionId: 'exec-1',
 				workflowId: 'wf-1',
 				workflowName: 'Test',
+				workflowVersionId: undefined,
 				mode: 'trigger',
+				retryOf: undefined,
 				detector: 'queue-recovery',
 				startedAt,
 				stoppedAt,
 				tracingContext: eventTracingContext,
+				workflow: { customAttributes: undefined },
+				project: undefined,
 			});
+		});
+
+		it('should pass the version id, retry source, project and custom attributes on the event', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
+
+			await makeHandler().onExecutionCrashed(
+				makeEvent({
+					workflowVersionId: 'version-1',
+					retryOf: 'exec-original',
+					workflowCustomTelemetryTags: [{ key: 'workflowTag', value: 'checkout' }],
+					project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
+				}),
+			);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowVersionId: 'version-1',
+					retryOf: 'exec-original',
+					workflow: { customAttributes: { workflowTag: 'checkout' } },
+					project: { id: 'project-1', customAttributes: { team: 'platform' } },
+				}),
+			);
+		});
+
+		it('should omit the custom attributes but keep the project id when they are not licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
+
+			await makeHandler().onExecutionCrashed(
+				makeEvent({
+					workflowCustomTelemetryTags: [{ key: 'workflowTag', value: 'checkout' }],
+					project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
+				}),
+			);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: { customAttributes: undefined },
+					project: { id: 'project-1', customAttributes: undefined },
+				}),
+			);
 		});
 	});
 

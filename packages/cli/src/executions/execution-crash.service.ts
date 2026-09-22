@@ -64,21 +64,29 @@ export class ExecutionCrashService {
 			id,
 			workflowId,
 			workflowName,
+			workflowVersionId,
 			mode,
+			retryOf,
 			startedAt,
 			stoppedAt,
 			tracingContext,
+			workflowCustomTelemetryTags,
+			project,
 		} of executions) {
 			this.eventService.emit('execution-crashed', {
 				executionId: id,
 				workflowId,
 				workflowName,
+				workflowVersionId,
 				mode,
+				retryOf,
 				startedAt: startedAt ?? undefined,
 				stoppedAt,
 				detector,
 				hostId: this.instanceSettings.hostId,
 				tracingContext,
+				workflowCustomTelemetryTags,
+				project,
 			});
 		}
 	}

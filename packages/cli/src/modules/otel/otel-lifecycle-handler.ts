@@ -111,7 +111,9 @@ export class OtelLifecycleHandler {
 				name: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
-				customAttributes: this.buildWorkflowCustomAttributes(ctx),
+				customAttributes: this.buildWorkflowCustomAttributes(
+					ctx.workflow.settings?.customTelemetryTags,
+				),
 			},
 		});
 
@@ -154,7 +156,9 @@ export class OtelLifecycleHandler {
 				name: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
-				customAttributes: this.buildWorkflowCustomAttributes(ctx),
+				customAttributes: this.buildWorkflowCustomAttributes(
+					ctx.workflow.settings?.customTelemetryTags,
+				),
 			},
 		});
 
@@ -180,11 +184,22 @@ export class OtelLifecycleHandler {
 			executionId: event.executionId,
 			workflowId: event.workflowId,
 			workflowName: event.workflowName,
+			workflowVersionId: event.workflowVersionId,
 			mode: event.mode,
+			retryOf: event.retryOf,
 			detector: event.detector,
 			startedAt: event.startedAt,
 			stoppedAt: event.stoppedAt,
 			tracingContext: event.tracingContext,
+			workflow: {
+				customAttributes: this.buildWorkflowCustomAttributes(event.workflowCustomTelemetryTags),
+			},
+			project: event.project
+				? {
+						id: event.project.id,
+						customAttributes: this.buildProjectCustomAttributes(event.project.customTelemetryTags),
+					}
+				: undefined,
 		});
 	}
 
@@ -223,9 +238,9 @@ export class OtelLifecycleHandler {
 	}
 
 	private buildWorkflowCustomAttributes(
-		ctx: WorkflowExecuteBeforeContext | WorkflowExecuteResumeContext,
+		customTelemetryTags: unknown,
 	): CustomAttributes | undefined {
-		const tags = getCustomTelemetryTags(ctx.workflow.settings?.customTelemetryTags);
+		const tags = getCustomTelemetryTags(customTelemetryTags);
 		if (!tags?.length) return;
 		if (!this.areCustomSpanAttributesLicensed()) return;
 

@@ -40,10 +40,14 @@ describe('ExecutionCrashService', () => {
 			id,
 			workflowId,
 			workflowName,
+			workflowVersionId,
 			mode,
+			retryOf,
 			startedAt: rowStartedAt,
 			stoppedAt: rowStoppedAt,
 			tracingContext,
+			workflowCustomTelemetryTags,
+			project,
 		}: CrashedExecution,
 		detector: string,
 	) => [
@@ -52,12 +56,16 @@ describe('ExecutionCrashService', () => {
 			executionId: id,
 			workflowId,
 			workflowName,
+			workflowVersionId,
 			mode,
+			retryOf,
 			startedAt: rowStartedAt ?? undefined,
 			stoppedAt: rowStoppedAt,
 			detector,
 			hostId: 'main-1',
 			tracingContext,
+			workflowCustomTelemetryTags,
+			project,
 		},
 	];
 
@@ -89,6 +97,10 @@ describe('ExecutionCrashService', () => {
 	test('announces each execution it transitioned with the detector, host and trace context', async () => {
 		const first = crashedExecution('1', {
 			tracingContext: { traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01' },
+			workflowVersionId: 'version-1',
+			retryOf: '9',
+			workflowCustomTelemetryTags: [{ key: 'env', value: 'production' }],
+			project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
 		});
 		const second = crashedExecution('2', { mode: 'manual', startedAt: null });
 		transitions([first, second]);

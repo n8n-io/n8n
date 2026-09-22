@@ -7,6 +7,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
 	JsonValue,
 	WorkflowExecuteMode,
 	WorkflowSettings,
@@ -656,6 +657,10 @@ export type RelayEventMap = {
 		detector: CrashDetector;
 		hostId: string;
 		tracingContext?: { traceparent: string; tracestate?: string };
+		workflowVersionId?: string;
+		retryOf?: string;
+		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+		project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 	};
 
 	'execution-deleted': {

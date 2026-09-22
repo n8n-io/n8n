@@ -5,7 +5,7 @@ import type { CrashDetector } from '@/events/maps/relay.event-map';
 import type { TracingContext } from './tracing-context';
 
 export type CustomAttributes = Record<string, string>;
-type ProjectContext = {
+export type ProjectContext = {
 	id: string;
 	customAttributes?: CustomAttributes;
 };
@@ -40,11 +40,15 @@ export type EndCrashedWorkflowParams = {
 	executionId: string;
 	workflowId: string;
 	workflowName?: string;
+	workflowVersionId?: string;
 	mode: WorkflowExecuteMode;
+	retryOf?: string;
 	detector: CrashDetector;
 	startedAt?: Date;
 	stoppedAt: Date;
 	tracingContext?: TracingContext;
+	workflow?: { customAttributes?: CustomAttributes };
+	project?: ProjectContext;
 };
 
 type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;

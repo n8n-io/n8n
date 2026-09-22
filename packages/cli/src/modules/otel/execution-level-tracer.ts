@@ -133,6 +133,8 @@ export class ExecutionLevelTracer {
 				[ATTR.EXECUTION_ERROR_TYPE]: WorkflowCrashedError.name,
 				[ATTR.EXECUTION_CRASH_DETECTOR]: params.detector,
 				[ATTR.EXECUTION_RECONSTRUCTED]: tracked === undefined,
+				[ATTR.EXECUTION_IS_RETRY]: params.mode === 'retry',
+				...(params.retryOf ? { [ATTR.EXECUTION_RETRY_OF]: params.retryOf } : {}),
 			});
 			span.setStatus({ code: SpanStatusCode.ERROR });
 			span.recordException(new WorkflowCrashedError());
@@ -156,7 +158,13 @@ export class ExecutionLevelTracer {
 				attributes: {
 					[ATTR.WORKFLOW_ID]: params.workflowId,
 					...(params.workflowName && { [ATTR.WORKFLOW_NAME]: params.workflowName }),
+					...(params.workflowVersionId && {
+						[ATTR.WORKFLOW_VERSION_ID]: params.workflowVersionId,
+					}),
 					[ATTR.EXECUTION_ID]: params.executionId,
+					...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+					...buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, params.workflow?.customAttributes),
+					...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 				},
 			},
 			this.parseTraceParentHeaders(params.tracingContext),
