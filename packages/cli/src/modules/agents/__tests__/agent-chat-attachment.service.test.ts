@@ -3,7 +3,6 @@ import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentSessionLock } from '../agent-session-lock.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
@@ -14,21 +13,17 @@ describe('AgentChatAttachmentService', () => {
 	let repository = mock<AgentChatAttachmentRepository>();
 	let service: AgentChatAttachmentService;
 	let threadRepository = mock<AgentExecutionThreadRepository>();
-	let sessionLock = mock<AgentSessionLock>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		binaryDataService = mock<BinaryDataService>();
 		repository = mock<AgentChatAttachmentRepository>();
 		threadRepository = mock<AgentExecutionThreadRepository>();
-		sessionLock = mock<AgentSessionLock>();
-		sessionLock.run.mockImplementation(async (_sessionId, fn) => await fn({}));
 		service = new AgentChatAttachmentService(
 			mock<Logger>(),
 			binaryDataService,
 			repository,
 			threadRepository,
-			sessionLock,
 		);
 	});
 
@@ -69,7 +64,7 @@ describe('AgentChatAttachmentService', () => {
 				mimeType: 'image/png',
 			});
 			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.saveForSession.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-1',
@@ -80,8 +75,6 @@ describe('AgentChatAttachmentService', () => {
 				fileName: 'photo.png',
 				mimeType: 'image/png',
 				data: Buffer.from([1, 2, 3]),
-				access: { accessScope: 'user', ownerId: 'user-1' },
-				sessionMode: 'new',
 			});
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
@@ -94,8 +87,7 @@ describe('AgentChatAttachmentService', () => {
 				expect.anything(),
 			);
 
-			expect(repository.saveForSession).toHaveBeenCalledTimes(1);
-			expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
+			expect(repository.save).toHaveBeenCalledTimes(1);
 			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');
@@ -113,8 +105,6 @@ describe('AgentChatAttachmentService', () => {
 					fileName: 'photo.png',
 					mimeType: 'image/png',
 					data: Buffer.from([1]),
-					access: { accessScope: 'user', ownerId: 'user-1' },
-					sessionMode: 'new',
 				}),
 			).rejects.toThrow('persisted binary data storage mode');
 		});
@@ -127,7 +117,7 @@ describe('AgentChatAttachmentService', () => {
 				mimeType: 'image/png',
 			});
 			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.saveForSession.mockRejectedValue(new Error('db down'));
+			repository.save.mockRejectedValue(new Error('db down'));
 
 			await expect(
 				service.storeInbound({
@@ -138,8 +128,6 @@ describe('AgentChatAttachmentService', () => {
 					fileName: 'photo.png',
 					mimeType: 'image/png',
 					data: Buffer.from([1]),
-					access: { accessScope: 'user', ownerId: 'user-1' },
-					sessionMode: 'new',
 				}),
 			).rejects.toThrow('db down');
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);

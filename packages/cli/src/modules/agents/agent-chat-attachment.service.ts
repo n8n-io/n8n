@@ -9,8 +9,6 @@ import { OperationalError, type IBinaryData } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
-import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
-import { AgentSessionLock } from './agent-session-lock.service';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import {
@@ -18,7 +16,7 @@ import {
 	isIntegrationMemoryResourceId,
 	isTaskRunMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { threadBelongsTo, type AgentSessionMode } from './utils/agent-thread-access';
+import { threadBelongsTo } from './utils/agent-thread-access';
 
 // Typed against `SourceType` so a drift from the `binary_data` schema enum
 // (see `packages/@n8n/db/src/entities/binary-data-file.ts`) is a compile error.
@@ -35,8 +33,6 @@ export interface StoreInboundAttachmentParams {
 	fileName: string;
 	mimeType: string;
 	data: Buffer;
-	access: AgentThreadAccess;
-	sessionMode: AgentSessionMode;
 }
 
 /** Reference passed from ingestion (controller/bridge) to the orchestrator. */
@@ -74,7 +70,6 @@ export class AgentChatAttachmentService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
-		private readonly sessionLock: AgentSessionLock,
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
@@ -109,21 +104,7 @@ export class AgentChatAttachmentService {
 				fileSizeBytes: params.data.byteLength,
 				source: params.source,
 			});
-			return await this.sessionLock.run(
-				params.threadId,
-				async (ctx) =>
-					await this.repository.saveForSession(
-						attachment,
-						{
-							threadId: params.threadId,
-							agentId: params.agentId,
-							projectId: params.projectId,
-							access: params.access,
-							sessionMode: params.sessionMode,
-						},
-						ctx,
-					),
-			);
+			return await this.repository.save(attachment);
 		} catch (error) {
 			await this.binaryDataService
 				.deleteManyByBinaryDataId([stored.id])

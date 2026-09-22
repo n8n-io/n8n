@@ -210,7 +210,6 @@ describe('SubAgentRunner', () => {
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
-					hostRunId: 'agent-execution-1',
 					delegated: true,
 				},
 			}),
@@ -394,7 +393,6 @@ describe('SubAgentRunner', () => {
 				persistence: {
 					resourceId: 'draft-chat:user-1',
 					threadId: result.threadId,
-					hostRunId: 'agent-execution-1',
 					delegated: true,
 				},
 			}),
@@ -541,7 +539,6 @@ describe('SubAgentRunner', () => {
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
-					hostRunId: 'agent-execution-1',
 					delegated: true,
 				},
 			}),

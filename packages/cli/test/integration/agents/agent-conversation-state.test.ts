@@ -2,13 +2,11 @@ import type { SerializableAgentState } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig } from '@n8n/config';
-import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
-import { AgentSessionLock } from '@/modules/agents/agent-session-lock.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
@@ -50,10 +48,9 @@ describe('Agent conversation state', () => {
 			dropSchema: false,
 		}).initialize();
 		peerStorage = new N8NCheckpointStorage(
-			new AgentCheckpointRepository(peer, Container.get(TransactionRunner)),
+			new AgentCheckpointRepository(peer),
 			Container.get(Logger),
 			Container.get(AgentsConfig),
-			Container.get(AgentSessionLock),
 		);
 	});
 

@@ -169,14 +169,14 @@ export class AgentTestRunService {
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
 		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
-		if (sessionId && sessionMode === 'existing') {
+		if (sessionId) {
 			if (
 				!(await this.agentExecutionService.canUseDraftThread(
 					sessionId,
 					projectId,
 					agentId,
 					user.id,
-					{ previewChat, sessionMode: 'existing' },
+					{ previewChat, sessionMode },
 				))
 			) {
 				return { status: 'session_not_found' };
@@ -301,11 +301,7 @@ export class AgentTestRunService {
 
 		let checkpoint: SerializableAgentState | undefined;
 		try {
-			checkpoint = await this.n8nCheckpointStorage.load(
-				continuation.data.runId,
-				input.agentId,
-				input.projectId,
-			);
+			checkpoint = await this.n8nCheckpointStorage.load(continuation.data.runId, input.agentId);
 		} catch (error) {
 			if (error instanceof UserError) throw new InvalidAgentTestRunCheckpointError();
 			throw error;

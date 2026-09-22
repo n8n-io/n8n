@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
-import type { OperationContext } from '@n8n/db';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -21,7 +21,6 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
-import { AgentSessionLock } from './agent-session-lock.service';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
@@ -142,46 +141,43 @@ export class AgentExecutionService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
-		private readonly sessionLock: AgentSessionLock,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const { inserted, created, needsTitleSync } = await this.sessionLock.run(
-			params.threadMetadata?.parentThreadId ?? params.threadId,
-			async (ctx) => {
-				const prepared = await this.prepareThread(params, ctx);
-				const execution = this.agentExecutionRepository.create({
-					threadId: params.threadId,
-					status: 'running',
-					startedAt,
-					stoppedAt: null,
-					duration: 0,
-					userMessage: prepared.userMessage,
-					author: params.author ?? null,
-					model: null,
-					promptTokens: null,
-					completionTokens: null,
-					totalTokens: null,
-					cost: null,
-					// Save the background job signal before notifying clients that the execution started.
-					timeline: params.initialTimeline?.length ? params.initialTimeline : null,
-					storedAt: 'db',
-					error: null,
-					failureSummary: null,
-					hitlStatus: null,
-					source: params.source ?? null,
-					attachments: params.attachments?.length ? params.attachments : null,
-				});
-				return {
-					inserted: await this.agentExecutionRepository.saveInContext(execution, ctx),
-					created: prepared.created,
-					needsTitleSync: !prepared.created && !prepared.thread.title,
-				};
-			},
-		);
+		const { inserted, created, needsTitleSync } = await this.txRunner.run({}, async (ctx) => {
+			const prepared = await this.prepareThread(params, ctx);
+			const execution = this.agentExecutionRepository.create({
+				threadId: params.threadId,
+				status: 'running',
+				startedAt,
+				stoppedAt: null,
+				duration: 0,
+				userMessage: prepared.userMessage,
+				author: params.author ?? null,
+				model: null,
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cost: null,
+				// Save the background job signal before notifying clients that the execution started.
+				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
+				storedAt: 'db',
+				error: null,
+				failureSummary: null,
+				hitlStatus: null,
+				source: params.source ?? null,
+				attachments: params.attachments?.length ? params.attachments : null,
+			});
+			return {
+				inserted: await this.agentExecutionRepository.saveInContext(execution, ctx),
+				created: prepared.created,
+				needsTitleSync: !prepared.created && !prepared.thread.title,
+			};
+		});
+		this.startHeartbeat(inserted.id);
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
 		if (needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
-		this.startHeartbeat(inserted.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -539,7 +535,7 @@ export class AgentExecutionService {
 		threadId: string,
 		userId: string,
 	): Promise<boolean> {
-		const result = await this.sessionLock.run(threadId, async (ctx) => {
+		const result = await this.txRunner.run({}, async (ctx) => {
 			const deletion = await this.agentExecutionThreadRepository.deleteSession(
 				projectId,
 				agentId,

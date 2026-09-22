@@ -2,14 +2,13 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
@@ -18,12 +17,7 @@ import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
 } from '../utils/delegated-child-checkpoints';
-import {
-	AgentSessionNotFoundError,
-	PREVIEW_THREAD_SOURCES,
-	assertSessionAccess,
-	type AgentSessionMode,
-} from '../utils/agent-thread-access';
+import { PREVIEW_THREAD_SOURCES, type AgentSessionMode } from '../utils/agent-thread-access';
 
 const CHECKPOINT_BATCH_SIZE = 400;
 
@@ -50,7 +44,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 	/**
 	 * Find an existing thread or create a new one.
-	 * On creation, assigns a stable sessionNumber scoped to the project.
+	 * Assign a display number on creation. Concurrent sessions can share a number.
 	 */
 	async findOrCreate(
 		threadId: string,
@@ -67,30 +61,42 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const manager = this.managerFor(ctx);
 		const repository = manager.getRepository(AgentExecutionThread);
 		if (metadata?.parentThreadId) {
-			const parent = await repository.findOneBy({ id: metadata.parentThreadId });
-			if (!parent || parent.projectId !== projectId || parent.agentId !== metadata.parentAgentId) {
-				throw new AgentSessionNotFoundError();
+			const parent = await repository.findOneBy({
+				id: metadata.parentThreadId,
+				projectId,
+				agentId: metadata.parentAgentId ?? IsNull(),
+			});
+			if (parent) {
+				access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
+			} else if (await repository.existsBy({ id: metadata.parentThreadId })) {
+				throw new UserError('Session not found');
 			}
-			access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
 		}
-		if (access.accessScope === 'user' && !access.ownerId) throw new AgentSessionNotFoundError();
+		if (access.accessScope === 'user' && !access.ownerId) throw new UserError('Session not found');
 
-		const existing = await repository.findOneBy({ id: threadId });
-		assertSessionAccess(existing, {
-			threadId,
-			agentId,
-			projectId,
-			access,
-			sessionMode,
-		});
+		const isPostgres = manager.connection.options.type === 'postgres';
+		const findSession = async () =>
+			await repository.findOne({
+				where: {
+					id: threadId,
+					agentId,
+					projectId,
+					...access,
+					ownerId: access.ownerId ?? IsNull(),
+				},
+				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
+			});
+		const existing = await findSession();
 		if (existing) return { thread: existing, created: false };
+		if (sessionMode === 'existing') throw new UserError('Session not found');
 
+		// ponytail: display numbers can repeat; add allocation coordination only if labels need uniqueness.
 		const maxResult = await repository
 			.createQueryBuilder('t')
 			.select('MAX(t.sessionNumber)', 'max')
 			.where('t.projectId = :projectId', { projectId })
 			.getRawOne<{ max: number | null }>();
-		const thread = repository.create({
+		const thread = {
 			id: threadId,
 			agentId,
 			agentName,
@@ -101,8 +107,21 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			sessionNumber: (maxResult?.max ?? 0) + 1,
 			parentThreadId: metadata?.parentThreadId ?? null,
 			parentAgentId: metadata?.parentAgentId ?? null,
-		});
-		return { thread: await repository.save(thread), created: true };
+		};
+		const insert = repository
+			.createQueryBuilder()
+			.insert()
+			.values(thread)
+			.orIgnore()
+			.updateEntity(false);
+		if (isPostgres) insert.returning('id');
+		const result = await insert.execute();
+		const persisted = await findSession();
+		if (!persisted) throw new UserError('Session not found');
+		return {
+			thread: persisted,
+			created: !isPostgres || (Array.isArray(result.raw) && result.raw.length > 0),
+		};
 	}
 
 	/**
@@ -271,18 +290,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });
 	}
 
-	async assertSessionExists(
-		projectId: string,
-		agentId: string,
-		threadId: string,
-		ctx: OperationContext,
-	): Promise<void> {
-		const exists = await this.managerFor(ctx).exists(AgentExecutionThread, {
-			where: { id: threadId, projectId, agentId },
-		});
-		if (!exists) throw new AgentSessionNotFoundError();
-	}
-
 	/** Atomically increment token and cost counters on a thread in a single UPDATE. */
 	async incrementUsage(
 		threadId: string,
@@ -329,16 +336,13 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				{ id: threadId, projectId, agentId, accessScope: 'project' },
 				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
 			],
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});
 		if (!thread) return null;
-		const linkedThreadIds = await this.findLinkedThreadIds(manager, projectId, threadId);
-		const hasRunningWork =
-			(await manager.exists(AgentExecution, {
-				where: { threadId: In(linkedThreadIds), status: 'running' },
-			})) ||
-			(await manager.exists(AgentBackgroundJob, {
-				where: { parentThreadId: In(linkedThreadIds), status: 'running' },
-			}));
+		const hasRunningWork = await manager.exists(AgentExecution, {
+			where: { threadId, status: 'running' },
+		});
 		if (hasRunningWork) return { status: 'busy' };
 
 		const { attachments, executionLogs } = await this.findExternalRefs(
@@ -364,36 +368,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
 			},
 		};
-	}
-
-	private async findLinkedThreadIds(
-		manager: EntityManager,
-		projectId: string,
-		rootThreadId: string,
-	): Promise<string[]> {
-		const rows = await manager.find(AgentExecutionThread, {
-			select: ['id', 'parentThreadId'],
-			where: { projectId },
-		});
-		const children = new Map<string, string[]>();
-		for (const row of rows) {
-			if (!row.parentThreadId) continue;
-			const siblings = children.get(row.parentThreadId) ?? [];
-			siblings.push(row.id);
-			children.set(row.parentThreadId, siblings);
-		}
-		const visited = new Set([rootThreadId]);
-		const pending = [rootThreadId];
-		for (let index = 0; index < pending.length; index++) {
-			const parentId = pending[index];
-			if (!parentId) continue;
-			for (const childId of children.get(parentId) ?? []) {
-				if (visited.has(childId)) continue;
-				visited.add(childId);
-				pending.push(childId);
-			}
-		}
-		return [...visited];
 	}
 
 	private async findSessionCheckpointRunIds(

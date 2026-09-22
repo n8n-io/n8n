@@ -17,6 +17,7 @@ describe('AgentExecutionThreadRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		Object.assign(entityManager.connection, { options: { type: 'sqlite-pooled' } });
 		repository = new AgentExecutionThreadRepository(
 			mockDataSource as never,
 			mock<TransactionRunner>(),
@@ -26,13 +27,17 @@ describe('AgentExecutionThreadRepository', () => {
 	describe('findOrCreate', () => {
 		const makeScopedRepository = (saved: AgentExecutionThread, max = 7) => ({
 			findOneBy: vi.fn().mockResolvedValue(null),
+			findOne: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(saved),
 			createQueryBuilder: vi.fn().mockReturnValue({
 				select: vi.fn().mockReturnThis(),
 				where: vi.fn().mockReturnThis(),
 				getRawOne: vi.fn().mockResolvedValue({ max }),
+				insert: vi.fn().mockReturnThis(),
+				values: vi.fn().mockReturnThis(),
+				orIgnore: vi.fn().mockReturnThis(),
+				updateEntity: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ raw: [] }),
 			}),
-			create: vi.fn().mockReturnValue(saved),
-			save: vi.fn().mockResolvedValue(saved),
 		});
 
 		it('assigns the project-scoped session number with the supplied context', async () => {
@@ -50,7 +55,7 @@ describe('AgentExecutionThreadRepository', () => {
 			);
 
 			expect(entityManager.getRepository).toHaveBeenCalledWith(AgentExecutionThread);
-			expect(scopedRepository.create).toHaveBeenCalledWith({
+			expect(scopedRepository.createQueryBuilder().values).toHaveBeenCalledWith({
 				id: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Support agent',
@@ -68,11 +73,12 @@ describe('AgentExecutionThreadRepository', () => {
 		it('stores subagent origin metadata when creating a thread', async () => {
 			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
 			const scopedRepository = makeScopedRepository(saved);
+			const parentAccess = { accessScope: 'user' as const, ownerId: 'parent-owner' };
 			const parent = mock<AgentExecutionThread>({
 				id: 'parent-thread-1',
 				projectId: 'project-1',
 				agentId: 'parent-agent-1',
-				...access,
+				...parentAccess,
 			});
 			scopedRepository.findOneBy.mockResolvedValueOnce(parent).mockResolvedValueOnce(null);
 			entityManager.getRepository.mockReturnValue(scopedRepository as never);
@@ -90,12 +96,12 @@ describe('AgentExecutionThreadRepository', () => {
 				},
 			);
 
-			expect(scopedRepository.create).toHaveBeenCalledWith({
+			expect(scopedRepository.createQueryBuilder().values).toHaveBeenCalledWith({
 				id: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Support agent',
 				projectId: 'project-1',
-				...access,
+				...parentAccess,
 				taskId: null,
 				taskVersionId: null,
 				sessionNumber: 8,
@@ -121,7 +127,7 @@ describe('AgentExecutionThreadRepository', () => {
 				'version-1',
 			);
 
-			expect(scopedRepository.create).toHaveBeenCalledWith(
+			expect(scopedRepository.createQueryBuilder().values).toHaveBeenCalledWith(
 				expect.objectContaining({
 					taskId: 'task-1',
 					taskVersionId: 'version-1',

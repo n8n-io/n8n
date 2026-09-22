@@ -14,7 +14,6 @@ import {
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import { AgentSessionLock } from '../agent-session-lock.service';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
 function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
@@ -48,15 +47,14 @@ export class N8NCheckpointStorage {
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly sessionLock: AgentSessionLock,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
-	getStorage(agentId: string, projectId?: string): CheckpointStore {
+	getStorage(agentId: string): CheckpointStore {
 		return {
-			save: async (key, state) => await this.save(key, state, agentId, projectId),
-			load: async (key) => await this.load(key, agentId, projectId),
+			save: async (key, state) => await this.save(key, state, agentId),
+			load: async (key) => await this.load(key, agentId),
 			claimForResume: async (key: string, state: SerializableAgentState) =>
 				await this.claimForResume(key, state, agentId),
 			delete: async (key) => await this.delete(key, agentId),
@@ -90,41 +88,31 @@ export class N8NCheckpointStorage {
 		return runIds;
 	}
 
-	async save(
-		key: string,
-		checkpointState: SerializableAgentState,
-		agentId: string,
-		projectId?: string,
-	): Promise<void> {
+	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
 		const state = stripStateFileData(checkpointState);
-		const threadId = state.persistence?.threadId;
-		const input = {
-			runId: key,
-			agentId,
-			threadId: threadId ?? null,
-			state: JSON.stringify(state),
-		};
-		if (!projectId || !threadId) {
-			await this.agentCheckpointRepository.saveCheckpoint(input);
-			return;
+		const existing = await this.agentCheckpointRepository.findByRunId(key);
+
+		if (existing) {
+			if (existing.agentId !== agentId) {
+				throw new UnexpectedError('Agent checkpoint is owned by a different agent');
+			}
+			existing.state = JSON.stringify(state);
+			existing.threadId = state.persistence?.threadId ?? null;
+			existing.expired = false;
+			await this.agentCheckpointRepository.save(existing);
+		} else {
+			const checkpoint = this.agentCheckpointRepository.create({
+				runId: key,
+				agentId,
+				threadId: state.persistence?.threadId ?? null,
+				state: JSON.stringify(state),
+				expired: false,
+			});
+			await this.agentCheckpointRepository.save(checkpoint);
 		}
-		const executionId = state.persistence?.hostRunId;
-		if (!executionId) throw new UnexpectedError('Agent checkpoint has no execution ID');
-		await this.sessionLock.run(
-			threadId,
-			async (ctx) =>
-				await this.agentCheckpointRepository.saveForRunningExecution(
-					{ ...input, projectId, executionId },
-					ctx,
-				),
-		);
 	}
 
-	async load(
-		key: string,
-		agentId: string,
-		projectId?: string,
-	): Promise<SerializableAgentState | undefined> {
+	async load(key: string, agentId: string): Promise<SerializableAgentState | undefined> {
 		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
 
 		if (!checkpoint) return undefined;
@@ -134,14 +122,6 @@ export class N8NCheckpointStorage {
 		}
 
 		const state = jsonParse<SerializableAgentState>(checkpoint.state);
-		const threadId = state.persistence?.threadId;
-		if (
-			projectId &&
-			threadId &&
-			!(await this.agentCheckpointRepository.sessionExists(projectId, agentId, threadId))
-		) {
-			throw new UserError('This action has expired and cannot be resumed');
-		}
 		if (state.status !== 'suspended') {
 			throw new UserError('This action has already been handled');
 		}

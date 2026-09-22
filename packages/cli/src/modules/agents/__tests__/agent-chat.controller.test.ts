@@ -17,6 +17,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
@@ -34,6 +35,15 @@ function makeController() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
+	agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
+	agentChatAttachmentService.storeInbound.mockResolvedValue(
+		mock<AgentChatAttachment>({
+			id: 'att-1',
+			fileName: 'notes.txt',
+			mimeType: 'text/plain',
+			fileSizeBytes: 5,
+		}),
+	);
 	const agentExecutionService = mock<AgentExecutionService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
@@ -417,7 +427,18 @@ describe('AgentChatController SSE done payload', () => {
 					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 					res,
 					'agent-1',
-					{ message: 'hi', sessionId: 'thread-1', newSession: true } as never,
+					{
+						message: 'hi',
+						sessionId: 'thread-1',
+						newSession: true,
+						attachments: [
+							{
+								fileName: 'notes.txt',
+								mimeType: 'text/plain',
+								data: Buffer.from('hello').toString('base64'),
+							},
+						],
+					} as never,
 				),
 			done: { type: 'done', sessionId: 'thread-1', executionId: 'exec-99' },
 		},
@@ -464,42 +485,53 @@ describe('AgentChatController SSE done payload', () => {
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
-	it.each(operations)(
-		'sends done after the $name settles',
-		async ({ name, method, start, done }) => {
-			const { controller, agentExecutionService, agentExecutionOrchestratorService } =
-				makeController();
-			if (name === 'new chat') agentExecutionService.canUseDraftThread.mockResolvedValue(false);
-			const finalization = createDeferredPromise();
-			const finalizationStarted = createDeferredPromise();
-			let receivedSignal: AbortSignal | undefined;
-			agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
-				receivedSignal = config.abortSignal;
-				yield { type: 'finish', finishReason: 'stop' };
-				finalizationStarted.resolve();
-				await finalization.promise;
-				config.onExecutionRecorded?.('exec-99');
-			});
+	it.each(operations)('sends done after the $name settles', async ({ method, start, done }) => {
+		const { controller, agentExecutionService, agentExecutionOrchestratorService } =
+			makeController();
+		const finalization = createDeferredPromise();
+		const finalizationStarted = createDeferredPromise();
+		let receivedSignal: AbortSignal | undefined;
+		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
+			receivedSignal = config.abortSignal;
+			yield { type: 'finish', finishReason: 'stop' };
+			finalizationStarted.resolve();
+			await finalization.promise;
+			config.onExecutionRecorded?.('exec-99');
+		});
 
-			const writes: string[] = [];
-			const res = makeSseResponse(writes);
-			const request = start(controller, res);
-			await finalizationStarted.promise;
-			expect(res.end).not.toHaveBeenCalled();
-			expect(writes.some((line) => line.includes('"done"'))).toBe(false);
-			finalization.resolve();
-			await request;
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+		const request = start(controller, res);
+		await finalizationStarted.promise;
+		expect(res.end).not.toHaveBeenCalled();
+		expect(writes.some((line) => line.includes('"done"'))).toBe(false);
+		finalization.resolve();
+		await request;
 
-			const events = writes
-				.filter((line) => line.startsWith('data: '))
-				.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
 
-			expect(events).toContainEqual(done);
-			expect(res.end).toHaveBeenCalledOnce();
-			res.emit('close');
-			expect(receivedSignal?.aborted).toBe(false);
-		},
-	);
+		expect(events).toContainEqual(done);
+		if (method === 'executeForChat') {
+			expect(agentExecutionService.canUseDraftThread).toHaveBeenCalledWith(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				{ previewChat: true, sessionMode: 'new' },
+			);
+			expect(agentExecutionOrchestratorService.executeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sessionMode: 'new',
+					attachments: [expect.objectContaining({ id: 'att-1' })],
+				}),
+			);
+		}
+		expect(res.end).toHaveBeenCalledOnce();
+		res.emit('close');
+		expect(receivedSignal?.aborted).toBe(false);
+	});
 
 	it.each(operations)('does not send done for a suspended $name', async ({ method, start }) => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
@@ -752,27 +784,35 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
-	it('rejects an ineligible Preview session before saving an upload or starting a runtime', async () => {
-		const {
-			controller,
-			agentExecutionService,
-			agentChatAttachmentService,
-			agentExecutionOrchestratorService,
-		} = makeController();
-		agentExecutionService.canUseDraftThread.mockImplementation(
-			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
-		);
-		const { res, events } = makeCleanupSseResponse();
-		await controller.chat(
-			{ params: { projectId: 'project-1' }, user: { id: 'user-2' } } as never,
-			res,
-			'agent-1',
-			{ sessionId: 'thread-1', message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
-		);
-		expect(events()).toContainEqual(expect.objectContaining({ type: 'error' }));
-		expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
-		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
-	});
+	it.each([undefined, true])(
+		'rejects an ineligible Preview session before uploading with newSession=%s',
+		async (newSession) => {
+			const {
+				controller,
+				agentExecutionService,
+				agentChatAttachmentService,
+				agentExecutionOrchestratorService,
+			} = makeController();
+			agentExecutionService.canUseDraftThread.mockImplementation(
+				async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
+			);
+			const { res, events } = makeCleanupSseResponse();
+			await controller.chat(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-2' } } as never,
+				res,
+				'agent-1',
+				{
+					sessionId: 'thread-1',
+					newSession,
+					message: 'hi',
+					attachments: [textAttachment('notes.txt')],
+				} as never,
+			);
+			expect(events()).toContainEqual(expect.objectContaining({ type: 'error' }));
+			expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		},
+	);
 	it('rejects an empty attachment with a dedicated error message', async () => {
 		const { controller, agentChatAttachmentService } = makeController();
 		const { res, events } = makeCleanupSseResponse();

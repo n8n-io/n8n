@@ -667,7 +667,6 @@ export class AgentChatBridge {
 			inboundAttachments,
 			memoryThreadId.id,
 			memoryResourceId,
-			sessionMode,
 		);
 		const statusRetry = new AbortController();
 		const replyExpectation =
@@ -814,7 +813,6 @@ export class AgentChatBridge {
 		inboundAttachments: Attachment[],
 		threadId: string,
 		resourceId: string,
-		sessionMode: AgentSessionMode,
 	): Promise<{ attachments: StoredAttachmentRef[]; attachmentNotes: string[] }> {
 		const attachments: StoredAttachmentRef[] = [];
 		const attachmentNotes: string[] = [];
@@ -869,8 +867,6 @@ export class AgentChatBridge {
 					fileName: name,
 					mimeType,
 					data,
-					access: { accessScope: 'project', ownerId: null },
-					sessionMode,
 				});
 				attachments.push({
 					id: stored.id,

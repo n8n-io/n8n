@@ -435,7 +435,6 @@ export class AgentRuntime {
 				toolCallId: _tcid,
 				onResumeClaimed: _onResumeClaimed,
 				hostMetadata,
-				hostRunId,
 				...callerExecOptions
 			} = options;
 			const persisted = state.executionOptions ?? {};
@@ -467,7 +466,6 @@ export class AgentRuntime {
 				persistence: state.persistence
 					? {
 							...state.persistence,
-							...(hostRunId ? { hostRunId } : {}),
 							...(state.persistence.hostMetadata || hostMetadata
 								? { hostMetadata: { ...state.persistence.hostMetadata, ...hostMetadata } }
 								: {}),

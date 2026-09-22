@@ -77,7 +77,6 @@ interface WorkflowAgentStreamParams {
 		nodeName?: string;
 	};
 	recordingParams?: StartExecutionParams;
-	hostRunId?: string;
 	streamObserver?: WorkflowAgentStreamObserver;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 }
@@ -304,7 +303,6 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			tracing,
 			recordingParams,
-			hostRunId,
 			sandboxScope,
 		} = params;
 		let structuredOutput: unknown = null;
@@ -355,7 +353,6 @@ export class AgentWorkflowExecutionService {
 					persistence: {
 						resourceId: threadId,
 						threadId,
-						...(hostRunId ? { hostRunId } : {}),
 						hostMetadata: {
 							...(sandboxScope ? encodeAgentSandboxHostMetadata(sandboxScope) : {}),
 							...encodeIntegrationMessageContext(messageContext),
@@ -436,11 +433,7 @@ export class AgentWorkflowExecutionService {
 		}
 
 		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
-			await this.consumeWorkflowAgentStream(
-				{ ...params, hostRunId: agentExecutionId },
-				recorder,
-				streamAdapter,
-			);
+			await this.consumeWorkflowAgentStream(params, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
 		if (recordingParams && agentExecutionId) {

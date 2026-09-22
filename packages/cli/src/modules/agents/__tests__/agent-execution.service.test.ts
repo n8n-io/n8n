@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -7,7 +8,6 @@ import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentSessionLock } from '../agent-session-lock.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type {
@@ -77,7 +77,7 @@ describe('AgentExecutionService', () => {
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
-	const sessionLock = mock<AgentSessionLock>();
+	const txRunner = mock<TransactionRunner>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -95,7 +95,7 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
-		sessionLock.run.mockImplementation(async (_sessionId, fn) => await fn({}));
+		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -109,7 +109,7 @@ describe('AgentExecutionService', () => {
 			errorReporter,
 			executionUpdateBroadcaster,
 			checkpointStorage,
-			sessionLock,
+			txRunner,
 		);
 	});
 
@@ -174,12 +174,19 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('keeps a running execution alive until it is finalized', async () => {
+		it('keeps a running execution alive during title lookup and until finalization', async () => {
 			vi.useFakeTimers();
+			const titleLookupStarted = createDeferredPromise();
+			const titleLookup =
+				createDeferredPromise<Awaited<ReturnType<N8nMemoryImplementation['getThread']>>>();
 			try {
 				agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 					thread: makeThread(),
-					created: true,
+					created: false,
+				});
+				memoryBackend.getThread.mockImplementation(async () => {
+					titleLookupStarted.resolve();
+					return await titleLookup.promise;
 				});
 				agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 				agentExecutionRepository.saveInContext.mockResolvedValue({
@@ -188,7 +195,7 @@ describe('AgentExecutionService', () => {
 				agentExecutionRepository.touchRunning.mockResolvedValue();
 				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
-				const executionId = await service.startExecutionRecording(
+				const recording = service.startExecutionRecording(
 					{
 						access: previewAccess,
 						threadId: 'thread-1',
@@ -199,7 +206,11 @@ describe('AgentExecutionService', () => {
 					},
 					new Date(),
 				);
+				await titleLookupStarted.promise;
 				await vi.advanceTimersByTimeAsync(30_000);
+				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
+				titleLookup.resolve(null);
+				const executionId = await recording;
 
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
 					projectId: 'project-1',
@@ -224,6 +235,7 @@ describe('AgentExecutionService', () => {
 
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
 			} finally {
+				titleLookup.resolve(null);
 				vi.useRealTimers();
 			}
 		});
@@ -455,7 +467,7 @@ describe('AgentExecutionService', () => {
 				errorReporter,
 				executionUpdateBroadcaster,
 				checkpointStorage,
-				sessionLock,
+				txRunner,
 			);
 
 			const record = makeMessageRecord({
@@ -546,7 +558,7 @@ describe('AgentExecutionService', () => {
 					errorReporter,
 					executionUpdateBroadcaster,
 					checkpointStorage,
-					sessionLock,
+					txRunner,
 				);
 
 				const record = makeMessageRecord({
@@ -662,7 +674,6 @@ describe('AgentExecutionService', () => {
 				undefined,
 				undefined,
 			);
-			expect(sessionLock.run).toHaveBeenCalledWith('parent-thread-1', expect.any(Function));
 		});
 
 		it('stamps the task snapshot version on newly created task sessions', async () => {
@@ -1012,7 +1023,7 @@ describe('AgentExecutionService', () => {
 				errorReporter,
 				executionUpdateBroadcaster,
 				checkpointStorage,
-				sessionLock,
+				txRunner,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -1316,7 +1327,6 @@ describe('AgentExecutionService', () => {
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
 
 			expect(result).toBe(true);
-			expect(sessionLock.run).toHaveBeenCalledWith('thread-1', expect.any(Function));
 			expect(agentExecutionThreadRepository.deleteSession).toHaveBeenCalledWith(
 				'project-1',
 				'agent-1',

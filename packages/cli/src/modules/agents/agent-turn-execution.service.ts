@@ -45,7 +45,6 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	onExecutionRecorded?: (executionId: string) => void;
-	onAdmitted?: () => Promise<void>;
 	onSettled?: (suspended: boolean) => Promise<void>;
 }
 
@@ -118,8 +117,6 @@ export class AgentTurnExecutionService {
 				},
 				recorder.startedAt,
 			);
-			this.setHostRunId(turn, executionId);
-			await config.onAdmitted?.();
 			turn.options.abortSignal?.throwIfAborted();
 			const stream = await this.startTurn(turn, config, recorder, state);
 			yield* this.streamTurn(stream, turn, config, recorder, state);
@@ -133,14 +130,6 @@ export class AgentTurnExecutionService {
 				await this.finalizeTurn(turn, config, recorder, executionId, state);
 				await config.onSettled?.(recorder.suspended);
 			}
-		}
-	}
-
-	private setHostRunId(turn: AgentTurnRequest, executionId: string): void {
-		if (turn.type === 'resume') {
-			turn.options.hostRunId = executionId;
-		} else if (turn.options.persistence) {
-			turn.options.persistence.hostRunId = executionId;
 		}
 	}
 

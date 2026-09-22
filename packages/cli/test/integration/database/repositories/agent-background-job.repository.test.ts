@@ -10,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
-import { AgentSessionLock } from '@/modules/agents/agent-session-lock.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
@@ -22,7 +21,6 @@ import type { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-che
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
-import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createOwner } from '../../shared/db/users';
@@ -245,8 +243,6 @@ describe('AgentBackgroundJobRepository', () => {
 				logger,
 				agentsConfig,
 				mock<AgentExecutionUpdateBroadcaster>(),
-				Container.get(AgentExecutionThreadRepository),
-				Container.get(AgentSessionLock),
 			);
 			const wakeService = new AgentWakeService(
 				repository,

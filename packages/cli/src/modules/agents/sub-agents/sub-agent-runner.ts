@@ -286,7 +286,6 @@ export class SubAgentRunner {
 							persistence: {
 								resourceId,
 								threadId,
-								hostRunId: executionId,
 								delegated: true,
 								...(sandboxPrincipalHash !== undefined
 									? {
@@ -302,7 +301,6 @@ export class SubAgentRunner {
 							...executionOptions,
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
-							hostRunId: executionId,
 							onResumeClaimed: () => {
 								executionStarted = true;
 								recorder.recordHitlResponse(
@@ -384,7 +382,6 @@ export class SubAgentRunner {
 		const checkpoint = await this.checkpointStorage.load(
 			operation.request.childRunId,
 			childAgentId,
-			projectId,
 		);
 		const scope = decodeAgentSandboxHostMetadata(checkpoint?.persistence?.hostMetadata);
 		if (!scope) return undefined;

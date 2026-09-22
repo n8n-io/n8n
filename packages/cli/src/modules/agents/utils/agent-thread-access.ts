@@ -1,43 +1,6 @@
-import { UserError } from 'n8n-workflow';
-
-import type {
-	AgentExecutionThread,
-	AgentThreadAccess,
-} from '../entities/agent-execution-thread.entity';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 
 export type AgentSessionMode = 'new' | 'existing';
-
-export interface AgentSessionAccess {
-	threadId: string;
-	agentId: string | null;
-	projectId: string;
-	access: AgentThreadAccess;
-	sessionMode: AgentSessionMode;
-}
-
-export class AgentSessionNotFoundError extends UserError {
-	constructor() {
-		super('Session not found');
-	}
-}
-
-export function assertSessionAccess(
-	thread: AgentExecutionThread | null,
-	params: AgentSessionAccess,
-): void {
-	if (!thread) {
-		if (params.sessionMode === 'existing') throw new AgentSessionNotFoundError();
-		return;
-	}
-	if (
-		thread.projectId !== params.projectId ||
-		thread.agentId !== params.agentId ||
-		thread.accessScope !== params.access.accessScope ||
-		thread.ownerId !== params.access.ownerId
-	) {
-		throw new AgentSessionNotFoundError();
-	}
-}
 
 export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
 

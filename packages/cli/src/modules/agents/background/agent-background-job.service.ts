@@ -19,8 +19,6 @@ import {
 	type NewWorkflowJob,
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import { AgentSessionLock } from '../agent-session-lock.service';
 
 /** Bounds live sub-agent runs per thread. Workflow jobs are parked executions and are exempt. */
 export const MAX_RUNNING_JOBS_PER_THREAD = 5;
@@ -132,8 +130,6 @@ export class AgentBackgroundJobService {
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly updateBroadcaster: AgentExecutionUpdateBroadcaster,
-		private readonly threadRepository: AgentExecutionThreadRepository,
-		private readonly sessionLock: AgentSessionLock,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -144,63 +140,35 @@ export class AgentBackgroundJobService {
 	 * jobs, else `started`.
 	 */
 	async registerSubAgentJob(
-		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'> & { projectId: string },
+		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
-		const { projectId, ...job } = params;
-		const receipt = await this.sessionLock.run(job.parentThreadId, async (ctx) => {
-			await this.threadRepository.assertSessionExists(
-				projectId,
-				job.parentAgentId,
-				job.parentThreadId,
-				ctx,
-			);
-			const running = await this.jobRepository.countRunningSubAgentsByParentThread(
-				job.parentThreadId,
-				ctx,
-			);
-			if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' } as const;
+		const running = await this.jobRepository.countRunningSubAgentsByParentThread(
+			params.parentThreadId,
+		);
+		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
 
-			await this.jobRepository.insertJob(
-				{
-					...job,
-					kind: 'subagent',
-					timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
-				},
-				ctx,
-			);
-			return { status: 'started', jobId: job.id } as const;
+		await this.jobRepository.insertJob({
+			...params,
+			kind: 'subagent',
+			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
-		if (receipt.status !== 'started') return receipt;
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(params.parentAgentId, params.parentThreadId);
-		return receipt;
+
+		return { status: 'started', jobId: params.id };
 	}
 
 	/**
 	 * Register a workflow execution parked at a Wait node as a background job.
 	 */
 	async registerWorkflowJob(
-		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & {
-			executionId: string;
-			projectId: string;
-		},
+		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & { executionId: string },
 	): Promise<BackgroundJobReceipt> {
-		const { executionId, projectId, ...job } = params;
+		const { executionId, ...job } = params;
 
-		const outcome = await this.sessionLock.run(job.parentThreadId, async (ctx) => {
-			await this.threadRepository.assertSessionExists(
-				projectId,
-				job.parentAgentId,
-				job.parentThreadId,
-				ctx,
-			);
-			return await this.jobRepository.insertWorkflowJobOrGetExisting(
-				{
-					...job,
-					kind: 'workflow',
-					childExecutionId: executionId,
-				},
-				ctx,
-			);
+		const outcome = await this.jobRepository.insertWorkflowJobOrGetExisting({
+			...job,
+			kind: 'workflow',
+			childExecutionId: executionId,
 		});
 		if (outcome.inserted) {
 			this.updateBroadcaster.notifyBackgroundJobsUpdated(

@@ -216,7 +216,6 @@ describe('AgentWorkflowExecutionService', () => {
 				persistence: {
 					resourceId: 'thread-1',
 					threadId: 'thread-1',
-					hostRunId: 'agent-execution-1',
 					hostMetadata: { n8nIntegrationMessageContext: messageContext },
 				},
 			}),

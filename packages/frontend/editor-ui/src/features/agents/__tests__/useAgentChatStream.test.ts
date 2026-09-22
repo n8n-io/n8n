@@ -2188,38 +2188,81 @@ describe('useAgentChatStream — done executionId', () => {
 		expect(assistant?.executionId).toBe('exec-live-1');
 	});
 
-	it('stops sending creation intent after the first turn is admitted', async () => {
-		const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-			makeSseResponse([
-				{ type: 'start-step' },
-				{ type: 'error', message: 'The turn failed after admission' },
-			]),
-		);
-		globalThis.fetch = fetchMock as typeof fetch;
-		const newSession = ref(true);
-		const onSessionCreated = vi.fn(() => {
-			newSession.value = false;
-		});
-		const hook = buildHook('thread-new', {
-			newSession,
-			onSessionCreated,
-		});
+	it.each(['error', 'stop'] as const)(
+		'clears creation intent after admission followed by %s',
+		async (outcome) => {
+			const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				makeSseResponse([
+					{ type: 'start-step' },
+					{ type: 'error', message: 'The turn failed after admission' },
+				]),
+			);
+			if (outcome === 'stop') {
+				fetchMock.mockImplementationOnce(async (_input, init) =>
+					makeAbortableSseResponse([{ type: 'start-step' }], init?.signal ?? null),
+				);
+			}
+			globalThis.fetch = fetchMock as typeof fetch;
+			const newSession = ref(true);
+			const onSessionCreated = vi.fn(() => {
+				newSession.value = false;
+			});
+			const hook = buildHook('thread-new', {
+				newSession,
+				onSessionCreated,
+			});
 
-		await hook.sendMessage('hi');
-		await hook.sendMessage('try again');
+			const firstTurn = hook.sendMessage('hi');
+			await vi.waitFor(() => expect(onSessionCreated).toHaveBeenCalledOnce());
+			if (outcome === 'stop') await hook.stopGenerating();
+			await firstTurn;
+			await hook.sendMessage('try again');
 
-		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
-			message: 'hi',
-			sessionId: 'thread-new',
-			newSession: true,
-		});
-		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
-			message: 'try again',
-			sessionId: 'thread-new',
-		});
-		expect(onSessionCreated).toHaveBeenCalledOnce();
-		expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
-	});
+			expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+				message: 'hi',
+				sessionId: 'thread-new',
+				newSession: true,
+			});
+			expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+				message: 'try again',
+				sessionId: 'thread-new',
+			});
+			expect(onSessionCreated).toHaveBeenCalledOnce();
+			expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
+		},
+	);
+
+	it.each(['http', 'stream'] as const)(
+		'keeps creation intent after a %s failure before admission',
+		async (failure) => {
+			getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+			const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				failure === 'http'
+					? new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 })
+					: makeSseResponse([{ type: 'error', message: 'Unavailable' }]),
+			);
+			globalThis.fetch = fetchMock as typeof fetch;
+			const newSession = ref(true);
+			const onSessionCreated = vi.fn(() => {
+				newSession.value = false;
+			});
+			const hook = buildHook('thread-new', { newSession, onSessionCreated });
+
+			await hook.loadHistory();
+			await hook.sendMessage('hi');
+			await hook.sendMessage('try again');
+
+			expect(onSessionCreated).not.toHaveBeenCalled();
+			expect(newSession.value).toBe(true);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			for (const [, init] of fetchMock.mock.calls) {
+				expect(JSON.parse(String(init?.body))).toMatchObject({
+					sessionId: 'thread-new',
+					newSession: true,
+				});
+			}
+		},
+	);
 });
 
 describe('useAgentChatStream — subagent-chunk', () => {

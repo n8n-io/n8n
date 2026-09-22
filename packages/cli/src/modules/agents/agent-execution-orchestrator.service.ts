@@ -247,7 +247,6 @@ export interface StreamChatResponseConfig {
 	isWakeRun?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	sessionMode?: AgentSessionMode;
-	onAdmitted?: () => Promise<void>;
 }
 
 /**
@@ -644,6 +643,12 @@ export class AgentExecutionOrchestratorService {
 					interactingUserId: user.id,
 					updatedAt: new Date().toISOString(),
 				};
+				await this.integrationMessageContextService.setLatest(
+					memory.threadId,
+					memory.resourceId,
+					messageContext,
+				);
+
 				return this.streamChatResponse({
 					access,
 					messageContext,
@@ -666,12 +671,6 @@ export class AgentExecutionOrchestratorService {
 					includeHitlToolDetails: true,
 					sandboxPrincipalHash,
 					sessionMode,
-					onAdmitted: async () =>
-						await this.integrationMessageContextService.setLatest(
-							memory.threadId,
-							memory.resourceId,
-							messageContext,
-						),
 				});
 			},
 		);
@@ -728,17 +727,12 @@ export class AgentExecutionOrchestratorService {
 						messageContext,
 						await this.integrationMessageContextService.getLatestForIncoming(memory.threadId),
 					);
+					await this.integrationMessageContextService.installIncoming(
+						messageContext,
+						memory,
+						config.contextConversation,
+					);
 				}
-				const conversation = config.contextConversation;
-				const onAdmitted =
-					messageContext && conversation
-						? async () =>
-								await this.integrationMessageContextService.installIncoming(
-									messageContext,
-									memory,
-									conversation,
-								)
-						: undefined;
 				return this.streamChatResponse({
 					messageContext,
 					access: { accessScope: 'project', ownerId: null },
@@ -759,7 +753,6 @@ export class AgentExecutionOrchestratorService {
 					},
 					sandboxPrincipalHash,
 					sessionMode,
-					onAdmitted,
 				});
 			},
 		);
@@ -1034,7 +1027,6 @@ export class AgentExecutionOrchestratorService {
 			isWakeRun,
 			backgroundJobSignal,
 			sessionMode,
-			onAdmitted,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -1044,7 +1036,6 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions,
 			context: { projectId, agentId, threadId },
 			backgroundJobSignal,
-			onAdmitted,
 			includeHitlToolDetails,
 			onExecutionRecorded,
 			onSettled: isWakeRun
