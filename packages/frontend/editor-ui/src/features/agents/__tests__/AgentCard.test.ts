@@ -143,12 +143,11 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 
 async function renderComponent(
 	agent: AgentResource = createAgent(),
-	attrs: Record<string, unknown> = {},
+	showOwnershipBadge = false,
 ) {
 	const { default: AgentCard } = await import('../components/AgentCard.vue');
 	return mount(AgentCard, {
-		props: { agent, projectId: 'project-1' },
-		attrs,
+		props: { agent, projectId: 'project-1', showOwnershipBadge },
 		global: { stubs: STUBS },
 	});
 }
@@ -189,7 +188,7 @@ describe('AgentCard', () => {
 		const agent = Object.assign(createAgent(), {
 			project: { id: 'project-1', name: 'Customer Success', type: 'team' },
 		});
-		const wrapper = await renderComponent(agent, { showOwnershipBadge: true });
+		const wrapper = await renderComponent(agent, true);
 
 		expect(wrapper.get('[data-test-id="card-badge"]').text()).toContain('Customer Success');
 	});

@@ -19,7 +19,7 @@ type Props = {
 		| FolderResource
 		| DataTableResource
 		| AgentResource;
-	resourceType: ResourceType | 'agent';
+	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
 	showBadgeBorder?: boolean;

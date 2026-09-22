@@ -21,6 +21,7 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -228,7 +229,7 @@ async function toggleMCPAccess(enabled: boolean) {
 				<ProjectCardBadge
 					v-if="showOwnershipBadge && agent.project"
 					:resource="agent"
-					resource-type="agent"
+					:resource-type="ResourceType.Agent"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 					:show-badge-border="false"
