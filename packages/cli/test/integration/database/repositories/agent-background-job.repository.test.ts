@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
@@ -245,10 +246,9 @@ describe('AgentBackgroundJobRepository', () => {
 			);
 			const wakeService = new AgentWakeService(
 				repository,
-				executionRepository,
+				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,
 				userRepository,
-				checkpointStorage,
 				mock<ChatIntegrationRegistry>(),
 				orchestrator,
 				lockService,

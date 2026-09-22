@@ -45,7 +45,6 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
-	workflowMetadataFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { saveCredential } from '@test-integration/db/credentials';
@@ -1326,10 +1325,7 @@ describe('Promotion base branch listing', () => {
 						target === projectEntry.target ||
 						target.startsWith(`${projectEntry.target}/`),
 				)
-				.flatMap(({ target }) => [
-					`n8n-export/${entityFilePath(collection, target)}`,
-					...(collection === 'workflows' ? [`n8n-export/${workflowMetadataFilePath(target)}`] : []),
-				]),
+				.map(({ target }) => `n8n-export/${entityFilePath(collection, target)}`),
 		);
 
 		const files = await listBaseBranchFiles(project.id);

@@ -16,7 +16,7 @@ describe('InsightsCompactionTask', () => {
 			intervalSeconds: insightsConfig.compactionIntervalMinutes * 60,
 		});
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
+		expect(task.durable).toBe(true);
 	});
 
 	it('should compact insights on run, handing it the run signal', async () => {

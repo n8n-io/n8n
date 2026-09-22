@@ -58,6 +58,13 @@ vi.mock('@n8n/design-system', () => ({
 			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value">{{ option.label }}</button></nav>',
 		props: ['modelValue', 'options'],
 	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
+	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
 
@@ -380,6 +387,7 @@ describe('AgentBuilderEditorColumn', () => {
 				return panel.props('header');
 			}),
 		).toEqual([
+			'agents.builder.skills.title',
 			'agents.builder.triggers.title',
 			'agents.builder.capabilities.title',
 			'agents.builder.memory.title',
@@ -438,12 +446,14 @@ describe('AgentBuilderEditorColumn', () => {
 
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
+		const skills = wrapper.find('[data-testid="agent-skills-panel"]');
 		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const memory = wrapper.getComponent({ name: 'AgentMemoryPanel' });
 
 		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
+		expect(skills.exists()).toBe(true);
 		expect(triggers.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
 		expect(
@@ -451,8 +461,11 @@ describe('AgentBuilderEditorColumn', () => {
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
-			instructions.element.compareDocumentPosition(triggers.element) &
+			instructions.element.compareDocumentPosition(skills.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			skills.element.compareDocumentPosition(triggers.element) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
 			triggers.element.compareDocumentPosition(capabilities.element) &

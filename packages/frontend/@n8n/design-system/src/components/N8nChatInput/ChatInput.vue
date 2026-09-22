@@ -292,6 +292,11 @@ function focusInput(options?: FocusOptions) {
 	textareaRef.value?.focus(options);
 }
 
+/** Returns the native textarea while the component is mounted. */
+function getInputElement(): HTMLTextAreaElement | undefined {
+	return textareaRef.value;
+}
+
 // Each layout measures to a different height, so switching leaves a stale one.
 // Slot-driven switches aren't reactive, so re-check on render, not in a watcher.
 let renderedLayout = effectiveLayout();
@@ -314,6 +319,7 @@ onMounted(() => {
 
 defineExpose({
 	focusInput,
+	getInputElement,
 });
 </script>
 

@@ -1,5 +1,5 @@
 import type {
-	NodeTypePolicyEffectiveWriteResultPublicDto,
+	PolicyEffectiveWriteResultPublicDto,
 	PutInstancePolicyDto,
 	PutProjectPolicyDto,
 } from '@n8n/api-types';
@@ -20,7 +20,7 @@ import { NodeTypePoliciesPublicController } from '../node-type-policies.public.c
 
 /**
  * Every public route must carry the same guards as the internal controllers it mirrors: the
- * node type policies license feature, the `nodeTypePolicy:manage` API-key scope, and a
+ * type availability policies license feature, the `nodeTypePolicy:manage` API-key scope, and a
  * `nodeTypePolicy:manage` RBAC check that is global-only everywhere except on the two
  * project-scoped routes.
  */
@@ -73,9 +73,9 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 	);
 
 	it.each(routeCases)(
-		'$handlerName is gated by the node type policies license feature',
+		'$handlerName is gated by the type availability policies license feature',
 		({ route }) => {
-			expect(route.licenseFeature).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		},
 	);
 
@@ -192,7 +192,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
 
-		const result: NodeTypePolicyEffectiveWriteResultPublicDto = await controller.putInstancePolicy(
+		const result: PolicyEffectiveWriteResultPublicDto = await controller.putInstancePolicy(
 			req,
 			res,
 			dto,

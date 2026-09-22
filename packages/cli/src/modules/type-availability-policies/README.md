@@ -13,7 +13,7 @@ Notion for why the substrate looks the way it does.
 
 Two gates, both required:
 
-1. The license feature `feat:nodeTypePolicies`. Without it, `init()` never runs, so the
+1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
    controllers are not mounted and no check is registered.
 2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
 
@@ -136,9 +136,25 @@ reads each scope through a `CacheService` entry keyed
 `type-availability-policy:scope:{kind}:{projectId ?? 'instance'}`, and a warm decision costs no
 queries at all. The instance entry is one row shared by every project.
 
-Every write drops the entries it changed, after its transaction commits. That delete is
-best-effort, so a 30-second TTL backstops it — see "Cache staleness" under "Known limits" for
-the three cases it covers.
+Every write drops the entries it changed, after its transaction commits. Invalidation is what
+keeps the cache fresh; the 10-minute TTL is only a backstop — see "Cache staleness" under
+"Known limits" for what is left for it to heal.
+
+In front of that entry, each process shares its own read of a scope. It holds the promise
+rather than the value, and registers it before the read starts, which buys two things on two
+different time scales:
+
+- **Callers that arrive while the read is running share it.** A burst of decisions on a cold
+  entry costs one database read rather than one for each. Nothing survives from before here —
+  the first caller registers its promise before any I/O, so the rest find it. The window is
+  that one read.
+- **Callers that arrive after it finished share it too, until 1 second after it began.** The
+  window runs from the start of the read, not from its result, so a slow read leaves less of
+  it. A warm decision then costs no round trip and no parse of every rule. That parse is what
+  makes a decision on Redis grow more expensive as an admin writes more rules.
+
+The 1 second must stay longer than one read, or the first of those leaks: a caller arriving
+late in a slow read would find the entry expired and start a second read.
 
 A cache call is also bounded at 50 ms and falls through to the database. ioredis queues
 commands while it is disconnected rather than rejecting them, so without the bound a lost Redis
@@ -170,18 +186,28 @@ through a sealed repository method, and the lint rule that guards that has no al
   asking — an OAuth authorize or revoke, the agents adapter, a log-streaming destination. There
   is no node type to evaluate there, and the credential's type is deliberately not a stand-in,
   so the decryption goes through.
-- **Cache staleness is bounded by the TTL, not eliminated.** A write drops the cached scope it
-  changed, which is enough wherever the processes share one Redis cache — which is every
-  deployment that has more than one, unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
-  mode. Three cases outlive the delete, and the 30-second TTL is what ends all of them:
+- **A policy change applies at once, plus up to 1 second.** The write drops the shared entry,
+  which reaches every process, because every deployment with more than one process reading
+  policy shares one Redis cache — unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
+  mode. What is left is each process's 1-second shared read, so that is the staleness window a
+  builder or an execution can see.
 
-  - that forced memory backend, where each process keeps its own copy and no delete reaches it;
-  - a `deleteMany` that fails after the write committed, which is logged and not retried;
-  - a read that missed, and writes the value it fetched back after a write committed and
-    deleted the key. The window is the few milliseconds between the two, so it needs a policy
-    edit to land inside one unlucky read.
+  A read that hit the database before the write committed can put its old snapshot back after
+  the delete. Two rules stop it. On the process that wrote, a counter of invalidations makes
+  that read skip its write-back. And any read that took longer than a second skips it as well,
+  whichever process it ran on — because the invalidated keys are also dropped a second time one
+  second later, so a read that finished inside that second cannot outlive both deletes. A read
+  that skips the write-back still answers its own caller; only the rest of the cluster waits
+  for the next read.
 
-  A row edited outside the service — a migration, manual SQL — is bounded the same way.
+  `CacheService` has no compare-and-set, so a slow read pays for this by not populating the
+  cache at all. Pubsub invalidation would remove the need, and is the step that would also let
+  that 1 second grow and the TTL go away.
+
+- **The 10-minute TTL heals only what invalidation cannot reach.** Three cases, all
+  operator-level: that forced memory backend, where each process keeps its own copy and no
+  delete reaches it; a `deleteMany` that failed after its write committed, which is logged and
+  not retried; and a row edited outside the service, by a migration or manual SQL.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.
@@ -205,8 +231,11 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the six points, the save diff, the violations       |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
-| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments                                       |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins                                       |
+| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |

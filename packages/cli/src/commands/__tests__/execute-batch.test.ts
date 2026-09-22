@@ -59,8 +59,8 @@ mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 test('should start a task runner', async () => {
 	// arrange

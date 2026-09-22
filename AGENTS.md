@@ -304,12 +304,11 @@ which output format. Enforced in CI by the rules in
 `backendConfig`, and so of `nodesConfig`; every package that runs on Node
 extends one of those layers):
 
-- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
-- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
-  `packages/core/src/encryption/` and database migrations.
+- `Cipher` does not expose the legacy or explicit-key methods.
+- The raw AES classes stay inside `packages/core/src/encryption/`.
 - **Deployment keys are never deleted** — data encrypted with a key becomes
-  unreadable without it. Deactivate keys instead; the repository's delete
-  surface throws at runtime and the lint rule rejects call sites.
+  unreadable without it. Deactivate keys instead; the repository does not expose
+  deletion and database triggers reject direct deletion.
 - Inline disables that name these rules, and bare line-form disables, are
   themselves lint errors. The code-health rule `encryption-boundary` (CI
   "Static Analysis") is the enforcement layer: it checks that every package
@@ -342,6 +341,17 @@ Testing rules:
 - Run tests and `pnpm typecheck` from the owning package.
 - Confirm unit test cases with the user before you write them.
 - Mock external dependencies. Use `nock` for HTTP services.
+- Trace side effects from imports, constructors, hooks, and mocked branches before
+  you run a new or changed test.
+- Do not let tests read from or write to the developer's home directory,
+  `~/.n8n`, or other user-owned locations.
+- Use a test-owned temporary directory for filesystem tests. Set
++  `N8N_USER_FOLDER` before you import modules that resolve it. n8n writes to `${N8N_USER_FOLDER}/.n8n`, so expect the `.n8n` subfolder there.
+- When a mock changes a state check such as `existsSync()`, inspect the branch
+  that it activates. Mock every reachable filesystem mutation unless filesystem
+  behavior is under test.
+- Run tests that can initialize n8n settings with an isolated
+  `N8N_USER_FOLDER` first. Clean up only paths that the test created.
 - Reuse immutable hoisted `mock<T>(...)` fixtures. Do not replace typed entity mocks with `as unknown as T`.
 - Use `createVitestConfigWithDecorators` for Vitest packages that use `@n8n/di` decorators.
 - Check for unused computed properties after you change a Pinia store.

@@ -37,6 +37,8 @@ const {
 	isDisabled,
 	render,
 	isNotInstalledCommunityNode,
+	isRestricted,
+	restrictionScope,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
@@ -89,6 +91,14 @@ const commonClasses = computed(() => [
 	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
 ]);
 
+const restrictionTitle = computed(() =>
+	i18n.baseText(
+		restrictionScope.value === 'project'
+			? 'node.restricted.project.title'
+			: 'node.restricted.instance.title',
+	),
+);
+
 const groupedExecutionErrors = computed(() => {
 	const errorCounts = executionErrors.value.reduce(
 		(acc, error) => {
@@ -106,7 +116,17 @@ const groupedExecutionErrors = computed(() => {
 
 <template>
 	<div
-		v-if="isNotInstalledCommunityNode && !isDemoRoute"
+		v-if="isRestricted"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-restricted"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>{{ restrictionTitle }}</template>
+			<N8nIcon icon="lock" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
 	>
