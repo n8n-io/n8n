@@ -25,6 +25,7 @@ export type McpRegistryServerData = {
 	}>;
 	websiteUrl?: string;
 	tags?: string[];
+	requiredCapabilities?: string[];
 	extendsCredential?: {
 		extends: string;
 		authUrl?: string | null;

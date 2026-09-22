@@ -10,6 +10,7 @@ description: >-
   for automations the user will run again — that is the normal build +
   post-build-flow path.
 recommended_tools:
+  - nodes
   - build-workflow
   - workflows
   - executions
@@ -50,11 +51,51 @@ treat the request as reusable** and follow the normal build flow — a reusable
 workflow that runs once is harmless; a one-off flow applied to an automation
 skips verification the user would have wanted.
 
-A one-off that touches external systems is still workflow-anchored (you cannot
-write to external services directly) — the intent changes the *post-build
-flow*, not the anchor.
+## Single-node one-offs: prefer direct node execution
 
-## The one-off flow
+When the entire effect is **one node operation**, skip the workflow: execute
+the node directly with `nodes(action="execute")`. It runs a single node with
+real credentials through the regular execution engine and returns its real
+output items — no workflow to build, set up, verify, or clean up afterwards.
+
+Direct execution is sufficient when ALL of these hold:
+
+- The effect is one node call (one write, one API operation). A read-back of
+  the destination may be a second `execute` call of a read operation.
+- The input items are already at hand — pasted into the chat or read earlier
+  in the conversation — so you can pass them literally as `input` items.
+  Parameters must not use expressions referencing other nodes; they cannot
+  resolve (the node runs alone).
+- The node runs standalone on `main` input alone — no required sub-node
+  connections (e.g. an AI Agent needs a language model attached; such nodes
+  need a workflow).
+- A usable credential already exists (`credentials(action="list")`); the
+  action takes resolved `{ id, name }` references. If credentials must be
+  created first, route that through the credentials setup as usual.
+- The run fits the 60s cap and the input volume is modest.
+
+The run executes in the current conversation's project, so credentials shared
+with that project are usable. If it fails because a credential is not
+accessible there, fall back to the one-off workflow flow below.
+
+Call it with the same shape as a workflow-sdk node — `{ type, version,
+config: { parameters, credentials } }` plus `input` items. Read
+`nodes(action="type-definition")` first, as you would before configuring any
+node. Approval works exactly like `executions(action="run")` — the same
+run-approval card, admin policy, and session grants — and for a one-off that
+prompt is the consent gate. The returned output items are
+real, so the read-back rule below is satisfied by reading what came back —
+report only from those items (binary content is returned as metadata only).
+
+If the task needs more than that — several chained steps, branching, merges,
+non-trivial transformations, or data that must flow between nodes — build the
+workflow and use the flow below.
+
+A one-off that touches external systems is still anchored on n8n nodes (you
+cannot write to external services directly) — the intent changes the
+*post-build flow*, not the anchor.
+
+## The one-off flow (multi-node)
 
 1. **Build** the workflow with a **manual trigger** — always. A one-off is
    never published, so an event trigger (webhook, form, schedule) would never

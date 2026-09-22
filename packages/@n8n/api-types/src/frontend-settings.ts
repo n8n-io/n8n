@@ -305,6 +305,14 @@ export interface FrontendSettings {
 	activeModules: string[];
 	canvasOnly: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
+
+	/**
+	 * Which expression engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read at runtime rather than baked in at
+	 * build time, so one image serves either engine. Independent of the engine the
+	 * backend evaluates with, and never `vm`: isolated-vm is a native module.
+	 */
+	expressionEngine: 'legacy' | 'quickjs';
 }
 
 export type FrontendModuleSettings = {
@@ -370,6 +378,7 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
+		mcpConnectionsAvailable: boolean;
 		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;

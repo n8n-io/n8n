@@ -16,9 +16,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
+import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import {
+	fetchPromotionConnection,
 	fetchPromotionConnections,
 	fetchPromotionProviders,
 	type PromotionConnection,
@@ -59,7 +62,10 @@ async function load() {
 			fetchPromotionConnections(rootStore.publicApiContext, { scope: 'instance' }),
 		]);
 		providers.value = loadedProviders;
-		connection.value = connections[0] ?? null;
+		const summary = connections[0];
+		connection.value = summary
+			? await fetchPromotionConnection(rootStore.publicApiContext, summary.id)
+			: null;
 	} catch (error) {
 		loadError.value = true;
 		providers.value = [];
@@ -112,6 +118,12 @@ function onProviderDeleted() {
 	pendingLoad = load();
 }
 
+function onConnectionSaved(saved: PromotionConnection) {
+	connection.value = saved;
+	// The project header caches the instance connection per page load.
+	invalidateInstancePromotionConnection();
+}
+
 async function focusProvider(id: string | undefined) {
 	await nextTick();
 	const row = id ? list.value?.querySelector<HTMLElement>(`[data-provider-id="${id}"]`) : undefined;
@@ -135,6 +147,8 @@ async function onDialogOpenChange(open: boolean) {
 			:description="i18n.baseText('settings.promotions.description')"
 			:show-docs-link="false"
 		/>
+
+		<PromoteInstanceSection :connection="connection" />
 
 		<N8nSettingsSection
 			:title="i18n.baseText('settings.promotions.providers.title')"
@@ -200,7 +214,7 @@ async function onDialogOpenChange(open: boolean) {
 				ref="connectionForm"
 				:providers="providers"
 				:connection="connection"
-				@saved="connection = $event"
+				@saved="onConnectionSaved"
 				@add-provider="openCreateDialog(true)"
 			/>
 		</N8nSettingsSection>

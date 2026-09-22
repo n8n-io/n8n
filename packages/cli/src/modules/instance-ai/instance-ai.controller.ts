@@ -23,9 +23,14 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -45,6 +50,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
@@ -219,6 +225,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		// The override is an eval knob. It changes how often the observer runs, so a
+		// plain chat caller must not be able to set it.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			!hasGlobalScope(req.user, 'instanceAi:eval')
+		) {
+			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+		}
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
@@ -229,6 +244,9 @@ export class InstanceAiController {
 			payload.pushRef,
 			payload.mode,
 			payload.promptVersion,
+			payload.computerUseChannels,
+			payload.threadArtifacts,
+			payload.observerThresholdTokens,
 		);
 		return { runId };
 	}
@@ -1072,6 +1090,25 @@ export class InstanceAiController {
 	}
 
 	/**
+	 * Observational memory for a thread, for a context eval to assert on.
+	 *
+	 * Returns the observation text, an LLM-written summary of the user's conversation.
+	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
+	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
+	 */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:eval')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
+	}
+
+	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
 	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
@@ -1095,6 +1132,7 @@ export class InstanceAiController {
 
 		const workflows = payload.workflows ?? [];
 		const agents = payload.agents ?? [];
+		const folders = payload.folders ?? [];
 		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
 		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
 		// dead tool (or binds an unrelated ambient workflow of the same name).
@@ -1109,17 +1147,26 @@ export class InstanceAiController {
 					.join('; '),
 			);
 		}
-		// Data tables first: the workflows reference them, and their ids are
-		// rewritten to the recreated tables' ids during workflow restore.
-		const idMap = await this.evalThreadRestore.restoreDataTables(
-			payload.dataTables ?? [],
-			projectId,
-			{ uniquifyNames: payload.uniquifyNames ?? true },
-		);
-		const dataTableIds = [...idMap.values()];
+		// Also cross-field: a workflow's `parentFolderId` must name a seeded folder.
+		// Checked before anything is created, so a typo costs no rollback.
+		const folderIssues = findSeedFolderIssues({ folders, workflows });
+		if (folderIssues.length > 0) {
+			throw new BadRequestError(folderIssues.join('; '));
+		}
+		// Folders first: the workflows are created inside them. `restoreFolders`
+		// rolls its own partial work back, so nothing else exists yet if it fails.
+		const folderIdMap = await this.evalThreadRestore.restoreFolders(folders, projectId, req.user);
+		// Positional to `folders`, like `workflowIds` to `workflows`, so the harness
+		// can pair each created id with the seed folder it came from.
+		const folderIds = folders.flatMap((folder) => {
+			const id = folderIdMap.get(folder.id);
+			return id === undefined ? [] : [id];
+		});
 		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak workflows/tables/agents into the shared eval project.
+		// restore doesn't leak folders/tables/workflows/agents into the shared eval
+		// project.
 		let restored = 0;
+		let dataTableIds: string[] = [];
 		let createdWorkflowIds: string[] = [];
 		let publishedWorkflowIds: string[] = [];
 		let createdAgentIds: string[] = [];
@@ -1132,11 +1179,20 @@ export class InstanceAiController {
 		// so a same-named credential of a concurrent case is never picked.
 		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
+			// Data tables before workflows: the workflows reference them, and their ids
+			// are rewritten to the recreated tables' ids during workflow restore.
+			const idMap = await this.evalThreadRestore.restoreDataTables(
+				payload.dataTables ?? [],
+				projectId,
+				{ uniquifyNames: payload.uniquifyNames ?? true },
+			);
+			dataTableIds = [...idMap.values()];
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+				folderIdMap,
 			);
 			// BEFORE the messages, which the rollback cannot undo: a refused activation
 			// (no trigger, webhook conflict, unresolved credential) must fail while the
@@ -1195,6 +1251,10 @@ export class InstanceAiController {
 			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			// Last, with the contents moved to the root: a re-applied seed workflow
+			// (moved into the folder, not created) is kept by this rollback, so the
+			// folder must not take it down.
+			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
 			throw error;
 		}
 		return {
@@ -1204,6 +1264,7 @@ export class InstanceAiController {
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
 			agentIds: createdAgentIds,
+			folderIds,
 		};
 	}
 

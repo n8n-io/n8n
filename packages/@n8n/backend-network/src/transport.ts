@@ -26,6 +26,7 @@ export type {
 	DispatcherTransport,
 	CreateDispatcherTransportOptions,
 	RequestAuthorizer,
+	TransportSsrfPolicy,
 	TransportTimeoutOptions,
 } from './http/undici/transport';
 export type { ProxyOption, ProxyUrl, SsrfOption } from './http/node-agents';

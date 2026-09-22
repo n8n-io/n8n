@@ -11,13 +11,14 @@ import type { Project, User } from '@n8n/db';
 import { NodeTypes } from '@/node-types';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
+import { clearPolicyCache } from './shared/policy-cache';
 
 const nodeTypes = mockInstance(NodeTypes);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -85,6 +86,7 @@ afterEach(async () => {
 		'TypeAvailabilityPolicyScope',
 		'TypeAvailabilityPolicy',
 	]);
+	await clearPolicyCache();
 });
 
 /**
@@ -120,11 +122,11 @@ describe('available types endpoint RBAC', () => {
 
 describe('available types endpoint license gating', () => {
 	afterEach(() => {
-		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	test('rejects a member with 403 when the license feature is disabled', async () => {
-		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
 		const response = await testServer
 			.authAgentFor(projectEditor)

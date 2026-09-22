@@ -2,6 +2,7 @@ import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
 import { ALLOW_CONTAINER_ONLY, CONTAINER_ONLY_MODES, LICENSED_TAG } from './fixtures/capabilities';
+import { ENGINE_TAG_PREFIX } from './fixtures/engine-parity';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
@@ -90,6 +91,8 @@ export interface BenchOptions {
 	 * collecting flamegraph data, not for clean ceiling numbers.
 	 */
 	tracing?: boolean;
+	/** Runs engine v2 on the shared Postgres server or a separate server. */
+	engine?: 'shared' | 'split';
 	/** Additional env vars to merge over the base. */
 	env?: Record<string, string>;
 }
@@ -113,6 +116,7 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 	const services = [...(BENCHMARK_CONFIG.services ?? [])];
 	if (opts.kafka) services.push('kafka');
 	if (opts.tracing) services.push('tracing');
+	if (opts.engine === 'split') services.push('enginePostgres');
 
 	const env: Record<string, string> = {
 		...BENCHMARK_CONFIG.env,
@@ -133,6 +137,7 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 		...(opts.mains !== undefined && { mains: opts.mains }),
 		...(opts.workers !== undefined && { workers: opts.workers }),
 		...(opts.webhooks !== undefined && { webhooks: opts.webhooks }),
+		...(opts.engine !== undefined && { engine: 'in-process' as const }),
 		env,
 	};
 }
@@ -235,6 +240,23 @@ export function getProjects(): Project[] {
 			);
 		}
 
+		// Engine 2.0 parity: the same e2e specs against a main that routes every
+		// workflow to the new engine. Opt-in by tag while the engine matures: any
+		// `@engine:*` tag selects the spec, and the parity fixture then runs, skips
+		// or expects failure by bucket. Drop the grep once the suite is triaged.
+		// The CI job e2e-engine blocks merges, so a spec this grep selects fails the
+		// PR when it misses the outcome its bucket asks for.
+		projects.push({
+			name: 'engine-v2:e2e',
+			testDir: './tests/e2e',
+			grep: new RegExp(ENGINE_TAG_PREFIX),
+			timeout: 180000,
+			// One worker, one stack. Every worker boots its own Postgres and main,
+			// and the CI job asks for one worker anyway.
+			workers: 1,
+			use: { containerConfig: { postgres: true, engine: 'in-process' } },
+		});
+
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
@@ -261,6 +283,20 @@ export function getProjects(): Project[] {
 			timeout: 600_000,
 			retries: 0,
 			use: { containerConfig: BENCHMARKING_DEFAULT_CONFIG },
+		});
+
+		// API-only, no browser: the specs manage their own stack (they swap n8n
+		// images mid-test via stack.replaceN8N), so no containerConfig fixture.
+		projects.push({
+			name: 'encryption:infrastructure',
+			testDir: './tests/infrastructure/encryption',
+			workers: 1,
+			// One upgrade cycle boots four instances and pulls the old release.
+			timeout: 900_000,
+			retries: 0,
+			// No browser runs here — the global trace/video/screenshot capture
+			// only produces empty artifacts for these tests.
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
 		});
 
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {

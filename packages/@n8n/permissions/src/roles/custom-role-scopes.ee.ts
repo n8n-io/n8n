@@ -35,7 +35,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'move',
 		'delete',
 	],
-	execution: ['reveal'],
+	execution: ['read', 'reveal', 'delete'],
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],
 	sourceControl: ['push'],
@@ -79,11 +79,11 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		// use/manage options below so a role can be given just those without the
 		// rest of instance Settings — Manage's bundle is a strict superset of all
 		// four, so checking Manage checks them too, and unchecking any one of them
-		// drops Manage out of the fully-checked state.
+		// drops Manage out of the fully-checked state. The read scopes every role
+		// holds anyway live in BASELINE_INSTANCE_SCOPES, not in this bundle.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
-			'credentialResolver:list',
 			'credentialResolver:create',
 			'credentialResolver:update',
 			'credentialResolver:delete',
@@ -98,18 +98,12 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'eventBusDestination:read',
 			'eventBusDestination:update',
 			'eventBusDestination:delete',
-			'eventBusDestination:list',
-			'eventBusDestination:test',
-			'variable:list',
-			'variable:read',
-			'dataTable:list',
 			'aiPreference:create', // Context (instance-wide AI preferences)
 			'aiPreference:read',
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
 			'chatHub:manage', // Chat
-			'chatHub:message', // needed for model listing on the Chat settings page
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
@@ -161,10 +155,28 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		'Manage all': ['apiKey:create', 'apiKey:update', 'apiKey:manage'],
 	},
 	tag: {
-		// read/list are bundled with write scopes: tags on workflows you can already
-		// read are always visible (they come embedded in the workflow response), so
-		// there is no meaningful "view-only" tier for tag definitions.
+		// Tags on a workflow you can read come embedded in the workflow response, and
+		// applying one rides on workflow:update, not a tag scope. read/list gate only
+		// the tag *picker* — listing every existing tag to choose from — which every
+		// role gets (see MANDATORY_INSTANCE_OPTIONS below). Manage keeps read/list so
+		// it stays a strict superset of View, matching `user`.
+		View: ['tag:read', 'tag:list'],
 		Manage: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
+	},
+	variable: {
+		// Global (instance-level) variables only; project variables are granted per
+		// project via `projectVariable:*` on a project role. View mirrors
+		// GLOBAL_MEMBER_SCOPES exactly, so a custom role built to match Member never
+		// exceeds it. The list response carries each variable's value, so View reads
+		// values and is not only discovery — hence it is opt-in, not mandatory.
+		View: ['variable:list', 'variable:read'],
+		Manage: [
+			'variable:list',
+			'variable:read',
+			'variable:create',
+			'variable:update',
+			'variable:delete',
+		],
 	},
 	project: {
 		Create: ['project:create'],
@@ -174,11 +186,71 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	},
 } as const satisfies InstanceScopeGroups;
 
-export const GLOBAL_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set(
-	Object.values(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap((optionMap) =>
+/**
+ * Scopes every instance role carries without a checkbox of their own. The default
+ * Member role holds them and they only unlock read-only surfaces: the Chat page,
+ * the data table list, and the log streaming and credential resolver lists that
+ * other settings pages read. `resolveScopes` and the role editor union them into
+ * every global role, so a custom role never trails Member on these pages and the
+ * editor never has to render them as a half-checked "Manage all settings".
+ */
+export const BASELINE_INSTANCE_SCOPES = [
+	'chatHub:message',
+	'credentialResolver:list',
+	'dataTable:list',
+	'eventBusDestination:list',
+	'eventBusDestination:test',
+] as const satisfies readonly Scope[];
+
+export const GLOBAL_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set([
+	...Object.values(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap((optionMap) =>
 		Object.values<readonly Scope[]>(optionMap).flat(),
 	),
-);
+	...BASELINE_INSTANCE_SCOPES,
+]);
+
+/** Correlates each resource with its own option keys, so a typo fails the typecheck. */
+type MandatoryInstanceOption = {
+	[R in keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS]: {
+		resource: R;
+		option: keyof (typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS)[R];
+	};
+}[keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS];
+
+/**
+ * Options every instance role carries regardless of what is saved — the default
+ * Member role already grants them, so they are baseline behaviour rather than
+ * something a custom role opts into. The editor renders them checked and
+ * disabled; `resolveScopes` unions them into every global-role write.
+ */
+export const MANDATORY_INSTANCE_OPTIONS = [
+	{ resource: 'user', option: 'View' },
+	{ resource: 'tag', option: 'View' },
+] as const satisfies readonly MandatoryInstanceOption[];
+
+export function isMandatoryInstanceOption(resource: string, option: string): boolean {
+	return MANDATORY_INSTANCE_OPTIONS.some((m) => m.resource === resource && m.option === option);
+}
+
+/**
+ * Every scope a global role write unions in: the mandatory options' scopes (derived
+ * by indexing the groups table, so a typo contributes nothing silently) plus the
+ * baseline scopes that have no option of their own.
+ */
+export const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = [
+	...new Set<Scope>([
+		...MANDATORY_INSTANCE_OPTIONS.flatMap(({ resource, option }) => {
+			const optionMap: Record<string, readonly Scope[]> = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS[resource];
+			return optionMap[option];
+		}),
+		...BASELINE_INSTANCE_SCOPES,
+	]),
+];
+
+/** Unions in the mandatory scopes (see `MANDATORY_INSTANCE_OPTIONS`) on top of an already-filtered scope list. */
+export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
+	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+}
 
 /** Precise union of the scopes the operations map grants — keeps each resource
  * correlated with its own operations (no resource×operation cross-product). */

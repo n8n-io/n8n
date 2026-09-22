@@ -20,7 +20,7 @@ export class JtiCleanupTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly durable = true;
 
 	private readonly logger: Logger;
 

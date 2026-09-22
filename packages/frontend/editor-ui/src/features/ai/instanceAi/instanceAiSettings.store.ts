@@ -43,6 +43,9 @@ import type {
 import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import type { ComputerUseChannel } from '@n8n/api-types';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -96,6 +99,31 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isBrowserUseEnabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
 	);
+	const isMcpAvailable = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.mcpConnectionsAvailable === true,
+	);
+
+	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
+	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
+
+	const isComputerUseAvailable = computed(
+		() => isComputerUseFeatureEnabled.value && !isLocalGatewayDisabledByAdmin.value,
+	);
+	const isBrowserUseAvailable = computed(
+		() => isBrowserUseFeatureEnabled.value && isBrowserUseEnabledByAdmin.value,
+	);
+
+	/**
+	 * The Computer Use entries the + menu renders for this user. Sent with every
+	 * message: the rollout and the device are visible only here, so the backend
+	 * cannot work them out and must not advertise an entry we do not report.
+	 */
+	const computerUseChannels = computed<ComputerUseChannel[]>(() => {
+		const channels: ComputerUseChannel[] = [];
+		if (isComputerUseAvailable.value) channels.push('localComputer');
+		if (isBrowserUseAvailable.value) channels.push('browser');
+		return channels;
+	});
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
 	);
@@ -129,6 +157,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
+			mcpConnectionsAvailable:
+				adminRes.mcpAccessEnabled && (prev?.mcpConnectionsAvailable ?? false),
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
@@ -644,6 +674,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
+		isMcpAvailable,
+		isComputerUseAvailable,
+		isBrowserUseAvailable,
+		computerUseChannels,
 		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
 		isSandboxEnabled,

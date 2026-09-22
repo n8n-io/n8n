@@ -14,11 +14,5 @@ WorkflowSettings:
   $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
 WorkflowList:
   $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
-CredentialType:
-  $ref: './../../../handlers/credentials/spec/schemas/credentialType.yml'
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
-UserList:
-  $ref: './../../../handlers/users/spec/schemas/userList.yml'
-User:
-  $ref: './../../../handlers/users/spec/schemas/user.yml'

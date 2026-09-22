@@ -19,7 +19,7 @@ export class AgentCheckpointPruningTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly durable = true;
 
 	readonly runOnTakeover = true;
 

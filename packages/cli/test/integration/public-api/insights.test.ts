@@ -100,7 +100,12 @@ beforeEach(async () => {
 
 describe('GET /insights/summary', () => {
 	test('returns 401 without API key', async () => {
-		await testServer.publicApiAgentWithoutApiKey().get('/insights/summary').expect(401);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get('/insights/summary')
+			.expect(401);
+
+		expect(response.body).toEqual({ message: 'Unauthorized' });
 	});
 
 	test('returns data via session cookie, without an API key', async () => {
@@ -138,16 +143,60 @@ describe('GET /insights/summary', () => {
 		expect(response.body).toEqual({ message: 'Unauthorized' });
 	});
 
-	test('returns 401 with a hint to use an API key when no credentials are sent at all', async () => {
-		const agent = testServer.publicApiAgentWithoutApiKey();
+	test('returns 403 without insights:read scope', async () => {
+		const response = await authUnscopedAgent.get('/insights/summary').expect(403);
 
-		const response = await agent.get('/insights/summary').expect(401);
-
-		expect(response.body).toEqual({ message: "'X-N8N-API-KEY' header required" });
+		expect(response.body).toEqual({ message: 'Forbidden' });
 	});
 
-	test('returns 403 without insights:read scope', async () => {
-		await authUnscopedAgent.get('/insights/summary').expect(403);
+	test('returns 400 for a malformed startDate', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: 'not-a-date' })
+			.expect(400);
+
+		expect(response.body.message).toContain('request/query/startDate');
+	});
+
+	test('returns 400 for a date-time without a timezone', async () => {
+		await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: '2024-01-01T00:00:00' })
+			.expect(400);
+	});
+
+	test('returns 400 for a date-time with an out-of-range offset', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: '2024-01-01T00:00:00+99:99' })
+			.expect(400);
+
+		expect(response.body.message).toContain('request/query/startDate');
+	});
+
+	test('returns 403 when startDate is older than the licensed history', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: DateTime.utc().minus({ days: 366 }).toISO() })
+			.expect(403);
+
+		expect(response.body).toEqual({
+			message: 'The selected date range exceeds the maximum history allowed by your license',
+		});
+	});
+
+	test('returns 400 when endDate is before startDate', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 1 }).toISO(),
+				endDate: DateTime.utc().minus({ days: 2 }).toISO(),
+			})
+			.expect(400);
+
+		expect(response.body).toEqual({
+			message: 'endDate must be the same as or after startDate',
+		});
 	});
 
 	test('returns data matching InsightsSummary schema', async () => {
@@ -172,9 +221,13 @@ describe('GET /insights/summary', () => {
 
 		const parsed = insightsSummarySchema.safeParse(response.body);
 		expect(parsed.success).toBe(true);
-		expect(response.body.total.value).toBe(4);
-		expect(response.body.failed.value).toBe(1);
-		expect(response.body).not.toHaveProperty('billable');
+		expect(response.body).toStrictEqual({
+			total: { value: 4, deviation: null, unit: 'count' },
+			failed: { value: 1, deviation: null, unit: 'count' },
+			failureRate: { value: 0.25, deviation: null, unit: 'ratio' },
+			timeSaved: { value: 20, deviation: null, unit: 'minute' },
+			averageRunTime: { value: 100, deviation: null, unit: 'millisecond' },
+		});
 	});
 
 	test('respects startDate and endDate filters', async () => {

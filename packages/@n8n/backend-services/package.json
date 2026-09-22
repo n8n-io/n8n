@@ -1,0 +1,40 @@
+{
+  "name": "@n8n/backend-services",
+  "version": "1.1.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "pnpm run lint:base && pnpm run lint:guardrails",
+    "lint:base": "oxlint --type-aware . --quiet",
+    "lint:fix": "oxlint --type-aware . --fix && pnpm run lint:guardrails",
+    "lint:guardrails": "eslint --config eslint.guardrails.config.mjs . --quiet",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:dev": "vitest --silent=false"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

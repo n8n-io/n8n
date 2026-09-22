@@ -114,6 +114,7 @@ const stubs = {
 
 const thread = {
 	id: 'thread-1',
+	canContinueInPreview: false,
 	agentId: 'agent-1',
 	agentName: 'Agent',
 	parentThreadId: null,
@@ -145,6 +146,7 @@ const defaultProps = {
 	isLangSmithExportEnabled: false,
 	isExporting: false,
 	isDeletingSession: false,
+	canDeleteSession: true,
 	getConversationMarkdown: function getConversationMarkdown() {
 		return '**User:**\n\nHello';
 	},
@@ -309,6 +311,14 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		});
 		getDropdown(wrapper).vm.$emit('select', 'delete-session');
 		expect(wrapper.emitted('delete-session')).toEqual([[]]);
+	});
+
+	it('omits and guards deletion for viewers', function blocksViewerDeletion() {
+		const wrapper = mountMenu({ canDeleteSession: false });
+
+		expect(getMenuItem(wrapper, 'delete-session')).toBeUndefined();
+		getDropdown(wrapper).vm.$emit('select', 'delete-session');
+		expect(wrapper.emitted('delete-session')).toBeUndefined();
 	});
 
 	it.each([{ hasSession: false }, { effectiveSessionId: undefined }, { isDeletingSession: true }])(
