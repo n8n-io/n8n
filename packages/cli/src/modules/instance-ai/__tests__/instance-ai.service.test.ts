@@ -18,6 +18,11 @@ vi.mock('@n8n/instance-ai', async () => {
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 		// Wiring-only stub: the real mapping has its own unit tests
 		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
 		// service tests pin is that its OUTPUT reaches the trace — spreading an
@@ -254,6 +259,7 @@ import {
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
+	type ModelConfig,
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -288,6 +294,8 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
+		setComputerUseChannels: Mock;
+		getComputerUseChannels: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		activeRunCount: MockedFunction<() => number>;
@@ -313,6 +321,8 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
+		setComputerUseChannels: vi.fn(),
+		getComputerUseChannels: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
@@ -548,6 +558,15 @@ type TerminalGuardOrderServiceInternals = {
 	maybeStartWorkflowSetupFollowUp: Mock;
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
+	inFlightExecutions: Set<Promise<unknown>>;
+	shutdown: () => Promise<void>;
+	executeRun: (
+		user: User,
+		threadId: string,
+		runId: string,
+		message: string,
+		abortController: AbortController,
+	) => Promise<void>;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -566,6 +585,7 @@ type TerminalGuardOrderServiceInternals = {
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
+			modelId?: ModelConfig;
 		},
 	) => Promise<void>;
 };
@@ -677,8 +697,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	const snapshotModes = ['off', 'seeded', 'read failure'];
-	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
+	const environmentGates = ['off', 'seeded', 'read failure'].flatMap((snapshotMode) =>
+		[true, false].map((instanceContextEnabled) => ({ snapshotMode, instanceContextEnabled })),
+	);
+	it.each(environmentGates)('starts with gates %j', async (gates) => {
+		const { snapshotMode, instanceContextEnabled } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -686,6 +709,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				runId: string,
 				abortSignal: AbortSignal,
 			) => Promise<{
+				instanceContextEnabled: boolean;
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
@@ -739,6 +763,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -775,6 +800,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
+				aiPreferencesEnabled: false,
+				instanceContextEnabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -809,6 +836,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -852,6 +880,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'thread-1',
 			'run-1',
 			new AbortController().signal,
+		);
+		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ instanceContextEnabled }),
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
 		if (snapshotMode === 'off') {
@@ -1056,6 +1089,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1093,6 +1127,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: true,
+				aiPreferencesEnabled: false,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -1123,6 +1158,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1399,6 +1435,29 @@ describe('InstanceAiService — run start', () => {
 		expect(service.executeRun).toHaveBeenCalled();
 	});
 
+	it('records the reported Computer Use channels so resumed runs reuse them', () => {
+		const service = createStartRunService();
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'build',
+			undefined,
+			undefined,
+			'UTC',
+			undefined,
+			undefined,
+			undefined,
+			['browser'],
+		);
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', [
+			'browser',
+		]);
+
+		// A client that stops reporting clears it, so nothing is advertised.
+		service.startRun(fakeUser, 'thread-a', 'continue');
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', undefined);
+	});
+
 	it('records each request mode for later internal runs', () => {
 		const service = createStartRunService();
 		service.startRun(
@@ -1443,6 +1502,11 @@ describe('InstanceAiService — run start', () => {
 			context,
 			'group-1',
 			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
 		);
 	});
 
@@ -1485,6 +1549,50 @@ describe('InstanceAiService — run start', () => {
 			context,
 			'group-1',
 			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('passes thread artifacts into executeRun', () => {
+		const service = createStartRunService();
+		const threadArtifacts = {
+			artifacts: [{ type: 'workflow' as const, id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+			activeId: 'wf-1',
+		};
+
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'Change this',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
+		);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'Change this',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
 		);
 	});
 });
@@ -2982,6 +3090,42 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		});
 	});
 
+	it('includes the resolved model id on resumed-run telemetry', async () => {
+		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				modelId: 'anthropic/claude-sonnet-4-6',
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			prompt_version: 'progressive@1',
+			run_id: 'run-1',
+			status: 'completed',
+			user_id: 'user-1',
+			model_id: 'anthropic/claude-sonnet-4-6',
+		});
+	});
+
 	it('terminates the run visibly when a resume fails before the claim', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
@@ -3482,6 +3626,253 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				status: 'suspended',
 				outputs: expect.objectContaining({ message: 'Set up the slack channel' }),
 			}),
+		);
+	});
+
+	// Fixtures for the confirmation-card tests below. The tests differ only in
+	// when the abort fires and whether the card must still reach the client.
+	const CARD_EVENT = {
+		type: 'confirmation-request',
+		runId: 'run-1',
+		agentId: 'orchestrator:run-1',
+		payload: {
+			requestId: 'req-1',
+			toolCallId: 'tool-call-1',
+			toolName: 'ask-user',
+			args: {},
+			severity: 'info',
+			message: 'Set up the slack channel',
+		},
+	} as unknown as Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+
+	function suspendedWithCard(): Awaited<ReturnType<typeof resumeAgentRun>> {
+		return {
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			suspension: {
+				toolCallId: 'tool-call-1',
+				requestId: 'req-1',
+				toolName: 'ask-user',
+				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
+			},
+			confirmationEvent: CARD_EVENT,
+		};
+	}
+
+	function cardTracing(): InstanceAiTraceContext {
+		return {
+			actorRun: { id: 'segment-a-actor' },
+			withActiveSpan: vi.fn(async (_run: unknown, body: () => Promise<unknown>) => await body()),
+		} as unknown as InstanceAiTraceContext;
+	}
+
+	function resumeOpts(abortController: AbortController, tracing: InstanceAiTraceContext) {
+		return {
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			signal: abortController.signal,
+			abortController,
+			tracing,
+		};
+	}
+
+	/** Aborts the run while the pending-row write is in flight. */
+	function abortDuringRowWrite(service: TerminalGuardOrderServiceInternals): AbortController {
+		const abortController = new AbortController();
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(async () => {
+			abortController.abort();
+		});
+		return abortController;
+	}
+
+	/** The smallest executeRun surface: no tracing, no attachments, no handoff. */
+	function stubInitialRunSurface(service: TerminalGuardOrderServiceInternals): void {
+		Object.assign(service, {
+			resolveContextAttachments: vi.fn(async () => []),
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			isRunDebugEnabled: vi.fn(() => false),
+			createExecutionEnvironment: vi.fn(async () => ({
+				context: {},
+				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+				taskStorage: { get: vi.fn(async () => undefined) },
+				orchestrationContext: {},
+			})),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			instanceContext: { buildBlock: vi.fn(async () => undefined) },
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			domainAccessTrackersByThread: new Map(),
+		});
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+	}
+
+	/** The shutdown() surface: one suspended run, nothing else in flight. */
+	function stubShutdownSurface(
+		service: TerminalGuardOrderServiceInternals,
+		run: { runId: string; tracing: InstanceAiTraceContext; abortController: AbortController },
+	): void {
+		Object.assign(service.liveness, { shutdown: vi.fn() });
+		Object.assign(service.runState, {
+			shutdown: vi.fn(() => ({ activeRuns: [], suspendedRuns: [run], pendingThreadIds: [] })),
+		});
+		Object.assign(service.backgroundTasks, { cancelAll: vi.fn(() => []) });
+		Object.assign(service.tracing, { getTrackedThreadIds: vi.fn(() => []), clear: vi.fn() });
+		Object.assign(service.eventBus, { clear: vi.fn() });
+		Object.assign(service.logger, { debug: vi.fn() });
+		Object.assign(service, {
+			inFlightExecutions: new Set<Promise<unknown>>(),
+			gatewayService: { disconnectAll: vi.fn() },
+			browserSessionService: { shutdown: vi.fn(async () => {}) },
+			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
+			domainAccessTrackersByThread: new Map(),
+			eventLog: { flushAll: vi.fn(async () => {}) },
+		});
+	}
+
+	it('writes the pending row before it publishes the confirmation card', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		let releaseRow: () => void = () => {};
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseRow = resolve;
+				}),
+		);
+		mockClaimedResumeResult(suspendedWithCard());
+
+		const resumed = service.processResumedStream(
+			{},
+			{},
+			resumeOpts(new AbortController(), cardTracing()),
+		);
+		await vi.waitFor(() =>
+			expect(service.suspendedThreads.persistPendingConfirmation).toHaveBeenCalled(),
+		);
+		// The row write is still in flight: a client that reconnects now must not
+		// be able to read the card from the log, or it settles the card as expired.
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', CARD_EVENT);
+
+		releaseRow();
+		await resumed;
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+	});
+
+	it('does not publish the confirmation card when the run is cancelled during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const tracing = cardTracing();
+		// cancelRun already published run-finish and dropped the row.
+		const abortController = abortDuringRowWrite(service);
+		mockClaimedResumeResult(suspendedWithCard());
+
+		await service.processResumedStream({}, {}, resumeOpts(abortController, tracing));
+
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalledWith(
+			'run-1',
+			tracing,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('publishes the confirmation card when shutdown aborts the run during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const tracing = cardTracing();
+		// shutdown keeps the row and the checkpoint, so the card must still go out.
+		service.preserveHitlOnShutdown.add('run-1');
+		const abortController = abortDuringRowWrite(service);
+		mockClaimedResumeResult(suspendedWithCard());
+
+		await service.processResumedStream({}, {}, resumeOpts(abortController, tracing));
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).toHaveBeenCalledWith(
+			'run-1',
+			tracing,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('records the suspended run on shutdown() and keeps the confirmation card publish', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const tracing = cardTracing();
+		const abortController = new AbortController();
+		stubShutdownSurface(service, { runId: 'run-1', tracing, abortController });
+		let flaggedAtAbort = false;
+		abortController.signal.addEventListener('abort', () => {
+			flaggedAtAbort = service.preserveHitlOnShutdown.has('run-1');
+		});
+		let shutdown: Promise<void> | undefined;
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(async () => {
+			shutdown = service.shutdown();
+			await new Promise<void>((resolve) => {
+				abortController.signal.addEventListener('abort', () => resolve(), { once: true });
+			});
+		});
+		mockClaimedResumeResult(suspendedWithCard());
+
+		const run = service.processResumedStream({}, {}, resumeOpts(abortController, tracing));
+		service.inFlightExecutions.add(run);
+		await run;
+		await shutdown;
+
+		// The flag lands before the abort fires, so the guard lets the card through.
+		expect(flaggedAtAbort).toBe(true);
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.eventBus.events.some((event) => event.type === 'run-finish')).toBe(false);
+	});
+
+	it('does not publish the confirmation card when the initial run is cancelled during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		stubInitialRunSurface(service);
+		// cancelRun already published run-finish and dropped the row.
+		const abortController = abortDuringRowWrite(service);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce(suspendedWithCard());
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Set up slack', abortController);
+
+		// The run did suspend; the abort landed after that, not before the stream.
+		expect(service.runState.suspendRun).toHaveBeenCalled();
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalledWith(
+			'run-1',
+			undefined,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('publishes the confirmation card when shutdown aborts the initial run during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		stubInitialRunSurface(service);
+		// shutdown keeps the row and the checkpoint, so the card must still go out.
+		service.preserveHitlOnShutdown.add('run-1');
+		const abortController = abortDuringRowWrite(service);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce(suspendedWithCard());
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Set up slack', abortController);
+
+		// The run did suspend; the abort landed after that, not before the stream.
+		expect(service.runState.suspendRun).toHaveBeenCalled();
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).toHaveBeenCalledWith(
+			'run-1',
+			undefined,
+			expect.objectContaining({ status: 'suspended' }),
 		);
 	});
 
@@ -4433,9 +4824,9 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 	});
 });
 
-describe('InstanceAiService setup panel Execute input', () => {
+describe('InstanceAiService run input gates', () => {
 	it.each([true, false])(
-		'forwards the Execute target only with the panel enabled: %s',
+		'forwards the setup panel target and the shared instance gate: %s',
 		async (enabled) => {
 			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 			vi.mocked(streamAgentRun).mockResolvedValueOnce({
@@ -4444,7 +4835,9 @@ describe('InstanceAiService setup panel Execute input', () => {
 				text: Promise.resolve(''),
 				workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
 			});
+			const buildBlock = vi.fn().mockResolvedValue(undefined);
 			const environment = {
+				instanceContextEnabled: enabled,
 				context: { setupItemsEmitter: enabled ? {} : undefined },
 				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
 				taskStorage: { get: vi.fn(async () => undefined) },
@@ -4456,7 +4849,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				createProxyRunConfig: vi.fn(async () => ({})),
 				browserSessionService: { getExtensionTraceContext: vi.fn() },
 				readThreadProvenance: vi.fn(async () => ({})),
-				instanceContext: { buildBlock: vi.fn().mockResolvedValue(undefined) },
+				instanceContext: { buildBlock },
 				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
 					throw error;
 				}),
@@ -4496,6 +4889,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				{ source: 'setup-panel-execute', workflowId: 'wf-target' },
 			);
 
+			expect(buildBlock).toHaveBeenCalledWith(expect.objectContaining({ enabled }));
 			expect(streamAgentRun).toHaveBeenCalled();
 			const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
 			expect(input).toEqual(expect.any(String));
@@ -4805,8 +5199,14 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('builds the context block from combined workflow and agent attachments', () => {
 		const source = InstanceAiService.toString();
 
-		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
-		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
+		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(args)`. Both
+		// arguments must reach the block, or the editor hand-off drops out of it.
+		expect(source).toMatch(
+			/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*,\s*contextAttachments\s*\)/,
+		);
+		expect(source).toMatch(/buildThreadContextBlock\)?/);
+		expect(source).not.toContain('buildContextResourcesBlock');
+		expect(source).not.toContain('EDITOR_CONTEXT_OPEN_TAG');
 	});
 
 	it('traces the attached resources, which the raw message no longer shows', () => {
@@ -5747,6 +6147,7 @@ type FollowUpStreakServiceInternals = {
 		hasLiveRun: Mock;
 		startRun: Mock;
 		getTimeZone: Mock;
+		getComputerUseChannels: Mock;
 	};
 	logger: { warn: Mock; debug: Mock; error: Mock };
 };
@@ -5765,6 +6166,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
 		getTimeZone: vi.fn(() => undefined),
+		getComputerUseChannels: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
 
@@ -5853,5 +6255,78 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — resolveAiPreferencesBlock', () => {
+	type Internals = {
+		resolveAiPreferencesBlock: (
+			userId: string,
+			project: { id: string; name: string; type: 'team' } | undefined,
+		) => Promise<string | undefined>;
+		aiPreferenceService: { getApplicable: Mock };
+		logger: { warn: Mock };
+	};
+
+	function createService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('reads the preferences for the user and the bound project and renders the block', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue({
+			instance: [],
+			user: [{ id: 'pref-1', content: 'Keep replies short.' }],
+			projects: [
+				{
+					id: 'project-1',
+					name: 'Marketing',
+					items: [{ id: 'pref-2', content: 'Prefer HubSpot nodes.' }],
+				},
+			],
+		});
+
+		const block = await service.resolveAiPreferencesBlock('user-1', {
+			id: 'project-1',
+			name: 'Marketing',
+			type: 'team',
+		});
+
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
+			{ id: 'project-1', name: 'Marketing', type: 'team' },
+		]);
+		expect(block).toContain('<ai-preferences>');
+		expect(block).toContain('Preferences for project "Marketing":');
+		expect(block).toContain('- Keep replies short.');
+	});
+
+	it('reads only user and instance preferences when the project could not be resolved', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue({
+			instance: [],
+			user: [],
+			projects: [],
+		});
+
+		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', []);
+		expect(block).toBeUndefined();
+	});
+
+	it('warns and skips the block when the read fails', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
+
+		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+
+		expect(block).toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Instance AI failed to read the AI preferences for this turn',
+			{ userId: 'user-1', error: 'db down' },
+		);
 	});
 });

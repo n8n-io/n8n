@@ -5,6 +5,7 @@ import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
+import { ExecutionResponseChannel, noopResponseTransport } from './response-channel';
 import { createEngineRuntime } from './runtime';
 
 const logger = createConsoleLogger();
@@ -31,6 +32,9 @@ async function main(): Promise<void> {
 		admittance: new AllowAllAdmittance(),
 		identityVerifier: new SharedSecretIdentityVerifier(config.authSecret),
 		logger,
+		// Nothing in this process waits for a response: the caller reads the run
+		// over the API instead.
+		responseChannel: new ExecutionResponseChannel(noopResponseTransport, logger),
 	});
 	runtime.start();
 

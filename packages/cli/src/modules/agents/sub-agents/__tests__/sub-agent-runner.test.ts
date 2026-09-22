@@ -19,6 +19,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -136,7 +137,7 @@ describe('SubAgentRunner', () => {
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
-			agentExecutionService,
+			new AgentTurnExecutionService(logger, agentExecutionService),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
@@ -144,10 +145,15 @@ describe('SubAgentRunner', () => {
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		childAgent.resume.mockImplementation(async (_method, _data, options) => {
+			await options.onResumeClaimed?.();
+			return makeStreamResult(defaultStreamChunks);
+		});
 		childAgent.close.mockResolvedValue(undefined);
 		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
 			agent: childAgent as never,
 			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
 		});
 
 		credentialProvider = mock<CredentialProvider>();
@@ -238,6 +244,45 @@ describe('SubAgentRunner', () => {
 		const startedAt = agentExecutionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+	});
+
+	it('appends the MCP registry attribution to the child answer and forwards it to the parent', async () => {
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map([['Databricks Genie', 'Powered by Genie']]),
+		});
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'Databricks_Genie_ask',
+					output: 'rows',
+					mcpServerName: 'Databricks Genie',
+				},
+				...defaultStreamChunks,
+			]),
+		);
+		const onChunk = vi.fn();
+
+		const result = await runner.run(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			onChunk,
+		});
+
+		expect(result.result.messages).toEqual([
+			expect.objectContaining({
+				content: [{ type: 'text', text: 'Child answer\n\nPowered by Genie' }],
+			}),
+		]);
+		expect(onChunk).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'text-delta', delta: '\n\nPowered by Genie' }),
+		);
+		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
+		expect(finalizedRecord.assistantResponse).toBe('Child answer\n\nPowered by Genie');
 	});
 
 	it('runs the child on a caller-supplied childThreadId instead of minting one', async () => {
@@ -381,7 +426,6 @@ describe('SubAgentRunner', () => {
 			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
 			pendingToolCalls: {},
 		});
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -419,7 +463,6 @@ describe('SubAgentRunner', () => {
 			}),
 		);
 
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -615,8 +658,6 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('resumes a draft child in the same thread', async () => {
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
-
 		const result = await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -672,7 +713,6 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('resumes and cancels self-delegation from the parent-owned checkpoint', async () => {
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		const request = {
 			...delegatedRequest,
 			subAgentId: INLINE_SUB_AGENT_ID,
@@ -707,8 +747,6 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('accepts a legacy pinned resume context', async () => {
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
-
 		await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -786,6 +824,41 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
+	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
+		'requires child recording through %s',
+		async (operation) => {
+			const cause = new Error('recording unavailable');
+			agentExecutionService[operation].mockRejectedValue(cause);
+			await expect(
+				runner.run(spawnRequest, { projectId, credentialProvider, runType: 'production' }),
+			).rejects.toMatchObject({
+				phase: operation === 'startExecutionRecording' ? 'create' : 'finalize',
+				executionStarted: operation === 'finalizeExecution',
+				cause,
+			});
+			if (operation === 'startExecutionRecording') {
+				expect(childAgent.stream).not.toHaveBeenCalled();
+				expect(agentExecutionService.finalizeExecution).not.toHaveBeenCalled();
+			} else {
+				expect(agentExecutionService.finalizeExecution).toHaveBeenCalledOnce();
+				expect(childAgent.close).toHaveBeenCalledOnce();
+			}
+		},
+	);
+
+	it('records a failed child initialization without invoking the SDK', async () => {
+		const error = new Error('child initialization failed');
+		reconstructionService.reconstructFromResolvedSource.mockRejectedValue(error);
+		await expect(
+			runner.run(spawnRequest, { projectId, credentialProvider, runType: 'production' }),
+		).rejects.toBe(error);
+		expect(childAgent.stream).not.toHaveBeenCalled();
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
+			expect.objectContaining({ record: expect.objectContaining({ error: error.message }) }),
+		);
+	});
+
 	it('aborts the child run when the parent run is cancelled', async () => {
 		const parentAbort = new AbortController();
 		childAgent.stream.mockImplementation(
@@ -810,6 +883,7 @@ describe('SubAgentRunner', () => {
 			abortSignal: parentAbort.signal,
 		});
 
+		await vi.waitFor(() => expect(childAgent.stream).toHaveBeenCalled());
 		parentAbort.abort();
 
 		await expect(run).resolves.toMatchObject({ status: 'failed' });

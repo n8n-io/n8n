@@ -3,8 +3,6 @@ import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
@@ -15,6 +13,7 @@ import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
+import { useMcpServerConnect } from './useMcpServerConnect';
 import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
@@ -30,12 +29,11 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const uiStore = useUIStore();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
+	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 	const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
-	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
-	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
 
 	void settingsStore.fetch();
 	if (isMcpFeatureEnabled.value) void mcpStore.fetchConnectionsLazy();
@@ -43,12 +41,9 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const isMcpAvailable = computed(
 		() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true,
 	);
-	const isComputerUseAvailable = computed(
-		() => isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin,
-	);
-	const isBrowserUseAvailable = computed(
-		() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
-	);
+	// The store owns this, so the + menu and the message payload cannot disagree.
+	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
+	const isBrowserUseAvailable = computed(() => settingsStore.isBrowserUseAvailable);
 	async function openComputerSetup() {
 		if (settingsStore.isLocalGatewayDisabled) {
 			await settingsStore.persistLocalGatewayPreference(false);
@@ -195,6 +190,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						divided: true,
 						data: {
 							action: async () => {
+								ignorePendingConnectResult(connection.serverSlug);
 								await mcpStore.disconnect(connection.id);
 							},
 						},

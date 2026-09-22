@@ -51,6 +51,13 @@ export type UserLike = {
 	};
 };
 
+/**
+ * Which write path produced a policy document event. A composed save emits a document event
+ * of its own, so a consumer that already reports the composed save uses this to skip it
+ * instead of counting one save twice.
+ */
+export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+
 export type ProjectSummary = {
 	id: string;
 	name: string;
@@ -413,7 +420,8 @@ export type RelayEventMap = {
 			| 'Workflow auto-deactivated'
 			| 'Workflow shared'
 			| 'Credentials shared'
-			| 'Project shared';
+			| 'Project shared'
+			| 'Email change confirmation';
 		publicApi: boolean;
 	};
 
@@ -458,7 +466,8 @@ export type RelayEventMap = {
 			| 'Workflow shared'
 			| 'Workflow auto-deactivated'
 			| 'Credentials shared'
-			| 'Project shared';
+			| 'Project shared'
+			| 'Email change confirmation';
 		publicApi: boolean;
 	};
 
@@ -471,6 +480,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
+		credentialDescriptionLength: number;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -496,6 +506,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
+		credentialDescriptionLength: number;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
@@ -1195,6 +1206,8 @@ export type RelayEventMap = {
 		userId: string;
 		roleSlug: string;
 		scopes: string[];
+		/** Which surface created the role. Both reach the same service, so the caller names its own. */
+		source: 'ui' | 'public-api';
 	};
 
 	'custom-role-updated': {
@@ -1317,6 +1330,7 @@ export type RelayEventMap = {
 		updatedBy: string;
 		kind: string;
 		policyId: string;
+		origin: PolicyWriteOrigin;
 		after: { rules: readonly PolicyRule[]; version: number };
 	};
 
@@ -1324,6 +1338,7 @@ export type RelayEventMap = {
 		updatedBy: string;
 		kind: string;
 		policyId: string;
+		origin: PolicyWriteOrigin;
 		before: { rules: readonly PolicyRule[]; version: number };
 		after: { rules: readonly PolicyRule[]; version: number };
 	};
@@ -1333,6 +1348,23 @@ export type RelayEventMap = {
 		kind: string;
 		policyId: string;
 		before: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	/**
+	 * One composed save of a scope's whole effective policy: its default action and its rules.
+	 * Emitted alongside the granular scope and document events, which the audit log needs, so a
+	 * consumer that wants one row per save listens to this one instead of joining those two.
+	 */
+	'node-type-policy-saved': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { defaultAction: PolicyAction; version: number } | null;
+		after: { defaultAction: PolicyAction; version: number };
+		rulesBefore: readonly PolicyRule[] | null;
+		rulesAfter: readonly PolicyRule[];
+		warningCount: number;
 	};
 
 	'node-type-policy-attachments-updated': {

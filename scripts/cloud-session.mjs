@@ -77,7 +77,7 @@ function ensureCodespace() {
 const SESSION_SECRETS =
 	'. /usr/local/lib/codespaces-env.sh 2>/dev/null || true; unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN';
 const OPENCODE_CONFIG =
-	'export OPENCODE_CONFIG_CONTENT="{\\"provider\\":{\\"openrouter\\":{\\"options\\":{\\"apiKey\\":\\"{env:OPENROUTER_API_KEY}\\"}}}}"';
+	'export OPENCODE_CONFIG_CONTENT="{\\"provider\\":{\\"openrouter\\":{\\"options\\":{\\"apiKey\\":\\"{env:OPENROUTER_API_KEY}\\"}}}}"; export N8N_AGENT_RUNTIME=sandbox; unset N8N_AGENT_PROFILE';
 // Worktrees share the pnpm store but not the turbo cache; a shared TURBO_CACHE_DIR
 // (seeded from the main checkout) keeps new-worktree builds at cache-hit speed.
 const CACHE =

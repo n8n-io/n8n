@@ -18,6 +18,7 @@ import {
 	type IntegrationRef,
 } from './agent-integration-persistence.service';
 import type { AgentActor } from './agent-modification-telemetry.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -35,6 +36,7 @@ export class AgentIntegrationManagementService {
 		private readonly registry: ChatIntegrationRegistry,
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
@@ -58,7 +60,7 @@ export class AgentIntegrationManagementService {
 		integration: unknown;
 		replaces?: IntegrationRef;
 		modifiedBy?: AgentActor;
-		onPersisted?: () => void;
+		pushRef?: string;
 	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
 		const integration = await this.validateConfig(options.integration);
 		await this.assertUsableCredential(options.agent, options.user, integration);
@@ -69,7 +71,7 @@ export class AgentIntegrationManagementService {
 			add: integration,
 			...(options.replaces ? { remove: options.replaces } : {}),
 			modifiedBy: options.modifiedBy ?? 'user',
-			onPersisted: options.onPersisted,
+			pushRef: options.pushRef,
 		});
 
 		return { integration, savedAgent: result.agent };
@@ -82,7 +84,7 @@ export class AgentIntegrationManagementService {
 		credentialId: string;
 		deleteExternalResource?: boolean;
 		modifiedBy?: AgentActor;
-		onPersisted?: () => void;
+		pushRef?: string;
 	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
 		const result = await this.applyChange({
 			agent: options.agent,
@@ -91,7 +93,7 @@ export class AgentIntegrationManagementService {
 			cleanupRemovedIntegration: true,
 			deleteExternalResource: options.deleteExternalResource,
 			modifiedBy: options.modifiedBy ?? 'user',
-			onPersisted: options.onPersisted,
+			pushRef: options.pushRef,
 		});
 
 		return {
@@ -118,7 +120,7 @@ export class AgentIntegrationManagementService {
 		cleanupRemovedIntegration?: boolean;
 		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
-		onPersisted?: () => void;
+		pushRef?: string;
 	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		return await this.serializePerAgent(
 			options.agent.id,
@@ -155,7 +157,7 @@ export class AgentIntegrationManagementService {
 		cleanupRemovedIntegration?: boolean;
 		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
-		onPersisted?: () => void;
+		pushRef?: string;
 	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		const { agent, add } = options;
 		// "Replace this channel with itself" is just a connect. Left as a removal,
@@ -224,7 +226,12 @@ export class AgentIntegrationManagementService {
 			}
 			throw error;
 		}
-		if (result.changed) options.onPersisted?.();
+		if (result.changed) {
+			this.agentUpdateBroadcaster.notify(
+				{ projectId: agent.projectId, agentId: agent.id, source: options.modifiedBy },
+				options.pushRef,
+			);
+		}
 
 		if (add && result.published !== undefined) {
 			connected = await this.reconcileRuntimeWithPublication(

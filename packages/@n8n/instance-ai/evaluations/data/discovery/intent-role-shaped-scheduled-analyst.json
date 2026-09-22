@@ -1,0 +1,26 @@
+{
+	"id": "intent-role-shaped-scheduled-analyst",
+	"userMessage": "Set up a daily market analyst. It should research market changes, decide which developments matter, and send me a briefing each morning.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["intent-recognition"]
+			},
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["agent-builder"]
+			},
+			{
+				"toolName": "build-agent"
+			}
+		],
+		"noneOfToolCalls": [
+			{
+				"toolName": "build-workflow"
+			}
+		]
+	},
+	"rationale": "A persistent delegated role owns an open-ended research and judgment duty. The schedule is an Agent task and does not justify a workflow shell.",
+	"timeoutMs": 120000
+}

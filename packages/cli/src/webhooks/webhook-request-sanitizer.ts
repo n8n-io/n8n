@@ -23,6 +23,10 @@ const BROWSER_ID_COOKIE_NAME = 'n8n-browserId';
  * The form and chat cookies belong to their own endpoints, which skip sanitizing entirely
  * for their own node types (see `authAllowlistedNodes`), so those pages still receive
  * them. Every other webhook has no use for them.
+ *
+ * `n8n-form-oauth` is excluded: the form OAuth2 flow reads it back off the raw header on the
+ * redirect hop, so it has to keep flowing. Hence an explicit list of names rather than an
+ * `n8n-` prefix rule, which would take that cookie with it.
  */
 const DISALLOWED_COOKIES = new Set([
 	AUTH_COOKIE_NAME,

@@ -12,6 +12,13 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAiActivityStep: {
+		props: ['label', 'loading'],
+		data: () => ({ open: false }),
+		template:
+			'<section><button :aria-expanded="open" @click="open = !open">{{ label }}</button><div v-if="open"><slot /></div></section>',
+	},
+
 	N8nChatActions: {
 		props: ['content'],
 		setup: function setup(props: { content: string }) {
@@ -119,6 +126,39 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('keeps signal expansion and order when the response gains tools and text', async () => {
+		const message: ChatMessage = {
+			id: 'wake:assistant',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			backgroundJobSignal: {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle' },
+		});
+		const row = () => wrapper.get('[data-testid="agent-chat-background-job-signal"]');
+		expect(row().get('button').attributes('aria-expanded')).toBe('false');
+		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(false);
+		await row().get('button').trigger('click');
+		await wrapper.setProps({
+			messages: [
+				{ ...message, toolCalls: [{ tool: 'search', toolCallId: 'search-1', state: 'done' }] },
+			],
+		});
+		expect(row().get('button').attributes('aria-expanded')).toBe('true');
+		await wrapper.setProps({ messages: [{ ...message, content: 'Done' }] });
+		expect(row().get('button').attributes('aria-expanded')).toBe('true');
+		expect(
+			wrapper
+				.findAll('[data-testid="agent-chat-background-job-signal"], [data-testid="markdown-chunk"]')
+				.map((el) => el.attributes('data-testid')),
+		).toEqual(['agent-chat-background-job-signal', 'markdown-chunk']);
+		expect(wrapper.findAll('[data-test-id="agent-chat-message-copy"]')).toHaveLength(1);
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -845,5 +885,86 @@ describe('AgentChatMessageList', () => {
 		await wrapper.find('[data-test-id="agent-chat-message-copy"]').trigger('click');
 		await flushPromises();
 		expect(copySpy).toHaveBeenCalledWith('First reply\n\nSecond reply');
+	});
+
+	describe('timestamp dividers', () => {
+		const T0 = Date.parse('2026-04-26T10:00:00Z');
+
+		it('renders a divider above the first user message', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success', createdAt: T0 },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(1);
+		});
+
+		it('renders a divider again only once the gap exceeds the window', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success', createdAt: T0 },
+						{
+							id: 'user-2',
+							role: 'user',
+							content: 'Again',
+							status: 'success',
+							createdAt: T0 + 5 * 60_000,
+						},
+						{
+							id: 'user-3',
+							role: 'user',
+							content: 'Later',
+							status: 'success',
+							createdAt: T0 + 2 * 60 * 60_000,
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(2);
+		});
+
+		it('renders a divider across midnight even inside the window', () => {
+			// Local time on purpose: the rule is about the viewer's calendar day.
+			const lateNight = new Date('2026-04-26T23:40:00').getTime();
+			const afterMidnight = new Date('2026-04-27T00:20:00').getTime();
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success', createdAt: lateNight },
+						{
+							id: 'user-2',
+							role: 'user',
+							content: 'Again',
+							status: 'success',
+							createdAt: afterMidnight,
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(2);
+		});
+
+		it('renders no divider at all when createdAt is absent', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success' },
+						{ id: 'user-2', role: 'user', content: 'Again', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(0);
+		});
 	});
 });

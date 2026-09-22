@@ -16,13 +16,13 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
-	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
 } from '@/app/constants/experiments';
-import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
+import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	INSTANCE_AI_THREAD_VIEW,
@@ -52,6 +52,15 @@ import {
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
 import {
+	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+	isPersonalizedPromptSuggestionResolution,
+	isTaxonomyPromptSuggestionResolution,
+	resolveTaxonomyPromptSuggestions,
+	resolveTaxonomySegment,
+	useInstanceAiInspirationFromTaxonomyExperiment,
+	type TaxonomyPromptSuggestionResolution,
+} from '@/experiments/instanceAiInspirationFromTaxonomy';
+import {
 	WorkflowPreviewSuggestions,
 	WorkflowPreviewCanvas,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
@@ -70,12 +79,6 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import {
-	useInstanceAiTemplateExamplesExperiment,
-	useInstanceAiTemplateExamplesStore,
-	TemplateExamplesCatalog,
-	TEMPLATE_PROMPT_SUFFIX,
-} from '@/experiments/instanceAiTemplateExamples';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -98,6 +101,8 @@ const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
 	'Instance AI personalized prompt suggestions exposed';
+const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
+	'Instance AI inspiration from taxonomy exposed';
 
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
@@ -135,40 +140,19 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
-const {
-	isFeatureEnabled: isTemplateExamplesExperimentEnabled,
-	currentVariant: templateExamplesVariant,
-} = useInstanceAiTemplateExamplesExperiment();
-const templateExamplesStore = useInstanceAiTemplateExamplesStore();
-const showTemplateExamples = computed(
-	() => isTemplateExamplesExperimentEnabled.value && !templateExamplesStore.hasLoadFailed,
-);
-let hasTrackedTemplateExamplesExposure = false;
-watch(
-	showTemplateExamples,
-	(visible) => {
-		const variant = templateExamplesVariant.value;
-		if (!visible || hasTrackedTemplateExamplesExposure || typeof variant !== 'string') {
-			return;
-		}
-
-		telemetry.track(
-			INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT,
-			getExperimentTelemetryPayload(INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT, variant),
-		);
-		hasTrackedTemplateExamplesExposure = true;
-	},
-	{ immediate: true },
-);
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-const splitWriting = ref(false);
+const composerHasContent = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
+const {
+	currentVariant: inspirationFromTaxonomyVariant,
+	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
+} = useInstanceAiInspirationFromTaxonomyExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
@@ -183,17 +167,51 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		!isSplitLayoutActive.value &&
 		settingsStore.isWorkflowBuilderAvailable,
 );
+const personalizedPromptSuggestionResolution = ref<
+	PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null
+>(null);
+const shouldShowTaxonomySuggestions = computed(() =>
+	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+const isTaxonomySegmentResolved = computed(
+	() =>
+		appSettingsStore.isCloudDeployment &&
+		cloudPlanStore.state.initialized &&
+		resolveTaxonomySegment(cloudPlanStore.currentUserCloudInfo?.information ?? null).source ===
+			'taxonomy',
+);
+const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
+	if (showProactiveStarter.value || isSplitLayoutActive.value) {
+		return false;
+	}
+
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return false;
+	}
+
+	if (
+		inspirationFromTaxonomyVariant.value ===
+		INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control
+	) {
+		return isTaxonomySegmentResolved.value;
+	}
+
+	return shouldShowTaxonomySuggestions.value;
+});
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
 	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
 });
-const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionResolution | null>(
-	null,
-);
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
+let hasTrackedInspirationFromTaxonomyExposure = false;
+const isAnyPersonalizedSuggestionsTreatmentActive = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value ||
+		isPersonalizedPromptSuggestionsTreatmentVariant.value,
+);
 
 const personalizedPromptFallbackSuggestions = computed(() =>
 	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
@@ -209,6 +227,23 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
+	if (isInspirationFromTaxonomyTreatmentVariant.value) {
+		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
+			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
+			metadataLoadState,
+		});
+
+		if (taxonomyResolution.source === 'taxonomy') {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+
+		if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+	}
+
 	const format = personalizedPromptSuggestionsFormat.value;
 	if (!format) {
 		personalizedPromptSuggestionResolution.value = null;
@@ -230,11 +265,11 @@ function resolvePersonalizedPromptMetadata() {
 	clearPersonalizedPromptMetadataTimeout();
 	personalizedPromptSuggestionResolution.value = null;
 
-	if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (!isAnyPersonalizedSuggestionsTreatmentActive.value) {
 		return;
 	}
 
-	if (personalizedPromptProfileOverride.value) {
+	if (!isInspirationFromTaxonomyTreatmentVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
 	}
@@ -257,6 +292,7 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
+		isInspirationFromTaxonomyTreatmentVariant,
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -291,10 +327,31 @@ watch(
 );
 
 watch(
+	shouldTrackInspirationFromTaxonomyExposure,
+	(shouldTrackExposure) => {
+		const variant = inspirationFromTaxonomyVariant.value;
+		if (
+			!shouldTrackExposure ||
+			hasTrackedInspirationFromTaxonomyExposure ||
+			typeof variant !== 'string'
+		) {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT, variant),
+		);
+		hasTrackedInspirationFromTaxonomyExposure = true;
+	},
+	{ immediate: true },
+);
+
+watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
 	([initialized]) => {
 		if (
-			!isPersonalizedPromptSuggestionsTreatmentVariant.value ||
+			!isAnyPersonalizedSuggestionsTreatmentActive.value ||
 			personalizedPromptSuggestionResolution.value !== null ||
 			!initialized
 		) {
@@ -306,18 +363,49 @@ watch(
 	},
 );
 
+const isTaxonomySuggestionsPending = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value &&
+		personalizedPromptSuggestionResolution.value === null,
+);
+const shouldShowPersonalizedPromptSuggestions = computed(() =>
+	isPersonalizedPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
 		return {};
 	}
 
-	if (showTemplateExamples.value) {
-		return {};
+	if (isTaxonomySuggestionsPending.value) {
+		return {
+			suggestions: [],
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
-		const resolution = personalizedPromptSuggestionResolution.value;
 
+	const resolution = personalizedPromptSuggestionResolution.value;
+	if (isTaxonomyPromptSuggestionResolution(resolution)) {
+		return {
+			suggestions: resolution.suggestions,
+			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+			suggestionsComponentProps: {
+				fallbackSuggestions: [],
+				format: 'list',
+				showSeeMore: resolution.showSeeMore,
+			},
+			suggestionCatalogVersion: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+			suggestionTelemetryPayload: getExperimentTelemetryPayload(
+				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+				inspirationFromTaxonomyVariant.value,
+				resolution.telemetryPayload,
+			),
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		if (!resolution) {
 			return {
 				suggestions: [],
@@ -325,22 +413,24 @@ const emptyStatePromptSuggestionProps = computed(() => {
 			};
 		}
 
-		return {
-			suggestions: resolution.suggestions,
-			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
-			suggestionsComponentProps: {
-				fallbackSuggestions: resolution.fallbackSuggestions,
-				format: personalizedPromptSuggestionsFormat.value,
-				showSeeMore: resolution.showSeeMore,
-			},
-			suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
-			suggestionTelemetryPayload: getExperimentTelemetryPayload(
-				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
-				personalizedPromptSuggestionsVariant.value,
-				resolution.telemetryPayload,
-			),
-			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
-		};
+		if (isPersonalizedPromptSuggestionResolution(resolution)) {
+			return {
+				suggestions: resolution.suggestions,
+				suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+				suggestionsComponentProps: {
+					fallbackSuggestions: resolution.fallbackSuggestions,
+					format: personalizedPromptSuggestionsFormat.value,
+					showSeeMore: resolution.showSeeMore,
+				},
+				suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
+				suggestionTelemetryPayload: getExperimentTelemetryPayload(
+					INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+					personalizedPromptSuggestionsVariant.value,
+					resolution.telemetryPayload,
+				),
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+			};
+		}
 	}
 
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -359,17 +449,14 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
 	};
 });
-// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
-const INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY =
-	'experiments.instanceAiTemplateExamples.emptyState.title' as BaseTextKey;
-const INSTANCE_AI_TEMPLATE_EXAMPLES_PLACEHOLDER_KEY =
-	'experiments.instanceAiTemplateExamples.input.placeholder' as BaseTextKey;
-
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
-	if (showTemplateExamples.value) {
-		return INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY;
-	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (
+		shouldShowTaxonomySuggestions.value ||
+		isTaxonomySuggestionsPending.value ||
+		shouldShowPersonalizedPromptSuggestions.value ||
+		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
+			personalizedPromptSuggestionResolution.value === null)
+	) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -379,6 +466,10 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+// Layout changes mount a new, empty composer.
+watch(chatInputRef, () => {
+	composerHasContent.value = false;
+});
 const isStartingThread = ref(false);
 
 watch(
@@ -391,33 +482,13 @@ watch(
 	},
 );
 
-// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
-const templatePreviewPrompt = ref<string | null>(null);
+type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+};
 
-function handleTemplateHoverPrompt(prompt: string) {
-	templatePreviewPrompt.value = prompt;
-}
-
-function handleTemplateHoverEnd() {
-	templatePreviewPrompt.value = null;
-}
-
-const inputPulsing = ref(false);
-const selectedTemplatePrompt = ref<string | null>(null);
-
-function handleTemplateSelectPrompt(prompt: string) {
-	templatePreviewPrompt.value = null;
-	if (chatInputRef.value) {
-		chatInputRef.value.setText(prompt);
-		chatInputRef.value.focus();
-	}
-	selectedTemplatePrompt.value = prompt;
-	inputPulsing.value = true;
-	setTimeout(() => {
-		inputPulsing.value = false;
-	}, 250);
-}
-// EOF InstanceAiTemplateExamplesExperiment experiment cleanup
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
 const CANVAS_NATURAL_HEIGHT_PX = 420;
@@ -461,36 +532,31 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
+function restoreDraftAfterFailedSubmit(restoreDraft: () => boolean) {
 	void nextTick(() => {
-		// Restore text without replacing new text or attachments.
-		if (!restoreDraft?.()) {
-			chatInputRef.value?.setTextIfEmpty(message);
-		}
+		// Puts the text, the attachments and the pre-fill provenance back, and
+		// declines if the user has already typed something newer.
+		restoreDraft();
 		chatInputRef.value?.focus();
 	});
 }
 
 async function handleSubmit(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
 
 	if (!selectedProject.value) {
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
-
-	// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
-	const isFromTemplate =
-		isTemplateExamplesExperimentEnabled.value &&
-		selectedTemplatePrompt.value !== null &&
-		message.startsWith(selectedTemplatePrompt.value);
-	const finalMessage = isFromTemplate ? message + TEMPLATE_PROMPT_SUFFIX : message;
 
 	const threadId = uuidv4();
 	isStartingThread.value = true;
@@ -505,7 +571,7 @@ async function handleSubmit(
 		});
 	} catch {
 		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
@@ -516,10 +582,15 @@ async function handleSubmit(
 	// not an option: it reads its composer draft from localStorage once, synchronously, on
 	// mount, which always precedes this response. `sendMessage` has already surfaced the
 	// reason, so restore what was typed and stay put.
-	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	const sent = await thread.sendMessage(message, {
+		authorship,
+		attachments,
+		pushRef: rootStore.pushRef,
+		responseStartedAtEpochMs,
+	});
 	if (!sent) {
 		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
 		// so without this every refusal would strand a blank thread in the sidebar and leave
 		// an EventSource open behind it (deleting disposes the runtime, which closes it).
@@ -548,27 +619,23 @@ async function handleSubmit(
 		});
 	}
 
-	void router.replace({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId },
-	});
+	try {
+		await router.replace({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId },
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	} finally {
+		isStartingThread.value = false;
+	}
 }
 
-function handleShelfSuggestionSubmit(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
 	void chatInputRef.value?.submitSuggestion(payload);
 }
 
-function handleShelfSuggestionInsert(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	splitPreviewPromptKey.value = null;
 	void chatInputRef.value?.insertSuggestion(payload);
 }
@@ -598,8 +665,9 @@ function handleShelfSuggestionInsert(payload: {
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -611,7 +679,7 @@ function handleShelfSuggestionInsert(payload: {
 				v-else-if="isSplitVariantEnabled"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
-				:writing="splitWriting"
+				:writing="composerHasContent"
 				@submit-suggestion="handleShelfSuggestionSubmit"
 				@insert-suggestion="handleShelfSuggestionInsert"
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
@@ -635,13 +703,13 @@ function handleShelfSuggestionInsert(payload: {
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
-							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
+							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
 							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
 							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
-							@content-change="splitWriting = $event"
+							@content-change="composerHasContent = $event"
 						>
 							<template v-if="projectsStore.myProjects.length > 1" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
@@ -673,33 +741,20 @@ function handleShelfSuggestionInsert(payload: {
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
-						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-						:contextual-suggestion="templatePreviewPrompt"
-						:placeholder-key="
-							showTemplateExamples ? INSTANCE_AI_TEMPLATE_EXAMPLES_PLACEHOLDER_KEY : undefined
-						"
-						:bold-placeholder="showTemplateExamples"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
 						</template>
 					</InstanceAiInput>
 				</div>
-				<!-- Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment -->
-				<TemplateExamplesCatalog
-					v-if="showTemplateExamples"
-					:class="$style.templateCatalog"
-					@hover-prompt="handleTemplateHoverPrompt"
-					@hover-end="handleTemplateHoverEnd"
-					@select-prompt="handleTemplateSelectPrompt"
-				/>
 				<Transition name="workflow-preview-fade">
 					<div
 						v-if="activeWorkflowPreview && hasSpaceForPreview"
@@ -767,29 +822,6 @@ function handleShelfSuggestionInsert(payload: {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.inputPulse {
-	animation: inputScaleUp 0.25s ease;
-}
-
-@keyframes inputScaleUp {
-	0% {
-		transform: scale(1);
-	}
-	50% {
-		transform: scale(1.02);
-	}
-	100% {
-		transform: scale(1);
-	}
-}
-
-.templateCatalog {
-	width: 100%;
-	max-width: 1014px;
-	min-width: 0;
-	margin-top: var(--spacing--m);
 }
 
 .workflowPreviewWrapper {

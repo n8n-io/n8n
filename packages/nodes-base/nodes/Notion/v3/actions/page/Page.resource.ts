@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import {
 	formatTitle,
@@ -210,7 +211,7 @@ export async function archive(this: IExecuteFunctions, items: INodeExecutionData
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${getPageId.call(this, i)}`,
+				`/pages/${toPathSegment(getPageId.call(this, i))}`,
 				{ in_trash: true },
 			);
 			if (this.getNodeParameter('simple', i) as boolean)
@@ -266,7 +267,7 @@ export async function getMarkdown(this: IExecuteFunctions, items: INodeExecution
 			const response = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/pages/${getPageId.call(this, i)}/markdown`,
+				`/pages/${toPathSegment(getPageId.call(this, i))}/markdown`,
 				{},
 				includeTranscript ? { include_transcript: true } : {},
 			);
@@ -323,7 +324,7 @@ export async function updateMarkdown(this: IExecuteFunctions, items: INodeExecut
 			const response = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${getPageId.call(this, i)}/markdown`,
+				`/pages/${toPathSegment(getPageId.call(this, i))}/markdown`,
 				getMarkdownUpdateBody.call(this, i),
 			);
 			const executionData = this.helpers.constructExecutionMetaData(

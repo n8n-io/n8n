@@ -155,7 +155,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
-			'./src/public-api/v1/handlers/insights/insights.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
@@ -163,7 +162,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
@@ -242,7 +240,6 @@ export default defineConfig(
 		// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
 		files: [
 			// credentials/
-			'./src/credentials-helper.ts',
 			'./src/credentials/credential-connection-status-provider.interface.ts',
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
@@ -276,7 +273,6 @@ export default defineConfig(
 			'./src/eventbus/message-event-bus/message-event-bus.ts',
 			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',
 			'./src/modules/agents/agent-publish.service.ts',
@@ -334,7 +330,6 @@ export default defineConfig(
 			'./src/executions/execution-data/db-store.ts',
 			'./src/executions/execution-persistence.ts',
 			'./src/executions/execution-recovery.service.ts',
-			'./src/executions/execution.service.ts',
 			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
 			'./src/modules/agents/agents.service.ts',
 			'./src/modules/chat-hub/chat-hub-agent.service.ts',
@@ -386,7 +381,7 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
+			'./src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
 		],

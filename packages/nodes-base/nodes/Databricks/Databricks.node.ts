@@ -19,9 +19,12 @@ import {
 	modelServingParameters,
 	vectorSearchOperations,
 	vectorSearchParameters,
+	jobOperations,
+	jobParameters,
 } from './resources';
 
 import { router } from './actions/router';
+import { authenticationProperty, databricksCredentials } from './authentication';
 import { DATABRICKS_NODE_VERSION } from './constants';
 import * as listSearch from './methods/listSearch';
 
@@ -41,43 +44,9 @@ export class Databricks implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'databricksApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['accessToken'],
-					},
-				},
-			},
-			{
-				name: 'databricksOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['oAuth2'],
-					},
-				},
-			},
-		],
+		credentials: databricksCredentials,
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
-				],
-				default: 'accessToken',
-			},
+			authenticationProperty,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -129,12 +98,14 @@ export class Databricks implements INodeType {
 			databricksSqlOperations,
 			modelServingOperations,
 			vectorSearchOperations,
+			jobOperations,
 			...filesParameters,
 			...genieParameters,
 			...unityCatalogParameters,
 			...databricksSqlParameters,
 			...modelServingParameters,
 			...vectorSearchParameters,
+			...jobParameters,
 		],
 	};
 

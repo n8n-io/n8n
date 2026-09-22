@@ -7,6 +7,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
+	backgroundJobSignalSummary,
 	executionErrorLabel,
 	executionErrorMessage,
 	formatDuration,
@@ -107,10 +108,14 @@ function popoverPillKind(item: TimelineItem) {
 function popoverLabel(item: TimelineItem): string {
 	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
+		case 'background-task-signal':
+			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -133,9 +138,13 @@ function popoverName(item: TimelineItem): string {
 		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
 	}
 	switch (item.kind) {
+		case 'background-task-signal':
+			return backgroundJobSignalSummary(item, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);
+		case 'skill':
+			return item.skillName ?? resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		case 'tool': {
 			return resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		}
@@ -466,7 +475,8 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius--sm);
 	background-color: var(--color--danger);
 	content: '';
-	z-index: 10;
+	/* Only needs to clear the block inside this cell. */
+	z-index: 1;
 }
 
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {

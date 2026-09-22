@@ -24,6 +24,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -1027,6 +1028,44 @@ describe('useContextMenu', () => {
 			expect(isOpen.value).toBe(true);
 			expect(actions.value).toMatchSnapshot();
 			expect(targetNodeIds.value).toEqual([node.id]);
+		});
+	});
+
+	describe('restricted node type', () => {
+		const restrictedNode = nodeFactory({ type: 'n8n-nodes-base.slack' });
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([...nodes, restrictedNode]);
+			const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+			vi.spyOn(typeAvailabilityPoliciesStore, 'getNodeTypeAvailability').mockImplementation(
+				(name) => ({ name, available: name !== restrictedNode.type }),
+			);
+		});
+
+		it('keeps replace, rename, open and deactivate available but blocks running, pinning, copying and duplicating', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'node-right-click', nodeId: restrictedNode.id });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.replace?.disabled).toBe(false);
+			expect(byId.rename?.disabled).toBe(false);
+			expect(byId.open).toBeDefined();
+			expect(byId.open?.disabled).toBeFalsy();
+			expect(byId.toggle_activation?.disabled).toBe(false);
+			expect(byId.execute?.disabled).toBe(true);
+			expect(byId.toggle_pin?.disabled).toBe(true);
+			expect(byId.copy?.disabled).toBe(true);
+			expect(byId.duplicate?.disabled).toBe(true);
+		});
+
+		it('blocks pinning, copying and duplicating a selection that contains a restricted node', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, restrictedNode.id] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.toggle_pin?.disabled).toBe(true);
+			expect(byId.copy?.disabled).toBe(true);
+			expect(byId.duplicate?.disabled).toBe(true);
 		});
 	});
 });

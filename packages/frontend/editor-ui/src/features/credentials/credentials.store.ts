@@ -175,6 +175,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			return allUsableCredentialsByType.value[credentialType] || [];
 		};
 	});
+	const getUsableCredentialById = (id: string) => usableCredentials.value[id];
 
 	const isCredentialTypeTestable = computed(() => {
 		return (credentialTypeName: string): boolean => {
@@ -370,10 +371,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			rootStore.restApiContext,
 			options,
 		);
-		// The flat map keeps replace semantics for its existing consumers; the slice is
-		// what the credential picker reads.
-		setCredentials(credentials);
-
 		// Only the newest request publishes. Several scoped fetches can be in flight at
 		// once — a mount racing the refresh a quick connect triggers, say — and an older
 		// response landing last would reinstate a list we already know is out of date,
@@ -381,6 +378,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (requestId !== usableCredentialsRequestId) {
 			return credentials;
 		}
+		// Keep the flat map and the scoped picker on the same response.
+		setCredentials(credentials);
 
 		usableCredentials.value = credentials.reduce((accu: ICredentialMap, cred) => {
 			if (cred.id) {
@@ -517,6 +516,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		connectedByMe: boolean,
 		connectedAccountIdentifier?: string,
 	) => {
+		const usable = usableCredentials.value[id];
+		if (usable)
+			usableCredentials.value[id] = { ...usable, connectedByMe, connectedAccountIdentifier };
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
@@ -642,6 +644,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialByIdAndType,
 		isCredentialTypeTestable,
 		getUsableCredentialByType,
+		getUsableCredentialById,
 		credentialTypesById,
 		httpOnlyCredentialTypes,
 		getScopesByCredentialType,
@@ -698,6 +701,8 @@ export const listenForCredentialChanges = (opts: {
 
 			switch (name) {
 				case 'createNewCredential':
+					// Connection flows publish only after authorization or testing succeeds.
+					if (args[3]?.skipStoreUpdate) return;
 					const createdCredential = returnValue as unknown as ICredentialsResponse;
 					onCredentialCreated?.(createdCredential);
 					break;

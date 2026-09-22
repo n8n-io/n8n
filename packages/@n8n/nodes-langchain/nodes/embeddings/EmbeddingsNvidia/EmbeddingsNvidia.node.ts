@@ -152,7 +152,7 @@ export class EmbeddingsNvidia implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {}),
+				dispatcher: getProxyAgent(credentials.url, {}, this.helpers.getSecureEgressFilter()),
 			},
 		};
 

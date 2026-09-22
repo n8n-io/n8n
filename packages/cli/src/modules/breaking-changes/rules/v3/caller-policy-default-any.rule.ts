@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -40,7 +41,7 @@ export class CallerPolicyDefaultAnyRule implements IBreakingChangeInstanceRule {
 		const defaultPolicy: string = this.globalConfig.workflows.callerPolicyDefaultOption;
 
 		if (defaultPolicy !== REMOVED_CALLER_POLICY) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

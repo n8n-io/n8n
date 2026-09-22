@@ -6,7 +6,23 @@ import type {
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
+import type { ExecutionListQuery } from '../execution/execution-view-store';
 import type { WorkflowGraph } from '../graph';
+
+/** A read-only search. The control plane supplies the visibility decision. */
+export type SearchExecutionsRequest = ExecutionListQuery;
+
+/** `T` without its `K` fields. */
+type Without<T, K extends keyof T> = Omit<T, K>;
+
+export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps'>;
+
+export interface SearchExecutionsResponse {
+	items: ExecutionListItem[];
+	/** The `before` cursor for the next page, or `null` on the last page. */
+	nextCursor: { createdAt: string; id: string } | null;
+	total?: number;
+}
 
 /**
  * `GET /:id` response. Timestamps go out as ISO strings, since `Date` has no

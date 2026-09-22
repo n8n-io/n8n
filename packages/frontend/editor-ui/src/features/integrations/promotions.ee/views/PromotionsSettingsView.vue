@@ -16,9 +16,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import {
+	fetchPromotionConnection,
 	fetchPromotionConnections,
 	fetchPromotionProviders,
 	type PromotionConnection,
@@ -59,7 +61,10 @@ async function load() {
 			fetchPromotionConnections(rootStore.publicApiContext, { scope: 'instance' }),
 		]);
 		providers.value = loadedProviders;
-		connection.value = connections[0] ?? null;
+		const summary = connections[0];
+		connection.value = summary
+			? await fetchPromotionConnection(rootStore.publicApiContext, summary.id)
+			: null;
 	} catch (error) {
 		loadError.value = true;
 		providers.value = [];
@@ -135,6 +140,8 @@ async function onDialogOpenChange(open: boolean) {
 			:description="i18n.baseText('settings.promotions.description')"
 			:show-docs-link="false"
 		/>
+
+		<PromoteInstanceSection :connection="connection" />
 
 		<N8nSettingsSection
 			:title="i18n.baseText('settings.promotions.providers.title')"
