@@ -76,6 +76,7 @@ import {
 	jsonParse,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
+	getEmptyGroupAnchor,
 	isTriggerNode,
 	NodeHelpers,
 	NodeConnectionTypes,
@@ -1052,6 +1053,20 @@ async function onAddEmptyGroup(connectToLastInteractedNode = false) {
 	if (ownsUndoBulk) historyStore.startRecordingUndo();
 
 	try {
+		const selectedGroup = canvasStore.selectedGroupId
+			? workflowDocumentStore.value.getGroupById(canvasStore.selectedGroupId)
+			: undefined;
+		const selectedEmptyGroupAnchor = selectedGroup
+			? getEmptyGroupAnchor(selectedGroup, workflowDocumentStore.value.allNodes)
+			: undefined;
+
+		// A selected empty group uses its hidden anchor as the normal add-node connection source.
+		if (!connectToLastInteractedNode && selectedEmptyGroupAnchor) {
+			uiStore.resetLastInteractedWith();
+			uiStore.lastInteractedWithNodeId = selectedEmptyGroupAnchor.id;
+		}
+		const shouldConnect = connectToLastInteractedNode || selectedEmptyGroupAnchor !== undefined;
+
 		const { addedNodes } = await addNodesAndConnections(
 			[
 				{
@@ -1059,7 +1074,7 @@ async function onAddEmptyGroup(connectToLastInteractedNode = false) {
 					name: 'No Operation, do nothing',
 					parameters: { emptyGroupAnchor: true },
 					placeholder: true,
-					isAutoAdd: !connectToLastInteractedNode,
+					isAutoAdd: !shouldConnect,
 					openDetail: false,
 				},
 			],
