@@ -101,16 +101,6 @@ paths:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
   /workflows/{id}/test-runs/{runId}/test-cases:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
-  /data-tables/{dataTableId}/rows:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml'
-  /data-tables/{dataTableId}/rows/update:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml'
-  /data-tables/{dataTableId}/rows/upsert:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
-  /data-tables/{dataTableId}/rows/clear:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
-  /data-tables/{dataTableId}/rows/delete:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
   /data-tables/{dataTableId}/columns:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
   /data-tables/{dataTableId}/columns/{columnId}:

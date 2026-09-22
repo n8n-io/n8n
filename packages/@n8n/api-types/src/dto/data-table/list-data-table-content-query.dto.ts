@@ -1,6 +1,9 @@
+import '../../openapi-extend';
+
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { dataTableRowsQueryDocs } from './data-table-public.openapi';
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { dataTableColumnNameSchema } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
@@ -84,10 +87,12 @@ export class ListDataTableContentQueryDto extends Z.class({
 	search: z.string().optional(),
 }) {}
 
+// Legacy eov never declared `offset` as a public query parameter (unknown params were rejected),
+// so it was never publicly reachable. `cursor` is the only paging handle we expose here.
 export class PublicApiListDataTableContentQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
-	offset: publicApiPaginationSchema.offset,
-	filter: filterValidator.optional(),
-	sortBy: sortByValidator.optional(),
-	search: z.string().optional(),
+	cursor: z.string().optional(),
+	filter: filterValidator.optional().openapi(dataTableRowsQueryDocs.filter),
+	sortBy: sortByValidator.optional().openapi(dataTableRowsQueryDocs.sortBy),
+	search: z.string().optional().openapi(dataTableRowsQueryDocs.search),
 }) {}

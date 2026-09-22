@@ -141,7 +141,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
 			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',

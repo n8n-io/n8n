@@ -26,6 +26,16 @@ describe('Z.class', () => {
 		expect(ChildDto.safeParse({ name: 'a', age: 1 }).success).toBe(true);
 		expect(ChildDto.safeParse({ name: 'a', age: 1, extra: 1 }).success).toBe(false);
 	});
+
+	it('keeps an unknown key when passthrough', () => {
+		class PassthroughDto extends Z.class(shape, { passthrough: true }) {}
+
+		expect(PassthroughDto.parse({ name: 'a', extra: 1 })).toEqual({ name: 'a', extra: 1 });
+		expect(PassthroughDto.safeParse({ name: 'a', extra: 1 })).toMatchObject({
+			success: true,
+			data: { name: 'a', extra: 1 },
+		});
+	});
 });
 
 describe('Z.array', () => {
@@ -63,5 +73,28 @@ describe('Z.array', () => {
 
 		// @ts-expect-error deliberately passing a payload the schema rejects
 		expect(() => new TagIdDto([{}])).toThrow(z.ZodError);
+	});
+});
+
+describe('Z.union', () => {
+	const unionSchema = z.union([z.literal(true), z.array(z.object({ id: z.string() }))]);
+	const RowsOrTrueDto = Z.union('RowsOrTrueDto', unionSchema);
+
+	it('exposes the union schema as-is and a stable name', () => {
+		expect(RowsOrTrueDto.schema).toBe(unionSchema);
+		expect(RowsOrTrueDto.name).toBe('RowsOrTrueDto');
+	});
+
+	it('parses either branch via the statics', () => {
+		expect(RowsOrTrueDto.parse(true)).toBe(true);
+		expect(RowsOrTrueDto.parse([{ id: 'a' }])).toEqual([{ id: 'a' }]);
+		expect(RowsOrTrueDto.safeParse(false)).toMatchObject({ success: false });
+	});
+
+	it('keeps an unknown key on a passthrough member schema', () => {
+		const rowSchema = z.object({ id: z.string() }).passthrough();
+		const RowsDto = Z.union('RowsDto', z.array(rowSchema));
+
+		expect(RowsDto.parse([{ id: 'a', extra: 1 }])).toEqual([{ id: 'a', extra: 1 }]);
 	});
 });

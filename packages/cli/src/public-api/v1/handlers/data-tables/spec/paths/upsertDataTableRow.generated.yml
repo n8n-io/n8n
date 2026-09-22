@@ -1,0 +1,132 @@
+operationId: upsertDataTableRow
+tags:
+  - DataTable
+summary: Upsert a row in a data table
+description: Update an existing row or insert a new one if no row matches the filter conditions.
+x-required-scope: dataTableRow:upsert
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          filter:
+            type: object
+            properties:
+              type:
+                anyOf:
+                  - type: string
+                    enum:
+                      - and
+                  - type: string
+                    enum:
+                      - or
+                default: and
+              filters:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    columnName:
+                      type: string
+                      minLength: 1
+                      maxLength: 63
+                      pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                    condition:
+                      anyOf:
+                        - type: string
+                          enum:
+                            - eq
+                        - type: string
+                          enum:
+                            - neq
+                        - type: string
+                          enum:
+                            - like
+                        - type: string
+                          enum:
+                            - ilike
+                        - type: string
+                          enum:
+                            - gt
+                        - type: string
+                          enum:
+                            - gte
+                        - type: string
+                          enum:
+                            - lt
+                        - type: string
+                          enum:
+                            - lte
+                        - type: string
+                          enum:
+                            - isEmpty
+                        - type: string
+                          enum:
+                            - isNotEmpty
+                      default: eq
+                    value:
+                      anyOf:
+                        - type: string
+                        - type: number
+                        - type: boolean
+                        - type: string
+                        - nullable: true
+                        - nullable: true
+                  required:
+                    - columnName
+                    - value
+                default: []
+            description: Filter conditions to match existing row. If no row matches, a new row is inserted.
+          data:
+            type: object
+            additionalProperties:
+              anyOf:
+                - type: string
+                - type: number
+                - type: boolean
+                - nullable: true
+                - type: string
+                - nullable: true
+            description: Column values for the row
+          returnData:
+            type: boolean
+            default: false
+            description: If true, return the upserted row; if false, return true on success
+          dryRun:
+            type: boolean
+            default: false
+            description: If true, preview changes without persisting them
+        required:
+          - filter
+          - data
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/dataTableRowsOrTruePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

@@ -1,0 +1,30 @@
+anyOf:
+  - type: boolean
+    enum:
+      - true
+  - type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: number
+          nullable: true
+          description: The row ID (auto-generated)
+        createdAt:
+          type: string
+          description: The date and time the row was created
+          format: date-time
+        updatedAt:
+          type: string
+          description: The date and time the row was last updated
+          format: date-time
+        dryRunState:
+          type: string
+          enum:
+            - before
+            - after
+          description: Present only in a dry-run response. Marks whether the row is the state before or after the operation.
+      required:
+        - id
+        - createdAt
+        - updatedAt

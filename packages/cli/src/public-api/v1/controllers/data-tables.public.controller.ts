@@ -1,9 +1,18 @@
 import {
 	CreateDataTablePublicDto,
+	DataTableClearRowsResultPublicDto,
+	DataTableInsertRowsResultPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
+	DataTableRowListPublicDto,
+	DataTableRowsOrTruePublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	InsertDataTableRowsPublicDto,
+	PublicApiListDataTableContentQueryDto,
 	PublicApiListDataTableQueryDto,
 	UpdateDataTablePublicDto,
+	UpdateDataTableRowsPublicDto,
+	UpsertDataTableRowPublicDto,
 	dataTableIdParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -25,6 +34,12 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
+import type {
+	DataTableInsertRowsResult,
+	DataTableRowReturn,
+	DataTableRowReturnWithState,
+	DataTableRowsReturn,
+} from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -32,6 +47,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
@@ -225,6 +241,203 @@ export class DataTablesPublicController {
 			await this.dataTableService.deleteDataTable(dataTableId, projectId);
 		} catch (error) {
 			handleError(error);
+		}
+	}
+
+	@Get('/:dataTableId/rows')
+	@ApiKeyScope('dataTableRow:read')
+	@ProjectScope('dataTable:readRow')
+	@ApiSummary('Retrieve rows from a data table')
+	@ApiDescription(
+		'Query and retrieve rows from a data table with optional filtering, sorting, and pagination.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableRowListPublicDto)
+	@ApiErrorResponse(404)
+	async getDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: PublicApiListDataTableContentQueryDto,
+	): Promise<{ data: DataTableRowsReturn; nextCursor: string | null }> {
+		try {
+			const { offset, limit } = resolveOffsetPagination(query);
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			const { data, count } = await this.dataTableService.getManyRowsAndCount(
+				dataTableId,
+				projectId,
+				{
+					skip: offset,
+					take: limit,
+					filter: query.filter,
+					sortBy: query.sortBy,
+					search: query.search,
+				},
+			);
+
+			return {
+				data,
+				nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+			};
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Post('/:dataTableId/rows')
+	@ApiKeyScope('dataTableRow:create')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Insert rows into a data table')
+	@ApiDescription('Insert one or more rows into a data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableInsertRowsResultPublicDto)
+	@ApiErrorResponse(404)
+	async insertDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: InsertDataTableRowsPublicDto,
+	): Promise<DataTableInsertRowsResult> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			return await this.dataTableService.insertRows(
+				dataTableId,
+				projectId,
+				body.data,
+				body.returnType,
+			);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Patch('/:dataTableId/rows/update')
+	@ApiKeyScope('dataTableRow:update')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Update rows in a data table')
+	@ApiDescription('Update rows matching filter conditions in a data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableRowsOrTruePublicDto)
+	@ApiErrorResponse(404)
+	async updateDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: UpdateDataTableRowsPublicDto,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true> {
+		try {
+			const { filter, data, returnData, dryRun } = body;
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			return await this.dataTableService.updateRows(
+				dataTableId,
+				projectId,
+				{ filter, data },
+				returnData,
+				dryRun,
+			);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Post('/:dataTableId/rows/upsert')
+	@ApiKeyScope('dataTableRow:upsert')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Upsert a row in a data table')
+	@ApiDescription(
+		'Update an existing row or insert a new one if no row matches the filter conditions.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableRowsOrTruePublicDto)
+	@ApiErrorResponse(404)
+	async upsertDataTableRow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: UpsertDataTableRowPublicDto,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true> {
+		try {
+			const { filter, data, returnData, dryRun } = body;
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			return await this.dataTableService.upsertRow(
+				dataTableId,
+				projectId,
+				{ filter, data },
+				returnData,
+				dryRun,
+			);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/rows/delete')
+	@ApiKeyScope('dataTableRow:delete')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Delete rows from a data table')
+	@ApiDescription(
+		'Delete rows matching filter conditions from a data table. Filter is required to prevent accidental deletion of all data.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableRowsOrTruePublicDto)
+	@ApiErrorResponse(404)
+	async deleteDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: DeleteDataTableRowsPublicQueryDto,
+	): Promise<DataTableRowReturn[] | true> {
+		try {
+			const { filter, returnData, dryRun } = query;
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			return await this.dataTableService.deleteRows(
+				dataTableId,
+				projectId,
+				{ filter },
+				returnData,
+				dryRun,
+			);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/rows/clear')
+	@ApiKeyScope('dataTableRow:delete')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Clear all rows from a data table')
+	@ApiDescription(
+		'Permanently deletes all rows from a data table. The table structure will be retained. This action cannot be undone.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableClearRowsResultPublicDto)
+	@ApiErrorResponse(404)
+	async clearDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+	): Promise<{ deletedCount: number }> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			return await this.dataTableService.clearRows(dataTableId, projectId);
+		} catch (error) {
+			return handleError(error);
 		}
 	}
 

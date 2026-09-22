@@ -1,9 +1,6 @@
 import type {
 	AddDataTableColumnDto,
-	AddDataTableRowsDto,
 	UpdateDataTableColumnDto,
-	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
 	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
 	UpdateOidcConfigurationDto,
@@ -132,39 +129,6 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
-	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
-
-	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type DeleteRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			filter?: string;
-			returnData?: string | boolean;
-			dryRun?: string | boolean;
-		}
-	>;
-
 	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
 	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;

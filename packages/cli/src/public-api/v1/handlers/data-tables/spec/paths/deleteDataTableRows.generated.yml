@@ -1,0 +1,57 @@
+operationId: deleteDataTableRows
+tags:
+  - DataTable
+summary: Delete rows from a data table
+description: Delete rows matching filter conditions from a data table. Filter is required to prevent accidental deletion of all data.
+x-required-scope: dataTableRow:delete
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+  - schema:
+      type: string
+      format: jsonString
+    required: true
+    description: JSON string of filter conditions. Required to prevent accidental deletion of all data.
+    example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"archived"}]}'
+    name: filter
+    in: query
+  - schema:
+      anyOf:
+        - type: string
+        - type: boolean
+    required: false
+    description: If true, return the deleted rows; if false, return true on success
+    name: returnData
+    in: query
+  - schema:
+      anyOf:
+        - type: string
+        - type: boolean
+    required: false
+    description: If true, preview which rows would be deleted without actually deleting them
+    name: dryRun
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/dataTableRowsOrTruePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

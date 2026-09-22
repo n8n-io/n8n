@@ -36,6 +36,23 @@ paths:
       $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
     delete:
       $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
+  /data-tables/{dataTableId}/rows:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/getDataTableRows.generated.yml
+    post:
+      $ref: ./handlers/data-tables/spec/paths/insertDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/update:
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/upsert:
+    post:
+      $ref: ./handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  /data-tables/{dataTableId}/rows/delete:
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/clear:
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/clearDataTableRows.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml

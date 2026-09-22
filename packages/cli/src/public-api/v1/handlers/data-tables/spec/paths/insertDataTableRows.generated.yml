@@ -1,0 +1,117 @@
+operationId: insertDataTableRows
+tags:
+  - DataTable
+summary: Insert rows into a data table
+description: Insert one or more rows into a data table.
+x-required-scope: dataTableRow:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          data:
+            type: array
+            items:
+              type: object
+              additionalProperties:
+                anyOf:
+                  - type: string
+                  - type: number
+                  - type: boolean
+                  - nullable: true
+                  - type: string
+                  - nullable: true
+            minItems: 1
+            description: Array of rows to insert. Each row is an object with column names as keys.
+          returnType:
+            anyOf:
+              - type: string
+                enum:
+                  - all
+              - type: string
+                enum:
+                  - count
+              - type: string
+                enum:
+                  - id
+            default: count
+            description: 'count: return only the number of rows inserted. id: return an array of inserted row IDs. all: return the full row data for all inserted rows.'
+        required:
+          - data
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          anyOf:
+            - type: object
+              properties:
+                success:
+                  type: boolean
+                  enum:
+                    - true
+                insertedRows:
+                  type: number
+              required:
+                - success
+                - insertedRows
+            - type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                required:
+                  - id
+                additionalProperties: false
+            - type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    nullable: true
+                    description: The row ID (auto-generated)
+                  createdAt:
+                    type: string
+                    description: The date and time the row was created
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    description: The date and time the row was last updated
+                    format: date-time
+                  dryRunState:
+                    type: string
+                    enum:
+                      - before
+                      - after
+                    description: Present only in a dry-run response. Marks whether the row is the state before or after the operation.
+                required:
+                  - id
+                  - createdAt
+                  - updatedAt
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

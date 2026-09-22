@@ -396,6 +396,17 @@ export {
 	UpdateDataTablePublicDto,
 	dataTablePublicSchema,
 	type DataTablePublic,
+	DataTableRowPublicDto,
+	DataTableRowListPublicDto,
+	DataTableInsertRowsResultPublicDto,
+	DataTableRowsOrTruePublicDto,
+	DataTableClearRowsResultPublicDto,
+	InsertDataTableRowsPublicDto,
+	UpdateDataTableRowsPublicDto,
+	UpsertDataTableRowPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	dataTableRowPublicSchema,
+	type DataTableRowPublic,
 } from './data-table/data-table-public.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
