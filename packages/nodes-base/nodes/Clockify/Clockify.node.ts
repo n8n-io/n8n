@@ -685,7 +685,10 @@ export class Clockify implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (body.end) {
-							body.end = moment.tz(body.end, timezone).utc().format();
+							body.end = moment
+								.tz(body.end as string, timezone)
+								.utc()
+								.format();
 						}
 
 						if (body.customFieldsUi) {
@@ -748,11 +751,17 @@ export class Clockify implements INodeType {
 						Object.assign(body, updateFields);
 
 						if (body.end) {
-							body.end = moment.tz(body.end, timezone).utc().format();
+							body.end = moment
+								.tz(body.end as string, timezone)
+								.utc()
+								.format();
 						}
 
 						if (body.start) {
-							body.start = moment.tz(body.start, timezone).utc().format();
+							body.start = moment
+								.tz(body.start as string, timezone)
+								.utc()
+								.format();
 						} else {
 							// even if you do not want to update the start time, it always has to be set
 							// to make it more simple to the user, if they did not set a start time look for the current start time

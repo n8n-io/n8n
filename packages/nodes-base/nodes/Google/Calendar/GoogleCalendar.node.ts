@@ -628,14 +628,20 @@ export class GoogleCalendar implements INodeType {
 						// both `date` and `dateTime`. Same in reverse for the all-day branch below.
 						if (updateFields.start) {
 							body.start = {
-								dateTime: moment.tz(updateFields.start, updateTimezone).utc().format(),
+								dateTime: moment
+									.tz(updateFields.start as string, updateTimezone)
+									.utc()
+									.format(),
 								timeZone: updateTimezone,
 								date: null,
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
-								dateTime: moment.tz(updateFields.end, updateTimezone).utc().format(),
+								dateTime: moment
+									.tz(updateFields.end as string, updateTimezone)
+									.utc()
+									.format(),
 								timeZone: updateTimezone,
 								date: null,
 							};
@@ -728,14 +734,26 @@ export class GoogleCalendar implements INodeType {
 						if (updateFields.allday === 'yes' && updateFields.start && updateFields.end) {
 							body.start = {
 								date: updateTimezone
-									? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
-									: moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
+									? moment
+											.tz(updateFields.start as string, updateTimezone)
+											.utc(true)
+											.format('YYYY-MM-DD')
+									: moment
+											.tz(updateFields.start as string, moment.tz.guess())
+											.utc(true)
+											.format('YYYY-MM-DD'),
 								dateTime: null,
 							};
 							body.end = {
 								date: updateTimezone
-									? moment.tz(updateFields.end, updateTimezone).utc(true).format('YYYY-MM-DD')
-									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
+									? moment
+											.tz(updateFields.end as string, updateTimezone)
+											.utc(true)
+											.format('YYYY-MM-DD')
+									: moment
+											.tz(updateFields.end as string, moment.tz.guess())
+											.utc(true)
+											.format('YYYY-MM-DD'),
 								dateTime: null,
 							};
 						}

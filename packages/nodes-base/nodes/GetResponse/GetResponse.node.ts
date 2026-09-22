@@ -233,7 +233,7 @@ export class GetResponse implements INodeType {
 							if (!isNotQuery.includes(key)) {
 								if (isDate.includes(key)) {
 									qs[`query${dateMapToKey[key]}`] = moment
-										.tz(qs[key], timezone)
+										.tz(qs[key] as string, timezone)
 										.format('YYYY-MM-DDTHH:mm:ssZZ');
 								} else {
 									qs[`query[${key}]`] = qs[key];

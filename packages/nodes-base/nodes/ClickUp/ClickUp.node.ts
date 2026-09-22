@@ -1240,7 +1240,7 @@ export class ClickUp implements INodeType {
 						Object.assign(body, updateFields);
 
 						if (body.start) {
-							body.start = moment.tz(body.start, timezone).valueOf();
+							body.start = moment.tz(body.start as string, timezone).valueOf();
 						}
 
 						if (body.duration) {
@@ -1268,10 +1268,10 @@ export class ClickUp implements INodeType {
 						Object.assign(qs, filters);
 
 						if (filters.start_date) {
-							qs.start_date = moment.tz(qs.start_date, timezone).valueOf();
+							qs.start_date = moment.tz(qs.start_date as string, timezone).valueOf();
 						}
 						if (filters.end_date) {
-							qs.end_date = moment.tz(qs.end_date, timezone).valueOf();
+							qs.end_date = moment.tz(qs.end_date as string, timezone).valueOf();
 						}
 						responseData = await clickupApiRequest.call(
 							this,

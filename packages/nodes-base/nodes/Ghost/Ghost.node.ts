@@ -217,7 +217,10 @@ export class Ghost implements INodeType {
 							Object.assign(post, additionalFields);
 
 							if (post.published_at) {
-								post.published_at = moment.tz(post.published_at, timezone).utc().format();
+								post.published_at = moment
+									.tz(post.published_at as string, timezone)
+									.utc()
+									.format();
 							}
 
 							if (post.status === 'scheduled' && post.published_at === undefined) {
@@ -331,7 +334,10 @@ export class Ghost implements INodeType {
 							);
 
 							if (post.published_at) {
-								post.published_at = moment.tz(post.published_at, timezone).utc().format();
+								post.published_at = moment
+									.tz(post.published_at as string, timezone)
+									.utc()
+									.format();
 							}
 
 							if (post.status === 'scheduled' && post.published_at === undefined) {

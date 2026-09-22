@@ -131,7 +131,7 @@ export class Iterable implements INodeType {
 					}
 
 					if (body.createdAt) {
-						body.createdAt = moment.tz(body.createdAt, timezone).unix();
+						body.createdAt = moment.tz(body.createdAt as string, timezone).unix();
 					}
 
 					events.push(body);

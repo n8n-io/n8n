@@ -462,13 +462,13 @@ export class CiscoWebex implements INodeType {
 						}
 
 						if (body.start) {
-							body.start = moment.tz(updateFields.start, timezone).format();
+							body.start = moment.tz(updateFields.start as string, timezone).format();
 						} else {
 							body.start = start;
 						}
 
 						if (body.end) {
-							body.end = moment.tz(updateFields.end, timezone).format();
+							body.end = moment.tz(updateFields.end as string, timezone).format();
 						} else {
 							body.end = end;
 						}

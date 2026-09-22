@@ -651,8 +651,8 @@ catalogs:
       specifier: 3.0.2
       version: 3.0.2
     moment-timezone:
-      specifier: 0.5.48
-      version: 0.5.48
+      specifier: 0.6.4
+      version: 0.6.4
     mqtt-packet:
       specifier: 9.0.0
       version: 9.0.0
@@ -4611,7 +4611,7 @@ importers:
         version: 3.7.2
       moment-timezone:
         specifier: 'catalog:'
-        version: 0.5.48
+        version: 0.6.4
       ms:
         specifier: 'catalog:'
         version: 2.1.3
@@ -7172,7 +7172,7 @@ importers:
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       moment-timezone:
         specifier: 'catalog:'
-        version: 0.5.48
+        version: 0.6.4
       mongodb:
         specifier: 6.11.0
         version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
@@ -20515,6 +20515,9 @@ packages:
 
   moment-timezone@0.5.48:
     resolution: {integrity: sha512-f22b8LV1gbTO2ms2j2z13MuPogNoh5UzxL3nzNAYKGraILnbGc9NEE6dyiiiLv46DGRb8A4kg8UKWLjPthxBHw==}
+
+  moment-timezone@0.6.4:
+    resolution: {integrity: sha512-JHUK8Mgheach4uMQmIV/pIfrv0ubPiDCPPqc7Mi604je1UblP6Gbm+FfV+Oh88KP03rZqGCZG3t0wmpfdlDv+w==}
 
   moment@2.30.1:
     resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
@@ -40549,6 +40552,10 @@ snapshots:
       requirejs-config-file: 4.0.0
 
   moment-timezone@0.5.48:
+    dependencies:
+      moment: 2.30.1
+
+  moment-timezone@0.6.4:
     dependencies:
       moment: 2.30.1
 

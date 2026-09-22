@@ -349,9 +349,9 @@ export class UptimeRobot implements INodeType {
 						};
 
 						if (body.type === 1 && body.start_time) {
-							body.start_time = moment.tz(body.start_time, timezone).unix();
+							body.start_time = moment.tz(body.start_time as string, timezone).unix();
 						} else {
-							body.start_time = moment.tz(body.start_time, timezone).format('HH:mm');
+							body.start_time = moment.tz(body.start_time as string, timezone).format('HH:mm');
 						}
 
 						if (body.type === 3) {

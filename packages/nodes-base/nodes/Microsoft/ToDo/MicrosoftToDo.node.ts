@@ -278,14 +278,14 @@ export class MicrosoftToDo implements INodeType {
 
 						if (body.dueDateTime) {
 							body.dueDateTime = {
-								dateTime: moment.tz(body.dueDateTime, timezone).format(),
+								dateTime: moment.tz(body.dueDateTime as string, timezone).format(),
 								timeZone: timezone,
 							};
 						}
 
 						if (body.reminderDateTime) {
 							body.reminderDateTime = {
-								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								dateTime: moment.tz(body.reminderDateTime as string, timezone).format(),
 								timeZone: timezone,
 							};
 							body.isReminderOn = true;
@@ -374,14 +374,14 @@ export class MicrosoftToDo implements INodeType {
 
 						if (body.dueDateTime) {
 							body.dueDateTime = {
-								dateTime: moment.tz(body.dueDateTime, timezone).format(),
+								dateTime: moment.tz(body.dueDateTime as string, timezone).format(),
 								timeZone: timezone,
 							};
 						}
 
 						if (body.reminderDateTime) {
 							body.reminderDateTime = {
-								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								dateTime: moment.tz(body.reminderDateTime as string, timezone).format(),
 								timeZone: timezone,
 							};
 							body.isReminderOn = true;
