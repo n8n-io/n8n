@@ -338,6 +338,7 @@ export class AgentTurnExecutionService {
 		};
 		if (options.previewChat && options.automaticContinuationRunId) {
 			await this.chatExecutionService.admitAutomaticContinuation(
+				params.threadId,
 				params.agentId,
 				options.automaticContinuationRunId,
 				async () => await recordFailure(await recordStart()),
@@ -362,6 +363,7 @@ export class AgentTurnExecutionService {
 			await this.startAcceptedTurn(id, turn, config, recorder, state, previewControl);
 		if (previewControl && config.automaticPreviewContinuation && turn.type === 'resume') {
 			return await this.chatExecutionService.admitAutomaticContinuation(
+				config.context.threadId,
 				config.context.agentId,
 				turn.options.runId,
 				async () => await startAccepted(await recordStart()),
