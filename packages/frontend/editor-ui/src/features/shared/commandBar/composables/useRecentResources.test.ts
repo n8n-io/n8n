@@ -66,6 +66,9 @@ describe('useRecentResources', () => {
 	let recentWorkflowsStore: ReturnType<typeof useRecentWorkflowsStore>;
 
 	beforeEach(() => {
+		vi.restoreAllMocks();
+		let openedAt = 0;
+		vi.spyOn(Date, 'now').mockImplementation(() => ++openedAt);
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		// Reset storage data

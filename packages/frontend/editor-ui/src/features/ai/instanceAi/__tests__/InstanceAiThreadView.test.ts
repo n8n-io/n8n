@@ -559,7 +559,11 @@ describe('InstanceAiThreadView', () => {
 		await findByTestId('instance-ai-workflow-preview-stub');
 		expect(recentWorkflowsStore.registerWorkflowOpen).not.toHaveBeenCalled();
 
-		await user.click(getAllByTestId('instance-ai-artifacts-preview-toggle')[0]);
+		const closeToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'true',
+		);
+		expect(closeToggle).toBeDefined();
+		await user.click(closeToggle!);
 		const reopenToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
 			(toggle) => toggle.getAttribute('aria-pressed') === 'false',
 		);

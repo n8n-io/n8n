@@ -205,6 +205,8 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		triggerNodeTypes?: string[];
 		options?: workflowsApi.GetWorkflowsOptions;
 	}): Promise<IWorkflowDb[]> {
+		if (ids?.length === 0) return [];
+
 		const filter = {
 			projectId,
 			ids,

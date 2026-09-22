@@ -417,6 +417,16 @@ describe('useWorkflowsListStore', () => {
 				undefined,
 			);
 		});
+
+		it('should return no workflows without a request when ids is empty', async () => {
+			const result = await workflowsListStore.searchWorkflows({
+				projectId: 'project-1',
+				ids: [],
+			});
+
+			expect(result).toEqual([]);
+			expect(workflowsApi.getWorkflows).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('fetchAllWorkflows', () => {
