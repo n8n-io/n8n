@@ -183,7 +183,7 @@ function onConfirm() {
 						</div>
 
 						<div :class="$style.rowBody">
-							<N8nText size="small" color="text-dark" :class="$style.name">
+							<N8nText size="medium" bold color="text-dark" :class="$style.name">
 								{{ agent.name }}
 							</N8nText>
 						</div>
