@@ -41,8 +41,9 @@ questions:
         IT: [Slack, Microsoft Teams, Google Workspace, Microsoft 365, Jira, ServiceNow, Okta, PagerDuty, GitHub, AWS]
         Engineering: [GitHub, GitLab, Jira, Linear, Slack, Google Sheets, Notion, AWS, PostgreSQL, PagerDuty]
         Marketing: [HubSpot, Salesforce, Gmail, Google Sheets, Slack, Mailchimp, LinkedIn, Notion, Google Calendar, Microsoft Outlook]
-  # Not required: a user with no task in mind skips it, and the agent suggests from the team
-  # and the apps alone.
+  # Required: the suggestions come from what the user wants to automate, so the card asks for
+  # at least one sentence.
   - id: task
     question: Tell me about your work. Is there a task you are trying to automate?
     type: text
+    required: true
