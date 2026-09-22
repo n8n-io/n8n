@@ -237,24 +237,6 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
-		if (!props.data.isArchived) {
-			items.push({
-				label: locale.baseText('workflows.item.archive'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
-			});
-		} else {
-			items.push({
-				label: locale.baseText('workflows.item.delete'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-			});
-			items.push({
-				label: locale.baseText('workflows.item.unarchive'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
-			});
-		}
-	}
-
 	if (
 		isWorkflowPublished.value &&
 		workflowPermissions.value.unpublish &&
@@ -278,11 +260,33 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+				divided: true,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+				divided: true,
+			});
+		}
+	}
+
+	if (workflowPermissions.value.delete && !props.readOnly) {
+		if (!props.data.isArchived) {
+			items.push({
+				label: locale.baseText('workflows.item.archive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
+				divided: true,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.delete'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+				divided: true,
+			});
+			items.push({
+				label: locale.baseText('workflows.item.unarchive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
 			});
 		}
 	}

@@ -26,6 +26,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
 	agent: AgentResource;
@@ -77,27 +78,32 @@ const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
-
-	if (isPublished.value && canUnpublish.value) {
-		items.push({
-			value: 'unpublish',
-			label: locale.baseText('agents.list.actions.unpublish'),
-			divided: true,
-		});
-	} else if (!isPublished.value && canPublish.value) {
-		items.push({
-			value: 'publish',
-			label: locale.baseText('agents.list.actions.publish'),
-			divided: true,
-		});
-	}
+	const items: Array<ActionToggleItem> = [];
 
 	items.push({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
 		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
+
+	if (canCreate.value) {
+		items.push({
+			value: 'duplicate',
+			label: locale.baseText('agents.list.actions.duplicate'),
+		});
+	}
+
+	if (isPublished.value && canUnpublish.value) {
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+		});
+	} else if (!isPublished.value && canPublish.value) {
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+		});
+	}
 
 	if (isMcpEnabled.value && canUpdate.value) {
 		items.push({
@@ -107,6 +113,7 @@ const actions = computed(() => {
 					? 'agents.list.actions.disableMCPAccess'
 					: 'agents.list.actions.enableMCPAccess',
 			),
+			divided: true,
 		});
 	}
 
@@ -114,14 +121,8 @@ const actions = computed(() => {
 		items.push({
 			value: 'delete',
 			label: locale.baseText('agents.list.actions.delete'),
-			divided: items.length > 0,
-		});
-	}
-
-	if (canCreate.value) {
-		items.push({
-			value: 'duplicate',
-			label: locale.baseText('agents.list.actions.duplicate'),
+			divided: true,
+			destructive: true,
 		});
 	}
 
