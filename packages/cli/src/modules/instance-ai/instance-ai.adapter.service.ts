@@ -187,6 +187,8 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { createEvalThreadRunConfigurer } from './eval/thread-run-mock';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
 import {
@@ -410,6 +412,7 @@ export class InstanceAiAdapterService {
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
 		private readonly executeNodeService?: ExecuteNodeService,
+		private readonly evalThreadAllowlists?: EvalThreadCredentialAllowlistService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -507,7 +510,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
-				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
+				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId, threadId)
 				: undefined,
 			conversationHistoryService: conversationHistory,
 			// The tool and context block use the same instance gate result.
@@ -713,12 +716,14 @@ export class InstanceAiAdapterService {
 		executeNodeService: ExecuteNodeService,
 		user: User,
 		boundProjectId?: string,
+		threadId?: string,
 	): InstanceAiExecuteNodeService {
 		const { resolveProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
 				const projectId = await resolveProjectId(['workflow:execute']);
+				const configureAdditionalData = this.evalRunConfigurer(threadId);
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -729,10 +734,29 @@ export class InstanceAiAdapterService {
 					input: request.input as Array<{ json: IDataObject }> | undefined,
 					timeoutMs: request.timeoutMs,
 					projectId,
+					...(configureAdditionalData ? { configureAdditionalData } : {}),
 				});
 				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
 			},
 		};
+	}
+
+	/**
+	 * Eval threads run seeded and built workflows against the mock layer, like
+	 * scenario executions do. Production threads never have an allowlist entry.
+	 */
+	private evalRunConfigurer(
+		threadId: string | undefined,
+		workflowId?: string,
+	): IWorkflowExecutionDataProcess['configureAdditionalData'] {
+		if (!threadId || !this.evalThreadAllowlists?.isEvalThread(threadId)) return undefined;
+		// The closure does not survive queue serialization (see EvalExecutionService).
+		if (this.globalConfig.executions?.mode === 'queue') return undefined;
+		const hints =
+			workflowId === undefined
+				? undefined
+				: this.evalThreadAllowlists.getExecutionMockHints(threadId, workflowId);
+		return createEvalThreadRunConfigurer(hints, this.logger);
 	}
 
 	/** Reads the connection rows rather than resolving them into loadable servers:
@@ -1810,6 +1834,7 @@ export class InstanceAiAdapterService {
 			globalConfig,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
+		const evalRunConfigurer = (workflowId: string) => this.evalRunConfigurer(threadId, workflowId);
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 		const MAX_TIMEOUT_MS = 10 * Time.minutes.toMilliseconds;
@@ -1950,6 +1975,8 @@ export class InstanceAiAdapterService {
 					// it is dispatched by the execution lifecycle, not by a node.
 					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
 				};
+				const configureAdditionalData = evalRunConfigurer(workflowId);
+				if (configureAdditionalData) runData.configureAdditionalData = configureAdditionalData;
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
 					workflowPinData: workflow.pinData ?? {},
@@ -2202,6 +2229,8 @@ export class InstanceAiAdapterService {
 					dirtyNodeNames: plan.dirtyNodeNames,
 					source: 'instance_ai',
 				};
+				const configureAdditionalData = evalRunConfigurer(workflowId);
+				if (configureAdditionalData) runData.configureAdditionalData = configureAdditionalData;
 
 				// A trigger has no upstream to run, so the chain and the partial paths
 				// are the same thing. Naming it keeps the engine from auto-detecting a

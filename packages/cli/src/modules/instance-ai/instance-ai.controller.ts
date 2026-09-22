@@ -1223,6 +1223,16 @@ export class InstanceAiController {
 			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
 			throw error;
 		}
+		// After the rollback-able block, so a failed restore leaves no hints behind.
+		const executionMockHints = Object.fromEntries(
+			workflows.flatMap(
+				(workflow): Array<[string, string]> =>
+					workflow.executionMockHints ? [[workflow.id, workflow.executionMockHints]] : [],
+			),
+		);
+		if (Object.keys(executionMockHints).length > 0) {
+			this.evalCredentialAllowlists.setExecutionMockHints(payload.threadId, executionMockHints);
+		}
 		return {
 			ok: true,
 			threadId: payload.threadId,

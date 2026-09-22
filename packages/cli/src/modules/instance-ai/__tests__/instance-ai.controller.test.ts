@@ -1067,6 +1067,26 @@ describe('InstanceAiController', () => {
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
 		});
 
+		it('should keep the seed workflows execution mock hints on the thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+
+			await controller.restoreEvalThread(req, res, {
+				...payload,
+				workflows: [
+					{ ...seedWorkflow, executionMockHints: 'the HTTP node returns 500' },
+					{ ...seedWorkflow, id: 'wf-2' },
+				],
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalCredentialAllowlists.getExecutionMockHints(THREAD_ID, 'wf-1')).toBe(
+				'the HTTP node returns 500',
+			);
+			expect(evalCredentialAllowlists.getExecutionMockHints(THREAD_ID, 'wf-2')).toBeUndefined();
+		});
+
 		it('should hand the pinned credential allowlist to the workflow restore', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			memoryService.getThreadProjectId.mockResolvedValue('project-1');

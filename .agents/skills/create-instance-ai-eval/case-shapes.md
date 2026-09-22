@@ -662,6 +662,29 @@ really had one — and the agent has to guess from prose that deliberately names
 nothing. It will list workflows and pick, or ask which one, and you will score a
 clarification failure the real user never hit.
 
+#### Seeded faults must really fail
+
+A debug case stages a failure in the seed. Two layers are involved, and only one
+of them listens to `seed.priorRuns[].hints`:
+
+- **Hints steer outbound mocks only.** The staged prior run and the agent's own
+  rerun of the workflow both go through the HTTP mock, and the last hint for the
+  workflow steers both, so "the API returns 500" reproduces on the rerun. Code,
+  Set, IF, Filter and Merge run for real; a hint cannot make them fail.
+- **An internal fault must really fail in n8n.** A Code node that returns a plain
+  object does not fail: n8n wraps it as one item and the run continues. Real Code
+  failures: return an array of plain values, reference a node that does not exist
+  (`$('Missing')`), or throw. Check the node's own validation before you rely on
+  it.
+- **An empty branch needs a Filter that keeps nothing.** A Split Out over an empty
+  array still emits a placeholder item, so "Merge waits for an empty branch" never
+  arms that way.
+- **Walk the item flow before you assert counts.** A Slack node fed three items
+  posts three times; "exactly one message" then fails the faithful fix. Add an
+  Aggregate step to the seed or assert per-item behaviour.
+- **Put the seeded fault early.** External calls before it are mocked on the
+  agent's run, but each one is generated data the case does not control.
+
 #### Before you ship a seeded case — three checks
 
 1. **The defect still bites.** A seed whose workflow isn't broken any more makes the

@@ -4,7 +4,11 @@ import { mock } from 'vitest-mock-extended';
 import type { N8nClient } from '../clients/n8n-client';
 import { remapSeedArtifactIds, type ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
-import { executePriorRuns, STAGING_TIMEOUT_MS } from '../harness/prior-runs';
+import {
+	executePriorRuns,
+	executionMockHintsByWorkflow,
+	STAGING_TIMEOUT_MS,
+} from '../harness/prior-runs';
 import { EvalTestCaseSchema } from '../harness/schema';
 import { MAX_EXEC_ATTEMPTS } from '../harness/transient-error';
 
@@ -366,6 +370,30 @@ describe('executePriorRuns', () => {
 
 		expect(outcomes).toEqual([]);
 		expect(client.executeWithLlmMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('executionMockHintsByWorkflow', () => {
+	it('keys the last declared hint by the restored workflow id', () => {
+		const hints = executionMockHintsByWorkflow(
+			[
+				{ workflow: 'dS8xQ2mV6bTn4Kp1', hints: 'the run succeeds' },
+				{ workflow: 'dS8xQ2mV6bTn4Kp1', hints: 'the HTTP node returns 500' },
+			],
+			seeded,
+		);
+
+		expect(hints).toEqual(new Map([['wf-1', 'the HTTP node returns 500']]));
+	});
+
+	it('skips runs without hints and unknown workflows, and tolerates no prior runs', () => {
+		expect(
+			executionMockHintsByWorkflow(
+				[{ workflow: 'dS8xQ2mV6bTn4Kp1' }, { workflow: 'nOtDeClArEd12345', hints: 'x' }],
+				seeded,
+			),
+		).toEqual(new Map());
+		expect(executionMockHintsByWorkflow(undefined, seeded)).toEqual(new Map());
 	});
 });
 

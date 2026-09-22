@@ -39,6 +39,7 @@ Each run:
 - **Mocked nodes** — anything that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion…). The request is intercepted before it leaves the process; an LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer (triggers/webhooks, LangChain/AI nodes, database nodes). They receive LLM-generated pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
+- **Agent-triggered runs** — when the agent runs, step-runs or node-tests a workflow inside an eval thread, its HTTP goes through the same mock layer. A seeded workflow reuses the case's last `seed.priorRuns` hint for it; anything else gets the mock's generic realistic responses. The thread's credential allowlist entry is what marks it as an eval thread.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
 
@@ -859,6 +860,10 @@ requires the agent to read it.
 - **A run that never happens is not a staged failure.** If no execution record lands, the
   case is reported as a framework issue rather than scored — it would otherwise be graded
   against history the instance does not have.
+- **The agent's own rerun sees the same failure.** The last `hints` for a workflow also
+  steer the mock when the agent runs that workflow itself during the live turn, so "run it
+  again" reproduces the staged state instead of a fresh success. Internal faults (Code,
+  Set, IF, Merge) are not steered by hints — they must really fail in n8n.
 - Runs execute sequentially in declared order, before the live turn, on a 120s budget —
   tighter than a scenario execution, which gets the case's build budget (900s by default).
 
@@ -1216,6 +1221,7 @@ packages/cli/src/modules/instance-ai/eval/
 ## Known limitations
 
 - **LangChain/AI nodes** — use their own SDKs, not the HTTP mock layer. They fail with credential errors; use pin data instead.
+- **Agent-triggered runs** — mocked at the HTTP layer only. AI sub-nodes on those runs still call their vendor SDK with the placeholder credential, and no Phase-1 consistency pass runs, so data may not line up across nodes the way it does in a scenario execution.
 - **Binary / file nodes** — minimal-valid synthetic fixtures (PDF, PNG, JPEG, OGG/Opus, WAV, MP3, MP4, ZIP, plaintext) are generated per content type and round-trip correctly through `prepareBinaryData`. Image-content correctness and OOXML formats (docx/xlsx — currently mime-sniffed as `application/zip`) remain out of scope. See [Binary / file scenarios](#binary--file-scenarios) for the synthesis path.
 - **Streaming nodes** — mocks return complete responses, not streams.
 - **GraphQL APIs** — response shape depends on the query, not just the endpoint. Quality depends on the LLM knowing the API schema.

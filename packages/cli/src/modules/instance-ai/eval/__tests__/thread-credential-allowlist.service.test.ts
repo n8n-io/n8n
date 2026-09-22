@@ -54,4 +54,31 @@ describe('EvalThreadCredentialAllowlistService', () => {
 		expect(service.shouldBypassTest('thread-1', 'cred-a')).toBe(false);
 		expect(service.get('thread-1')).toBeUndefined();
 	});
+
+	// An entry is what marks a thread as an eval thread; an empty allowlist still counts.
+	it('marks a thread as eval once an allowlist is set, even an empty one', () => {
+		service.set('thread-1', []);
+
+		expect(service.isEvalThread('thread-1')).toBe(true);
+		expect(service.isEvalThread('thread-2')).toBe(false);
+	});
+
+	it('keeps execution mock hints per workflow and merges across restores', () => {
+		service.setExecutionMockHints('thread-1', { 'wf-1': 'the HTTP node returns 500' });
+		service.setExecutionMockHints('thread-1', { 'wf-2': 'the API returns no rows' });
+
+		expect(service.getExecutionMockHints('thread-1', 'wf-1')).toBe('the HTTP node returns 500');
+		expect(service.getExecutionMockHints('thread-1', 'wf-2')).toBe('the API returns no rows');
+		expect(service.getExecutionMockHints('thread-1', 'wf-3')).toBeUndefined();
+		expect(service.getExecutionMockHints('thread-2', 'wf-1')).toBeUndefined();
+	});
+
+	it('forgets the execution mock hints when the thread is cleared', () => {
+		service.set('thread-1', []);
+		service.setExecutionMockHints('thread-1', { 'wf-1': 'the HTTP node returns 500' });
+		service.clearThread('thread-1');
+
+		expect(service.isEvalThread('thread-1')).toBe(false);
+		expect(service.getExecutionMockHints('thread-1', 'wf-1')).toBeUndefined();
+	});
 });

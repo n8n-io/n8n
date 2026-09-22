@@ -51,7 +51,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
-import { executePriorRuns } from './prior-runs';
+import { executePriorRuns, executionMockHintsByWorkflow } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -836,11 +836,21 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.dataTables.length > 0 ||
 					remapped.agents.length > 0 ||
 					remapped.folders.length > 0;
+				// The agent's own run of a seeded workflow is mocked with the case's last
+				// prior-run hint for it, so a rerun reproduces the staged failure.
+				const mockHints = executionMockHintsByWorkflow(
+					config.seed?.mode === 'inline' ? config.seed.priorRuns : undefined,
+					seedWorkflowsBySeedId,
+				);
+				const workflowsToRestore = remapped.workflows.map((workflow) => {
+					const executionMockHints = mockHints.get(workflow.id);
+					return executionMockHints ? { ...workflow, executionMockHints } : workflow;
+				});
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
 							threadId,
 							remapped.messages,
-							remapped.workflows,
+							workflowsToRestore,
 							remapped.dataTables,
 							remapped.agents,
 							{ folders: remapped.folders },

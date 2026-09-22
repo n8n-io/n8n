@@ -50,6 +50,22 @@ export interface PriorRunsOptions {
 }
 
 /**
+ * The last declared hint per seeded workflow, keyed by the id the restore creates, so
+ * the agent's own run of the workflow is mocked the way the staged run was.
+ */
+export function executionMockHintsByWorkflow(
+	priorRuns: SeedPriorRun[] | undefined,
+	seedWorkflows: Map<string, { id: string; name: string }>,
+): Map<string, string> {
+	const hints = new Map<string, string>();
+	for (const priorRun of priorRuns ?? []) {
+		const restored = seedWorkflows.get(priorRun.workflow);
+		if (restored && priorRun.hints) hints.set(restored.id, priorRun.hints);
+	}
+	return hints;
+}
+
+/**
  * Run seeded workflows BEFORE the graded turn, so the instance carries real execution
  * history the agent can look up.
  *

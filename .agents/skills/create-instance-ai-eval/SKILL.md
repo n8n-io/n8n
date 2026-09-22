@@ -600,9 +600,15 @@ nodes get LLM-generated pin data). So:
   static data** (`removeItemsSeenInPreviousExecutions`, `$getWorkflowStaticData`)
   is **not** seedable, because static data starts empty every run, so such a
   scenario reds vacuously (it sees everything as "new"). To get a seedable
-  change-detection scenario, steer the build toward a Data Table; otherwise
-  accept the static-data red as a harness limit and carry the logic in
+  change-detection scenario, say "keep the state in a data table" in the prompt;
+  otherwise accept the static-data red as a harness limit and carry the logic in
   `outcomeExpectations`. Note the agent may *choose* static-data dedup on its own.
+- **The agent's own runs are mocked too.** When the agent runs a seeded or built
+  workflow itself inside the eval thread, its HTTP goes through the same mock
+  layer; a seeded workflow reuses the case's last `seed.priorRuns` hint for it.
+  Internal faults are not steered by hints, so a seeded fault in a Code, Set, IF
+  or Merge node must really fail in n8n (see
+  [`case-shapes.md`](case-shapes.md#seeded-faults-must-really-fail)).
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
 

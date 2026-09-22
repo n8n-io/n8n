@@ -48,6 +48,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 	searxngSearch: vi.fn(),
 }));
 
+vi.mock('../eval/thread-run-mock', () => ({
+	createEvalThreadRunConfigurer: vi.fn(() => vi.fn()),
+}));
+
 import type { PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
@@ -86,6 +90,8 @@ import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
+import { createEvalThreadRunConfigurer } from '../eval/thread-run-mock';
 import { InstanceAiMcpRegistryService } from '../mcp';
 import type { InstanceContextService } from '../instance-context.service';
 
@@ -4552,6 +4558,7 @@ function createRunAdapterForTests(
 		threadId?: string;
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
+		evalThreadAllowlists?: EvalThreadCredentialAllowlistService;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -4640,6 +4647,15 @@ function createRunAdapterForTests(
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		options?.evalThreadAllowlists,
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -4686,6 +4702,69 @@ describe('createExecutionAdapter run()', () => {
 		expect(injected.injectedTriggerNodeName).toBe('Webhook');
 		expect(pinned.injectedTriggerNodeName).toBe('Webhook');
 		expect(live).not.toHaveProperty('injectedTriggerNodeName');
+	});
+
+	it('routes an eval thread run through the mock layer with the seeded workflow hints', async () => {
+		const evalThreadAllowlists = new EvalThreadCredentialAllowlistService();
+		evalThreadAllowlists.set('thread-eval', []);
+		evalThreadAllowlists.setExecutionMockHints('thread-eval', {
+			'wf-1': 'the HTTP node returns 500',
+		});
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {} },
+			{
+				threadId: 'thread-eval',
+				evalThreadAllowlists,
+				execution: makeExecution({ status: 'success' }),
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(createEvalThreadRunConfigurer).toHaveBeenCalledWith(
+			'the HTTP node returns 500',
+			expect.anything(),
+		);
+		expect(mockWorkflowRunner.run.mock.calls[0][0].configureAdditionalData).toBe(
+			vi.mocked(createEvalThreadRunConfigurer).mock.results[0].value,
+		);
+	});
+
+	it('leaves a run outside an eval thread unmocked', async () => {
+		const evalThreadAllowlists = new EvalThreadCredentialAllowlistService();
+		evalThreadAllowlists.set('thread-eval', []);
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {} },
+			{
+				threadId: 'thread-prod',
+				evalThreadAllowlists,
+				execution: makeExecution({ status: 'success' }),
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(createEvalThreadRunConfigurer).not.toHaveBeenCalled();
+		expect(mockWorkflowRunner.run.mock.calls[0][0]).not.toHaveProperty('configureAdditionalData');
+	});
+
+	it('skips the mock in queue mode, where the hook cannot reach the worker', async () => {
+		const evalThreadAllowlists = new EvalThreadCredentialAllowlistService();
+		evalThreadAllowlists.set('thread-eval', []);
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {} },
+			{
+				threadId: 'thread-eval',
+				evalThreadAllowlists,
+				queueMode: true,
+				execution: makeExecution({ status: 'success' }),
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(createEvalThreadRunConfigurer).not.toHaveBeenCalled();
+		expect(mockWorkflowRunner.run.mock.calls[0][0]).not.toHaveProperty('configureAdditionalData');
 	});
 
 	it('reports workflow-pinned nodes on the run result', async () => {
@@ -5426,6 +5505,22 @@ describe('createExecutionAdapter runStep()', () => {
 		const result = await runStep('wf-1', nodeName, options);
 		return { ...harness, result, runData: harness.mockWorkflowRunner.run.mock.calls[0]?.[0] };
 	}
+
+	it('routes an eval thread step run through the mock layer', async () => {
+		const evalThreadAllowlists = new EvalThreadCredentialAllowlistService();
+		evalThreadAllowlists.set('thread-eval', []);
+
+		const { runData } = await runStepOn(chainWorkflow, 'Send', undefined, {
+			threadId: 'thread-eval',
+			evalThreadAllowlists,
+		});
+
+		// No hints for a workflow the case never staged: the mock runs in its generic mode.
+		expect(createEvalThreadRunConfigurer).toHaveBeenCalledWith(undefined, expect.anything());
+		expect(runData.configureAdditionalData).toBe(
+			vi.mocked(createEvalThreadRunConfigurer).mock.results[0].value,
+		);
+	});
 
 	it('runs the chain up to the target when given no input', async () => {
 		const { runData, result } = await runStepOn(chainWorkflow, 'Send');

@@ -13,6 +13,7 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -42,6 +43,8 @@ export interface ExecuteNodeRequest {
 	input?: Array<{ json: IDataObject }>;
 	timeoutMs?: number;
 	projectId: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: IWorkflowExecutionDataProcess['configureAdditionalData'];
 }
 
 export interface ExecuteNodeOutputItem {
@@ -107,7 +110,14 @@ export class ExecuteNodeService {
 
 		const workflow = await this.createTemporaryWorkflow(request.projectId, node, timeoutMs);
 		try {
-			return await this.execute(user, workflow, node, inputItems, timeoutMs);
+			return await this.execute(
+				user,
+				workflow,
+				node,
+				inputItems,
+				timeoutMs,
+				request.configureAdditionalData,
+			);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
 		} finally {
@@ -237,6 +247,7 @@ export class ExecuteNodeService {
 		node: INode,
 		inputItems: INodeExecutionData[],
 		timeoutMs: number,
+		configureAdditionalData?: IWorkflowExecutionDataProcess['configureAdditionalData'],
 	): Promise<ExecuteNodeResult> {
 		const executionData = createRunExecutionData({
 			startData: {},
@@ -257,6 +268,7 @@ export class ExecuteNodeService {
 			workflowData,
 			executionData,
 			userId: user.id,
+			...(configureAdditionalData ? { configureAdditionalData } : {}),
 		});
 
 		const timedOut = await this.waitForCompletion(executionId, timeoutMs);

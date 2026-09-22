@@ -2738,6 +2738,8 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 	/** The seed folder (`folders[].id`) the workflow is created in. Omit for the
 	 *  project root. Must name a declared folder; see `findSeedFolderIssues`. */
 	parentFolderId: instanceAiEvalSeedArtifactIdSchema.optional(),
+	/** Steers the mock layer when the agent itself runs this workflow in the eval thread. */
+	executionMockHints: z.string().min(1).max(2000).optional(),
 });
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;

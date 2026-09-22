@@ -4,7 +4,8 @@ import { Service } from '@n8n/di';
  * Per-thread credential visibility for evaluation runs. The eval harness
  * declares which credentials a build thread may see; the builder context's
  * credential `list()` is filtered to that set. Threads without an entry see
- * the unfiltered instance listing.
+ * the unfiltered instance listing. An entry also marks the thread as an eval
+ * thread, so the agent's own workflow runs go through the mock layer.
  */
 @Service()
 export class EvalThreadCredentialAllowlistService {
@@ -13,6 +14,8 @@ export class EvalThreadCredentialAllowlistService {
 	 *  without contacting the provider — see `bypassCredentialTest` on
 	 *  `InstanceAiEvalCredentialAllowlistRequest`. */
 	private readonly testBypassByThread = new Map<string, string[]>();
+	/** Mock hints for the agent's own runs of seeded workflows, by workflow id. */
+	private readonly executionMockHintsByThread = new Map<string, Map<string, string>>();
 
 	set(threadId: string, credentialIds: string[], bypassCredentialTest?: string[]): void {
 		this.byThread.set(threadId, [...credentialIds]);
@@ -30,6 +33,10 @@ export class EvalThreadCredentialAllowlistService {
 		return this.byThread.get(threadId);
 	}
 
+	isEvalThread(threadId: string): boolean {
+		return this.byThread.has(threadId);
+	}
+
 	/**
 	 * Whether this thread should treat `credentialId`'s connection test as passing.
 	 * Queried per test rather than snapshotted into the credential adapter: the
@@ -41,8 +48,21 @@ export class EvalThreadCredentialAllowlistService {
 		return this.testBypassByThread.get(threadId)?.includes(credentialId) ?? false;
 	}
 
+	setExecutionMockHints(threadId: string, hintsByWorkflowId: Record<string, string>): void {
+		const hints = this.executionMockHintsByThread.get(threadId) ?? new Map<string, string>();
+		for (const [workflowId, hint] of Object.entries(hintsByWorkflowId)) {
+			hints.set(workflowId, hint);
+		}
+		this.executionMockHintsByThread.set(threadId, hints);
+	}
+
+	getExecutionMockHints(threadId: string, workflowId: string): string | undefined {
+		return this.executionMockHintsByThread.get(threadId)?.get(workflowId);
+	}
+
 	clearThread(threadId: string): void {
 		this.byThread.delete(threadId);
 		this.testBypassByThread.delete(threadId);
+		this.executionMockHintsByThread.delete(threadId);
 	}
 }

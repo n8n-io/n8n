@@ -59,6 +59,23 @@ split them out of the old `runner.ts` monolith):
 - `harness/cleanup.ts` — `cleanupBuild`, per-case timeout policy, bounded
   concurrency, binary workflow checks and shared failure summaries.
 
+## Execution and mocking paths
+
+Three paths execute a workflow during a case. All three end in the same
+LLM mock (`packages/cli/src/modules/instance-ai/eval/mock-handler.ts`):
+
+```
+scenario execution      harness → POST eval/execute-with-llm-mock  (dataSetup as hints,
+                                  Phase-1 hint pass, pinned triggers/AI roots)
+prior run (seed)        harness → POST eval/execute-with-llm-mock  (priorRuns[].hints)
+agent-triggered run     agent → executions[run|step] / execute-node
+                          → adapter sees the thread's eval allowlist entry
+                          → configureAdditionalData attaches the mock
+                            (seed workflow: its last priorRuns hint, carried on
+                             restore-thread as workflows[].executionMockHints;
+                             otherwise generic realistic responses)
+```
+
 ## Where to add things
 
 | You want to… | Touch exactly |

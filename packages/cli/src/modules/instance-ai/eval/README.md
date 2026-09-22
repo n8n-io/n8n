@@ -54,6 +54,17 @@ The bypass is queried per test rather than snapshotted into the adapter: the
 harness registers ids mid-run, when the simulated user creates a credential on
 a card, long after the run's context was built.
 
+## Agent-triggered runs in eval threads
+
+The allowlist entry also marks the thread as an eval thread. When the agent
+runs, step-runs or node-tests a workflow from such a thread, the execution
+adapter attaches `evalLlmMockHandler` and the `EvalMockedCredentialsHelper`
+through `configureAdditionalData` (`thread-run-mock.ts`), so HTTP nodes are
+mocked the way a scenario execution mocks them. A seeded workflow's hints
+arrive on `restore-thread` as `workflows[].executionMockHints` and are kept per
+thread and workflow id. Two deliberate gaps: no Phase-1 hint pass runs, and AI
+roots are not routed to the wire server.
+
 ## Agent model catalogs
 
 The eval credential allowlist also marks Agent Builder sessions as evaluations.
