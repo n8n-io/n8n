@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddConcurrencyLimitToScheduledJob1789985459329';
+const MIGRATION_NAME = 'AddConcurrencyLimitToScheduledJob1790073725529';
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 
 describe('AddConcurrencyLimitToScheduledJob Migration', () => {

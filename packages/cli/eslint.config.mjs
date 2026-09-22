@@ -45,8 +45,7 @@ export default defineConfig(
 		rules: {
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
-			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{

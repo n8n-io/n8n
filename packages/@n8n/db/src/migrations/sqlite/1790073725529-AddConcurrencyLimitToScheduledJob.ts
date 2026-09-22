@@ -1,4 +1,4 @@
-import { AddConcurrencyLimitToScheduledJob1789985459329 as BaseMigration } from '../common/1789985459329-AddConcurrencyLimitToScheduledJob';
+import { AddConcurrencyLimitToScheduledJob1790073725529 as BaseMigration } from '../common/1790073725529-AddConcurrencyLimitToScheduledJob';
 
 /**
  * Only the rollback needs this: `up` adds its column with raw `ALTER TABLE`, which
@@ -9,6 +9,6 @@ import { AddConcurrencyLimitToScheduledJob1789985459329 as BaseMigration } from 
  * the recreate's DROP would cascade and wipe queued tasks. Disable foreign keys for
  * the migration so the drop stays local to `scheduled_job`.
  */
-export class AddConcurrencyLimitToScheduledJob1789985459329 extends BaseMigration {
+export class AddConcurrencyLimitToScheduledJob1790073725529 extends BaseMigration {
 	withFKsDisabled = true as const;
 }
