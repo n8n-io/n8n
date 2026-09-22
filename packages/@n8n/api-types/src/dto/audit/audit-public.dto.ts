@@ -20,6 +20,7 @@ export class GenerateAuditPublicDto extends Z.class(
 				daysAbandonedWorkflow: z
 					.number()
 					.int()
+					.nonnegative()
 					.optional()
 					.openapi(auditRequestFieldDocs.daysAbandonedWorkflow),
 				categories: z.array(z.enum(SECURITY_AUDIT_CATEGORIES)).optional(),

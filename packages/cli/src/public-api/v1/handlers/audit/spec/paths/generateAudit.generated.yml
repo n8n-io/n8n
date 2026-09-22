@@ -18,6 +18,7 @@ requestBody:
             properties:
               daysAbandonedWorkflow:
                 type: integer
+                minimum: 0
                 description: Days for a workflow to be considered abandoned if not executed
               categories:
                 type: array
