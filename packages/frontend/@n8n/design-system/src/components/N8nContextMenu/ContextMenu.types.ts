@@ -106,7 +106,7 @@ export type ContextMenuProps<T extends ContextMenuId = ContextMenuId> = {
 	contentClass?: ClassValue;
 	/**
 	 * When true, blocks interaction with the rest of the page while open.
-	 * Canvas menus set this to false.
+	 * Set to false when the rest of the page must stay interactive.
 	 * @defaultValue true
 	 */
 	modal?: boolean;
@@ -150,7 +150,7 @@ export type ContextMenuItemSlots<T extends ContextMenuId = ContextMenuId> = Pick
 export type ContextMenuState = {
 	selectedValues: Pick<ComputedRef<readonly string[]>, 'value'>;
 	contentClass: Pick<ComputedRef<ClassValue | undefined>, 'value'>;
-	onSelect(id: string, keepOpen?: boolean): void;
+	onSelect(id: string): void;
 	onToggleCheckbox(id: string): void;
 	onSelectRadio(groupId: string, radioId: string): void;
 	onSubmenuToggle(itemId: string, open: boolean): void;

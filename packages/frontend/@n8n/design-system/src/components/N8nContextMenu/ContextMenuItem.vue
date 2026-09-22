@@ -72,14 +72,13 @@ const rowClass = computed(() => [
 	$style.item,
 	props.item.class,
 	isDestructive.value && $style.destructive,
-	props.item.disabled && 'is-disabled',
 ]);
 
 function onCommandSelect(event: Event) {
 	if (props.item.disabled || props.item.type !== 'item') return;
 	if (props.item.keepOpen) event.preventDefault();
 	emit('select', props.item.id);
-	state?.onSelect(props.item.id, props.item.keepOpen);
+	state?.onSelect(props.item.id);
 }
 
 function onCheckboxSelect(event: Event) {
