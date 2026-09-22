@@ -8,10 +8,7 @@ import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
-import {
-	mcpToolPermissionsSchema,
-	type McpToolPermissions,
-} from './mcp-tool-permissions.schema';
+import { mcpToolPermissionsSchema, type McpToolPermissions } from './mcp-tool-permissions.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
