@@ -59,7 +59,9 @@ so one value serves every reader:
   same constant.
 - `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. The service is its only
   reader: `create()` counts the target scope, and `update()` counts it again when the write
-  moves a row to another scope.
+  moves a row to another scope. A full scope refuses with `AiPreferenceScopeFullError`,
+  whose `meta` carries the limit and the count, so the `save_user_preference` tool can
+  return both numbers to the model instead of the message alone.
 
 The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
 the `save_user_preference` tool reuses that schema for its content field.

@@ -5,6 +5,7 @@ import type { InstanceAiToolCallState } from '@n8n/api-types';
 import {
 	N8nAiActivityStepChevron,
 	N8nAnimatedCollapsibleContent,
+	N8nCallout,
 	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
@@ -13,7 +14,7 @@ import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import { VIEWS } from '@/app/constants';
 
-import { resolvePreferenceCard } from '../preferenceCard.utils';
+import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
 import PreferenceEditModal from './PreferenceEditModal.vue';
 
 const props = defineProps<{
@@ -26,14 +27,26 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const card = computed(() => resolvePreferenceCard(props.toolCall));
+// A refused write renders too: the person must see the refusal, not only the
+// assistant's account of it.
+const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.
-const isEditable = computed(() => !props.readOnly && !isRemoved.value);
+const isEditable = computed(() => card.value !== null && !props.readOnly && !isRemoved.value);
 
-const rowLabel = computed(() =>
-	isRemoved.value
+const rowLabel = computed(() => {
+	if (rejection.value) return i18n.baseText('instanceAi.preferenceCard.notSaved');
+	return isRemoved.value
 		? i18n.baseText('instanceAi.preferenceCard.removed')
-		: i18n.baseText('instanceAi.preferenceCard.saved'),
+		: i18n.baseText('instanceAi.preferenceCard.saved');
+});
+
+/** The saved text, or the text the assistant tried to save. */
+const text = computed(() => rejection.value?.content ?? card.value?.content);
+
+/** The server explains a refusal better than a generic line, so prefer its message. */
+const rejectionMessage = computed(
+	() => rejection.value?.message ?? i18n.baseText('instanceAi.preferenceCard.notSavedFallback'),
 );
 
 // The active turn shows the card; an earlier turn collapses to the row. The chevron
@@ -54,7 +67,7 @@ const modalOpen = ref(false);
 
 <template>
 	<CollapsibleRoot
-		v-if="card"
+		v-if="card || rejection"
 		:open="expanded"
 		data-test-id="instance-ai-preference-card"
 		@update:open="(value) => (userToggled = value)"
@@ -66,7 +79,7 @@ const modalOpen = ref(false);
 				:aria-expanded="expanded"
 				data-test-id="instance-ai-preference-card-header"
 			>
-				<N8nIcon icon="bookmark" size="small" />
+				<N8nIcon :icon="rejection ? 'triangle-alert' : 'bookmark'" size="small" />
 				<span :class="$style.title">{{ rowLabel }}</span>
 				<N8nAiActivityStepChevron :open="expanded" />
 			</button>
@@ -75,15 +88,24 @@ const modalOpen = ref(false);
 		<N8nAnimatedCollapsibleContent>
 			<div :class="$style.card">
 				<N8nText
+					v-if="text"
 					tag="p"
 					size="small"
-					:class="isRemoved ? $style.removedText : undefined"
+					:class="{ [$style.removedText]: isRemoved, [$style.attemptedText]: rejection }"
 					data-test-id="instance-ai-preference-card-text"
 				>
-					{{ card.content }}
+					{{ text }}
 				</N8nText>
 
-				<div :class="$style.scope">
+				<N8nCallout
+					v-if="rejection"
+					theme="danger"
+					data-test-id="instance-ai-preference-card-error"
+				>
+					{{ rejectionMessage }}
+				</N8nCallout>
+
+				<div v-else :class="$style.scope">
 					<N8nIcon icon="layers" size="small" />
 					<N8nText size="small" color="text-light">
 						{{
@@ -94,7 +116,7 @@ const modalOpen = ref(false);
 					</N8nText>
 				</div>
 
-				<template v-if="!isRemoved">
+				<template v-if="rejection || !isRemoved">
 					<div :class="$style.separator" />
 					<div :class="$style.links">
 						<button
@@ -119,7 +141,7 @@ const modalOpen = ref(false);
 		</N8nAnimatedCollapsibleContent>
 
 		<PreferenceEditModal
-			v-if="isEditable"
+			v-if="card && isEditable"
 			v-model:open="modalOpen"
 			:preference-id="card.preferenceId"
 			:content="card.content"
@@ -205,5 +227,14 @@ const modalOpen = ref(false);
 .removedText {
 	text-decoration: line-through;
 	color: var(--color--text--tint-1);
+}
+
+/* A refused text can be far over the cap, so it shows a few lines and no more. */
+.attemptedText {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	overflow: hidden;
+	color: var(--text-color--subtle);
 }
 </style>

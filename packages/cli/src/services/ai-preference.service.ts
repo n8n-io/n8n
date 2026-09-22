@@ -20,6 +20,7 @@ import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -404,9 +405,10 @@ export class AiPreferenceService {
 		const scope = aiPreferenceTargetOf(target);
 		const saved = await this.aiPreferenceRepository.countForTarget(scope);
 		if (saved >= AI_PREFERENCE_MAX_PER_SCOPE) {
-			throw new BadRequestError(
-				`A ${scope.scope} cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`,
-			);
+			throw new AiPreferenceScopeFullError(scope.scope, {
+				limit: AI_PREFERENCE_MAX_PER_SCOPE,
+				actual: saved,
+			});
 		}
 	}
 

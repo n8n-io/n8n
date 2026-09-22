@@ -4,7 +4,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
-import { isSavedPreferenceResult, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
+import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
@@ -77,10 +77,11 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
-	// The card is the whole render for a saved preference. A refusal or a call still
-	// in flight has nothing to show, so it drops instead of joining the thinking block.
+	// The card is the whole render for a preference write, saved or refused: a refusal
+	// the person cannot see is a silent failure. A call still in flight has nothing to
+	// show yet, so it drops instead of joining the thinking block.
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
-		return isSavedPreferenceResult(tc.result) ? 'preference' : 'hidden';
+		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';

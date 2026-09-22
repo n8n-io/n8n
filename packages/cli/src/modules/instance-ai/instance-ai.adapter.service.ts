@@ -83,7 +83,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
-	InstanceAiPreferenceWriteRejection,
+	InstanceAiPreferenceWriteResult,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -147,7 +147,8 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
@@ -327,19 +328,32 @@ function toTelemetryReason(
 	}
 }
 
+type PreferenceWriteRejection = Extract<InstanceAiPreferenceWriteResult, { ok: false }>;
+
 /** The tool package cannot import cli error classes, so the boundary speaks in
- *  reasons. Only `scope: 'user'` reaches the service from here, so the one
- *  BadRequestError it can raise is the per-scope cap. The three mapped classes
- *  carry user-facing text, so their message passes through; anything else is
- *  an unexpected fault, so its message stays internal (the caller logs it). */
-function toPreferenceWriteRejection(error: unknown): {
-	reason: InstanceAiPreferenceWriteRejection;
-	message: string;
-} {
-	if (error instanceof ConflictError) return { reason: 'duplicate', message: error.message };
-	if (error instanceof BadRequestError) return { reason: 'scope_full', message: error.message };
-	if (error instanceof ForbiddenError) return { reason: 'not_permitted', message: error.message };
-	return { reason: 'failed', message: 'The preference could not be saved.' };
+ *  reasons. The cap error carries its numbers, so the model reads the limit and
+ *  the count instead of parsing the prose. Every 4xx from the service is a
+ *  refusal written for a person, so its message passes through; anything else
+ *  is an unexpected fault, so its message stays internal (the caller logs it). */
+function toPreferenceWriteRejection(error: unknown): PreferenceWriteRejection {
+	if (error instanceof AiPreferenceScopeFullError) {
+		return { ok: false, reason: 'scope_full', message: error.message, ...error.meta };
+	}
+	if (error instanceof ConflictError) {
+		return { ok: false, reason: 'duplicate', message: error.message };
+	}
+	if (error instanceof ForbiddenError) {
+		return { ok: false, reason: 'not_permitted', message: error.message };
+	}
+	if (isExpectedPreferenceRefusal(error)) {
+		return { ok: false, reason: 'failed', message: error.message };
+	}
+	return { ok: false, reason: 'failed', message: 'The preference could not be saved.' };
+}
+
+/** A client error the service raised on purpose, as opposed to a fault in the code. */
+function isExpectedPreferenceRefusal(error: unknown): error is ResponseError {
+	return error instanceof ResponseError && error.httpStatusCode < 500;
 }
 
 // Credential types are loaded once at boot, so the derived host index is
@@ -730,10 +744,9 @@ export class InstanceAiAdapterService {
 					dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
 				} catch (error) {
 					const rejection = toPreferenceWriteRejection(error);
-					// The three mapped classes are expected outcomes with their own
-					// user-facing text. Anything else is a real fault whose message stays
-					// internal, so it must not go unlogged.
-					if (rejection.reason === 'failed') {
+					// A refusal the service wrote for a person is an expected outcome. Anything
+					// else is a real fault whose message stays internal, so it must not go unlogged.
+					if (!isExpectedPreferenceRefusal(error)) {
 						this.logger.error('Saving an AI preference from the assistant failed', { error });
 					}
 					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
@@ -742,7 +755,7 @@ export class InstanceAiAdapterService {
 						scope_type: scope,
 						text_length: textLength,
 					});
-					return { ok: false, ...rejection };
+					return rejection;
 				}
 
 				try {

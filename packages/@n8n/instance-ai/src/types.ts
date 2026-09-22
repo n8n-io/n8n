@@ -1053,7 +1053,15 @@ export interface InstanceAiSavedPreference {
 
 export type InstanceAiPreferenceWriteResult =
 	| { ok: true; preference: InstanceAiSavedPreference }
-	| { ok: false; reason: InstanceAiPreferenceWriteRejection; message: string };
+	| {
+			ok: false;
+			reason: InstanceAiPreferenceWriteRejection;
+			message: string;
+			/** The cap the write broke, for `too_long` (characters) and `scope_full` (rows). */
+			limit?: number;
+			/** The value measured against `limit`: the text length, or the rows already saved. */
+			actual?: number;
+	  };
 
 export interface InstanceAiPreferenceService {
 	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
