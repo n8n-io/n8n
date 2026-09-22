@@ -9,6 +9,9 @@ description: >-
   data-table-manager first, then this skill. Do not load planning or
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
+  Don't use this skill for explicit one-off tasks that can be done by a single
+  node execution: load one-off-operations and run the node with
+  nodes(action="execute").
 recommended_tools:
   - read_file
   - write_file
@@ -99,7 +102,10 @@ resources, channels, credentials, timezone — belong in placeholders or
 unresolved `newCredential()` calls until post-build setup. After the first
 build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
-question — treat a skip as permission to assume a default and move on. Never
+question. A skip grants no additional permission. Choose defaults only for
+unspecified details within the requested task. If a skipped question seeks
+permission to change existing authentication, delete nodes, or expand scope,
+preserve the existing state and report any remaining blocker. Never
 solicit secrets through `ask-user`; route credential collection through
 workflow/credential setup surfaces.
 
@@ -198,6 +204,8 @@ follow its build → publish → assign steps.
    method name, method type, credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
+   For new model choices, follow `model-selection` before writing code,
+   even without credentials.
 5. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
@@ -226,12 +234,17 @@ follow its build → publish → assign steps.
    SDK validation on the workspace source file via
    `workspace_execute_command`:
    `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
-   Output is lint-style (`line  severity  code  message`); fix every `error`
-   row. Warnings do not block the save and the command may still exit 0, but
-   they flag defects that surface at run time — resolve or consciously dismiss
-   each one. A clean validate run does not guarantee `build-workflow` will
-   succeed (no full node-type registry in the sandbox CLI), so still call
-   `build-workflow`.
+   Output is lint-style (`line  severity  code  message`). For new workflows,
+   fix every `error` row. For edits, fix errors introduced by your change.
+   Preserve unrelated existing nodes and code even if the CLI reports errors
+   on them. The CLI has no saved-workflow baseline; call `build-workflow` to
+   decide which findings still block. It can keep existing authentication and
+   missing-output findings informational when their cause is unchanged.
+   If the save remains blocked, report the blocker without
+   expanding scope. CLI warning rows do not block saves; resolve or consciously dismiss
+   them within the requested scope. A clean validate run does not guarantee
+   `build-workflow` will succeed (no full node-type registry in the sandbox CLI),
+   so still call `build-workflow`.
 8. Call `build-workflow` with the `filePath` you wrote.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -445,7 +458,8 @@ When choosing a service:
 - When setup completion and popularity clearly support one candidate, choose it
   and continue without asking.
 - When the signals are close or conflict and the user has not delegated the
-  choice, ask exactly one `single` question. If skipped, choose a sensible default.
+  choice, ask exactly one `single` question. If skipped, choose a default within
+  the user's requested scope.
 - When the user explicitly asks you to choose, make a sensible choice and
   continue without asking.
 
@@ -516,7 +530,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` and let setup collect it. When the persistent
+   setup panel is enabled, the user can fill announced requirements during the
+   build. Do not tell them to wait until the build finishes.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -795,10 +811,9 @@ asked for that exact name.
 
 ## Node Configuration Safety Rules
 
-- Fetch `nodes(action="type-definition")` before configuring nodes. Generated
-  definitions and `@builderHint` annotations are the source of truth.
+- Fetch `nodes(action="type-definition")` for parameter names and shapes.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
-  model fields when credentials are available.
+  model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type

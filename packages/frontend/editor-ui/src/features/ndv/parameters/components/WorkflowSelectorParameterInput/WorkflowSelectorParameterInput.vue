@@ -5,6 +5,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { isPlaceholderValue } from '@n8n/utils/placeholder';
 import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
@@ -143,15 +144,11 @@ const getCreateResourceLabel = computed(() => {
 });
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
-	if (typeof props.modelValue !== 'object') {
-		return props.modelValue ?? '';
-	}
-
-	if (isListMode.value) {
-		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
-	}
-
-	return props.modelValue ? props.modelValue.value : '';
+	const value = typeof props.modelValue === 'object' ? props.modelValue?.value : props.modelValue;
+	const fallback = isPlaceholderValue(value) ? '' : (value ?? '');
+	return isListMode.value && typeof props.modelValue === 'object'
+		? (props.modelValue?.cachedResultName ?? fallback)
+		: fallback;
 });
 
 const placeholder = computed(() => {
@@ -163,7 +160,11 @@ const placeholder = computed(() => {
 });
 
 const showOpenResourceLink = computed(() => {
-	return !props.isValueExpression && props.modelValue.value;
+	return (
+		!props.isValueExpression &&
+		props.modelValue.value &&
+		!isPlaceholderValue(props.modelValue.value)
+	);
 });
 
 function setWidth() {
@@ -228,7 +229,12 @@ function openWorkflow() {
 }
 
 async function refreshCachedWorkflow() {
-	if (!props.modelValue || props.modelValue.mode !== 'list' || !props.modelValue.value) {
+	if (
+		!props.modelValue ||
+		props.modelValue.mode !== 'list' ||
+		!props.modelValue.value ||
+		isPlaceholderValue(props.modelValue.value)
+	) {
 		return;
 	}
 
@@ -271,7 +277,7 @@ watch(
 		// Because eagerly renaming the node when the target sub-workflow
 		// changed name means the workflow becomes unsaved and changed just by
 		// opening the ExecuteWorkflow node referencing the renamed workflow
-		if (old.value !== val.value) {
+		if (old.value !== val.value && !isPlaceholderValue(val.value)) {
 			applyDefaultExecuteWorkflowNodeName(val.value);
 		}
 	},
@@ -349,6 +355,7 @@ const onAddResourceClicked = async () => {
 			:model-value="modelValue"
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideDropdown()"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
 			@add-resource-click="onAddResourceClicked"

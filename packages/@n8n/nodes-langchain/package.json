@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.40.0",
+  "version": "2.41.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -108,6 +108,7 @@
       "dist/nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.js",
       "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJsonInputLoader.node.js",
       "dist/nodes/embeddings/EmbeddingsCohere/EmbeddingsCohere.node.js",
+      "dist/nodes/embeddings/EmbeddingsDatabricks/EmbeddingsDatabricks.node.js",
       "dist/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.js",
       "dist/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.js",
       "dist/nodes/embeddings/EmbeddingsGoogleGemini/EmbeddingsGoogleGemini.node.js",
@@ -301,7 +302,7 @@
     "html-to-text": "9.0.5",
     "ignore": "^5.2.0",
     "js-tiktoken": "catalog:",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "jsonwebtoken": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",

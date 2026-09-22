@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -14,13 +14,21 @@ import {
 } from '../../__tests__/createThreadComponentRenderer';
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
-import { stashPendingAgentAttachment } from '../../composables/useInstanceAiHandoff';
+import {
+	getPendingWorkflowAttachment,
+	stashPendingAgentAttachment,
+	stashPendingRedirectLanding,
+	stashPendingWorkflowAttachment,
+} from '../../composables/useInstanceAiHandoff';
+import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { USER_TYPED_MESSAGE } from '../../prefills';
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
 const showErrorSpy = vi.hoisted(() => vi.fn());
+const handleRedirectLandingSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
@@ -28,6 +36,12 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
+}));
+
+vi.mock('@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store', () => ({
+	useOpenWorkflowInAssistantStore: () => ({
+		handleRedirectLanding: handleRedirectLandingSpy,
+	}),
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -128,8 +142,7 @@ describe('InstanceAiConversation', () => {
 		await vi.waitFor(() => expect(conversation.emitted('thread-missing')).toBeTruthy());
 	});
 
-	it('emits agent-attachment-restored when a pending attachment is restored on hydration', async () => {
-		thread.sseState = 'disconnected';
+	it('emits agent-attachment-restored when a pending attachment is restored', async () => {
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
@@ -143,6 +156,82 @@ describe('InstanceAiConversation', () => {
 		expect(conversation.emitted('agent-attachment-restored')?.[0]).toEqual([
 			{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true },
 		]);
+	});
+
+	describe('composer context chip label', () => {
+		// Wraps the subject in `reactive` and returns it alongside the render
+		// result, so a test can mutate `subject.name` after mount and assert the
+		// chip follows the live value — the actual AGENT-954 scenario (a rename in
+		// the builder while the panel stays open).
+		function mountWithSubject(subject: InstanceAiEmbedSubject | undefined) {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Stashed Name',
+				pending: true,
+			});
+			const reactiveSubject = subject === undefined ? undefined : reactive({ ...subject });
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					props: { subject: reactiveSubject },
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return { ...renderer(), subject: reactiveSubject };
+		}
+
+		it('prefers the live subject name over the stashed name when agent ids match', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Live'),
+			);
+		});
+
+		it('updates the chip when the live subject is renamed after mount', async () => {
+			const { getByTestId, subject } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Initial Name',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Initial Name'),
+			);
+
+			// A rename in the builder mutates the reactive subject's name; the chip
+			// must follow it without a re-stash or remount.
+			subject!.name = 'Renamed Mid-Session';
+			await nextTick();
+			expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Mid-Session');
+		});
+
+		it('falls back to the stashed name when the subject refers to a different agent', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-other',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+
+		it('falls back to the stashed name when no subject is provided', async () => {
+			const { getByTestId } = mountWithSubject(undefined);
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
 	});
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
@@ -258,6 +347,192 @@ describe('InstanceAiConversation', () => {
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' },
 			});
+		});
+	});
+
+	describe('workflow handoff without opening turn', () => {
+		it('restores a pending workflow attachment and shows the static greeting', async () => {
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await vi.waitFor(() =>
+				expect(thread.setPendingWorkflowAttachment).toHaveBeenCalledWith({
+					type: 'workflow',
+					id: 'wf-1',
+					name: 'FAQ Responder',
+				}),
+			);
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-workflow-handoff-greeting')).toBeInTheDocument(),
+			);
+			expect(getByTestId('instance-ai-workflow-handoff-attachment')).toBeInTheDocument();
+			expect(getByTestId('attachment-preview-resource')).toHaveTextContent('FAQ Responder');
+			expect(getByTestId('instance-ai-workflow-handoff-greeting')).toHaveTextContent(
+				'FAQ Responder',
+			);
+			expect(getByTestId('instance-ai-workflow-handoff-greeting')).toHaveTextContent(
+				'make changes, debug an issue, set up credentials',
+			);
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(handleRedirectLandingSpy).not.toHaveBeenCalled();
+		});
+
+		it('restores a pending workflow attachment before loadThread resolves', async () => {
+			store.threads = [];
+			let resolveLoad!: () => void;
+			store.loadThread.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolveLoad = resolve;
+				}),
+			);
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			renderer();
+
+			await vi.waitFor(() =>
+				expect(thread.setPendingWorkflowAttachment).toHaveBeenCalledWith({
+					type: 'workflow',
+					id: 'wf-1',
+					name: 'FAQ Responder',
+				}),
+			);
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
+			resolveLoad();
+		});
+
+		it('fires the workflow-list auto landing handler once on hydration', async () => {
+			thread.sseState = 'disconnected';
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			stashPendingRedirectLanding('thread-1');
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			renderer();
+
+			await vi.waitFor(() => expect(handleRedirectLandingSpy).toHaveBeenCalledWith('thread-1'));
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it('appends the pending workflow attachment on first submit and clears it', async () => {
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				expect.objectContaining({
+					authorship: USER_TYPED_MESSAGE,
+					attachments: [{ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' }],
+				}),
+			);
+			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
+			expect(thread.pendingWorkflowAttachment).toBeNull();
+		});
+
+		it('clears the workflow hand-off stash after send even if the runtime already dropped it', async () => {
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			let resolveSend!: (value: boolean) => void;
+			vi.mocked(thread.sendMessage).mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveSend = resolve;
+				}),
+			);
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+			thread.pendingWorkflowAttachment = null;
+
+			resolveSend(true);
+			await vi.waitFor(() => expect(getPendingWorkflowAttachment('thread-1')).toBeNull());
+		});
+
+		it('clears the pending workflow attachment when the context chip is dismissed', async () => {
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
+			await fireEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
+			expect(thread.pendingWorkflowAttachment).toBeNull();
 		});
 	});
 });

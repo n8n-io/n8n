@@ -135,6 +135,10 @@ const resetNavigation = () => {
 	openSubMenuIndex.value = -1;
 };
 
+const highlightFirstItem = () => {
+	highlightedIndex.value = getNextValidIndex(props.items, -1, 1);
+};
+
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
 	const item = props.items[index];
 	if (item) {
@@ -257,7 +261,7 @@ watch(
 	},
 );
 
-defineExpose({ resetNavigation });
+defineExpose({ resetNavigation, highlightFirstItem });
 </script>
 
 <template>
@@ -294,6 +298,7 @@ defineExpose({ resetNavigation });
 .content {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 	max-height: inherit;
 }
 

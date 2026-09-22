@@ -546,6 +546,7 @@ async function handleSubmit(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -585,6 +586,7 @@ async function handleSubmit(
 		authorship,
 		attachments,
 		pushRef: rootStore.pushRef,
+		responseStartedAtEpochMs,
 	});
 	if (!sent) {
 		isStartingThread.value = false;
@@ -641,10 +643,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader
-			v-if="!isSplitLayoutActive"
-			:show-thread-history-label="!isStartingThread"
-		/>
+		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -686,7 +685,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader :show-thread-history-label="!isStartingThread" />
+					<InstanceAiViewHeader />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">

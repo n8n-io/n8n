@@ -87,6 +87,29 @@ describe('useNdvLayout', () => {
 		expect(spy).toHaveBeenCalledWith(expect.stringContaining('_REGULAR'), expect.any(String));
 	});
 
+	it('clears the stored override and restores defaults on reset', () => {
+		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
+		localStorage.setItem(key, JSON.stringify({ left: 30, main: 40, right: 30 }));
+
+		const { panelWidthPercentage, resetPanelSize } = useNdvLayout({
+			container,
+			hasInputPanel,
+			paneType,
+		});
+		expect(panelWidthPercentage.value).toEqual({ left: 30, main: 40, right: 30 });
+
+		resetPanelSize();
+
+		expect(localStorage.getItem(key)).toBeNull();
+		// Default "regular" main width is 420px of a 1000px container.
+		expect(panelWidthPercentage.value.main).toBeCloseTo(42);
+		expect(
+			panelWidthPercentage.value.left +
+				panelWidthPercentage.value.main +
+				panelWidthPercentage.value.right,
+		).toBeCloseTo(100);
+	});
+
 	it('restores correct proportions after container width changes (zoom simulation)', async () => {
 		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
 		localStorage.setItem(key, JSON.stringify({ left: 29, main: 42, right: 29 }));

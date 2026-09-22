@@ -2276,6 +2276,60 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('executeNode permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		const persistPermissions = async (permissions: Record<string, string>) => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ permissions }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+		};
+
+		it('defaults to require_approval', async () => {
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('require_approval');
+		});
+
+		it('persists and reflects an update', async () => {
+			const result = await service.updateAdminSettings({
+				permissions: { executeNode: 'always_allow' },
+			});
+
+			expect(result.permissions.executeNode).toBe('always_allow');
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('always_allow');
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"executeNode":"always_allow"'),
+				}),
+				['key'],
+			);
+		});
+
+		it('inherits a blocked runWorkflow from settings saved before the scope existed', async () => {
+			await persistPermissions({ runWorkflow: 'blocked' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('blocked');
+		});
+
+		it('does not inherit an always_allow runWorkflow', async () => {
+			await persistPermissions({ runWorkflow: 'always_allow' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('require_approval');
+		});
+
+		it('keeps an explicitly persisted value over the runWorkflow fallback', async () => {
+			await persistPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('always_allow');
+		});
+	});
+
 	describe('instance-ai-settings-updated event', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);

@@ -13,7 +13,7 @@ type RendererOptions = { merge?: boolean };
 
 /** A bare, all-mocked `ThreadRuntime` for components that only need the shape, not real behaviour. */
 export function makeThread(): ThreadRuntime {
-	return reactive({
+	const thread = reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
 		hasMessages: false,
@@ -21,6 +21,7 @@ export function makeThread(): ThreadRuntime {
 		isStreaming: false,
 		isSendingMessage: false,
 		isAwaitingConfirmation: false,
+		hydrationStatus: 'ready',
 		isHydratingThread: false,
 		amendContext: null,
 		pendingPlanReview: null,
@@ -28,13 +29,25 @@ export function makeThread(): ThreadRuntime {
 		contextualSuggestion: null,
 		currentTasks: null,
 		producedArtifacts: new Map(),
+		setupItemsByWorkflowId: {},
+		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
+		activeArtifactId: undefined,
+		setActiveArtifactId: vi.fn(),
 		feedbackByResponseId: {},
 		rateableResponseId: null,
 		pendingConfirmations: [],
 		resolvedConfirmationIds: new Map(),
 		debugEvents: [],
+		pendingWorkflowAttachment: null as {
+			type: 'workflow';
+			id: string;
+			name?: string;
+			executionId?: string;
+		} | null,
+		setPendingWorkflowAttachment: vi.fn(),
+		clearPendingWorkflowAttachment: vi.fn(),
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 		connectSSE: vi.fn(),
@@ -46,11 +59,22 @@ export function makeThread(): ThreadRuntime {
 		requestPlanChanges: vi.fn().mockResolvedValue(true),
 		copyFullTrace: vi.fn(),
 		submitFeedback: vi.fn(),
-	}) as unknown as ThreadRuntime;
+	});
+	thread.setActiveArtifactId = vi.fn((id) => {
+		thread.activeArtifactId = id;
+	});
+	thread.setPendingWorkflowAttachment = vi.fn((value) => {
+		thread.pendingWorkflowAttachment = value;
+	});
+	thread.clearPendingWorkflowAttachment = vi.fn(() => {
+		thread.pendingWorkflowAttachment = null;
+	});
+	return thread as unknown as ThreadRuntime;
 }
 
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
+	mcpConnectionsAvailable: true,
 	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,

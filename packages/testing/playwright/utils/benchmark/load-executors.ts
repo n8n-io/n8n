@@ -11,7 +11,7 @@
 import type { MetricsHelper } from 'n8n-containers';
 
 import { measureStageWindows, measureSteadyPhases, waitForThroughput } from './throughput-measure';
-import type { ThroughputResult } from './throughput-measure';
+import type { CompletionCounterReader, ThroughputResult } from './throughput-measure';
 import type { LoadProfile, TriggerHandle } from './types';
 
 /** Context shared by every executor — metrics + measurement plumbing, no load specifics. */
@@ -20,6 +20,7 @@ export interface ExecutorContext {
 	metrics: MetricsHelper;
 	baselineCounter: number;
 	metricQuery: string;
+	counterReader?: CompletionCounterReader;
 	timeoutMs: number;
 	nodeCount: number;
 }
@@ -59,6 +60,7 @@ async function runPreloaded(load: PreloadedLoad, ctx: ExecutorContext): Promise<
 		timeoutMs: ctx.timeoutMs,
 		baselineValue: ctx.baselineCounter,
 		metricQuery: ctx.metricQuery,
+		counterReader: ctx.counterReader,
 	});
 
 	return {
@@ -91,6 +93,7 @@ async function runSteady(load: SteadyLoad, ctx: ExecutorContext): Promise<Execut
 			timeoutMs: ctx.timeoutMs,
 			baselineValue: ctx.baselineCounter,
 			metricQuery: ctx.metricQuery,
+			counterReader: ctx.counterReader,
 			publishEndAt,
 		}),
 	]);
@@ -150,6 +153,7 @@ async function runStaged(load: StagedLoad, ctx: ExecutorContext): Promise<Execut
 			timeoutMs: ctx.timeoutMs,
 			baselineValue: ctx.baselineCounter,
 			metricQuery: ctx.metricQuery,
+			counterReader: ctx.counterReader,
 			publishEndAt,
 			stageBoundaries,
 		}),

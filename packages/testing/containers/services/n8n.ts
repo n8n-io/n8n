@@ -12,6 +12,7 @@ import {
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { applyEngineEnv, type EngineMode } from './engine';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
@@ -75,6 +76,7 @@ export interface N8NInstancesOptions {
 	serviceEnvironment: Record<string, string>;
 	userEnvironment?: Record<string, string>;
 	usePostgres: boolean;
+	engine?: EngineMode;
 	baseUrl?: string;
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -116,6 +118,7 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		workers,
 		webhooks = 0,
 		usePostgres,
+		engine,
 		baseUrl,
 		serviceEnvironment,
 		userEnvironment = {},
@@ -132,6 +135,8 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	if (!usePostgres) {
 		env.DB_TYPE = 'sqlite';
 	}
+
+	applyEngineEnv(env, { engine, isQueueMode });
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';

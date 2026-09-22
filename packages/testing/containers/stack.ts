@@ -9,6 +9,7 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
+import { assertEngineSupported } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -120,6 +121,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		workers = 0,
 		webhooks = 0,
 		postgres: usePostgresConfig = false,
+		engine,
 		env = {},
 		projectName,
 		resourceQuota,
@@ -144,6 +146,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
+
+	assertEngineSupported({ engine, isQueueMode, usePostgres });
+
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
 	let allocatedMainPort: number | undefined;
@@ -353,6 +358,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				serviceEnvironment: environment,
 				userEnvironment: env,
 				usePostgres,
+				engine,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
@@ -573,6 +579,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						serviceEnvironment: environment,
 						userEnvironment: { ...env, ...options.env },
 						usePostgres,
+						// Without this the replacement main drops the engine-v2 module, and a
+						// workflow that still asks for engine 2.0 fails far from the cause.
+						engine,
 						baseUrl,
 						// The same host port keeps `baseUrl` valid across the swap.
 						allocatedPort: allocatedMainPort,
