@@ -1114,6 +1114,39 @@ describe('AgentExecutionService', () => {
 				allowed,
 			);
 		});
+
+		it.each([
+			{ name: 'unused ID', memoryResourceId: null, checkpointAllowed: true, allowed: true },
+			{
+				name: 'memory owned by another user',
+				memoryResourceId: 'draft-chat:other-user',
+				checkpointAllowed: true,
+				allowed: false,
+			},
+			{
+				name: 'checkpoint owned by another user',
+				memoryResourceId: null,
+				checkpointAllowed: false,
+				allowed: false,
+			},
+		])('checks a new $name', async ({ memoryResourceId, checkpointAllowed, allowed }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			memoryBackend.getThread.mockResolvedValue(
+				memoryResourceId
+					? {
+							id: 'new-thread',
+							resourceId: memoryResourceId,
+							createdAt: new Date(),
+							updatedAt: new Date(),
+						}
+					: null,
+			);
+			checkpointStorage.hasNoConflictingThreadResource.mockResolvedValue(checkpointAllowed);
+
+			await expect(
+				service.canUsePreviewThread('new-thread', 'project-1', 'agent-1', 'user-1'),
+			).resolves.toBe(allowed);
+		});
 	});
 
 	describe('getThreadDetail', () => {

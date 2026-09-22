@@ -71,12 +71,14 @@ describe('AgentThreadsController route access scopes', () => {
 
 describe('AgentThreadsController session details', () => {
 	it.each([
-		{ accessScope: 'user' as const, parentThreadId: null, expected: true },
-		{ accessScope: 'project' as const, parentThreadId: null, expected: false },
-		{ accessScope: 'user' as const, parentThreadId: 'parent', expected: false },
-	])(
-		'returns origin and Preview eligibility for $accessScope sessions with parent $parentThreadId',
-		async ({ accessScope, parentThreadId, expected }) => {
+		['private root', 'user', null, 'mcp', true],
+		['shared root', 'project', null, 'mcp', false],
+		['child', 'user', 'parent', 'mcp', false],
+		['legacy sub-agent', 'user', null, 'subagent', false],
+		['source-less private root', 'user', null, null, true],
+	] as const)(
+		'returns origin and Preview eligibility for a %s session',
+		async (_name, accessScope, parentThreadId, source, expected) => {
 			const service = mock<AgentExecutionService>();
 			const controller = new AgentThreadsController(
 				service,
@@ -91,11 +93,7 @@ describe('AgentThreadsController session details', () => {
 					accessScope,
 					parentThreadId,
 				}),
-				executions: [
-					mock<AgentExecution>({ source: null }),
-					mock<AgentExecution>({ source: 'mcp' }),
-					mock<AgentExecution>({ source: 'chat' }),
-				],
+				executions: [mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
 			});
 			const result = await controller.getThread(
 				mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
@@ -105,7 +103,7 @@ describe('AgentThreadsController session details', () => {
 			);
 
 			expect(result.thread.canContinueInPreview).toBe(expected);
-			expect(result.thread.source).toBe('mcp');
+			expect(result.thread.source).toBe(source);
 			expect(result.thread).not.toHaveProperty('ownerId');
 			expect(result.thread).not.toHaveProperty('accessScope');
 		},

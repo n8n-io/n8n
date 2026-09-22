@@ -199,6 +199,28 @@ describe('AgentSessionTimelineView', () => {
 		routerReplace.mockClear();
 	});
 
+	it('shows Preview controls before a new session has metrics', () => {
+		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			props: {
+				breadcrumbItems: [],
+				sessionTitle: '',
+				sessionOptions: [],
+				showMetrics: false,
+				triggerSource: null,
+				triggerIcon: 'bolt-filled',
+				triggerLabel: '',
+				totalTokens: 0,
+				totalCost: 0,
+				durationLabel: '0ms',
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
+				showPreview: true,
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-session-timeline-preview-btn"]').exists()).toBe(true);
+	});
+
 	it('replaces the stale thread with an empty state when a new preview session starts', async () => {
 		const wrapper = await renderPrivateTimeline();
 
