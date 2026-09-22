@@ -45,7 +45,10 @@ function policyForExecutionPermission(value: LegacyExecutionPermission): ToolPer
 }
 
 function readToolNames(value: unknown, path: string): string[] {
-	if (!Array.isArray(value) || value.some((tool) => typeof tool !== 'string' || tool.length === 0)) {
+	if (
+		!Array.isArray(value) ||
+		value.some((tool) => typeof tool !== 'string' || tool.length === 0)
+	) {
 		throw new Error(`${path}.tools must contain non-empty strings`);
 	}
 	return [...new Set(value)];
@@ -88,11 +91,7 @@ function convertConnectionPolicy(
 }
 
 function parseExecutionPermission(value: unknown): LegacyExecutionPermission {
-	if (
-		value === 'always_allow' ||
-		value === 'require_approval' ||
-		value === 'blocked'
-	) {
+	if (value === 'always_allow' || value === 'require_approval' || value === 'blocked') {
 		return value;
 	}
 	throw new Error('instanceAi.settings permissions.executeMcpTool is invalid');
@@ -139,15 +138,10 @@ function toLegacyFilter(
 	permissions: ToolPermissions,
 ): { mode: 'allow' | 'exclude'; tools: string[] } | null {
 	const tools = Object.entries(permissions.tools ?? {});
-	if (
-		permissions.categories.read === 'block' ||
-		permissions.categories.write === 'block'
-	) {
+	if (permissions.categories.read === 'block' || permissions.categories.write === 'block') {
 		return {
 			mode: 'allow',
-			tools: tools
-				.filter(([, permission]) => permission !== 'block')
-				.map(([tool]) => tool),
+			tools: tools.filter(([, permission]) => permission !== 'block').map(([tool]) => tool),
 		};
 	}
 
@@ -228,8 +222,7 @@ export class MigrateMcpToolPermissions1790001072656 implements ReversibleMigrati
 			`SELECT ${connectionId} AS id, ${toolFilter} AS "toolFilter" FROM ${connectionTable}`,
 			async (rows) => {
 				for (const row of rows) {
-					const filter =
-						row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
+					const filter = row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
 					const converted = convertConnectionPolicy(
 						filter,
 						defaultPolicy,
@@ -244,11 +237,9 @@ export class MigrateMcpToolPermissions1790001072656 implements ReversibleMigrati
 			},
 		);
 
-		await schemaBuilder.addNotNull(
-			'instance_ai_mcp_registry_connections',
-			'toolPermissions',
-			{ recreatesOnSqlite: true },
-		);
+		await schemaBuilder.addNotNull('instance_ai_mcp_registry_connections', 'toolPermissions', {
+			recreatesOnSqlite: true,
+		});
 		await schemaBuilder.dropColumns('instance_ai_mcp_registry_connections', ['toolFilter'], {
 			recreatesOnSqlite: true,
 		});
