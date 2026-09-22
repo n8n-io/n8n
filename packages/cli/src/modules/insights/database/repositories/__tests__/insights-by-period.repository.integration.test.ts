@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig, GlobalConfig } from '@n8n/config';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -7,19 +7,58 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
+import { DbConnectionOptions, DbLockService, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 
 import { InsightsConfig } from '@/modules/insights/insights.config';
 import { createMember } from '@test-integration/db/users';
 
-import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
+import {
+	createCompactedInsightsEvent,
+	createMetadata,
+	createRawInsightsEvent,
+} from '../../entities/__tests__/db-utils';
 import type { InsightsByPeriod } from '../../entities/insights-by-period';
 import { TypeToNumber } from '../../entities/insights-shared';
 import type { InsightsAccessFilter } from '../insights-by-period.repository';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
+import { InsightsRawRepository } from '../insights-raw.repository';
 
 const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
+
+/** Holds the first transaction open after it copied its batch, so a second runner can start. */
+function pauseFirstTransactionAfterRead(manager: EntityManager) {
+	let reached!: () => void;
+	let resume!: () => void;
+	const reachedPromise = new Promise<void>((resolve) => (reached = resolve));
+	const resumePromise = new Promise<void>((resolve) => (resume = resolve));
+	const transaction = manager.transaction.bind(manager);
+	let intercepted = false;
+	const pausingTransaction = async (run: (trx: EntityManager) => Promise<unknown>) => {
+		if (intercepted) return await transaction(run);
+		intercepted = true;
+		return await transaction(async (trx) => {
+			const query = trx.query.bind(trx);
+			vi.spyOn(trx, 'query').mockImplementation(async (sql: string, parameters?: unknown[]) => {
+				const result: unknown = await query(sql, parameters);
+				if (sql.includes('CREATE TEMPORARY TABLE')) {
+					reached();
+					await resumePromise;
+				}
+				return result;
+			});
+			return await run(trx);
+		});
+	};
+	const spy = vi
+		.spyOn(manager, 'transaction')
+		.mockImplementation(pausingTransaction as typeof manager.transaction);
+	return { reached: reachedPromise, resume, restore: () => spy.mockRestore() };
+}
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
@@ -278,6 +317,73 @@ describe('InsightsByPeriodRepository', () => {
 			await expect(Promise.all(promises)).resolves.toBeDefined();
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
 		});
+	});
+
+	describe('concurrent compaction across processes', () => {
+		test.skipIf(!isPostgres)(
+			'moves every source row once when two repository instances compact at the same time',
+			async () => {
+				// ARRANGE
+				await testDb.truncate([
+					'InsightsRaw',
+					'InsightsByPeriod',
+					'InsightsMetadata',
+					'WorkflowEntity',
+					'Project',
+				]);
+				const dataSource = Container.get(DataSource);
+				const insightsRawRepository = Container.get(InsightsRawRepository);
+				const project = await createTeamProject();
+				const workflow = await createWorkflow({ nodes: [] }, project);
+				await createMetadata(workflow);
+				const hour = DateTime.utc(2000, 1, 1, 0);
+				for (let minute = 0; minute < 3; minute++) {
+					await createRawInsightsEvent(workflow, {
+						type: 'success',
+						value: 1,
+						timestamp: hour.plus({ minute }),
+					});
+				}
+				const otherInstance = new DataSource(Container.get(DbConnectionOptions).getOptions());
+				await otherInstance.initialize();
+				const runners = [
+					Container.get(InsightsByPeriodRepository),
+					new InsightsByPeriodRepository(
+						otherInstance,
+						Container.get(SharedWorkflowRepository),
+						new DbLockService(otherInstance, Container.get(DatabaseConfig)),
+					),
+				];
+				const compact = async (repository: InsightsByPeriodRepository) =>
+					await repository.compactSourceDataIntoInsightPeriod({
+						sourceBatchQuery: insightsRawRepository.getRawInsightsBatchQuery(500),
+						sourceTableName: insightsRawRepository.metadata.tableName,
+						periodUnitToCompactInto: 'hour',
+					});
+				const pause = pauseFirstTransactionAfterRead(dataSource.manager);
+
+				// ACT
+				let compacted: number[];
+				try {
+					const first = compact(runners[0]);
+					await pause.reached;
+					const second = compact(runners[1]);
+					await Promise.race([second, sleep(250)]);
+					pause.resume();
+					compacted = await Promise.all([first, second]);
+				} finally {
+					pause.restore();
+					await otherInstance.destroy();
+				}
+
+				// ASSERT
+				expect(compacted[0] + compacted[1]).toBe(3);
+				await expect(insightsRawRepository.count()).resolves.toBe(0);
+				const hourly = await runners[0].find();
+				expect(hourly).toHaveLength(1);
+				expect(hourly[0].value).toBe(3);
+			},
+		);
 	});
 
 	describe('access filter', () => {

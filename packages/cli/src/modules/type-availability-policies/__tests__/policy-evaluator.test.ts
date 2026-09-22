@@ -215,6 +215,29 @@ describe('evaluateType', () => {
 				matchedRuleId: null,
 			});
 		});
+
+		it('matches via a custom resolver, for a type whose package is not part of its name', () => {
+			// Stands in for the `credential-types` resolver: a credential type name (e.g.
+			// `slackApi`) carries no package prefix, unlike a node type.
+			const resolvePackage = (typeName: string) =>
+				typeName === 'slackApi' ? 'n8n-nodes-base' : null;
+			const attachments = [
+				attachment({
+					rules: [
+						{ id: 'r1', action: 'deny', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+					],
+				}),
+			];
+
+			expect(evaluateType(attachments, 'allow', 'slackApi', resolvePackage)).toEqual({
+				action: 'deny',
+				matchedRuleId: 'r1',
+			});
+			expect(evaluateType(attachments, 'allow', 'otherApi', resolvePackage)).toEqual({
+				action: 'allow',
+				matchedRuleId: null,
+			});
+		});
 	});
 });
 

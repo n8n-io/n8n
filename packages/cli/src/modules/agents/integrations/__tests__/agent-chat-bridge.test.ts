@@ -1,5 +1,5 @@
 import type { Mock } from 'vitest';
-import type { StreamChunk } from '@n8n/agents';
+import type { SerializableAgentState, StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
@@ -9,6 +9,10 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import { AgentConversationStateService } from '../../agent-conversation-state.service';
+import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -18,7 +22,8 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import * as esmLoader from '../esm-loader';
-import type { IntegrationMessageContextService } from '../integration-message-context.service';
+import { IntegrationMessageContextService } from '../integration-message-context.service';
+import type { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -622,6 +627,36 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledOnce();
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
+
+		it.each([
+			'Image dimensions exceed max allowed size: 8000 pixels',
+			'Image is too small',
+			'Unsupported MIME type: image/svg+xml',
+			'Could not decode image',
+		])('explains attachment errors: %s', async (message) => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'error', error: new Error(message) },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.',
+			);
+		});
+
+		it.each(['fetch failed', 'Unknown error', 'Request payload size exceeds the limit'])(
+			'keeps the generic message for unrelated errors: %s',
+			async (message) => {
+				const thread = await runMention(bufferedIntegration, [
+					{ type: 'error', error: new Error(message) },
+					finishChunk,
+				]);
+
+				expect(thread.post).toHaveBeenCalledOnce();
+				expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+			},
+		);
 
 		it('names the misconfiguration when the run fails with a UserError', async () => {
 			const { bot, handlers } = makeBot();
@@ -3057,31 +3092,54 @@ describe('AgentChatBridge — consumeStream', () => {
 		function bridgeWithOpenSuspension(suspendPayload: unknown | null) {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
-			const agentExecutor = {
-				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() => toStream([])),
-				findOpenSuspension: vi
-					.fn()
-					.mockResolvedValue(suspendPayload === null ? null : { suspendPayload }),
-			};
+			const agentExecutor = mock<AgentExecutionOrchestratorService>();
+			agentExecutor.executeForChatPublished.mockImplementation(() =>
+				toStream([{ type: 'finish', finishReason: 'stop' }]),
+			);
+			const executionRepository = mock<AgentExecutionRepository>();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			const checkpointStorage = mock<N8NCheckpointStorage>();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(
+				suspendPayload === null
+					? null
+					: mock<SerializableAgentState>({
+							pendingToolCalls: {
+								'tool-1': {
+									toolCallId: 'tool-1',
+									toolName: 'approval',
+									input: {},
+									suspended: true,
+									suspendPayload,
+									resumeSchema: {},
+									runId: 'run-1',
+								},
+							},
+						}),
+			);
+			Container.set(
+				AgentConversationStateService,
+				new AgentConversationStateService(executionRepository, checkpointStorage),
+			);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
 
-			new AgentChatBridge(
+			AgentChatBridge.create(
 				bot as unknown as ChatBotLike,
 				'agent-1',
-				agentExecutor as never,
+				agentExecutor,
 				componentMapper,
 				logger,
 				'project-1',
 				streamingIntegration,
 			);
 
-			return { handlers, thread, agentExecutor };
+			return { handlers, thread, agentExecutor, executionRepository, checkpointStorage };
 		}
 
 		// Starting a second run strips the pending tool call from the model's
 		// context, so it calls the same tool again — a duplicate side effect.
 		it('answers instead of starting a second run', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+			const { handlers, thread, agentExecutor, checkpointStorage } = bridgeWithOpenSuspension({
 				type: 'workflow_wait',
 				title: 'Waiting on "Approval workflow"',
 				components: [{ type: 'section', text: 'paused' }],
@@ -3093,10 +3151,10 @@ describe('AgentChatBridge — consumeStream', () => {
 			});
 
 			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
-				agentId: 'agent-1',
-				threadId: 'agent-1:thread-1',
-			});
+			expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
+				'agent-1',
+				'agent-1:thread-1',
+			);
 			expect(thread.post).toHaveBeenCalledWith(
 				expect.stringContaining('Waiting on "Approval workflow"'),
 			);
@@ -3137,8 +3195,10 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
-		it('runs normally when nothing is parked', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
+		it.each([false, true])('runs when nothing is parked and running is %s', async (running) => {
+			const { handlers, thread, agentExecutor, executionRepository } =
+				bridgeWithOpenSuspension(null);
+			executionRepository.existsRunningByThread.mockResolvedValue(running);
 
 			await handlers.subscribed!(thread, {
 				text: 'hello',
@@ -3146,6 +3206,24 @@ describe('AgentChatBridge — consumeStream', () => {
 			});
 
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		});
+
+		it.each(['running', 'suspension'])('stops when the %s query fails', async (query) => {
+			const { handlers, thread, agentExecutor, executionRepository, checkpointStorage } =
+				bridgeWithOpenSuspension(null);
+			const lookup =
+				query === 'running'
+					? executionRepository.existsRunningByThread
+					: checkpointStorage.findSuspendedForThread;
+			lookup.mockRejectedValue(new Error('Database unavailable'));
+
+			await handlers.subscribed!(thread, {
+				text: 'hello',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 	});
 

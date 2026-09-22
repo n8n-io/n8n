@@ -14,7 +14,7 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -96,7 +96,7 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 
 export type PreparedDraftRunResult = {
 	response: string;
-	executionId?: string;
+	executionId: string;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
@@ -349,6 +349,7 @@ export class AgentTestRunService {
 	): Promise<PreparedDraftRunResult> {
 		let response = initialResponse;
 		const suspensions: AgentTestRunSuspension[] = [];
+		let errorChunk: Extract<StreamChunk, { type: 'error' }> | undefined;
 		let observerFailed = false;
 		let observerError: unknown;
 
@@ -363,8 +364,10 @@ export class AgentTestRunService {
 					}
 				}
 				if (chunk.type === 'error' && errorMode === 'throw' && !observerFailed) {
-					throw chunk.error;
+					errorChunk ??= chunk;
+					continue;
 				}
+				if (errorChunk) continue;
 				if (chunk.type === 'text-delta') {
 					response += chunk.delta;
 				} else if (chunk.type === 'tool-call-suspended') {
@@ -384,10 +387,13 @@ export class AgentTestRunService {
 		}
 		if (observerFailed) throw observerError;
 
+		// Draining preserves terminal usage and lets finalization failures take precedence.
+		if (errorChunk) throw errorChunk.error;
 		const executionId = getExecutionId();
+		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
 		const metadata = {
 			response,
-			...(executionId ? { executionId } : {}),
+			executionId,
 		};
 		return suspensions.length > 0
 			? { status: 'suspended', ...metadata, suspensions }

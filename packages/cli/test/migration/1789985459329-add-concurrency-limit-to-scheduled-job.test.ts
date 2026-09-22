@@ -10,6 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 const MIGRATION_NAME = 'AddConcurrencyLimitToScheduledJob1789985459329';
+const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 
 describe('AddConcurrencyLimitToScheduledJob Migration', () => {
 	let dataSource: DataSource;
@@ -128,15 +129,13 @@ describe('AddConcurrencyLimitToScheduledJob Migration', () => {
 			await context.queryRunner.release();
 		});
 
-		it('rejects a fractional limit on SQLite', async () => {
+		// Postgres has no fractional case to reject: the column type coerces the
+		// value before the CHECK runs. SQLite stores it as given.
+		it.skipIf(!isSqlite)('rejects a fractional limit on SQLite', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);
 
-			// Postgres has no fractional case to reject: the column type coerces the
-			// value before the CHECK runs. SQLite stores it as given.
-			if (context.isSqlite) {
-				await expect(insertJob(context, 'job', 1.5)).rejects.toThrow();
-			}
+			await expect(insertJob(context, 'job', 1.5)).rejects.toThrow();
 
 			await context.queryRunner.release();
 		});

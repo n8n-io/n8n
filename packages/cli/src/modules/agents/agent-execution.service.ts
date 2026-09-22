@@ -5,10 +5,11 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -119,6 +120,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -159,11 +161,14 @@ export class AgentExecutionService {
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
+		if (!this.heartbeatTimers.has(executionId)) return;
 		this.pendingTimelineSnapshots.set(executionId, snapshot);
 		this.ensureTimelineSnapshotWrite(executionId);
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
+		this.stopHeartbeat(executionId);
+		this.pendingTimelineSnapshots.delete(executionId);
 		const { record, hitlStatus } = params;
 		const status = executionStatus(record);
 		const stoppedAt = new Date(record.startTime + record.duration);
@@ -173,23 +178,11 @@ export class AgentExecutionService {
 			error: record.error,
 			stoppedAt: stoppedAt.getTime(),
 		});
-		let storedAt: AgentExecution['storedAt'] =
+		const storedAt: AgentExecution['storedAt'] =
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
-			if (storedAt !== 'db') {
-				try {
-					await this.agentExecutionLogStore.write(
-						{ agentId: params.agentId, threadId: params.threadId, executionId },
-						{ timeline: record.timeline },
-						storedAt,
-					);
-				} catch (error) {
-					this.errorReporter.error(error);
-					storedAt = 'db';
-				}
-			}
-
+			await this.timelineSnapshotWrites.get(executionId);
 			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
 				status,
 				stoppedAt,
@@ -199,13 +192,31 @@ export class AgentExecutionService {
 				completionTokens: record.usage?.completionTokens ?? null,
 				totalTokens: record.usage?.totalTokens ?? null,
 				cost: record.totalCost,
-				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
-				storedAt,
+				timeline: record.timeline.length > 0 ? record.timeline : null,
+				storedAt: 'db',
 				error: record.error,
 				failureSummary,
 				hitlStatus: hitlStatus ?? null,
 			});
-			if (!finalized) return executionId;
+			if (!finalized) {
+				throw new OperationalError('Agent execution is no longer running', {
+					extra: { executionId },
+				});
+			}
+
+			// Save the terminal row first. A rejected finalization must not replace a stored blob.
+			if (storedAt !== 'db') {
+				const logRef = { agentId: params.agentId, threadId: params.threadId, executionId };
+				let blobWritten = false;
+				try {
+					await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
+					blobWritten = true;
+					await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
+				} catch (error) {
+					this.errorReporter.error(error);
+					if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);
+				}
+			}
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -219,8 +230,23 @@ export class AgentExecutionService {
 			this.errorReporter.error(error);
 			throw error;
 		} finally {
-			this.stopHeartbeat(executionId);
 			this.executionsNeedingTitleSync.delete(executionId);
+		}
+	}
+
+	private async deleteUnreferencedTimelineBlob(
+		ref: { agentId: string; threadId: string; executionId: string },
+		storedAt: StorageLocation,
+	): Promise<void> {
+		try {
+			// The pointer update can commit before its error reaches us. Delete only after checking it.
+			const currentLocation = await this.agentExecutionRepository.findTimelineStorageLocation(
+				ref.executionId,
+			);
+			if (currentLocation === 'db')
+				await this.agentExecutionLogStore.delete([{ ...ref, storedAt }]);
+		} catch (error) {
+			this.errorReporter.error(error);
 		}
 	}
 
@@ -325,6 +351,7 @@ export class AgentExecutionService {
 					executionId,
 				});
 			} catch (error) {
+				if (!this.heartbeatTimers.has(executionId)) return;
 				if (!this.pendingTimelineSnapshots.has(executionId)) {
 					this.pendingTimelineSnapshots.set(executionId, snapshot);
 				}
@@ -365,17 +392,29 @@ export class AgentExecutionService {
 		status: AgentExecution['status'],
 	): Promise<void> {
 		const { threadId, agentId, record, hitlStatus } = params;
+		const updates: Array<Promise<unknown>> = [];
 		if (hitlStatus === 'resumed' && record.model) {
-			await this.backfillSuspendedExecutions(threadId, record.model);
+			updates.push(this.backfillSuspendedExecutions(threadId, record.model));
 		}
 		if (record.usage) {
-			await this.agentExecutionThreadRepository.incrementUsage(
-				threadId,
-				record.usage.promptTokens,
-				record.usage.completionTokens,
-				record.totalCost ?? 0,
-				record.duration,
+			updates.push(
+				this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					record.usage.promptTokens,
+					record.usage.completionTokens,
+					record.totalCost ?? 0,
+					record.duration,
+				),
 			);
+		}
+		for (const result of await Promise.allSettled(updates)) {
+			if (result.status === 'rejected') {
+				this.logger.warn('Failed to update agent execution thread metadata', {
+					executionId,
+					threadId,
+					error: result.reason,
+				});
+			}
 		}
 		if (params.telemetry) {
 			try {
@@ -421,15 +460,6 @@ export class AgentExecutionService {
 	}
 
 	/**
-	 * Whether the thread ever parked a run — a cheap negative filter in front of
-	 * the checkpoint lookup, which has no thread index and must parse each of the
-	 * agent's active checkpoints to find the thread's.
-	 */
-	async hasSuspendedRun(threadId: string): Promise<boolean> {
-		return await this.agentExecutionRepository.hasSuspendedRun(threadId);
-	}
-
-	/**
 	 * Backfill `model` on suspended runs in a thread that don't yet have it.
 	 * Called when the resumed run finishes — the model applies to the whole
 	 * suspend/resume cycle but only arrives once the resume completes.
@@ -469,27 +499,32 @@ export class AgentExecutionService {
 	/**
 	 * Delete a thread and all its associated runs. The FK on agent_execution
 	 * cascades, so deleting the thread removes the runs in one statement.
-	 * Blob-stored timelines are deleted in parallel with the thread row.
+	 * The transaction removes all database rows. External data is deleted after commit.
 	 */
 	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
-		// Verify ownership before deleting anything
-		const thread = await this.agentExecutionThreadRepository.findOneBy({
-			id: threadId,
-			projectId,
-			agentId,
+		const refs = await this.txRunner.run({}, async (ctx) => {
+			const deletion = await this.agentExecutionThreadRepository.deleteSession(
+				projectId,
+				agentId,
+				threadId,
+				ctx,
+			);
+			if (!deletion) return null;
+
+			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
+			return deletion;
 		});
-		if (!thread) return false;
+		if (!refs) return false;
 
-		const blobRefs = this.toBlobRefs(
-			await this.agentExecutionRepository.findBlobRefsByThreadId(threadId),
-		);
-
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
-		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
-			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
 			this.agentExecutionLogStore.delete(
-				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
+				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+					agentId,
+					threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
 			),
 		]);
 		return true;
