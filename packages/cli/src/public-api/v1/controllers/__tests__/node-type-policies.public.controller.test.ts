@@ -20,7 +20,7 @@ import { NodeTypePoliciesPublicController } from '../node-type-policies.public.c
 
 /**
  * Every public route must carry the same guards as the internal controllers it mirrors: the
- * node type policies license feature, the `nodeTypePolicy:manage` API-key scope, and a
+ * type availability policies license feature, the `nodeTypePolicy:manage` API-key scope, and a
  * `nodeTypePolicy:manage` RBAC check that is global-only everywhere except on the two
  * project-scoped routes.
  */
@@ -73,7 +73,7 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 	);
 
 	it.each(routeCases)(
-		'$handlerName is gated by the node type policies license feature',
+		'$handlerName is gated by the type availability policies license feature',
 		({ route }) => {
 			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		},

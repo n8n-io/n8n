@@ -12,7 +12,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry).toBeDefined();
 	});
 
-	it('is gated by the node type policies license feature, so an unlicensed instance skips init', () => {
+	it('is gated by the type availability policies license feature, so an unlicensed instance skips init', () => {
 		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
 
 		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);

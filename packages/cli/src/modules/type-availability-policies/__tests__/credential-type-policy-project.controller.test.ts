@@ -8,7 +8,7 @@ import { CredentialTypePolicyProjectController } from '../credential-type-policy
  * Every route on this controller must be project-scoped (`@ProjectScope`) on
  * `credentialTypePolicy:manage`, never `@GlobalScope` and never left ungated — a project admin
  * self-governs their own project's row, same as the sibling node-types controller. Every route
- * must also require the node type policies license feature.
+ * must also require the type availability policies license feature.
  */
 describe('CredentialTypePolicyProjectController route access scopes', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
@@ -32,7 +32,7 @@ describe('CredentialTypePolicyProjectController route access scopes', () => {
 		},
 	);
 
-	it('is gated by the node type policies license feature', () => {
+	it('is gated by the type availability policies license feature', () => {
 		for (const { route } of routeCases) {
 			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		}
