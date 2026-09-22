@@ -15,6 +15,7 @@ import {
 import { generatePairedItemData } from '@utils/utilities';
 
 import {
+	buildColumnTypeMap,
 	gristApiRequest,
 	gristBaseUrl,
 	parseAutoMappedInputs,
@@ -343,8 +344,15 @@ export class Grist implements INodeType {
 						qs.sort = parseSortProperties(sort.sortProperties);
 					}
 
-					if (filter?.filterProperties.length) {
-						const parsed = parseFilterProperties(filter.filterProperties);
+					if (filter?.filterProperties?.length) {
+						const columnsEndpoint = `/docs/${docId}/tables/${tableId}/columns`;
+						const { columns } = (await gristApiRequest.call(
+							this,
+							'GET',
+							columnsEndpoint,
+						)) as GristColumns;
+						const columnTypes = buildColumnTypeMap(columns);
+						const parsed = parseFilterProperties(filter.filterProperties, columnTypes);
 						qs.filter = JSON.stringify(parsed);
 					}
 

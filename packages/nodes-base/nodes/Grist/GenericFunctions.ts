@@ -9,6 +9,7 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type {
+	GristColumns,
 	GristCredentials,
 	GristDefinedFields,
 	GristFilterProperties,
@@ -99,11 +100,44 @@ export function isSafeInteger(val: number) {
 	return !isNaN(val) && val > Number.MIN_SAFE_INTEGER && val < Number.MAX_SAFE_INTEGER;
 }
 
-export function parseFilterProperties(filterProperties: GristFilterProperties) {
+// Grist reference types can include a target table name after a colon (e.g. Ref:Table1).
+const NUMERIC_COLUMN_TYPES = new Set(['Numeric', 'Int', 'Ref', 'RefList']);
+
+function isNumericColumnType(type?: string): boolean {
+	if (!type) {
+		return false;
+	}
+	const [baseType] = type.split(':');
+	return NUMERIC_COLUMN_TYPES.has(baseType);
+}
+
+export function buildColumnTypeMap(columns: GristColumns['columns'] = []): {
+	[columnId: string]: string;
+} {
+	return columns.reduce<{ [columnId: string]: string }>((acc, col) => {
+		if (col.fields?.type) {
+			acc[col.id] = col.fields.type;
+		}
+		return acc;
+	}, {});
+}
+
+export function parseFilterProperties(
+	filterProperties: GristFilterProperties,
+	columnTypes: { [columnId: string]: string } = {},
+) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
-		acc[cur.field].push(values);
+		const columnType = columnTypes[cur.field];
+		let value: string | number;
+		if (columnType === undefined || columnType === 'Any') {
+			value = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
+		} else if (isNumericColumnType(columnType) && isSafeInteger(Number(cur.values))) {
+			value = Number(cur.values);
+		} else {
+			value = cur.values;
+		}
+		acc[cur.field].push(value);
 		return acc;
 	}, {});
 }

@@ -9,7 +9,7 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { gristApiRequest } from '../GenericFunctions';
+import { buildColumnTypeMap, gristApiRequest, parseFilterProperties } from '../GenericFunctions';
 import { Grist } from '../Grist.node';
 
 vi.mock('../GenericFunctions', async (importOriginal) => {
@@ -337,5 +337,166 @@ describe('Grist authentication parameter', () => {
 		);
 
 		expect(resolved?.authentication).toBe('apiKey');
+	});
+});
+
+describe('parseFilterProperties', () => {
+	it('keeps a numeric-looking value as string for a Text column', () => {
+		const result = parseFilterProperties([{ field: 'name', values: '123' }], { name: 'Text' });
+		expect(result).toEqual({ name: ['123'] });
+		expect(typeof result.name[0]).toBe('string');
+	});
+
+	it('coerces to number for a Numeric column', () => {
+		const result = parseFilterProperties([{ field: 'price', values: '123' }], {
+			price: 'Numeric',
+		});
+		expect(result).toEqual({ price: [123] });
+		expect(typeof result.price[0]).toBe('number');
+	});
+
+	it('coerces negative value to number for an Int column', () => {
+		const result = parseFilterProperties([{ field: 'count', values: '-5' }], { count: 'Int' });
+		expect(result).toEqual({ count: [-5] });
+		expect(typeof result.count[0]).toBe('number');
+	});
+
+	it('coerces zero to number for an Int column', () => {
+		const result = parseFilterProperties([{ field: 'count', values: '0' }], { count: 'Int' });
+		expect(result).toEqual({ count: [0] });
+		expect(typeof result.count[0]).toBe('number');
+	});
+
+	it('coerces to number for a Ref:Users column', () => {
+		const result = parseFilterProperties([{ field: 'owner', values: '42' }], {
+			owner: 'Ref:Users',
+		});
+		expect(result).toEqual({ owner: [42] });
+		expect(typeof result.owner[0]).toBe('number');
+	});
+
+	it('coerces to number for a RefList:Users column', () => {
+		const result = parseFilterProperties([{ field: 'members', values: '42' }], {
+			members: 'RefList:Users',
+		});
+		expect(result).toEqual({ members: [42] });
+		expect(typeof result.members[0]).toBe('number');
+	});
+
+	it('keeps value as string for a DateTime:America/New_York column', () => {
+		const result = parseFilterProperties([{ field: 'ts', values: '123' }], {
+			ts: 'DateTime:America/New_York',
+		});
+		expect(result).toEqual({ ts: ['123'] });
+		expect(typeof result.ts[0]).toBe('string');
+	});
+
+	it('keeps value as string for a Choice column', () => {
+		const resultNumeric = parseFilterProperties([{ field: 'color', values: '123' }], {
+			color: 'Choice',
+		});
+		expect(resultNumeric).toEqual({ color: ['123'] });
+
+		const resultAlpha = parseFilterProperties([{ field: 'color', values: 'abc' }], {
+			color: 'Choice',
+		});
+		expect(resultAlpha).toEqual({ color: ['abc'] });
+	});
+
+	it('keeps value as string for a Bool column', () => {
+		const result = parseFilterProperties([{ field: 'flag', values: '123' }], { flag: 'Bool' });
+		expect(result).toEqual({ flag: ['123'] });
+		expect(typeof result.flag[0]).toBe('string');
+	});
+
+	it('auto-detects (coerces) for an Any column', () => {
+		const result = parseFilterProperties([{ field: 'data', values: '123' }], { data: 'Any' });
+		expect(result).toEqual({ data: [123] });
+		expect(typeof result.data[0]).toBe('number');
+	});
+
+	it('auto-detects (coerces) when column type is missing from the map', () => {
+		const result = parseFilterProperties([{ field: 'data', values: '123' }], {});
+		expect(result).toEqual({ data: [123] });
+		expect(typeof result.data[0]).toBe('number');
+	});
+
+	it('keeps non-numeric string as string even for a Numeric column', () => {
+		const result = parseFilterProperties([{ field: 'price', values: 'abc' }], {
+			price: 'Numeric',
+		});
+		expect(result).toEqual({ price: ['abc'] });
+		expect(typeof result.price[0]).toBe('string');
+	});
+
+	it('keeps comma-separated number as string for a Numeric column', () => {
+		const result = parseFilterProperties([{ field: 'price', values: '123,456' }], {
+			price: 'Numeric',
+		});
+		expect(result).toEqual({ price: ['123,456'] });
+		expect(typeof result.price[0]).toBe('string');
+	});
+
+	it('keeps value exceeding MAX_SAFE_INTEGER as string for a Text column', () => {
+		const result = parseFilterProperties([{ field: 'bigId', values: '99999999999999999999' }], {
+			bigId: 'Text',
+		});
+		expect(result).toEqual({ bigId: ['99999999999999999999'] });
+		expect(typeof result.bigId[0]).toBe('string');
+	});
+
+	it('evaluates each field against its own column type', () => {
+		const result = parseFilterProperties(
+			[
+				{ field: 'textField', values: '123' },
+				{ field: 'numericField', values: '456' },
+			],
+			{ textField: 'Text', numericField: 'Numeric' },
+		);
+		expect(result).toEqual({ textField: ['123'], numericField: [456] });
+		expect(typeof result.textField[0]).toBe('string');
+		expect(typeof result.numericField[0]).toBe('number');
+	});
+
+	it('accumulates duplicate field entries into the same array', () => {
+		const result = parseFilterProperties(
+			[
+				{ field: 'name', values: '123' },
+				{ field: 'name', values: '456' },
+			],
+			{ name: 'Text' },
+		);
+		expect(result).toEqual({ name: ['123', '456'] });
+		expect(typeof result.name[0]).toBe('string');
+		expect(typeof result.name[1]).toBe('string');
+	});
+});
+
+describe('buildColumnTypeMap', () => {
+	it('maps well-formed column entries', () => {
+		const result = buildColumnTypeMap([
+			{ id: 'A', fields: { type: 'Text' } },
+			{ id: 'B', fields: { type: 'Numeric' } },
+		]);
+		expect(result).toEqual({ A: 'Text', B: 'Numeric' });
+	});
+
+	it('skips entries with missing fields', () => {
+		const result = buildColumnTypeMap([{ id: 'A', fields: { type: 'Text' } }, { id: 'B' }]);
+		expect(result).toEqual({ A: 'Text' });
+		expect('B' in result).toBe(false);
+	});
+
+	it('skips entries where fields has no type', () => {
+		const result = buildColumnTypeMap([
+			{ id: 'A', fields: { type: 'Text' } },
+			{ id: 'B', fields: {} },
+		]);
+		expect(result).toEqual({ A: 'Text' });
+		expect('B' in result).toBe(false);
+	});
+
+	it('returns an empty object for empty input', () => {
+		expect(buildColumnTypeMap([])).toEqual({});
 	});
 });
