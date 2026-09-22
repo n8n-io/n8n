@@ -22,7 +22,7 @@ import {
 	type ExecuteForChatConfig,
 	type ResumeForChatConfig,
 } from './agent-execution-orchestrator.service';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -30,6 +30,7 @@ import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 interface PrepareDraftRunInput {
 	agentId: string;
 	projectId: string;
+	user: User;
 	sessionId?: string;
 	credentialProvider: CredentialProvider;
 }
@@ -158,12 +159,19 @@ export class AgentTestRunService {
 	async prepareDraftRun({
 		agentId,
 		projectId,
+		user,
 		sessionId,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
 		if (sessionId) {
-			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+			if (
+				!(await this.agentExecutionService.canUsePreviewThread(
+					sessionId,
+					projectId,
+					agentId,
+					user.id,
+				))
+			) {
 				return { status: 'session_not_found' };
 			}
 		}
@@ -244,8 +252,14 @@ export class AgentTestRunService {
 		response,
 		...input
 	}: ResumeDraftRunInput): Promise<AgentTestRunResult> {
-		const existing = await this.agentExecutionService.findThreadById(sessionId);
-		if (existing && !threadBelongsTo(existing, input.projectId, input.agentId)) {
+		if (
+			!(await this.agentExecutionService.canUsePreviewThread(
+				sessionId,
+				input.projectId,
+				input.agentId,
+				input.user.id,
+			))
+		) {
 			return { status: 'session_not_found' };
 		}
 
