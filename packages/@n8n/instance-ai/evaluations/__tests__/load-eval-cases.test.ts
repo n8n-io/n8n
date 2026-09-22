@@ -22,7 +22,7 @@ describe('loadEvalCasesFromDir', () => {
 		writeFileSync(join(dir, 'good-case.json'), JSON.stringify(validCase));
 		writeFileSync(
 			join(dir, 'newer-schema-case.json'),
-			JSON.stringify({ ...validCase, requiresMemoryCompaction: true }),
+			JSON.stringify({ ...validCase, keyFromANewerSchema: true }),
 		);
 	});
 
@@ -46,7 +46,7 @@ describe('loadEvalCasesFromDir', () => {
 		expect(loaded.map((c) => c.fileSlug)).toEqual(['good-case']);
 		expect(onInvalid).toHaveBeenCalledTimes(1);
 		expect(onInvalid.mock.calls[0][0]).toContain('newer-schema-case.json');
-		expect(onInvalid.mock.calls[0][1].message).toContain('requiresMemoryCompaction');
+		expect(onInvalid.mock.calls[0][1].message).toContain('keyFromANewerSchema');
 	});
 
 	it('still throws on an invalid file by default, so the runner never grades a partial corpus', () => {
