@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255) NOT NULL, "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT 0, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(36) NOT NULL, "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT 0, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -21,7 +21,7 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
 | integrations | TEXT | '[]' | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| projectId | varchar(255) |  | false |  | [project](project.md) |  |
+| projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | revision | INTEGER | 0 | false |  |  |  |
 | schema | TEXT |  | true |  |  |  |
 | setupCompletedAt | datetime(3) |  | true |  |  |  |
@@ -82,7 +82,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
@@ -153,13 +153,13 @@ erDiagram
 "agent_chat_subscriptions" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
-  varchar_255_ credentialId PK
+  varchar_36_ credentialId PK
   varchar_64_ integrationType PK
   varchar_255_ threadId PK
   datetime_3_ updatedAt
 }
 "agent_checkpoints" {
-  varchar_255_ agentId FK
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   boolean expired
   varchar_255_ runId PK
@@ -192,7 +192,7 @@ erDiagram
   varchar_128_ id PK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK
@@ -265,7 +265,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
@@ -286,7 +286,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   datetime_3_ updatedAt
 }
 "agents_observation_cursors" {
@@ -294,7 +294,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId PK
+  varchar_128_ observationScopeId PK
   datetime_3_ updatedAt
 }
 "agents_observation_locks" {
@@ -302,7 +302,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId PK
+  varchar_128_ observationScopeId PK
   varchar_20_ taskKind PK
   datetime_3_ updatedAt
 }
@@ -311,7 +311,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

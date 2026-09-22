@@ -63,7 +63,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
@@ -97,7 +97,7 @@ erDiagram
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK

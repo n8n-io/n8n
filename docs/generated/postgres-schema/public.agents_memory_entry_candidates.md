@@ -15,7 +15,7 @@
 | runId | varchar(255) |  | false |  |  | Agent run that issued the memory capture tool call |
 | sourceMessageId | varchar(36) |  | true |  | [public.agents_messages](public.agents_messages.md) | Persisted message that contains the exact source evidence |
 | status | varchar(16) | 'pending'::character varying | false |  |  | Candidate processing state |
-| threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | Conversation thread where the agent flagged this candidate |
+| threadId | varchar(128) |  | false |  | [public.agents_threads](public.agents_threads.md) | Conversation thread where the agent flagged this candidate |
 | toolCallId | varchar(255) |  | false |  |  | Model tool-call ID used to make enqueue replay-safe |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -77,7 +77,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
@@ -88,7 +88,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
@@ -106,7 +106,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_resources" {
@@ -121,7 +121,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }

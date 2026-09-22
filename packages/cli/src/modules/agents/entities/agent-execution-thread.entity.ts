@@ -56,7 +56,7 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	project: Project;
 
 	@Index()
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: 36 })
 	projectId: string;
 
 	/**

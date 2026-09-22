@@ -11,7 +11,7 @@
 | id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) |  |  |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
-| projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
+| projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | sessionNumber | integer | 0 | false |  |  |  |
 | taskId | varchar(32) |  | true |  |  | Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows |
 | taskVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) | Published agent_history version that supplied the task snapshot |
@@ -69,7 +69,7 @@ erDiagram
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK
@@ -87,7 +87,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt

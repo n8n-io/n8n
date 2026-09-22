@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entry_sources" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "memoryEntryId" varchar(36) NOT NULL, "observationId" varchar(36), "threadId" varchar(255) NOT NULL, "evidenceHash" varchar(64) NOT NULL, "evidenceText" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "candidateId" varchar(36), CONSTRAINT "CHK_agents_memory_entry_sources_exactly_one_source" CHECK (("observationId" IS NOT NULL AND "candidateId" IS NULL) OR ("observationId" IS NULL AND "candidateId" IS NOT NULL)), CONSTRAINT "FK_c38e8a57a36b880e39a52ada2e8" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_4706f6223313959b7437a2b48df" FOREIGN KEY ("memoryEntryId") REFERENCES "agents_memory_entries" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_cb7c15d22fd068a0806aa57fc03" FOREIGN KEY ("observationId") REFERENCES "agents_observations" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_451d387a182fa8dd8002dfc3a77" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_87640d646b020c3be8e16cd0fa6" FOREIGN KEY ("candidateId") REFERENCES "agents_memory_entry_candidates" ("id") ON DELETE CASCADE)
+CREATE TABLE "agents_memory_entry_sources" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "memoryEntryId" varchar(36) NOT NULL, "observationId" varchar(36), "threadId" varchar(128) NOT NULL, "evidenceHash" varchar(64) NOT NULL, "evidenceText" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "candidateId" varchar(36), CONSTRAINT "CHK_agents_memory_entry_sources_exactly_one_source" CHECK (("observationId" IS NOT NULL AND "candidateId" IS NULL) OR ("observationId" IS NULL AND "candidateId" IS NOT NULL)), CONSTRAINT "FK_c38e8a57a36b880e39a52ada2e8" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_4706f6223313959b7437a2b48df" FOREIGN KEY ("memoryEntryId") REFERENCES "agents_memory_entries" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_cb7c15d22fd068a0806aa57fc03" FOREIGN KEY ("observationId") REFERENCES "agents_observations" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_451d387a182fa8dd8002dfc3a77" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_87640d646b020c3be8e16cd0fa6" FOREIGN KEY ("candidateId") REFERENCES "agents_memory_entry_candidates" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -23,7 +23,7 @@ CREATE TABLE "agents_memory_entry_sources" ("id" varchar(36) PRIMARY KEY NOT NUL
 | id | varchar(36) |  | false |  |  |  |
 | memoryEntryId | varchar(36) |  | false |  | [agents_memory_entries](agents_memory_entries.md) |  |
 | observationId | varchar(36) |  | true |  | [agents_observations](agents_observations.md) |  |
-| threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| threadId | varchar(128) |  | false |  | [agents_threads](agents_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -71,7 +71,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   datetime_3_ updatedAt
 }
 "agents" {
@@ -81,7 +81,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
@@ -102,7 +102,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
@@ -126,7 +126,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
