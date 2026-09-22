@@ -35,6 +35,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -121,6 +122,7 @@ export class CredentialsPublicController {
 		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
 	@Get('/')
@@ -216,7 +218,9 @@ export class CredentialsPublicController {
 			credentialType: credential.type,
 			credentialId: credential.id,
 			credentialName: credential.name,
-			credentialDescriptionLength: credential.description?.length ?? 0,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: credential.description?.length ?? 0,
+			}),
 			publicApi: true,
 			projectId: project?.id,
 			projectType: project?.type,

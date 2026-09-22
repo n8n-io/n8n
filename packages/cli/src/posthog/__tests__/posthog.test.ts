@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
@@ -155,6 +156,47 @@ describe('PostHog', () => {
 	describe('getFeatureFlags', () => {
 		const createdAt = new Date();
 
+		it('uses one instance result for all users and backend consumers', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
+				mockEvaluatedFlags({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
+				}),
+			);
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			for (const id of ['user-1', 'user-2']) {
+				const flags = await ph.getFeatureFlags({ id, createdAt });
+				expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
+			}
+			expect((await ph.getInstanceFeatureFlags())[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
+				groups: { company: instanceId },
+				personProperties: { instance_id: instanceId, version_cli: N8N_VERSION },
+			});
+		});
+
+		it.each([false, undefined, 'true', 'variant'])(
+			'keeps descriptions disabled when the instance result is %s',
+			async (instanceResult) => {
+				(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
+					mockEvaluatedFlags(
+						distinctId === `company_${instanceId}`
+							? instanceResult === undefined
+								? {}
+								: { [CREDENTIAL_DESCRIPTIONS_FLAG]: instanceResult }
+							: { [CREDENTIAL_DESCRIPTIONS_FLAG]: true },
+					),
+				);
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+				expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(false);
+			},
+		);
+
 		it('fetches flags from PostHog on first call', async () => {
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
@@ -182,7 +224,7 @@ describe('PostHog', () => {
 			await ph.init();
 
 			const expected = {
-				featureFlags: flags,
+				featureFlags: { ...flags, [CREDENTIAL_DESCRIPTIONS_FLAG]: false },
 				featureFlagPayloads: payloads,
 			};
 
@@ -192,7 +234,7 @@ describe('PostHog', () => {
 			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual(
 				expected,
 			);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
 		it('returns cached flags on second call', async () => {
@@ -205,9 +247,9 @@ describe('PostHog', () => {
 			const first = await ph.getFeatureFlags({ id: userId, createdAt });
 			const second = await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(first).toEqual(flags);
-			expect(second).toEqual(flags);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+			expect(first).toEqual({ ...flags, [CREDENTIAL_DESCRIPTIONS_FLAG]: false });
+			expect(second).toEqual({ ...flags, [CREDENTIAL_DESCRIPTIONS_FLAG]: false });
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
 		it('refetches after cache expires', async () => {
@@ -221,12 +263,12 @@ describe('PostHog', () => {
 			await ph.init();
 
 			await ph.getFeatureFlags({ id: userId, createdAt });
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 
 			spy.mockReturnValue(now + 10 * 60 * 1000 + 1);
 
 			await ph.getFeatureFlags({ id: userId, createdAt });
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(4);
 
 			spy.mockRestore();
 		});
@@ -240,7 +282,7 @@ describe('PostHog', () => {
 			await ph.getFeatureFlags({ id: userId, createdAt });
 			await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(4);
 		});
 
 		describe('env-var overrides', () => {
@@ -319,6 +361,7 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					'some-other-flag': true,
 					'multivariate-flag': 'variant',
 					'boolean-flag': true,
@@ -336,7 +379,10 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ 'contested-flag': 'variant' });
+				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					'contested-flag': 'variant',
+				});
 			});
 
 			it('applies flag and payload overrides together', async () => {
@@ -369,6 +415,7 @@ describe('PostHog', () => {
 
 				expect(data).toEqual({
 					featureFlags: {
+						[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 						'value-only-flag': 'variant',
 						'payload-flag': 'variant',
 						'untouched-flag': true,
@@ -393,7 +440,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ 'live-flag': false });
+				expect(flags).toEqual({ [CREDENTIAL_DESCRIPTIONS_FLAG]: false, 'live-flag': false });
 			});
 
 			// A dedicated per-feature env var must have the final say, so the
@@ -421,7 +468,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ 'some-other-flag': true });
+				expect(flags).toEqual({ [CREDENTIAL_DESCRIPTIONS_FLAG]: false, 'some-other-flag': true });
 			});
 
 			it('falls back to env overrides when PostHog throws', async () => {
@@ -433,7 +480,10 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ '084_eval_collections': true });
+				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					'084_eval_collections': true,
+				});
 			});
 
 			it('force-enables the agent-evals flag when N8N_AGENT_EVALS_ENABLED is set', async () => {
@@ -457,7 +507,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ '101_agent_evals': true });
+				expect(flags).toEqual({ [CREDENTIAL_DESCRIPTIONS_FLAG]: false, '101_agent_evals': true });
 			});
 
 			it('force-enables the canvas-node-context flag when N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED is set', async () => {
@@ -485,7 +535,10 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ '104_canvas_aia_node_context': true });
+				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					'104_canvas_aia_node_context': true,
+				});
 			});
 
 			it('applies all env overrides independently when several are set at once', async () => {
@@ -503,6 +556,7 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,

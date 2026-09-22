@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -85,6 +86,7 @@ const mockedProjectsApi = vi.mocked(projectsApi);
 describe('CredentialsView', () => {
 	beforeEach(async () => {
 		createTestingPinia({ initialState });
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		await router.push('/');
 		await router.isReady();
 

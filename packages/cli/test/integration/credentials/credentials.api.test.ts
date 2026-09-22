@@ -1,3 +1,4 @@
+import { PostHogClient } from '@/posthog';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -7,7 +8,7 @@ import {
 	randomName,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, ListQueryDb } from '@n8n/db';
 import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
@@ -1722,6 +1723,14 @@ describe('PATCH /credentials/:id', () => {
 });
 
 describe('credential description', () => {
+	beforeEach(() => {
+		vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue({
+			[CREDENTIAL_DESCRIPTIONS_FLAG]: true,
+		});
+	});
+	afterEach(() => {
+		vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue({});
+	});
 	const saveOwned = async () =>
 		await saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' });
 
@@ -1729,6 +1738,62 @@ describe('credential description', () => {
 		await authOwnerAgent
 			.patch(`/credentials/${credentialId}`)
 			.send({ ...randomCredentialPayload(), description });
+
+	test.each([false, undefined])(
+		'ignores description writes and hides saved values when the flag is %s',
+		async (enabled) => {
+			const saved = await saveOwned();
+			const description = 'Read-only reporting account';
+			await patchDescription(saved.id, description);
+			vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue(
+				enabled === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: enabled },
+			);
+
+			for (const ignored of [null, 42, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)]) {
+				const patched = await patchDescription(saved.id, ignored);
+				expect(patched.statusCode).toBe(200);
+				expect(patched.body.data).not.toHaveProperty('description');
+				const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: saved.id });
+				expect(stored.description).toBe(description);
+			}
+
+			const fetched = await authOwnerAgent.get(`/credentials/${saved.id}`);
+			expect(fetched.statusCode).toBe(200);
+			expect(fetched.body.data).not.toHaveProperty('description');
+			for (const query of [{}, { select: JSON.stringify(['description']) }]) {
+				const listed = await authOwnerAgent.get('/credentials').query(query);
+				expect(listed.statusCode).toBe(200);
+				expect(listed.body.data).toHaveLength(1);
+				expect(listed.body.data[0]).toHaveProperty('name');
+				expect(listed.body.data[0]).not.toHaveProperty('description');
+			}
+
+			vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue({
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: true,
+			});
+			const restored = await authOwnerAgent.get(`/credentials/${saved.id}`);
+			expect(restored.body.data.description).toBe(description);
+		},
+	);
+
+	test.each([false, undefined])(
+		'ignores invalid description input on create when the flag is %s',
+		async (enabled) => {
+			vi.mocked(Container.get(PostHogClient).getInstanceFeatureFlags).mockResolvedValue(
+				enabled === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: enabled },
+			);
+			const response = await authOwnerAgent
+				.post('/credentials')
+				.send({ ...randomCredentialPayload(), description: 42 });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).not.toHaveProperty('description');
+			const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+				id: response.body.data.id,
+			});
+			expect(stored.description).toBeNull();
+		},
+	);
 
 	test('a PATCH writes a description and a later GET returns the same text', async () => {
 		const saved = await saveOwned();

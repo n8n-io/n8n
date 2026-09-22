@@ -1,6 +1,7 @@
 import {
 	AGENT_EVALS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
@@ -145,6 +146,27 @@ export class PostHogClient {
 	async getFeatureFlagsAndPayloads(
 		user: Pick<PublicUser, 'id' | 'createdAt'>,
 	): Promise<FeatureFlagData> {
+		// The editor and instance services must use the same enrollment result.
+		const [data, instanceFlags] = await Promise.all([
+			this.getFlagsWithOverrides(user),
+			this.getInstanceFeatureFlags(),
+		]);
+		return {
+			...data,
+			featureFlags: {
+				...data.featureFlags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: instanceFlags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
+			},
+		};
+	}
+
+	async getInstanceFeatureFlags(): Promise<FeatureFlags> {
+		return (await this.getFlagsWithOverrides()).featureFlags;
+	}
+
+	private async getFlagsWithOverrides(
+		user?: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlagData> {
 		// Catch PostHog errors here (rather than letting them propagate) so
 		// env-var overrides still apply when PostHog is unreachable. Without
 		// this, a transient PostHog outage would short-circuit the override
@@ -159,12 +181,14 @@ export class PostHogClient {
 	}
 
 	private async fetchFlagsFromPostHog(
-		user: Pick<PublicUser, 'id' | 'createdAt'>,
+		user?: Pick<PublicUser, 'id' | 'createdAt'>,
 	): Promise<FeatureFlagData> {
 		if (!this.postHog) return { featureFlags: {}, featureFlagPayloads: {} };
 
 		const { instanceId } = this.instanceSettings;
-		const fullId = [instanceId, user.id].join('#');
+		const fullId = user
+			? [instanceId, user.id].join('#')
+			: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`;
 
 		const cached = this.flagsCache.get(fullId);
 		if (cached && cached.expiresAt > Date.now()) {
@@ -173,7 +197,7 @@ export class PostHogClient {
 
 		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
 			personProperties: {
-				created_at_timestamp: user.createdAt.getTime().toString(),
+				...(user && { created_at_timestamp: user.createdAt.getTime().toString() }),
 				instance_id: instanceId,
 				version_cli: N8N_VERSION,
 			},

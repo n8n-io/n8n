@@ -2419,6 +2419,7 @@ export class InstanceAiService {
 			progressiveBuildingEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
@@ -2447,6 +2448,7 @@ export class InstanceAiService {
 			nodeUsageEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			modelId,
 		});
 

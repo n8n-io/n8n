@@ -1,3 +1,5 @@
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
@@ -46,6 +48,37 @@ describe('credentials.store', () => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 	});
+
+	it.each([false, undefined])(
+		'omits descriptions from create and update requests when the flag is %s',
+		async (flag) => {
+			usePostHog().overrides =
+				flag === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: flag } };
+			const store = useCredentialsStore();
+			const saved = mock<ICredentialsResponse>({
+				id: 'credential-id',
+				description: 'Saved description',
+			});
+			vi.mocked(credentialsApi.createNewCredential).mockResolvedValue(saved);
+			vi.mocked(credentialsApi.updateCredential).mockResolvedValue(saved);
+			const payload = {
+				id: saved.id,
+				name: 'Renamed credential',
+				type: 'httpBasicAuth',
+				data: {},
+				description: 'Hidden edit',
+			};
+			await store.createNewCredential(payload);
+			await store.updateCredential({ id: saved.id, data: payload });
+			expect(vi.mocked(credentialsApi.createNewCredential).mock.calls[0][1]).not.toHaveProperty(
+				'description',
+			);
+			expect(vi.mocked(credentialsApi.updateCredential).mock.calls[0][2]).not.toHaveProperty(
+				'description',
+			);
+			expect(payload.description).toBe('Hidden edit');
+		},
+	);
 
 	describe('isCredentialTypeTestable', () => {
 		/**
@@ -441,6 +474,7 @@ describe('credentials.store', () => {
 		it.each(['Use for production reports', null])(
 			'passes description %j as credential metadata',
 			async (description) => {
+				usePostHog().overrides = { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: true } };
 				const store = useCredentialsStore();
 				const credential = mock<ICredentialsResponse>({ id: 'new-cred', description });
 				vi.mocked(credentialsApi.createNewCredential).mockResolvedValue(credential);

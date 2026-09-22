@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
@@ -13,6 +14,8 @@ type Props = {
 };
 
 defineProps<Props>();
+const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
+
 const emit = defineEmits<{ 'update:description': [value: string] }>();
 
 const i18n = useI18n();
@@ -21,7 +24,7 @@ const descriptionId = useId();
 
 <template>
 	<div :class="$style.container">
-		<ElRow>
+		<ElRow v-if="credentialDescriptionsEnabled">
 			<ElCol :span="8" :class="$style.label">
 				<N8nInputLabel
 					:input-name="descriptionId"

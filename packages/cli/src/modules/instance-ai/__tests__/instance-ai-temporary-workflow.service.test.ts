@@ -42,6 +42,7 @@ function createService() {
 	context.workflowService.archiveIfAiTemporary = archiveIfAiTemporary;
 	adapterService.createContext.mockReturnValue(context);
 	adapterService.resolveExperimentGates.mockResolvedValue({
+		credentialDescriptionsEnabled: false,
 		configEvalsEnabled: false,
 		mcpConnectionsEnabled: false,
 		conversationHistoryEnabled: false,

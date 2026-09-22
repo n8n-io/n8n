@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { setActivePinia } from 'pinia';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -61,6 +62,7 @@ describe('CredentialCard', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		projectsStore = useProjectsStore();
 		settingsStore = useSettingsStore();
 		settingsStore.settings = {
@@ -73,6 +75,15 @@ describe('CredentialCard', () => {
 		mockAuthorize.mockReset();
 		mockIsOAuthCredentialType.mockReset();
 		mockIsOAuthCredentialType.mockReturnValue(true);
+	});
+
+	it.each([false, undefined])('hides stored descriptions when the flag is %s', (enabled) => {
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(Boolean(enabled));
+		const data = createCredential({ description: 'Stored description' });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
+		expect(data.description).toBe('Stored description');
 	});
 
 	it('shows the full description as plain text on hover', async () => {

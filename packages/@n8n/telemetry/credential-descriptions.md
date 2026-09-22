@@ -7,6 +7,10 @@ among users who create or update a credential through the internal credential AP
 in the same seven-day window. The editor uses this API.
 Use identified users on instances with the instrumentation enabled.
 
+The instance PostHog flag `115_credential_descriptions` must be boolean `true`.
+The backend evaluates it for the `company` group. When the flag is false or
+missing, credential events omit description properties and keep their prior shape.
+
 Use these backend events:
 
 - `User created credentials` with `source = backend` and `public_api = false`.

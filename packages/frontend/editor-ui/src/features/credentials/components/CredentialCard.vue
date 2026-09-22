@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -29,6 +30,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
+
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -267,7 +270,7 @@ function moveResource() {
 				/>
 			</span>
 		</div>
-		<N8nTooltip v-if="data.description" placement="top" as-child>
+		<N8nTooltip v-if="credentialDescriptionsEnabled && data.description" placement="top" as-child>
 			<template #content>{{ data.description }}</template>
 			<N8nText
 				tag="p"

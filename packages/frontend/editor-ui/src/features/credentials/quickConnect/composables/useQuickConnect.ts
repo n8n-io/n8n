@@ -1,3 +1,4 @@
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -17,6 +18,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 export function useQuickConnect() {
+	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const message = useMessage();
@@ -161,12 +163,12 @@ export function useQuickConnect() {
 			const credential =
 				connectParams.projectId ||
 				connectParams.workflowId ||
-				connectParams.description !== undefined
+				(credentialDescriptionsEnabled.value && connectParams.description !== undefined)
 					? await createAndAuthorize(credentialTypeName, nodeType, {
 							projectId: connectParams.projectId,
 							workflowId: connectParams.workflowId,
 							credentialFetchScope: connectParams.credentialFetchScope,
-							...(connectParams.description !== undefined
+							...(credentialDescriptionsEnabled.value && connectParams.description !== undefined
 								? { description: connectParams.description }
 								: {}),
 						})
@@ -211,7 +213,7 @@ export function useQuickConnect() {
 					{
 						id: '',
 						name: credentialType.displayName,
-						...(connectParams.description !== undefined
+						...(credentialDescriptionsEnabled.value && connectParams.description !== undefined
 							? { description: connectParams.description }
 							: {}),
 						type: credentialTypeName,

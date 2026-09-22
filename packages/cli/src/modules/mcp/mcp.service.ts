@@ -1,5 +1,6 @@
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
@@ -144,6 +145,7 @@ export type McpAppsResolution = {
 
 /** Per-user resolution of every PostHog-gated MCP feature. */
 export type McpFeatureFlags = {
+	credentialDescriptionsEnabled?: boolean;
 	mcpApps: McpAppsResolution;
 	/**
 	 * The instance-context read surface: the four tools, the `n8n://instance/context` resource,
@@ -270,6 +272,7 @@ export class McpService {
 		const flags = await this.postHogClient.getFeatureFlags(user);
 
 		return {
+			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled:
 				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
@@ -469,6 +472,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
+					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
 				}),
 			},
 		);
@@ -605,6 +609,7 @@ export class McpService {
 			this.credentialsService,
 			this.telemetry,
 			this.aiGatewayService,
+			featureFlags.credentialDescriptionsEnabled === true,
 		);
 
 		const listN8nGatewayServicesTool = createListN8nGatewayServicesTool(
