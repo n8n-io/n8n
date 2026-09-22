@@ -48,6 +48,7 @@ export function makeThread(): ThreadRuntime {
 		} | null,
 		setPendingWorkflowAttachment: vi.fn(),
 		clearPendingWorkflowAttachment: vi.fn(),
+		applyEvent: vi.fn(),
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 		connectSSE: vi.fn(),
