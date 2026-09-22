@@ -48,7 +48,7 @@ beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'TestRun', 'TestCaseExecution']);
 });
 
-describe('GET /workflows/:id/test-runs', () => {
+describe('GET /workflows/:workflowId/test-runs', () => {
 	test('should return the test runs of a workflow', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const first = await createTestRun(workflow.id, { status: 'completed' });
@@ -100,6 +100,61 @@ describe('GET /workflows/:id/test-runs', () => {
 		const workflow = await createWorkflow(undefined, restricted);
 
 		await restrictedAgent.get(`/workflows/${workflow.id}/test-runs`).expect(403);
+	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should return 400 for a status outside the set', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ status: 'paused' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for an unknown workflow', async () => {
+		// A member holds no global workflow scope, so the scope check has to look the workflow up.
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		const response = await memberAgent.get('/workflows/does-not-exist/test-runs');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
+	});
+
+	test('should paginate test runs via cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		await createTestRun(workflow.id, { status: 'completed' });
+		await createTestRun(workflow.id, { status: 'completed' });
+		await createTestRun(workflow.id, { status: 'completed' });
+
+		const firstPage = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ limit: 2 });
+
+		expect(firstPage.statusCode).toBe(200);
+		expect(firstPage.body.data).toHaveLength(2);
+		expect(firstPage.body.nextCursor).toEqual(expect.any(String));
+
+		const secondPage = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ cursor: firstPage.body.nextCursor });
+
+		expect(secondPage.statusCode).toBe(200);
+		expect(secondPage.body.data).toHaveLength(1);
+		expect(secondPage.body.nextCursor).toBeNull();
 	});
 });
 
@@ -225,7 +280,7 @@ describe('scope enforcement on read endpoints', () => {
 	});
 });
 
-describe('POST /workflows/:id/test-runs', () => {
+describe('POST /workflows/:workflowId/test-runs', () => {
 	beforeEach(() => {
 		testRunner.startTestRun.mockReset();
 		// Evaluations licensed and unlimited by default; individual tests override.

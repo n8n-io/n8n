@@ -27,6 +27,11 @@ paths:
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
+  /workflows/{workflowId}/test-runs:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getTestRuns.generated.yml
+    post:
+      $ref: ./handlers/workflows/spec/paths/createTestRun.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
