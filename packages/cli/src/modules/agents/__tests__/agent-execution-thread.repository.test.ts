@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mock } from 'vitest-mock-extended';
 
+import type { TransactionRunner } from '@n8n/db';
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -14,7 +15,10 @@ describe('AgentExecutionThreadRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentExecutionThreadRepository(mockDataSource as never);
+		repository = new AgentExecutionThreadRepository(
+			mockDataSource as never,
+			mock<TransactionRunner>(),
+		);
 	});
 
 	describe('findOrCreate', () => {
