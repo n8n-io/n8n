@@ -201,13 +201,73 @@ describe('active skills', () => {
 		]);
 	});
 
-	it('recovers a restored programmatic skill through the block when no anchor survives', async () => {
+	it('re-anchors a stamped tool activation on a later turn instead of the block', async () => {
 		const memory = new InMemoryMemory();
 		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder']);
 		const list = new AgentMessageList();
-		// A prior run activated the skill programmatically: the calling tool's
-		// result is in history, but there is no `load_skill` record and restore()
-		// clears mid-run anchors. The skill must still reach the model.
+		// Turn 1 activated the skill from a tool and stamped its result. On the
+		// next turn the body must ride on that result again, not the system block.
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+						activatedSkillIds: ['builder'],
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		await active.restore(list, scope);
+
+		expect(active.instructions()).toBeUndefined();
+		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
+			'Build one workflow.',
+		);
+	});
+
+	it('persists a tool activation stamp across serialization', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+					},
+				],
+			},
+		]);
+		await active.restore(list, scope);
+		await active.load('builder', { toolCallId: 'build-1' });
+
+		const roundTripped = AgentMessageList.deserialize(structuredClone(list.serialize()));
+		const stamped = roundTripped
+			.messages()
+			.flatMap((message) => ('content' in message ? message.content : []))
+			.find((part) => part.type === 'tool-call' && part.toolCallId === 'build-1');
+		expect(stamped).toMatchObject({ activatedSkillIds: ['builder'] });
+	});
+
+	it('recovers a restored programmatic skill through the block when no stamp survives', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder']);
+		const list = new AgentMessageList();
+		// Legacy data: a prior programmatic activation left no stamp and no
+		// `load_skill` record. The skill must still reach the model via the block.
 		list.addHistory([
 			{
 				role: 'assistant',

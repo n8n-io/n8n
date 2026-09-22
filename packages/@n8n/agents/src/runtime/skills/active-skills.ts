@@ -37,8 +37,6 @@ import type { AgentMessageList } from '../model/message-list';
  */
 export class ActiveSkills {
 	private readonly loaded = new Map<string, RuntimeSkillContent>();
-	/** skillId → toolCallId for activations this run without a recorded `load_skill` call. */
-	private readonly midRunAnchors = new Map<string, string>();
 	private list?: AgentMessageList;
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
@@ -51,7 +49,6 @@ export class ActiveSkills {
 
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
-		this.midRunAnchors.clear();
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -64,7 +61,11 @@ export class ActiveSkills {
 			list.activeSkillIds === undefined && this.scope
 				? await this.store?.load(this.scope)
 				: undefined;
-		const ids = list.activeSkillIds ?? stored ?? [...this.recordedLoads(list).values()];
+		const ids = list.activeSkillIds ??
+			stored ?? [
+				...this.recordedLoads(list).values(),
+				...this.stampedActivations(list).map(([, skillId]) => skillId),
+			];
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
 		for (const id of new Set(ids)) {
 			if (!registered.has(id)) continue;
@@ -90,9 +91,9 @@ export class ActiveSkills {
 		if (!this.loaded.has(skillId)) {
 			this.loaded.set(skillId, skill);
 			this.list.activeSkillIds = [...this.loaded.keys()];
-			// The first activating call carries the skill text in its result. A
-			// repeat load must not move it and rewrite the cached prompt behind it.
-			if (anchor) this.midRunAnchors.set(skillId, anchor.toolCallId);
+			// Stamp the activating tool result so the body re-anchors there on a
+			// later turn instead of falling back into the system prompt.
+			if (anchor) this.list.stampActivatedSkill(anchor.toolCallId, skillId);
 			await this.persist();
 		}
 		return skill;
@@ -188,12 +189,13 @@ export class ActiveSkills {
 		const anchors = new Map<string, string>();
 		if (this.list) {
 			const deliverable = this.deliverableToolResults();
-			for (const [toolCallId, skillId] of loads ?? this.recordedLoads(this.list)) {
-				if (!anchors.has(skillId) && this.loaded.has(skillId) && deliverable.has(toolCallId)) {
-					anchors.set(skillId, toolCallId);
-				}
-			}
-			for (const [skillId, toolCallId] of this.midRunAnchors) {
+			// `load_skill` results and tool results that stamped a programmatic
+			// activation are both valid anchors; the stamp is what survives a turn.
+			const sources: Array<[string, string]> = [
+				...(loads ?? this.recordedLoads(this.list)),
+				...this.stampedActivations(this.list),
+			];
+			for (const [toolCallId, skillId] of sources) {
 				if (!anchors.has(skillId) && this.loaded.has(skillId) && deliverable.has(toolCallId)) {
 					anchors.set(skillId, toolCallId);
 				}
@@ -201,6 +203,25 @@ export class ActiveSkills {
 		}
 		const inBlock = [...this.loaded.keys()].filter((id) => !anchors.has(id));
 		return { anchors, inBlock };
+	}
+
+	/**
+	 * `[toolCallId, skillId]` pairs for tool results that stamped a programmatic
+	 * skill activation (see `stampActivatedSkill`). Unlike `load_skill` records,
+	 * these carry activations a tool started itself, so a post-build skill
+	 * re-anchors to its tool result on the next turn instead of the system block.
+	 */
+	private stampedActivations(list: AgentMessageList): Array<[string, string]> {
+		const pairs: Array<[string, string]> = [];
+		for (const message of list.messages()) {
+			if (!('content' in message)) continue;
+			for (const part of message.content) {
+				if (part.type === 'tool-call' && Array.isArray(part.activatedSkillIds)) {
+					for (const skillId of part.activatedSkillIds) pairs.push([part.toolCallId, skillId]);
+				}
+			}
+		}
+		return pairs;
 	}
 
 	/**
