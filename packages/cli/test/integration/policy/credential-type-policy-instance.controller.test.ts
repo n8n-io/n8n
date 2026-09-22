@@ -31,8 +31,8 @@ afterEach(async () => {
 });
 
 /**
- * GOV-88 AC: a member has neither `nodeTypePolicy:manage` nor `credentialTypePolicy:manage`, so
- * this only proves the route is gated at all. That the two permissions are independent is
+ * A member has neither `nodeTypePolicy:manage` nor `credentialTypePolicy:manage`, so this only
+ * proves the route is gated at all. That the two permissions are independent is
  * `@n8n/permissions`' own test, not this controller's.
  */
 describe('credential type availability policy instance controller RBAC', () => {
@@ -128,8 +128,7 @@ describe('credential type availability policy instance controller admin happy pa
 		expect(fetchedAsCredential.statusCode).toBe(200);
 
 		// The document has kind `credential-types`: the node-types instance controller must not
-		// reach it by id, and vice versa — the same protection GOV-43 added, now proven through
-		// this controller's own route.
+		// reach it by id, and vice versa — proven here through this controller's own route.
 		const fetchedAsNode = await testServer
 			.authAgentFor(owner)
 			.get(`/node-type-policies/policies/${policyId}`);

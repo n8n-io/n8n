@@ -104,9 +104,9 @@ describe('credential type availability policy project controller admin happy pat
 });
 
 /**
- * GOV-89 AC: a project can tighten an instance policy, never loosen it. The composition itself
- * is GOV-4's, already proven generically; this proves the plumbing carries `credential-types`
- * through both new routes to that same, unmodified composition.
+ * A project can tighten an instance policy, never loosen it. The composition itself is proven
+ * generically elsewhere; this proves the plumbing carries `credential-types` through both new
+ * routes to that same, unmodified composition.
  */
 describe('credential type availability policy: instance deny beats a project allow', () => {
 	test('a project admin allowing a credential type the instance blocks does not unblock it', async () => {
