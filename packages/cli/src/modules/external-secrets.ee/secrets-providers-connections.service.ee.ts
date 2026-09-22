@@ -26,6 +26,7 @@ import {
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 } from '@/credentials/credential-dependency.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
@@ -115,6 +116,7 @@ export class SecretsProvidersConnectionsService {
 		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
+		this.assertNotConfigFileManaged(connection);
 		await this.applyConnectionUpdates(connection, updates);
 		await this.repository.save(connection);
 
@@ -133,6 +135,7 @@ export class SecretsProvidersConnectionsService {
 		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
+		this.assertNotConfigFileManaged(connection);
 		await this.applyConnectionUpdates(connection, updates);
 		await this.repository.save(connection);
 
@@ -215,6 +218,7 @@ export class SecretsProvidersConnectionsService {
 		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
+		this.assertNotConfigFileManaged(connection);
 		const projectInfo = this.extractProjectInfo(connection);
 		const dependencyId = connection.id.toString();
 
@@ -247,6 +251,14 @@ export class SecretsProvidersConnectionsService {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 		return connection;
+	}
+
+	private assertNotConfigFileManaged(connection: SecretsProviderConnection): void {
+		if (connection.managedBy === 'config-file') {
+			throw new ForbiddenError(
+				`Cannot modify connection "${connection.providerKey}": it is managed by the external secrets config file. Edit the file and restart n8n to make changes.`,
+			);
+		}
 	}
 
 	async getConnection(providerKey: string): Promise<SecretsProviderConnection> {
@@ -507,6 +519,7 @@ export class SecretsProvidersConnectionsService {
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
+		this.assertNotConfigFileManaged(connection);
 
 		const connectionId = connection.id;
 		await this.credentialDependencyService.deleteDependencyById({
