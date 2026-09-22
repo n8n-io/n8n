@@ -262,9 +262,11 @@ export class McpConnection {
 	 * without requiring a network connection.
 	 */
 	declaresApproval(): boolean {
-		const { requireApproval } = this.config;
+		const { configureTools, requireApproval } = this.config;
 		return (
-			requireApproval === true || (Array.isArray(requireApproval) && requireApproval.length > 0)
+			configureTools !== undefined ||
+			requireApproval === true ||
+			(Array.isArray(requireApproval) && requireApproval.length > 0)
 		);
 	}
 

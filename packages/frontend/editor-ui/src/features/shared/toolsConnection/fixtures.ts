@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS } from '@n8n/api-types';
+
 import type {
 	AgentConnectionItem,
 	DataStoreConnectionItem,
@@ -30,7 +32,7 @@ const connectedNotion: McpServerConnectionItem = {
 	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-notion-1', required: true }],
 	settings: {
-		categories: { read: 'allow', write: 'ask' },
+		categories: { ...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS.categories },
 		tools: { 'notion.update-database': 'block' },
 	},
 	longDescription:

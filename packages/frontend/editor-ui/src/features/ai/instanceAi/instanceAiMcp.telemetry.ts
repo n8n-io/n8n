@@ -9,10 +9,6 @@ type McpSettingsSource = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.INSTANCE_AI.MCP_SETTINGS_OPENED
 >['source'];
 
-type McpToolInclusionMode = InferTelemetryProps<
-	typeof TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_FILTER_SETTINGS_UPDATED
->['inclusion_mode'];
-
 export function useInstanceAiMcpTelemetry() {
 	const telemetry = useTelemetry();
 	return {
@@ -43,12 +39,6 @@ export function useInstanceAiMcpTelemetry() {
 		trackNewCredentialConnectionStart(serverSlug: string) {
 			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_NEW_CREDENTIAL_CONNECTION_STARTED, {
 				server_slug: serverSlug,
-			});
-		},
-		trackToolFilterSettingsUpdated(serverSlug: string, inclusionMode: McpToolInclusionMode) {
-			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_FILTER_SETTINGS_UPDATED, {
-				server_slug: serverSlug,
-				inclusion_mode: inclusionMode,
 			});
 		},
 	};

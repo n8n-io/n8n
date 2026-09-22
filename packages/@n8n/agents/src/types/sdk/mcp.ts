@@ -1,3 +1,7 @@
+import type { McpToolDescriptor } from '@n8n/ai-utilities/agent-config';
+
+export type { McpToolAnnotations, McpToolDescriptor } from '@n8n/ai-utilities/agent-config';
+
 export type McpVerifyResult =
 	| { ok: true; servers: Array<{ name: string; tools: number }> }
 	| { ok: false; errors: Array<{ server: string; error: string }> };
@@ -8,16 +12,6 @@ export interface McpToolCallSettledEvent {
 	/** Exact normalized name exposed to the model. */
 	modelToolName?: string;
 	success: boolean;
-}
-
-export interface McpToolDescriptor {
-	name: string;
-	annotations?: {
-		readOnlyHint?: boolean;
-		destructiveHint?: boolean;
-		idempotentHint?: boolean;
-		openWorldHint?: boolean;
-	};
 }
 
 export type McpToolFilter = { mode: 'allow' | 'exclude'; tools: string[] };

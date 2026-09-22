@@ -25,22 +25,23 @@ import {
 	getBrowserStatus,
 	getGatewayStatus,
 } from './instanceAi.api';
-import type {
-	FrontendModuleSettings,
-	InstanceAiAdminSettingsResponse,
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiUserPreferencesResponse,
-	InstanceAiProviderConnection,
-	InstanceAiPermissions,
-	InstanceAiPermissionMode,
-	McpToolCategory,
-	McpToolPermission,
-	InstanceAiModelCatalogResponse,
-	ToolCategory,
-	InstanceAiVerifyModelRequest,
-	InstanceAiVerifySandboxRequest,
-	InstanceAiVerifySearchRequest,
-	InstanceAiVerificationResponse,
+import {
+	DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
+	type FrontendModuleSettings,
+	type InstanceAiAdminSettingsResponse,
+	type InstanceAiAdminSettingsUpdateRequest,
+	type InstanceAiUserPreferencesResponse,
+	type InstanceAiProviderConnection,
+	type InstanceAiPermissions,
+	type InstanceAiPermissionMode,
+	type McpToolCategory,
+	type McpToolPermission,
+	type InstanceAiModelCatalogResponse,
+	type ToolCategory,
+	type InstanceAiVerifyModelRequest,
+	type InstanceAiVerifySandboxRequest,
+	type InstanceAiVerifySearchRequest,
+	type InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
@@ -366,13 +367,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return settings.value?.permissions?.[key] ?? 'require_approval';
 	}
 
-	function setMcpToolCategoryPermission(
-		category: McpToolCategory,
-		value: McpToolPermission,
-	): void {
+	function setMcpToolCategoryPermission(category: McpToolCategory, value: McpToolPermission): void {
 		const current = draft.mcpToolPermissions ??
 			settings.value?.mcpToolPermissions ?? {
-				categories: { read: 'allow' as const, write: 'ask' as const },
+				...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
+				categories: { ...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS.categories },
 			};
 		draft.mcpToolPermissions = {
 			...current,
@@ -384,7 +383,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return (
 			draft.mcpToolPermissions?.categories[category] ??
 			settings.value?.mcpToolPermissions.categories[category] ??
-			(category === 'read' ? 'allow' : 'ask')
+			DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS.categories[category]
 		);
 	}
 

@@ -2280,6 +2280,22 @@ describe('InstanceAiSettingsService', () => {
 				['key'],
 			);
 		});
+
+		it('loads persisted category permissions and tool overrides', async () => {
+			persistedSettingsValue = JSON.stringify({
+				mcpToolPermissions: {
+					categories: { read: 'block', write: 'ask' },
+					tools: { search: 'allow' },
+				},
+			});
+
+			await service.loadFromDb();
+
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'block', write: 'ask' },
+				tools: { search: 'allow' },
+			});
+		});
 	});
 
 	describe('executeNode permission', () => {
@@ -2362,6 +2378,17 @@ describe('InstanceAiSettingsService', () => {
 
 		it('flags mcpSettingsChanged when mcpAccessEnabled changes', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: true }),
+			);
+		});
+
+		it('flags mcpSettingsChanged when MCP tool permissions change', async () => {
+			await service.updateAdminSettings({
+				mcpToolPermissions: { categories: { read: 'block', write: 'ask' } },
+			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-settings-updated',

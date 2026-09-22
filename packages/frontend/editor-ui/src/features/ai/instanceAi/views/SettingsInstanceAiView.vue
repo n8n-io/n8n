@@ -822,9 +822,7 @@ function openAiUsageSettings() {
 								>
 									<N8nText size="small" color="text-dark">
 										{{
-											i18n.baseText(
-												`tools.connection.permissions.${category}.title` as BaseTextKey,
-											)
+											i18n.baseText(`tools.connection.permissions.${category}.title` as BaseTextKey)
 										}}
 									</N8nText>
 									<N8nSelect
@@ -840,9 +838,7 @@ function openAiUsageSettings() {
 											:key="option"
 											:value="option"
 											:label="
-												i18n.baseText(
-													`tools.connection.permissions.${option}` as BaseTextKey,
-												)
+												i18n.baseText(`tools.connection.permissions.${option}` as BaseTextKey)
 											"
 										/>
 									</N8nSelect>

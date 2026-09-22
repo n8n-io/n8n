@@ -14,7 +14,11 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import McpDetailBody from './McpDetailBody.vue';
 import type { McpServerConnectionItem, McpToolSettings } from './types';
-import type { McpToolCategory, McpToolPermission } from '@n8n/api-types';
+import {
+	DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
+	type McpToolCategory,
+	type McpToolPermission,
+} from '@n8n/api-types';
 
 const props = defineProps<{
 	item: McpServerConnectionItem;
@@ -49,9 +53,7 @@ const recoveryActionKey = computed<BaseTextKey>(() =>
 );
 
 const initialSettings = (): McpToolSettings =>
-	props.item.settings ?? {
-		categories: { read: 'allow', write: 'ask' },
-	};
+	props.item.settings ?? DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS;
 
 const categories = ref({ ...initialSettings().categories });
 const toolPermissions = ref({ ...initialSettings().tools });
@@ -82,10 +84,7 @@ const permissionOptions: Array<{ value: McpToolPermission; label: string }> = [
 	{ value: 'block', label: i18n.baseText('tools.connection.permissions.block') },
 ];
 
-const categoryContent: Record<
-	McpToolCategory,
-	{ title: BaseTextKey; description: BaseTextKey }
-> = {
+const categoryContent: Record<McpToolCategory, { title: BaseTextKey; description: BaseTextKey }> = {
 	read: {
 		title: 'tools.connection.permissions.read.title',
 		description: 'tools.connection.permissions.read.description',
@@ -106,11 +105,7 @@ const groups = computed(() =>
 );
 
 async function updateCategory(category: McpToolCategory, permission: McpToolPermission) {
-	if (
-		category === 'write' &&
-		permission === 'allow' &&
-		categories.value.write !== 'allow'
-	) {
+	if (category === 'write' && permission === 'allow' && categories.value.write !== 'allow') {
 		const writeToolCount = props.item.availableTools.filter(
 			(tool) => (tool.category ?? 'write') === 'write',
 		).length;
@@ -120,12 +115,8 @@ async function updateCategory(category: McpToolCategory, permission: McpToolPerm
 			}),
 			{
 				title: i18n.baseText('tools.connection.permissions.write.confirm.title'),
-				confirmButtonText: i18n.baseText(
-					'tools.connection.permissions.write.confirm.allow',
-				),
-				cancelButtonText: i18n.baseText(
-					'tools.connection.permissions.write.confirm.keepAsk',
-				),
+				confirmButtonText: i18n.baseText('tools.connection.permissions.write.confirm.allow'),
+				cancelButtonText: i18n.baseText('tools.connection.permissions.write.confirm.keepAsk'),
 			},
 		);
 		if (confirmed !== MODAL_CONFIRM) return;
@@ -161,8 +152,7 @@ function onToolChange(toolId: string, category: McpToolCategory, value: unknown)
 function hasCategoryOverrides(category: McpToolCategory): boolean {
 	return props.item.availableTools.some(
 		(tool) =>
-			(tool.category ?? 'write') === category &&
-			toolPermissions.value[tool.id] !== undefined,
+			(tool.category ?? 'write') === category && toolPermissions.value[tool.id] !== undefined,
 	);
 }
 
@@ -235,10 +225,7 @@ function handleRecovery() {
 						:disabled="arePermissionsDisabled"
 						:aria-label="group.title"
 						:aria-expanded="expandedCategory === group.category"
-						@click="
-							expandedCategory =
-								expandedCategory === group.category ? null : group.category
-						"
+						@click="expandedCategory = expandedCategory === group.category ? null : group.category"
 					>
 						<N8nIcon
 							:icon="expandedCategory === group.category ? 'chevron-down' : 'chevron-right'"

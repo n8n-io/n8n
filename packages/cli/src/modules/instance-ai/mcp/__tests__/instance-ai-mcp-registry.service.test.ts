@@ -888,6 +888,34 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('createConnection', () => {
+		it('copies the current instance defaults into a new connection', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				instanceAiSettingsService,
+			} = createService();
+			const defaults = {
+				categories: { read: 'block' as const, write: 'allow' as const },
+				tools: { search: 'ask' as const },
+			};
+			instanceAiSettingsService.getMcpToolPermissions.mockReturnValue(defaults);
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			});
+
+			expect(connectionRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ toolPermissions: defaults }),
+			);
+		});
+
 		it('creates a connection and returns it with the resolved credential and server', async () => {
 			const {
 				service,

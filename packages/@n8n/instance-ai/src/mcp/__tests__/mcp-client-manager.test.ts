@@ -490,6 +490,43 @@ describe('McpClientManager', () => {
 				requireApproval: ['change'],
 			});
 		});
+
+		it('uses instance permissions when a server has no policy', async () => {
+			const manager = new McpClientManager(undefined, {
+				getDefaultToolPermissions: () => ({
+					categories: { read: 'block', write: 'allow' },
+				}),
+			});
+			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }], mockLogger);
+
+			const [nativeConfigs] = mockedMcpClient.mock.lastCall ?? [];
+			const configureTools = nativeConfigs[0].configureTools;
+			expect(
+				configureTools([
+					{ name: 'lookup', annotations: { readOnlyHint: true } },
+					{ name: 'change', annotations: { readOnlyHint: false } },
+				]),
+			).toEqual({
+				toolFilter: { mode: 'exclude', tools: ['lookup'] },
+				requireApproval: [],
+			});
+		});
+
+		it('reloads tools when instance permissions change', async () => {
+			let writePermission: 'ask' | 'block' = 'ask';
+			const manager = new McpClientManager(undefined, {
+				getDefaultToolPermissions: () => ({
+					categories: { read: 'allow', write: writePermission },
+				}),
+			});
+			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+			await manager.getRegularTools(configs, mockLogger);
+			writePermission = 'block';
+			await manager.getRegularTools(configs, mockLogger);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('tool call callback', () => {

@@ -622,7 +622,10 @@ export class InstanceAiService {
 		if (!this._mcpClientManager) {
 			this._mcpClientManager = new McpClientManager(
 				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
-				{ onToolCallSettled: (event) => this.trackMcpToolCall(event) },
+				{
+					onToolCallSettled: (event) => this.trackMcpToolCall(event),
+					getDefaultToolPermissions: () => this.settingsService.getMcpToolPermissions(),
+				},
 			);
 		}
 		return this._mcpClientManager;

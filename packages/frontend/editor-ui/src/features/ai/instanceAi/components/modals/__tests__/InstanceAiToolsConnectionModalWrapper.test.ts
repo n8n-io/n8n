@@ -135,7 +135,6 @@ const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock 
 			trackModalOpened: vi.fn(),
 		},
 		telemetryMock: {
-			trackToolFilterSettingsUpdated: vi.fn(),
 			trackFirstCredentialConnectionStart: vi.fn(),
 			trackCredentialDropdownOpened: vi.fn(),
 			trackExistingCredentialSelected: vi.fn(),

@@ -136,9 +136,7 @@ onBeforeUnmount(() => {
 	}
 });
 
-function toMcpServerTool(
-	tool: McpToolMetadata,
-): McpServerTool {
+function toMcpServerTool(tool: McpToolMetadata): McpServerTool {
 	const out: McpServerTool = {
 		id: tool.name,
 		name: tool.name,

@@ -91,7 +91,11 @@ export function resolveMcpToolPermission(
 	policy: McpToolPermissions,
 	tool: McpToolDescriptor,
 ): McpToolPermission {
-	return policy.tools?.[tool.name] ?? policy.categories[classifyMcpTool(tool)];
+	if (policy.tools && Object.hasOwn(policy.tools, tool.name)) {
+		return policy.tools[tool.name];
+	}
+
+	return policy.categories[classifyMcpTool(tool)];
 }
 
 export function compileMcpToolPermissions(

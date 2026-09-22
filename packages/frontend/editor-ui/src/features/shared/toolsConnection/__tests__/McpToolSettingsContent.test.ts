@@ -1,0 +1,153 @@
+import { fireEvent } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
+import { createComponentRenderer } from '@/__tests__/render';
+import type { McpServerConnectionItem } from '../types';
+import McpToolSettingsContent from '../McpToolSettingsContent.vue';
+
+const confirm = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
+}));
+
+const renderComponent = createComponentRenderer(McpToolSettingsContent);
+
+async function selectPermission(select: HTMLElement, label: string) {
+	const input = select.querySelector('input');
+	expect(input).not.toBeNull();
+	const listboxId = input?.getAttribute('aria-controls');
+	expect(listboxId).not.toBeNull();
+	const option = Array.from(
+		document.getElementById(listboxId!)?.querySelectorAll('[role="option"]') ?? [],
+	).find((element) => element.textContent === label);
+	expect(option).toBeDefined();
+	await fireEvent.click(option!);
+}
+
+function item(overrides: Partial<McpServerConnectionItem> = {}): McpServerConnectionItem {
+	return {
+		id: 'connection-1',
+		kind: 'mcp-server',
+		title: 'Linear',
+		status: 'connected',
+		availableTools: [
+			{ id: 'search', name: 'Search issues', category: 'read' },
+			{ id: 'create', name: 'Create issue', category: 'write' },
+		],
+		settings: {
+			categories: { read: 'allow', write: 'ask' },
+			tools: { search: 'block' },
+		},
+		...overrides,
+	};
+}
+
+describe('McpToolSettingsContent', () => {
+	beforeEach(() => {
+		confirm.mockReset();
+	});
+
+	it('saves category permissions and preserves tool overrides', async () => {
+		const { emitted, getByTestId } = renderComponent({ props: { item: item() } });
+
+		await fireEvent.click(getByTestId('tools-connection-settings-save'));
+
+		expect(emitted().save).toEqual([
+			[
+				{
+					categories: { read: 'allow', write: 'ask' },
+					tools: { search: 'block' },
+				},
+			],
+		]);
+	});
+
+	it('clears category overrides when the category permission changes', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: { item: item() },
+		});
+
+		await selectPermission(getByTestId('tools-connection-permission-read'), 'Block');
+		await fireEvent.click(getByTestId('tools-connection-settings-save'));
+
+		expect(emitted().save).toEqual([[{ categories: { read: 'block', write: 'ask' } }]]);
+	});
+
+	it('keeps write tools on ask when allowing them is not confirmed', async () => {
+		confirm.mockResolvedValue(MODAL_CANCEL);
+		const { emitted, getByTestId } = renderComponent({
+			props: { item: item({ settings: { categories: { read: 'allow', write: 'ask' } } }) },
+		});
+
+		await selectPermission(getByTestId('tools-connection-permission-write'), 'Allow');
+		await flushPromises();
+		await fireEvent.click(getByTestId('tools-connection-settings-save'));
+
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(emitted().save).toEqual([[{ categories: { read: 'allow', write: 'ask' } }]]);
+	});
+
+	it('allows write tools after confirmation', async () => {
+		confirm.mockResolvedValue(MODAL_CONFIRM);
+		const { emitted, getByTestId } = renderComponent({
+			props: { item: item({ settings: { categories: { read: 'allow', write: 'ask' } } }) },
+		});
+
+		await selectPermission(getByTestId('tools-connection-permission-write'), 'Allow');
+		await flushPromises();
+		await fireEvent.click(getByTestId('tools-connection-settings-save'));
+
+		expect(emitted().save).toEqual([[{ categories: { read: 'allow', write: 'allow' } }]]);
+	});
+
+	it('disables permission changes and offers reconnect for authentication failures', async () => {
+		const disconnected = item({
+			status: 'disconnected',
+			connectionFailureReason: 'authentication',
+		});
+		const { emitted, getByLabelText, getByTestId, getByText } = renderComponent({
+			props: { item: disconnected },
+		});
+
+		expect(getByTestId('tools-connection-failure')).toBeVisible();
+		expect(getByText(/credential expired/i)).toBeVisible();
+		expect(getByLabelText('Read-only tools')).toBeDisabled();
+		expect(getByTestId('tools-connection-permission-read').querySelector('input')).toBeDisabled();
+		expect(getByTestId('tools-connection-settings-save')).toBeDisabled();
+
+		await fireEvent.click(getByTestId('tools-connection-recovery'));
+		expect(emitted().reconnect).toEqual([[]]);
+		expect(emitted().retry).toBeUndefined();
+	});
+
+	it('offers retry for server failures', async () => {
+		const { emitted, getByTestId, getByText } = renderComponent({
+			props: {
+				item: item({
+					status: 'disconnected',
+					connectionFailureReason: 'server_unavailable',
+				}),
+			},
+		});
+
+		expect(getByText(/server isn't responding/i)).toBeVisible();
+		await fireEvent.click(getByTestId('tools-connection-recovery'));
+
+		expect(emitted().retry).toEqual([[]]);
+		expect(emitted().reconnect).toBeUndefined();
+	});
+
+	it('collapses an expanded category when the connection becomes unhealthy', async () => {
+		const connected = item();
+		const { getByLabelText, queryByText, rerender } = renderComponent({
+			props: { item: connected },
+		});
+
+		await fireEvent.click(getByLabelText('Read-only tools'));
+		expect(queryByText('Search issues')).toBeVisible();
+
+		await rerender({ item: { ...connected, status: 'disconnected' } });
+		expect(queryByText('Search issues')).not.toBeInTheDocument();
+	});
+});

@@ -222,13 +222,24 @@ export class MigrateMcpToolPermissions1790001072656 implements ReversibleMigrati
 			`SELECT ${connectionId} AS id, ${toolFilter} AS "toolFilter" FROM ${connectionTable}`,
 			async (rows) => {
 				for (const row of rows) {
-					const filter = row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
-					const converted = convertConnectionPolicy(
-						filter,
-						defaultPolicy,
-						mapExecutionPermission(legacyPermission),
-						`instance_ai_mcp_registry_connections.${row.id}.toolFilter`,
-					);
+					const path = `instance_ai_mcp_registry_connections.${row.id}.toolFilter`;
+					let converted: ToolPermissions;
+					try {
+						const filter =
+							row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
+						converted = convertConnectionPolicy(
+							filter,
+							defaultPolicy,
+							mapExecutionPermission(legacyPermission),
+							path,
+						);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						ctx.logger.warn(
+							`[${ctx.migrationName}] Invalid ${path}: ${message}. Using the require approval policy.`,
+						);
+						converted = policyForExecutionPermission('require_approval');
+					}
 					await runQuery(
 						`UPDATE ${connectionTable} SET ${toolPermissions} = :toolPermissions WHERE ${connectionId} = :id`,
 						{ id: row.id, toolPermissions: JSON.stringify(converted) },

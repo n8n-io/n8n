@@ -57,16 +57,4 @@ describe('instance ai mcp telemetry', () => {
 			payload,
 		);
 	});
-
-	test('tracks MCP tool filter updates', () => {
-		useInstanceAiMcpTelemetry().trackToolFilterSettingsUpdated('brave', 'selected');
-
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_FILTER_SETTINGS_UPDATED,
-			{
-				server_slug: 'brave',
-				inclusion_mode: 'selected',
-			},
-		);
-	});
 });
