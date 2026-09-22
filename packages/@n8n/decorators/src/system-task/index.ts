@@ -6,8 +6,8 @@ export {
 export type {
 	SystemTaskClass,
 	SystemTaskEffects,
-	SystemTaskPlacement,
 	SystemTaskRunOptions,
 	SystemTaskSchedule,
 } from './system-task';
+export type { SystemTaskPlacement } from './system-task-placement';
 export { SystemTaskMetadata } from './system-task-metadata';

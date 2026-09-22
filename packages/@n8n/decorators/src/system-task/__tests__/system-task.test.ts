@@ -1,12 +1,8 @@
 import { Container } from '@n8n/di';
 
-import {
-	SystemTask,
-	type SystemTaskClass,
-	type SystemTaskPlacement,
-	type SystemTaskSchedule,
-} from '../system-task';
+import { SystemTask, type SystemTaskClass, type SystemTaskSchedule } from '../system-task';
 import { SystemTaskMetadata } from '../system-task-metadata';
+import type { SystemTaskPlacement } from '../system-task-placement';
 
 let metadata: SystemTaskMetadata;
 

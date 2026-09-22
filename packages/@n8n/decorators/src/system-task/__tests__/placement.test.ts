@@ -1,4 +1,4 @@
-import type { SystemTaskPlacement } from '../system-task';
+import type { SystemTaskPlacement } from '../system-task-placement';
 
 it('should not let a placement name an instance type a cluster-scoped task never reaches', () => {
 	const placement: SystemTaskPlacement = {
