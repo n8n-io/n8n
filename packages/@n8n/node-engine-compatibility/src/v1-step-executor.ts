@@ -148,6 +148,16 @@ export class V1StepExecutor implements IStepExecutor {
 		}
 
 		if (!result.ok) {
+			const description =
+				typeof result.error === 'object' &&
+				result.error !== null &&
+				'description' in result.error &&
+				typeof result.error.description === 'string'
+					? result.error.description
+					: result.error instanceof Error
+						? result.error.message
+						: String(result.error);
+			await context.sendChunk('error', 0, description);
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}

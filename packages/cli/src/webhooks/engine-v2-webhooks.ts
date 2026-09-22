@@ -44,6 +44,7 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'onReceived',
 	'lastNode',
 	'responseNode',
+	'streaming',
 ]);
 
 /** What the request says about a run, before the webhook node has produced anything. */

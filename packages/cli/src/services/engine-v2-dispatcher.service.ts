@@ -127,6 +127,8 @@ export class EngineV2Dispatcher {
 					hostMode: data.executionMode,
 					userId: data.userId,
 					projectId: data.projectId,
+					// Tells the step executor a node may stream its answer back.
+					streamingEnabled: data.streamingEnabled === true ? true : undefined,
 				},
 			});
 		} catch (error) {

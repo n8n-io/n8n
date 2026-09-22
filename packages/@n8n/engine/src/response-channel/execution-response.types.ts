@@ -33,13 +33,20 @@ export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;
 /** The one answer the caller waits for, produced while the run is still going. */
 export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
 
+/** One piece of a streamed answer. */
+export type ChunkMessage = Extract<ExecutionResponse, { type: 'chunk' }>;
+
 /**
  * One step's view of the channel. The channel fills in the execution id, so a
  * step executor carries no routing state.
  */
 export interface ResponseEmitter {
 	send(payload: JsonValue): void;
+	chunk(payload: JsonValue): void;
 }
 
 /** For a step whose responses nobody wants. */
-export const noopResponseEmitter: ResponseEmitter = Object.freeze({ send: () => {} });
+export const noopResponseEmitter: ResponseEmitter = Object.freeze({
+	send: () => {},
+	chunk: () => {},
+});

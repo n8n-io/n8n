@@ -1159,7 +1159,7 @@ export async function executeWebhook(
 				{ executionId },
 			);
 			// TODO: Add check for streaming nodes here
-			runData.httpResponse = res;
+			if (!routesToEngineV2) runData.httpResponse = res;
 			runData.streamingEnabled = true;
 			didSendResponse = true;
 		}
@@ -1169,10 +1169,11 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2) {
 			const engineExecutionId = createExecutionIdV2();
-			pending = Container.get(EngineV2WebhookResponder).waitForResponse(
-				engineExecutionId,
+			pending = Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId, {
+				responseMode,
 				responsePromise,
-			);
+				responseStream: res,
+			});
 			runData.engineExecutionId = engineExecutionId;
 		}
 
@@ -1280,7 +1281,9 @@ export async function executeWebhook(
 					executionId,
 					workflowId: workflowData.id,
 				});
-				if (!didSendResponse) {
+				if (responseMode === 'streaming') {
+					if (!res.writableEnded) res.end();
+				} else if (!didSendResponse) {
 					responseCallback(null, {
 						data: { message: 'The workflow did not answer in time' },
 						responseCode: 504,

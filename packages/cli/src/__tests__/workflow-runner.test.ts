@@ -1609,8 +1609,15 @@ describe('pre-persist context establishment', () => {
 });
 
 describe('streaming functionality', () => {
-	it('should setup heartbeat interval and sendChunk handler when streaming is enabled', async () => {
+	type StreamingResponse = Response & { flush: () => void };
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('should setup a v1 heartbeat interval and sendChunk handler when streaming is enabled', async () => {
 		// ARRANGE
+		vi.useFakeTimers();
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
@@ -1618,7 +1625,7 @@ describe('streaming functionality', () => {
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockResponse = mock<Response>({ writableEnded: false });
+		const mockResponse = mock<StreamingResponse>({ writableEnded: false });
 		const mockSetInterval = vi.spyOn(global, 'setInterval');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
@@ -1651,6 +1658,24 @@ describe('streaming functionality', () => {
 		// sendChunk handler is still registered on lifecycle hooks
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
 
+		const closeHandler = mockResponse.once.mock.calls.find(([event]) => event === 'close')?.[1];
+		closeHandler?.();
 		mockSetInterval.mockRestore();
+	});
+
+	it('does not manage the response lifecycle for a v2 run', async () => {
+		const dispatcher = Container.get(EngineV2Dispatcher);
+		vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(true);
+		vi.spyOn(dispatcher, 'start').mockResolvedValueOnce('dp-uuid');
+		const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+		await runner.run(
+			mock<IWorkflowExecutionDataProcess>({
+				streamingEnabled: true,
+				httpResponse: mock<StreamingResponse>({ writableEnded: false }),
+			}),
+		);
+
+		expect(setIntervalSpy).not.toHaveBeenCalled();
 	});
 });

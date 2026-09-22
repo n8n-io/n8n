@@ -26,6 +26,11 @@ export interface CallerContext {
 	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
 	 */
 	hostMode?: string;
+	/**
+	 * Whether the caller waits for a streamed response. A step executor reads it
+	 * to decide whether a node may stream; the engine never acts on it.
+	 */
+	streamingEnabled?: boolean;
 }
 
 /**

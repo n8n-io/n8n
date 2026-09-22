@@ -148,8 +148,32 @@ describe('V1StepExecutor', () => {
 
 	it('propagates node errors per the IStepExecutor failure contract', async () => {
 		const graph = graphWith('test.alwaysFails');
-		const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', []));
+		const request = stepRequest(graph, 'n', []);
+		request.context.callerContext.streamingEnabled = true;
+		request.respond = { send: vi.fn(), chunk: vi.fn() };
+		const execution = testStepExecutor(graph).execute(request);
 		await expect(execution).rejects.toThrow('boom from node');
+		expect(request.respond.chunk).toHaveBeenCalledWith({
+			type: 'error',
+			content: 'boom from node',
+			metadata: {
+				nodeId: 'n',
+				nodeName: 'Subject',
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: expect.any(Number),
+			},
+		});
+	});
+
+	it('does not publish an error chunk for a non-streaming run', async () => {
+		const graph = graphWith('test.alwaysFails');
+		const request = stepRequest(graph, 'n', []);
+		request.respond = { send: vi.fn(), chunk: vi.fn() };
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('boom from node');
+
+		expect(request.respond.chunk).not.toHaveBeenCalled();
 	});
 
 	it('invokes new-style Node subclasses with the context as argument', async () => {
@@ -168,11 +192,15 @@ describe('V1StepExecutor', () => {
 		);
 		(workflow.nodes[1] as { continueOnFail?: boolean }).continueOnFail = true;
 		const graph = converter.convert(workflow);
+		const request = stepRequest(graph, 'n', items({ keep: 'me' }));
+		request.context.callerContext.streamingEnabled = true;
+		request.respond = { send: vi.fn(), chunk: vi.fn() };
 
-		const result = await testStepExecutor(graph).execute(
-			stepRequest(graph, 'n', items({ keep: 'me' })),
-		);
+		const result = await testStepExecutor(graph).execute(request);
 		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(request.respond.chunk).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'error', content: 'boom from node' }),
+		);
 	});
 
 	it('propagates cleanup errors when the node succeeded', async () => {

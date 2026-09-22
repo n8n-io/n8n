@@ -1,22 +1,37 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type {
-	EndedMessage,
-	ExecutionResponse,
-	ExecutionResponseReceiver,
-	Unsubscribe,
-} from '@n8n/engine';
+import type { ExecutionResponse, ExecutionResponseReceiver, Unsubscribe } from '@n8n/engine';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData, WebhookResponseMode } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	type ResponseStream,
+	type WebhookResponseDelivery,
+} from '@/services/engine-v2-webhook-response-delivery';
+import { NonStreamingWebhookResponseDelivery } from '@/services/non-streaming-webhook-response-delivery';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
-import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
+import { StreamingWebhookResponseDelivery } from '@/services/streaming-webhook-response-delivery';
+
+export type { ResponseStream } from '@/services/engine-v2-webhook-response-delivery';
+
+/** What the request waiting on a run needs, beyond the run's own answer. */
+export interface WaitOptions {
+	responseMode: WebhookResponseMode;
+	/** Set for `responseNode`: what the Respond node's answer resolves. */
+	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
+	/** Chunks are written to it when the response mode is `streaming`. */
+	responseStream: ResponseStream;
+}
 
 /** A request that is still open, and the subscription that feeds its answer. */
-type PendingWebhook = { response: PendingWebhookResponse; unsubscribe: Unsubscribe };
+type PendingWebhook = {
+	response: PendingWebhookResponse;
+	delivery: WebhookResponseDelivery;
+	unsubscribe: Unsubscribe;
+};
 
 /**
  * How many runs this replica listens for at once. Every entry has its own
@@ -58,11 +73,7 @@ export class EngineV2WebhookResponder {
 	 * instead would hold its request open until the response timeout, and the
 	 * answer it was waiting for would arrive with nobody to take it.
 	 */
-	waitForResponse(
-		executionId: ExecutionIdV2,
-		/** Set for `responseNode`: what the Respond node's answer resolves. */
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): PendingWebhookResponse {
+	waitForResponse(executionId: ExecutionIdV2, options: WaitOptions): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
@@ -79,21 +90,26 @@ export class EngineV2WebhookResponder {
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
-		const unsubscribe = receiver.receive(executionId, (received) =>
-			this.handle(received, response, responsePromise),
-		);
-		this.pendingWebhooks.set(executionId, { response, unsubscribe });
+		const delivery: WebhookResponseDelivery =
+			options.responseMode === 'streaming'
+				? new StreamingWebhookResponseDelivery(response, options.responseStream)
+				: new NonStreamingWebhookResponseDelivery(response, options.responsePromise);
+		let unsubscribe: Unsubscribe;
+		try {
+			unsubscribe = receiver.receive(executionId, (received) => this.handle(received, delivery));
+		} catch (error) {
+			delivery.dispose?.();
+			response.release();
+			throw error;
+		}
+		this.pendingWebhooks.set(executionId, { response, delivery, unsubscribe });
 
 		return response;
 	}
 
-	private handle(
-		received: ExecutionResponse,
-		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): void {
+	private handle(received: ExecutionResponse, delivery: WebhookResponseDelivery): void {
 		try {
-			this.route(received, response, responsePromise);
+			delivery.handle(received);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
 				executionId: received.executionId,
@@ -102,56 +118,11 @@ export class EngineV2WebhookResponder {
 			});
 		}
 	}
-
-	private route(
-		received: ExecutionResponse,
-		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): void {
-		switch (received.type) {
-			case 'failure':
-				responsePromise?.reject(new Error(received.error.message));
-				response.resolve({
-					status: 'failed',
-					error: { name: received.error.code, message: received.error.message },
-				});
-				return;
-
-			case 'response':
-				// Opaque on the channel by design: only this plane knows a v1 response.
-				responsePromise?.resolve(received.payload as unknown as IN8nHttpFullResponse);
-				return;
-
-			case 'ended':
-				// A run that never reached the Respond node still has to answer. The
-				// sentinel tells `setupResponseNodePromise` to stand down, so the
-				// handler decides instead. Resolving a settled promise is a no-op.
-				responsePromise?.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
-				this.onEnded(received, response);
-				return;
-		}
-	}
-
-	private onEnded(received: EndedMessage, response: PendingWebhookResponse): void {
-		const { nodeName, outputs, error } = received.lastStep;
-
-		if (received.status === 'failed') {
-			// The step that ended a failed run is the one that failed, so its name
-			// and error are what the caller reports.
-			response.resolve({ status: 'failed', nodeName, error });
-			return;
-		}
-
-		response.resolve({
-			status: 'completed',
-			// A skipped or failed step carries nothing to answer with.
-			lastNode: outputs ? { nodeName, outputs } : undefined,
-		});
-	}
-
 	/** Ends the run's subscription: nothing more can arrive for it. */
 	private release(executionId: string): void {
-		this.pendingWebhooks.get(executionId)?.unsubscribe();
+		const pending = this.pendingWebhooks.get(executionId);
+		pending?.delivery.dispose?.();
+		pending?.unsubscribe();
 		this.pendingWebhooks.delete(executionId);
 	}
 }
