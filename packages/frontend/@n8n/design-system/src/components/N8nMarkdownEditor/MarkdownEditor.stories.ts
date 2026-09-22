@@ -82,6 +82,9 @@ const meta: Meta<typeof N8nMarkdownEditor> = {
 		isCollapsible: {
 			control: 'boolean',
 		},
+		allowExpandedView: {
+			control: 'boolean',
+		},
 		disabled: {
 			control: 'boolean',
 		},
@@ -150,6 +153,7 @@ export const Default: Story = {
 		showToolbar: 'always',
 		maxHeight: '480px',
 		isCollapsible: false,
+		allowExpandedView: false,
 		disabled: false,
 		readonly: false,
 	},
@@ -252,6 +256,23 @@ export const Collapsible: Story = {
 		modelValue: longInstructionsMarkdown,
 		isCollapsible: true,
 		variant: 'ghost',
+	},
+};
+
+export const ExpandedView: Story = {
+	args: {
+		...Default.args,
+		modelValue: longInstructionsMarkdown,
+		allowExpandedView: true,
+		maxHeight: '320px',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Type in the editor, open the expanded view, and use undo to verify that the editing session stays active.',
+			},
+		},
 	},
 };
 

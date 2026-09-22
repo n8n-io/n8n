@@ -10,6 +10,7 @@ import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import { setEditorContent } from './markdownEditorUtils';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
+import { N8nDialog } from '../N8nDialog';
 import N8nTooltip from '../N8nTooltip';
 
 const COLLAPSED_MAX_HEIGHT_OVERRIDE = 256;
@@ -23,12 +24,14 @@ const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	showToolbar: 'always',
 	maxHeight: '480px',
 	isCollapsible: false,
+	allowExpandedView: false,
 	containerClass: '',
 });
 
 const emit = defineEmits<N8nMarkdownEditorEmits>();
 
 const collapsed = ref(true);
+const isExpandedViewOpen = ref(false);
 const { t } = useI18n();
 const explicitHeight = ref<string>();
 
@@ -51,7 +54,13 @@ const shouldPadContentTop = computed(() => shouldShowInlineToolbar.value);
 const editor = useMarkdownEditor(props, emit);
 const isRawMode = ref(false);
 const rawMarkdown = ref(props.modelValue);
-const container = ref<HTMLElement>();
+const inlineContainer = ref<HTMLElement>();
+const dialogContainer = ref<HTMLElement>();
+const container = computed(function getActiveContainer() {
+	return isExpandedViewOpen.value
+		? (dialogContainer.value ?? inlineContainer.value)
+		: inlineContainer.value;
+});
 const rawEditor = ref<HTMLTextAreaElement>();
 const rawContentHeight = ref<string>();
 
@@ -77,7 +86,7 @@ function getRenderedContentHeight() {
 }
 
 function getBubbleMenuContainer() {
-	return document.body;
+	return isExpandedViewOpen.value ? dialogContainer.value : document.body;
 }
 
 const contentExceedsCollapsedHeight = ref(false);
@@ -159,6 +168,7 @@ watch(
 
 /** Override maxHeight for collapsible state to ensure we properly trim the content */
 const setMaxHeight = computed(function getMaxHeightStyle() {
+	if (isExpandedViewOpen.value) return '--markdown-editor-max-height: 100%';
 	if (!props.isCollapsible) return `--markdown-editor-max-height: ${maxHeight.value}`;
 
 	const collapsibleMaxHeight = collapsed.value
@@ -262,6 +272,16 @@ function handleRawBlur(event: FocusEvent) {
 	emit('blur', rawMarkdown.value, event);
 }
 
+async function handleExpandedOpenAutoFocus(event: Event) {
+	event.preventDefault();
+	await nextTick();
+	focus();
+}
+
+function closeExpandedView() {
+	isExpandedViewOpen.value = false;
+}
+
 function focus() {
 	if (isRawMode.value) {
 		rawEditor.value?.focus();
@@ -297,7 +317,7 @@ defineExpose({
 </script>
 <template>
 	<div
-		ref="container"
+		ref="inlineContainer"
 		:class="[
 			'n8n-markdown-editor-container',
 			$style.container,
@@ -309,7 +329,35 @@ defineExpose({
 		:style="[setMaxHeight, containerHeightStyle]"
 		data-test-id="n8n-markdown-editor"
 		@transitionend="onHeightTransitionEnd"
+	/>
+
+	<N8nDialog
+		v-if="props.allowExpandedView"
+		v-model:open="isExpandedViewOpen"
+		:aria-label="t('markdownEditor.expandedViewTitle')"
+		:show-close-button="false"
+		size="2xlarge"
+		:container-class="$style.dialog"
+		@open-auto-focus="handleExpandedOpenAutoFocus"
 	>
+		<div
+			ref="dialogContainer"
+			:class="[
+				'n8n-markdown-editor-container',
+				$style.container,
+				$style.expandedContainer,
+				props.showToolbar === 'floating' && $style.floatingToolbar,
+				props.variant === 'ghost' ? $style.ghost : $style.contained,
+				props.containerClass,
+				props.disabled ? $style.disabled : '',
+			]"
+			:style="setMaxHeight"
+			data-test-id="n8n-markdown-editor-expanded"
+			@keydown.esc.capture="closeExpandedView"
+		/>
+	</N8nDialog>
+
+	<Teleport v-if="container" :to="container">
 		<div
 			v-if="isRawMode"
 			data-markdown-editor-content-wrapper
@@ -342,7 +390,10 @@ defineExpose({
 			:is-raw-mode="isRawMode"
 			:mode="toolbarMode"
 			:variant="props.variant"
+			:allow-expanded-view="props.allowExpandedView"
+			:is-expanded-view="isExpandedViewOpen"
 			@update:is-raw-mode="toggleRawMode"
+			@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
 		/>
 		<BubbleMenu
 			v-if="props.showToolbar === 'floating' && editor && !isRawMode"
@@ -357,10 +408,46 @@ defineExpose({
 				:is-raw-mode="false"
 				mode="floating"
 				:variant="props.variant"
+				:allow-expanded-view="props.allowExpandedView"
+				:is-expanded-view="isExpandedViewOpen"
 				@update:is-raw-mode="toggleRawMode"
+				@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
 			/>
 		</BubbleMenu>
-		<div v-if="shouldBeCollapsable" :class="$style.expandButtonContainer">
+		<div
+			v-if="props.allowExpandedView && props.showToolbar === 'floating'"
+			:class="[
+				$style.floatingExpandedViewButton,
+				isExpandedViewOpen ? $style.floatingExpandedViewButtonVisible : '',
+			]"
+		>
+			<N8nTooltip
+				:content="
+					t(
+						isExpandedViewOpen
+							? 'markdownEditor.closeExpandedView'
+							: 'markdownEditor.openExpandedView',
+					)
+				"
+			>
+				<N8nButton
+					size="small"
+					:icon="isExpandedViewOpen ? 'minimize-2' : 'maximize-2'"
+					icon-only
+					icon-size="medium"
+					variant="subtle"
+					:aria-label="
+						t(
+							isExpandedViewOpen
+								? 'markdownEditor.closeExpandedView'
+								: 'markdownEditor.openExpandedView',
+						)
+					"
+					@click="isExpandedViewOpen = !isExpandedViewOpen"
+				/>
+			</N8nTooltip>
+		</div>
+		<div v-if="shouldBeCollapsable && !isExpandedViewOpen" :class="$style.expandButtonContainer">
 			<N8nTooltip :content="expandButtonLabel">
 				<N8nButton
 					size="small"
@@ -374,7 +461,7 @@ defineExpose({
 				/>
 			</N8nTooltip>
 		</div>
-	</div>
+	</Teleport>
 </template>
 
 <style lang="scss">
@@ -391,6 +478,12 @@ defineExpose({
 	z-index: var.$index-popper;
 }
 
+.dialog {
+	--n8n-dialog-content--padding: 0;
+	aspect-ratio: 1/1;
+	max-height: 75dvh;
+}
+
 .disabled {
 	cursor: not-allowed;
 	opacity: 0.6;
@@ -402,6 +495,26 @@ defineExpose({
 	overflow: hidden;
 	min-height: var(--spacing--3xl);
 	background-color: transparent;
+}
+
+.floatingExpandedViewButton {
+	position: absolute;
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
+	z-index: 2;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition:
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		visibility var(--duration--snappy) var(--easing--ease-out);
+}
+
+.container:hover .floatingExpandedViewButton,
+.floatingExpandedViewButtonVisible {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
 }
 
 .ghost {
@@ -442,6 +555,7 @@ defineExpose({
 		box-shadow: var(--input--shadow--focus), var(--input--border--shadow--focus);
 	}
 }
+
 .content {
 	@include motion.max-height-transition;
 	height: 100%;
@@ -493,6 +607,25 @@ defineExpose({
 	:global(.n8n-markdown) {
 		overflow-y: hidden;
 	}
+}
+
+/** Hide visual focus ring in expanded as dialog implies focus anyway **/
+.expandedContainer,
+.expandedContainer:hover:not(.disabled):not(:focus-within),
+.expandedContainer:focus-within {
+	padding: 0;
+	outline: none;
+	box-shadow: none;
+}
+
+.expandedContainer {
+	max-height: 75dvh;
+}
+
+.expandedContainer.ghost,
+.expandedContainer.floatingToolbar {
+	padding-inline: var(--spacing--xs);
+	padding-block-start: var(--spacing--sm);
 }
 
 .expandButtonContainer {

@@ -32,10 +32,13 @@ const props = defineProps<{
 	isRawMode?: boolean;
 	mode: Exclude<MarkdownEditorToolbarMode, 'never'>;
 	variant: MarkdownEditorVariant;
+	allowExpandedView?: boolean;
+	isExpandedView?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:isRawMode': [value: boolean];
+	'toggle-expanded-view': [];
 }>();
 
 const isLinkPopoverOpen = ref(false);
@@ -499,6 +502,31 @@ const setTextStyle = (value: string | number) => {
 					@update:model-value="emit('update:isRawMode', $event)"
 				/>
 			</div>
+			<div v-if="allowExpandedView && mode !== 'floating'" :class="$style.expandedViewGroup">
+				<N8nTooltip
+					:content="
+						translate(
+							isExpandedView
+								? 'markdownEditor.closeExpandedView'
+								: 'markdownEditor.openExpandedView',
+						)
+					"
+				>
+					<N8nIconButton
+						:icon="isExpandedView ? 'minimize-2' : 'maximize-2'"
+						variant="ghost"
+						size="small"
+						:aria-label="
+							translate(
+								isExpandedView
+									? 'markdownEditor.closeExpandedView'
+									: 'markdownEditor.openExpandedView',
+							)
+						"
+						@click="emit('toggle-expanded-view')"
+					/>
+				</N8nTooltip>
+			</div>
 		</div>
 	</div>
 </template>
@@ -534,6 +562,7 @@ const setTextStyle = (value: string | number) => {
 }
 
 .toolbarInner {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
@@ -613,11 +642,10 @@ const setTextStyle = (value: string | number) => {
 	align-items: center;
 	flex: 0 0 auto;
 
-	&:not(:last-child)::after {
+	&:not(:first-child)::before {
 		content: '';
 		width: 1px;
 		height: var(--height--xs);
-		margin-inline-start: var(--spacing--3xs);
 		background-color: var(--border-color);
 	}
 }
@@ -625,6 +653,11 @@ const setTextStyle = (value: string | number) => {
 .rawToggleGroup {
 	display: inline-flex;
 	align-items: center;
+}
+
+.expandedViewGroup {
+	margin-inline-start: auto;
+	background-color: var(--n8n--markdown-editor--background-color, var(--background--surface));
 }
 
 .addLinkFormLabel {

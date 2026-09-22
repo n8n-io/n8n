@@ -13,6 +13,8 @@ export type N8nMarkdownEditorProps = {
 	maxHeight?: string | number;
 	/** Whether content should expand/collapse. Overwrites maxHeight. */
 	isCollapsible?: boolean;
+	/** Whether the editor can open in an expanded dialog. */
+	allowExpandedView?: boolean;
 	extensions?: Extension[];
 	editorProps?: EditorOptions['editorProps'];
 	containerClass?: string;
