@@ -37,6 +37,71 @@ describe('Users in Public API', () => {
 			expect(response.status).toBe(401);
 		});
 
+		it('if missing scope, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const memberWithoutScope = await createMemberWithApiKey({ scopes: ['user:read'] });
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(memberWithoutScope).get('/users');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
+
+		it('with a non-numeric limit, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/users')
+				.query({ limit: 'abc' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: 'request/query/limit Param `limit` must be a valid integer',
+			});
+		});
+
+		it('with an invalid includeRole, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/users')
+				.query({ includeRole: 'not-a-boolean' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message:
+					"request/query/includeRole Invalid enum value. Expected 'true' | 'false', received 'not-a-boolean'",
+			});
+		});
+
 		it('should return users with roles', async () => {
 			/**
 			 * Arrange
