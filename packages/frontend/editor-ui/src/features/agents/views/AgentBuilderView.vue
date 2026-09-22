@@ -3,10 +3,13 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { StorageSerializers, useEventListener, useLocalStorage, useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
+	N8nAssistantIcon,
 	N8nCanvasPill,
 	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
+	N8nButton,
+	N8nTooltip,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
@@ -2343,8 +2346,6 @@ function onSwitchAgent(nextAgentId: string) {
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
-			:instance-ai-available="instanceAiAvailable"
-			:is-ai-panel-open="isAiPanelOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
@@ -2352,8 +2353,27 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@toggle-instance-ai="toggleAiPanel"
 		/>
+		<div
+			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
+			:class="$style.aiToggleBar"
+		>
+			<N8nTooltip :content="locale.baseText('agents.builder.header.editWithAi')">
+				<N8nButton
+					variant="subtle"
+					size="medium"
+					icon-only
+					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
+					:disabled="!agent"
+					data-testid="agent-builder-instance-ai-btn"
+					@click="toggleAiPanel"
+				>
+					<template #icon>
+						<N8nAssistantIcon size="large" />
+					</template>
+				</N8nButton>
+			</N8nTooltip>
+		</div>
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill
 				v-if="recentExternalUpdate"
@@ -2550,6 +2570,8 @@ function onSwitchAgent(nextAgentId: string) {
 @use '@n8n/design-system/css/mixins/motion';
 
 .root {
+	--n8n--agent-builder-header-height: var(--height--4xl);
+
 	position: relative;
 	display: flex;
 	flex-direction: column;
@@ -2666,5 +2688,12 @@ function onSwitchAgent(nextAgentId: string) {
 	flex-shrink: 0;
 	color: var(--color--neutral-white);
 	pointer-events: auto;
+}
+
+.aiToggleBar {
+	position: absolute;
+	top: calc(var(--n8n--agent-builder-header-height) + var(--spacing--2xs));
+	left: var(--spacing--2xs);
+	z-index: 1;
 }
 </style>
