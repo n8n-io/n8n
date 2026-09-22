@@ -1,27 +1,30 @@
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowPublicationRetryState } from '../entities';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
-export class WorkflowPublicationRetryStateRepository extends Repository<WorkflowPublicationRetryState> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowPublicationRetryState, dataSource.manager);
+export class WorkflowPublicationRetryStateRepository extends BaseRepository<WorkflowPublicationRetryState> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowPublicationRetryState, dataSource.manager, transactionRunner);
 	}
 
 	async suppressRetry(
 		workflowId: string,
 		targetVersionId: string,
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		await (trx ?? this.manager).upsert(
+		await this.managerFor(ctx).upsert(
 			WorkflowPublicationRetryState,
 			{ workflowId, targetVersionId },
 			['workflowId'],
 		);
 	}
 
-	async clearRetrySuppression(workflowId: string, trx?: EntityManager): Promise<void> {
-		await (trx ?? this.manager).delete(WorkflowPublicationRetryState, { workflowId });
+	async clearRetrySuppression(workflowId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.managerFor(ctx).delete(WorkflowPublicationRetryState, { workflowId });
 	}
 }

@@ -1,9 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
@@ -11,18 +12,21 @@ import {
 	WorkflowPublicationReason,
 } from '../entities/workflow-publication-outbox';
 import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
 const SQLITE_ENQUEUE_CHUNK_SIZE = 998;
 
 @Service()
-export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
+export class WorkflowPublicationOutboxRepository extends BaseRepository<WorkflowPublicationOutbox> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowPublicationOutbox, dataSource.manager);
+		super(WorkflowPublicationOutbox, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -499,8 +503,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * `errorMessage` for a record that completed with a non-fatal side effect
 	 * (e.g. an abandoned external webhook deregistration).
 	 */
-	async markCompleted(id: number, trx?: EntityManager, warningMessage?: string): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markCompleted(
+		id: number,
+		ctx: OperationContext = {},
+		warningMessage?: string,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
@@ -510,8 +518,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
-	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markFailed(id: number, errorMessage: string, ctx: OperationContext = {}): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
@@ -526,8 +534,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * carries per-node detail for diagnostics. The workflow stays published. Pass
 	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markPartialSuccess(
+		id: number,
+		errorMessage: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
