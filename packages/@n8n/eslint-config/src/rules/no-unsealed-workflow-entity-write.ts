@@ -1,7 +1,7 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 const NON_RUNTIME_FILE =
-	/(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test[\\/])|([\\/]migrations[\\/])/;
+	/(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test[\\/])|([\\/]migrations[\\/])|([\\/]backend-test-utils[\\/])/;
 const WORKFLOW_REPOSITORY_FILE = /[\\/]repositories[\\/]workflow\.repository\.ts$/;
 const WRITE_METHODS = new Set(['save', 'insert', 'upsert']);
 const RAW_WORKFLOW_WRITE =

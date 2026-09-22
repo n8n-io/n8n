@@ -17,6 +17,10 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 			code: 'workflowRepository.save(workflow);',
 			filename: '/repositories/workflow.repository.ts',
 		},
+		{
+			code: 'workflowRepository.save(workflow);',
+			filename: '/packages/@n8n/backend-test-utils/src/db/workflows.ts',
+		},
 	],
 	invalid: [
 		{ code: 'workflowRepository.save(workflow);', errors },

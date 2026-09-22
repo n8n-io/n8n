@@ -19,7 +19,7 @@ export class PreventDeploymentKeyDeletion1789986374991 implements ReversibleMigr
 		const truncateTrigger = escape.triggerName('prevent_deployment_key_truncate');
 		const triggerFunction = escape.functionName('prevent_deployment_key_delete');
 		await runQuery(`
-			CREATE FUNCTION ${triggerFunction}()
+			CREATE OR REPLACE FUNCTION ${triggerFunction}()
 			RETURNS trigger
 			LANGUAGE plpgsql
 			AS $$
