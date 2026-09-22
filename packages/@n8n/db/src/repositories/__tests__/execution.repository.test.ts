@@ -254,6 +254,20 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('findUnfinishedIds', () => {
+		test('should select ids of running or unknown executions', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: '1' }, { id: '2' }]);
+
+			const result = await executionRepository.findUnfinishedIds();
+
+			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['id'],
+				where: { status: In(['running', 'unknown']) },
+			});
+			expect(result).toEqual(['1', '2']);
+		});
+	});
+
 	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
 
 	const crashableRow = (id: string, overrides: Partial<ExecutionEntity> = {}) =>

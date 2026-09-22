@@ -10,6 +10,7 @@ import type {
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
@@ -121,6 +122,21 @@ export class UserRepository extends Repository<User> {
 				throw error;
 			}
 			return 'changed';
+		});
+	}
+
+	/**
+	 * Whether an instance owner exists that has actually been claimed — has
+	 * logged in (`lastActiveAt` set) or has a password (PAY-4247) — as opposed
+	 * to the unclaimed "shell" owner created at first boot.
+	 */
+	async hasActiveInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
 		});
 	}
 
