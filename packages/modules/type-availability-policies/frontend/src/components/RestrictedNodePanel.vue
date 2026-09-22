@@ -27,20 +27,18 @@ const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
 
-const description = computed(() =>
-	i18n.baseText(
-		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
-		{ interpolate: { nodeType: nodeTypeName } },
-	),
-);
-
-const nextStep = computed(() =>
-	i18n.baseText(
+// The next step is interpolated into the description, so each locale controls the sentence order.
+const description = computed(() => {
+	const nextStep = i18n.baseText(
 		showReplace
 			? 'typeAvailabilityPolicies.restrictedNode.nextStep.replace'
 			: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
-	),
-);
+	);
+	return i18n.baseText(
+		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
+		{ interpolate: { nodeType: nodeTypeName, nextStep } },
+	);
+});
 </script>
 
 <template>
@@ -49,7 +47,7 @@ const nextStep = computed(() =>
 		<N8nText size="large" color="text-dark" bold :class="$style.title">
 			{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.title') }}
 		</N8nText>
-		<N8nText :class="$style.description">{{ description }} {{ nextStep }}</N8nText>
+		<N8nText :class="$style.description">{{ description }}</N8nText>
 		<div :class="$style.actions">
 			<N8nButton
 				variant="solid"
