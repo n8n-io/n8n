@@ -15,7 +15,7 @@ import { promotionEventBus } from '@/features/integrations/promotions.ee/promoti
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -78,11 +78,6 @@ const router = createRouter({
 		{
 			path: '/templates',
 			name: VIEWS.TEMPLATES,
-			component: { template: '<div></div>' },
-		},
-		{
-			path: '/home/workflows',
-			name: VIEWS.HOMEPAGE,
 			component: { template: '<div></div>' },
 		},
 	],
@@ -485,39 +480,6 @@ describe('WorkflowsView', () => {
 			await waitFor(() =>
 				expect(workflowsListStore.fetchWorkflowsPage.mock.calls.length).toBeGreaterThan(fetches),
 			);
-		});
-
-		it('should leave a project page that the applied package removed', async () => {
-			await router.push('/project-1');
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.myProjects = [];
-			renderComponent({ pinia });
-			await waitAllPromises();
-
-			promotionEventBus.emit('applied');
-
-			await waitFor(() => expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE));
-			expect(projectsStore.getMyProjects).toHaveBeenCalled();
-			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
-		});
-
-		it('should stay on a project page that the applied package kept', async () => {
-			await router.push('/project-1');
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.myProjects = [{ id: 'project-1' } as ProjectListItem];
-			renderComponent({ pinia });
-			await waitAllPromises();
-			const fetches = workflowsListStore.fetchWorkflowsPage.mock.calls.length;
-			const toasts = mockShowMessage.mock.calls.length;
-
-			promotionEventBus.emit('applied');
-
-			await waitFor(() =>
-				expect(workflowsListStore.fetchWorkflowsPage.mock.calls.length).toBeGreaterThan(fetches),
-			);
-			expect(projectsStore.getMyProjects).toHaveBeenCalled();
-			expect(router.currentRoute.value.params.projectId).toBe('project-1');
-			expect(mockShowMessage.mock.calls.length).toBe(toasts);
 		});
 	});
 });

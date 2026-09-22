@@ -669,22 +669,8 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-// An applied package rewrites every team project and can delete the one on this page.
+// The project header leaves the page when the package removed this project.
 async function onPromotionApplied() {
-	const projectId = route.params.projectId as string | undefined;
-	if (projectId) {
-		await projectsStore.getMyProjects();
-		// The user moved on while the projects loaded, the route watcher owns the new page.
-		if (route.params.projectId !== projectId) return;
-		if (!projectsStore.myProjects.some(({ id }) => id === projectId)) {
-			toast.showMessage({
-				title: i18n.baseText('promotions.applied.projectRemoved'),
-				type: 'info',
-			});
-			await router.replace({ name: VIEWS.HOMEPAGE });
-			return;
-		}
-	}
 	await initialize();
 }
 

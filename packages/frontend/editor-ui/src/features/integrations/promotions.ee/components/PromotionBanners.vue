@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -14,6 +18,8 @@ import { usePromotionConnection } from '../composables/usePromotionConnection';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 
 const i18n = useI18n();
+const router = useRouter();
+const toast = useToast();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
@@ -71,7 +77,7 @@ const {
 	refetch: refetchIncoming,
 } = usePromotionChangeCount(currentProjectId, 'apply', showIncomingBanner);
 
-// An apply changes both counts and can rename the project, so the header shows the new name.
+// An apply changes both counts and can rename or remove the project this page shows.
 async function onPromotionApplied() {
 	await Promise.all([refetchPromotable(), refetchIncoming(), refetchProject()]);
 }
@@ -79,12 +85,17 @@ async function onPromotionApplied() {
 async function refetchProject() {
 	const projectId = currentProjectId.value;
 	if (!projectId) return;
+	// The user may have moved to another project while this one loaded.
+	const stillOnProject = () => currentProjectId.value === projectId;
 	try {
 		const project = await projectsStore.fetchProject(projectId);
-		// The user may have moved to another project while this one loaded.
-		if (currentProjectId.value === projectId) projectsStore.setCurrentProject(project);
-	} catch {
-		// The applied package removed this project, the workflows view leaves the page.
+		if (stillOnProject()) projectsStore.setCurrentProject(project);
+	} catch (error) {
+		// Only a removed project sends the user away, any other failure keeps the page as it is.
+		const removed = error instanceof ResponseError && error.httpStatusCode === 404;
+		if (!removed || !stillOnProject()) return;
+		toast.showMessage({ title: i18n.baseText('promotions.applied.projectRemoved'), type: 'info' });
+		await router.replace({ name: VIEWS.HOMEPAGE });
 	}
 }
 

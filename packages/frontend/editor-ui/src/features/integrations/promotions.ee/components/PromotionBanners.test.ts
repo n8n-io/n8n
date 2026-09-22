@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createServer, Response } from 'miragejs';
 import { mock } from 'vitest-mock-extended';
-import type { IUser } from '@n8n/rest-api-client';
+import { createRouter, createWebHistory } from 'vue-router';
+import { ResponseError, type IUser } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -19,7 +21,22 @@ import { invalidatePromotionConnection } from '../composables/usePromotionConnec
 import { promotionEventBus } from '../promotions.eventBus';
 import * as settingsApi from '../promotionsSettings.api';
 
-const renderComponent = createComponentRenderer(PromotionBanners);
+const showMessage = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
+}));
+
+const router = createRouter({
+	history: createWebHistory(),
+	routes: [
+		{ path: '/:projectId?', component: { template: '<div></div>' } },
+		{ path: '/home/workflows', name: VIEWS.HOMEPAGE, component: { template: '<div></div>' } },
+	],
+});
+
+const renderComponent = createComponentRenderer(PromotionBanners, {
+	global: { plugins: [router] },
+});
 
 const commitSha = 'a'.repeat(40);
 
@@ -39,7 +56,9 @@ describe('PromotionBanners', () => {
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
-	beforeEach(() => {
+	beforeEach(async () => {
+		await router.push('/project-1');
+		await router.isReady();
 		createTestingPinia();
 		server = createServer({ environment: 'test' });
 		projectsStore = mockedStore(useProjectsStore);
@@ -209,8 +228,31 @@ describe('PromotionBanners', () => {
 		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
 	});
 
-	it('still refetches the counts when the applied package removed the project', async () => {
-		projectsStore.fetchProject.mockRejectedValue(new Error('gone'));
+	it('leaves the page when the applied package removed the project', async () => {
+		projectsStore.fetchProject.mockRejectedValue(
+			new ResponseError('Not found', { httpStatusCode: 404 }),
+		);
+		server.get('/api/v1/promotions/connections', () =>
+			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
+		);
+		server.get('/rest/promotions/project-1/changes/apply', () =>
+			oneChange('Incoming workflow', 'new'),
+		);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('promotion-incoming-banner');
+
+		promotionEventBus.emit('applied');
+
+		await waitFor(() => expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE));
+		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
+	});
+
+	it('keeps the page and still refetches the counts when the project lookup fails', async () => {
+		projectsStore.fetchProject.mockRejectedValue(new Error('offline'));
 		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
 		server.get('/api/v1/promotions/connections', () =>
 			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
@@ -225,6 +267,8 @@ describe('PromotionBanners', () => {
 		promotionEventBus.emit('applied');
 
 		await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+		expect(router.currentRoute.value.params.projectId).toBe('project-1');
+		expect(showMessage).not.toHaveBeenCalled();
 	});
 
 	it('retries a failed connection lookup on the next project', async () => {
