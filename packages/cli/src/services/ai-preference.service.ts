@@ -648,8 +648,25 @@ function singleLine(text: string): string {
 }
 
 /**
+ * A turn sends the block again whenever its text changed, so the conversation can hold an
+ * older copy the model already read. Worded without the literal tags: user text cannot carry
+ * them either (they are escaped out), so the first close tag in a stored message is always
+ * the real one.
+ */
+export const AI_PREFERENCES_REPLACES_EARLIER =
+	'This block replaces every earlier ai-preferences block in this conversation. Apply this one and set the earlier copies aside.';
+
+/**
+ * Sent when every preference is gone but an earlier turn of the conversation carried a
+ * block: silence would leave the model applying the deleted preferences. Constant text, so
+ * the change rule treats it like any other block and a thread that stays empty carries it
+ * once.
+ */
+export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not apply preferences an earlier block carried.\n</ai-preferences>`;
+
+/**
  * The same text as `renderAiPreferences`, wrapped in one tagged block, or `undefined` when there
- * is nothing to say. Used by the Instance AI opening turn, which needs a block it can strip out
+ * is nothing to say. Used by the Instance AI turn, which needs a block it can strip out
  * of the stored message; the tags are escaped out of the user text first so it cannot close the
  * block. A tool result has no wrapper, so the MCP tool uses the unwrapped renderer directly.
  */
@@ -664,7 +681,7 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 		})),
 	});
 	if (body === '') return undefined;
-	return `<ai-preferences>\n${body}\n</ai-preferences>`;
+	return `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n${body}\n</ai-preferences>`;
 }
 
 /** Escapes the text of one item and keeps its id, so the block cannot be closed from inside. */

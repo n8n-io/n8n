@@ -1,5 +1,6 @@
 import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
+	AgentDbMessage,
 	Message,
 	Workspace,
 	ScopedMemoryTaskEvent,
@@ -24,6 +25,7 @@ import {
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
+	type AiPreferencesAppliedPayload,
 	type InstanceAiConfirmRequest,
 	type InstanceAiCredits,
 	type InstanceAiConfirmResponse,
@@ -147,7 +149,12 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import {
+	AI_PREFERENCES_CLEARED_BLOCK,
+	AiPreferenceService,
+	buildAppliedPreferencesPayload,
+	renderAiPreferencesBlock,
+} from '@/services/ai-preference.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -190,6 +197,7 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
 	buildPastConversationsBlock,
@@ -197,6 +205,7 @@ import {
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
+	extractAiPreferencesBlock,
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
@@ -4017,12 +4026,15 @@ export class InstanceAiService {
 				});
 			}
 
+			// A checkpoint or a planned-build turn is the agent continuing its own task, where
+			// nobody is reading the user's intent, so ambient context would be paid for unread.
+			const isMachineFollowUp =
+				checkpoint?.isCheckpointFollowUp === true || plannedBuild?.isPlannedBuildFollowUp === true;
+
 			// Sent in full on a thread's first turn and as additions after that: the earlier block
 			// stays in the conversation, so re-sending it pays for the same context twice.
 			//
-			// Skipped entirely on a machine follow-up. A checkpoint or a planned-build turn is the
-			// agent continuing its own task, where nobody is reading the user's intent, so the whole
-			// block would be paid for unread.
+			// Skipped entirely on a machine follow-up.
 			const instanceContext = await this.instanceContext.buildBlock({
 				user,
 				scope: {
@@ -4030,9 +4042,7 @@ export class InstanceAiService {
 					...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
 				},
 				cursor: readInstanceContextCursor(thread?.metadata),
-				isMachineFollowUp:
-					checkpoint?.isCheckpointFollowUp === true ||
-					plannedBuild?.isPlannedBuildFollowUp === true,
+				isMachineFollowUp,
 				enabled: instanceContextEnabled,
 			});
 			const existingTasks = await taskStorage.get(threadId);
@@ -4080,9 +4090,13 @@ export class InstanceAiService {
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
 			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
-			const aiPreferencesBlock =
-				isOpeningTurn && aiPreferencesEnabled
-					? await this.resolveAiPreferencesBlock(user.id, boundProject)
+			// Every user turn, not only the opening one, so a preference saved in another
+			// session reaches this thread on its next turn. Internal follow-ups skip it the
+			// same way they skip the other ambient context: the block from the user turn is
+			// already in the history the follow-up replays.
+			const aiPreferencesTurn =
+				aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
+					? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId)
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
 				instanceContext?.block ?? '',
@@ -4091,7 +4105,7 @@ export class InstanceAiService {
 				pastConversationsSection
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,
-				aiPreferencesBlock,
+				aiPreferencesTurn?.block,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 			]);
 			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
@@ -4209,6 +4223,20 @@ export class InstanceAiService {
 				}
 			}
 
+			// Published here for the same reason the cursor is stored here: only from this point
+			// is an injected block actually in the conversation. One frame for each turn that ran
+			// the preferences path — an empty payload says the turn applied none, which is a
+			// different fact from no frame at all.
+			if (aiPreferencesTurn) {
+				this.eventBus.publish(threadId, {
+					type: 'preferences-applied',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					userId: user.id,
+					payload: aiPreferencesTurn.payload,
+				});
+			}
+
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(agent, streamInput, streamOptions, {
@@ -4232,6 +4260,22 @@ export class InstanceAiService {
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
 					});
+
+			// After the stream settles, so the do-not-harm pair (latency, input tokens) rides the
+			// same event. Covers suspended and terminal outcomes alike, once per turn: a resume is
+			// a follow-up segment that skips the preferences path.
+			if (aiPreferencesTurn) {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
+					count: aiPreferencesTurn.payload.preferences.length,
+					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
+					rendered_length: aiPreferencesTurn.payload.renderedLength,
+					surface: 'aia',
+					injected_this_turn: aiPreferencesTurn.payload.injectedThisTurn,
+					turn_latency_ms: Date.now() - turnStartedAt.getTime(),
+					...(result.usage ? { turn_token_count: result.usage.promptTokens } : {}),
+				});
+			}
+
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
 				this.emitRunMetrics(threadId, 'suspended', {
@@ -5131,19 +5175,134 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Best-effort like the project block: a failed read costs the preferences, not the turn. */
-	private async resolveAiPreferencesBlock(
+	/**
+	 * The saved AI preferences as this turn applies them: the block to inject, when the
+	 * rendered text differs from the last block the conversation carries, and the payload
+	 * the turn publishes either way. Reading the previous copy from the persisted messages
+	 * instead of per-thread state means a block a failed turn never persisted is correctly
+	 * absent, and an unchanged conversation carries exactly one copy.
+	 *
+	 * Best-effort like the project block: a failed read costs the preferences, not the
+	 * turn — and reports an empty payload, which is an answer, not a missing one.
+	 */
+	private async resolveAiPreferencesTurn(
 		userId: string,
 		project: ProjectSummary | undefined,
-	): Promise<string | undefined> {
-		return await this.bestEffort(
+		threadId: string,
+	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
+		const resolved = await this.bestEffort(
 			'Instance AI failed to read the AI preferences for this turn',
 			{ userId },
-			async () =>
-				renderAiPreferencesBlock(
-					await this.aiPreferenceService.getApplicable(userId, project ? [project] : []),
-				),
+			async () => {
+				const preferences = await this.aiPreferenceService.getApplicable(
+					userId,
+					project ? [project] : [],
+				);
+				return { preferences, rendered: renderAiPreferencesBlock(preferences) };
+			},
 		);
+		if (!resolved) {
+			return {
+				block: undefined,
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+			};
+		}
+
+		const lastBlock = await this.bestEffort(
+			'Instance AI failed to read the last AI preferences block of this thread',
+			{ threadId },
+			async () => await this.findLastAiPreferencesBlock(threadId),
+		);
+
+		// When every preference is gone but the conversation still carries a block, inject the
+		// cleared block once; without it the model keeps applying the deleted preferences.
+		const { preferences, rendered } = resolved;
+		const freshBlock =
+			rendered ?? (lastBlock !== undefined ? AI_PREFERENCES_CLEARED_BLOCK : undefined);
+		if (freshBlock === undefined) {
+			return {
+				block: undefined,
+				payload: buildAppliedPreferencesPayload({
+					preferences,
+					renderedLength: 0,
+					injectedThisTurn: false,
+				}),
+			};
+		}
+
+		if (lastBlock !== undefined && asStoredThreadContextSection(freshBlock) === lastBlock) {
+			// A lookup failure only costs the run attribution, never the skip itself.
+			const carriedFromRunId = await this.bestEffort(
+				'Instance AI failed to resolve which run sent the AI preferences block',
+				{ threadId },
+				async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
+			);
+			return {
+				block: undefined,
+				payload: buildAppliedPreferencesPayload({
+					preferences,
+					renderedLength: freshBlock.length,
+					injectedThisTurn: false,
+					...(carriedFromRunId ? { carriedFromRunId } : {}),
+				}),
+			};
+		}
+
+		return {
+			block: freshBlock,
+			payload: buildAppliedPreferencesPayload({
+				preferences,
+				renderedLength: freshBlock.length,
+				injectedThisTurn: true,
+			}),
+		};
+	}
+
+	/**
+	 * The ai-preferences block the model can still see this turn, from the newest replayed
+	 * user message that carries one. Scanned over the replay window, not the whole table:
+	 * a message the observation cursor has compacted survives only as lossy observation
+	 * bullets, so a block behind the cursor is gone from the model's context and must
+	 * count as absent — re-injection is what brings the preferences back. This also bounds
+	 * the scan to the same messages the runtime is about to load for the turn anyway.
+	 */
+	private async findLastAiPreferencesBlock(threadId: string): Promise<string | undefined> {
+		const history = await this.getReplayedMessages(threadId);
+		for (let i = history.length - 1; i >= 0; i--) {
+			const m = history[i];
+			if (!('role' in m) || m.role !== 'user') continue;
+			const block = extractAiPreferencesBlock(this.extractStoredMessageText(m.content));
+			if (block !== undefined) return block;
+		}
+		return undefined;
+	}
+
+	/**
+	 * The persisted messages the runtime replays to the model on the next turn. Mirrors
+	 * `MemoryOrchestrator.loadHistoryMessages`, including its desync guard: the post-cursor
+	 * window applies only when the cursor AND at least one active observation exist,
+	 * otherwise the runtime falls back to the full history. Diverging in the other
+	 * direction is safe — a needless re-injection costs one duplicate block, while
+	 * trusting a compacted copy silently drops the preferences.
+	 */
+	private async getReplayedMessages(threadId: string): Promise<AgentDbMessage[]> {
+		const cursor = await this.agentMemory.getCursor(threadId);
+		if (cursor) {
+			const observations = await this.agentMemory.getActiveObservationLog({
+				observationScopeId: threadId,
+				limit: 1,
+				order: 'desc',
+			});
+			if (observations.length > 0) {
+				return await this.agentMemory.getMessagesForObservationScope(threadId, {
+					since: {
+						sinceCreatedAt: cursor.lastObservedAt,
+						sinceMessageId: cursor.lastObservedMessageId,
+					},
+				});
+			}
+		}
+		return await this.agentMemory.getMessages(threadId);
 	}
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
