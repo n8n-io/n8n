@@ -600,7 +600,8 @@ nodes get LLM-generated pin data). So:
   static data** (`removeItemsSeenInPreviousExecutions`, `$getWorkflowStaticData`)
   is **not** seedable, because static data starts empty every run, so such a
   scenario reds vacuously (it sees everything as "new"). To get a seedable
-  change-detection scenario, steer the build toward a Data Table; otherwise
+  change-detection scenario, say "keep the state in a data table" in the prompt;
+  otherwise
   accept the static-data red as a harness limit and carry the logic in
   `outcomeExpectations`. Note the agent may *choose* static-data dedup on its own.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").

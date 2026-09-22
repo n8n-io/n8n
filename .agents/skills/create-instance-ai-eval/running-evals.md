@@ -220,36 +220,24 @@ case in the gate poisons it.
 
 ## Calibrating a batch of new cases on the dispatchers
 
-A batch of new cases does not calibrate on a laptop: one case costs 10–20 minutes
-per iteration locally, and docker lanes have crashed the machine before. Calibrate
-on the LangTracer dispatchers instead:
+One case costs 10–20 minutes per iteration on a laptop, and docker lanes have
+crashed it. A batch calibrates on the LangTracer dispatchers:
 
-1. **Author the JSON locally.** Run only static checks on the laptop: the schema
-   load (a `--dry-run` push is enough) and the similarity check against the
-   verification suites.
-2. **Push the batch** to its target suite with the LangTracer tag
-   `calibration-pending` (`pnpm eval:langtracer-push --suite <slug> <slugs…>`;
-   several slugs go through `pnpm exec tsx evaluations/cli/langtracer-push.ts`, see
-   the SKILL's push section). A seeded case gets a no-seed control copy in a
-   throwaway suite, never in the target suite.
-3. **Dispatch one manual sweep** for exactly those case ids:
+1. Author the JSON locally. Static checks only: a `--dry-run` push (schema) and
+   the similarity check against the verification suites.
+2. Push the batch to its suite with the tag `calibration-pending`.
+3. Dispatch one manual sweep for those case ids:
    `gh workflow run eval-run.yml --repo n8n-io/lang-tracer -f image=n8nio/n8n:nightly -f case_ids=<ids> -f iterations=3 -f trigger=manual`.
-   `trigger=manual` keeps the sweep out of the nightly's comparable baseline.
-4. **Read the results** over the LangTracer MCP: `list_eval_runs` →
-   `get_eval_run` (per-unit failures with attribution), or `list_case_runs` for
-   one run. Classify every red as **builder** (keep it red, tag
-   `capability-gap-finding`, propose a Linear ticket), **harness** (fix the
-   harness or design the case around the limit; never leave it to charge the
-   model) or **authoring** (fix the case).
-5. **Re-push the fixed cases as revisions** and re-dispatch only the changed ids.
-6. **Finish**: swap the tag `calibration-pending` for `calibrated` and stamp the
-   evidence into the case description: model, N, sweep ids and pass counts, e.g.
-   "Calibration (Opus 4.8, N=3): sweep 174 3/4, sweep 176 4/4".
+   `trigger=manual` keeps it out of the nightly baseline.
+4. Read `list_eval_runs` → `get_eval_run`. Classify each red: **builder** (keep
+   it red, tag `capability-gap-finding`, propose a ticket), **harness** (fix it or
+   design around it; never leave it to charge the model), **authoring** (fix the
+   case).
+5. Re-push the fixed cases and re-dispatch only those ids.
+6. Swap `calibration-pending` for `calibrated` and stamp the evidence into the
+   description, e.g. "Calibration (Opus 4.8, N=3): sweep 174 3/4, sweep 176 4/4".
 
 ## Validating a harness change before merge
-
-A harness or backend change that affects evals is validated on its branch through
-n8n's own dispatcher, with no local lane:
 
 ```bash
 gh workflow run test-evals-instance-ai.yml --repo n8n-io/n8n \
@@ -257,13 +245,11 @@ gh workflow run test-evals-instance-ai.yml --repo n8n-io/n8n \
   -f iterations=3 -f experiment-name=<change-name>
 ```
 
-CI reads cases from LangTracer only, with no disk fallback. A case that exists only
-on disk goes into a throwaway suite first
-(put it in `data/workflows` and push it by slug:
-`eval:langtracer-push --suite <scratch-suite> <slug>`). Never pass
-`experiment-name=instance-ai-baseline`: that name refreshes the shared baseline.
-Results land in the GitHub Actions run summary and in LangTracer as `ci_eval`
-runs, readable with `list_eval_runs` → `get_eval_run`.
+CI reads cases from LangTracer only. A case that exists only on disk goes into a
+throwaway suite first (`eval:langtracer-push --suite <scratch-suite> <slug>`).
+Never pass `experiment-name=instance-ai-baseline`; that name refreshes the shared
+baseline. Results: the run log's summary table and the
+`instance-ai-workflow-eval-results` artifact (`eval-results.json` + HTML report).
 
 ## Baselines & regression
 
