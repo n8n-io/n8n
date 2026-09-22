@@ -6,7 +6,7 @@ import { wiseApiRequest } from '../GenericFunctions';
 describe('wiseApiRequest', () => {
 	it.each([
 		['test', 'https://api.wise-sandbox.com/v1/profiles'],
-		['live', 'https://api.transferwise.com/v1/profiles'],
+		['live', 'https://api.wise.com/v1/profiles'],
 	] as const)('uses the %s API URL', async (environment, url) => {
 		const executeFunctions = mockDeep<IExecuteFunctions>();
 		executeFunctions.getCredentials.mockResolvedValue({

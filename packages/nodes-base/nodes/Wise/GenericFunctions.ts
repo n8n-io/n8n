@@ -27,7 +27,7 @@ export async function wiseApiRequest(
 	}>('wiseApi');
 
 	const rootUrl =
-		environment === 'live' ? 'https://api.transferwise.com/' : 'https://api.wise-sandbox.com/';
+		environment === 'live' ? 'https://api.wise.com/' : 'https://api.wise-sandbox.com/';
 
 	const options: IHttpRequestOptions = {
 		headers: {
