@@ -20,7 +20,7 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	 * the orphan sends that day two times.
 	 */
 	async findLatest(): Promise<InstanceMonitoringReport | null> {
-		const [latest] = await this.find({ order: { createdAt: 'DESC' }, take: 1 });
+		const [latest] = await this.find({ order: { createdAt: 'DESC', id: 'DESC' }, take: 1 });
 		return latest ?? null;
 	}
 

@@ -4,8 +4,9 @@ The module has two retry mechanisms. The code keeps them separate. Both feed
 the same state machine on `instance_monitoring_report`: a row goes from
 `pending` to `delivered`, or from `pending` to `skipped_after_max_retries`.
 
-- **Type 1, delivery retry.** Resend the pending row until it lands or its
-  budget runs out. It continues across the UTC midnight boundary.
+- **Type 1, delivery retry.** Resend the pending row until it lands, its budget
+  runs out, or its own next slot passes. It continues across the UTC midnight
+  boundary.
 - **Type 2, missed-day backfill.** Put every day without a delivered row into
   the next report.
 

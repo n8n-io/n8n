@@ -104,7 +104,7 @@ export class InstanceReportingService {
 		// exhausted row pending, so the budget is re-checked before sending rather
 		// than only after. Settling it here also ends the day for the scheduler.
 		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts);
+			await this.skip(report.id, report.attempts, 'max-retries');
 			return;
 		}
 
@@ -164,7 +164,7 @@ export class InstanceReportingService {
 
 			// `recordFailure` incremented the count, so the in-memory row is one behind.
 			if (report.attempts + 1 >= MAX_ATTEMPTS) {
-				await this.skip(report.id, report.attempts + 1);
+				await this.skip(report.id, report.attempts + 1, 'max-retries');
 			}
 
 			throw error;
@@ -175,12 +175,15 @@ export class InstanceReportingService {
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	private async skip(id: string, attempts: number): Promise<void> {
+	async skip(id: string, attempts: number, reason: 'max-retries' | 'slot-passed'): Promise<void> {
 		await this.reportRepository.markSkipped(id);
-		this.logger.error('Giving up on the instance report after repeated delivery failures', {
-			batchId: id,
-			attempts,
-		});
+
+		const message =
+			reason === 'max-retries'
+				? 'Giving up on the instance report after repeated delivery failures'
+				: 'Giving up on the instance report because its slot has passed';
+
+		this.logger.error(message, { batchId: id, attempts });
 	}
 
 	/**

@@ -152,7 +152,7 @@ export class InstanceReportingScheduler {
 
 		if (latest?.status === 'pending') {
 			if (pendingIsStale(latest, reportTime, now)) {
-				await this.reportRepository.markSkipped(latest.id);
+				await this.reportingService.skip(latest.id, latest.attempts, 'slot-passed');
 			} else {
 				return await this.trySend();
 			}
