@@ -498,12 +498,16 @@ function onWrapperPointerDown(event: PointerEvent) {
 							:show-after="HOVER_DELAY.SHOW"
 							placement="bottom"
 						>
-							<N8nIcon
+							<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
+							<span
 								:class="$style.triggerMark"
-								icon="bolt-filled"
+								role="img"
+								tabindex="0"
 								:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
 								data-test-id="canvas-node-group-trigger-mark"
-							/>
+							>
+								<N8nIcon icon="bolt-filled" />
+							</span>
 						</N8nTooltip>
 						<div :class="$style.title" data-test-id="canvas-node-group-title">
 							<N8nTooltip
@@ -896,6 +900,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .triggerMark {
+	display: inline-flex;
 	flex-shrink: 0;
 	color: var(--color--warning);
 }
