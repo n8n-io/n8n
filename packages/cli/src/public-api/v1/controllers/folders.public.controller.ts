@@ -1,4 +1,5 @@
 import {
+	DeleteFolderQueryPublicDto,
 	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	type FolderPublic,
@@ -22,6 +23,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Licensed,
 	Param,
@@ -176,6 +178,35 @@ export class FoldersPublicController {
 		try {
 			const folder = await this.folderService.updateFolder(folderId, projectId, body);
 			return toUpdatedFolderPublicDto(folder);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:folderId')
+	@Licensed(LICENSE_FEATURES.FOLDERS)
+	@ApiKeyScope('folder:delete')
+	@ApiSummary('Delete a folder')
+	@ApiDescription(
+		'Delete a folder within a project. When `transferToFolderId` is provided, workflows and ' +
+			'sub-folders are moved to the target folder before deletion. When omitted, workflows are ' +
+			'moved to the project root and archived, and child folders are deleted.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteFolder(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('folderId', folderIdParamSchema) folderId: string,
+		@Query query: DeleteFolderQueryPublicDto,
+	): Promise<void> {
+		// Stays a manual check: an unknown project answers 404 here, where `@ProjectScope` answers 403.
+		await assertProjectScope(req.user, projectId, ['folder:delete']);
+
+		try {
+			await this.folderService.deleteFolder(req.user, folderId, projectId, query);
 		} catch (error) {
 			return handleError(error);
 		}

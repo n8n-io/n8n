@@ -133,7 +133,7 @@ describe('AgentExecutionService', () => {
 			});
 			const execution = mock<AgentExecution>({ id: 'execution-1' });
 			agentExecutionRepository.create.mockReturnValue(execution);
-			agentExecutionRepository.save.mockResolvedValue(execution);
+			agentExecutionRepository.saveInContext.mockResolvedValue(execution);
 			const initialTimeline: TimelineEvent[] = [
 				{
 					type: 'background-task-signal',
@@ -153,7 +153,7 @@ describe('AgentExecutionService', () => {
 				initialTimeline,
 			};
 			executionUpdateBroadcaster.notify.mockImplementation(() => {
-				expect(agentExecutionRepository.save).toHaveBeenCalled();
+				expect(agentExecutionRepository.saveInContext).toHaveBeenCalled();
 				expect(agentExecutionRepository.create).toHaveBeenCalledWith(
 					expect.objectContaining({
 						timeline: initialTimeline,
@@ -174,21 +174,28 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('keeps a running execution alive until it is finalized', async () => {
+		it('keeps a running execution alive during title lookup and until finalization', async () => {
 			vi.useFakeTimers();
+			const titleLookupStarted = createDeferredPromise();
+			const titleLookup =
+				createDeferredPromise<Awaited<ReturnType<N8nMemoryImplementation['getThread']>>>();
 			try {
 				agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 					thread: makeThread(),
-					created: true,
+					created: false,
+				});
+				memoryBackend.getThread.mockImplementation(async () => {
+					titleLookupStarted.resolve();
+					return await titleLookup.promise;
 				});
 				agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-				agentExecutionRepository.save.mockResolvedValue({
+				agentExecutionRepository.saveInContext.mockResolvedValue({
 					id: 'execution-1',
 				} as AgentExecution);
 				agentExecutionRepository.touchRunning.mockResolvedValue();
 				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
-				const executionId = await service.startExecutionRecording(
+				const recording = service.startExecutionRecording(
 					{
 						access: previewAccess,
 						threadId: 'thread-1',
@@ -199,7 +206,11 @@ describe('AgentExecutionService', () => {
 					},
 					new Date(),
 				);
+				await titleLookupStarted.promise;
 				await vi.advanceTimersByTimeAsync(30_000);
+				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
+				titleLookup.resolve(null);
+				const executionId = await recording;
 
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
 					projectId: 'project-1',
@@ -224,6 +235,7 @@ describe('AgentExecutionService', () => {
 
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
 			} finally {
+				titleLookup.resolve(null);
 				vi.useRealTimers();
 			}
 		});
@@ -234,7 +246,9 @@ describe('AgentExecutionService', () => {
 			thread: makeThread(),
 			created: false,
 		});
-		agentExecutionRepository.save.mockResolvedValue(mock<AgentExecution>({ id: 'execution-1' }));
+		agentExecutionRepository.saveInContext.mockResolvedValue(
+			mock<AgentExecution>({ id: 'execution-1' }),
+		);
 		const params = {
 			access: previewAccess,
 			threadId: 'thread-1',
@@ -476,7 +490,9 @@ describe('AgentExecutionService', () => {
 				created: true,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -565,7 +581,9 @@ describe('AgentExecutionService', () => {
 					created: true,
 				});
 				agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-				agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+				agentExecutionRepository.saveInContext.mockResolvedValue({
+					id: 'execution-1',
+				} as AgentExecution);
 				const error = new Error('storage unavailable');
 				if (failure === 'blob write') {
 					agentExecutionLogStore.write.mockRejectedValue(error);
@@ -623,7 +641,9 @@ describe('AgentExecutionService', () => {
 			};
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
 			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -645,10 +665,12 @@ describe('AgentExecutionService', () => {
 				'Agent',
 				'project-1',
 				previewAccess,
+				{},
 				{
 					parentThreadId: 'parent-thread-1',
 					parentAgentId: 'parent-agent-1',
 				},
+				undefined,
 				undefined,
 				undefined,
 			);
@@ -661,7 +683,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution(
 				{
@@ -684,9 +708,11 @@ describe('AgentExecutionService', () => {
 				'Agent',
 				'project-1',
 				access,
+				{},
 				undefined,
 				'task-1',
 				'version-1',
+				undefined,
 			);
 		});
 
@@ -696,7 +722,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 			memoryBackend.getThread.mockResolvedValue({
 				id: 'thread-1',
 				resourceId: 'user-1',
@@ -725,7 +753,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -746,7 +776,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -811,7 +843,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 			telemetry.trackAgentTurnFinished.mockImplementation(() => {
 				throw new Error('telemetry failed');
 			});
@@ -857,7 +891,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -898,7 +934,9 @@ describe('AgentExecutionService', () => {
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -1282,8 +1320,8 @@ describe('AgentExecutionService', () => {
 	describe('deleteThread', () => {
 		it('deletes thread memory, attachments, and the execution thread', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
-				attachmentBinaryDataIds: ['binary-1'],
-				executionLogs: [],
+				status: 'deleted',
+				refs: { attachmentBinaryDataIds: ['binary-1'], executionLogs: [] },
 			});
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
@@ -1305,8 +1343,11 @@ describe('AgentExecutionService', () => {
 
 		it('deletes blob-stored logs when deleting a thread', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
-				attachmentBinaryDataIds: [],
-				executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+				status: 'deleted',
+				refs: {
+					attachmentBinaryDataIds: [],
+					executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+				},
 			});
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');

@@ -62,7 +62,9 @@ export interface UseAgentChatStreamParams {
 	 * extend the same session.
 	 */
 	continueSessionId?: Ref<string | undefined>;
+	newSession?: Ref<boolean>;
 	onHistoryLoaded?: (count: number) => void;
+	onSessionCreated?: (sessionId: string) => void;
 }
 
 type ResumePayload =
@@ -116,8 +118,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	let stopAcceptanceTimer: ReturnType<typeof setTimeout> | undefined;
+	let acknowledgedSessionId: string | undefined;
 	const targetKey = () =>
 		JSON.stringify([params.projectId.value, params.agentId.value, params.continueSessionId?.value]);
+	function acknowledgeSessionCreation(sessionId = params.continueSessionId?.value): void {
+		if (
+			!sessionId ||
+			params.newSession?.value !== true ||
+			sessionId !== params.continueSessionId?.value ||
+			sessionId === acknowledgedSessionId
+		) {
+			return;
+		}
+		acknowledgedSessionId = sessionId;
+		params.onSessionCreated?.(sessionId);
+	}
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
 	 * misconfigured (missing instructions / model / credential). Cleared on the
@@ -179,6 +194,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				runningExecutionId = envelope.activeExecutionId;
 			}
 			if (!isCurrent()) return false;
+			if (continueId) acknowledgeSessionCreation(continueId);
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
@@ -522,6 +538,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		event: AgentSseEvent,
 		session: StreamSession,
 	): { done?: boolean } | undefined {
+		// Controller validation failures only emit `error`. Any other event proves
+		// that the backend admitted and persisted this turn.
+		if (event.type !== 'error') acknowledgeSessionCreation();
 		switch (event.type) {
 			case 'execution-started':
 				clearTimeout(stopAcceptanceTimer);
@@ -921,8 +940,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
-		if (params.continueSessionId?.value) {
-			body.sessionId = params.continueSessionId.value;
+		const sessionId = params.continueSessionId?.value;
+		const newSession = params.newSession?.value === true;
+		if (sessionId) {
+			body.sessionId = sessionId;
+			if (newSession) body.newSession = true;
 		}
 		if (files?.length) {
 			body.attachments = await Promise.all(
@@ -939,7 +961,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			);
 		}
 		if (disposed || target !== targetKey()) return { outcome: 'aborted' };
-		return await postAndConsume(url, body, onAccepted);
+		const result = await postAndConsume(url, body, onAccepted);
+		if (
+			newSession &&
+			params.newSession?.value === true &&
+			sessionId &&
+			sessionId === params.continueSessionId?.value &&
+			sessionId !== acknowledgedSessionId
+		) {
+			await refreshHistory({ silent: true });
+		}
+		return result;
 	}
 
 	/**

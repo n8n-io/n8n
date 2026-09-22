@@ -482,6 +482,9 @@ catalogs:
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
+    '@types/validator':
+      specifier: ^13.7.0
+      version: 13.7.10
     '@types/ws':
       specifier: ^8.18.1
       version: 8.18.1
@@ -1560,6 +1563,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      validator:
+        specifier: 13.15.26
+        version: 13.15.26
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -1570,6 +1576,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/validator':
+        specifier: 'catalog:'
+        version: 13.7.10
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
@@ -3689,6 +3698,9 @@ importers:
       '@stylistic/eslint-plugin':
         specifier: ^5.0.0
         version: 5.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
+      eslint-plugin-import-x:
+        specifier: ^4.15.2
+        version: 4.15.2(@typescript-eslint/utils@8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       eslint-plugin-lodash:
         specifier: ^8.0.0
         version: 8.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -4824,7 +4836,7 @@ importers:
         specifier: 'catalog:'
         version: 11.0.0
       '@types/validator':
-        specifier: ^13.7.0
+        specifier: 'catalog:'
         version: 13.7.10
       '@types/ws':
         specifier: 'catalog:'
@@ -5370,6 +5382,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      dateformat:
+        specifier: ^3.0.3
+        version: 3.0.3
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
@@ -5403,6 +5418,9 @@ importers:
       sanitize-html:
         specifier: 'catalog:'
         version: 2.17.7
+      timeago.js:
+        specifier: ^4.0.2
+        version: 4.0.2
       vue-boring-avatars:
         specifier: ^1.3.0
         version: 1.3.0(vue@3.5.26(typescript@6.0.2))
@@ -5443,6 +5461,9 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/dateformat':
+        specifier: ^3.0.0
+        version: 3.0.1
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17

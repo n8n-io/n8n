@@ -42,6 +42,7 @@ import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -217,6 +218,13 @@ function makeService(sandboxEnabled = false) {
 	Container.set(AgentWakeService, wakeService);
 
 	executionService.canUseDraftThread.mockResolvedValue(true);
+	executionService.findThreadById.mockResolvedValue({
+		id: 'thread-1',
+		projectId,
+		agentId,
+		accessScope: 'project',
+		ownerId: null,
+	} as never);
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
@@ -331,6 +339,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							user,
 							message: 'hello',
 							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+							sessionMode: 'existing',
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
@@ -518,6 +527,10 @@ describe('AgentExecutionOrchestratorService', () => {
 					);
 				}
 				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+				expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+					expect.objectContaining({ sessionMode: 'existing' }),
+					expect.any(Date),
+				);
 			},
 		);
 
@@ -1569,54 +1582,59 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
-	it('records a failed session and rethrows when the published runtime cannot be built', async () => {
-		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
-		const buildError = new UserError('Credential "OpenAI" not found');
-		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
-		// A plain object: `mock<Agent>()` proxies nested fields, which breaks the
-		// telemetry builder's array handling of `schema`.
-		agentRepository.findByIdAndProjectId.mockResolvedValue({
-			id: agentId,
-			name: 'Support Agent (draft)',
-			schema: { ...schema, name: 'Support Agent (draft)' },
-			activeVersion: { schema },
-			integrations: [],
-		} as unknown as Agent);
+	it.each(['new', 'existing'] as const)(
+		'preserves %s intent when recording a failed runtime build',
+		async (sessionMode) => {
+			const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+			const buildError = new UserError('Credential "OpenAI" not found');
+			runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+			// A plain object: `mock<Agent>()` proxies nested fields, which breaks the
+			// telemetry builder's array handling of `schema`.
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				id: agentId,
+				name: 'Support Agent (draft)',
+				schema: { ...schema, name: 'Support Agent (draft)' },
+				activeVersion: { schema },
+				integrations: [],
+			} as unknown as Agent);
 
-		await expect(
-			collect(
-				service.executeForChatPublished({
+			await expect(
+				collect(
+					service.executeForChatPublished({
+						agentId,
+						projectId,
+						message: 'from slack',
+						memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+						sessionMode,
+						integrationType: 'slack',
+						sandboxPrincipalHash: integrationPrincipalHash,
+					}),
+				),
+			).rejects.toBe(buildError);
+
+			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
 					agentId,
-					projectId,
-					message: 'from slack',
-					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
-					integrationType: 'slack',
-					sandboxPrincipalHash: integrationPrincipalHash,
+					agentName: 'Support Agent',
+					threadId: 'thread-1',
+					userMessage: 'from slack',
+					source: 'slack',
+					sessionMode,
+					telemetry: expect.objectContaining({ runType: 'production' }),
 				}),
-			),
-		).rejects.toBe(buildError);
-
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({
-				agentId,
-				agentName: 'Support Agent',
-				threadId: 'thread-1',
-				userMessage: 'from slack',
-				source: 'slack',
-				telemetry: expect.objectContaining({ runType: 'production' }),
-			}),
-			expect.any(Date),
-		);
-		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
-			'execution-1',
-			expect.objectContaining({
-				record: expect.objectContaining({
-					finishReason: 'error',
-					error: 'Credential "OpenAI" not found',
+				expect.any(Date),
+			);
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({
+						finishReason: 'error',
+						error: 'Credential "OpenAI" not found',
+					}),
 				}),
-			}),
-		);
-	});
+			);
+		},
+	);
 
 	it('rethrows the build error without recording when the agent no longer exists', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
@@ -1900,7 +1918,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({ abortSignal }),
 		);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ userMessage: null }),
+			expect.objectContaining({ userMessage: null, sessionMode: 'existing' }),
 			expect.any(Date),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
@@ -2329,37 +2347,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('rejects a private thread on the project checkpoint path', async () => {
-		const { service, checkpointStorage, executionService, runtimeCacheService } = makeService();
-		checkpointStorage.getStatus.mockResolvedValue({
-			status: 'active',
-			checkpoint: {
-				persistence: { threadId: 'thread-1', resourceId: 'task:task-1' },
-			},
-		} as never);
-		executionService.findThreadById.mockResolvedValue({
-			projectId,
-			agentId,
-			accessScope: 'user',
-			ownerId: userId,
-		} as never);
+	it.each(['private', 'deleted'] as const)(
+		'rejects a %s thread on the project checkpoint path',
+		async (state) => {
+			const { service, checkpointStorage, executionService, runtimeCacheService } = makeService();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					persistence: { threadId: 'thread-1', resourceId: 'task:task-1' },
+				},
+			} as never);
+			executionService.findThreadById.mockResolvedValue(
+				state === 'deleted'
+					? null
+					: mock<AgentExecutionThread>({
+							projectId,
+							agentId,
+							accessScope: 'user',
+							ownerId: userId,
+						}),
+			);
 
-		await expect(
-			collect(
-				service.resumeForChat({
-					agentId,
-					projectId,
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					resumeData: { approved: true },
-					usePublishedVersion: true,
-					integrationType: 'task',
-				}),
-			),
-		).rejects.toThrow('does not belong to this chat');
-		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
-		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
-	});
+			await expect(
+				collect(
+					service.resumeForChat({
+						agentId,
+						projectId,
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						resumeData: { approved: true },
+						usePublishedVersion: true,
+						integrationType: 'task',
+					}),
+				),
+			).rejects.toThrow('does not belong to this chat');
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([false, true])(
 		'installs an interaction on the checkpoint memory only after a successful claim: %s',

@@ -148,7 +148,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, attachments } = payload;
+		const { message, sessionId, newSession, attachments } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -168,6 +168,7 @@ export class AgentChatController {
 				user: req.user,
 				sessionId,
 				previewChat: true,
+				newSession,
 				credentialProvider,
 			});
 			if (abortSignal.aborted) return;
@@ -202,6 +203,7 @@ export class AgentChatController {
 				attachments: storedAttachments,
 				user: req.user,
 				sessionId: threadId,
+				sessionMode: prepared.sessionMode,
 				previewChat: true,
 				errorMode: 'forward',
 				onChunk,

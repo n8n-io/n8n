@@ -26,6 +26,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import type { AgentSessionMode } from './utils/agent-thread-access';
 
 interface PrepareDraftRunInput {
 	agentId: string;
@@ -33,11 +34,12 @@ interface PrepareDraftRunInput {
 	user: User;
 	sessionId?: string;
 	previewChat?: boolean;
+	newSession?: boolean;
 	credentialProvider: CredentialProvider;
 }
 
 export type PrepareDraftRunResult =
-	| { status: 'ready'; sessionId: string }
+	| { status: 'ready'; sessionId: string; sessionMode: AgentSessionMode }
 	| { status: 'session_not_found' }
 	| { status: 'agent_misconfigured'; missing: string[] };
 
@@ -163,8 +165,10 @@ export class AgentTestRunService {
 		user,
 		sessionId,
 		previewChat,
+		newSession,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
+		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
 		if (sessionId) {
 			if (
 				!(await this.agentExecutionService.canUseDraftThread(
@@ -172,7 +176,7 @@ export class AgentTestRunService {
 					projectId,
 					agentId,
 					user.id,
-					{ previewChat },
+					{ previewChat, sessionMode },
 				))
 			) {
 				return { status: 'session_not_found' };
@@ -186,7 +190,11 @@ export class AgentTestRunService {
 		);
 		if (missing.length > 0) return { status: 'agent_misconfigured', missing };
 
-		return { status: 'ready', sessionId: sessionId ?? randomUUID() };
+		return {
+			status: 'ready',
+			sessionId: sessionId ?? randomUUID(),
+			sessionMode,
+		};
 	}
 
 	async executePreparedDraftRun({
@@ -246,6 +254,7 @@ export class AgentTestRunService {
 		const result = await this.executePreparedDraftRun({
 			...input,
 			sessionId: prepared.sessionId,
+			sessionMode: prepared.sessionMode,
 		});
 		return { ...result, sessionId: prepared.sessionId };
 	}
@@ -261,7 +270,7 @@ export class AgentTestRunService {
 				input.projectId,
 				input.agentId,
 				input.user.id,
-				{ previewChat: input.previewChat },
+				{ previewChat: input.previewChat, sessionMode: 'existing' },
 			))
 		) {
 			return { status: 'session_not_found' };

@@ -149,13 +149,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
-	>;
-
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }
 

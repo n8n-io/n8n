@@ -67,6 +67,10 @@ export default defineConfig(
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',
 						},
+						{
+							rule: 'no-unsealed-credentials-entity-write',
+							message: 'Route the write through a token-gated `CredentialsRepository` method.',
+						},
 					],
 				},
 			],
@@ -151,7 +155,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
@@ -161,7 +164,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
 		rules: {

@@ -31,17 +31,17 @@ describe('DatabricksTrigger', () => {
 	const trigger = new DatabricksTrigger();
 	const action = new Databricks();
 
-	it('should ship hidden as a polling trigger', () => {
+	it('should ship as a polling trigger', () => {
 		expect(trigger.description).toMatchObject({
 			displayName: 'Databricks Trigger',
 			name: 'databricksTrigger',
 			group: ['trigger'],
 			version: 1,
-			hidden: true,
 			polling: true,
 			inputs: [],
 			outputs: ['main'],
 		});
+		expect(trigger.description.hidden).toBeUndefined();
 	});
 
 	it('should gate each credential on its authentication option', () => {

@@ -167,6 +167,7 @@ catalog:
   '@types/ssh2': 1.15.0
   '@types/turndown': ^5.0.6
   '@types/uuid': ^11.0.0
+  '@types/validator': ^13.7.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
   # Pinned exactly and kept together: these packages cross types with each other
@@ -273,6 +274,7 @@ catalog:
   typescript: 6.0.2
   typescript-eslint: 8.70.0
   uuid: 11.1.1
+  validator: 13.15.26
   vite: ^8.0.2
   unplugin-dts: ^1.1.0
   vite-plugin-singlefile: 2.3.3
@@ -393,7 +395,7 @@ overrides:
   pdfjs-dist: 'catalog:'
   tmp: 0.2.7
   nodemailer: 8.0.10
-  validator: 13.15.26
+  validator: 'catalog:'
   zod: 3.25.76
   # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
   'knip>zod': catalog:zod-v4
