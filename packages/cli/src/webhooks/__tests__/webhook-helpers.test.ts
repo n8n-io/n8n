@@ -3,6 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EndedMessage, ExecutionResponse, ExecutionResponseReceiver } from '@n8n/engine';
 import type express from 'express';
 import {
 	BinaryDataService,
@@ -58,7 +59,9 @@ import { AuthService } from '@/auth/auth.service';
 import type { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { EventService } from '@/events/event.service';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -1127,6 +1130,7 @@ const activeExecutions = mockInstance(ActiveExecutions);
 const resourceRegistry = mockInstance(ProtectedResourceRegistry);
 // Off by default: every block but the engine 2.0 one exercises the v1 path.
 const engineV2Dispatcher = mockInstance(EngineV2Dispatcher);
+const engineDataPlaneProxy = mockInstance(EngineDataPlaneProxyService);
 const executionContextService = mockInstance(ExecutionContextService);
 const userRepository = mockInstance(UserRepository);
 mockInstance(AuthService);
@@ -1944,6 +1948,8 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 
 describe('executeWebhook on engine 2.0', () => {
 	const errorReporter = Container.get(ErrorReporter);
+	/** Response handlers registered by the responder, by execution ID. */
+	let dataPlane: Map<string, (response: ExecutionResponse) => void>;
 	/** The data plane mints uuidv7 ids, not the numeric ids v1 uses. */
 	const ENGINE_EXECUTION_ID = '019606a1-0000-7000-8000-000000000001';
 
@@ -2034,8 +2040,32 @@ describe('executeWebhook on engine 2.0', () => {
 		// The webhook path asks before it can build the run data, so it goes through
 		// `handlesWorkflow`, not `routesToEngineV2`.
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+		engineDataPlaneProxy.isAvailable.mockReturnValue(true);
 		workflowRunner.run.mockResolvedValue(ENGINE_EXECUTION_ID);
+		// The host hands the responder its receiver at boot. Keeping each run's
+		// handler is how a test plays the data plane answering.
+		dataPlane = new Map();
+		Container.get(EngineV2WebhookResponder).useReceiver(
+			mock<ExecutionResponseReceiver>({
+				receive: vi.fn((executionId: string, handler: (r: ExecutionResponse) => void) => {
+					dataPlane.set(executionId, handler);
+					return vi.fn();
+				}),
+			}),
+		);
 	});
+
+	/** Ends the run the request is waiting on, as the data plane would. */
+	const answerRun = (status: EndedMessage['status'], lastStep: EndedMessage['lastStep']): void => {
+		const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+		dataPlane.get(executionId)?.({
+			type: 'ended',
+			executionId,
+			workflowId: WORKFLOW_ID,
+			status,
+			lastStep,
+		});
+	};
 
 	describe('onReceived', () => {
 		it('answers on receipt and returns the data plane execution id', async () => {
@@ -2065,6 +2095,75 @@ describe('executeWebhook on engine 2.0', () => {
 		});
 	});
 
+	describe('lastNode', () => {
+		it('dispatches the run under the id the answer is listened for on', async () => {
+			await startWebhook({ responseMode: 'lastNode' });
+
+			// The listener is created before the run starts, and the run has to use
+			// the id it listens under, so a fast answer is not lost.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			const dispatchedId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+			expect(dataPlane.has(dispatchedId)).toBe(true);
+		});
+
+		it('answers with the data of the step the run ended on', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+
+			answerRun('completed', {
+				nodeId: 'edit-fields',
+				nodeName: 'Edit Fields',
+				status: 'completed',
+				outputs: [[{ json: { ok: true } }]],
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback).toHaveBeenCalledWith(
+				null,
+				expect.objectContaining({ body: [{ ok: true }], code: 200 }),
+			);
+		});
+
+		it('answers that nothing was returned when the step produced no data', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+
+			answerRun('completed', {
+				nodeId: 'edit-fields',
+				nodeName: 'Edit Fields',
+				status: 'skipped',
+				outputs: null,
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{
+					data: {
+						message: 'Workflow executed successfully but the last node did not return any data',
+					},
+					responseCode: 200,
+				},
+			]);
+		});
+
+		it('answers with a failure when the run ended on a failed step', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+
+			answerRun('failed', {
+				nodeId: 'edit-fields',
+				nodeName: 'Edit Fields',
+				status: 'failed',
+				outputs: null,
+				error: { name: 'NodeOperationError', message: 'it broke' },
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{ data: { message: 'Error in workflow' }, responseCode: 500 },
+			]);
+		});
+	});
+
 	describe('rejections', () => {
 		const reasonFrom = (responseCallback: ReturnType<typeof vi.fn>) => {
 			const error = responseCallback.mock.calls[0][0] as ResponseError;
@@ -2072,12 +2171,6 @@ describe('executeWebhook on engine 2.0', () => {
 		};
 
 		it.each([
-			{
-				name: 'the lastNode response mode',
-				options: { responseMode: 'lastNode' },
-				message:
-					"Engine 2.0 does not support the 'lastNode' response mode yet. Respond immediately instead.",
-			},
 			{
 				name: 'the responseNode response mode',
 				options: { responseMode: 'responseNode' },
@@ -2139,6 +2232,19 @@ describe('executeWebhook on engine 2.0', () => {
 			// A streaming node, and the chat/MCP/Agent365 triggers, answer the request
 			// themselves. Refusing after that could not send this 400.
 			expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('answers 400, not 500, when the engine-v2 module is disabled', async () => {
+			engineDataPlaneProxy.isAvailable.mockReturnValue(false);
+
+			const { responseCallback } = await startWebhook();
+
+			expect(reasonFrom(responseCallback)).toEqual({
+				status: 400,
+				message:
+					'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+			});
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
