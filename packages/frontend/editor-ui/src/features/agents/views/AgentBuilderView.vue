@@ -42,6 +42,7 @@ import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	createAgent,
+	createAgentTask,
 	deleteAgent,
 	listAgentFiles,
 	uploadAgentFiles,
@@ -246,7 +247,8 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // `isRouteAgentPending` to false, which must not close the panel out from
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
-/** A starter template was applied and nothing was edited by hand since; drives the editor chip. */
+/** A starter template was applied; latches the intro closed even if a config
+ * refetch momentarily restores a blank config. No chip is shown for this. */
 const templateApplied = ref(false);
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
@@ -1406,9 +1408,6 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
-	// The chip means "untouched template"; an auto-applied default (seeded model)
-	// is not a user edit and must not dismiss it.
-	if (meta?.source !== 'auto') templateApplied.value = false;
 	Object.assign(localConfig.value, updates);
 	// Mirror identity edits onto the agent resource so the header reflects them
 	// before the next fetch.
@@ -1485,10 +1484,10 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 }
 
 // Apply a starter template to a blank agent: writes instructions and tools,
-// pre-connects any channel triggers, and drops a `template_adjustment` draft
-// into the assistant composer so the user can ask for changes. Refuses (with a
-// toast) once the agent already has content — the intro is for a first build.
-function onApplyTemplate(template: AgentTemplate) {
+// pre-connects any channel triggers, creates scheduled tasks, and sends the
+// template prompt to the assistant so it starts building right away. Refuses
+// (with a toast) once the agent already has content — the intro is for a first build.
+async function onApplyTemplate(template: AgentTemplate) {
 	if (!localConfig.value) return;
 	const next = applyAgentTemplate(
 		localConfig.value,
@@ -1509,13 +1508,49 @@ function onApplyTemplate(template: AgentTemplate) {
 	// integration entry.
 	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
-	aiPanelRef.value?.setPrefill({
-		text: locale.baseText('agents.builder.templates.draft', {
-			interpolate: { template: locale.baseText(template.labelKey) },
+	// Persist the agent and flush the config autosave before sending the chat
+	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
+	// send first, a failed save (e.g. invalid tool fields in draft mode)
+	// rejects `beforeSend` and the chat message is never sent. Flushing here
+	// drains the queue so `beforeSend` resolves immediately.
+	try {
+		await ensureAgentPersisted();
+		await flushAutosave();
+	} catch {
+		// Invalid tool fields are expected in draft mode; the chat message
+		// should still reach the assistant.
+	}
+	// Send the template prompt to the assistant right away so it starts
+	// building. The prompt format is "Build {name} agent to {description}".
+	aiPanelRef.value?.submitSuggestion({
+		prompt: locale.baseText('agents.builder.templates.prompt', {
+			interpolate: {
+				name: locale.baseText(template.labelKey),
+				description: locale.baseText(template.descriptionKey),
+			},
 		}),
+		suggestionId: template.id,
+		suggestionKind: 'prompt',
+		position: 0,
 		prefillType: 'template_adjustment',
-		prefillId: template.id,
 	});
+	// Create scheduled task bodies after the agent is persisted. The backend
+	// assigns each task an id and adds the matching config ref, so the
+	// template only declares the body — not the config's `tasks` entry.
+	if (template.tasks?.length) {
+		try {
+			await ensureAgentPersisted();
+			for (const task of template.tasks) {
+				await createAgentTask(rootStore.restApiContext, projectId.value, agentId.value, {
+					...task,
+					enabled: true,
+				});
+			}
+			tasksReloadKey.value += 1;
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.tasks.saveError'));
+		}
+	}
 }
 
 function persistMissingPersonalisationGradient() {
@@ -2505,7 +2540,6 @@ function onSwitchAgent(nextAgentId: string) {
 					:artifact-mode="isArtifactMode"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
-					:template-applied="templateApplied"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"

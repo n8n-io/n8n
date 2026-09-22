@@ -31,6 +31,9 @@ const i18n = useI18n();
 				:data-test-id="`agent-template-${template.id}`"
 				@click="emit('select', template)"
 			>
+				<span :class="$style.exampleIcon" :data-test-id="`agent-template-icon-${template.id}`">
+					<N8nIcon :icon="template.icon" size="small" />
+				</span>
 				<span :class="$style.exampleText">
 					<N8nText size="small" :class="$style.exampleLabel">
 						{{ i18n.baseText(template.labelKey) }}
@@ -87,6 +90,18 @@ const i18n = useI18n();
 			color: var(--color--primary);
 		}
 	}
+}
+
+.exampleIcon {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	border-radius: 50%;
+	background: var(--color--primary--tint-3);
+	color: var(--color--primary);
 }
 
 .exampleText {

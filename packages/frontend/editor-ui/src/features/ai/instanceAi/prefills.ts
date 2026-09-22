@@ -3,6 +3,7 @@ import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
 
 /**

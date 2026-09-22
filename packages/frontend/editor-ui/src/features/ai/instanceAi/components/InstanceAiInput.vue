@@ -28,7 +28,7 @@ import {
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
-type SuggestionPromptPayload =
+export type SuggestionPromptPayload =
 	| {
 			promptKey: BaseTextKey;
 			prompt?: never;
@@ -37,7 +37,7 @@ type SuggestionPromptPayload =
 			prompt: string;
 			promptKey?: never;
 	  };
-type SuggestionSelectionPayload = SuggestionPromptPayload & {
+export type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;

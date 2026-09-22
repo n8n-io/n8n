@@ -45,6 +45,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
 
@@ -174,10 +175,20 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 	conversationRef.value?.setPrefill(prefill);
 }
 
+/**
+ * Sends a prompt to the assistant right away, without staging it in the
+ * composer first. The host (e.g. the agent builder) owns the wording and the
+ * pre-fill tag. A no-op while no thread is mounted yet.
+ */
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	conversationRef.value?.submitSuggestion(payload);
+}
+
 defineExpose({
 	handoff,
 	/** Forwards to the mounted conversation's composer; a no-op while no thread is mounted. */
 	setPrefill,
+	submitSuggestion,
 });
 
 /** The assistant is actively mutating the subject — the thread list stops

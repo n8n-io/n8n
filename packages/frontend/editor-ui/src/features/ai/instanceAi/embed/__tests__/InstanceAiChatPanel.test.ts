@@ -73,6 +73,7 @@ const InstanceAiViewHeaderStub = defineComponent({
 const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
 const applyHandoffMock = vi.hoisted(() => vi.fn());
 const setPrefillMock = vi.hoisted(() => vi.fn());
+const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
@@ -82,6 +83,7 @@ const InstanceAiConversationStub = defineComponent({
 		isDirty: isDirtyMock,
 		applyHandoff: applyHandoffMock,
 		setPrefill: setPrefillMock,
+		submitSuggestion: submitSuggestionMock,
 	},
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
@@ -139,6 +141,7 @@ describe('InstanceAiChatPanel', () => {
 		isDirtyMock.mockReset().mockReturnValue(false);
 		applyHandoffMock.mockClear();
 		setPrefillMock.mockClear();
+		submitSuggestionMock.mockClear();
 		clearPendingHandoffContext('thread-2');
 		clearPendingComposerDraft('thread-2');
 	});
@@ -240,6 +243,27 @@ describe('InstanceAiChatPanel', () => {
 			text: 'I started from the Research Assistant template.',
 			prefillType: 'template_adjustment',
 			prefillId: 'research-assistant',
+		});
+	});
+
+	it('forwards submitSuggestion to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.submitSuggestion({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
+
+		expect(submitSuggestionMock).toHaveBeenCalledWith({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
 		});
 	});
 

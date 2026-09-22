@@ -19,6 +19,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -730,6 +731,15 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 	chatInputRef.value?.setPrefill(prefill);
 }
 
+/**
+ * Sends a prompt to the assistant right away, without staging it in the
+ * composer first. The host (e.g. the agent builder template picker) owns the
+ * wording and the pre-fill tag.
+ */
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	chatInputRef.value?.submitSuggestion(payload);
+}
+
 /** So a host-triggered send (e.g. the "fix with AI" offer) re-follows new messages. */
 function resetScroll() {
 	userScrolledUp.value = false;
@@ -741,6 +751,7 @@ defineExpose({
 	dismissPendingComposerContext,
 	resetScroll,
 	setPrefill,
+	submitSuggestion,
 	// Read by the host for panels that sit beside (not inside) the conversation.
 	pendingComposerContext,
 });

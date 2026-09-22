@@ -13,7 +13,6 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
-				'agents.builder.templates.appliedChip': 'Template applied',
 			})[key] ?? key,
 	}),
 	// The i18n singleton is used at module load by some transitively-imported utils.
@@ -153,7 +152,6 @@ async function mountColumn(
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
 		agent: AgentResource | null;
-		templateApplied: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -187,7 +185,6 @@ async function mountColumn(
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
 			executionsDescription: '',
-			templateApplied: overrides.templateApplied ?? false,
 		},
 		global: {
 			plugins: [pinia],
@@ -471,19 +468,5 @@ describe('AgentBuilderEditorColumn', () => {
 			capabilities.element.compareDocumentPosition(memory.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
-	});
-
-	it('does not show the template-applied chip by default', async () => {
-		const wrapper = await mountColumn();
-
-		expect(wrapper.find('[data-testid="agent-template-applied-chip"]').exists()).toBe(false);
-	});
-
-	it('shows the template-applied chip when templateApplied is true', async () => {
-		const wrapper = await mountColumn({ templateApplied: true });
-
-		const chip = wrapper.find('[data-testid="agent-template-applied-chip"]');
-		expect(chip.exists()).toBe(true);
-		expect(chip.text()).toContain('Template applied');
 	});
 });

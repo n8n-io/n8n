@@ -1,5 +1,10 @@
 import type { BaseTextKey } from '@n8n/i18n';
-import type { AgentIntegrationConfig, AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentJsonConfig,
+	AgentJsonToolConfig,
+	AgentTaskConfig,
+} from '@n8n/api-types';
 
 /**
  * A one-click starter agent template. Selecting one writes a working example
@@ -10,6 +15,7 @@ export interface AgentTemplate {
 	id: string;
 	labelKey: BaseTextKey;
 	descriptionKey: BaseTextKey;
+	icon: string;
 	/** Written onto a blank agent. `model` is never set here. */
 	config: {
 		name: string;
@@ -20,71 +26,113 @@ export interface AgentTemplate {
 		 * The trigger types are derived from this list — no separate
 		 * `connectedTriggers` field is needed. */
 		integrations?: AgentIntegrationConfig[];
+		/** Nested agent runtime config (web search, reasoning, etc.). Merged
+		 * onto the existing config so a template can enable web search without
+		 * wiping other runtime settings. */
+		config?: {
+			webSearch?: { enabled: boolean; provider?: 'auto' | 'native' | 'brave' | 'searxng' };
+		};
 	};
+	/** Scheduled task bodies to create after the agent is persisted. The
+	 * backend assigns each task an id and adds the matching `{ type: 'task',
+	 * id, enabled }` ref to the config, so the template does not pre-populate
+	 * the config's `tasks` array. */
+	tasks?: AgentTaskConfig[];
 }
 
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	{
-		id: 'customer-support',
-		labelKey: 'agents.builder.templates.customerSupport.label',
-		descriptionKey: 'agents.builder.templates.customerSupport.description',
+		id: 'morning-news-brief',
+		labelKey: 'agents.builder.templates.morningNewsBrief.label',
+		descriptionKey: 'agents.builder.templates.morningNewsBrief.description',
+		icon: 'sun',
 		config: {
-			name: 'Customer Support Agent',
+			name: 'Morning News Brief',
 			instructions:
-				'You are a friendly customer support agent. Answer user questions using the provided knowledge base. If you cannot find an answer, say so and offer to escalate to a human agent. Always be polite and concise.',
-			integrations: [{ type: 'telegram', credentialId: '' }],
+				'You are a news brief agent. Every morning at 9am, search the web for today’s top headlines and compile a concise summary. For each story include a headline, a one-sentence summary, and a source link. Limit the brief to five stories.',
+			config: {
+				webSearch: { enabled: true, provider: 'native' },
+			},
 		},
+		tasks: [
+			{
+				name: 'Morning news brief',
+				objective:
+					'Search the web for today’s top headlines and compile a concise summary. For each story include a headline, a one-sentence summary, and a source link. Limit the brief to five stories.',
+				cronExpression: '0 9 * * *',
+			},
+		],
 	},
 	{
-		id: 'research-assistant',
-		labelKey: 'agents.builder.templates.researchAssistant.label',
-		descriptionKey: 'agents.builder.templates.researchAssistant.description',
+		id: 'process-incoming-emails',
+		labelKey: 'agents.builder.templates.processIncomingEmails.label',
+		descriptionKey: 'agents.builder.templates.processIncomingEmails.description',
+		icon: 'mail',
 		config: {
-			name: 'Research Assistant',
+			name: 'Process Incoming Emails',
 			instructions:
-				'You are a research assistant. Use the Wikipedia tool to look up factual information, and the Calculator tool to perform arithmetic on any numbers you find. Summarize key findings in a structured format and cite your sources.',
+				'You are an email processing agent. Read new emails from Gmail, identify action items, and update the user’s Google Calendar with any meetings, deadlines, or follow-ups mentioned. Summarize each email and flag urgent items.',
 			tools: [
 				{
 					type: 'node',
-					name: 'Wikipedia',
-					description: 'Search Wikipedia for factual information.',
+					name: 'Gmail',
+					description: 'Read and send emails through Gmail.',
 					node: {
-						nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-						nodeTypeVersion: 1,
+						nodeType: 'n8n-nodes-base.gmail',
+						nodeTypeVersion: 2,
 						nodeParameters: {},
+						credentials: { gmailOAuth2: { id: '', name: 'gmailOAuth2' } },
 					},
 				},
 				{
 					type: 'node',
-					name: 'Calculator',
-					description: 'Perform arithmetic calculations.',
+					name: 'Google Calendar',
+					description: 'Create and update calendar events.',
 					node: {
-						nodeType: '@n8n/n8n-nodes-langchain.toolCalculator',
+						nodeType: 'n8n-nodes-base.googleCalendar',
 						nodeTypeVersion: 1,
 						nodeParameters: {},
+						credentials: {
+							googleCalendarOAuth2Api: { id: '', name: 'googleCalendarOAuth2Api' },
+						},
 					},
 				},
 			],
 		},
 	},
 	{
-		id: 'data-analyst',
-		labelKey: 'agents.builder.templates.dataAnalyst.label',
-		descriptionKey: 'agents.builder.templates.dataAnalyst.description',
+		id: 'qualify-new-leads',
+		labelKey: 'agents.builder.templates.qualifyNewLeads.label',
+		descriptionKey: 'agents.builder.templates.qualifyNewLeads.description',
+		icon: 'users',
 		config: {
-			name: 'Data Analyst',
+			name: 'Qualify New Leads',
 			instructions:
-				'You are a data analyst. Answer questions by querying the connected database, summarizing results, and presenting insights. Use clear tables when helpful.',
+				'You are a lead qualification agent. Score new leads from the CRM based on their profile, activity, and engagement. Route high-scoring leads to sales for immediate follow-up, and nurture low-scoring leads with relevant content.',
 		},
 	},
 	{
-		id: 'social-media-monitor',
-		labelKey: 'agents.builder.templates.socialMediaMonitor.label',
-		descriptionKey: 'agents.builder.templates.socialMediaMonitor.description',
+		id: 'linkedin-outreach',
+		labelKey: 'agents.builder.templates.linkedinOutreach.label',
+		descriptionKey: 'agents.builder.templates.linkedinOutreach.description',
+		icon: 'link',
 		config: {
-			name: 'Social Media Monitor',
+			name: 'LinkedIn Outreach',
 			instructions:
-				'You are a social media monitoring agent. Track mentions of configured keywords, summarize sentiment, and alert the team when critical issues are detected.',
+				'You are a LinkedIn outreach agent. Draft personalized connection messages based on the recipient’s profile and shared interests. Send messages that are professional, concise, and likely to generate a response.',
+			tools: [
+				{
+					type: 'node',
+					name: 'LinkedIn',
+					description: 'Send connection messages and interact with the LinkedIn API.',
+					node: {
+						nodeType: 'n8n-nodes-base.linkedIn',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: { linkedInOAuth2Api: { id: '', name: 'linkedInOAuth2Api' } },
+					},
+				},
+			],
 		},
 	},
 ];
@@ -121,5 +169,6 @@ export function applyAgentTemplate(
 		instructions: template.config.instructions,
 		tools: template.config.tools ?? [],
 		integrations: template.config.integrations ?? [],
+		config: { ...config.config, ...template.config.config },
 	};
 }

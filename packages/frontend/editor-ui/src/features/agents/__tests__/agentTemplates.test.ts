@@ -31,11 +31,11 @@ describe('isAgentConfigBlank', () => {
 					tools: [
 						{
 							type: 'node',
-							name: 'Wikipedia',
-							description: 'Search Wikipedia.',
+							name: 'Gmail',
+							description: 'Read emails.',
 							node: {
-								nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-								nodeTypeVersion: 1,
+								nodeType: 'n8n-nodes-base.gmail',
+								nodeTypeVersion: 2,
 								nodeParameters: {},
 							},
 						},
@@ -62,11 +62,11 @@ describe('applyAgentTemplate', () => {
 	});
 
 	it('writes instructions, tools and replaces the default name', () => {
-		const template = AGENT_TEMPLATES.find((t) => t.id === 'research-assistant')!;
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'process-incoming-emails')!;
 		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
 
 		expect(result).not.toBeNull();
-		expect(result?.name).toBe('Research Assistant');
+		expect(result?.name).toBe('Process Incoming Emails');
 		expect(result?.instructions).toBe(template.config.instructions);
 		expect(result?.tools).toHaveLength(2);
 	});
@@ -90,40 +90,83 @@ describe('applyAgentTemplate', () => {
 	});
 
 	it('writes an empty tools array for a template without tools', () => {
-		const template = AGENT_TEMPLATES.find((t) => t.id === 'data-analyst')!;
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'qualify-new-leads')!;
 		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
 
 		expect(result?.tools).toEqual([]);
 	});
 
-	it('writes draft integrations from the template', () => {
-		const template = AGENT_TEMPLATES.find((t) => t.id === 'customer-support')!;
-		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
-
-		expect(result?.integrations).toEqual([{ type: 'telegram', credentialId: '' }]);
-	});
-
 	it('writes an empty integrations array for a template without integrations', () => {
-		const template = AGENT_TEMPLATES.find((t) => t.id === 'data-analyst')!;
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'qualify-new-leads')!;
 		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
 
 		expect(result?.integrations).toEqual([]);
+	});
+
+	it('writes config.webSearch for the morning news brief template', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief')!;
+		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
+
+		expect(result?.config?.webSearch).toEqual({ enabled: true, provider: 'native' });
+	});
+
+	it('declares a daily 9am task for the morning news brief template', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief')!;
+
+		expect(template.tasks).toHaveLength(1);
+		expect(template.tasks?.[0]).toEqual({
+			name: 'Morning news brief',
+			objective: expect.stringContaining('top headlines'),
+			cronExpression: '0 9 * * *',
+		});
+	});
+
+	it('writes draft (empty id) credentials for tools that need them', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'process-incoming-emails')!;
+		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
+		const tools = result?.tools ?? [];
+
+		expect(tools).toHaveLength(2);
+		for (const tool of tools) {
+			if (tool.type !== 'node') continue;
+			for (const cred of Object.values(tool.node.credentials ?? {})) {
+				expect(cred.id).toBe('');
+			}
+		}
+	});
+
+	it('writes a draft credential for the linkedin outreach tool', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'linkedin-outreach')!;
+		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
+		const tool = result?.tools?.[0];
+
+		expect(tool?.type).toBe('node');
+		if (tool?.type === 'node') {
+			const cred = Object.values(tool.node.credentials ?? {})[0];
+			expect(cred?.id).toBe('');
+		}
 	});
 });
 
 describe('AGENT_TEMPLATES', () => {
 	it('has the four expected ids in order', () => {
 		expect(AGENT_TEMPLATES.map((t) => t.id)).toEqual([
-			'customer-support',
-			'research-assistant',
-			'data-analyst',
-			'social-media-monitor',
+			'morning-news-brief',
+			'process-incoming-emails',
+			'qualify-new-leads',
+			'linkedin-outreach',
 		]);
 	});
 
 	it('never sets a model on a template config', () => {
 		for (const template of AGENT_TEMPLATES) {
 			expect('model' in template.config).toBe(false);
+		}
+	});
+
+	it('each template has an icon', () => {
+		for (const template of AGENT_TEMPLATES) {
+			expect(template.icon).toBeTruthy();
 		}
 	});
 });

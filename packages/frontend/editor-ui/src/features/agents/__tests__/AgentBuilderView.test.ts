@@ -44,6 +44,7 @@ const pushConnectMock = vi.fn();
 const pushListeners = new Set<(event: PushMessage) => void>();
 const handoffMock = vi.fn();
 const setPrefillMock = vi.fn();
+const submitSuggestionMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -138,6 +139,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 const updateAgentMock = vi.fn();
 const updateAgentSkillMock = vi.fn();
 const createAgentSkillMock = vi.fn();
+const createAgentTaskMock = vi.fn().mockResolvedValue({ id: 'task-1' });
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
@@ -177,6 +179,7 @@ const stopSessionAutoRefreshMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
+	createAgentTask: createAgentTaskMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
@@ -365,10 +368,18 @@ const baseTextFn = (
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 		'agents.new.defaultName': 'New Agent',
-		'agents.builder.templates.customerSupport.label': 'Customer Support',
-		'agents.builder.templates.researchAssistant.label': 'Research Assistant',
-		'agents.builder.templates.dataAnalyst.label': 'Data Analyst',
-		'agents.builder.templates.socialMediaMonitor.label': 'Social Media Monitor',
+		'agents.builder.templates.morningNewsBrief.label': 'Morning news brief',
+		'agents.builder.templates.processIncomingEmails.label': 'Process incoming emails',
+		'agents.builder.templates.qualifyNewLeads.label': 'Qualify new leads',
+		'agents.builder.templates.linkedinOutreach.label': 'LinkedIn outreach',
+		'agents.builder.templates.morningNewsBrief.description':
+			"Sends a daily summary of today's top headlines.",
+		'agents.builder.templates.processIncomingEmails.description':
+			'Reads new emails and updates your calendar or sheet.',
+		'agents.builder.templates.qualifyNewLeads.description':
+			'Scores and routes new leads from your CRM.',
+		'agents.builder.templates.linkedinOutreach.description':
+			'Drafts and sends personalized connection messages on LinkedIn.',
 	};
 	if (key === 'agents.builder.externalUpdate.time') {
 		const minutes = options?.adjustToNumber ?? 0;
@@ -385,8 +396,8 @@ const baseTextFn = (
 ${String(options?.interpolate?.diagnostics ?? '')}
 `;
 	}
-	if (key === 'agents.builder.templates.draft') {
-		return `I started from the ${String(options?.interpolate?.template ?? '')} template. Review its instructions and tools, then ask me what to change before you edit anything.`;
+	if (key === 'agents.builder.templates.prompt') {
+		return `Build ${String(options?.interpolate?.name ?? '')} agent to ${String(options?.interpolate?.description ?? '')}`;
 	}
 	return map[key] ?? key;
 };
@@ -583,9 +594,13 @@ const commonStubs = {
 			'</div>',
 		props: ['subject', 'launch', 'threadId', 'beforeNewThread', 'beforeSend'],
 		emits: ['update:threadId', 'update:building', 'close'],
-		// Stands in for the real `defineExpose`d `handoff` and `setPrefill` — the
+		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
-		methods: { handoff: handoffMock, setPrefill: setPrefillMock },
+		methods: {
+			handoff: handoffMock,
+			setPrefill: setPrefillMock,
+			submitSuggestion: submitSuggestionMock,
+		},
 	},
 	AgentBuildingIndicator: {
 		name: 'AgentBuildingIndicator',
@@ -745,6 +760,9 @@ function resetViewMocks() {
 	showMessageMock.mockReset();
 	handoffMock.mockReset();
 	setPrefillMock.mockReset();
+	submitSuggestionMock.mockReset();
+	createAgentTaskMock.mockReset();
+	createAgentTaskMock.mockResolvedValue({ id: 'task-1' });
 	pushConnectMock.mockReset();
 	pushListeners.clear();
 	fetchConfigMock.mockClear();
@@ -2616,7 +2634,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await vi.waitFor(() =>
 			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(true),
 		);
-		expect(wrapper.find('[data-test-id="agent-template-customer-support"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-template-morning-news-brief"]').exists()).toBe(true);
 
 		// Saved (non-pending) agent: intro must not appear even with the panel open.
 		history.replaceState({}, '');
@@ -2632,7 +2650,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(savedWrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
 	});
 
-	it('applies a template, shows the chip, drafts the adjustment and hides the intro', async () => {
+	it('applies a template, sends the prompt to the assistant and hides the intro', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		intendedConfig = { name: 'New Agent', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
@@ -2646,7 +2664,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
-			AGENT_TEMPLATES.find((t) => t.id === 'customer-support'),
+			AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief'),
 		);
 		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
@@ -2655,23 +2673,37 @@ describe('AgentBuilderView — three-column shell', () => {
 			'p1',
 			'a1',
 			expect.objectContaining({
-				name: 'Customer Support Agent',
-				instructions: expect.stringContaining('customer support'),
-				integrations: [{ type: 'telegram', credentialId: '' }],
+				name: 'Morning News Brief',
+				instructions: expect.stringContaining('news brief'),
 			}),
 			expect.anything(),
 		);
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		expect(editor.props('templateApplied')).toBe(true);
-		expect(editor.props('connectedTriggers')).toEqual(['telegram']);
-		expect(setPrefillMock).toHaveBeenCalledWith(
+		expect(editor.props('connectedTriggers')).toEqual([]);
+		expect(submitSuggestionMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				prefillType: 'template_adjustment',
-				prefillId: 'customer-support',
-				text: expect.stringContaining('Customer Support'),
+				suggestionId: 'morning-news-brief',
+				prompt: expect.stringContaining('Morning news brief'),
 			}),
 		);
-		expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
+		// The morning news brief template declares a daily 9am task; the body
+		// is created through the API after the agent is persisted.
+		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalledOnce());
+		expect(createAgentTaskMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			expect.objectContaining({
+				name: 'Morning news brief',
+				cronExpression: '0 9 * * *',
+				enabled: true,
+			}),
+		);
+		await flushPromises();
+		await vi.waitFor(() =>
+			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false),
+		);
 	});
 
 	it('keeps a renamed agent name when applying a template', async () => {
@@ -2693,7 +2725,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
-			AGENT_TEMPLATES.find((t) => t.id === 'customer-support'),
+			AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief'),
 		);
 		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
@@ -2731,42 +2763,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
-		expect(setPrefillMock).not.toHaveBeenCalled();
-	});
-
-	it('clears the chip on a manual edit but not on an auto default', async () => {
-		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
-		intendedConfig = { name: 'New Agent', instructions: '' };
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
-		const wrapper = await renderView();
-		await vi.waitFor(() =>
-			expect(
-				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
-			).not.toBeNull(),
-		);
-		await flushPromises();
-
-		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
-			AGENT_TEMPLATES.find((t) => t.id === 'customer-support'),
-		);
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
-		updateConfigMock.mockClear();
-
-		let editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		expect(editor.props('templateApplied')).toBe(true);
-
-		// An auto-applied default model must not dismiss the chip.
-		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
-		await flushPromises();
-		editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		expect(editor.props('templateApplied')).toBe(true);
-
-		// A manual edit dismisses it.
-		editor.vm.$emit('update:config', { instructions: 'y' });
-		await flushPromises();
-		editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		expect(editor.props('templateApplied')).toBe(false);
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps the embedded AI panel closed by default for an existing agent', async () => {
