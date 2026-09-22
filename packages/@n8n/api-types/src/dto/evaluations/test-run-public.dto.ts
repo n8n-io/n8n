@@ -54,3 +54,8 @@ export class CreatedTestRunPublicDto extends Z.class({
 	status: testRunStatusSchema,
 	createdAt: z.string().datetime(),
 }) {}
+
+export class CancelledTestRunPublicDto extends Z.class({
+	id: z.string().openapi(testRunFieldDocs.id),
+	status: z.literal('cancelled'),
+}) {}
