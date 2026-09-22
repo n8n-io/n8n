@@ -24,11 +24,9 @@ import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import { projectTypeSchema, type ProjectIcon } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 
-/** The project a folder lives in, reduced to the columns the list query loads. */
 const folderProjectPublicSchema = z.object({
 	id: z.string().openapi(folderProjectFieldDocs.id),
 	name: z.string().openapi(folderProjectFieldDocs.name),
-	// Legacy rows may hold a type the current enum no longer lists, and a response mismatch is a 500.
 	type: z
 		.string()
 		.openapi({ ...folderProjectFieldDocs.type, enum: [...projectTypeSchema.options] }),
@@ -46,10 +44,6 @@ const folderTagPublicSchema = z.object({
 	name: z.string(),
 });
 
-/**
- * Every field is optional because the `select` query parameter decides which columns the route
- * loads: an unselected field is absent from the response, not null.
- */
 export const folderPublicSchema = z.object({
 	id: z.string().openapi(folderFieldDocs.id),
 	name: z.string().optional().openapi(folderFieldDocs.name),
@@ -79,7 +73,6 @@ export class ListFoldersQueryPublicDto extends Z.class(
 		select: selectValidator.openapi(folderListQueryFieldDocs.select),
 		sortBy: z
 			.enum(VALID_SORT_OPTIONS, {
-				// Keep the wording the legacy validator produced, so the 400 body does not change.
 				message: `must be equal to one of the allowed values: ${VALID_SORT_OPTIONS.join(', ')}`,
 			})
 			.optional()
@@ -98,7 +91,6 @@ const folderCorePublicShape = {
 	updatedAt: z.string().datetime().openapi(folderFieldDocs.updatedAt),
 };
 
-/** The folder as PATCH publishes it. Allowlist of the fields `folder.yml` documented. */
 export class UpdatedFolderPublicDto extends Z.class(folderCorePublicShape, { strict: true }) {}
 
 export class FolderDetailsPublicDto extends Z.class({
@@ -107,11 +99,6 @@ export class FolderDetailsPublicDto extends Z.class({
 	totalWorkflows: z.number().int().openapi(folderContentCountFieldDocs.totalWorkflows),
 }) {}
 
-/**
- * `name` and `parentFolderId` keep the rules the legacy handler applied after
- * express-openapi-validator, so a body the old route rejected is still rejected. `tagIds` stays
- * out: the hand-written schema set `additionalProperties: false`, so the route never took it.
- */
 const updateFolderPublicSchema = z
 	.object({
 		name: folderNameSchema.optional().openapi(updateFolderFieldDocs.name),
@@ -145,11 +132,6 @@ export class UpdateFolderPublicDto implements UpdateFolderPublic {
 	}
 }
 
-/**
- * Strict so an undocumented query parameter still answers 400, as the legacy spec-driven
- * validator did. An empty `transferToFolderId` is present, not omitted: `min(1)` rejects it,
- * because `deleteFolder` treats `""` as no target and archives the folder contents.
- */
 export class DeleteFolderQueryPublicDto extends Z.class(
 	{
 		transferToFolderId: folderIdSchema
