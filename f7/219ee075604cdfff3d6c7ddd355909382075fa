@@ -1,0 +1,43 @@
+packages/cli/test/migration/1789736885838-add-agent-thread-ownership.test.ts
+  s_a52facf53351c5::t_d97e818ade413d 9,21-35,68-69,71,75,80-84,86-88,94,104,116-117,141
+  s_a52facf53351c5::t_28dbabd7e894f8 144-145
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a52facf53351c5::t_46b3bd1385d19e 1020-1026,1028,1030-1035,1043-1066,1068-1099
+  s_a52facf53351c5::t_56e6f397048c5a 72-88,114-125,128-130
+  s_a52facf53351c5::t_6c5ecf40a0b241 440-446,449-452,469,472-479,485,488-505,508-511,513-514,519
+  s_a52facf53351c5::t_36fdfff727adb5 713-730,736,742-761,763-768,779-792,794-803,805,807-814
+  s_a52facf53351c5::t_dae075b17a17b2 126-127,482,515,622,769-778,825,827-850,855-893
+  s_a52facf53351c5::t_63b1090626f692 387-415,421,430,435,437
+  s_a52facf53351c5::t_7b82d3cd14b953 89-96
+  s_a52facf53351c5::t_2067f63a7c88bc 903-907,909-934,938-959,967,970-993,997-1016
+  s_a52facf53351c5::t_b7960a6d4533f8 438,707,894,1017,1168,1181-1185,1188-1203,1225,1228,1267-1274,1352
+  s_a52facf53351c5::t_c39c2a8592f6a0 1186-1187,1204-1219,1227,1229-1266
+  s_a52facf53351c5::t_b2b0c0f5d1ddae 528-529,538-543,545-602,606,608-616,618-620,640,669-688,692-696,699-703,705-706
+  s_a52facf53351c5::t_0fa09502d3b567 1303,1311,1315-1351
+  s_a52facf53351c5::t_18c23ddcfebada 355-369
+  s_a52facf53351c5::t_3a08d01ae2c36b 97-98
+  s_a52facf53351c5::t_f6599b9c97c2ea 603-604,607,621,623-639,641-668,697-698,704
+  s_a52facf53351c5::t_a77ff818b17b64 370-381
+  s_a52facf53351c5::t_0df26176664f2c 99-113
+  s_a52facf53351c5::t_dc231ed70bd350 708
+  s_a52facf53351c5::t_e0391002fa8165 895
+  s_a52facf53351c5::t_782f63e12eec96 1018
+packages/@n8n/db/src/migrations/common/1789736885838-AddAgentThreadOwnership.ts
+  s_a52facf53351c5::t_db736af30bab30 3-4,50,53-77,80-83,86-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f7219ee075604cdfff3d6c7ddd355909382075fa",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
