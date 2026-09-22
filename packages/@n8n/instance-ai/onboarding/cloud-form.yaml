@@ -1,0 +1,44 @@
+# The opening of an onboarding thread. The UI shows the greeting as the first assistant message
+# and the questions as ONE ask-user card, one step per question in this order. A `required` step
+# has no Skip button; the card's own "Something else" free text is the way out of a `single` or
+# `multi` step. The answers reach the agent in an <onboarding-answer> block on the first user
+# turn, one line per question, so a new question here needs no code change: add it to the list.
+# The next new onboarding thread reads this file again. {{firstName}} becomes the user's first
+# name, or "there".
+title: Welcome to n8n
+greeting: >-
+  Hi {{firstName}}, welcome to n8n! I am the n8n Assistant. I can build
+  workflows with you, connect your tools, and answer questions about n8n.
+  Tell me a little about yourself so I can suggest a good first automation.
+questions:
+  # The n8n Cloud signup form's team labels, so the answers stay comparable with the Cloud
+  # metadata (`what_team_are_you_on`). The card hides options that start with "other"; its
+  # "Something else" field stands in for Other.
+  - id: team
+    question: What team are you on?
+    type: single
+    required: true
+    options: [Executive/Owner, Support, Product & Design, Sales, IT, Engineering, Marketing]
+  # The apps the agent itself offered for each team in the September 2026 persona runs,
+  # frozen here so the card needs no model turn. Sales and Marketing share the list the
+  # agent offered for "Sales & Marketing". `options` shows for a free-text team.
+  - id: apps
+    question: Which apps do you use?
+    type: multi
+    required: true
+    options: [Gmail, Google Sheets, Slack, Google Calendar, Google Drive, Notion, Microsoft Outlook, Microsoft Teams, HubSpot, Airtable]
+    optionsByAnswer:
+      questionId: team
+      options:
+        Executive/Owner: [Gmail, Google Sheets, Google Calendar, Slack, QuickBooks, Stripe, HubSpot, Notion, Shopify, WhatsApp]
+        Support: [Zendesk, Intercom, Freshdesk, Gmail, Slack, Jira, HubSpot, Notion, Google Sheets, Salesforce]
+        "Product & Design": [Figma, Notion, Slack, Jira, Linear, Google Sheets, Miro, Confluence, Airtable, Trello]
+        Sales: [HubSpot, Salesforce, Gmail, Google Sheets, Slack, Mailchimp, LinkedIn, Notion, Google Calendar, Microsoft Outlook]
+        IT: [Slack, Microsoft Teams, Google Workspace, Microsoft 365, Jira, ServiceNow, Okta, PagerDuty, GitHub, AWS]
+        Engineering: [GitHub, GitLab, Jira, Linear, Slack, Google Sheets, Notion, AWS, PostgreSQL, PagerDuty]
+        Marketing: [HubSpot, Salesforce, Gmail, Google Sheets, Slack, Mailchimp, LinkedIn, Notion, Google Calendar, Microsoft Outlook]
+  # Not required: a user with no task in mind skips it, and the agent suggests from the team
+  # and the apps alone.
+  - id: task
+    question: Tell me about your work. Is there a task you are trying to automate?
+    type: text

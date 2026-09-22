@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { resolve } from 'node:path';
+
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
@@ -308,6 +310,8 @@ export type {
 } from './tracing/trace-replay';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
+/** The onboarding opening (title, greeting, card questions) as YAML. The host reads it; no skill or sandbox does. */
+export const INSTANCE_AI_ONBOARDING_OPENINGS_DIR = resolve(__dirname, '..', 'onboarding');
 export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
