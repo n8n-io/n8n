@@ -35,6 +35,7 @@ const meta = {
 	title: 'Experimental/Select',
 	component: Select,
 	parameters: {
+		layout: 'fullscreen',
 		docs: {
 			source: { type: 'dynamic' },
 		},
@@ -115,7 +116,7 @@ export const Items = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<Select v-bind="args" v-model="value"/>
 		</div>
 		`,
@@ -134,7 +135,7 @@ export const ItemsObjectArray = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<Select v-bind="args" v-model="value" />
 		</div>
 		`,
@@ -157,7 +158,7 @@ export const ItemsTypes = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<Select v-bind="args" v-model="value" />
 		</div>
 		`,
@@ -177,7 +178,7 @@ export const WithIcons = {
 			return { args, value, icon };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center;">
 			<Select v-bind="args" v-model="value" :icon="icon" />
 		</div>
 		`,
@@ -196,7 +197,7 @@ export const WithSlots = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center;">
 			<Select v-bind="args" v-model="value">
 				<template #item-leading="{ item, ui }">
 					<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
@@ -278,7 +279,7 @@ export const ItemWithDescription = {
 			return { args, value, items: modeItems, current };
 		},
 		template: `
-		<div style="padding: 80px 40px 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -316,7 +317,7 @@ export const Variants = {
 			return { args, defaultValue, ghostValue, flushValue };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<N8nInputLabel label="Default">
 				<Select v-bind="args" v-model="defaultValue"/>
 			</N8nInputLabel>
@@ -345,7 +346,7 @@ export const Sizes = {
 			return { args, sizes, values };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<N8nInputLabel v-for="size in sizes" :key="size" :label="size">
 				<Select
 					v-bind="args"
@@ -375,7 +376,7 @@ const SelectControlledUncontrolledDemo = defineComponent({
 		return { value, items, Select, N8nInputLabel, N8nText, onUpdate: action('update:modelValue') };
 	},
 	template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl);">
 			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
 				<N8nInputLabel label="Controlled">
 					<component
@@ -440,7 +441,7 @@ export const Disabled = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nInputLabel label="Default">
 				<Select v-bind="args" v-model="value" disabled />
 			</N8nInputLabel>
@@ -471,7 +472,7 @@ export const Multiple = {
 			return { args, value, onUpdate: action('update:modelValue') };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -529,7 +530,7 @@ export const AsyncItems = {
 			return { value, items, loading, loadCount, loadItems };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 400px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="max-width: 400px; display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
 				<code>v-model</code> is already <code>in_progress</code> while <code>items</code> is empty.
 				After 1.5s the options arrive and the trigger should update from the raw id to
@@ -593,7 +594,7 @@ export const MultipleWithSwatches = {
 			return { args, value, selectedItems, onUpdate: action('update:modelValue') };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
 				Per-value leading visuals in multiple mode via the default slot (and item-leading in the menu).
 			</N8nText>
@@ -662,7 +663,7 @@ export const Clearable = {
 			return { args, value, onUpdate: action('update:modelValue'), onClear: action('clear') };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nInputLabel label="Single">
 				<Select
 					v-bind="args"
@@ -696,7 +697,7 @@ export const LongScrollableList = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--sm);">
 				Open the menu and scroll — arrow buttons appear at the top and bottom when more items are available.
 			</N8nText>
@@ -727,7 +728,7 @@ export const MixedItemLengths = {
 			return { args, narrowValue, wideValue };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
 				Menu is at least as wide as the trigger or the min-width floor, and grows to fit longer labels.
 			</N8nText>
@@ -776,7 +777,7 @@ export const ShortItems = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
 				Very short labels — menus keep a min-width floor, and match the trigger when it is wider.
 			</N8nText>
@@ -870,7 +871,7 @@ const SelectFooterDemo = defineComponent({
 		};
 	},
 	template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--sm);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
 			<component :is="N8nText" size="small" color="text-light" tag="p" style="margin: 0;">
 				"Add custom role" uses onSelect + preventDefault so it never becomes the value.
 			</component>
@@ -970,7 +971,7 @@ const FormExampleDemo = defineComponent({
 	},
 	template: `
 		<form
-			style="padding: 40px; max-width: 420px; display: flex; flex-direction: column; gap: var(--spacing--md);"
+			style="max-width: 420px; display: flex; flex-direction: column; gap: var(--spacing--md);"
 			@submit="onSubmit"
 		>
 			<N8nInputLabel label="Full name" required>
