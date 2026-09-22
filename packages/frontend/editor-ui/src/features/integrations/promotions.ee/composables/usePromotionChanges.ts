@@ -23,6 +23,23 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 
 	const selectedCount = computed(() => selectedIds.value.size);
 
+	// Splits the ticked rows into the engine's two inputs. Apply orients base=instance, desired=branch,
+	// so `deleted`/`archived` rows are present on the instance but not the branch: ticking one removes
+	// it. Every other status is an import.
+	const selectionPayload = computed(() => {
+		const selectedWorkflowIds: string[] = [];
+		const deletedWorkflowIds: string[] = [];
+		for (const change of changes.value) {
+			if (!selectedIds.value.has(change.id)) continue;
+			if (change.status === 'deleted' || change.status === 'archived') {
+				deletedWorkflowIds.push(change.id);
+			} else {
+				selectedWorkflowIds.push(change.id);
+			}
+		}
+		return { selectedWorkflowIds, deletedWorkflowIds };
+	});
+
 	// Select-all state reflects the visible (filtered) rows, not the full list.
 	const allSelected = computed(
 		() =>
@@ -86,6 +103,7 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 		searchQuery,
 		selectedIds,
 		selectedCount,
+		selectionPayload,
 		allSelected,
 		someSelected,
 		fetchChanges,

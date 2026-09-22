@@ -92,15 +92,28 @@ const expectedSourceSchema = z
 	})
 	.strict();
 
+/**
+ * Cherry-pick apply: import only a selection and remove a named delete list, instead of the whole
+ * package. Omit every field for the whole-package apply.
+ * - `selectedProjectId` — the SOURCE project id that scopes the operation.
+ * - `selectedWorkflowIds` — SOURCE ids to import (their sub-workflow closure is pulled in).
+ * - `deletedWorkflowIds` — TARGET (destination) ids to remove explicitly.
+ */
+const importSelectionShape = {
+	selectedProjectId: n8nIdSchema.optional(),
+	selectedWorkflowIds: z.array(n8nIdSchema).optional(),
+	deletedWorkflowIds: z.array(n8nIdSchema).optional(),
+};
+
 /** Apply may pin the reviewed source. Without it, the branch tip is applied. */
 export class ApplyPackageDto extends Z.class(
-	{ expectedSource: expectedSourceSchema.optional() },
+	{ expectedSource: expectedSourceSchema.optional(), ...importSelectionShape },
 	{ strict: true },
 ) {}
 
 /** Continue must name the source that the paused Apply reported. */
 export class ContinueApplyPackageDto extends Z.class(
-	{ expectedSource: expectedSourceSchema },
+	{ expectedSource: expectedSourceSchema, ...importSelectionShape },
 	{ strict: true },
 ) {}
 

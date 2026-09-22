@@ -69,6 +69,18 @@ import {
 const tags = ['Promotions'];
 
 /**
+ * Maps the flat cherry-pick fields on an Apply request to the engine's selection input. Returns
+ * `undefined` when none are set, so the service runs the unchanged whole-package apply.
+ */
+function toImportSelection(
+	input: Pick<ApplyPackageDto, 'selectedProjectId' | 'selectedWorkflowIds' | 'deletedWorkflowIds'>,
+) {
+	const { selectedProjectId, selectedWorkflowIds, deletedWorkflowIds } = input;
+	if (!selectedProjectId && !selectedWorkflowIds && !deletedWorkflowIds) return undefined;
+	return { selectedProjectId, selectedWorkflowIds, deletedWorkflowIds };
+}
+
+/**
  * Providers hold credentials, connections point at a remote, and each connection
  * has up to one config per direction. A config is addressed by its direction, so
  * there is no config ID in any path.
@@ -553,6 +565,7 @@ export class PromotionsPublicController {
 			promotionConnectionId,
 			req.user,
 			input.expectedSource,
+			toImportSelection(input),
 		);
 	}
 
@@ -581,6 +594,7 @@ export class PromotionsPublicController {
 			promotionConnectionId,
 			req.user,
 			input,
+			toImportSelection(input),
 		);
 	}
 

@@ -52,6 +52,7 @@ const {
 	searchQuery,
 	selectedIds,
 	selectedCount,
+	selectionPayload,
 	allSelected,
 	someSelected,
 	fetchChanges,
@@ -110,6 +111,15 @@ function getPromoteButtonLabel(): string {
 	});
 }
 
+function getApplyButtonLabel(): string {
+	if (selectedCount.value === 0) {
+		return i18n.baseText('promotions.modal.incoming.applySelected.none');
+	}
+	return i18n.baseText('promotions.modal.incoming.applySelected', {
+		interpolate: { count: String(selectedCount.value) },
+	});
+}
+
 function isSelected(id: string): boolean {
 	return selectedIds.value.has(id);
 }
@@ -143,10 +153,10 @@ async function announceApplied() {
 	}
 }
 
-/** Applies the whole branch. The selection is kept for the selective apply that follows. */
-async function onApplyAll() {
-	const { apply } = props.data;
-	if (!apply) return;
+/** Applies only the ticked rows: imports the selected workflows and removes the ticked deletions. */
+async function onApplySelected() {
+	const { apply, projectId } = props.data;
+	if (!apply || selectedCount.value === 0) return;
 	const confirmed = await message.confirm(
 		i18n.baseText('promotions.modal.incoming.confirm.message'),
 		i18n.baseText('promotions.modal.incoming.confirm.title'),
@@ -163,11 +173,14 @@ async function onApplyAll() {
 		const expectedSource = commitSha.value
 			? { configId: apply.configId, branchName: apply.branchName, commitSha: commitSha.value }
 			: undefined;
-		const result = await applyPromotion(
-			rootStore.publicApiContext,
-			apply.connectionId,
-			expectedSource && { expectedSource },
-		);
+		const { selectedWorkflowIds, deletedWorkflowIds } = selectionPayload.value;
+		const result = await applyPromotion(rootStore.publicApiContext, apply.connectionId, {
+			...(expectedSource ? { expectedSource } : {}),
+			// The package is a single project, so the selection is always scoped to it.
+			selectedProjectId: projectId,
+			selectedWorkflowIds,
+			deletedWorkflowIds,
+		});
 		if (result.status === 'applied') {
 			const { workflows } = result.counts;
 			const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
@@ -382,11 +395,11 @@ onMounted(async () => {
 					<N8nButton
 						v-if="isIncoming"
 						:loading="isApplying"
-						:disabled="isLoading || !!error"
-						data-test-id="promotion-apply-all"
-						@click="onApplyAll"
+						:disabled="isLoading || !!error || selectedCount === 0"
+						data-test-id="promotion-apply-selected"
+						@click="onApplySelected"
 					>
-						{{ i18n.baseText('promotions.modal.incoming.applyAll') }}
+						{{ getApplyButtonLabel() }}
 					</N8nButton>
 					<N8nButton v-else disabled data-test-id="promotion-submit">
 						{{ getPromoteButtonLabel() }}

@@ -249,12 +249,33 @@ export interface ExportPackageRequest {
 
 export type PackageImportSource = 'package-import' | 'git-pull';
 
+/**
+ * Cherry-pick apply: import only part of a package and remove named target
+ * workflows, instead of reconciling the whole scope by absence. Omit every field
+ * to keep the whole-package behaviour (backward compatible).
+ *
+ * - `selectedProjectId` — the SOURCE project id that scopes the operation. When
+ *   set, only that project is imported and both selected and deleted ids must
+ *   belong to it.
+ * - `selectedWorkflowIds` — SOURCE ids to import (their sub-workflow closure is
+ *   pulled in automatically). Omit to import every workflow in scope.
+ * - `deletedWorkflowIds` — TARGET (destination) ids to remove explicitly, even
+ *   under an additive `merge` policy.
+ */
+export type ImportSelection = {
+	selectedProjectId?: string;
+	selectedWorkflowIds?: string[];
+	deletedWorkflowIds?: string[];
+};
+
 export type ImportRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
+	/** Cherry-pick apply inputs. Omit for a whole-package import. */
+	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -521,6 +542,21 @@ export type BlockingIssue =
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
+	| {
+			/** A cherry-picked workflow needs a sub-workflow that neither the selection nor the target holds. */
+			type: 'workflow-selection-dependency-missing';
+			sourceWorkflowId: string;
+			name: string;
+			missingDependencyId: string;
+	  }
+	| {
+			/** An explicit delete would orphan a surviving workflow that still references the deleted one. */
+			type: 'workflow-delete-referenced';
+			workflowId: string;
+			name: string;
+			projectId: string;
+			referencedByWorkflowIds: string[];
+	  }
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)

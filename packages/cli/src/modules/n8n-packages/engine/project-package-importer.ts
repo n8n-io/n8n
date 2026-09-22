@@ -1,7 +1,9 @@
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
@@ -10,6 +12,7 @@ import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
+import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
@@ -20,6 +23,7 @@ import type {
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ResolvedImportRequest,
+	ImportSelection,
 	ImportTagSummary,
 	PackageImportBindings,
 	PackageImportSource,
@@ -32,6 +36,7 @@ import {
 } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import { needsBundledVariableValues, placeByLayout } from './package-layout';
+import { computeSelectionClosure } from './workflow-selection';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -61,6 +66,7 @@ export class ProjectPackageImporter {
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly licenseState: LicenseState,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async import(
@@ -71,7 +77,20 @@ export class ProjectPackageImporter {
 	): Promise<ImportOutcome> {
 		this.assertAdequatePermissions(request, manifest);
 
-		const projects = await this.packageParser.getProjects(reader);
+		// A cherry-pick apply scoped to one source project imports only that project: other projects
+		// in the package are left untouched, so applying project P can never reach project Q.
+		const scopedProjectId = request.selection?.selectedProjectId;
+		if (scopedProjectId && !(manifest.projects ?? []).some(({ id }) => id === scopedProjectId)) {
+			throw new BadRequestError(`Selected project ${scopedProjectId} is not in the package`);
+		}
+		const scopedManifestProjects = (manifest.projects ?? []).filter(
+			(project) => !scopedProjectId || project.id === scopedProjectId,
+		);
+
+		const allProjects = await this.packageParser.getProjects(reader);
+		const projects = allProjects.filter(
+			(project) => !scopedProjectId || project.sourceProjectId === scopedProjectId,
+		);
 		const projectPlan = await this.projectImporter.plan(
 			request.user,
 			projects,
@@ -104,7 +123,7 @@ export class ProjectPackageImporter {
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
 		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
-		for (const project of manifest.projects ?? []) {
+		for (const project of scopedManifestProjects) {
 			const input = await this.buildImportContextForProject(
 				request,
 				reader,
@@ -246,7 +265,16 @@ export class ProjectPackageImporter {
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
-		const workflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+
+		// Cherry-pick apply: reduce this project's workflows to the selection and its sub-workflow
+		// closure. Everything below scopes to `workflows`, so requirements, bindings, and publishing
+		// all follow the smaller set automatically.
+		const { workflows, selectionIssues } = await this.applySelectionFilter(
+			request.selection,
+			allWorkflows,
+		);
+		const explicitDeleteWorkflowIds = deletesForProject(request.selection, project.id);
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
@@ -306,7 +334,41 @@ export class ProjectPackageImporter {
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			explicitDeleteWorkflowIds,
+			selectionIssues,
 		};
+	}
+
+	/**
+	 * Reduces a project's package workflows to a cherry-pick selection plus its sub-workflow closure,
+	 * and reports any selected workflow whose sub-workflow neither the selection nor the destination
+	 * holds. With no selection, the whole set is imported (today's behaviour).
+	 */
+	private async applySelectionFilter(
+		selection: ImportSelection | undefined,
+		allWorkflows: PreparedWorkflow[],
+	): Promise<{ workflows: PreparedWorkflow[]; selectionIssues: BlockingIssue[] }> {
+		const selectedIds = selection?.selectedWorkflowIds;
+		if (!selectedIds) return { workflows: allWorkflows, selectionIssues: [] };
+
+		const closure = computeSelectionClosure(allWorkflows, new Set(selectedIds));
+		const externalIds = [
+			...new Set(
+				closure.externalReferences.map(({ referencedWorkflowId }) => referencedWorkflowId),
+			),
+		];
+		const existing = await this.workflowFinderService.findExistingWorkflowIds(externalIds);
+
+		const selectionIssues: BlockingIssue[] = closure.externalReferences
+			.filter(({ referencedWorkflowId }) => !existing.has(referencedWorkflowId))
+			.map(({ sourceWorkflowId, name, referencedWorkflowId }) => ({
+				type: 'workflow-selection-dependency-missing',
+				sourceWorkflowId,
+				name,
+				missingDependencyId: referencedWorkflowId,
+			}));
+
+		return { workflows: closure.selectedWorkflows, selectionIssues };
 	}
 
 	private assertAdequatePermissions(
@@ -337,4 +399,18 @@ export class ProjectPackageImporter {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
 	}
+}
+
+/**
+ * The explicit deletes that apply to one project. In scoped mode they belong to the scoped project;
+ * otherwise every project's remover receives the list and keeps only the ids it actually owns.
+ */
+function deletesForProject(
+	selection: ImportSelection | undefined,
+	projectId: string,
+): string[] | undefined {
+	const deletes = selection?.deletedWorkflowIds;
+	if (!deletes?.length) return undefined;
+	if (selection?.selectedProjectId && selection.selectedProjectId !== projectId) return undefined;
+	return deletes;
 }

@@ -123,4 +123,20 @@ describe('usePromotionChanges', () => {
 		expect(selectedIds.value.has('wf-004')).toBe(false);
 		expect(allSelected.value).toBe(true);
 	});
+
+	it('splits the selection into imports and deletions by status', async () => {
+		const { fetchChanges, toggleSelected, selectionPayload } = usePromotionChanges('project-1');
+		await fetchChanges();
+
+		// One of each: modified + new are imports; archived + deleted are removals.
+		toggleSelected('wf-001');
+		toggleSelected('wf-002');
+		toggleSelected('wf-003');
+		toggleSelected('wf-004');
+
+		expect(selectionPayload.value).toEqual({
+			selectedWorkflowIds: ['wf-001', 'wf-002'],
+			deletedWorkflowIds: ['wf-003', 'wf-004'],
+		});
+	});
 });

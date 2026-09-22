@@ -35,6 +35,7 @@ import {
 	WorkflowVersionPolicy,
 	type ImportRequest,
 	type ImportResult,
+	type ImportSelection,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { ProjectService } from '@/services/project.service.ee';
@@ -79,6 +80,18 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	variableConflictPolicy: VariableConflictPolicy.KeepExisting,
 	tagMissingMode: TagMissingMode.Create,
 	tagConflictPolicy: TagConflictPolicy.Rename,
+};
+
+/**
+ * Cherry-pick apply: import only a selection and remove only a named delete list, instead of
+ * reconciling the whole scope by absence. `merge` keeps the package additive (unselected content is
+ * untouched), and `skip` avoids mutating a tag shared with a workflow the selection does not carry.
+ * Explicit deletes still honour `overwriteDeletionPolicy`.
+ */
+const CHERRY_PICK_POLICY: Omit<ImportRequest, 'user'> = {
+	...IMPORT_POLICY,
+	folderConflictPolicy: FolderConflictPolicy.Merge,
+	tagConflictPolicy: TagConflictPolicy.Skip,
 };
 
 /**
@@ -368,22 +381,25 @@ export class PromotionsService {
 		connectionId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		selection?: ImportSelection,
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, expectedSource);
+		return await this.applyFromSource(connectionId, actor, expectedSource, selection);
 	}
 
 	async continueApply(
 		connectionId: string,
 		actor: User,
 		request: ContinueApplyPackageDto,
+		selection?: ImportSelection,
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, request.expectedSource);
+		return await this.applyFromSource(connectionId, actor, request.expectedSource, selection);
 	}
 
 	private async applyFromSource(
 		connectionId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		selection?: ImportSelection,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
@@ -446,14 +462,30 @@ export class PromotionsService {
 			return { status: 'blocked', ...identity, preflight };
 		}
 
-		this.logger.info('Importing a package', { connectionId, configId: input.configId });
+		// A cherry-pick names its selection or its deletes; the whole-package apply names neither.
+		const isCherryPick =
+			!!selection &&
+			(!!selection.selectedProjectId ||
+				(selection.selectedWorkflowIds?.length ?? 0) > 0 ||
+				(selection.deletedWorkflowIds?.length ?? 0) > 0);
+
+		this.logger.info(isCherryPick ? 'Importing a selection' : 'Importing a package', {
+			connectionId,
+			configId: input.configId,
+		});
 
 		const result = await this.n8nPackagesService.importPackageFromDirectory(
-			{ user: actor, ...IMPORT_POLICY },
+			isCherryPick
+				? { user: actor, ...CHERRY_PICK_POLICY, selection }
+				: { user: actor, ...IMPORT_POLICY },
 			{ sourceDir: packageFolder },
 		);
+		// A cherry-pick removes only what its delete list names, so whole-scope project reconcile
+		// (delete any team project absent from the package) must stay off.
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
+		const projectReconciliation = isCherryPick
+			? { deletedProjectIds: [] }
+			: await this.reconcileTeamProjects(actor, importedProjectIds);
 
 		return {
 			status: 'applied',

@@ -84,6 +84,10 @@ export interface ImportOrchestrationInput {
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
 	importSource?: PackageImportSource;
+	/** Cherry-pick apply: TARGET workflow ids to remove explicitly, even under an additive `merge`. */
+	explicitDeleteWorkflowIds?: string[];
+	/** Blocking issues found while scoping a cherry-pick selection (e.g. an unresolvable sub-workflow). */
+	selectionIssues?: BlockingIssue[];
 }
 
 /**
@@ -232,6 +236,7 @@ export class ImportOrchestrator {
 			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 			projectPendingCreation: input.projectPendingCreation,
 			importSource: input.importSource,
+			explicitDeleteIds: input.explicitDeleteWorkflowIds,
 		});
 
 		// Which folders end up empty depends on which workflows survive, so this follows the plan above
@@ -272,6 +277,9 @@ export class ImportOrchestrator {
 		});
 
 		blockingIssues.push(...refusedByPolicy);
+		// Cherry-pick scoping issues (unresolvable sub-workflow, orphaned delete) are decided while
+		// building this scope's input, so they are threaded in rather than re-derived here.
+		if (input.selectionIssues) blockingIssues.push(...input.selectionIssues);
 
 		return {
 			input,
@@ -424,6 +432,9 @@ export class ImportOrchestrator {
 			),
 			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
+			),
+			...(removalPlan.deleteReferencedFailures ?? []).map(
+				(failure): BlockingIssue => ({ type: 'workflow-delete-referenced', ...failure }),
 			),
 			...folderRemovalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),

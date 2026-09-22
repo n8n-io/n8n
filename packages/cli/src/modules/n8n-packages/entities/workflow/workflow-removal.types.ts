@@ -21,6 +21,19 @@ export interface WorkflowRemovalRequest {
 	projectPendingCreation?: boolean;
 	/** Git pulls reconcile all folders; package imports preserve folders they do not represent. */
 	importSource?: PackageImportSource;
+	/**
+	 * Cherry-pick apply: TARGET workflow ids to remove explicitly. Applied even under an additive
+	 * `merge` policy, unlike the reconcile-by-absence path above.
+	 */
+	explicitDeleteIds?: string[];
+}
+
+/** An explicit delete blocked because a surviving workflow still references the deleted one. */
+export interface WorkflowDeleteReferencedFailure {
+	workflowId: string;
+	name: string;
+	projectId: string;
+	referencedByWorkflowIds: string[];
 }
 
 /** A workflow on the target that the package does not account for. */
@@ -39,4 +52,6 @@ export interface WorkflowRemovalPlan {
 	 * knows which ones are not empty. Only populated when reconciliation is on.
 	 */
 	occupiedFolderIds: string[];
+	/** Explicit deletes blocked by a surviving reference. Only populated for a cherry-pick apply. */
+	deleteReferencedFailures?: WorkflowDeleteReferencedFailure[];
 }

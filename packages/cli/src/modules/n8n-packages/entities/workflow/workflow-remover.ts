@@ -5,9 +5,11 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { removesUnpackagedWorkflows } from '../folder/folder-conflict-policy';
+import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
 import type { WorkflowPlanItem } from './workflow-import.types';
 import type {
 	RemovableWorkflow,
+	WorkflowDeleteReferencedFailure,
 	WorkflowRemovalPlan,
 	WorkflowRemovalRequest,
 } from './workflow-removal.types';
@@ -43,6 +45,11 @@ export class WorkflowRemover {
 			!removesUnpackagedWorkflows(request.folderConflictPolicy) ||
 			request.projectPendingCreation
 		) {
+			// Cherry-pick apply removes by an explicit list instead of by absence, so it runs even
+			// though reconcile-by-absence is off.
+			if ((request.explicitDeleteIds?.length ?? 0) > 0) {
+				return await this.planExplicitDeletes(context, request);
+			}
 			return nothingToRemove;
 		}
 
@@ -76,6 +83,93 @@ export class WorkflowRemover {
 			deletionPolicy: request.deletionPolicy,
 			occupiedFolderIds: occupiedBy(placements.filter(({ id }) => !removedIds.has(id))),
 		};
+	}
+
+	/**
+	 * Plans an explicit, named set of target deletions for a cherry-pick apply. Unlike
+	 * reconcile-by-absence, it runs under an additive policy. A delete is blocked when a workflow
+	 * that survives the apply still references it, so removing it would orphan a live caller.
+	 */
+	private async planExplicitDeletes(
+		context: ImportContext,
+		request: WorkflowRemovalRequest,
+	): Promise<WorkflowRemovalPlan> {
+		const deleteIds = new Set(request.explicitDeleteIds ?? []);
+		const placements = await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(
+			context.projectId,
+			{ includeArchived: true },
+		);
+		const placementById = new Map(placements.map((placement) => [placement.id, placement]));
+
+		// An id that no longer exists, or is already archived, is a tolerated no-op — not a failure.
+		const targets = [...deleteIds]
+			.map((id) => placementById.get(id))
+			.filter(
+				(placement): placement is (typeof placements)[number] =>
+					!!placement && !placement.isArchived,
+			);
+
+		const deleteReferencedFailures = await this.findSurvivingReferences(
+			context,
+			placements,
+			deleteIds,
+		);
+		const blocked = new Set(deleteReferencedFailures.map(({ workflowId }) => workflowId));
+		const deletable = targets.filter(({ id }) => !blocked.has(id));
+
+		const removable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			deletable.map(({ id }) => id),
+			context.user,
+			['workflow:delete'],
+		);
+
+		return {
+			removals: deletable
+				.filter(({ id }) => removable.has(id))
+				.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId })),
+			failures: deletable
+				.filter(({ id }) => !removable.has(id))
+				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
+			deletionPolicy: request.deletionPolicy,
+			occupiedFolderIds: [],
+			deleteReferencedFailures,
+		};
+	}
+
+	/**
+	 * Reverse-reference guard: a surviving workflow (one the apply keeps) may not still point at a
+	 * workflow the apply deletes. The engine has no such check on the reconcile-by-absence path,
+	 * where the package is authoritative; an explicit delete needs it.
+	 */
+	private async findSurvivingReferences(
+		context: ImportContext,
+		placements: Array<{ id: string; name: string }>,
+		deleteIds: ReadonlySet<string>,
+	): Promise<WorkflowDeleteReferencedFailure[]> {
+		const survivingIds = placements.map(({ id }) => id).filter((id) => !deleteIds.has(id));
+		const surviving = await this.workflowFinderService.findWorkflowsByIdsForUser(
+			survivingIds,
+			context.user,
+			['workflow:read'],
+		);
+
+		const referencedBy = new Map<string, string[]>();
+		for (const workflow of surviving) {
+			for (const { referencedWorkflowId } of extractWorkflowRequirements(workflow)) {
+				if (!deleteIds.has(referencedWorkflowId)) continue;
+				const callers = referencedBy.get(referencedWorkflowId) ?? [];
+				callers.push(workflow.id);
+				referencedBy.set(referencedWorkflowId, callers);
+			}
+		}
+
+		const nameById = new Map(placements.map(({ id, name }) => [id, name]));
+		return [...referencedBy].map(([workflowId, referencedByWorkflowIds]) => ({
+			workflowId,
+			name: nameById.get(workflowId) ?? workflowId,
+			projectId: context.projectId,
+			referencedByWorkflowIds,
+		}));
 	}
 
 	async apply(

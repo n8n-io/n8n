@@ -317,12 +317,23 @@ describe('PromotionSelectModal', () => {
 			applied = vi.spyOn(promotionEventBus, 'emit');
 		});
 
-		it('should offer to apply all changes instead of promoting', async () => {
-			const { findByTestId, queryByTestId } = renderComponent({ pinia, props: applyProps });
+		it('should offer to apply the selection instead of promoting', async () => {
+			const { findByTestId, findByText, queryByTestId } = renderComponent({
+				pinia,
+				props: applyProps,
+			});
 
-			expect(await findByTestId('promotion-apply-all')).toHaveTextContent('Apply all changes');
+			// With nothing ticked the apply button reads generically and is disabled.
+			const applyButton = await findByTestId('promotion-apply-selected');
+			expect(applyButton).toHaveTextContent('Apply selected');
+			expect(applyButton).toBeDisabled();
 			expect(queryByTestId('promotion-submit')).not.toBeInTheDocument();
 			expect(applyChanges).toHaveBeenCalledTimes(1);
+
+			// Ticking rows enables it and reflects the count.
+			await findByText('Payment Handler');
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			expect(await findByTestId('promotion-apply-selected')).toHaveTextContent('Apply 2 selected');
 		});
 
 		it('should not apply when the user cancels the confirmation', async () => {
@@ -330,7 +341,8 @@ describe('PromotionSelectModal', () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			expect(confirm).toHaveBeenCalledTimes(1);
 			expect(applyPackage).not.toHaveBeenCalled();
@@ -342,12 +354,17 @@ describe('PromotionSelectModal', () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
-			// The reviewed commit travels with the request, so a moved branch is not applied blindly.
+			// The reviewed commit travels with the request, and the ticked rows become the selection
+			// scoped to this project. Both mock rows are imports, so nothing is marked for deletion.
 			expect(applyPackage.mock.results[0].value.receivedBody).toEqual({
 				expectedSource: { configId: 'config-1', branchName: 'main', commitSha: 'a'.repeat(40) },
+				selectedProjectId: 'project-1',
+				selectedWorkflowIds: ['wf-001', 'wf-002'],
+				deletedWorkflowIds: [],
 			});
 			await waitFor(() =>
 				expect(showMessage).toHaveBeenCalledWith(
@@ -385,7 +402,8 @@ describe('PromotionSelectModal', () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(showMessage).toHaveBeenCalledWith(
@@ -413,7 +431,8 @@ describe('PromotionSelectModal', () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(applied).toHaveBeenCalledWith('projectRemoved', { projectId: 'project-1' }),
@@ -435,7 +454,8 @@ describe('PromotionSelectModal', () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(applied).toHaveBeenCalledWith('applied', { projectId: 'project-1' }),
@@ -464,7 +484,8 @@ describe('PromotionSelectModal', () => {
 				const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 				await findByText('Payment Handler');
 
-				await userEvent.click(await findByTestId('promotion-apply-all'));
+				await userEvent.click(await findByTestId('promotion-select-all'));
+				await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 				await waitFor(() =>
 					expect(showMessage).toHaveBeenCalledWith(
@@ -486,7 +507,8 @@ describe('PromotionSelectModal', () => {
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-select-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(showError).toHaveBeenCalledWith(expect.anything(), 'Could not apply the changes'),
