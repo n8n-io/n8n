@@ -73,7 +73,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 function handleClick() {
 	if (props.unconfirmed) emit('confirm');
-	else if (props.expanded != null) emit('toggle-expand');
+	else if (props.expanded !== null && props.expanded !== undefined) emit('toggle-expand');
 }
 </script>
 
