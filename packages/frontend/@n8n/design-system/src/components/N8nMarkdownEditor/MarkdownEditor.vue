@@ -79,12 +79,6 @@ watch(
 	},
 );
 
-function getRenderedContentHeight() {
-	const renderedContent = container.value?.querySelector<HTMLElement>('.n8n-markdown');
-
-	return renderedContent ? `${renderedContent.clientHeight}px` : undefined;
-}
-
 function getBubbleMenuContainer() {
 	return isExpandedViewOpen.value ? dialogContainer.value : document.body;
 }
@@ -237,6 +231,12 @@ const bubbleMenuOptions = computed(function getBubbleMenuOptions() {
 });
 
 async function toggleRawMode(value: boolean) {
+	const getRenderedContentHeight = () => {
+		const renderedContent = container.value?.querySelector<HTMLElement>('.n8n-markdown');
+
+		return renderedContent ? `${renderedContent.clientHeight}px` : undefined;
+	};
+
 	if (value) {
 		rawMarkdown.value = editor.value?.getMarkdown() ?? props.modelValue;
 		rawContentHeight.value = getRenderedContentHeight();
@@ -276,10 +276,6 @@ async function handleExpandedOpenAutoFocus(event: Event) {
 	event.preventDefault();
 	await nextTick();
 	focus();
-}
-
-function closeExpandedView() {
-	isExpandedViewOpen.value = false;
 }
 
 function focus() {
@@ -353,7 +349,7 @@ defineExpose({
 			]"
 			:style="setMaxHeight"
 			data-test-id="n8n-markdown-editor-expanded"
-			@keydown.esc.capture="closeExpandedView"
+			@keydown.esc.capture="isExpandedViewOpen = false"
 		/>
 	</N8nDialog>
 
