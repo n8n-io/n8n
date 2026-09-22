@@ -663,7 +663,7 @@ describe('AgentExecutionRepository', () => {
 				expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
 				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 				expect(
-					await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id),
+					await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id),
 				).toBe(true);
 
 				const resumed = await resume(owner);
@@ -817,7 +817,9 @@ describe('AgentExecutionRepository', () => {
 		expect(first.threads.map(({ id }) => id)).toEqual([thread.id]);
 		expect(first.threads[0]).not.toHaveProperty('ownerId');
 		expect(first.threads[0]).not.toHaveProperty('accessScope');
+		expect(first.threads[0].canContinueInPreview).toBe(true);
 		expect(second.threads.map(({ id }) => id)).toEqual([shared.id]);
+		expect(second.threads[0].canContinueInPreview).toBe(false);
 		expect(second.nextCursor).toBeNull();
 		expect(
 			(await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id))?.executions,
@@ -848,6 +850,9 @@ describe('AgentExecutionRepository', () => {
 			{ parentThreadId: thread.id, parentAgentId: agentId },
 		);
 		expect(child.thread).toMatchObject(access);
+		expect(
+			await executionService.canUseDraftThread(child.thread.id, projectId, agentId, owner.id),
+		).toBe(false);
 		const sharedChild = await threadRepo.findOrCreate(
 			uuid(),
 			agentId,
@@ -859,31 +864,118 @@ describe('AgentExecutionRepository', () => {
 		expect(sharedChild.thread).toMatchObject({ accessScope: 'project', ownerId: null });
 	});
 
+	it('finds the latest Preview root behind other private sessions', async () => {
+		const owner = await createMember();
+		const { executionService } = recordingServices();
+		const privateThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			updatedAt: new Date('2026-01-01T00:00:00Z'),
+		});
+		for (let index = 0; index < 20; index++) {
+			await createThread({ sessionNumber: index + 2, updatedAt: new Date('2026-01-02T00:00:00Z') });
+		}
+		const child = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 22,
+			parentThreadId: privateThread.id,
+			parentAgentId: agentId,
+		});
+		const sourceOnlySubAgent = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 23,
+		});
+		await createExecution({ threadId: sourceOnlySubAgent.id, source: ' Sub-Agent ' });
+		const mcpThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 24,
+		});
+		await createExecution({ threadId: mcpThread.id, source: 'mcp' });
+		const instanceAiThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 25,
+		});
+		await createExecution({ threadId: instanceAiThread.id, source: 'instance-ai' });
+		const taskThread = await createThread({
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 26,
+			taskId: 'task-1',
+		});
+		const ordinaryThread = await createThread({
+			id: `test-${agentId}`,
+			accessScope: 'user',
+			ownerId: owner.id,
+			sessionNumber: 27,
+			updatedAt: new Date('2025-12-01T00:00:00Z'),
+		});
+
+		const history = await executionService.getThreads(projectId, agentId, owner.id, 20);
+		expect(history.threads.map(({ id }) => id)).not.toContain(privateThread.id);
+		const preview = await executionService.getThreads(projectId, agentId, owner.id, 20, undefined, {
+			previewOnly: true,
+		});
+		expect(preview.threads).toEqual([
+			expect.objectContaining({ id: privateThread.id, canContinueInPreview: true }),
+			expect.objectContaining({ id: ordinaryThread.id, canContinueInPreview: true }),
+		]);
+		expect(preview.nextCursor).toBeNull();
+		expect(await executionService.canUseDraftThread(child.id, projectId, agentId, owner.id)).toBe(
+			false,
+		);
+		for (const thread of [child, sourceOnlySubAgent]) {
+			expect(
+				await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id),
+			).not.toBeNull();
+		}
+		for (const thread of [sourceOnlySubAgent, mcpThread, instanceAiThread, taskThread]) {
+			expect(
+				await executionService.canUseDraftThread(thread.id, projectId, agentId, owner.id),
+			).toBe(true);
+			expect(
+				await executionService.canUseDraftThread(thread.id, projectId, agentId, owner.id, {
+					previewChat: true,
+				}),
+			).toBe(false);
+		}
+		for (const thread of [privateThread, ordinaryThread]) {
+			expect(
+				await executionService.canUseDraftThread(thread.id, projectId, agentId, owner.id, {
+					previewChat: true,
+				}),
+			).toBe(true);
+		}
+	});
+
 	it.each(['custom', 'legacy'])('uses persisted ownership for a %s preview ID', async (format) => {
 		const owner = await createMember();
 		const other = await createAdmin();
 		const memory = Container.get(N8nMemory).getImplementation(agentId);
 		const { executionService } = recordingServices(memory);
 		const threadId = format === 'legacy' ? `test-${agentId}:${other.id}` : 'test-demo';
-		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+		expect(await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id)).toBe(
 			true,
 		);
 		await memory.saveThread({ id: threadId, resourceId: `draft-chat:${owner.id}` });
-		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+		expect(await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id)).toBe(
 			true,
 		);
-		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, other.id)).toBe(
+		expect(await executionService.canUseDraftThread(threadId, projectId, agentId, other.id)).toBe(
 			false,
 		);
 		await createThread({ id: threadId, accessScope: 'user', ownerId: owner.id });
-		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+		expect(await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id)).toBe(
 			true,
 		);
-		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, other.id)).toBe(
+		expect(await executionService.canUseDraftThread(threadId, projectId, agentId, other.id)).toBe(
 			false,
 		);
 		await threadRepo.update(threadId, { ownerId: null });
-		expect(await executionService.canUsePreviewThread(threadId, projectId, agentId, owner.id)).toBe(
+		expect(await executionService.canUseDraftThread(threadId, projectId, agentId, owner.id)).toBe(
 			false,
 		);
 		expect(await memory.getThread(threadId)).toMatchObject({
