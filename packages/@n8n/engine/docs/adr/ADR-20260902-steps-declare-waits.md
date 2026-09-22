@@ -177,9 +177,9 @@ of the two ends the wait.
   stops a step transition. A waiting execution continues when one of its steps
   runs again, so the engine must let that step run. The execution keeps the
   `waiting` status until the resumed step settles.
-- The control plane maps the new status to the `waiting` status of v1. The
-  executions list and its filters continue to work. An execution with one
-  waiting branch and one running branch reports `running`.
+- The executions list and its filters continue to work, because the new status
+  has a v1 counterpart to map onto. An execution with one waiting branch and
+  one running branch reports `running`.
 - A wait can outlive the control-plane state that it started with. A user can
   move the workflow, unshare a credential, or remove access. The unshared
   credential matters once a resumed step can use one, which is CAT-2880. The
