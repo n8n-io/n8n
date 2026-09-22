@@ -214,10 +214,10 @@
 		"GET /users/{userId}": {
 			"status": "gap"
 		},
-		"DELETE /users/{id}": {
+		"DELETE /users/{userId}": {
 			"status": "gap"
 		},
-		"PATCH /users/{id}/role": {
+		"PATCH /users/{userId}/role": {
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
