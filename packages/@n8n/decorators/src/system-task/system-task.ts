@@ -75,6 +75,15 @@ export interface SystemTask {
 	readonly maxAttempts?: number;
 
 	/**
+	 * Overrides how many of the task's durable occurrences may run at the same
+	 * time. `null` lets them overlap. Defaults to
+	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}, which matches the in-memory
+	 * timer: a run that outlasts its own cadence holds the next occurrence back
+	 * instead of overlapping it. Durable runs only.
+	 */
+	readonly concurrencyLimit?: number | null;
+
+	/**
 	 * Executes one occurrence of the task. `signal` aborts when the run should
 	 * stop early: the instance is shutting down or, for a run on the in-memory
 	 * timer, leadership was lost. Honoring it is optional, but a run that
@@ -88,17 +97,25 @@ export interface SystemTaskRunOptions {
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	misfireGraceSeconds: number;
 	maxAttempts: number;
+	/** `null` lets the task's occurrences overlap. */
+	concurrencyLimit: number | null;
 }
+
+/**
+ * One occurrence at a time, the overlap behavior of the in-memory timer.
+ */
+export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
 
 /**
  * Run options a task's effects imply, when the task declares no override:
  * retries and late runs only where a repeat is harmless.
- * The grace window does not depend on effects, so every task defaults to
- * {@link DEFAULT_MISFIRE_GRACE_SECONDS}.
+ * The grace window and the concurrency limit do not depend on effects, so every
+ * task defaults to {@link DEFAULT_MISFIRE_GRACE_SECONDS} and
+ * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}.
  */
 const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 	SystemTaskEffects,
-	Omit<SystemTaskRunOptions, 'misfireGraceSeconds'>
+	Omit<SystemTaskRunOptions, 'misfireGraceSeconds' | 'concurrencyLimit'>
 > = {
 	idempotent: {
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
@@ -124,9 +141,13 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 		misfirePolicy: task.misfirePolicy ?? defaults.misfirePolicy,
 		misfireGraceSeconds: task.misfireGraceSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
 		maxAttempts: task.effects === 'non-idempotent' ? 1 : (task.maxAttempts ?? defaults.maxAttempts),
+		concurrencyLimit:
+			task.concurrencyLimit === undefined
+				? DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT
+				: task.concurrencyLimit,
 	};
 
-	// Both end up in `int` columns, where a fractional value is rounded and anything
+	// These end up in `int` columns, where a fractional value is rounded and anything
 	// above the signed 32-bit maximum is rejected, and an override of `0` passes the
 	// `??` above. `scheduled_job` rejects a grace of `0` outright, so match the
 	// column's whole range here rather than at the failing insert.
@@ -134,6 +155,10 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	// intervals, so whatever provisions a task still has to clamp against those.
 	assertInRange(task.name, 'maxAttempts', options.maxAttempts, 1);
 	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
+	// A ceiling below one would hold every occurrence back until its deadline passed.
+	if (options.concurrencyLimit !== null) {
+		assertInRange(task.name, 'concurrencyLimit', options.concurrencyLimit, 1);
+	}
 
 	return options;
 }

@@ -82,6 +82,7 @@ describe('system task provisioning', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			concurrencyLimit: 1,
 		});
 		expect(row.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before.getTime());
 
@@ -123,6 +124,29 @@ describe('system task provisioning', () => {
 		expect(row.nextRunAt?.getTime()).toBeGreaterThan(inserted.nextRunAt!.getTime());
 		const remaining = await taskRepo.findBy({ jobId: row.id });
 		expect(remaining.filter((occurrence) => staleIds.includes(occurrence.id))).toEqual([]);
+	});
+
+	it.each([
+		['permits overlap', null],
+		['raises the ceiling', 4],
+	])('stores the concurrency limit a task declares when it %s', async (_case, concurrencyLimit) => {
+		await provision({ concurrencyLimit });
+
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.concurrencyLimit).toBe(concurrencyLimit);
+	});
+
+	it('reconciles a changed concurrency limit on an unchanged cadence', async () => {
+		await provision();
+		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(inserted.concurrencyLimit).toBe(1);
+
+		const summary = await provision({ concurrencyLimit: null });
+
+		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.id).toBe(inserted.id);
+		expect(row.concurrencyLimit).toBeNull();
 	});
 
 	it('reconciles a changed attempts ceiling on an unchanged cadence', async () => {
