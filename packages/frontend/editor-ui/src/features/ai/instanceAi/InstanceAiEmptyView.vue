@@ -6,7 +6,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, useChatInputAutoFocus } from '@n8n/design-system';
+import { N8nButton, N8nOption, N8nSelect, useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -631,8 +631,19 @@ async function handleSubmit(
 	}
 }
 
-// ponytail: prototype trigger for the seeded onboarding thread. The real entry is a
-// first-landing redirect, not a button.
+// ponytail: prototype trigger for the seeded onboarding thread. The select stands in for the
+// n8n Cloud signup survey; the real entry is a first-landing redirect that forwards the survey.
+const ONBOARDING_SURVEY_TEAMS = [
+	'Executive/Owner',
+	'Support',
+	'Product & Design',
+	'Sales',
+	'IT',
+	'Engineering',
+	'Marketing',
+	'Other',
+];
+const onboardingSurveyTeam = ref('');
 async function startOnboardingThread() {
 	if (isStartingThread.value) return;
 	const threadId = uuidv4();
@@ -641,6 +652,9 @@ async function startOnboardingThread() {
 		await store.syncThread(threadId, selectedProject.value, {
 			source: 'onboarding',
 			origin: 'internal',
+			sourceContext: onboardingSurveyTeam.value
+				? { survey: { what_team_are_you_on: onboardingSurveyTeam.value } }
+				: undefined,
 		});
 	} catch {
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
@@ -774,7 +788,21 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							</div>
 						</template>
 					</InstanceAiInput>
-					<div :class="$style.onboardingTestButtons">
+					<div :class="$style.onboardingTest">
+						<N8nSelect
+							v-model="onboardingSurveyTeam"
+							size="small"
+							clearable
+							data-test-id="instance-ai-onboarding-test-team"
+							:placeholder="i18n.baseText('instanceAi.onboarding.testSurveyTeam')"
+						>
+							<N8nOption
+								v-for="team in ONBOARDING_SURVEY_TEAMS"
+								:key="team"
+								:label="team"
+								:value="team"
+							/>
+						</N8nSelect>
 						<N8nButton
 							type="tertiary"
 							size="small"
@@ -803,8 +831,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 </template>
 
 <style lang="scss" module>
-.onboardingTestButtons {
+.onboardingTest {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	align-self: center;
 	margin-top: var(--spacing--sm);
