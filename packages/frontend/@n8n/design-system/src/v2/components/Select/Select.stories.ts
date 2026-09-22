@@ -164,11 +164,7 @@ export const WithIcons = {
 			const icon = computed(() => iconItems.find((item) => item.value === value.value)?.icon);
 			return { args, value, icon };
 		},
-		template: `
-		<div style="display: flex; gap: 16px; align-items: center;">
-			<Select v-bind="args" v-model="value" :icon="icon" />
-		</div>
-		`,
+		template: '<Select v-bind="args" v-model="value" :icon="icon" />',
 	}),
 	args: {
 		items: iconItems,
@@ -184,7 +180,6 @@ export const WithSlots = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center;">
 			<Select v-bind="args" v-model="value">
 				<template #item-leading="{ item, ui }">
 					<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
@@ -196,7 +191,6 @@ export const WithSlots = {
 					<N8nIcon :icon="item.icon" color="secondary" v-bind="ui" />
 				</template>
 			</Select>
-		</div>
 		`,
 	}),
 	args: {
@@ -266,7 +260,6 @@ export const ItemWithDescription = {
 			return { args, value, items: modeItems, current };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -284,7 +277,6 @@ export const ItemWithDescription = {
 					</span>
 				</template>
 			</Select>
-		</div>
 		`,
 	}),
 	args: {
