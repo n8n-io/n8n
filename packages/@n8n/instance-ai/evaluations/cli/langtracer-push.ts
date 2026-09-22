@@ -182,8 +182,9 @@ async function main() {
 
 	// Select disk cases: exact slugs (positional + --changed) are read before
 	// loading, so unrelated files are never parsed. --filter/--exclude apply in the
-	// loader; a substring or tier selection has to parse what it matches, so an
-	// invalid file there is reported and skipped rather than failing the push.
+	// loader by file name; --tier reads each file's datasets, so it parses every
+	// file. Either way an invalid file is reported and skipped rather than failing
+	// the push.
 	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
 	const loadOptions: LoadEvalCasesOptions =
 		exactSlugs.size > 0
