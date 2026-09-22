@@ -149,4 +149,32 @@ describe('ItemsRenderer', () => {
 			}
 		}
 	});
+
+	it('should separate a command from preceding items only when browsing', async () => {
+		const command = mockCommandCreateElement();
+		const { container, rerender } = renderComponent({
+			pinia: createTestingPinia(),
+			props: { elements: [command] },
+		});
+		await nextTick();
+
+		expect(container.querySelector('.command')).not.toHaveClass('withSeparator');
+
+		await rerender({ elements: [mockNodeCreateElement(), command] });
+		await nextTick();
+
+		expect(container.querySelector('.command')).toHaveClass('withSeparator');
+
+		const searchResult = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					nodeCreatorViewStacks: { viewStacks: [{ search: 'contain' }] },
+				},
+			}),
+			props: { elements: [mockNodeCreateElement(), command, mockNodeCreateElement()] },
+		});
+		await nextTick();
+
+		expect(searchResult.container.querySelector('.command')).not.toHaveClass('withSeparator');
+	});
 });
