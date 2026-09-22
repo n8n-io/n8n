@@ -374,6 +374,13 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(view.queryByRole('heading', { name: 'Notify' })).toBeNull();
 		expect(view.queryByRole('heading', { name: 'Second notification' })).toBeNull();
 		expect(view.queryByLabelText('Channel')).toBeNull();
+		await fireEvent.update(view.getByLabelText('Account'), 'cred-1');
+		await flushPromises();
+		expect(view.getByRole('heading', { name: 'Notify' })).toBeVisible();
+		expect(view.getByRole('heading', { name: 'Second notification' })).toBeVisible();
+		const channels = view.getAllByLabelText('Channel');
+		expect(channels).toHaveLength(2);
+		for (const channel of channels) expect(channel).toBeVisible();
 	});
 
 	it('preserves drafts when splitting a shared account and saves both nodes with one Confirm', async () => {

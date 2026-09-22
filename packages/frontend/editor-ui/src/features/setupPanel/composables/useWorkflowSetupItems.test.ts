@@ -619,62 +619,64 @@ describe('useWorkflowSetupItems', () => {
 		).toBe(false);
 	});
 
-	it.each(['connected', 'disconnected', 'unknown', 'clientCredentials', 'read-error'] as const)(
-		'derives saved OAuth completion after loading a workflow: %s',
-		async (connectionStatus) => {
-			const credential = {
-				id: 'gmail-1',
-				name: 'Gmail account',
-				type: 'gmailOAuth2',
-				isManaged: false,
-				createdAt: '2026-09-22T00:00:00.000Z' as const,
-				updatedAt: '2026-09-22T00:00:00.000Z' as const,
-			};
-			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
-			credentialsStore.getCredentialTypeByName = vi
-				.fn()
-				.mockReturnValue({ extends: ['oAuth2Api'] });
-			const read = Promise.withResolvers<ICredentialsDecryptedResponse | ICredentialsResponse>();
-			credentialsStore.getCredentialData.mockReturnValue(read.promise);
-			workflowsListStore.fetchWorkflow.mockResolvedValue(
-				createTestWorkflow({
-					id: WORKFLOW_ID,
-					nodes: [
-						createTestNode({
-							name: 'Gmail',
-							credentials: { gmailOAuth2: { id: credential.id, name: credential.name } },
-						}),
-					],
-				}),
-			);
-			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
-			await flushPromises();
-			const item = credentialItem({
-				credentialType: 'gmailOAuth2',
-				nodeBindings: [{ nodeName: 'Gmail' }],
+	it.each([
+		'connected',
+		'disconnected',
+		'read-only shared credential',
+		'clientCredentials',
+		'read-error',
+	] as const)('derives saved OAuth completion after loading a workflow: %s', async (scenario) => {
+		const scopes: ICredentialsResponse['scopes'] =
+			scenario === 'read-only shared credential'
+				? ['credential:read']
+				: ['credential:read', 'credential:update'];
+		const credential = {
+			id: 'gmail-1',
+			name: 'Gmail account',
+			type: 'gmailOAuth2',
+			scopes,
+			isManaged: false,
+			createdAt: '2026-09-22T00:00:00.000Z' as const,
+			updatedAt: '2026-09-22T00:00:00.000Z' as const,
+		};
+		credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({ extends: ['oAuth2Api'] });
+		const read = Promise.withResolvers<ICredentialsDecryptedResponse | ICredentialsResponse>();
+		credentialsStore.getCredentialData.mockReturnValue(read.promise);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [
+					createTestNode({
+						name: 'Gmail',
+						credentials: { gmailOAuth2: { id: credential.id, name: credential.name } },
+					}),
+				],
+			}),
+		);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		await flushPromises();
+		const item = credentialItem({
+			credentialType: 'gmailOAuth2',
+			nodeBindings: [{ nodeName: 'Gmail' }],
+		});
+		expect(state.isItemDone(item)).toBe(false);
+		if (scenario === 'read-error') read.reject(new Error('Request failed'));
+		else
+			read.resolve({
+				...credential,
+				data:
+					scenario === 'read-only shared credential'
+						? undefined
+						: {
+								grantType:
+									scenario === 'clientCredentials' ? 'clientCredentials' : 'authorizationCode',
+								oauthTokenData: scenario === 'connected',
+							},
 			});
-			expect(state.isItemDone(item)).toBe(false);
-			if (connectionStatus === 'read-error') read.reject(new Error('Request failed'));
-			else
-				read.resolve({
-					...credential,
-					data:
-						connectionStatus === 'unknown'
-							? undefined
-							: {
-									grantType:
-										connectionStatus === 'clientCredentials'
-											? 'clientCredentials'
-											: 'authorizationCode',
-									oauthTokenData: connectionStatus === 'connected',
-								},
-				});
-			await flushPromises();
-			expect(state.isItemDone(item)).toBe(
-				!['disconnected', 'read-error'].includes(connectionStatus),
-			);
-		},
-	);
+		await flushPromises();
+		expect(state.isItemDone(item)).toBe(!['disconnected', 'read-error'].includes(scenario));
+	});
 
 	it('does not treat a legacy credential name as a saved binding', () => {
 		const node = createTestNode({ name: 'Slack' });
