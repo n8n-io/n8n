@@ -10,18 +10,8 @@ import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;
+type DenialPolicy = Exclude<Policy, 'any'>;
 type WorkflowWithCallerPolicy = Pick<IWorkflowBase, 'id' | 'settings'>;
-
-const VALID_POLICIES: readonly Policy[] = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
-
-/** Stored policy value that no longer exists, e.g. the removed `any`. Denies every caller. */
-const REMOVED_POLICY = 'removed' as const;
-
-type ResolvedPolicy = Policy | typeof REMOVED_POLICY;
-
-function isValidPolicy(policy: string): policy is Policy {
-	return VALID_POLICIES.some((validPolicy) => validPolicy === policy);
-}
 
 @Service()
 export class SubworkflowPolicyChecker {
@@ -47,6 +37,8 @@ export class SubworkflowPolicyChecker {
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
 
 		const policy = this.findPolicy(subworkflow);
+
+		if (policy === 'any') return;
 
 		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId)) return;
 
@@ -84,6 +76,8 @@ export class SubworkflowPolicyChecker {
 
 		const policy = this.findPolicy(subworkflow);
 
+		if (policy === 'any') return;
+
 		const subworkflowProject = await this.ownershipService.getWorkflowProjectCached(subworkflowId);
 
 		if (policy === 'workflowsFromSameOwner' && parentProjectId === subworkflowProject.id) return;
@@ -116,16 +110,12 @@ export class SubworkflowPolicyChecker {
 	}
 
 	/**
-	 * Find the subworkflow's caller policy. An unset policy resolves to the
-	 * instance default. A stored value outside the supported policies, e.g. the
-	 * removed `any`, denies every caller until the owner picks a new policy.
+	 * Find the subworkflow's caller policy.
 	 */
-	private findPolicy(subworkflow: WorkflowWithCallerPolicy): ResolvedPolicy {
-		const storedPolicy: string | undefined = subworkflow.settings?.callerPolicy;
-
-		if (storedPolicy === undefined) return this.globalConfig.workflows.callerPolicyDefaultOption;
-
-		return isValidPolicy(storedPolicy) ? storedPolicy : REMOVED_POLICY;
+	private findPolicy(subworkflow: WorkflowWithCallerPolicy): WorkflowSettings.CallerPolicy {
+		return (
+			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
+		);
 	}
 
 	/**
@@ -159,18 +149,16 @@ export class SubworkflowPolicyChecker {
 		return callerIds.includes(parentWorkflowId);
 	}
 
-	private readonly denialReasons: Record<ResolvedPolicy, string> = {
+	private readonly denialReasons: Record<DenialPolicy, string> = {
 		none: 'Subworkflow may not be called by any workflow',
 		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
 		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
-		removed:
-			'Subworkflow stores a caller policy that no longer exists. Pick a new policy in the subworkflow settings',
 	};
 
 	private logDenial(
 		details: {
 			subworkflowId: string;
-			policy: ResolvedPolicy;
+			policy: DenialPolicy;
 		} & ({ parentWorkflowId: string } | { parentProjectId: string }),
 	) {
 		const { policy, ...context } = details;
