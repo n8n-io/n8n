@@ -112,7 +112,11 @@ const onSubmit = (values: unknown) => {
 				</N8nButton>
 			</CollapsibleTrigger>
 
-			<N8nAnimatedCollapsibleContent :id="PASSWORD_FORM_ID" blur>
+			<N8nAnimatedCollapsibleContent
+				:id="PASSWORD_FORM_ID"
+				:class="$style.passwordFormContent"
+				blur
+			>
 				<div :class="$style.passwordForm">
 					<N8nCallout
 						v-if="ssoRequired"
@@ -245,6 +249,14 @@ const onSubmit = (values: unknown) => {
 
 .chevronOpen {
 	transform: rotate(180deg);
+}
+
+// The collapsible clips its overflow while it animates, which cut the focus
+// ring of the inputs at the card edges. Widen the clip box past the ring and
+// pull the content back in with matching padding.
+.passwordFormContent {
+	margin: 0 calc(-1 * var(--spacing--3xs));
+	padding: 0 var(--spacing--3xs);
 }
 
 .passwordForm {
