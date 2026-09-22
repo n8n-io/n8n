@@ -161,8 +161,8 @@ export class UsersPublicController {
 	}
 
 	@Patch('/:userId/role')
-	@ApiKeyScope('user:changeRole')
 	@Licensed('feat:advancedPermissions')
+	@ApiKeyScope('user:changeRole')
 	@ApiSummary("Change a user's global role")
 	@ApiDescription("Change a user's global role")
 	@ApiTags(tags)
