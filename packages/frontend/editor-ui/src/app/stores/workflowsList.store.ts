@@ -186,23 +186,28 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 
 	async function searchWorkflows({
 		projectId,
+		ids,
 		query,
 		nodeTypes,
 		tags,
 		select,
 		isArchived,
 		triggerNodeTypes,
+		options,
 	}: {
 		projectId?: string;
+		ids?: string[];
 		query?: string;
 		nodeTypes?: string[];
 		tags?: string[];
 		select?: string[];
 		isArchived?: boolean;
 		triggerNodeTypes?: string[];
+		options?: workflowsApi.GetWorkflowsOptions;
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
+			ids,
 			query,
 			nodeTypes,
 			tags,
@@ -218,7 +223,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			hasFilter ? filter : undefined,
-			undefined,
+			options,
 			select,
 		);
 		return workflows;

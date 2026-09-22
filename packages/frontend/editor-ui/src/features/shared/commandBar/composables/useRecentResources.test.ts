@@ -11,8 +11,8 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { VIEWS } from '@/app/constants';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 
-const recentWorkflowsRef = ref<Array<{ id: string; openedAt: number }>>([]);
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
 
 vi.mock('@vueuse/core', async (importOriginal) => {
@@ -20,9 +20,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 	return {
 		...(actual as object),
 		useLocalStorage: vi.fn((key: string, defaultValue: unknown) => {
-			if (key === 'n8n-recent-workflows') {
-				return recentWorkflowsRef;
-			}
 			if (key === 'n8n-recent-nodes') {
 				return recentNodesRef;
 			}
@@ -66,18 +63,19 @@ describe('useRecentResources', () => {
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
+	let recentWorkflowsStore: ReturnType<typeof useRecentWorkflowsStore>;
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		// Reset storage data
-		recentWorkflowsRef.value = [];
 		recentNodesRef.value = {};
 
 		mockWorkflowsStore = useWorkflowsStore();
 		mockWorkflowsStore.workflowId = 'workflow-1';
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockNodeTypesStore = useNodeTypesStore();
+		recentWorkflowsStore = useRecentWorkflowsStore();
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
 		Object.defineProperty(workflowDocumentStore, 'findNodeByPartialId', {
@@ -221,8 +219,8 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened(route);
 
-			expect(recentWorkflowsRef.value).toHaveLength(1);
-			expect(recentWorkflowsRef.value[0].id).toBe('workflow-1');
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(1);
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens[0].id).toBe('workflow-1');
 		});
 
 		it('should register both workflow and node when nodeId is present', () => {
@@ -236,8 +234,8 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened(route);
 
-			expect(recentWorkflowsRef.value).toHaveLength(1);
-			expect(recentWorkflowsRef.value[0].id).toBe('workflow-1');
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(1);
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens[0].id).toBe('workflow-1');
 			expect(recentNodesRef.value['workflow-1']).toHaveLength(1);
 			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
 		});
@@ -253,7 +251,7 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened(route);
 
-			expect(recentWorkflowsRef.value).toHaveLength(0);
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(0);
 		});
 
 		it('should not register workflow when creating new workflow', () => {
@@ -267,7 +265,7 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened(route);
 
-			expect(recentWorkflowsRef.value).toHaveLength(0);
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(0);
 		});
 
 		it('should not register anything when route is not a workflow view', () => {
@@ -281,7 +279,7 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened(route);
 
-			expect(recentWorkflowsRef.value).toHaveLength(0);
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(0);
 		});
 	});
 

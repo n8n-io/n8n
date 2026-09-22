@@ -378,6 +378,45 @@ describe('useWorkflowsListStore', () => {
 				['id', 'name'],
 			);
 		});
+
+		it('should pass workflow ids and list options', async () => {
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: [],
+			});
+
+			await workflowsListStore.searchWorkflows({
+				projectId: 'project-1',
+				ids: ['workflow-1', 'workflow-2'],
+				isArchived: false,
+				options: {
+					take: 10,
+					skip: 0,
+					sortBy: 'updatedAt:desc',
+					includeScopes: false,
+				},
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{
+					projectId: 'project-1',
+					ids: ['workflow-1', 'workflow-2'],
+					query: undefined,
+					nodeTypes: undefined,
+					tags: undefined,
+					isArchived: false,
+					triggerNodeTypes: undefined,
+				},
+				{
+					take: 10,
+					skip: 0,
+					sortBy: 'updatedAt:desc',
+					includeScopes: false,
+				},
+				undefined,
+			);
+		});
 	});
 
 	describe('fetchAllWorkflows', () => {

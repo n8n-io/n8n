@@ -33,6 +33,7 @@ import {
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import {
 	defaultModuleSettings,
 	InstanceAiInputStub,
@@ -170,13 +171,30 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	emits: ['initial-node-id-consumed', 'workflow-failures'],
 	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
+			'openWorkflowPreview',
+			undefined,
+		);
 		expose({ requestFitView: vi.fn() });
 		return () =>
-			h('div', {
-				'data-test-id': 'instance-ai-workflow-preview-stub',
-				'data-workflow-id': props.workflowId,
-				'data-initial-node-id': props.initialNodeId,
-			});
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-workflow-preview-stub',
+					'data-workflow-id': props.workflowId,
+					'data-initial-node-id': props.initialNodeId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-workflow-preview-open-workflow',
+							onClick: () => openWorkflowPreview?.(props.workflowId),
+						},
+						'Open workflow',
+					),
+				],
+			);
 	},
 });
 
@@ -389,6 +407,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let recentWorkflowsStore: ReturnType<typeof mockedStore<typeof useRecentWorkflowsStore>>;
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
@@ -405,6 +424,7 @@ describe('InstanceAiThreadView', () => {
 		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
+		recentWorkflowsStore = mockedStore(useRecentWorkflowsStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.getRuntime.mockReturnValue(thread);
 		store.threads = [
@@ -485,6 +505,72 @@ describe('InstanceAiThreadView', () => {
 
 		return { ...rendered, user };
 	}
+
+	function seedWorkflowArtifact() {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Orders workflow' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-workflow',
+				role: 'user',
+				content: 'Open the workflow',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'Orders workflow' }],
+			},
+		] as typeof thread.messages;
+	}
+
+	it('registers a workflow opened through the injected preview handler', async () => {
+		seedWorkflowArtifact();
+		const workflowArtifact = thread.producedArtifacts.get('workflow-1');
+		if (workflowArtifact) workflowArtifact.projectId = 'artifact-project';
+		const user = userEvent.setup();
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await user.click(await findByTestId('instance-ai-workflow-preview-open-workflow'));
+
+		expect(recentWorkflowsStore.registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+			'workflow-1',
+			'artifact-project',
+		);
+	});
+
+	it('registers an explicit workflow open without a project as unscoped', async () => {
+		seedWorkflowArtifact();
+		thread.projectId = undefined;
+		const user = userEvent.setup();
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await user.click(await findByTestId('instance-ai-workflow-preview-open-workflow'));
+
+		expect(recentWorkflowsStore.registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+			'workflow-1',
+			undefined,
+		);
+	});
+
+	it('tracks manual preview reopening but not automatic artifact opening', async () => {
+		seedWorkflowArtifact();
+		const user = userEvent.setup();
+		const { findByTestId, getAllByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await findByTestId('instance-ai-workflow-preview-stub');
+		expect(recentWorkflowsStore.registerWorkflowOpen).not.toHaveBeenCalled();
+
+		await user.click(getAllByTestId('instance-ai-artifacts-preview-toggle')[0]);
+		const reopenToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+		);
+		expect(reopenToggle).toBeDefined();
+		await user.click(reopenToggle!);
+
+		expect(recentWorkflowsStore.registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+			'workflow-1',
+			'thread-project',
+		);
+	});
 
 	it('uses the message-circle-plus icon for the new chat button', function () {
 		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
