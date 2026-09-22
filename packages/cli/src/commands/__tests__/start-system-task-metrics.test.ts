@@ -145,7 +145,7 @@ describe('Start system task metrics', () => {
 
 	const leaderTimerDummy = { task: 'dummy', mode: 'leader_timer' };
 
-	it('seeds the in-memory series although a takeover preceded the collector', async () => {
+	it('seeds the leader-timer series although a takeover preceded the collector', async () => {
 		const events = Container.get(EventService);
 		expect(events.listenerCount('system-task-timers-started')).toBe(0);
 
@@ -173,7 +173,7 @@ describe('Start system task metrics', () => {
 		});
 	});
 
-	it('exports no in-memory series on a follower', async () => {
+	it('exports no leader-timer series on a follower', async () => {
 		Container.get(InstanceSettings).markAsFollower();
 
 		await runStart();
