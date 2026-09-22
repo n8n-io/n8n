@@ -19,7 +19,7 @@ const LIMITED_JOBS_ONLY = `"${column}" IS NOT NULL`;
  * Nullable, with NULL meaning "no limit", so existing rows keep the unlimited
  * behaviour they were written under and need no backfill.
  */
-export class AddConcurrencyLimitToScheduledJob1789985459329 implements ReversibleMigration {
+export class AddConcurrencyLimitToScheduledJob1790073725529 implements ReversibleMigration {
 	/**
 	 * Raw `ADD COLUMN` rather than the schema builder's `addColumns`, so SQLite does
 	 * not rebuild a table whose `scheduled_task` rows would cascade away. The CHECK is
