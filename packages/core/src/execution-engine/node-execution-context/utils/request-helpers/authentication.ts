@@ -39,7 +39,10 @@ function shouldRetryAfterPreAuthentication(
 	credentials: ICredentialDataDecryptedObject,
 	options?: IAdditionalCredentialOptions,
 ): boolean {
-	if (!isTokenExpiredStatusCode(status, options?.preAuthenticationRetryStatusCode ?? 401)) {
+	if (
+		status !== 401 &&
+		!isTokenExpiredStatusCode(status, options?.preAuthenticationRetryStatusCode ?? 401)
+	) {
 		return false;
 	}
 	if (status === 401 || options?.skipPreAuthenticationRetryWhileTokenIsFresh !== true) return true;
