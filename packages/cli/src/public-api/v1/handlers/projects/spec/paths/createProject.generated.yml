@@ -2,7 +2,7 @@ operationId: createProject
 tags:
   - Projects
 summary: Create a project
-description: Create a project on your instance.
+description: Create a team project on your instance. An occupied ID returns HTTP 409. The request does not change the existing project or its members.
 x-required-scope: project:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

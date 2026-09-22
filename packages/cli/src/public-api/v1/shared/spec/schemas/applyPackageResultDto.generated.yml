@@ -330,6 +330,7 @@ oneOf:
               required:
                 - id
                 - name
+            description: Projects in the package that do not exist on this instance. Preflight preserves their metadata without checking project creation rules. The project creation API can reject invalid values.
           missingBindings:
             type: array
             items:

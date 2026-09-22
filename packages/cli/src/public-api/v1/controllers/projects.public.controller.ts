@@ -104,7 +104,10 @@ export class ProjectsPublicController {
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('project:create')
 	@ApiSummary('Create a project')
-	@ApiDescription('Create a project on your instance.')
+	@ApiDescription(
+		'Create a team project on your instance. An occupied ID returns HTTP 409. ' +
+			'The request does not change the existing project or its members.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(201, CreatedProjectPublicDto)
 	@ApiErrorResponse(409)
