@@ -1348,7 +1348,14 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
-		putExecutionToWait(waitTill: Date): Promise<void>;
+		/**
+		 * Pauses the execution until `waitTill`.
+		 *
+		 * Set `acceptsResumeRequest` to `false` when the deadline is the only thing that
+		 * can end the wait. A short wait then sleeps in the process, and the execution
+		 * stays active. The default is `true`, which makes every wait durable.
+		 */
+		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;
 		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
 		isConsoleOutputRedacted(): boolean;

@@ -5,6 +5,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	UserError,
+	WAIT_INDEFINITELY,
 	type IExecuteFunctions,
 } from 'n8n-workflow';
 
@@ -65,47 +66,63 @@ describe('Execute Wait Node', () => {
 
 			if (isValid) {
 				await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
-				expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill);
+				expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill, {
+					acceptsResumeRequest: false,
+				});
 			} else {
 				await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
 			}
 		},
 	);
 
-	test('should resolve with input data if canceled', async () => {
+	test('hands a short time wait to core and sleeps for nothing itself', async () => {
 		const putExecutionToWaitSpy = vi.fn();
 		const waitNode = new Wait();
-
-		let cancelSignal: (() => void) | null = null;
-
 		const inputData = [{ json: { test: 'data' } }];
 
 		const executeFunctionsMock = mock<IExecuteFunctions>({
 			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'resume') return 'timeInterval';
 				if (paramName === 'unit') return 'seconds';
-				if (paramName === 'amount') return 60;
+				if (paramName === 'amount') return 30;
 			}),
 			getTimezone: vi.fn().mockReturnValue('UTC'),
 			putExecutionToWait: putExecutionToWaitSpy,
 			getInputData: vi.fn(() => inputData),
 			getNode: vi.fn(),
-			onExecutionCancellation: (handler) => {
-				cancelSignal = handler;
-			},
 		});
 
-		const waitPromise = waitNode.execute(executeFunctionsMock);
+		await expect(waitNode.execute(executeFunctionsMock)).resolves.toEqual([inputData]);
 
-		for (let index = 0; index < 20; index++) {
-			await new Promise((r) => setTimeout(r, 10));
-			if (cancelSignal !== null) break;
-		}
+		expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expect.any(Date), {
+			acceptsResumeRequest: false,
+		});
+		// The sleep and its cancellation handler belong to core now.
+		expect(executeFunctionsMock.onExecutionCancellation).not.toHaveBeenCalled();
+	});
 
-		expect(cancelSignal).not.toBeNull();
-		cancelSignal!();
+	test('lets a resume request end a webhook wait', async () => {
+		const putExecutionToWaitSpy = vi.fn();
+		const waitNode = new Wait();
 
-		await expect(waitPromise).resolves.toEqual([inputData]);
+		const executeFunctionsMock = mock<IExecuteFunctions>({
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'resume') return 'webhook';
+				if (paramName === 'limitWaitTime') return false;
+			}),
+			getTimezone: vi.fn().mockReturnValue('UTC'),
+			evaluateExpression: vi.fn().mockReturnValue('https://n8n.test/resume-url'),
+			putExecutionToWait: putExecutionToWaitSpy,
+			getInputData: vi.fn(() => []),
+			getNode: vi.fn().mockReturnValue({ name: 'Wait' }),
+			getParentNodes: vi.fn().mockReturnValue([]),
+		});
+
+		await waitNode.execute(executeFunctionsMock);
+
+		expect(putExecutionToWaitSpy).toHaveBeenCalledWith(WAIT_INDEFINITELY, {
+			acceptsResumeRequest: true,
+		});
 	});
 
 	test('should fail the node when the form redirect response cannot be dispatched', async () => {
@@ -153,7 +170,6 @@ describe('Execute Wait Node', () => {
 				{
 					unit: 'seconds',
 					amount: 0,
-					mode: 'timeout',
 					expectedWaitTill: () => DateTime.now().toJSDate(),
 				},
 				{
@@ -173,7 +189,7 @@ describe('Execute Wait Node', () => {
 				},
 			])(
 				'Validate wait unit: $unit, amount: $amount',
-				async ({ unit, amount, expectedWaitTill, error, mode }) => {
+				async ({ unit, amount, expectedWaitTill, error }) => {
 					const putExecutionToWaitSpy = vi.fn();
 					const waitNode = new Wait();
 					const inputData = [{ json: { inputData: true } }];
@@ -190,16 +206,12 @@ describe('Execute Wait Node', () => {
 					});
 
 					if (!error) {
-						if (mode === 'timeout') {
-							// for short wait times (<65s) a simple timeout is used
-							const resultPromise = waitNode.execute(executeFunctionsMock);
-							vi.runAllTimers();
-							await expect(resultPromise).resolves.toEqual([inputData]);
-						} else {
-							// for longer wait times (>=65s) the execution is put to wait
-							await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
-							expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.());
-						}
+						// Every valid interval takes the same path. Core decides whether the
+						// wait sleeps in the process or suspends the execution.
+						await expect(waitNode.execute(executeFunctionsMock)).resolves.toEqual([inputData]);
+						expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.(), {
+							acceptsResumeRequest: false,
+						});
 					} else {
 						await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrowError(error);
 					}

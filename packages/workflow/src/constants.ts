@@ -8,6 +8,15 @@ export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
 // A parent parked on a sub-execution gets its own sentinel so the waiting-executions sweep can select those rows by equality.
 export const WAIT_FOR_SUB_EXECUTION = new Date('2999-12-31T00:00:00.000Z');
 
+/**
+ * A wait shorter than this sleeps in the process instead of suspending the execution.
+ * The waiting-executions tracker polls every 60 seconds and selects the rows that come
+ * due in the next 70 seconds. A wait that is written just after one pass is therefore
+ * seen by the next pass only when it lasts at least 65 seconds. Change this number with
+ * those two, never alone.
+ */
+export const MAX_IN_PROCESS_WAIT_MS = 65_000;
+
 export function isIndefiniteWait(waitTill: Date): boolean {
 	const time = waitTill.getTime();
 	return time === WAIT_INDEFINITELY.getTime() || time === WAIT_FOR_SUB_EXECUTION.getTime();

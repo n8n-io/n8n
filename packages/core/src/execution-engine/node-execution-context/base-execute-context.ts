@@ -36,6 +36,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
 	WorkflowDataProxy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
@@ -130,7 +131,24 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	async putExecutionToWait(waitTill: Date): Promise<void> {
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		const waitMs = Math.max(waitTill.getTime() - Date.now(), 0);
+
+		// A short wait that only its deadline can end sleeps here. Suspending it would
+		// cost a write and a reload, and the tracker could not fire it on time anyway.
+		if (options?.acceptsResumeRequest === false && waitMs < MAX_IN_PROCESS_WAIT_MS) {
+			return await new Promise<void>((resolve) => {
+				const timer = setTimeout(resolve, waitMs);
+				this.onExecutionCancellation(() => {
+					clearTimeout(timer);
+					resolve();
+				});
+			});
+		}
+
 		this.runExecutionData.waitTill = waitTill;
 		if (this.additionalData.setExecutionStatus) {
 			this.additionalData.setExecutionStatus('waiting');
