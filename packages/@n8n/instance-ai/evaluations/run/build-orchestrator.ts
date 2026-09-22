@@ -400,10 +400,16 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
 	}
 
-	/** Undefined on failure — the premise check reads that as "no evidence", never
-	 *  as "it compacted". */
-	function stashThreadMemory(client: N8nClient, build: BuildResult): void {
-		if (!build.threadId) return;
+	/** Only for a case that asserts on compaction: the read is a REST call plus two
+	 *  queries per build, and the nightly suite runs dozens of builds back to back
+	 *  on one instance. Undefined on failure — the premise check reads that as "no
+	 *  evidence", never as "it compacted". */
+	function stashThreadMemory(
+		client: N8nClient,
+		build: BuildResult,
+		wanted: boolean | undefined,
+	): void {
+		if (!wanted || !build.threadId) return;
 		const threadId = build.threadId;
 		threadMemoryByThreadId.set(
 			threadId,
@@ -548,9 +554,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					// that distinction is what tells triage where to look.
 					// A prebuilt run has no conversation to compact: only its outcome
 					// expectations are judged, and those grade the workflow, not memory.
+					// A build that died on infra never reached compaction either; `attribute`
+					// below names the outage, where this reason would blame the seed. The read
+					// itself is settled: `waitForAllActivity` polls the thread's memory tasks to
+					// a terminal state before the build returns (`waitForMemoryTasks`).
 					if (
 						testCase.requiresMemoryCompaction &&
 						!isPrebuilt &&
+						!infraFailed &&
 						!memoryWasCompacted(threadMemory)
 					) {
 						return allFailVerdicts(expectations, NOT_COMPACTED_REASON).map((verdict) => ({
@@ -639,7 +650,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Ordered before stashBuildExpectations so runDebugByThreadId already has
 				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
-				stashThreadMemory(lane.runner.client, build);
+				// No premise check on this path (isPrebuilt), so memory is not read.
+				stashThreadMemory(lane.runner.client, build, false);
 				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
@@ -670,7 +682,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Ordered before stashBuildExpectations so runDebugByThreadId already has
 				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
-				stashThreadMemory(lane.runner.client, build);
+				// No premise check on this path (isPrebuilt), so memory is not read.
+				stashThreadMemory(lane.runner.client, build, false);
 				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
@@ -748,7 +761,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			// Ordered before stashBuildExpectations so runDebugByThreadId already has
 			// this build's promise stashed by the time that call reads it.
 			stashRunDebug(lane.runner.client, build);
-			stashThreadMemory(lane.runner.client, build);
+			stashThreadMemory(lane.runner.client, build, entry.requiresMemoryCompaction);
 			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,

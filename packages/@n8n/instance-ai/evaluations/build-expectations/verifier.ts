@@ -9,7 +9,12 @@ import { EPHEMERAL_CACHE } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
-import { perTurnToolCallCounts, transcriptAsText, usageTokens } from '../utils/conversation-text';
+import {
+	perTurnToolCallCounts,
+	sumUsage,
+	transcriptAsText,
+	usageTokens,
+} from '../utils/conversation-text';
 
 // Re-exported for import-site stability — cli/index.ts and runner.ts import it from here.
 export { allFailVerdicts } from './assertion-judge';
@@ -128,18 +133,23 @@ function buildConversationContext(
 		'',
 		tokenUsageTotals(runDebug),
 		'',
-		'## Observational memory after compaction (ground truth — do not recount)',
-		'',
-		observationLogBlock(threadMemory),
-		'',
+		// Fetched only for a case that asserts on compaction. Absent, the section is
+		// left out rather than telling the judge memory was "not captured".
+		...(threadMemory
+			? [
+					'## Observational memory after compaction (ground truth — do not recount)',
+					'',
+					observationLogBlock(threadMemory),
+					'',
+				]
+			: []),
 		buildAssertionsBlock(expectations),
 	].join('\n');
 }
 
 /** What the agent remembers after compaction, so an expectation can grade the summary
  *  itself. Markers are the Observer's own priority labels. */
-function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse | undefined): string {
-	if (!memory) return '(not captured)';
+function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse): string {
 	if (!memory.cursor) return '(observational memory has not compacted this conversation)';
 	if (memory.observations.length === 0) return '(compacted, but no observations were kept)';
 	return memory.observations
@@ -156,21 +166,13 @@ function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse | undefi
 function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): string {
 	if (!runDebug || runDebug.length === 0) return '(no run debug captured)';
 
-	let input = 0;
-	let output = 0;
-	let cacheRead = 0;
-	let cacheWrite = 0;
-	let stepCount = 0;
-	for (const run of runDebug) {
-		for (const step of run.steps) {
-			const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
-			input += usage.input;
-			output += usage.output;
-			cacheRead += usage.cacheRead;
-			cacheWrite += usage.cacheWrite;
-			stepCount++;
-		}
-	}
+	const {
+		input,
+		output,
+		cacheRead,
+		cacheWrite,
+		steps: stepCount,
+	} = sumUsage(runDebug.flatMap((run) => run.steps));
 
 	// Instructions + tool schemas + the first message. A seeded case also carries
 	// its restored history here, so this is the first call, not a history-free floor.

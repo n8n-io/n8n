@@ -100,8 +100,8 @@ function failedBuild(error: string): BuildResult {
 function makeLane(
 	num: number,
 	tracedBuild: LaneState['tracedBuild'],
-	// stashThreadMemory calls this on every build, so the stub must answer it.
-	// An Error makes the read reject, the way a failed request does.
+	// stashThreadMemory reads this for a case that asserts on compaction, so the
+	// stub must answer it. An Error makes the read reject, the way a failed request does.
 	threadMemory: unknown = { observations: [], cursor: null },
 ): LaneState {
 	return {
@@ -304,6 +304,69 @@ describe('createBuildOrchestrator', () => {
 					threadMemory: { observations: [OBSERVATION], cursor: CURSOR },
 				}),
 			);
+		});
+
+		it('does not read thread memory for a case that does not assert on compaction', async () => {
+			// The read is a REST call plus two queries per build; only a case with the
+			// flag pays it.
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+			const lane = makeLane(1, vi.fn().mockResolvedValue(okBuild({ threadId: 'thread-1' })));
+			await createBuildOrchestrator(makeDeps([lane])).getOrBuild(0, 'case-a');
+
+			expect(lane.runner.client.getThreadMemory).not.toHaveBeenCalled();
+		});
+
+		it('reads thread memory for a case that does', async () => {
+			const deps = depsWithMemory({ observations: [OBSERVATION], cursor: CURSOR });
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			expect(deps.laneStates[0].runner.client.getThreadMemory).toHaveBeenCalledWith('thread-1');
+		});
+
+		it('names the outage, not the seed, when the build died on infra', async () => {
+			// Memory never compacted because the provider was down, not because the seed
+			// was too short; the infra attribution has to win over the premise reason.
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+			vi.mocked(verifyBuildExpectations).mockResolvedValueOnce([
+				{ expectation: 'recalls the decision', pass: false, reason: 'no reply to judge' },
+			]);
+			const deps = makeDeps(
+				[
+					makeLane(
+						1,
+						vi.fn().mockResolvedValue(
+							okBuild({
+								success: false,
+								providerOutage: 'Agent error: Overloaded; No output generated.',
+								threadId: 'thread-1',
+								transcript: [
+									{
+										userMessage: 'remind me what we decided',
+										steps: [{ kind: 'agent-text', text: 'Working on it.' }],
+									},
+								],
+							}),
+						),
+						{ observations: [], cursor: null },
+					),
+				],
+				{
+					testCaseByFileSlug: new Map([
+						[
+							'case-a',
+							baseCase({
+								requiresMemoryCompaction: true,
+								processExpectations: ['recalls the decision'],
+							}),
+						],
+					]),
+				},
+			);
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+			expect(verdicts?.[0].reason).not.toContain('never compacted');
+			expect(verdicts?.[0].attribution).toBe('framework_issue');
 		});
 
 		it('skips the premise check for a prebuilt workflow', async () => {

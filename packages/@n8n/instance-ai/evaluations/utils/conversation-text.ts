@@ -134,8 +134,11 @@ export function usageTokens(usage: unknown, providerMetadata?: unknown): UsageTo
 	return {
 		input: numberOr0(usage.inputTokens ?? usage.promptTokens),
 		output: numberOr0(usage.outputTokens ?? usage.completionTokens),
-		// OpenAI reports cache hits only in provider metadata — the same fallback
-		// the runtime's `toTokenUsage` applies.
+		// OpenAI's provider reports cache hits only in `providerMetadata` and leaves
+		// the SDK's `inputTokenDetails` at zero, so an explicit zero there is not
+		// evidence of no cache. The provider figure is read only when the SDK fields
+		// carry nothing, the same fallback the runtime's `toTokenUsage`
+		// (`@n8n/agents`, `runtime/streaming/stream.ts`) applies, so the two agree.
 		cacheRead: cacheRead || cacheWrite ? cacheRead : openAiCachedPromptTokens(providerMetadata),
 		cacheWrite,
 	};
@@ -148,24 +151,27 @@ function openAiCachedPromptTokens(providerMetadata: unknown): number {
 
 /** A run's usage plus its step count — totals sum ACROSS steps, so without the count
  *  "76033 tokens in" reads as one huge prompt when it was two ordinary ones. */
-type RunUsage = UsageTokens & { steps: number };
+export type RunUsage = UsageTokens & { steps: number };
+
+/** The four usage fields summed over LLM steps, with the step count. The one
+ *  accumulator: the turn headings and the verifier's totals both read it, so the
+ *  two cannot drift. */
+export function sumUsage(steps: InstanceAiRunDebugResponse['steps']): RunUsage {
+	const total: RunUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, steps: 0 };
+	for (const step of steps) {
+		const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
+		total.input += usage.input;
+		total.output += usage.output;
+		total.cacheRead += usage.cacheRead;
+		total.cacheWrite += usage.cacheWrite;
+		total.steps++;
+	}
+	return total;
+}
 
 /** Token usage per run-id, the join target for a turn's `runIds`. */
 function usageByRunId(runDebug: InstanceAiRunDebugResponse[] | undefined): Map<string, RunUsage> {
-	const map = new Map<string, RunUsage>();
-	for (const run of runDebug ?? []) {
-		const total: RunUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, steps: 0 };
-		for (const step of run.steps) {
-			const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
-			total.input += usage.input;
-			total.output += usage.output;
-			total.cacheRead += usage.cacheRead;
-			total.cacheWrite += usage.cacheWrite;
-			total.steps++;
-		}
-		map.set(run.runId, total);
-	}
-	return map;
+	return new Map((runDebug ?? []).map((run) => [run.runId, sumUsage(run.steps)]));
 }
 
 /** `" (N steps, N tokens in [C cached], M tokens out)"` for a turn heading. The cached
