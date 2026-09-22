@@ -56,7 +56,9 @@ describe('ExecuteWorkflow', () => {
 	});
 
 	test('should offer both all-items and per-item execution modes', () => {
-		const mode = executeWorkflow.description.properties.find((property) => property.name === 'mode');
+		const mode = executeWorkflow.description.properties.find(
+			(property) => property.name === 'mode',
+		);
 
 		expect(mode?.options).toEqual([
 			expect.objectContaining({ name: 'Run once with all items', value: 'once' }),
