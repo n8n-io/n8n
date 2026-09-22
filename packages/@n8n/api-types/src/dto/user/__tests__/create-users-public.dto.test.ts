@@ -23,6 +23,28 @@ describe('CreateUsersPublicDto', () => {
 
 		expect(result.success).toBe(false);
 	});
+
+	test('rejects the owner role', () => {
+		const result = CreateUsersPublicDto.safeParse([
+			{ email: 'user@example.com', role: 'global:owner' },
+		]);
+
+		expect(result.success).toBe(false);
+	});
+
+	test('rejects an empty role', () => {
+		const result = CreateUsersPublicDto.safeParse([{ email: 'user@example.com', role: '' }]);
+
+		expect(result.success).toBe(false);
+	});
+
+	test('accepts a custom role', () => {
+		const result = CreateUsersPublicDto.safeParse([
+			{ email: 'user@example.com', role: 'custom:role' },
+		]);
+
+		expect(result.success).toBe(true);
+	});
 });
 
 describe('InvitedUsersPublicDto', () => {
@@ -72,5 +94,66 @@ describe('InvitedUsersPublicDto', () => {
 		]);
 
 		expect(result.success).toBe(true);
+	});
+
+	test('rejects a missing id', () => {
+		const result = InvitedUsersPublicDto.safeParse([
+			{
+				user: {
+					email: 'user@example.com',
+					emailSent: true,
+					role: 'global:member',
+				},
+				error: '',
+			},
+		]);
+
+		expect(result.success).toBe(false);
+	});
+
+	test('rejects a missing emailSent', () => {
+		const result = InvitedUsersPublicDto.safeParse([
+			{
+				user: {
+					id: 'user-id',
+					email: 'user@example.com',
+					role: 'global:member',
+				},
+				error: '',
+			},
+		]);
+
+		expect(result.success).toBe(false);
+	});
+
+	test('rejects a missing role', () => {
+		const result = InvitedUsersPublicDto.safeParse([
+			{
+				user: {
+					id: 'user-id',
+					email: 'user@example.com',
+					emailSent: true,
+				},
+				error: '',
+			},
+		]);
+
+		expect(result.success).toBe(false);
+	});
+
+	test('rejects an invalid email', () => {
+		const result = InvitedUsersPublicDto.safeParse([
+			{
+				user: {
+					id: 'user-id',
+					email: 'not-an-email',
+					emailSent: true,
+					role: 'global:member',
+				},
+				error: '',
+			},
+		]);
+
+		expect(result.success).toBe(false);
 	});
 });
