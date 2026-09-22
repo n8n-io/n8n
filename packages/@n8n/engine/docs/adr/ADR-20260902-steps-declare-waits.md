@@ -86,6 +86,14 @@ of the two ends the wait.
    row records it. After a step changes state, the engine calculates the status
    from the steps again. A new `step:waiting` lifecycle event shows the paused
    step in the UI.
+7. **The executor request carries the workflow settings.** A node resolves its
+   parameters with them. The `specificTime` mode of the Wait node resolves its
+   target time in the timezone of the workflow. The node converts the time and
+   hands over an absolute instant, so nothing in the data plane converts a
+   time, and durations are not affected. The execution row holds a workflow
+   snapshot (ADR-20260904-store-the-workflow-with-the-execution), but the
+   execution path does not read that document, so the settings travel as their
+   own field.
 
 ## Alternatives Considered
 
@@ -187,15 +195,6 @@ of the two ends the wait.
   Whether a resume must fail for these reasons is a product decision. To apply
   that decision, the engine needs a cross-plane check. This design has no such
   check.
-- The executor request carries the workflow settings that a node needs to
-  resolve its parameters. The `specificTime` mode of the Wait node resolves its
-  target time in the timezone of the workflow. The node converts it and hands
-  over an absolute instant, so nothing in the data plane converts a time, and
-  durations are not affected. The execution row holds a workflow snapshot
-  (ADR-20260904-store-the-workflow-with-the-execution), but the execution path
-  does not read that document, so the settings travel as their own field. Until
-  the shim work carries them, the node falls back to the default timezone and
-  the instant it produces is wrong by that offset.
 
 ## Links
 
