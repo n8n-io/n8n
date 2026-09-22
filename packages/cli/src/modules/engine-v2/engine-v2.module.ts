@@ -42,13 +42,13 @@ export class EngineV2Module implements ModuleInterface {
 		// Create both endpoints before the engine starts. A short run can answer
 		// before `startExecution` returns, and responses are not replayed.
 		const { InMemoryExecutionResponseChannel } = await import(
-			'./in-memory-execution-response-channel.js'
+			'./response-channel/in-memory-execution-response-channel.js'
 		);
 		const { InMemoryExecutionResponseSender } = await import(
-			'./in-memory-execution-response-sender.js'
+			'./response-channel/in-memory-execution-response-sender.js'
 		);
 		const { InMemoryExecutionResponseReceiver } = await import(
-			'./in-memory-execution-response-receiver.js'
+			'./response-channel/in-memory-execution-response-receiver.js'
 		);
 		// In-memory for now because both planes share this process. Redis endpoints
 		// can use the same response contracts when the planes run separately.

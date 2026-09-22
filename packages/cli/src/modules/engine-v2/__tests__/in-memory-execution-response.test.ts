@@ -1,9 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionResponse } from '@n8n/engine';
 
-import { InMemoryExecutionResponseChannel } from '../in-memory-execution-response-channel';
-import { InMemoryExecutionResponseReceiver } from '../in-memory-execution-response-receiver';
-import { InMemoryExecutionResponseSender } from '../in-memory-execution-response-sender';
+import { InMemoryExecutionResponseChannel } from '../response-channel/in-memory-execution-response-channel';
+import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory-execution-response-receiver';
+import { InMemoryExecutionResponseSender } from '../response-channel/in-memory-execution-response-sender';
 
 const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionResponse => ({
 	type: 'ended',
