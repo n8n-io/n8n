@@ -37,6 +37,7 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		emoji: null,
 		parentThreadId: null,
 		parentAgentId: null,
+		taskId: null,
 		sessionNumber: 1,
 		totalPromptTokens: 0,
 		totalCompletionTokens: 0,
@@ -1031,8 +1032,8 @@ describe('AgentExecutionService', () => {
 	describe('getThreads', () => {
 		it('returns composite statuses and aggregated failure summaries', async () => {
 			const failedThread = makeThread({ id: 'thread-failed' });
-			const cleanThread = makeThread({ id: 'thread-clean' });
-			const runningThread = makeThread({ id: 'thread-running' });
+			const cleanThread = makeThread({ id: 'thread-clean', accessScope: 'project', ownerId: null });
+			const runningThread = makeThread({ id: 'thread-running', parentThreadId: 'parent' });
 			const emptyThread = makeThread({ id: 'thread-empty' });
 			const failureSummary = {
 				count: 2,
@@ -1064,33 +1065,104 @@ describe('AgentExecutionService', () => {
 			const result = await service.getThreads('project-1', 'agent-1', 'user-1', 20);
 
 			expect(result.threads).toEqual([
-				expect.objectContaining({ id: failedThread.id, failureSummary, status: 'error' }),
+				expect.objectContaining({
+					id: failedThread.id,
+					failureSummary,
+					status: 'error',
+					canContinueInPreview: true,
+				}),
 				expect.objectContaining({
 					id: cleanThread.id,
 					failureSummary: null,
 					status: 'succeeded',
+					canContinueInPreview: false,
 				}),
 				expect.objectContaining({
 					id: runningThread.id,
 					failureSummary: null,
 					status: 'running',
+					canContinueInPreview: false,
 				}),
 				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
 			]);
 		});
 	});
 
-	describe('getThreadDetail', () => {
-		it('returns thread executions after ownership validation', async () => {
-			const thread = makeThread();
-			const executions = [{ id: 'execution-1', storedAt: 'db' }] as AgentExecution[];
+	describe('canUseDraftThread', () => {
+		it.each<{
+			name: string;
+			thread: Partial<AgentExecutionThread>;
+			allowed: boolean;
+		}>([
+			{ name: 'owned private root', thread: {}, allowed: true },
+			{ name: 'shared session', thread: { accessScope: 'project', ownerId: null }, allowed: false },
+			{ name: 'sub-agent session', thread: { parentThreadId: 'parent' }, allowed: false },
+			{ name: 'task session', thread: { taskId: 'task-1' }, allowed: true },
+			{ name: 'other owner', thread: { ownerId: 'other-user' }, allowed: false },
+			{ name: 'unresolved owner', thread: { ownerId: null }, allowed: false },
+			{ name: 'other project', thread: { projectId: 'other-project' }, allowed: false },
+			{ name: 'other agent', thread: { agentId: 'other-agent' }, allowed: false },
+			{ name: 'owned legacy ID', thread: { id: 'test-agent-1:user-1' }, allowed: true },
+			{ name: 'owned unscoped legacy ID', thread: { id: 'test-agent-1' }, allowed: true },
+		])('checks an existing $name', async ({ thread: overrides, allowed }) => {
+			const thread = makeThread(overrides);
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
-			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
-
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
-
-			expect(result).toEqual({ thread, executions });
+			expect(await service.canUseDraftThread(thread.id, 'project-1', 'agent-1', 'user-1')).toBe(
+				allowed,
+			);
 		});
+
+		it.each([
+			{ name: 'unused ID', memoryResourceId: null, checkpointAllowed: true, allowed: true },
+			{
+				name: 'memory owned by another user',
+				memoryResourceId: 'draft-chat:other-user',
+				checkpointAllowed: true,
+				allowed: false,
+			},
+			{
+				name: 'checkpoint owned by another user',
+				memoryResourceId: null,
+				checkpointAllowed: false,
+				allowed: false,
+			},
+		])('checks a new $name', async ({ memoryResourceId, checkpointAllowed, allowed }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			memoryBackend.getThread.mockResolvedValue(
+				memoryResourceId
+					? {
+							id: 'new-thread',
+							resourceId: memoryResourceId,
+							createdAt: new Date(),
+							updatedAt: new Date(),
+						}
+					: null,
+			);
+			checkpointStorage.hasNoConflictingThreadResource.mockResolvedValue(checkpointAllowed);
+
+			await expect(
+				service.canUseDraftThread('new-thread', 'project-1', 'agent-1', 'user-1'),
+			).resolves.toBe(allowed);
+		});
+	});
+
+	describe('getThreadDetail', () => {
+		it.each(['user', 'project'] as const)(
+			'returns readable %s thread executions',
+			async (accessScope) => {
+				const thread = makeThread({
+					accessScope,
+					ownerId: accessScope === 'user' ? 'user-1' : null,
+				});
+				const executions = [{ id: 'execution-1', storedAt: 'db' }] as AgentExecution[];
+				agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+				agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
+
+				const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+
+				expect(result).toEqual({ thread, executions });
+			},
+		);
 
 		it('returns inline progress for running executions', async () => {
 			const thread = makeThread();

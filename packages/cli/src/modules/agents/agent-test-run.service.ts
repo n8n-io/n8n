@@ -32,6 +32,7 @@ interface PrepareDraftRunInput {
 	projectId: string;
 	user: User;
 	sessionId?: string;
+	previewChat?: boolean;
 	credentialProvider: CredentialProvider;
 }
 
@@ -161,15 +162,17 @@ export class AgentTestRunService {
 		projectId,
 		user,
 		sessionId,
+		previewChat,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
 		if (sessionId) {
 			if (
-				!(await this.agentExecutionService.canUsePreviewThread(
+				!(await this.agentExecutionService.canUseDraftThread(
 					sessionId,
 					projectId,
 					agentId,
 					user.id,
+					{ previewChat },
 				))
 			) {
 				return { status: 'session_not_found' };
@@ -253,11 +256,12 @@ export class AgentTestRunService {
 		...input
 	}: ResumeDraftRunInput): Promise<AgentTestRunResult> {
 		if (
-			!(await this.agentExecutionService.canUsePreviewThread(
+			!(await this.agentExecutionService.canUseDraftThread(
 				sessionId,
 				input.projectId,
 				input.agentId,
 				input.user.id,
+				{ previewChat: input.previewChat },
 			))
 		) {
 			return { status: 'session_not_found' };
