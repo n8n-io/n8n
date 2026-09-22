@@ -74,6 +74,7 @@ export function makeThread(): ThreadRuntime {
 
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
+	mcpConnectionsAvailable: true,
 	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,

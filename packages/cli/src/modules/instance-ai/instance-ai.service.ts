@@ -2376,6 +2376,13 @@ export class InstanceAiService {
 		}
 	}
 
+	areMcpConnectionsAvailable(): boolean {
+		return (
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
+		);
+	}
+
 	private async createExecutionEnvironment(
 		user: User,
 		threadId: string,
@@ -2396,6 +2403,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
+		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -2415,13 +2423,13 @@ export class InstanceAiService {
 
 		const {
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
 			setupPanelEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
 			aiPreferencesEnabled,
+			instanceContextEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
 		// One scoped reader backs both the tool and the first-turn hint.
@@ -2446,8 +2454,9 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
@@ -2581,11 +2590,10 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
-		// preserved) so every derived skill source inherits the exclusion.
+		// Hide disabled skills in each derived source. Keep the cached source unchanged.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
-			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
+			instanceContextEnabled,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
@@ -2749,6 +2757,7 @@ export class InstanceAiService {
 			orchestrationContext,
 			conversationHistory,
 			aiPreferencesEnabled,
+			instanceContextEnabled,
 		};
 	}
 
@@ -2786,7 +2795,7 @@ export class InstanceAiService {
 		context.resolvePreviewSession = async (ref) => {
 			const service = this.getAgentExecutionService();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -3813,6 +3822,7 @@ export class InstanceAiService {
 				orchestrationContext,
 				conversationHistory,
 				aiPreferencesEnabled,
+				instanceContextEnabled,
 			} = environment;
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
@@ -3918,6 +3928,7 @@ export class InstanceAiService {
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
+					userId: user.id,
 					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
 				});
 				handoffContextBlock = resolved.block;
@@ -3987,6 +3998,7 @@ export class InstanceAiService {
 				isMachineFollowUp:
 					checkpoint?.isCheckpointFollowUp === true ||
 					plannedBuild?.isPlannedBuildFollowUp === true,
+				enabled: instanceContextEnabled,
 			});
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {

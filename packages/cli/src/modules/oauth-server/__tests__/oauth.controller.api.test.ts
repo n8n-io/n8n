@@ -721,12 +721,19 @@ describe('Full authorization-code flow (PKCE)', () => {
 			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
 		expect(sessionCookie).toBeDefined();
 
-		// 3. Consent approval as an authenticated user
+		// 3. Consent approval as an authenticated user.
+		//
+		// Approving a scope the user cannot grant is rejected, so this approves the
+		// grantable subset. `communityPackage:install` is advertised in discovery,
+		// which is unauthenticated and describes what the resource supports, but it
+		// is withheld at consent here because the community-packages module is
+		// inactive in the test instance.
+		const grantedScopes = supportedScopes.filter((scope) => scope !== 'communityPackage:install');
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: supportedScopes });
+			.send({ approved: true, scopes: grantedScopes });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -753,7 +760,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
-			scope: supportedScopes.join(' '),
+			scope: grantedScopes.join(' '),
 		});
 		expect(tokenResponse.statusCode).toBe(200);
 

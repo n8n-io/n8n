@@ -890,7 +890,49 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			.send({ name: 'Renamed' });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('name', 'Renamed');
+		expect(response.body).toStrictEqual({
+			id: folder.id,
+			name: 'Renamed',
+			parentFolderId: null,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+		});
+	});
+
+	test('should return 400 when the body is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for an unknown body property', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: 'Renamed', unknownProperty: true });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when the name is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: '   ' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should update parent folder', async () => {
@@ -904,6 +946,28 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			.send({ parentFolderId: parentFolder.id });
 
 		expect(response.statusCode).toBe(200);
+		expect(response.body).toStrictEqual({
+			id: childFolder.id,
+			name: 'Child',
+			parentFolderId: parentFolder.id,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+		});
+	});
+
+	test('should return 500 when updateFolder throws an unexpected error', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
+		vi.spyOn(Container.get(FolderService), 'updateFolder').mockRejectedValueOnce(
+			new Error('Unexpected update error'),
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(500);
 	});
 
 	test('should return 404 when folder does not exist', async () => {

@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -9,13 +10,19 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type {
+	AgentExecutionThread,
+	AgentThreadAccess,
+} from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+
+const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -25,6 +32,7 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		agentId: 'agent-1',
 		agentName: 'Agent',
 		projectId: 'project-1',
+		...previewAccess,
 		title: null,
 		emoji: null,
 		parentThreadId: null,
@@ -66,7 +74,9 @@ describe('AgentExecutionService', () => {
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
+	const checkpointStorage = mock<N8NCheckpointStorage>();
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
+	const txRunner = mock<TransactionRunner>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -84,6 +94,7 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -96,13 +107,18 @@ describe('AgentExecutionService', () => {
 			storageConfig,
 			errorReporter,
 			executionUpdateBroadcaster,
+			checkpointStorage,
+			txRunner,
 		);
 	});
 
-	async function recordExecution(params: RecordMessageParams): Promise<string> {
+	async function recordExecution(
+		params: RecordMessageParams,
+		access: AgentThreadAccess = previewAccess,
+	): Promise<string> {
 		const { record, ...startParams } = params;
 		const executionId = await service.startExecutionRecording(
-			startParams,
+			{ ...startParams, access },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
@@ -127,6 +143,7 @@ describe('AgentExecutionService', () => {
 				},
 			];
 			const params = {
+				access: previewAccess,
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -172,6 +189,7 @@ describe('AgentExecutionService', () => {
 
 				const executionId = await service.startExecutionRecording(
 					{
+						access: previewAccess,
 						threadId: 'thread-1',
 						agentId: 'agent-1',
 						agentName: 'Agent',
@@ -217,6 +235,7 @@ describe('AgentExecutionService', () => {
 		});
 		agentExecutionRepository.save.mockResolvedValue(mock<AgentExecution>({ id: 'execution-1' }));
 		const params = {
+			access: previewAccess,
 			threadId: 'thread-1',
 			agentId: 'agent-1',
 			agentName: 'Agent',
@@ -432,6 +451,8 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				checkpointStorage,
+				txRunner,
 			);
 
 			const record = makeMessageRecord({
@@ -519,6 +540,8 @@ describe('AgentExecutionService', () => {
 					storageConfig,
 					errorReporter,
 					executionUpdateBroadcaster,
+					checkpointStorage,
+					txRunner,
 				);
 
 				const record = makeMessageRecord({
@@ -620,6 +643,7 @@ describe('AgentExecutionService', () => {
 				'agent-1',
 				'Agent',
 				'project-1',
+				previewAccess,
 				{
 					parentThreadId: 'parent-thread-1',
 					parentAgentId: 'parent-agent-1',
@@ -630,30 +654,35 @@ describe('AgentExecutionService', () => {
 		});
 
 		it('stamps the task snapshot version on newly created task sessions', async () => {
+			const access: AgentThreadAccess = { accessScope: 'project', ownerId: null };
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
-				thread: makeThread({ title: 'Task run' }),
+				thread: makeThread({ title: 'Task run', ...access }),
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await recordExecution({
-				threadId: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				projectId: 'project-1',
-				userMessage: 'Run task',
-				record: makeMessageRecord(),
-				source: 'task',
-				taskId: 'task-1',
-				taskVersionId: 'version-1',
-			});
+			await recordExecution(
+				{
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run task',
+					record: makeMessageRecord(),
+					source: 'task',
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				},
+				access,
+			);
 
 			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
 				'thread-1',
 				'agent-1',
 				'Agent',
 				'project-1',
+				access,
 				undefined,
 				'task-1',
 				'version-1',
@@ -954,6 +983,8 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				checkpointStorage,
+				txRunner,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -1030,7 +1061,7 @@ describe('AgentExecutionService', () => {
 				]),
 			);
 
-			const result = await service.getThreads('project-1', 'agent-1', 20);
+			const result = await service.getThreads('project-1', 'agent-1', 'user-1', 20);
 
 			expect(result.threads).toEqual([
 				expect.objectContaining({ id: failedThread.id, failureSummary, status: 'error' }),
@@ -1056,7 +1087,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
+			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
 
 			expect(result).toEqual({ thread, executions });
 		});
@@ -1073,7 +1104,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([execution]);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
+			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
 
 			expect(result?.executions[0]?.timeline).toEqual(partial);
 		});
@@ -1113,7 +1144,7 @@ describe('AgentExecutionService', () => {
 				new Map([['execution-2', { timeline: [fsEvent], version: 1 }]]),
 			);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
+			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
 
 			expect(agentExecutionLogStore.readMany).toHaveBeenCalledWith([
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-2', storedAt: 'fs' },
@@ -1132,7 +1163,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionLogStore.hasLocation.mockReturnValue(true);
 			agentExecutionLogStore.readMany.mockRejectedValue(new Error('fs read failed'));
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
+			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
 
 			expect(result).not.toBeNull();
 			expect(result!.executions[0].timeline).toBeNull();
@@ -1142,12 +1173,14 @@ describe('AgentExecutionService', () => {
 		it.each([
 			{ name: 'project', thread: makeThread({ projectId: 'other-project' }) },
 			{ name: 'agent', thread: makeThread({ agentId: 'other-agent' }) },
+			{ name: 'owner', thread: makeThread({ ownerId: 'other-user' }) },
+			{ name: 'unresolved owner', thread: makeThread({ ownerId: null }) },
 		])('does not read executions for a thread outside the requested $name', async ({ thread }) => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
-
-			expect(result).toBeNull();
+			await expect(
+				service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1'),
+			).resolves.toBeNull();
 			expect(agentExecutionRepository.findByThreadIdOrdered).not.toHaveBeenCalled();
 		});
 	});
@@ -1176,62 +1209,51 @@ describe('AgentExecutionService', () => {
 
 	describe('deleteThread', () => {
 		it('deletes thread memory, attachments, and the execution thread', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
-				id: 'thread-1',
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			} as AgentExecutionThread);
-			agentExecutionRepository.findBlobRefsByThreadId.mockResolvedValue([]);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				attachmentBinaryDataIds: ['binary-1'],
+				executionLogs: [],
+			});
 
-			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
 
 			expect(result).toBe(true);
-			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'thread-1',
-				projectId: 'project-1',
-				agentId: 'agent-1',
-			});
+			expect(agentExecutionThreadRepository.deleteSession).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				'thread-1',
+				'user-1',
+				{},
+			);
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
-			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
-			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1', {
-				projectId: 'project-1',
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1', {});
+			expect(agentChatAttachmentService.deleteStoredData).toHaveBeenCalledWith(['binary-1'], {
+				threadId: 'thread-1',
 			});
-			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
 		it('deletes blob-stored logs when deleting a thread', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
-				id: 'thread-1',
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			} as AgentExecutionThread);
-			agentExecutionRepository.findBlobRefsByThreadId.mockResolvedValue([
-				{ id: 'execution-1', storedAt: 'fs' },
-			] as AgentExecution[]);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				attachmentBinaryDataIds: [],
+				executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+			});
 
-			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
 
 			expect(result).toBe(true);
 			expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
 			]);
-			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
 		it('does not clean SDK memory when the execution thread is not found', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue(null);
 
-			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
 
 			expect(result).toBe(false);
-			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'thread-1',
-				projectId: 'project-1',
-				agentId: 'agent-1',
-			});
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
-			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
+			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
 		});
 	});
 

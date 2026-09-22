@@ -413,6 +413,26 @@ provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
 replacement.
 
+For edits, only `INVALID_PARAMETER`, `chat_model_validation`,
+`HARDCODED_CREDENTIALS`, and `SWITCH_NO_OUTPUT_CONNECTIONS` can become
+informational. Missing saved state or a finding without a node name keeps the
+finding blocking. Other codes keep their original severity.
+
+For `HARDCODED_CREDENTIALS`, compare the saved authentication values, credential
+selection, and destination settings. The URL must be fixed and unchanged.
+Wiring, timeout, response formatting, and non-auth headers or query fields do not
+introduce a new hardcoded value. Changed auth, destination settings, or enabled
+state still block. Expression URLs stay blocking because their destination
+depends on execution data.
+
+For `SWITCH_NO_OUTPUT_CONNECTIONS`, check whether the same enabled Switch already
+had no main outputs. Changes to its inputs or rules leave that finding
+informational, including connecting an existing parked Switch. New or re-enabled
+Switches and removal of existing output branches remain blocking. These checks
+do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
+so `build-workflow` makes the final decision. Preserve unrelated nodes and report
+any remaining blocker instead of expanding the edit.
+
 ### `workflows(action="delete")`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
@@ -1187,6 +1207,11 @@ Question type is `single`, `multi`, or `text`. The UI adds its own free-text
 choice to select questions. The result is `{ answered: false }` when the user
 dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
 question text added to every answer.
+
+A skipped question grants no additional permission. Defaults apply only to
+unspecified details within the requested task. A skipped request to expand scope
+leaves the existing state intact. Report any remaining blocker without asking
+the same question again.
 
 ---
 

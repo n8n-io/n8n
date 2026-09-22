@@ -99,6 +99,7 @@ function makeModuleSettings(
 ): InstanceAiModuleSettings {
 	return {
 		enabled: true,
+		mcpConnectionsAvailable: true,
 		localGatewayDisabled: false,
 		browserUseEnabled: true,
 		proxyEnabled: false,
@@ -200,6 +201,21 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns true when module settings is undefined', () => {
 			settingsStore.moduleSettings = {};
 			expect(store.isInstanceAiDisabled).toBe(true);
+		});
+	});
+
+	describe('isMcpAvailable', () => {
+		it('uses public module settings', () => {
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: true });
+			expect(store.isMcpAvailable).toBe(true);
+
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: false });
+			expect(store.isMcpAvailable).toBe(false);
+		});
+
+		it('returns false before module settings load', () => {
+			settingsStore.moduleSettings = {};
+			expect(store.isMcpAvailable).toBe(false);
 		});
 	});
 
