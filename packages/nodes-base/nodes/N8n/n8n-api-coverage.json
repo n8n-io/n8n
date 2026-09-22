@@ -199,7 +199,7 @@
 		"GET /workflows/{id}/test-runs/{runId}": {
 			"status": "gap"
 		},
-		"POST /workflows/{id}/test-runs/{runId}/cancel": {
+		"POST /workflows/{workflowId}/test-runs/{runId}/cancel": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
