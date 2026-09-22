@@ -13,10 +13,10 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 /** Pubsub channel for MCP relay messages between main instances in multi-main queue mode. */
 export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
 
-/** How often to PING the pubsub subscriber connection. Short enough to keep idle NAT/IPVS flows alive. */
+/** How often to re-issue SUBSCRIBE on the pubsub subscriber connection. Short enough to keep idle NAT/IPVS flows alive. */
 export const SUBSCRIBER_LIVENESS_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
 
-/** How long to wait for PONG before dropping the subscriber connection so ioredis reconnects. */
+/** How long to wait for the SUBSCRIBE reply before dropping the subscriber connection so ioredis reconnects. */
 export const SUBSCRIBER_LIVENESS_TIMEOUT_MS = 10 * Time.seconds.toMilliseconds;
 
 /**
