@@ -1,23 +1,11 @@
 <script setup lang="ts" generic="T extends ContextMenuId = ContextMenuId">
-import { reactiveOmit } from '@vueuse/core';
 import {
 	ContextMenuContent,
 	ContextMenuPortal,
 	ContextMenuRoot,
 	ContextMenuTrigger,
-	injectContextMenuRootContext,
 } from 'reka-ui';
-import {
-	computed,
-	defineComponent,
-	nextTick,
-	provide,
-	ref,
-	shallowRef,
-	useAttrs,
-	useCssModule,
-	watch,
-} from 'vue';
+import { computed, provide, shallowRef, useCssModule } from 'vue';
 
 import { COLLISION_PADDING_PX } from './ContextMenu.constants';
 import {
@@ -38,100 +26,22 @@ const props = withDefaults(defineProps<ContextMenuProps<T>>(), {
 	loading: false,
 	loadingItemCount: 3,
 	modal: true,
-	open: undefined,
-	defaultOpen: false,
 });
 
 const emit = defineEmits<ContextMenuEmits<T>>();
 const slots = defineSlots<ContextMenuSlots<T>>();
-const attrs = useAttrs();
 const $style = useCssModule();
 
-const triggerClass = computed(() => attrs.class);
-const triggerAttrs = computed(() => reactiveOmit(attrs, ['class']));
-
-const ORIGIN: [number, number] = [0, 0];
-
-const internalOpen = ref(props.open ?? props.defaultOpen);
 const internalSelected = shallowRef<T[]>(props.defaultSelectedValues ?? []);
-const triggerHostRef = ref<HTMLElement | null>(null);
-const rekaHandleRef = ref<{ dismiss: () => void } | null>(null);
-
 const selectedValues = computed(() => props.selectedValues ?? internalSelected.value);
-
-const ContextMenuRekaHandle = defineComponent({
-	name: 'ContextMenuRekaHandle',
-	setup(_, { expose }) {
-		const root = injectContextMenuRootContext();
-		expose({
-			dismiss: () => {
-				root.onOpenChange(false);
-			},
-		});
-		return () => null;
-	},
-});
-
-function isRekaOpen() {
-	return triggerHostRef.value?.getAttribute('data-state') === 'open';
-}
-
-function triggerOrigin(): [number, number] {
-	const el = triggerHostRef.value;
-	if (!el) return ORIGIN;
-	const { left, top } = el.getBoundingClientRect();
-	return [left, top];
-}
-
-function resolvePosition(): [number, number] {
-	if (slots.trigger) {
-		const [x, y] = triggerOrigin();
-		const [dx, dy] = props.position ?? ORIGIN;
-		return [x + dx, y + dy];
-	}
-
-	return props.position ?? ORIGIN;
-}
-
-function dispatchContextMenu() {
-	const point = resolvePosition();
-	triggerHostRef.value?.dispatchEvent(
-		new PointerEvent('contextmenu', {
-			bubbles: true,
-			cancelable: true,
-			button: 2,
-			clientX: point[0],
-			clientY: point[1],
-		}),
-	);
-}
-
-function syncReka(open: boolean) {
-	if (open) {
-		if (props.disabled || isRekaOpen()) return;
-		dispatchContextMenu();
-		return;
-	}
-	if (isRekaOpen()) {
-		rekaHandleRef.value?.dismiss();
-	}
-}
-
-function setOpen(open: boolean) {
-	internalOpen.value = open;
-	emit('update:open', open);
-}
 
 function setSelected(next: T[]) {
 	internalSelected.value = next;
 	emit('update:selectedValues', next);
 }
 
-function onSelect(id: T, keepOpen?: boolean) {
+function onSelect(id: T) {
 	emit('select', id);
-	if (!keepOpen) {
-		setOpen(false);
-	}
 }
 
 function onToggleCheckbox(id: T) {
@@ -158,55 +68,12 @@ const menuState: ContextMenuState = {
 };
 
 provide(contextMenuStateKey, menuState);
-
-watch(
-	() => props.open,
-	(open) => {
-		if (open !== undefined) {
-			internalOpen.value = open;
-		}
-	},
-);
-
-watch([internalOpen, triggerHostRef], ([open, host]) => {
-	if (open && !host) return;
-	void nextTick(() => {
-		syncReka(Boolean(open));
-	});
-});
-
-watch(
-	() => props.position,
-	(position) => {
-		if (!internalOpen.value || !position) return;
-		dispatchContextMenu();
-	},
-);
-
-function openMenu() {
-	if (props.disabled) return;
-	setOpen(true);
-}
-
-function close() {
-	setOpen(false);
-}
-
-defineExpose({ open: openMenu, close });
 </script>
 
 <template>
-	<ContextMenuRoot :modal="modal" @update:open="setOpen">
-		<ContextMenuRekaHandle ref="rekaHandleRef" />
+	<ContextMenuRoot :modal="modal" @update:open="emit('update:open', $event)">
 		<ContextMenuTrigger as-child :disabled="disabled">
-			<span
-				ref="triggerHostRef"
-				:class="[slots.trigger ? $style.trigger : $style.coordinateTrigger, triggerClass]"
-				v-bind="triggerAttrs"
-				:aria-hidden="slots.trigger ? undefined : true"
-			>
-				<slot v-if="slots.trigger" name="trigger" />
-			</span>
+			<slot name="trigger" />
 		</ContextMenuTrigger>
 
 		<ContextMenuPortal>
@@ -247,17 +114,5 @@ defineExpose({ open: openMenu, close });
 
 .content {
 	@include context-menu.panel;
-}
-
-.trigger {
-	display: inline-flex;
-}
-
-.coordinateTrigger {
-	position: fixed;
-	width: 1px;
-	height: 1px;
-	pointer-events: none;
-	opacity: 0;
 }
 </style>

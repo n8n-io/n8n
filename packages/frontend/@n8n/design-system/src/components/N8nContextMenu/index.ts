@@ -16,5 +16,4 @@ export type {
 	ContextMenuItemProps,
 	ContextMenuItemEmits,
 	ContextMenuItemSlots,
-	ContextMenuExposed,
 } from './ContextMenu.types';

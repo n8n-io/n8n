@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import type { ContextMenuLeaf, ContextMenuNode, ContextMenuProps } from './ContextMenu.types';
 import ContextMenu from './ContextMenu.vue';
@@ -356,52 +356,6 @@ const customWidthItems: Array<ContextMenuNode<string>> = [
 	},
 ];
 
-const overflowItems: Array<ContextMenuNode<string>> = [
-	{
-		type: 'group',
-		id: 'edit',
-		children: [
-			{
-				type: 'item',
-				id: 'open',
-				label: 'Open',
-				icon: { type: 'icon', value: 'external-link' },
-			},
-			{
-				type: 'item',
-				id: 'rename',
-				label: 'Rename',
-			},
-		],
-	},
-	{
-		type: 'submenu',
-		id: 'team',
-		label: 'Team',
-		icon: { type: 'icon', value: 'users' },
-		children: teamUserNames.map(
-			(name): ContextMenuNode<string> => ({
-				type: 'item',
-				id: `user-${name.toLowerCase().replaceAll(' ', '-')}`,
-				label: name,
-			}),
-		),
-	},
-	{
-		type: 'group',
-		id: 'danger',
-		children: [
-			{
-				type: 'item',
-				id: 'delete',
-				label: 'Delete',
-				icon: { type: 'icon', value: 'trash' },
-				variant: 'destructive',
-			},
-		],
-	},
-];
-
 const heightConstrainedItems: Array<ContextMenuNode<string>> = teamUserNames.map(
 	(name): ContextMenuNode<string> => ({
 		type: 'item',
@@ -446,10 +400,6 @@ const radioItems: Array<ContextMenuNode<string>> = [
 
 const storyTriggerStyle = `
 .context-menu-story {
-	width: 100%;
-}
-.context-menu-story :has(> .context-menu-story-trigger) {
-	display: flex;
 	width: 100%;
 }
 .context-menu-story-trigger {
@@ -500,21 +450,6 @@ const meta = {
 			control: 'object',
 			description: 'Menu tree to render',
 		},
-		open: {
-			control: 'boolean',
-			description:
-				'Controlled open state. Storybook keeps this across reload. Opens at position if set, otherwise at the trigger, or [0, 0]. Right-click uses the pointer.',
-		},
-		defaultOpen: {
-			control: 'boolean',
-			description:
-				'Initial open state when uncontrolled. Set this in the story when you want the menu open after reload. Changing this remounts the story.',
-		},
-		position: {
-			control: false,
-			description:
-				'Override for defaultOpen, controlled open, and open(). Offset from the trigger, or viewport coordinates when the trigger is omitted. Right-click ignores this.',
-		},
 		selectedValues: {
 			control: 'object',
 			description:
@@ -563,88 +498,22 @@ const meta = {
 
 export default meta;
 
-/** Storybook-only X/Y controls. The component takes `position`. */
-type StoryArgs = ContextMenuProps<string> & {
-	positionX?: number;
-	positionY?: number;
+type Story = Omit<StoryObj<ContextMenuProps<string>>, 'render'> & {
+	render?: (args: ContextMenuProps<string>) => unknown;
 };
-
-type Story = StoryObj<StoryArgs>;
 
 function logSelect(action: string) {
 	console.log('Selected:', action);
 }
 
-type PositionNumberArgType = {
-	name: string;
-	control: { type: 'number'; min: number; max: number; step: number };
-	description: string;
-	table: { category: string };
-};
-
-const positionArgTypes: { positionX: PositionNumberArgType; positionY: PositionNumberArgType } = {
-	positionX: {
-		name: 'positionX',
-		control: { type: 'number', min: 0, max: 1280, step: 1 },
-		description: 'Offset X from the trigger. Viewport X in coordinate mode.',
-		table: { category: 'props' },
-	},
-	positionY: {
-		name: 'positionY',
-		control: { type: 'number', min: 0, max: 800, step: 1 },
-		description: 'Offset Y from the trigger. Viewport Y in coordinate mode.',
-		table: { category: 'props' },
-	},
-};
-
-function storyPosition(x: unknown, y: unknown): [number, number] | undefined {
-	if (typeof x !== 'number' || typeof y !== 'number') return undefined;
-	return [x, y];
-}
-
-/** Omit [0, 0] so stories with a trigger still open at the trigger. */
-function triggerAwarePosition(x: unknown, y: unknown): [number, number] | undefined {
-	const position = storyPosition(x, y);
-	if (!position) return undefined;
-	if (position[0] === 0 && position[1] === 0) return undefined;
-	return position;
-}
-
-/**
- * Bind story args onto the menu. `defaultOpen` wins so reload can reopen
- * without a controlled `open` that Storybook would reset on dismiss.
- */
-function bindStoryMenuArgs(args: StoryArgs) {
-	const { open, defaultOpen, positionX, positionY, ...rest } = args;
-	const nextPosition = triggerAwarePosition(positionX, positionY);
-	const positionProps = nextPosition ? { position: nextPosition } : {};
-
-	if (defaultOpen) {
-		return {
-			...rest,
-			defaultOpen,
-			...positionProps,
-		};
-	}
-
-	return {
-		...rest,
-		defaultOpen,
-		...(open === undefined ? {} : { open }),
-		...positionProps,
-	};
-}
-
-function renderMenuStory(args: StoryArgs) {
+function renderMenuStory(args: ContextMenuProps<string>) {
 	return {
 		components: { ContextMenu },
 		setup() {
-			const bindArgs = computed(() => bindStoryMenuArgs(args));
-			const storyKey = computed(() => `${String(args.defaultOpen)}:${String(args.open)}`);
-			return { args, bindArgs, storyKey, logSelect };
+			return { args, logSelect };
 		},
 		template: `
-			<ContextMenu :key="storyKey" v-bind="bindArgs" @select="logSelect">
+			<ContextMenu v-bind="args" @select="logSelect">
 				<template #trigger>
 					<div class="context-menu-story-trigger">
 						Right-click here
@@ -661,178 +530,37 @@ const defaultStoryArgs = {
 	loading: false,
 	loadingItemCount: 3,
 	modal: true,
-	open: false,
-	defaultOpen: false,
-	positionX: 0,
-	positionY: 0,
 };
 
 export const Default: Story = {
-	argTypes: {
-		...positionArgTypes,
-		positionX: {
-			...positionArgTypes.positionX,
-			description: 'Used when Open is true. Leave 0, 0 to open at the trigger.',
-		},
-		positionY: {
-			...positionArgTypes.positionY,
-			description: 'Used when Open is true. Leave 0, 0 to open at the trigger.',
-		},
-	},
 	render: (args) => renderMenuStory(args),
 	args: defaultStoryArgs,
 };
 
-const initiallyOpenItems: Array<ContextMenuNode<string>> = [
-	{
-		type: 'group',
-		id: 'edit',
-		children: [
-			{
-				type: 'item',
-				id: 'open',
-				label: 'Open',
-				icon: { type: 'icon', value: 'external-link' },
-			},
-			{
-				type: 'item',
-				id: 'rename',
-				label: 'Rename',
-			},
-			{
-				type: 'item',
-				id: 'delete',
-				label: 'Delete',
-				icon: { type: 'icon', value: 'trash' },
-				variant: 'destructive',
-			},
-		],
-	},
-];
-
-/** Starts open from the story file so HMR and reload keep the menu visible. */
-export const InitiallyOpen: Story = {
-	name: 'Initially Open',
-	argTypes: {
-		...Default.argTypes,
-		positionX: {
-			...positionArgTypes.positionX,
-			description: 'Offset X from the coordinates trigger',
-		},
-		positionY: {
-			...positionArgTypes.positionY,
-			description: 'Offset Y from the coordinates trigger',
-		},
-	},
-	render: (args) => ({
-		components: { ContextMenu },
-		setup() {
-			const position = computed(() => storyPosition(args.positionX, args.positionY) ?? [48, 8]);
-			const storyKey = computed(() => String(args.defaultOpen));
-			const panelStyle =
-				'.context-menu-initially-open { max-height: var(--spacing--4xl) !important; }';
-			return { args, position, storyKey, panelStyle, logSelect };
-		},
-		template: `
-			<div style="display:flex;flex-direction:column;gap:var(--spacing--xl);">
-				<component :is="'style'">{{ panelStyle }}</component>
-				<section>
-					<h3 style="margin:0 0 var(--spacing--sm);font-size:var(--font-size--sm);font-weight:var(--font-weight--bold);">
-						At trigger
-					</h3>
-					<ContextMenu
-						:key="'trigger-' + storyKey"
-						:items="args.items"
-						:default-open="args.defaultOpen"
-						:disabled="args.disabled"
-						:loading="args.loading"
-						:loading-item-count="args.loadingItemCount"
-						:modal="args.modal"
-						content-class="context-menu-initially-open"
-						@select="logSelect"
-					>
-						<template #trigger>
-							<div class="context-menu-story-trigger">
-								Right-click here
-							</div>
-						</template>
-					</ContextMenu>
-				</section>
-				<section>
-					<h3 style="margin:0 0 var(--spacing--sm);font-size:var(--font-size--sm);font-weight:var(--font-weight--bold);">
-						At coordinates
-					</h3>
-					<p style="margin:0 0 var(--spacing--sm);font-size:var(--font-size--sm);color:var(--text-color--subtler);">
-						Trigger is present. Menu opens <strong>{{ position[0] }}, {{ position[1] }}</strong> from this trigger. Change position X/Y in Controls.
-					</p>
-					<ContextMenu
-						:key="'coords-' + storyKey + '-' + position.join('-')"
-						:items="args.items"
-						:default-open="args.defaultOpen"
-						:position="position"
-						:disabled="args.disabled"
-						:loading="args.loading"
-						:loading-item-count="args.loadingItemCount"
-						:modal="false"
-						content-class="context-menu-initially-open"
-						@select="logSelect"
-					>
-						<template #trigger>
-							<div class="context-menu-story-trigger">
-								Right-click here
-							</div>
-						</template>
-					</ContextMenu>
-				</section>
-			</div>
-		`,
-	}),
-	args: {
-		...defaultStoryArgs,
-		items: initiallyOpenItems,
-		defaultOpen: true,
-		modal: false,
-		positionX: 48,
-		positionY: 8,
-	},
-};
-
 export const ControlledUncontrolled: Story = {
 	name: 'Controlled/Uncontrolled',
-	argTypes: {
-		...positionArgTypes,
-		positionX: {
-			...positionArgTypes.positionX,
-			description: 'Used when Open is clicked. Leave 0, 0 to open at the trigger.',
-		},
-		positionY: {
-			...positionArgTypes.positionY,
-			description: 'Used when Open is clicked. Leave 0, 0 to open at the trigger.',
-		},
-	},
 	render: (args) => ({
 		components: { ContextMenu, N8nButton },
 		setup() {
-			const open = ref(false);
 			const selectedValues = ref(['show-grid']);
-			const position = computed(() => triggerAwarePosition(args.positionX, args.positionY));
 			const presets: Array<{ label: string; values: string[] }> = [
 				{ label: 'Grid only', values: ['show-grid'] },
 				{ label: 'Grid + minimap', values: ['show-grid', 'show-minimap'] },
 				{ label: 'Clear', values: [] },
 			];
-			return { args, checkboxItems, open, selectedValues, position, presets, logSelect };
+			return { args, checkboxItems, selectedValues, presets, logSelect };
 		},
 		template: `
 			<div style="display:flex;flex-direction:column;gap:var(--spacing--xl);">
-				<section>
-					<h3 style="margin:0 0 var(--spacing--sm);font-size:var(--font-size--sm);font-weight:var(--font-weight--bold);">
+				<section style="display:flex;flex-direction:column;gap:var(--spacing--sm);">
+					<h3 style="margin:0;font-size:var(--font-size--sm);font-weight:var(--font-weight--bold);">
 						Controlled
 					</h3>
+					<p style="margin:0;font-size:var(--font-size--sm);color:var(--text-color--subtler);">
+						Selected: <strong>{{ selectedValues.length ? selectedValues.join(', ') : '(empty)' }}</strong>
+					</p>
 					<ContextMenu
 						:items="args.items"
-						v-model:open="open"
-						:position="position"
 						v-model:selected-values="selectedValues"
 						@select="logSelect"
 					>
@@ -842,10 +570,7 @@ export const ControlledUncontrolled: Story = {
 							</div>
 						</template>
 					</ContextMenu>
-					<div style="display:flex;gap:var(--spacing--2xs);margin-top:var(--spacing--sm);flex-wrap:wrap;">
-						<N8nButton size="small" @click="open = !open">
-							{{ open ? 'Close' : 'Open' }}
-						</N8nButton>
+					<div style="display:flex;gap:var(--spacing--2xs);flex-wrap:wrap;">
 						<N8nButton
 							v-for="preset in presets"
 							:key="preset.label"
@@ -856,14 +581,9 @@ export const ControlledUncontrolled: Story = {
 							{{ preset.label }}
 						</N8nButton>
 					</div>
-					<p style="margin-top:var(--spacing--sm);font-size:var(--font-size--sm);color:var(--text-color--subtler);">
-						Open: <strong>{{ open }}</strong>
-						· Position: <strong>{{ position ? position.join(', ') : 'trigger' }}</strong>
-						· Selected: <strong>{{ selectedValues.length ? selectedValues.join(', ') : '(empty)' }}</strong>
-					</p>
 				</section>
-				<section>
-					<h3 style="margin:0 0 var(--spacing--sm);font-size:var(--font-size--sm);font-weight:var(--font-weight--bold);">
+				<section style="display:flex;flex-direction:column;gap:var(--spacing--sm);">
+					<h3 style="margin:0;font-size:var(--font-size--sm);font-weight:var(--font-weight--bold);">
 						Uncontrolled
 					</h3>
 					<ContextMenu
@@ -883,85 +603,22 @@ export const ControlledUncontrolled: Story = {
 	}),
 	args: {
 		items: checkboxItems,
-		positionX: 0,
-		positionY: 0,
 	},
 };
 
 export const WithRadios: Story = {
-	render: () => ({
-		components: { ContextMenu },
-		setup() {
-			const selectedValues = ref(['snap-grid', 'theme-system']);
-			return { radioItems, selectedValues };
-		},
-		template: `
-			<ContextMenu :items="radioItems" v-model:selected-values="selectedValues">
-				<template #trigger>
-					<div class="context-menu-story-trigger">
-						Right-click here
-					</div>
-				</template>
-			</ContextMenu>
-			<p style="margin-top:var(--spacing--sm);color:var(--text-color--subtler);">
-				Selected: {{ selectedValues.join(', ') || 'none' }}
-			</p>
-		`,
-	}),
+	render: (args) => renderMenuStory(args),
 	args: {
 		items: radioItems,
+		defaultSelectedValues: ['snap-grid', 'theme-system'],
 	},
 };
 
 export const WithCheckboxes: Story = {
-	render: () => ({
-		components: { ContextMenu },
-		setup() {
-			const selectedValues = ref(['show-grid']);
-			return { checkboxItems, selectedValues };
-		},
-		template: `
-			<ContextMenu :items="checkboxItems" v-model:selected-values="selectedValues">
-				<template #trigger>
-					<div class="context-menu-story-trigger">
-						Right-click here
-					</div>
-				</template>
-			</ContextMenu>
-			<p style="margin-top:var(--spacing--sm);color:var(--text-color--subtler);">
-				Selected: {{ selectedValues.join(', ') || 'none' }}
-			</p>
-		`,
-	}),
+	render: (args) => renderMenuStory(args),
 	args: {
 		items: checkboxItems,
-	},
-};
-
-export const WithSelection: Story = {
-	render: (args) => ({
-		components: { ContextMenu },
-		setup() {
-			const selectedValues = ref(['snap-grid', 'show-grid']);
-			return { args, selectedValues, logSelect };
-		},
-		template: `
-			<ContextMenu
-				:items="args.items"
-				v-model:selected-values="selectedValues"
-				@select="logSelect"
-			>
-				<template #trigger>
-					<div class="context-menu-story-trigger">
-						Right-click here
-					</div>
-				</template>
-			</ContextMenu>
-			<p style="margin-top:var(--spacing--sm);color:var(--text-color--subtler);">Selected: {{ selectedValues.join(', ') || 'none' }}</p>
-		`,
-	}),
-	args: {
-		items: exampleItems,
+		defaultSelectedValues: ['show-grid'],
 	},
 };
 
@@ -1166,54 +823,6 @@ export const AlignedSubmenus: Story = {
 	},
 };
 
-export const ManyItems: Story = {
-	name: 'Many Items',
-	render: (args) => ({
-		components: { ContextMenu, N8nAvatar, N8nIcon },
-		setup() {
-			function isUserItem(item: ContextMenuNode<string>) {
-				return item.type === 'item' && item.id.startsWith('user-');
-			}
-			const overflowStyle = '.context-menu-many-items { max-height: 400px !important; }';
-			return { args, logSelect, isUserItem, splitPersonName, overflowStyle, leadingIconColor };
-		},
-		template: `
-			<div>
-				<component :is="'style'">{{ overflowStyle }}</component>
-				<ContextMenu
-					:items="args.items"
-					content-class="context-menu-many-items"
-					@select="logSelect"
-				>
-					<template #trigger>
-						<div class="context-menu-story-trigger">
-							Right-click here, then open Team
-						</div>
-					</template>
-					<template #item-leading="{ item, ui }">
-						<N8nAvatar
-							v-if="isUserItem(item)"
-							:class="ui.class"
-							size="xsmall"
-							v-bind="splitPersonName(item.label)"
-						/>
-						<N8nIcon
-							v-else-if="item.icon?.type === 'icon'"
-							:icon="item.icon.value"
-							:class="ui.class"
-							size="large"
-							:color="leadingIconColor(item)"
-						/>
-					</template>
-				</ContextMenu>
-			</div>
-		`,
-	}),
-	args: {
-		items: overflowItems,
-	},
-};
-
 export const HeightConstrained: Story = {
 	name: 'Height Constrained',
 	render: (args) => ({
@@ -1228,8 +837,6 @@ export const HeightConstrained: Story = {
 				<component :is="'style'">{{ panelStyle }}</component>
 				<ContextMenu
 					:items="args.items"
-					:default-open="args.defaultOpen"
-					:modal="args.modal"
 					content-class="context-menu-height-constrained"
 					@select="logSelect"
 				>
@@ -1244,8 +851,6 @@ export const HeightConstrained: Story = {
 	}),
 	args: {
 		items: heightConstrainedItems,
-		defaultOpen: true,
-		modal: false,
 	},
 };
 
@@ -1280,23 +885,11 @@ export const CustomWidth: Story = {
 };
 
 export const Loading: Story = {
-	render: (args) => ({
-		components: { ContextMenu },
-		setup() {
-			return { args };
-		},
-		template: `
-			<ContextMenu :items="args.items" loading>
-				<template #trigger>
-					<div class="context-menu-story-trigger">
-						Right-click here
-					</div>
-				</template>
-			</ContextMenu>
-		`,
-	}),
+	render: (args) => renderMenuStory(args),
 	args: {
 		items: exampleItems,
+		loading: true,
+		loadingItemCount: 10,
 	},
 };
 
@@ -1428,63 +1021,5 @@ export const LazySubmenu: Story = {
 	}),
 	args: {
 		items: exampleItems,
-	},
-};
-
-export const CoordinateMode: Story = {
-	argTypes: positionArgTypes,
-	render: (args) => ({
-		components: { ContextMenu, N8nButton },
-		setup() {
-			const open = ref(Boolean(args.open));
-			const position = ref<[number, number]>(
-				storyPosition(args.positionX, args.positionY) ?? [0, 0],
-			);
-
-			watch(
-				() => args.open,
-				(next) => {
-					if (typeof next === 'boolean') open.value = next;
-				},
-			);
-
-			watch(
-				() => ({ x: args.positionX, y: args.positionY }),
-				({ x, y }) => {
-					const next = storyPosition(x, y);
-					if (next) position.value = next;
-				},
-			);
-
-			function openAt(event: MouseEvent) {
-				position.value = [event.clientX, event.clientY];
-				open.value = true;
-			}
-
-			return { args, open, position, openAt, logSelect };
-		},
-		template: `
-			<div>
-				<N8nButton @click="openAt">Open at pointer</N8nButton>
-				<p style="margin-top:var(--spacing--sm);font-size:var(--font-size--sm);color:var(--text-color--subtler);">
-					Position: <strong>{{ position[0] }}, {{ position[1] }}</strong>
-					· Open: <strong>{{ open }}</strong>
-				</p>
-				<ContextMenu
-					:items="args.items"
-					v-model:open="open"
-					:position="position"
-					:modal="args.modal"
-					@select="logSelect"
-				/>
-			</div>
-		`,
-	}),
-	args: {
-		items: exampleItems,
-		open: false,
-		positionX: 240,
-		positionY: 160,
-		modal: false,
 	},
 };

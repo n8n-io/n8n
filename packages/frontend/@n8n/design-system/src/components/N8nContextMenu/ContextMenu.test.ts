@@ -1,13 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
-import { ref } from 'vue';
 
-import type {
-	ContextMenuExposed,
-	ContextMenuId,
-	ContextMenuNode,
-	ContextMenuProps,
-} from './ContextMenu.types';
+import type { ContextMenuId, ContextMenuNode, ContextMenuProps } from './ContextMenu.types';
 import ContextMenu from './ContextMenu.vue';
 
 vi.mock('../N8nKeyboardShortcut', () => ({
@@ -47,15 +41,6 @@ async function getContextMenu() {
 
 async function openWithRightClick(element: HTMLElement) {
 	await fireEvent.contextMenu(element);
-}
-
-function contextMenuEventsFrom(spy: { mock: { calls: unknown[][] } }): PointerEvent[] {
-	return spy.mock.calls
-		.map(([value]) => value)
-		.filter(
-			(value): value is PointerEvent =>
-				value instanceof PointerEvent && value.type === 'contextmenu',
-		);
 }
 
 function renderMenu(options: {
@@ -103,17 +88,6 @@ describe('N8nContextMenu', () => {
 
 			expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument();
 		});
-
-		it('should render a hidden coordinate trigger when the trigger slot is omitted', () => {
-			const { container } = renderMenu({
-				props: {
-					items: createItems(3),
-				},
-			});
-
-			const trigger = container.querySelector('[aria-hidden="true"]');
-			expect(trigger).toBeInTheDocument();
-		});
 	});
 
 	describe('opening and closing', () => {
@@ -149,161 +123,6 @@ describe('N8nContextMenu', () => {
 			});
 			const emits = wrapper.emitted('update:open');
 			expect(emits?.[emits.length - 1]).toEqual([false]);
-		});
-
-		it('should open when defaultOpen is true', async () => {
-			renderMenu({
-				props: {
-					items: createItems(3),
-					defaultOpen: true,
-				},
-				slots: defaultSlots,
-			});
-
-			await getContextMenu();
-		});
-
-		it('should use position when defaultOpen is true', async () => {
-			const dispatchSpy = vi.spyOn(HTMLElement.prototype, 'dispatchEvent');
-
-			renderMenu({
-				props: {
-					items: createItems(3),
-					defaultOpen: true,
-					position: [48, 8],
-					modal: false,
-				},
-			});
-
-			await getContextMenu();
-
-			const event = contextMenuEventsFrom(dispatchSpy).at(-1);
-			expect(event?.clientX).toBe(48);
-			expect(event?.clientY).toBe(8);
-		});
-
-		it('should open when the open prop is true on first render', async () => {
-			renderMenu({
-				props: {
-					items: createItems(3),
-					open: true,
-				},
-				slots: defaultSlots,
-			});
-
-			await getContextMenu();
-		});
-
-		it('should open at an offset from the trigger when position is set', async () => {
-			const wrapper = renderMenu({
-				props: {
-					items: createItems(3),
-					open: false,
-					position: [10, 20],
-					modal: false,
-				},
-				slots: defaultSlots,
-			});
-
-			const host = wrapper.getByTestId('custom-trigger').parentElement as HTMLElement;
-			vi.spyOn(host, 'getBoundingClientRect').mockReturnValue({
-				x: 100,
-				y: 50,
-				top: 50,
-				left: 100,
-				bottom: 70,
-				right: 180,
-				width: 80,
-				height: 20,
-				toJSON: () => ({}),
-			});
-			const dispatchSpy = vi.spyOn(host, 'dispatchEvent');
-
-			await wrapper.rerender({
-				items: createItems(3),
-				open: true,
-				position: [10, 20],
-				modal: false,
-			});
-
-			await getContextMenu();
-
-			const event = contextMenuEventsFrom(dispatchSpy).at(-1);
-
-			expect(event?.clientX).toBe(110);
-			expect(event?.clientY).toBe(70);
-		});
-
-		it('should ignore position on right-click', async () => {
-			const wrapper = renderMenu({
-				props: {
-					items: createItems(3),
-					position: [10, 20],
-					modal: false,
-				},
-				slots: defaultSlots,
-			});
-
-			const host = wrapper.getByTestId('custom-trigger').parentElement as HTMLElement;
-			vi.spyOn(host, 'getBoundingClientRect').mockReturnValue({
-				x: 100,
-				y: 50,
-				top: 50,
-				left: 100,
-				bottom: 70,
-				right: 180,
-				width: 80,
-				height: 20,
-				toJSON: () => ({}),
-			});
-			const dispatchSpy = vi.spyOn(host, 'dispatchEvent');
-
-			await openWithRightClick(wrapper.getByTestId('custom-trigger'));
-			await getContextMenu();
-
-			expect(
-				contextMenuEventsFrom(dispatchSpy).some(
-					(event) => event.clientX === 110 && event.clientY === 70,
-				),
-			).toBe(false);
-		});
-
-		it('should open when the open prop becomes true', async () => {
-			const wrapper = renderMenu({
-				props: {
-					items: createItems(3),
-					open: false,
-				},
-				slots: defaultSlots,
-			});
-
-			await wrapper.rerender({
-				items: createItems(3),
-				open: true,
-			});
-
-			await getContextMenu();
-		});
-
-		it('should close when the open prop becomes false', async () => {
-			const wrapper = renderMenu({
-				props: {
-					items: createItems(3),
-					open: true,
-				},
-				slots: defaultSlots,
-			});
-
-			await getContextMenu();
-
-			await wrapper.rerender({
-				items: createItems(3),
-				open: false,
-			});
-
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument();
-			});
 		});
 	});
 
@@ -777,33 +596,6 @@ describe('N8nContextMenu', () => {
 
 			expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument();
 		});
-
-		it('should not open via the exposed open method when disabled', async () => {
-			const menuRef = ref<ContextMenuExposed | null>(null);
-
-			render({
-				components: { ContextMenu },
-				global: {
-					stubs: { N8nKeyboardShortcut: keyboardShortcutStub },
-				},
-				setup() {
-					return { menuRef, items: createItems(3) };
-				},
-				template: `
-					<ContextMenu ref="menuRef" :items="items" disabled>
-						<template #trigger>
-							<button data-test-id="custom-trigger">Open</button>
-						</template>
-					</ContextMenu>
-				`,
-			});
-
-			menuRef.value?.open();
-
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument();
-			});
-		});
 	});
 
 	describe('contentClass and id props', () => {
@@ -987,178 +779,6 @@ describe('N8nContextMenu', () => {
 			);
 
 			expect(document.querySelector('[data-test-id="custom-item"]')).toBeInTheDocument();
-		});
-	});
-
-	describe('expose methods', () => {
-		it('should expose open method', async () => {
-			const menuRef = ref<ContextMenuExposed | null>(null);
-
-			render({
-				components: { ContextMenu },
-				global: {
-					stubs: { N8nKeyboardShortcut: keyboardShortcutStub },
-				},
-				setup() {
-					return { menuRef, items: createItems(3) };
-				},
-				template: `
-					<ContextMenu ref="menuRef" :items="items">
-						<template #trigger>
-							<button data-test-id="custom-trigger">Open</button>
-						</template>
-					</ContextMenu>
-				`,
-			});
-
-			menuRef.value?.open();
-
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).toBeInTheDocument();
-			});
-		});
-
-		it('should expose close method', async () => {
-			const menuRef = ref<ContextMenuExposed | null>(null);
-			const open = ref(false);
-
-			render({
-				components: { ContextMenu },
-				global: {
-					stubs: { N8nKeyboardShortcut: keyboardShortcutStub },
-				},
-				setup() {
-					return { menuRef, items: createItems(3), open };
-				},
-				template: `
-					<ContextMenu
-						ref="menuRef"
-						:items="items"
-						:open="open"
-						@update:open="open = $event"
-					>
-						<template #trigger>
-							<button data-test-id="custom-trigger">Open</button>
-						</template>
-					</ContextMenu>
-				`,
-			});
-
-			menuRef.value?.open();
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).toBeInTheDocument();
-			});
-
-			menuRef.value?.close();
-
-			await waitFor(() => {
-				expect(open.value).toBe(false);
-			});
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument();
-			});
-		});
-
-		it('should open at the position prop when open is called', async () => {
-			const menuRef = ref<ContextMenuExposed | null>(null);
-			const dispatchSpy = vi.spyOn(HTMLElement.prototype, 'dispatchEvent');
-			const items = createItems(3);
-			const position: [number, number] = [120, 80];
-
-			render({
-				components: { ContextMenu },
-				global: {
-					stubs: { N8nKeyboardShortcut: keyboardShortcutStub },
-				},
-				setup() {
-					return { menuRef, items, position };
-				},
-				template:
-					'<ContextMenu ref="menuRef" :items="items" :position="position" :modal="false" />',
-			});
-
-			menuRef.value?.open();
-
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).toBeInTheDocument();
-			});
-
-			const event = contextMenuEventsFrom(dispatchSpy).at(-1);
-			expect(event?.clientX).toBe(120);
-			expect(event?.clientY).toBe(80);
-		});
-
-		it('should open at the position prop in controlled mode', async () => {
-			const dispatchSpy = vi.spyOn(HTMLElement.prototype, 'dispatchEvent');
-
-			renderMenu({
-				props: {
-					items: createItems(3),
-					open: true,
-					position: [140, 90],
-					modal: false,
-				},
-			});
-
-			await getContextMenu();
-
-			const event = contextMenuEventsFrom(dispatchSpy).at(-1);
-			expect(event?.clientX).toBe(140);
-			expect(event?.clientY).toBe(90);
-		});
-
-		it('should move to a new position prop while open', async () => {
-			const dispatchSpy = vi.spyOn(HTMLElement.prototype, 'dispatchEvent');
-
-			const { rerender } = renderMenu({
-				props: {
-					items: createItems(3),
-					open: true,
-					position: [140, 90],
-					modal: false,
-				},
-			});
-
-			await getContextMenu();
-
-			await rerender({
-				items: createItems(3),
-				open: true,
-				position: [200, 150],
-				modal: false,
-			});
-
-			await waitFor(() => {
-				const event = contextMenuEventsFrom(dispatchSpy).at(-1);
-				expect(event?.clientX).toBe(200);
-				expect(event?.clientY).toBe(150);
-			});
-		});
-
-		it('should fall back to 0,0 in coordinate mode without a position', async () => {
-			const menuRef = ref<ContextMenuExposed | null>(null);
-			const dispatchSpy = vi.spyOn(HTMLElement.prototype, 'dispatchEvent');
-
-			render({
-				components: { ContextMenu },
-				global: {
-					stubs: { N8nKeyboardShortcut: keyboardShortcutStub },
-				},
-				setup() {
-					return { menuRef, items: createItems(3) };
-				},
-				template: '<ContextMenu ref="menuRef" :items="items" :modal="false" />',
-			});
-
-			menuRef.value?.open();
-
-			await waitFor(() => {
-				expect(document.querySelector('[data-test-id="context-menu"]')).toBeInTheDocument();
-			});
-
-			const event = contextMenuEventsFrom(dispatchSpy).at(-1);
-			expect(event?.clientX).toBe(0);
-			expect(event?.clientY).toBe(0);
 		});
 	});
 });

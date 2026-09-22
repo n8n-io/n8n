@@ -31,7 +31,6 @@ export type {
 	ContextMenuItemProps,
 	ContextMenuItemEmits,
 	ContextMenuItemSlots,
-	ContextMenuExposed,
 } from './N8nContextMenu/ContextMenu.types';
 export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
 export type {

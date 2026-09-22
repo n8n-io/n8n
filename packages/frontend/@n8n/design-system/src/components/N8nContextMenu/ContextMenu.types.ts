@@ -74,25 +74,6 @@ export type ContextMenuProps<T extends ContextMenuId = ContextMenuId> = {
 	/** Menu tree to render. */
 	items: Array<ContextMenuNode<T>>;
 	/**
-	 * Controlled open state. Bind with `v-model:open`.
-	 * When set to true, the menu opens at `position` if set. Otherwise it opens at
-	 * the trigger, or `[0, 0]`. Right-click still uses the pointer.
-	 * @defaultValue uncontrolled
-	 */
-	open?: boolean;
-	/**
-	 * Open state on first render when `open` is not set.
-	 * Uses `position` if set. Otherwise it opens at the trigger, or `[0, 0]`.
-	 * @defaultValue false
-	 */
-	defaultOpen?: boolean;
-	/**
-	 * Override for programmatic open (`defaultOpen`, controlled `open`, or `open()`).
-	 * Offset from the trigger when a trigger exists. Viewport coordinates when the
-	 * trigger is omitted. Right-click ignores this. Fallback is `[0, 0]`.
-	 */
-	position?: [number, number];
-	/**
 	 * Controlled selected ids for checkbox and radio items. Bind with `v-model:selectedValues`.
 	 * @defaultValue uncontrolled
 	 */
@@ -142,7 +123,7 @@ export type ContextMenuEmits<T extends ContextMenuId = ContextMenuId> = {
 type SlotUiProps = { class: string };
 
 export type ContextMenuSlots<T extends ContextMenuId = ContextMenuId> = {
-	trigger?: () => void;
+	trigger: () => void;
 	item?: (props: { item: ContextMenuLeaf<T> }) => void;
 	['item-leading']?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
 	['item-label']?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
@@ -165,12 +146,6 @@ export type ContextMenuItemSlots<T extends ContextMenuId = ContextMenuId> = Pick
 	ContextMenuSlots<T>,
 	'item' | 'item-leading' | 'item-label' | 'item-trailing' | 'empty'
 >;
-
-export type ContextMenuExposed = {
-	/** Opens the menu. Uses `position` if set. Otherwise opens at the trigger, or `[0, 0]`. */
-	open: () => void;
-	close: () => void;
-};
 
 export type ContextMenuState = {
 	selectedValues: Pick<ComputedRef<readonly string[]>, 'value'>;

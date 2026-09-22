@@ -12,18 +12,15 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 
 - `id?: string` HTML id for the menu content element.
 - `items: Array<ContextMenuNode<T>>` Root list. May mix rows (`item`, `checkbox`) and sections (`group`, `submenu`, `radio-group`). `radio` is not a node; nest it in `radio-group`. A separator renders before each section that follows another node.
-- `open?: boolean` Controlled open state. Bind with `v-model:open`. When set to `true`, the menu opens at `position` if set. Otherwise it opens at the trigger, or `[0, 0]`. Right-click still uses the pointer.
-- `defaultOpen?: boolean` Initial open state when uncontrolled. Uses `position` if set. Otherwise it opens at the trigger, or `[0, 0]`. | `default: false`
-- `position?: [number, number]` Override for programmatic open (`defaultOpen`, controlled `open`, or `open()`). Offset from the trigger when a trigger exists. Viewport coordinates when the trigger is omitted. Right-click ignores this. Fallback is `[0, 0]`. A change while the menu is open moves it to the new point.
 - `selectedValues?: T[]` Controlled selected ids for checkbox and radio items. Bind with `v-model:selectedValues`. A radio selection replaces other radios in the same `radio-group`. Checkbox ids toggle on their own.
 - `defaultSelectedValues?: T[]` Initial selected ids when `selectedValues` is omitted | `default: []`
-- `disabled?: boolean` Disables the **trigger**. `open()` is a no-op when disabled. | `default: false`
+- `disabled?: boolean` Disables the trigger. | `default: false`
 - `loading?: boolean` Show skeleton rows instead of items. | `default: false`
 - `loadingItemCount?: number` Number of skeleton rows while loading. The same default applies to `submenu.loadingItemCount`. | `default: 3`
 - `contentClass?: ClassValue` Class on the root panel and every submenu panel (max-height and other constraints). Set `--context-menu--width` here when the panel must use a fixed width instead of hugging its content.
 - `modal?: boolean` When `true`, blocks pointer events on the rest of the page while the menu is open. Canvas menus set this to `false`. | `default: true`
 
-Extra HTML attributes, including `class`, land on the trigger element.
+Put extra HTML attributes, including `class`, on the `#trigger` element. They are not forwarded from the root.
 
 **Empty copy**
 
@@ -49,7 +46,7 @@ Checkbox and radio rows show a check on the trailing edge when selected. Submenu
 
 **Events**
 
-- `update:open(open: boolean)` Open state
+- `update:open(open: boolean)` Open state. Notification only; right-click on the trigger opens the menu.
 - `update:selectedValues(value: T[])` Full selected-id list after a radio or checkbox change
 - `select(value: T)` A command (`type: 'item'`) was chosen. Radio and checkbox do not emit this. Menu closes unless `keepOpen`.
 - `submenu:toggle(itemId: T, open: boolean)` A `submenu` flyout opened or closed.
@@ -57,18 +54,13 @@ Checkbox and radio rows show a check on the trailing edge when selected. Submenu
 
 **Slots**
 
-- `trigger` Target element. Omit in coordinate mode
+- `trigger` Target element. Required.
 - `item` `{ item: ContextMenuLeaf<T> }` Replaces default `N8nContextMenuItem`. Re-render `N8nContextMenuItem` so the row keeps selection, keyboard behaviour, and submenu flyouts.
 - `item-leading` `{ item: ContextMenuLeaf<T>, ui: { class: string } }` Replaces the default icon or emoji. Bind `ui.class`.
 - `item-label` `{ item: ContextMenuLeaf<T>, ui: { class: string } }` Replaces the default label. Bind `ui.class`.
 - `item-trailing` `{ item: ContextMenuLeaf<T>, ui: { class: string } }` Replaces the default shortcut. Bind `ui.class`. Does not replace the check or submenu chevron.
 - `loading` Replaces the skeleton rows on the **root** panel. A submenu with `loading: true` always uses the default skeleton.
 - `empty` Empty state for a panel with no nodes (root or submenu)
-
-**Exposed methods**
-
-- `open()` Opens the menu. Uses `position` if set. Otherwise opens at the trigger, or `[0, 0]`. No-op when `disabled`.
-- `close()` Closes the menu.
 
 **Types**
 
