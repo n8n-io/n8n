@@ -274,17 +274,20 @@ describe('changedTestFilesForPackage', () => {
 		]);
 	});
 
-	it('accepts ESM, CJS and TSX test extensions', () => {
+	it('matches the CLI unit Vitest config roots and extensions', () => {
 		assert.deepEqual(
 			changedTestFilesForPackage(
 				[
-					'packages/cli/src/a.test.mts',
-					'packages/cli/src/b.spec.cts',
-					'packages/cli/src/c.test.tsx',
+					'packages/cli/src/a.test.ts',
+					'packages/cli/test/unit/b.spec.ts',
+					'packages/cli/src/c.integration.test.ts',
+					'packages/cli/test/integration/d.test.ts',
+					'packages/cli/src/e.test.mts',
+					'packages/cli/src/f.test.tsx',
 				],
 				'packages/cli/',
 			),
-			['packages/cli/src/a.test.mts', 'packages/cli/src/b.spec.cts', 'packages/cli/src/c.test.tsx'],
+			['packages/cli/src/a.test.ts', 'packages/cli/test/unit/b.spec.ts'],
 		);
 	});
 });

@@ -311,7 +311,15 @@ export function changedTestFilesForPackage(changedFiles, packageDir) {
 	const prefix = `${toPosix(packageDir).replace(/\/$/, '')}/`;
 	return changedFiles
 		.map((file) => toPosix(file).replace(/^\.\//, ''))
-		.filter((file) => file.startsWith(prefix) && /\.(test|spec)\.[cm]?tsx?$/.test(file));
+		.filter((file) => {
+			if (!file.startsWith(prefix)) return false;
+			const relative = file.slice(prefix.length);
+			return (
+				(relative.startsWith('src/') || relative.startsWith('test/unit/')) &&
+				/\.(test|spec)\.ts$/.test(relative) &&
+				!/\.integration\.test\.ts$/.test(relative)
+			);
+		});
 }
 
 // Merge overlapping and adjacent ranges. Stryker then gets one span per region.
