@@ -2,24 +2,37 @@
 import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/app/utils/typesUtils';
 import { computed, onBeforeMount } from 'vue';
+import { useTimestamp } from '@vueuse/core';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
+import { TIME_AGO_LIVE_REFRESH_INTERVAL } from '@/app/constants/durations';
 
 type Props = {
 	date: string;
 	capitalize?: boolean;
+	/** Re-renders as the date ages. Off by default, so long lists cost no timers. */
+	live?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	capitalize: false,
+	live: false,
 });
 
 const rootStore = useRootStore();
 const i18n = useI18n();
 
+// `format()` reads the clock outside reactivity, so only a ticking date ages the label.
+const now = useTimestamp({
+	interval: TIME_AGO_LIVE_REFRESH_INTERVAL,
+	immediate: props.live,
+});
+
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const formatted = computed(() => {
-	const text = format(props.date, defaultLocale.value);
+	const text = props.live
+		? format(props.date, defaultLocale.value, { relativeDate: now.value })
+		: format(props.date, defaultLocale.value);
 
 	if (!props.capitalize) {
 		return text.toLowerCase();

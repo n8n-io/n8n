@@ -6,6 +6,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { N8nIcon, N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { VIEWS } from '@/app/constants';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -67,12 +68,14 @@ const {
 	count: promotableChangeCount,
 	failed: promotableCheckFailed,
 	isLoading: isPromotableRefreshing,
+	lastRefreshedAt: promotableRefreshedAt,
 	refetch: refetchPromotable,
 } = usePromotionChangeCount(currentProjectId, 'promote', showPromoteBanner);
 const {
 	count: incomingChangeCount,
 	failed: incomingCheckFailed,
 	isLoading: isIncomingRefreshing,
+	lastRefreshedAt: incomingRefreshedAt,
 	refetch: refetchIncoming,
 } = usePromotionChangeCount(currentProjectId, 'apply', showIncomingBanner);
 
@@ -160,6 +163,16 @@ function onOpenIncomingModal() {
 			<N8nLink size="small" data-test-id="promotion-banner-link" @click="onOpenPromotionModal">
 				{{ i18n.baseText('promotions.banner.viewChanges') }}
 			</N8nLink>
+			<N8nText
+				v-if="promotableRefreshedAt"
+				size="small"
+				color="text-light"
+				:class="$style.lastRefreshed"
+				data-test-id="promotion-banner-last-refreshed"
+			>
+				{{ i18n.baseText('promotions.lastRefreshed') }}
+				<TimeAgo :date="promotableRefreshedAt" live />
+			</N8nText>
 			<N8nTooltip :content="i18n.baseText('generic.refresh')">
 				<N8nIconButton
 					icon="refresh-cw"
@@ -189,6 +202,16 @@ function onOpenIncomingModal() {
 			>
 				{{ i18n.baseText('promotions.banner.viewChanges') }}
 			</N8nLink>
+			<N8nText
+				v-if="incomingRefreshedAt"
+				size="small"
+				color="text-light"
+				:class="$style.lastRefreshed"
+				data-test-id="promotion-incoming-banner-last-refreshed"
+			>
+				{{ i18n.baseText('promotions.lastRefreshed') }}
+				<TimeAgo :date="incomingRefreshedAt" live />
+			</N8nText>
 			<N8nTooltip :content="i18n.baseText('generic.refresh')">
 				<N8nIconButton
 					icon="refresh-cw"
@@ -215,5 +238,10 @@ function onOpenIncomingModal() {
 	border: var(--border);
 	border-radius: var(--radius--2xs);
 	margin-bottom: var(--spacing--xs);
+}
+
+.lastRefreshed {
+	margin-left: auto;
+	white-space: nowrap;
 }
 </style>

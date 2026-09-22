@@ -16,6 +16,7 @@ export function usePromotionChangeCount(
 	/** True when the last check failed, so the banner can say so instead of hiding. */
 	const failed = ref(false);
 	const isLoading = ref(false);
+	const lastRefreshedAt = ref<string | null>(null);
 	let lastRequestedProjectId: string | undefined;
 
 	async function fetchCount() {
@@ -48,6 +49,7 @@ export function usePromotionChangeCount(
 			if (isLatest()) {
 				count.value = changes.length;
 				failed.value = false;
+				lastRefreshedAt.value = new Date().toISOString();
 			}
 		} catch {
 			if (isLatest()) failed.value = true;
@@ -58,5 +60,5 @@ export function usePromotionChangeCount(
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { count, failed, isLoading, refetch: fetchCount };
+	return { count, failed, isLoading, lastRefreshedAt, refetch: fetchCount };
 }

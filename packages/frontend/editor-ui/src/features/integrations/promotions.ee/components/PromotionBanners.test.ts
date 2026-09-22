@@ -191,6 +191,32 @@ describe('PromotionBanners', () => {
 		expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(renamed);
 	});
 
+	it('shows when each banner last checked for changes', async () => {
+		server.get('/api/v1/promotions/connections', () =>
+			connections({
+				promote: { id: 'config-1' },
+				apply: { id: 'config-2', settings: { branchName: 'main' } },
+			}),
+		);
+		server.get('/rest/promotions/project-1/changes/promote', () =>
+			oneChange('Outgoing workflow', 'modified'),
+		);
+		server.get('/rest/promotions/project-1/changes/apply', () =>
+			oneChange('Incoming workflow', 'new'),
+		);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+
+		expect(await findByTestId('promotion-banner-last-refreshed')).toHaveTextContent(
+			'Last refreshed just now',
+		);
+		expect(await findByTestId('promotion-incoming-banner-last-refreshed')).toHaveTextContent(
+			'Last refreshed just now',
+		);
+	});
+
 	it('reports a failed outgoing refresh instead of keeping the stale count', async () => {
 		const promoteChanges = vi.fn(() => oneChange('Changed workflow', 'modified'));
 		server.get('/api/v1/promotions/connections', () =>

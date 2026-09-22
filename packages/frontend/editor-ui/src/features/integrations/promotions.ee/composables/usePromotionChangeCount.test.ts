@@ -86,6 +86,24 @@ describe('usePromotionChangeCount', () => {
 		expect(isLoading.value).toBe(false);
 	});
 
+	it('should stamp the last refreshed time only on a successful check', async () => {
+		const projectId = ref<string | undefined>('project-a');
+		const { lastRefreshedAt, refetch } = usePromotionChangeCount(projectId, 'apply', ref(true));
+		expect(lastRefreshedAt.value).toBeNull();
+
+		pending[0].resolve(changes(1));
+		await waitAllPromises();
+		const firstRefresh = lastRefreshedAt.value;
+		expect(firstRefresh).not.toBeNull();
+
+		void refetch();
+		await waitAllPromises();
+		pending[1].reject(new Error('offline'));
+		await waitAllPromises();
+
+		expect(lastRefreshedAt.value).toBe(firstRefresh);
+	});
+
 	it('should stop loading when the banner turns off while a request is pending', async () => {
 		const enabled = ref(true);
 		const projectId = ref<string | undefined>('project-a');

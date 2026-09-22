@@ -248,8 +248,8 @@ onMounted(async () => {
 						:class="$style.lastRefreshed"
 						data-test-id="promotion-last-refreshed"
 					>
-						{{ i18n.baseText('promotions.modal.lastRefreshed') }}
-						<TimeAgo :date="lastRefreshedAt" />
+						{{ i18n.baseText('promotions.lastRefreshed') }}
+						<TimeAgo :date="lastRefreshedAt" live />
 					</N8nText>
 					<N8nButton
 						variant="subtle"

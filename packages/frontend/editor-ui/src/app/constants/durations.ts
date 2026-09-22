@@ -60,6 +60,9 @@ export const HOVER_DELAY = {
 	LEAVE: 150,
 } as const;
 
+/** Keeps a live relative label close to the truth without a per-second timer. */
+export const TIME_AGO_LIVE_REFRESH_INTERVAL = 30 * TIME.SECOND;
+
 // `DEBOUNCE_TIME` moved to `@n8n/frontend-constants/durations` so a module outside the
 // shell can debounce with the same values. Re-exported here for existing importers.
 export { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
