@@ -24,22 +24,10 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-<<<<<<< HEAD
-const makeGlobalConfig = ({ builderEnabled = true, activityLogEnabled = true } = {}) =>
+const makeGlobalConfig = ({ builderEnabled = true, managedByEnv = false } = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
-		activityLog: { enabled: activityLogEnabled },
-=======
-const makeGlobalConfig = ({
-	builderEnabled = true,
-	tagsDisabled = false,
-	managedByEnv = false,
-} = {}) =>
-	({
-		endpoints: { mcpBuilderEnabled: builderEnabled },
-		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
->>>>>>> 32aa4629defefa8a19815263e4f3109a23247b10
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {

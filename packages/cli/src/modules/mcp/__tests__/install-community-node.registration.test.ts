@@ -108,7 +108,6 @@ describe('install_community_node registration', () => {
 					rest: 'rest',
 					mcpBuilderEnabled: builderEnabled,
 				},
-				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
 				instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 			}),
