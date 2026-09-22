@@ -1,7 +1,9 @@
 # Obtain trigger output before creating the execution
 
 Date: 2026-08-28
+
 Status: Active
+
 Decision Owner: Catalysts
 
 ## Context
@@ -59,5 +61,7 @@ the supplied output. It does this before it plans any successor steps.
 ## Links
 
 RFC: -
+
 Documentation: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
+
 Related ADRs: -
