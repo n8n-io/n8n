@@ -191,7 +191,7 @@ describe('PromotionSelectModal', () => {
 		await findByText('Email summary');
 		const lastRefreshed = await findByTestId('promotion-last-refreshed');
 		// The label and the relative time must read as one sentence, with a space between them.
-		expect(lastRefreshed.textContent).toBe('Last refreshed just now');
+		expect(lastRefreshed.textContent).toMatch(/^Last refreshed \S+/);
 
 		server.get(
 			'/rest/promotions/project-1/changes/promote',

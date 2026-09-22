@@ -80,6 +80,31 @@ describe('promotionChanges.cache', () => {
 		expect(entry.changes.value).toHaveLength(2);
 	});
 
+	it('should drop a request that was already running when the entries went stale', async () => {
+		let answer: (changes: PromotionChanges) => void = () => {};
+		vi.mocked(api.getPromotableChanges).mockReturnValueOnce(
+			new Promise<PromotionChanges>((resolve) => {
+				answer = resolve;
+			}),
+		);
+		const entry = getPromotionChangesEntry('project-a', 'apply');
+		const pending = refreshPromotionChanges(context, 'project-a', 'apply');
+
+		// An apply lands while the check for the pre-apply content is still open.
+		markPromotionChangesStale();
+		answer(changes(9));
+		await pending;
+
+		expect(entry.changes.value).toHaveLength(0);
+		expect(entry.hasLoaded.value).toBe(false);
+
+		// The next reader asks again rather than joining the request the apply outran.
+		vi.mocked(api.getPromotableChanges).mockResolvedValue(changes(1));
+		await ensurePromotionChanges(context, 'project-a', 'apply');
+		expect(api.getPromotableChanges).toHaveBeenCalledTimes(2);
+		expect(entry.changes.value).toHaveLength(1);
+	});
+
 	it('should reload a stale entry on the next ensure and keep its rows meanwhile', async () => {
 		const entry = getPromotionChangesEntry('project-a', 'apply');
 		await ensurePromotionChanges(context, 'project-a', 'apply');

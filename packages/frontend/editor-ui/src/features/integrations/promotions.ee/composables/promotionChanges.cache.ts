@@ -61,7 +61,14 @@ export function invalidatePromotionChanges() {
 
 /** Keeps the rows on screen but makes the next `ensure` ask again, for projects an apply rewrote. */
 export function markPromotionChangesStale() {
-	for (const entry of entries.values()) entry.hasLoaded.value = false;
+	for (const entry of entries.values()) {
+		// A request that started before the apply answers for the old content, so it may not
+		// write and the next reader may not join it.
+		entry.generation += 1;
+		entry.inFlight = undefined;
+		entry.isLoading.value = false;
+		entry.hasLoaded.value = false;
+	}
 }
 
 async function load(context: IRestApiContext, projectId: string, direction: PromotionDirection) {

@@ -111,11 +111,14 @@ function onProviderSaved(id: string) {
 		connectionForm.value?.selectProvider(id);
 		selectAfterCreate.value = false;
 	}
+	// The previews were read with the provider's old credentials, including a failed check.
+	invalidatePromotionChanges();
 	pendingLoad = load();
 }
 
 function onProviderDeleted() {
 	providerToFocus.value = undefined;
+	invalidatePromotionChanges();
 	pendingLoad = load();
 }
 
