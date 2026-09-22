@@ -199,7 +199,12 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message
 	// on the fly so subsequent events aren't dropped.
-	if (event.type !== 'run-start') {
+	//
+	// A thread-level fact carries an empty runId, because it belongs to the
+	// thread and not to a run (the title refinement after the opening turn is
+	// one). It must not invent a turn: the placeholder would sit after the real
+	// message and make the transcript tail the wrong one.
+	if (event.type !== 'run-start' && event.runId !== '') {
 		const { msg, groupId } = resolveTarget(state, event.runId);
 		if (!msg) {
 			const rootAgentId = event.type === 'agent-spawned' ? event.payload.parentId : event.agentId;
@@ -298,6 +303,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'setup-items':
 		// Apply context events during live runs as well as history replay.
 		case 'instance-context':
+		case 'preference-card':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {

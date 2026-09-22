@@ -53,7 +53,9 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 				return {
 					ok: false,
 					reason: 'blocked_by_admin',
-					message: 'An administrator has blocked the assistant from saving preferences.',
+					// A read-only source-control branch also sets `blocked`, so do not
+					// name an administrator as the cause.
+					message: 'Saving preferences is blocked on this instance.',
 				};
 			}
 

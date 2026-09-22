@@ -5,6 +5,8 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
@@ -77,6 +79,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
+import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -122,6 +125,7 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -653,6 +657,44 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
+	}
+
+	// ── Preference card (the save_user_preference result in the chat) ────────
+	//
+	// The thread check is the ownership boundary. The row check is inside
+	// AiPreferenceService. The runId and the toolCallId are not verified against
+	// the log on purpose, and the check would cost a log read on every click.
+	// The fold ignores preference-card facts when it anchors a turn, so a wrong
+	// pair can only mis-render that one card's state in the caller's own thread.
+
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardUndoRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const event = await this.preferenceCardService.undo(req.user, threadId, preferenceId, payload);
+		// The card applies the fact at once; the stream delivers the same one later.
+		return { ok: true, event };
+	}
+
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardEditRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
 	}
 
 	// ── Credits ──────────────────────────────────────────────────────────────
