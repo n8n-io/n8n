@@ -196,6 +196,7 @@ function makeService(sandboxEnabled = false) {
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
 
+	executionService.canUseDraftThread.mockResolvedValue(true);
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
@@ -300,6 +301,8 @@ describe('AgentExecutionOrchestratorService', () => {
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
+							user,
+							usePublishedVersion: false,
 							agentId,
 							projectId,
 							runId: 'run-1',
@@ -637,6 +640,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -700,6 +704,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -744,6 +749,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -777,6 +783,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -814,6 +821,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -853,6 +861,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const suspendedChunks = await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: suspended.agent,
 				toolRegistry: suspended.toolRegistry,
 				mcpServerAttributions: suspended.mcpServerAttributions,
@@ -913,6 +922,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -966,6 +976,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -990,6 +1001,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -1024,7 +1036,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				projectId,
 				message: 'hello',
 				user,
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 				source: 'instance-ai',
 			}),
 		);
@@ -1038,7 +1050,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
-			'resource-1',
+			'draft-chat:user-1',
 			expect.objectContaining({
 				integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 				platform: N8N_CHAT_INTEGRATION_TYPE,
@@ -1071,6 +1083,38 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 	});
+
+	it.each(['chat', 'wake'] as const)(
+		'rejects an inaccessible draft %s before runtime acquisition',
+		async (operation) => {
+			const { service, executionService, runtimeCacheService } = makeService();
+			executionService.canUseDraftThread.mockResolvedValue(false);
+			const result =
+				operation === 'chat'
+					? collect(
+							service.executeForChat({
+								agentId,
+								projectId,
+								message: 'hello',
+								user,
+								memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+							}),
+						)
+					: service.executeForWake({
+							backgroundJobSignal,
+							agentId,
+							projectId,
+							message: 'Wake',
+							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+							identity: { type: 'draft', user, principalHash: userPrincipalHash },
+							abortSignal: new AbortController().signal,
+						});
+
+			await expect(result).rejects.toThrow('Session not found');
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		},
+	);
 
 	it('adds full tool configuration to preview approval payloads only', async () => {
 		const { service, runtimeCacheService } = makeService();
@@ -1108,7 +1152,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				projectId,
 				message: 'check the ledger',
 				user,
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 			}),
 		);
 		const publishedChunks = await collect(
@@ -1239,6 +1283,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				});
 				expect(onExecutionRecorded).not.toHaveBeenCalled();
 			}
+			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({ access: { accessScope: 'user', ownerId: user.id } }),
+				expect.any(Date),
+			);
 		},
 	);
 
@@ -1283,6 +1331,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		await collect(
 			service.resumeForChat({
+				user,
+				usePublishedVersion: false,
 				agentId,
 				projectId,
 				runId: 'run-1',
@@ -1493,7 +1543,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('does not run the quota hook for manually started scheduled tasks', async () => {
-		const { service, runtimeCacheService, externalHooks } = makeService();
+		const { service, runtimeCacheService, externalHooks, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -1509,6 +1559,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ access: { accessScope: 'project', ownerId: null } }),
+			expect.any(Date),
+		);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sandboxPrincipalHash: userPrincipalHash,
@@ -1854,6 +1908,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -1893,6 +1948,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		await expect(
 			collect(
 				service.streamChatResponse({
+					access: { accessScope: 'user', ownerId: userId },
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
@@ -1931,6 +1987,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			{ type: 'finish', finishReason: 'error' },
 		]);
 		const stream = service.streamChatResponse({
+			access: { accessScope: 'user', ownerId: userId },
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
@@ -1979,7 +2036,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		} as never);
 
 		await expect(
-			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId }),
+			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId, userId }),
 		).resolves.toEqual([
 			{
 				id: 'execution-1:user',
@@ -2077,6 +2134,38 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+	});
+
+	it('rejects a private thread on the project checkpoint path', async () => {
+		const { service, checkpointStorage, executionService, runtimeCacheService } = makeService();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				persistence: { threadId: 'thread-1', resourceId: 'task:task-1' },
+			},
+		} as never);
+		executionService.findThreadById.mockResolvedValue({
+			projectId,
+			agentId,
+			accessScope: 'user',
+			ownerId: userId,
+		} as never);
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { approved: true },
+					usePublishedVersion: true,
+					integrationType: 'task',
+				}),
+			),
+		).rejects.toThrow('does not belong to this chat');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 	});
 
 	it.each([false, true])(
@@ -2192,7 +2281,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				{},
 				{
 					threadId: 'thread-1',
-					resourceId: 'draft-chat:user-2',
+					resourceId: 'draft-chat:user-1',
 					hostMetadata: encodeAgentSandboxHostMetadata({
 						projectId,
 						principalHash: hashAgentSandboxPrincipal({
@@ -2478,6 +2567,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,

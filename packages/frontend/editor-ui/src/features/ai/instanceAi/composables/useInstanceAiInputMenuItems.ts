@@ -5,7 +5,6 @@ import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useContextStore } from '@/features/settings/context/context.store';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
@@ -53,14 +52,16 @@ export function useInstanceAiInputMenuItems(
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
-	const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 
 	void settingsStore.fetch();
-	if (isMcpFeatureEnabled.value) void mcpStore.fetchConnectionsLazy();
-
-	const isMcpAvailable = computed(
-		() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true,
+	watch(
+		() => settingsStore.isMcpAvailable,
+		(isAvailable) => {
+			if (isAvailable) void mcpStore.fetchConnectionsLazy();
+		},
+		{ immediate: true },
 	);
+
 	// The store owns this, so the + menu and the message payload cannot disagree.
 	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
 	const isBrowserUseAvailable = computed(() => settingsStore.isBrowserUseAvailable);
@@ -276,7 +277,7 @@ export function useInstanceAiInputMenuItems(
 
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
-		if (isMcpAvailable.value) {
+		if (settingsStore.isMcpAvailable) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
 		}
 		if (
@@ -304,7 +305,7 @@ export function useInstanceAiInputMenuItems(
 			},
 		];
 
-		if (isMcpAvailable.value) {
+		if (settingsStore.isMcpAvailable) {
 			const tools: InputMenuItem[] = mcpStore.connections.map((connection) => ({
 				id: `mcp-${connection.id}`,
 				label: connection.serverTitle,

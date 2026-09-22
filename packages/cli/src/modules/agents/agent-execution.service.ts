@@ -1,10 +1,12 @@
 import type {
 	AgentMessageAuthor,
+	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -18,11 +20,21 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
-import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadAccess,
+} from './entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import {
+	canContinueThreadInPreview,
+	canUseTopLevelDraftThread,
+	threadBelongsTo,
+} from './utils/agent-thread-access';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
@@ -64,6 +76,7 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	access: AgentThreadAccess;
 	initialTimeline?: TimelineEvent[];
 }
 
@@ -80,7 +93,12 @@ export interface ThreadDetail {
 	executions: AgentExecution[];
 }
 
-export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' | 'setUpdateDate'> {
+export interface ThreadListItem
+	extends Omit<
+			AgentExecutionThread,
+			'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
+		>,
+		AgentSessionPreviewAccess {
 	firstMessage: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
@@ -119,6 +137,8 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly checkpointStorage: N8NCheckpointStorage,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -373,6 +393,7 @@ export class AgentExecutionService {
 			params.agentId,
 			params.agentName,
 			params.projectId,
+			params.access,
 			params.threadMetadata,
 			params.taskId,
 			params.taskVersionId,
@@ -497,27 +518,38 @@ export class AgentExecutionService {
 	/**
 	 * Delete a thread and all its associated runs. The FK on agent_execution
 	 * cascades, so deleting the thread removes the runs in one statement.
-	 * Blob-stored timelines are deleted in parallel with the thread row.
+	 * The transaction removes all database rows. External data is deleted after commit.
 	 */
-	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
-		// Verify ownership before deleting anything
-		const thread = await this.agentExecutionThreadRepository.findOneBy({
-			id: threadId,
-			projectId,
-			agentId,
+	async deleteThread(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		userId: string,
+	): Promise<boolean> {
+		const refs = await this.txRunner.run({}, async (ctx) => {
+			const deletion = await this.agentExecutionThreadRepository.deleteSession(
+				projectId,
+				agentId,
+				threadId,
+				userId,
+				ctx,
+			);
+			if (!deletion) return null;
+
+			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
+			return deletion;
 		});
-		if (!thread) return false;
+		if (!refs) return false;
 
-		const blobRefs = this.toBlobRefs(
-			await this.agentExecutionRepository.findBlobRefsByThreadId(threadId),
-		);
-
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
-		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
-			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
 			this.agentExecutionLogStore.delete(
-				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
+				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+					agentId,
+					threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
 			),
 		]);
 		return true;
@@ -551,6 +583,7 @@ export class AgentExecutionService {
 	async getThreads(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		limit: number,
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
@@ -558,16 +591,21 @@ export class AgentExecutionService {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
 			agentId,
+			userId,
 			limit,
 			cursor,
 			filters,
 		);
 
-		if (page.threads.length === 0) {
-			return { threads: [], nextCursor: page.nextCursor };
-		}
+		return { ...page, threads: await this.toThreadListItems(page.threads, userId) };
+	}
 
-		const threadIds = page.threads.map((t) => t.id);
+	private async toThreadListItems(
+		threads: AgentExecutionThread[],
+		userId: string,
+	): Promise<ThreadListItem[]> {
+		if (threads.length === 0) return [];
+		const threadIds = threads.map((t) => t.id);
 		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
@@ -575,16 +613,18 @@ export class AgentExecutionService {
 			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
 		]);
 
-		return {
-			...page,
-			threads: page.threads.map((t) => ({
+		return threads.map((thread) => {
+			const { ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t } = thread;
+			const source = sourceMap.get(t.id) ?? null;
+			return {
 				...t,
+				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
 				firstMessage: messageMap.get(t.id) ?? null,
-				source: sourceMap.get(t.id) ?? null,
+				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
 				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
-			})),
-		};
+			};
+		});
 	}
 
 	/**
@@ -595,9 +635,11 @@ export class AgentExecutionService {
 		threadId: string,
 		projectId: string,
 		agentId: string,
+		userId: string,
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
-		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
+		if (!thread) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateTimelines(agentId, threadId, executions);
@@ -656,6 +698,39 @@ export class AgentExecutionService {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 	}
 
+	async canUseDraftThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		options: { previewChat?: boolean } = {},
+	): Promise<boolean> {
+		const thread = await this.findThreadById(threadId);
+		if (thread) {
+			if (!threadBelongsTo(thread, projectId, agentId, userId)) return false;
+			if (!options.previewChat) return canUseTopLevelDraftThread(thread, userId);
+
+			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
+		}
+		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+	}
+
+	private async canUseUnrecordedDraftThread(
+		threadId: string,
+		agentId: string,
+		userId: string,
+	): Promise<boolean> {
+		const resourceId = draftChatMemoryResourceId(userId);
+		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
+		if (memory && memory.resourceId !== resourceId) return false;
+		return await this.checkpointStorage.hasNoConflictingThreadResource(
+			agentId,
+			threadId,
+			resourceId,
+		);
+	}
+
 	/** Narrow refs to those whose data lives in a blob store, i.e. all but `db`. */
 	private toBlobRefs<T extends { storedAt: AgentExecution['storedAt'] }>(refs: T[]) {
 		return refs.filter((r): r is T & { storedAt: StorageLocation } => r.storedAt !== 'db');
@@ -684,19 +759,4 @@ function executionStatus(record: MessageRecord): AgentExecution['status'] {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';
-}
-
-/**
- * True if `thread` belongs to the given project and agent.
- * Returns false for threads from a different project/agent so the caller can
- * reject the request instead of leaking/modifying unrelated thread data.
- */
-export function threadBelongsTo(
-	thread: AgentExecutionThread,
-	projectId: string,
-	agentId: string,
-): boolean {
-	if (thread.projectId !== projectId) return false;
-	if (thread.agentId !== agentId) return false;
-	return true;
 }

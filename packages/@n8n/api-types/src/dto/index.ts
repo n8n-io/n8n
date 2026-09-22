@@ -263,6 +263,8 @@ export {
 	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
 	folderPublicSchema,
+	UpdateFolderPublicDto,
+	UpdatedFolderPublicDto,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 
