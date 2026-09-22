@@ -148,6 +148,19 @@ export class AgentChatAttachmentService {
 		await this.deleteAttachments(await this.repository.findBy({ agentId }), { agentId });
 	}
 
+	async deleteStoredData(
+		binaryDataIds: string[],
+		logContext: Record<string, string>,
+	): Promise<void> {
+		if (binaryDataIds.length === 0) return;
+		await this.binaryDataService.deleteManyByBinaryDataId(binaryDataIds).catch((error: unknown) =>
+			this.logger.warn('Failed to delete agent chat attachment bytes', {
+				...logContext,
+				error,
+			}),
+		);
+	}
+
 	private async deleteAttachments(
 		attachments: AgentChatAttachment[],
 		logContext: Record<string, string>,
@@ -155,14 +168,10 @@ export class AgentChatAttachmentService {
 		if (attachments.length === 0) return;
 
 		await this.repository.delete(attachments.map((attachment) => attachment.id));
-		await this.binaryDataService
-			.deleteManyByBinaryDataId(attachments.map((attachment) => attachment.binaryDataId))
-			.catch((error: unknown) =>
-				this.logger.warn('Failed to delete agent chat attachment bytes', {
-					...logContext,
-					error,
-				}),
-			);
+		await this.deleteStoredData(
+			attachments.map((attachment) => attachment.binaryDataId),
+			logContext,
+		);
 	}
 
 	/**

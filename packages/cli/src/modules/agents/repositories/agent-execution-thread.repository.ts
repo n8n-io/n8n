@@ -1,11 +1,22 @@
 import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
+import type { SerializableAgentState } from '@n8n/agents';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import chunk from 'lodash/chunk';
+import { jsonParse } from 'n8n-workflow';
 
+import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import {
+	getDelegatedChildCheckpoints,
+	type DelegatedChildCheckpoint,
+} from '../utils/delegated-child-checkpoints';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
+const CHECKPOINT_BATCH_SIZE = 400;
 
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
@@ -17,10 +28,15 @@ export interface AgentExecutionThreadPage {
 	nextCursor: string | null;
 }
 
+interface AgentSessionDeletionRefs {
+	attachmentBinaryDataIds: string[];
+	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
+}
+
 @Service()
-export class AgentExecutionThreadRepository extends Repository<AgentExecutionThread> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecutionThread, dataSource.manager);
+export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutionThread> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -261,6 +277,135 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		const result = await this.delete({ id: threadId, projectId });
 		return (result.affected ?? 0) > 0;
 	}
+
+	async deleteSession(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<AgentSessionDeletionRefs | null> {
+		const manager = this.managerFor(ctx);
+		const thread = await manager.findOneBy(AgentExecutionThread, {
+			id: threadId,
+			projectId,
+			agentId,
+		});
+		if (!thread) return null;
+
+		const { attachments, executionLogs } = await this.findExternalRefs(
+			manager,
+			projectId,
+			threadId,
+		);
+		const checkpointRunIds = await this.findSessionCheckpointRunIds(manager, agentId, threadId);
+		for (const batch of chunk(checkpointRunIds, CHECKPOINT_BATCH_SIZE)) {
+			await manager.delete(AgentCheckpoint, batch);
+		}
+		if (attachments.length > 0) {
+			await manager.delete(
+				AgentChatAttachment,
+				attachments.map(({ id }) => id),
+			);
+		}
+		await manager.delete(AgentExecutionThread, { id: threadId });
+		return {
+			executionLogs,
+			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+		};
+	}
+
+	private async findSessionCheckpointRunIds(
+		manager: EntityManager,
+		agentId: string,
+		threadId: string,
+	): Promise<string[]> {
+		const parents = await manager.find(AgentCheckpoint, {
+			select: ['runId', 'agentId', 'state'],
+			where: { agentId, threadId },
+		});
+		const checkpoints = parents.map((row) => ({ row, agentId }));
+		const visited = new Set(checkpoints.map(({ row }) => checkpointKey(agentId, row.runId)));
+		let currentLevel = checkpoints;
+
+		while (currentLevel.length > 0) {
+			const children = collectUnvisitedChildCheckpoints(currentLevel, visited);
+			if (children.length === 0) break;
+			const childRows = await this.findCheckpointRows(manager, children);
+			currentLevel = childRows.flatMap((row) =>
+				row.agentId ? [{ row, agentId: row.agentId }] : [],
+			);
+			checkpoints.push(...currentLevel);
+		}
+
+		return checkpoints.map(({ row }) => row.runId);
+	}
+
+	private async findCheckpointRows(
+		manager: EntityManager,
+		checkpoints: DelegatedChildCheckpoint[],
+	): Promise<AgentCheckpoint[]> {
+		const rows: AgentCheckpoint[] = [];
+		for (const batch of chunk(checkpoints, CHECKPOINT_BATCH_SIZE)) {
+			rows.push(
+				...(await manager.find(AgentCheckpoint, {
+					select: ['runId', 'agentId', 'state'],
+					where: batch,
+				})),
+			);
+		}
+		return rows;
+	}
+
+	private async findExternalRefs(
+		manager: EntityManager,
+		projectId: string,
+		threadId: string,
+	): Promise<{
+		executionLogs: AgentSessionDeletionRefs['executionLogs'];
+		attachments: Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>>;
+	}> {
+		const executionLogs = await manager.find(AgentExecution, {
+			select: ['id', 'storedAt'],
+			where: { threadId, storedAt: Not('db') },
+		});
+		const attachments = await manager.find(AgentChatAttachment, {
+			select: ['id', 'binaryDataId'],
+			where: { projectId, threadId },
+		});
+		return { executionLogs, attachments };
+	}
+}
+
+function parseChildCheckpoints(
+	state: string | null,
+	parentAgentId: string,
+): DelegatedChildCheckpoint[] {
+	if (!state) return [];
+	try {
+		return getDelegatedChildCheckpoints(jsonParse<SerializableAgentState>(state), parentAgentId);
+	} catch {
+		return [];
+	}
+}
+
+function collectUnvisitedChildCheckpoints(
+	checkpoints: Array<{ row: AgentCheckpoint; agentId: string }>,
+	visited: Set<string>,
+): DelegatedChildCheckpoint[] {
+	const children: DelegatedChildCheckpoint[] = [];
+	for (const { row, agentId } of checkpoints) {
+		for (const child of parseChildCheckpoints(row.state, agentId)) {
+			const key = checkpointKey(child.agentId, child.runId);
+			if (visited.has(key)) continue;
+			visited.add(key);
+			children.push(child);
+		}
+	}
+	return children;
+}
+
+function checkpointKey(agentId: string, runId: string): string {
+	return `${agentId}\0${runId}`;
 }
 
 function isRetriableWriteError(error: unknown): boolean {

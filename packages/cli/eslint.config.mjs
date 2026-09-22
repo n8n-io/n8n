@@ -239,7 +239,6 @@ export default defineConfig(
 		// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
 		files: [
 			// credentials/
-			'./src/credentials-helper.ts',
 			'./src/credentials/credential-connection-status-provider.interface.ts',
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
@@ -330,7 +329,6 @@ export default defineConfig(
 			'./src/executions/execution-data/db-store.ts',
 			'./src/executions/execution-persistence.ts',
 			'./src/executions/execution-recovery.service.ts',
-			'./src/executions/execution.service.ts',
 			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
 			'./src/modules/agents/agents.service.ts',
 			'./src/modules/chat-hub/chat-hub-agent.service.ts',

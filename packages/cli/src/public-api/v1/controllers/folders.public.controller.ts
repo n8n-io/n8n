@@ -3,6 +3,8 @@ import {
 	FolderListPublicDto,
 	type FolderPublic,
 	ListFoldersQueryPublicDto,
+	UpdateFolderPublicDto,
+	UpdatedFolderPublicDto,
 	folderIdParamSchema,
 	projectIdParamSchema,
 } from '@n8n/api-types';
@@ -19,9 +21,11 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Get,
 	Licensed,
 	Param,
+	Patch,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
@@ -75,6 +79,14 @@ const toFolderDetailsPublicDto = (
 	updatedAt: folder.updatedAt.toISOString(),
 	totalSubFolders,
 	totalWorkflows,
+});
+
+const toUpdatedFolderPublicDto = (folder: Folder): UpdatedFolderPublicDto => ({
+	id: folder.id,
+	name: folder.name,
+	parentFolderId: folder.parentFolderId,
+	createdAt: folder.createdAt.toISOString(),
+	updatedAt: folder.updatedAt.toISOString(),
 });
 
 const handleError = (error: unknown): never => {
@@ -138,6 +150,32 @@ export class FoldersPublicController {
 				await this.folderService.findFolderWithContentCounts(folderId, projectId);
 
 			return toFolderDetailsPublicDto(folder, totalSubFolders, totalWorkflows);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Patch('/:folderId')
+	@Licensed(LICENSE_FEATURES.FOLDERS)
+	@ApiKeyScope('folder:update')
+	@ApiSummary('Update a folder')
+	@ApiDescription('Update folder name or parent folder.')
+	@ApiTags(tags)
+	@ApiResponse(200, UpdatedFolderPublicDto)
+	@ApiErrorResponse(404)
+	async updateFolder(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('folderId', folderIdParamSchema) folderId: string,
+		@Body body: UpdateFolderPublicDto,
+	): Promise<UpdatedFolderPublicDto> {
+		// A manual check, not `@ProjectScope`: an unknown project has to stay a 404, not a 403.
+		await assertProjectScope(req.user, projectId, ['folder:update']);
+
+		try {
+			const folder = await this.folderService.updateFolder(folderId, projectId, body);
+			return toUpdatedFolderPublicDto(folder);
 		} catch (error) {
 			return handleError(error);
 		}
