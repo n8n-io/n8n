@@ -50,10 +50,6 @@ export type StepStatus = (typeof STEP_STATUSES)[number];
  * A settled step has reached a terminal state: its status and outputs are
  * immutable, and it will never produce more data. Planning decisions are made
  * over settled predecessors only, so they hold no matter when they're computed.
- *
- * `waiting` is deliberately absent. A suspended step still owes an outcome, so
- * planning must not treat it as decided, and the completion count must not
- * count it.
  */
 export const SETTLED_STEP_STATUSES = ['completed', 'failed', 'skipped', 'cancelled'] as const;
 
