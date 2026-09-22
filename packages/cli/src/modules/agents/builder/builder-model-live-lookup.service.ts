@@ -243,12 +243,12 @@ export class BuilderModelLiveLookupService {
 			typeof credentialData.headerValue === 'string'
 		) {
 			const normalizedName = credentialData.headerName.toLowerCase();
-			const headerName =
-				normalizedName === 'authorization'
-					? 'Authorization'
-					: normalizedName === 'openai-organization'
-						? 'OpenAI-Organization'
-						: credentialData.headerName;
+			let headerName = credentialData.headerName;
+			if (normalizedName === 'authorization') {
+				headerName = 'Authorization';
+			} else if (normalizedName === 'openai-organization') {
+				headerName = 'OpenAI-Organization';
+			}
 			headers[headerName] = credentialData.headerValue;
 		}
 

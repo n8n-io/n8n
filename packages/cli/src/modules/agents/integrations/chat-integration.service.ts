@@ -337,21 +337,7 @@ export class ChatIntegrationService {
 
 		const integrationImpl = this.integrationRegistry.require(integration.type);
 
-		// Decrypt the integration credential to get platform tokens
-		const decryptedData = await this.decryptCredentialForProject(
-			integration.credentialId,
-			projectId,
-		);
-
-		const ctx: AgentChatIntegrationContext = {
-			agentId,
-			projectId,
-			integration,
-			credentialId: integration.credentialId,
-			credential: decryptedData,
-			ingressEnabled,
-			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
-		};
+		const ctx = await this.createConnectionContext(agentId, projectId, integration, ingressEnabled);
 
 		// Pre-connect hook — webhook-based platforms use this to detect
 		// credential conflicts (e.g. a Telegram bot token already in use) and
@@ -360,97 +346,11 @@ export class ChatIntegrationService {
 			await integrationImpl.onBeforeConnect(ctx);
 		}
 
-		let state: StateAdapter | undefined;
-		let chat!: ChatSdk;
-		let bridge: AgentChatBridge | undefined;
-		let initializeStarted = false;
-
-		// Initialize the Chat instance (connects adapters, state adapter, etc.) and
-		// run post-initialize hooks (e.g. Telegram setWebhook) once it is live.
-		// If setup throws after registering subscription state but before
-		// initialization starts, disconnect the state directly. Once initialize()
-		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
-		try {
-			// Delegate adapter construction to the platform implementation.
-			const adapter = recordAdapterCalls(
-				integration.type,
-				await integrationImpl.createAdapter(ctx),
-			);
-			channelIntegrationRecorder.startFetchRecording();
-
-			// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
-			const { Chat } = await loadChatSdk();
-			const { createMemoryState } = await loadMemoryState();
-
-			const memoryState = createMemoryState();
-			state = ingressEnabled
-				? this.chatSubscriptionStateService.createStateAdapter({
-						agentId,
-						integration,
-						delegate: memoryState,
-					})
-				: memoryState;
-
-			chat = new Chat({
-				userName: `n8n-agent-${agentId}`,
-				// Use the platform type as the adapter key (e.g. 'slack') so that
-				// bot.webhooks.slack maps correctly to the handler.
-				adapters: { [integration.type]: adapter } as Record<string, never>,
-				state,
-			});
-
-			if (ingressEnabled) {
-				const componentMapper = new ComponentMapper();
-				const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
-
-				bridge = AgentChatBridge.create(
-					chat,
-					agentId,
-					agentExecutionOrchestratorService,
-					componentMapper,
-					this.logger,
-					projectId,
-					integration,
-				);
-			}
-
-			initializeStarted = true;
-			await chat.initialize();
-
-			if (ingressEnabled && integrationImpl.onAfterConnect && !options.skipExternalHooks) {
-				await integrationImpl.onAfterConnect(ctx);
-			}
-		} catch (error) {
-			if (initializeStarted) {
-				await chat.shutdown().catch((shutdownError: unknown) => {
-					this.logger.warn(
-						`[ChatIntegrationService] Shutdown after failed connect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
-					);
-				});
-			} else {
-				await state?.disconnect().catch((disconnectError: unknown) => {
-					this.logger.warn(
-						`[ChatIntegrationService] State cleanup after failed setup threw: ${disconnectError instanceof Error ? disconnectError.message : String(disconnectError)}`,
-					);
-				});
-			}
-			// Mirror of the `onConnected` call below. A platform that stashed
-			// per-connection state during `createAdapter` — Discord keeps the
-			// decrypted bot token there — must get the chance to release it, or a
-			// failed connect strands it for the life of the process.
-			await this.runDisconnectedHook(integrationImpl, ctx, `${key} after failed connect`);
-
-			throw error;
-		}
-
-		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
-		// package. Its runtime shape matches our local `ChatInstance` interface.
-		// We validate the required methods exist before storing.
-		const chatInstance = chat as ChatInstance;
+		const { chat, bridge } = await this.initializeConnection(ctx, integrationImpl, options, key);
 
 		const targetConnections = ingressEnabled ? this.connections : this.outboundConnections;
 		targetConnections.set(key, {
-			chat: chatInstance,
+			chat,
 			bridge,
 			context: ctx,
 			ref: this.channelRef(agentId, integration),
@@ -459,15 +359,7 @@ export class ChatIntegrationService {
 		// Runs on every main, never gated on `skipExternalHooks`: this builds
 		// local runtime state each main owns for itself (e.g. Discord's
 		// leader-gated Gateway socket), not cluster-wide external state.
-		if (integrationImpl.onConnected) {
-			try {
-				await integrationImpl.onConnected(ctx);
-			} catch (error) {
-				this.logger.warn(
-					`[ChatIntegrationService] onConnected failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
+		await this.runConnectedHook(integrationImpl, ctx, key);
 
 		this.logger.info(
 			`[ChatIntegrationService] ${ingressEnabled ? 'Connected' : 'Outbound connected'}: ${key}`,
@@ -751,18 +643,8 @@ export class ChatIntegrationService {
 		if (live) return live;
 
 		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
-		const handleInitializationError = (error: unknown) => {
-			this.logger.warn(
-				'[ChatIntegrationService] Could not initialize outbound integration for Preview',
-				{
-					agentId,
-					type: integration.type,
-					credentialId: integration.credentialId,
-					error,
-				},
-			);
-			return undefined;
-		};
+		const handleInitializationError = (error: unknown) =>
+			this.reportOutboundError(agentId, integration, error);
 		const agent = await this.agentRepository
 			.findOne({ where: { id: agentId } })
 			.catch(handleInitializationError);
@@ -781,23 +663,7 @@ export class ChatIntegrationService {
 		const outbound = this.outboundConnections.get(key)?.chat;
 		if (outbound) return outbound;
 
-		const pending = this.outboundConnectionInitializations.get(key);
-		if (pending) return await pending;
-
-		const initialization = this.connect(agentId, persistedIntegration, agent.projectId, {
-			ingressEnabled: false,
-		})
-			.then(() => this.outboundConnections.get(key)?.chat)
-			.catch(handleInitializationError);
-		this.outboundConnectionInitializations.set(key, initialization);
-
-		try {
-			return await initialization;
-		} finally {
-			if (this.outboundConnectionInitializations.get(key) === initialization) {
-				this.outboundConnectionInitializations.delete(key);
-			}
-		}
+		return await this.initializeOutboundConnection(key, agent, persistedIntegration);
 	}
 
 	getShortenCallback(
@@ -956,32 +822,11 @@ export class ChatIntegrationService {
 		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
 
 		try {
-			await this.runLeaderOperation(key, action, async () => {
-				if (action === 'disconnect') {
-					await this.disconnectLocal(agentId, integration);
-					return;
-				}
-
-				// No "already connected, nothing to do" shortcut: the connection key
-				// excludes settings, so a settings-only save arrives on a live key and
-				// has to rebuild — same as a local connect does. Duplicate requests are
-				// deduped by `runLeaderOperation`, not by inspecting the runtime.
-				const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-				if (!agent) {
-					throw new UnexpectedError(`Agent ${agentId} not found on the leader instance`);
-				}
-
-				await this.connectLocal(agentId, integration, agent.projectId);
-
-				// Leadership can change during startup. A poller must not outlive our
-				// term, and the requester has to hear that its channel is not running.
-				if (!this.instanceSettings.isLeader) {
-					await this.disconnectOne(key, { skipExternalHooks: true });
-					throw new OperationalError(
-						'This instance stopped being the leader while the channel was starting up',
-					);
-				}
-			});
+			await this.runLeaderOperation(
+				key,
+				action,
+				async () => await this.applyLeaderChannelRequest(payload, key),
+			);
 			await this.leaderChannelRelay.respond(payload);
 		} catch (error) {
 			const failure = ensureError(error);
@@ -1132,18 +977,7 @@ export class ChatIntegrationService {
 		// `onAfterConnect`, which runs after `chat.initialize()`. Errors are
 		// logged but never re-thrown: local teardown must always complete so a
 		// transient remote failure can't leak in-process resources.
-		if (!options.skipExternalHooks) {
-			const integration = this.integrationFromConnectionKey(key);
-			if (integration?.onBeforeDisconnect) {
-				try {
-					await integration.onBeforeDisconnect(conn.context);
-				} catch (error) {
-					this.logger.warn(
-						`[ChatIntegrationService] onBeforeDisconnect failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
-			}
-		}
+		if (!options.skipExternalHooks) await this.runBeforeDisconnectHook(key, conn.context);
 
 		try {
 			await conn.chat.shutdown();
@@ -1217,5 +1051,242 @@ export class ChatIntegrationService {
 		return 'settings' in integration
 			? { skipExternalHooks, settings: integration.settings }
 			: { skipExternalHooks };
+	}
+
+	private async createConnectionContext(
+		agentId: string,
+		projectId: string,
+		integration: AgentIntegrationConfig,
+		ingressEnabled: boolean,
+	): Promise<AgentChatIntegrationContext> {
+		// Decrypt the integration credential to get platform tokens
+		const decryptedData = await this.decryptCredentialForProject(
+			integration.credentialId,
+			projectId,
+		);
+
+		return {
+			agentId,
+			projectId,
+			integration,
+			credentialId: integration.credentialId,
+			credential: decryptedData,
+			ingressEnabled,
+			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
+		};
+	}
+
+	private async initializeConnection(
+		ctx: AgentChatIntegrationContext,
+		integrationImpl: AgentChatIntegration,
+		options: ConnectOptions,
+		key: string,
+	): Promise<{ chat: ChatInstance; bridge?: AgentChatBridge }> {
+		const { agentId, integration, ingressEnabled } = ctx;
+		let state: StateAdapter | undefined;
+		let chat!: ChatSdk;
+		let bridge: AgentChatBridge | undefined;
+		let initializeStarted = false;
+
+		// Initialize the Chat instance (connects adapters, state adapter, etc.) and
+		// run post-initialize hooks (e.g. Telegram setWebhook) once it is live.
+		// If setup throws after registering subscription state but before
+		// initialization starts, disconnect the state directly. Once initialize()
+		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
+		try {
+			// Delegate adapter construction to the platform implementation.
+			const adapter = recordAdapterCalls(
+				integration.type,
+				await integrationImpl.createAdapter(ctx),
+			);
+			channelIntegrationRecorder.startFetchRecording();
+
+			// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
+			const { Chat } = await loadChatSdk();
+			const { createMemoryState } = await loadMemoryState();
+
+			const memoryState = createMemoryState();
+			state = ingressEnabled
+				? this.chatSubscriptionStateService.createStateAdapter({
+						agentId,
+						integration,
+						delegate: memoryState,
+					})
+				: memoryState;
+
+			chat = new Chat({
+				userName: `n8n-agent-${agentId}`,
+				// Use the platform type as the adapter key (e.g. 'slack') so that
+				// bot.webhooks.slack maps correctly to the handler.
+				adapters: { [integration.type]: adapter } as Record<string, never>,
+				state,
+			});
+
+			if (ingressEnabled) bridge = await this.createChatBridge(chat, ctx);
+
+			initializeStarted = true;
+			await chat.initialize();
+
+			if (ingressEnabled && integrationImpl.onAfterConnect && !options.skipExternalHooks) {
+				await integrationImpl.onAfterConnect(ctx);
+			}
+		} catch (error) {
+			await this.cleanupFailedConnection(chat, state, initializeStarted);
+			// Mirror of the `onConnected` call below. A platform that stashed
+			// per-connection state during `createAdapter` — Discord keeps the
+			// decrypted bot token there — must get the chance to release it, or a
+			// failed connect strands it for the life of the process.
+			await this.runDisconnectedHook(integrationImpl, ctx, `${key} after failed connect`);
+
+			throw error;
+		}
+
+		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
+		// package. Its runtime shape matches our local `ChatInstance` interface.
+		// We validate the required methods exist before storing.
+		return { chat: chat as ChatInstance, bridge };
+	}
+
+	private async createChatBridge(
+		chat: ChatSdk,
+		ctx: AgentChatIntegrationContext,
+	): Promise<AgentChatBridge> {
+		const { agentId, projectId, integration } = ctx;
+		const componentMapper = new ComponentMapper();
+		const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
+
+		return AgentChatBridge.create(
+			chat,
+			agentId,
+			agentExecutionOrchestratorService,
+			componentMapper,
+			this.logger,
+			projectId,
+			integration,
+		);
+	}
+
+	private async cleanupFailedConnection(
+		chat: ChatSdk,
+		state: StateAdapter | undefined,
+		initializeStarted: boolean,
+	): Promise<void> {
+		if (initializeStarted) {
+			await chat.shutdown().catch((shutdownError: unknown) => {
+				this.logger.warn(
+					`[ChatIntegrationService] Shutdown after failed connect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
+				);
+			});
+		} else {
+			await state?.disconnect().catch((disconnectError: unknown) => {
+				this.logger.warn(
+					`[ChatIntegrationService] State cleanup after failed setup threw: ${disconnectError instanceof Error ? disconnectError.message : String(disconnectError)}`,
+				);
+			});
+		}
+	}
+
+	private async runConnectedHook(
+		integrationImpl: AgentChatIntegration,
+		ctx: AgentChatIntegrationContext,
+		key: string,
+	): Promise<void> {
+		if (!integrationImpl.onConnected) return;
+		try {
+			await integrationImpl.onConnected(ctx);
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] onConnected failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	private reportOutboundError(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+		error: unknown,
+	): undefined {
+		this.logger.warn(
+			'[ChatIntegrationService] Could not initialize outbound integration for Preview',
+			{
+				agentId,
+				type: integration.type,
+				credentialId: integration.credentialId,
+				error,
+			},
+		);
+		return undefined;
+	}
+
+	private async initializeOutboundConnection(
+		key: string,
+		agent: Agent,
+		integration: AgentIntegrationConfig,
+	): Promise<ChatInstance | undefined> {
+		const agentId = agent.id;
+		const handleInitializationError = (error: unknown) =>
+			this.reportOutboundError(agentId, integration, error);
+		const pending = this.outboundConnectionInitializations.get(key);
+		if (pending) return await pending;
+
+		const initialization = this.connect(agentId, integration, agent.projectId, {
+			ingressEnabled: false,
+		})
+			.then(() => this.outboundConnections.get(key)?.chat)
+			.catch(handleInitializationError);
+		this.outboundConnectionInitializations.set(key, initialization);
+
+		try {
+			return await initialization;
+		} finally {
+			if (this.outboundConnectionInitializations.get(key) === initialization) {
+				this.outboundConnectionInitializations.delete(key);
+			}
+		}
+	}
+
+	private async applyLeaderChannelRequest(
+		{ agentId, integration, action }: PubSubCommandMap['agent-chat-leader-channel-request'],
+		key: string,
+	): Promise<void> {
+		if (action === 'disconnect') {
+			await this.disconnectLocal(agentId, integration);
+			return;
+		}
+
+		// No "already connected, nothing to do" shortcut: the connection key
+		// excludes settings, so a settings-only save arrives on a live key and
+		// has to rebuild — same as a local connect does. Duplicate requests are
+		// deduped by `runLeaderOperation`, not by inspecting the runtime.
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		if (!agent) {
+			throw new UnexpectedError(`Agent ${agentId} not found on the leader instance`);
+		}
+
+		await this.connectLocal(agentId, integration, agent.projectId);
+
+		// Leadership can change during startup. A poller must not outlive our
+		// term, and the requester has to hear that its channel is not running.
+		if (!this.instanceSettings.isLeader) {
+			await this.disconnectOne(key, { skipExternalHooks: true });
+			throw new OperationalError(
+				'This instance stopped being the leader while the channel was starting up',
+			);
+		}
+	}
+
+	private async runBeforeDisconnectHook(
+		key: string,
+		context: AgentChatIntegrationContext,
+	): Promise<void> {
+		const integration = this.integrationFromConnectionKey(key);
+		if (!integration?.onBeforeDisconnect) return;
+		try {
+			await integration.onBeforeDisconnect(context);
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] onBeforeDisconnect failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 }

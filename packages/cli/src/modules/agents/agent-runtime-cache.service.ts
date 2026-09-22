@@ -161,11 +161,10 @@ export class AgentRuntimeCacheService {
 	 */
 	clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
 		for (const key of this.runtimes.keys()) {
-			if (this.isRuntimeCacheKeyForAgent(key, agentId)) {
-				const entry = this.runtimes.get(key);
-				this.runtimes.delete(key);
-				if (entry) this.closeAgentResources(entry.agent, agentId);
-			}
+			if (!this.isRuntimeCacheKeyForAgent(key, agentId)) continue;
+			const entry = this.runtimes.get(key);
+			this.runtimes.delete(key);
+			if (entry) this.closeAgentResources(entry.agent, agentId);
 		}
 
 		for (const key of this.runtimeInitializations.keys()) {
@@ -259,49 +258,14 @@ export class AgentRuntimeCacheService {
 
 		const cached = this.runtimes.get(cacheKey);
 		if (cached) {
-			const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
-			const current = this.runtimes.get(cacheKey);
-			// The awaited re-check may race with cache invalidation or replacement.
-			if (current !== cached) {
-				if (current) return this.acquireRuntimeLease(current);
-			} else if (accessStillCurrent) {
-				this.runtimes.touch(cacheKey);
-				return this.acquireRuntimeLease(cached);
-			} else {
-				// Revoked grants: retire this runtime and rebuild below so the tool
-				// list is re-filtered against the user's current access.
-				this.runtimes.delete(cacheKey);
-				this.closeAgentResources(cached.agent, params.agentId);
-			}
+			const runtime = await this.acquireCachedRuntime(cacheKey, cached, params);
+			if (runtime) return runtime;
 		}
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
 		if (initialization) return this.acquireRuntimeLease(await initialization.promise);
 
-		const token = Symbol(cacheKey);
-		const runtimeInitialization: RuntimeInitialization = {
-			token,
-			promise: (async () => {
-				const runtime = await this.reconstructRuntime(params);
-				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
-					this.closeAgentResources(runtime.agent, params.agentId);
-					throw new Error(`Agent ${params.agentId} runtime initialization was invalidated`);
-				}
-
-				this.runtimes.set(cacheKey, runtime);
-				const cachedRuntime = this.runtimes.get(cacheKey);
-				if (!cachedRuntime) throw new Error(`Agent ${params.agentId} failed to reconstruct`);
-				return cachedRuntime;
-			})(),
-		};
-		runtimeInitialization.promise = runtimeInitialization.promise.finally(() => {
-			if (this.runtimeInitializations.get(cacheKey)?.token === token) {
-				this.runtimeInitializations.delete(cacheKey);
-			}
-		});
-		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
-
-		return this.acquireRuntimeLease(await runtimeInitialization.promise);
+		return this.acquireRuntimeLease(await this.initializeRuntime(cacheKey, params).promise);
 	}
 
 	/**
@@ -412,5 +376,54 @@ export class AgentRuntimeCacheService {
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 			toolAccessCheckedAt: Date.now(),
 		};
+	}
+
+	private async acquireCachedRuntime(
+		cacheKey: string,
+		cached: AgentRuntime,
+		params: GetRuntimeParams,
+	): Promise<AgentRuntime | undefined> {
+		const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
+		const current = this.runtimes.get(cacheKey);
+		// The access check can race with cache invalidation or replacement.
+		if (current !== cached) {
+			if (current) return this.acquireRuntimeLease(current);
+			return undefined;
+		}
+		if (accessStillCurrent) {
+			this.runtimes.touch(cacheKey);
+			return this.acquireRuntimeLease(cached);
+		}
+		// Rebuild the tool list after a grant is revoked.
+		this.runtimes.delete(cacheKey);
+		this.closeAgentResources(cached.agent, params.agentId);
+		return undefined;
+	}
+
+	private initializeRuntime(cacheKey: string, params: GetRuntimeParams): RuntimeInitialization {
+		const token = Symbol(cacheKey);
+		const runtimeInitialization: RuntimeInitialization = {
+			token,
+			promise: (async () => {
+				const runtime = await this.reconstructRuntime(params);
+				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
+					this.closeAgentResources(runtime.agent, params.agentId);
+					throw new Error(`Agent ${params.agentId} runtime initialization was invalidated`);
+				}
+
+				this.runtimes.set(cacheKey, runtime);
+				const cachedRuntime = this.runtimes.get(cacheKey);
+				if (!cachedRuntime) throw new Error(`Agent ${params.agentId} failed to reconstruct`);
+				return cachedRuntime;
+			})(),
+		};
+		runtimeInitialization.promise = runtimeInitialization.promise.finally(() => {
+			if (this.runtimeInitializations.get(cacheKey)?.token === token) {
+				this.runtimeInitializations.delete(cacheKey);
+			}
+		});
+		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
+
+		return runtimeInitialization;
 	}
 }
