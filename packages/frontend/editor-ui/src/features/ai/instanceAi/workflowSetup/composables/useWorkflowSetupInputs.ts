@@ -17,10 +17,7 @@ export function useWorkflowSetupInputs(deps: {
 }): {
 	credentialSelections: Ref<CredentialSelectionsMap>;
 	skippedSectionIds: Ref<Set<string>>;
-	setCredential: (
-		section: WorkflowSetupSection,
-		credId: string | null,
-	) => Promise<boolean | undefined> | undefined;
+	setCredential: (section: WorkflowSetupSection, credId: string | null) => void;
 	setParameterValue: (section: WorkflowSetupSection, parameterName: string, value: unknown) => void;
 	getDisplayNode: (section: WorkflowSetupSection) => INodeUi;
 	isSectionComplete: (section: WorkflowSetupSection) => boolean;
@@ -39,20 +36,14 @@ export function useWorkflowSetupInputs(deps: {
 	const parameterValues = ref<ParameterValuesMap>({});
 	const skippedSectionIds = ref<Set<string>>(new Set());
 
-	function testCredential(
-		credId: string,
-		credType: string,
-	): Promise<boolean | undefined> | undefined {
+	function testCredential(credId: string, credType: string) {
 		const credential = credentialsStore.getCredentialById(credId);
 		if (!credential) return;
 
-		return testCredentialInBackground(credId, credential.name, credType);
+		void testCredentialInBackground(credId, credential.name, credType);
 	}
 
-	function setCredential(
-		section: WorkflowSetupSection,
-		credId: string | null,
-	): Promise<boolean | undefined> | undefined {
+	function setCredential(section: WorkflowSetupSection, credId: string | null) {
 		if (!section.credentialType) return;
 
 		const targetNames = section.credentialTargetNodes.map((target) => target.name);
@@ -63,11 +54,14 @@ export function useWorkflowSetupInputs(deps: {
 			credId,
 		);
 
+		if (credId && credId !== AI_GATEWAY_MANAGED_TAG) {
+			testCredential(credId, section.credentialType);
+			clearSectionSkipped(section);
+		} else if (credId === AI_GATEWAY_MANAGED_TAG) {
+			clearSectionSkipped(section);
+		}
+
 		credentialSelections.value = nextCredentialSelections;
-		if (credId) clearSectionSkipped(section);
-		if (credId && credId !== AI_GATEWAY_MANAGED_TAG)
-			return testCredential(credId, section.credentialType);
-		return undefined;
 	}
 
 	function setParameterValue(section: WorkflowSetupSection, parameterName: string, value: unknown) {
@@ -264,7 +258,7 @@ export function useWorkflowSetupInputs(deps: {
 
 			const credentialsToTest = seedCredentialSelectionsForNewSections(newSections);
 			for (const credential of credentialsToTest) {
-				void testCredential(credential.id, credential.type);
+				testCredential(credential.id, credential.type);
 			}
 			pruneSkippedSectionsMissingFrom(sections);
 		},

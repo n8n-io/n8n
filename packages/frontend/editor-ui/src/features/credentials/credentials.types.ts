@@ -77,15 +77,3 @@ export interface IShareCredentialsPayload {
 
 /** What the picker's credential list is narrowed to: an open workflow, else a project. */
 export type CredentialFetchScope = { workflowId: string } | { projectId: string };
-
-/** Optional host callbacks. Generic credential telemetry keeps its existing contract. */
-export type CredentialConnectionEvent =
-	| { type: 'started'; method: 'oauth' | 'api_key' | 'gateway' | 'advanced' | 'existing' }
-	| { type: 'completed'; credentialId: string }
-	| { type: 'failed'; errorType: 'connection' | 'validation' | 'save' }
-	| { type: 'cancelled'; reason: 'oauth_closed' | 'dialog_closed' | 'user_cancelled' };
-
-export type CredentialConnectionOutcome = Extract<
-	CredentialConnectionEvent,
-	{ type: 'failed' | 'cancelled' }
->;

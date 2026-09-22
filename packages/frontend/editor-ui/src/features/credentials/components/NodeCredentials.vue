@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CredentialConnectionEvent, ICredentialsResponse } from '../credentials.types';
+import type { ICredentialsResponse } from '../credentials.types';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type {
 	ICredentialType,
@@ -79,7 +79,6 @@ import {
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
-	observeConnection?: (event: CredentialConnectionEvent) => void;
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
 	readonly?: boolean;
@@ -188,12 +187,8 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const {
-	isOAuthCredentialType,
-	canOAuthCredentialQuickConnect,
-	hasManualCredentialInputFields,
-	authorize,
-} = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authorize } =
+	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
 const { openTopUp } = useAiGatewayTopUp();
@@ -328,16 +323,10 @@ async function onConnectFromRow(credentialType: string): Promise<void> {
 	const credential = getSelectedPrivateCredential(credentialType);
 	if (!credential) return;
 	emit('connectionStarted', credential.id);
-	props.observeConnection?.({ type: 'started', method: 'oauth' });
-	const success = props.observeConnection
-		? await authorize(credential, undefined, {
-				onOutcome: props.observeConnection,
-			})
-		: await authorize(credential);
+	const success = await authorize(credential);
 	if (success) {
 		credentialsStore.setConnectedByMe(credential.id, true, await fetchMyAccount(credential.id));
 		emit('connectionCompleted', credential.id);
-		props.observeConnection?.({ type: 'completed', credentialId: credential.id });
 	}
 }
 
@@ -672,7 +661,6 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	props.observeConnection?.({ type: 'started', method: 'advanced' });
 	uiStore.openNewCredential(
 		credentialType,
 		showAuthOptions,
@@ -684,7 +672,6 @@ function createNewCredential(
 		{
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
-			...(props.observeConnection ? { onConnectionEvent: props.observeConnection } : {}),
 			...(isToolContext ? { appendToBody: true } : {}),
 			instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 			credentialSetupHint: props.credentialSetupHint,
@@ -954,13 +941,6 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	}
 
 	if (isUserAction) {
-		if (assignedKind) {
-			props.observeConnection?.({ type: 'started', method: enable ? 'gateway' : 'existing' });
-			props.observeConnection?.({
-				type: 'completed',
-				credentialId: enable ? AI_GATEWAY_MANAGED_TAG : (assignedCredentialId ?? ''),
-			});
-		}
 		telemetry.track('User toggled n8n connect credential', {
 			credential_type: effectiveType,
 			node_type: props.node.type,
@@ -1100,10 +1080,7 @@ function onCredentialOptionSelected(
 		onAiGatewaySelector(type.name, true);
 		return;
 	}
-	if (credentialIdOrTag) props.observeConnection?.({ type: 'started', method: 'existing' });
 	onCredentialSelected(type.name, credentialIdOrTag, showMixedCredentials(type));
-	if (credentialIdOrTag)
-		props.observeConnection?.({ type: 'completed', credentialId: credentialIdOrTag });
 }
 
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
@@ -1183,10 +1160,6 @@ function canManuallySetUpCredential(credentialTypeName: string): boolean {
 }
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
-	props.observeConnection?.({
-		type: 'started',
-		method: isOAuthCredentialType(credentialTypeName) ? 'oauth' : 'api_key',
-	});
 	subscribedToCredentialType.value = credentialTypeName;
 	const serviceName = getServiceName(credentialTypeName);
 
@@ -1199,19 +1172,16 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			projectId: props.projectId,
 			workflowId: telemetryWorkflowId.value || undefined,
 			credentialFetchScope: getCredentialFetchScope(),
-			...(props.observeConnection ? { onOutcome: props.observeConnection } : {}),
 		});
 
 		if (credential) {
 			onCredentialSelected(credentialTypeName, credential.id);
-			props.observeConnection?.({ type: 'completed', credentialId: credential.id });
 			toast.showMessage({
 				title: i18n.baseText('nodeCredentials.quickConnect.credential.created.success'),
 				type: 'success',
 			});
 		}
 	} catch (error) {
-		props.observeConnection?.({ type: 'failed', errorType: 'connection' });
 		toast.showError(error, i18n.baseText('nodeCredentials.quickConnect.credential.created.error'));
 	}
 }

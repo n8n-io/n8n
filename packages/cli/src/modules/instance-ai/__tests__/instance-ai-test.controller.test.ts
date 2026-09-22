@@ -15,11 +15,8 @@ import type { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import type { InstanceAiWorkflowSetupTelemetryService } from '../instance-ai-workflow-setup-telemetry.service';
-import type { InstanceAiWorkflowSetupRepository } from '../repositories/instance-ai-workflow-setup.repository';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiTestController } from '../instance-ai-test.controller';
 import type { InstanceAiService } from '../instance-ai.service';
@@ -39,9 +36,6 @@ describe('InstanceAiTestController', () => {
 		userRepo,
 		memoryService,
 		projectRepo,
-		mock<InstanceAiWorkflowSetupTelemetryService>(),
-		mock<InstanceAiWorkflowSetupRepository>(),
-		mock<Telemetry>(),
 	);
 
 	const originalEnv = process.env;

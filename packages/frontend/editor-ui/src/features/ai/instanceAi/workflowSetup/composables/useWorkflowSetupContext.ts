@@ -21,7 +21,6 @@ import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 import { useWorkflowSetupInputs, type CredentialSelectionsMap } from './useWorkflowSetupInputs';
 
 export interface WorkflowSetupContext {
-	threadId: string;
 	/** The wizard shows one section per step, in this order. */
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	currentStepIndex: Ref<number>;
@@ -35,7 +34,7 @@ export interface WorkflowSetupContext {
 	projectId: ComputedRef<string | undefined>;
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	isActionPending: Ref<boolean>;
-	setCredential: ReturnType<typeof useWorkflowSetupInputs>['setCredential'];
+	setCredential: (section: WorkflowSetupSection, credId: string | null) => void;
 	setParameterValue: (section: WorkflowSetupSection, parameterName: string, value: unknown) => void;
 	getDisplayNode: (section: WorkflowSetupSection) => INodeUi;
 	isSectionComplete: (section: WorkflowSetupSection) => boolean;
@@ -145,7 +144,6 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	});
 
 	const context: WorkflowSetupContext = {
-		threadId: thread.id,
 		sections,
 		currentStepIndex,
 		activeSection,

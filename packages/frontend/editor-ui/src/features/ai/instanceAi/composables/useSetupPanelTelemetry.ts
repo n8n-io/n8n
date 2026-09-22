@@ -1,14 +1,8 @@
 import { onScopeDispose, ref, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
-import { instanceAiSetupRequirementId } from '@n8n/api-types';
-import type { INodeUi } from '@/Interface';
-import {
-	useWorkflowSetupTracking,
-	type SetupConnectionError,
-	type SetupConnectionPayload,
-	type SetupConnectionCancellation,
-} from './useWorkflowSetupTracking';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import type { SetupPanelGroup } from '../setupPanelGroups';
 import type { SetupPanelRow } from './useSetupPanelState';
 import type { SetupCredentialItem, SetupPanelApplyResult } from './useSetupPanelActions';
@@ -25,7 +19,10 @@ function createTelemetryState() {
 		owners: shallowReactive(new Set<symbol>()),
 		shownRows: new Set<string>(),
 		snapshots: new Map<string, string>(),
-		connectionAttempts: new Map<string, SetupConnectionPayload[]>(),
+		connectionAttempts: new Map<
+			string,
+			{ method: SetupPanelConnectionMethod; workflowId: string }
+		>(),
 		visibleWorkflowId: ref<string>(),
 	};
 }
@@ -40,34 +37,28 @@ export function useSetupPanelTelemetry(options: {
 	groups: MaybeRefOrGetter<SetupPanelGroup[]>;
 	shownItemIds: MaybeRefOrGetter<string[]>;
 	ready: MaybeRefOrGetter<boolean>;
-	getNodeByName?: (name: string) => INodeUi | undefined;
 }) {
 	const telemetry = useTelemetry();
+	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 	const state = states.get(options.thread) ?? createTelemetryState();
 	states.set(options.thread, state);
 	const owner = Symbol();
 	state.owners.add(owner);
 	const isOwner = () => [...state.owners].at(-1) === owner;
-	const { shownRows, snapshots } = state;
-	const tracking = useWorkflowSetupTracking({
-		workflowId: options.workflowId,
-		threadId: options.thread.id,
-		source: 'instance_ai_setup_panel',
-		attempts: state.connectionAttempts,
+	const { shownRows, snapshots, connectionAttempts } = state;
+	const context = () => ({
+		...getTelemetryPayload(),
+		session_id: rootStore.pushRef,
+		workflow_id: toValue(options.workflowId),
+		thread_id: options.thread.id,
 	});
-	const context = tracking.context;
-	const nodesFor = (item: SetupCredentialItem) =>
-		(item.nodeBindings ?? []).flatMap(({ nodeName }) => {
-			const node = options.getNodeByName?.(nodeName);
-			return node ? [node] : [];
-		});
 
 	function trackDismissed(reason: DismissReason) {
 		if (!state.visibleWorkflowId.value) return;
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED, {
 			...context(),
 			workflow_id: state.visibleWorkflowId.value,
-			thread_id: options.thread.id,
 			reason,
 		});
 		state.visibleWorkflowId.value = undefined;
@@ -122,40 +113,9 @@ export function useSetupPanelTelemetry(options: {
 			for (const group of groups) {
 				const rowKey = `${workflowId}:${group.id}`;
 				if (shownRows.has(rowKey)) continue;
-				const credential = group.credential?.item;
-				const itemIds = [
-					...(credential
-						? nodesFor(credential).map((node) =>
-								instanceAiSetupRequirementId(
-									workflowId,
-									node.id,
-									'credential',
-									credential.credentialType,
-								),
-							)
-						: []),
-					...group.parameters.flatMap(({ item }) => {
-						const node = options.getNodeByName?.(item.nodeName);
-						return node
-							? item.parameterNames.map((name) =>
-									instanceAiSetupRequirementId(workflowId, node.id, 'parameter', name),
-								)
-							: [];
-					}),
-				];
 				shownRows.add(rowKey);
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_ITEM_SHOWN, {
 					...context(),
-					item_ids: itemIds,
-					node_types: [
-						...new Set([
-							...(group.credential ? nodesFor(group.credential.item).map((node) => node.type) : []),
-							...group.parameters.flatMap(({ item }) => {
-								const node = options.getNodeByName?.(item.nodeName);
-								return node ? [node.type] : [];
-							}),
-						]),
-					],
 					kind: group.credential ? 'credential' : group.node ? 'parameters' : 'details',
 					credential_type: group.credential?.item.credentialType,
 					parameter_count: group.parameters.reduce(
@@ -169,7 +129,14 @@ export function useSetupPanelTelemetry(options: {
 	);
 
 	function trackConnectionStarted(item: SetupCredentialItem, method: SetupPanelConnectionMethod) {
-		if (isOwner()) tracking.start(item.id, item.credentialType, method, nodesFor(item));
+		if (!isOwner()) return;
+		connectionAttempts.set(item.id, { method, workflowId: toValue(options.workflowId) });
+		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION, {
+			...context(),
+			source: 'instance_ai_setup_panel',
+			credential_type: item.credentialType,
+			method,
+		});
 	}
 
 	function trackConnectionCompleted(
@@ -177,10 +144,18 @@ export function useSetupPanelTelemetry(options: {
 		credentialId: string | null,
 		result: SetupPanelApplyResult,
 	) {
-		if (result === 'applied' || result === 'noop' || result === 'queued')
-			tracking.complete(item.id, credentialId, result, nodesFor(item));
-		else if (result === 'error' || result === 'conflict')
-			tracking.fail(item.id, result === 'conflict' ? 'conflict' : 'save');
+		const attempt = connectionAttempts.get(item.id);
+		if (!attempt || (result !== 'applied' && result !== 'noop' && result !== 'queued')) return;
+		connectionAttempts.delete(item.id);
+		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION, {
+			...context(),
+			workflow_id: attempt.workflowId,
+			source: 'instance_ai_setup_panel',
+			credential_type: item.credentialType,
+			credential_id: credentialId,
+			method: attempt.method,
+			binding_state: result,
+		});
 	}
 
 	onScopeDispose(() => {
@@ -190,18 +165,5 @@ export function useSetupPanelTelemetry(options: {
 			states.delete(options.thread);
 		}
 	});
-	return {
-		trackConnectionStarted,
-		trackConnectionCompleted,
-		trackDismissed,
-		trackConnectionFailed: (item: SetupCredentialItem, error: SetupConnectionError) =>
-			tracking.fail(item.id, error),
-		trackConnectionCancelled: (item: SetupCredentialItem, reason: SetupConnectionCancellation) =>
-			tracking.cancel(item.id, reason),
-		trackConnectionValidation: (
-			item: SetupCredentialItem,
-			validation: Promise<boolean | undefined>,
-		) => tracking.trackValidation(item.id, validation),
-		trackParameterStarted: tracking.parameterStarted,
-	};
+	return { trackConnectionStarted, trackConnectionCompleted, trackDismissed };
 }

@@ -1410,7 +1410,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const setupItemsEmitter = isSetupPanelEnabled(context)
 						? context.setupItemsEmitter
 						: undefined;
-					await context.observeWorkflowSetup?.(saved.id, false);
 					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
 						...(input.preferNewCredentials
 							? { preferNewCredentialTypes: input.preferNewCredentials }
@@ -1546,7 +1545,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
 
-					await context.observeWorkflowSetup?.(saved.id, true);
 					failureTracker.clear(workItemKey);
 
 					trackWorkflowSourceBuild(context, {

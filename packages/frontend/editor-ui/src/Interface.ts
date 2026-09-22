@@ -2,7 +2,6 @@ import type {
 	AgentJsonConfig,
 	FrontendSettings,
 	InstanceAiCredentialSetupHint,
-	InstanceAiSetupTestRequest,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
@@ -10,10 +9,7 @@ import type {
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type {
-	CredentialConnectionEvent,
-	IUsedCredential,
-} from '@/features/credentials/credentials.types';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { ModalState } from '@n8n/frontend-module-sdk';
@@ -185,7 +181,6 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 	node?: string;
 	oldValue?: string | number;
 	type?: 'optionsOrderChanged';
-	isCleanup?: boolean;
 }
 
 export interface INodeUpdatePropertiesInformation {
@@ -232,7 +227,6 @@ export interface IAiDataContent {
 }
 
 export interface IStartRunData {
-	setupTestRequest?: InstanceAiSetupTestRequest;
 	workflowId: string;
 	startNodes?: StartNodeData[];
 	destinationNode?: IDestinationNode;
@@ -709,7 +703,6 @@ export type ModalKey = keyof Modals;
 export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
-	onConnectionEvent?: (event: CredentialConnectionEvent) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;

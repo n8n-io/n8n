@@ -1,11 +1,10 @@
+import { effectScope, nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { effectScope, nextTick, ref } from 'vue';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { useWorkflowSetupTracking } from '../composables/useWorkflowSetupTracking';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { mockedStore } from '@/__tests__/utils';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { SetupPanelRow } from '../composables/useSetupPanelState';
 import type { SetupPanelGroup } from '../setupPanelGroups';
 import { useSetupPanelTelemetry } from '../composables/useSetupPanelTelemetry';
@@ -23,13 +22,15 @@ const shown = TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_ITEM_SHOWN;
 const dismissed = TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED;
 
 describe('useSetupPanelTelemetry', () => {
-	beforeEach(() => setActivePinia(createTestingPinia()));
 	const scopes: ReturnType<typeof effectScope>[] = [];
-	beforeEach(() => track.mockClear());
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		track.mockClear();
+	});
 	afterEach(() => {
 		scopes.splice(0).forEach((scope) => scope.stop());
 	});
-	function setup(thread = { id: 'thread' }, getNodeByName?: () => undefined) {
+	function setup(thread = { id: 'thread' }) {
 		const workflowId = ref('wf');
 		const rows = ref<SetupPanelRow[]>([{ item, isDone: true }]);
 		const groups = ref<SetupPanelGroup[]>([]);
@@ -38,84 +39,47 @@ describe('useSetupPanelTelemetry', () => {
 		const scope = effectScope();
 		scopes.push(scope);
 		const telemetry = scope.run(() =>
-			useSetupPanelTelemetry({
-				workflowId,
-				thread,
-				rows,
-				groups,
-				ready,
-				shownItemIds,
-				getNodeByName,
-			}),
+			useSetupPanelTelemetry({ workflowId, thread, rows, groups, ready, shownItemIds }),
 		)!;
 		return { workflowId, rows, groups, ready, shownItemIds, telemetry, scope };
 	}
 
 	it.each(['control', 'variant', undefined, false])(
-		'includes the current assignment %s',
+		'includes session context and the known assignment %s on existing events',
 		async (variant) => {
 			mockedStore(usePostHog).getVariant.mockReturnValue(variant);
 			const state = setup();
+			state.groups.value = [{ id: item.id, credential: { item, isDone: true }, parameters: [] }];
 			state.ready.value = true;
 			await nextTick();
-			const payload = track.mock.calls.find(([event]) => event === observed)?.[1];
-			if (typeof variant === 'string') {
+			state.telemetry.trackConnectionStarted(item, 'oauth');
+			state.telemetry.trackConnectionCompleted(item, 'credential', 'queued');
+			state.telemetry.trackDismissed('user_dismissed');
+			expect(track.mock.calls.map(([event]) => event)).toEqual([
+				observed,
+				shown,
+				TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION,
+				TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION,
+				dismissed,
+			]);
+			for (const [, payload] of track.mock.calls) {
 				expect(payload).toMatchObject({
-					variant,
-					'$feature/118_instance_ai_setup_overhaul': variant,
+					workflow_id: 'wf',
+					thread_id: 'thread',
+					session_id: useRootStore().pushRef,
 				});
-			} else {
-				expect(payload).not.toHaveProperty('variant');
-				expect(payload).not.toHaveProperty('$feature/118_instance_ai_setup_overhaul');
+				if (typeof variant === 'string') {
+					expect(payload).toMatchObject({
+						variant,
+						'$feature/118_instance_ai_setup_overhaul': variant,
+					});
+				} else {
+					expect(payload).not.toHaveProperty('variant');
+					expect(payload).not.toHaveProperty('$feature/118_instance_ai_setup_overhaul');
+				}
 			}
 		},
 	);
-
-	it.each(['instance_ai_setup_panel', 'instance_ai_setup_wizard'] as const)(
-		'keeps delayed validation on its original attempt in %s',
-		async (source) => {
-			const workflowId = ref('wf');
-			const tracking = useWorkflowSetupTracking({ workflowId, threadId: 'thread', source });
-			const validation = createDeferredPromise<boolean>();
-			tracking.start('item', 'slackApi', 'existing', [{ id: 'node', type: 'slack' }]);
-			const attempt = track.mock.calls.at(-1)?.[1];
-			tracking.trackValidation('item', validation.promise);
-			tracking.complete('item', 'credential', 'queued');
-			workflowId.value = 'next-workflow';
-			tracking.start('item', 'slackApi', 'existing', [{ id: 'other', type: 'slack' }]);
-			validation.resolve(false);
-			await validation.promise;
-
-			expect(track).toHaveBeenLastCalledWith(
-				TELEMETRY_EVENT.CREDENTIALS.USER_FAILED_CREDENTIAL_CONNECTION,
-				{ ...attempt, error_type: 'validation' },
-			);
-			expect(tracking.hasAttempt('item')).toBe(true);
-		},
-	);
-
-	it('records an unresolved visible row once', async () => {
-		const state = setup({ id: 'thread' }, () => undefined);
-		const row = {
-			item: { id: 'parameters', kind: 'parameters', nodeName: 'Missing', parameterNames: ['url'] },
-			isDone: false,
-		} satisfies SetupPanelRow;
-		state.rows.value = [row];
-		state.groups.value = [{ id: 'details', parameters: [row] }];
-		state.ready.value = true;
-		await nextTick();
-		expect(track).toHaveBeenCalledWith(
-			shown,
-			expect.objectContaining({
-				kind: 'details',
-				item_ids: [],
-				parameter_count: 1,
-			}),
-		);
-		state.groups.value = [...state.groups.value];
-		await nextTick();
-		expect(track.mock.calls.filter(([event]) => event === shown)).toHaveLength(1);
-	});
 
 	it('shares impressions across overlapping views without a false navigation dismissal', async () => {
 		const thread = { id: 'thread' };
@@ -155,9 +119,9 @@ describe('useSetupPanelTelemetry', () => {
 		state.ready.value = true;
 		await nextTick();
 		expect(track).toHaveBeenCalledExactlyOnceWith(observed, {
+			session_id: expect.any(String),
 			workflow_id: 'wf',
 			thread_id: 'thread',
-			session_id: expect.any(String),
 			credential_count: 1,
 			pending_credential_count: 0,
 			pending_parameter_count: 0,
@@ -186,9 +150,9 @@ describe('useSetupPanelTelemetry', () => {
 		state.groups.value = [];
 		await nextTick();
 		expect(track).toHaveBeenLastCalledWith(dismissed, {
+			session_id: expect.any(String),
 			workflow_id: 'wf',
 			thread_id: 'thread',
-			session_id: expect.any(String),
 			reason: 'items_removed',
 		});
 		state.scope.stop();
@@ -208,6 +172,7 @@ describe('useSetupPanelTelemetry', () => {
 			dismissed,
 			expect.objectContaining({ workflow_id: 'wf', reason: 'navigation' }),
 		);
+		state.telemetry.trackConnectionCompleted(item, 'credential', 'error');
 		state.telemetry.trackConnectionCompleted(item, 'credential', 'applied');
 		state.telemetry.trackConnectionCompleted(item, 'credential', 'applied');
 		const completions = track.mock.calls.filter(
@@ -217,10 +182,9 @@ describe('useSetupPanelTelemetry', () => {
 			[
 				TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION,
 				{
+					session_id: expect.any(String),
 					workflow_id: 'wf',
 					thread_id: 'thread',
-					attempt_id: expect.any(String),
-					session_id: expect.any(String),
 					source: 'instance_ai_setup_panel',
 					credential_type: 'slackApi',
 					credential_id: 'credential',

@@ -85,7 +85,6 @@ function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): Wo
 	const isSectionHandled = (): boolean => isComplete.value || (options.isSkipped?.value ?? false);
 
 	return {
-		threadId: 'thread-1',
 		sections: computed(() => sections),
 		currentStepIndex,
 		activeSection: computed(() => sections[currentStepIndex.value]),

@@ -7552,9 +7552,6 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
-      '@n8n/telemetry':
-        specifier: workspace:*
-        version: link:../../@n8n/telemetry
       '@n8n/test-impact':
         specifier: workspace:*
         version: link:../test-impact

@@ -292,7 +292,6 @@ throttledWatch(
 					name: `${props.path}.${parameter}`,
 					node: ndvStore.value.activeNode?.name || '',
 					value: undefined,
-					isCleanup: true,
 				});
 			}
 		}

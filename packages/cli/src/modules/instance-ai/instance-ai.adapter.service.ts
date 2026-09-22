@@ -223,7 +223,7 @@ type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesServi
  * and credential checkers. `getNodeParameters` walks the dependency graph and
  * fills only displayed properties.
  */
-export function resolveDisplayedDefaults(
+function resolveDisplayedDefaults(
 	nodeProperties: INodeProperties[],
 	parameters: Record<string, unknown>,
 	nodeType: string,
@@ -439,6 +439,7 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
 			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
 			mcpConnectionsAvailable?: boolean;
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
@@ -467,6 +468,7 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			setupPanelVariant,
 			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			instanceContextEnabled,
@@ -488,25 +490,13 @@ export class InstanceAiAdapterService {
 		);
 		return {
 			userId: user.id,
-			observeWorkflowSetup: threadId
-				? async (workflowId, buildComplete) => {
-						const { InstanceAiWorkflowSetupTelemetryService } = await import(
-							'./instance-ai-workflow-setup-telemetry.service.js'
-						);
-						await Container.get(InstanceAiWorkflowSetupTelemetryService).observe(
-							user,
-							threadId,
-							workflowId,
-							buildComplete,
-						);
-					}
-				: undefined,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
+				setupPanelVariant,
 			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
@@ -602,7 +592,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Resolves user experience flags and the shared activity gate. Unreadable flags stay off. */
+	/** Resolves experiment assignments and local feature overrides. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
@@ -611,6 +601,7 @@ export class InstanceAiAdapterService {
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
 		setupPanelEnabled: boolean;
+		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
@@ -633,8 +624,9 @@ export class InstanceAiAdapterService {
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// Keep the gates closed if the client cannot start an evaluation.
+			// Fall back to local settings if the client cannot evaluate flags.
 		}
+		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		return {
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
@@ -644,7 +636,11 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			setupPanelEnabled:
-				flags[INSTANCE_AI_SETUP_PANEL_FLAG] === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+				this.globalConfig.instanceAi.instanceAiSetupPanelEnabled ||
+				setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
+				? { setupPanelVariant }
+				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
@@ -876,8 +872,18 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
-		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
+		options: {
+			nodeUsageGateOpen?: boolean;
+			folderExploration?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+		} = {},
 	): InstanceAiWorkflowService {
+		const setupExperimentProperties = options.setupPanelVariant
+			? {
+					variant: options.setupPanelVariant,
+					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
+				}
+			: {};
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1378,6 +1384,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -1611,6 +1618,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
@@ -1702,6 +1710,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -2056,10 +2065,8 @@ export class InstanceAiAdapterService {
 					});
 				};
 
-				let startedExecutionId: string | undefined;
 				try {
 					const executionId = await workflowRunner.run(runData);
-					startedExecutionId = executionId;
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
 						try {
 							await pruneUnreachedVerificationPinData({
@@ -2118,20 +2125,6 @@ export class InstanceAiAdapterService {
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
 					};
 				} catch (error) {
-					if (!startedExecutionId && pinDataPlan.mockDataSources.length === 0) {
-						const { InstanceAiWorkflowSetupTelemetryService } = await import(
-							'./instance-ai-workflow-setup-telemetry.service.js'
-						);
-						await Container.get(InstanceAiWorkflowSetupTelemetryService).recordTestResult(
-							workflowId,
-							{
-								source: 'assistant',
-								initiated_by: 'assistant',
-								status: 'start_failed',
-								error_type: 'start',
-							},
-						);
-					}
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
 					// silently dropped from telemetry.

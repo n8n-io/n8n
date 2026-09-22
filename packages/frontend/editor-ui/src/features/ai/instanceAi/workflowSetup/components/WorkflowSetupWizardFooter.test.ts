@@ -37,7 +37,6 @@ function makeContext(
 	const { isSectionHandled = false, isCredentialTestFailed = false } = overrides;
 
 	return {
-		threadId: 'thread-1',
 		sections: computed(() => [section]),
 		currentStepIndex: ref(0),
 		activeSection: computed(() => section),

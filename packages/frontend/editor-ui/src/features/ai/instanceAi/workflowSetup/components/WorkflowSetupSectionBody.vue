@@ -24,8 +24,6 @@ import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 import { useInstanceAiCredentialHelp } from '../../composables/useInstanceAiCredentialHelp';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
-import { useWorkflowSetupTracking } from '../../composables/useWorkflowSetupTracking';
-import type { CredentialConnectionEvent } from '@/features/credentials/credentials.types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
 const props = defineProps<{
@@ -33,27 +31,6 @@ const props = defineProps<{
 }>();
 
 const ctx = useWorkflowSetupContext();
-const tracking = useWorkflowSetupTracking({
-	workflowId: ctx.workflowId,
-	threadId: () => ctx.threadId,
-	source: 'instance_ai_setup_wizard',
-});
-function onConnectionEvent(event: CredentialConnectionEvent) {
-	const key = props.section.id;
-	const type = props.section.credentialType;
-	if (!type) return;
-	if (event.type === 'started') {
-		if (event.method !== 'advanced' || !tracking.hasAttempt(key))
-			tracking.start(key, type, event.method, props.section.credentialTargetNodes);
-	} else if (event.type === 'completed') {
-		tracking.complete(
-			key,
-			event.credentialId === AI_GATEWAY_MANAGED_TAG ? null : event.credentialId,
-			'queued',
-		);
-	} else if (event.type === 'failed') tracking.fail(key, event.errorType);
-	else tracking.cancel(key, event.reason);
-}
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -234,13 +211,11 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (data && typeof data !== 'string') {
 		credId = data.__aiGatewayManaged === true ? AI_GATEWAY_MANAGED_TAG : (data.id ?? null);
 	}
-	tracking.trackValidation(props.section.id, ctx.setCredential(props.section, credId));
+	ctx.setCredential(props.section, credId);
 }
 
 function onParameterValueChanged(update: IUpdateInformation) {
 	const parameterName = update.name.replace(/^parameters\./, '');
-	if (!update.isCleanup)
-		tracking.parameterStarted(props.section.node, getRootParameterName(parameterName));
 	ctx.setParameterValue(props.section, parameterName, update.value);
 	revealParameterIssues(getRootParameterName(parameterName));
 }
@@ -268,7 +243,6 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:credential-setup-hint="section.setupHint"
 			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"
-			:observe-connection="onConnectionEvent"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>
 				<N8nTooltip placement="top">

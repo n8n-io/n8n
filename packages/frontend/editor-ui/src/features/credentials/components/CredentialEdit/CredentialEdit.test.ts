@@ -17,8 +17,6 @@ import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { flushPromises } from '@vue/test-utils';
 import type { Scope } from '@n8n/permissions';
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
@@ -1362,7 +1360,6 @@ describe('CredentialEdit', () => {
 		};
 
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
-			const onConnectionEvent = vi.fn();
 			const credentialType = {
 				name: 'testApi',
 				displayName: 'Test API',
@@ -1370,7 +1367,6 @@ describe('CredentialEdit', () => {
 			} as ICredentialType;
 			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
 				closeOnSave: true,
-				onConnectionEvent,
 			});
 
 			const { getByTestId } = renderComponent({
@@ -1390,12 +1386,6 @@ describe('CredentialEdit', () => {
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
 			});
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
-			expect(onConnectionEvent).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'completed' }),
-			);
-			expect(onConnectionEvent).not.toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'cancelled' }),
-			);
 		});
 
 		test('attributes the creation to the workflow the modal was opened for', async () => {
@@ -1557,7 +1547,6 @@ describe('CredentialEdit', () => {
 		});
 
 		test('closes the modal after saving credentials with a successful connection test when closeOnSave is enabled', async () => {
-			const onConnectionEvent = vi.fn();
 			const credentialType = {
 				name: 'testApi',
 				displayName: 'Test API',
@@ -1566,7 +1555,6 @@ describe('CredentialEdit', () => {
 			} as unknown as ICredentialType;
 			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
 				closeOnSave: true,
-				onConnectionEvent,
 			});
 			credentialsStore.testCredential.mockResolvedValue({
 				status: 'OK',
@@ -1589,12 +1577,6 @@ describe('CredentialEdit', () => {
 				expect(credentialsStore.testCredential).toHaveBeenCalled();
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
 			});
-			expect(onConnectionEvent).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'completed' }),
-			);
-			expect(onConnectionEvent).not.toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'cancelled' }),
-			);
 		});
 
 		test('keeps the modal open when the connection test fails after saving', async () => {
@@ -1643,10 +1625,8 @@ describe('CredentialEdit', () => {
 		});
 
 		test('closes the modal only after a successful OAuth callback when closeOnSave is enabled', async () => {
-			const onConnectionEvent = vi.fn();
 			const { credentialsStore, uiStore, getByTestId } = setupExistingOAuthCredential({
 				closeOnSave: true,
-				onConnectionEvent,
 			});
 
 			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
@@ -1661,51 +1641,7 @@ describe('CredentialEdit', () => {
 			await waitFor(() =>
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY),
 			);
-			expect(onConnectionEvent).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'completed' }),
-			);
-			expect(onConnectionEvent).not.toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'cancelled' }),
-			);
 		});
-
-		test.each(['save', 'authorize'] as const)(
-			'ignores a closed dialog after a pending OAuth %s request',
-			async (stage) => {
-				const onConnectionEvent = vi.fn();
-				const reopenedObserver = vi.fn();
-				const { credentialsStore, uiStore, getByTestId, unmount } = setupExistingOAuthCredential({
-					onConnectionEvent,
-				});
-				const save = createDeferredPromise<ICredentialsResponse>();
-				const authorize = createDeferredPromise<string>();
-				if (stage === 'save') credentialsStore.updateCredential.mockReturnValueOnce(save.promise);
-				else credentialsStore.oAuth2Authorize.mockReturnValueOnce(authorize.promise);
-
-				await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
-				await userEvent.click(getByTestId('quick-connect-button'));
-				await waitFor(() =>
-					expect(
-						stage === 'save' ? credentialsStore.updateCredential : credentialsStore.oAuth2Authorize,
-					).toHaveBeenCalled(),
-				);
-				unmount();
-				uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY] = {
-					open: true,
-					onConnectionEvent: reopenedObserver,
-				} as NewCredentialsModal;
-				const callsBeforeResult = onConnectionEvent.mock.calls.length;
-				save.resolve(createCredentialResponse({ id: 'oauth-cred', type: oAuth2Api.name }));
-				authorize.resolve('https://example.com/oauth');
-				await flushPromises();
-				broadcastMessageListener?.({ data: 'success' } as MessageEvent);
-				await flushPromises();
-
-				expect(onConnectionEvent).toHaveBeenCalledTimes(callsBeforeResult);
-				expect(reopenedObserver).not.toHaveBeenCalled();
-				if (stage === 'save') expect(credentialsStore.oAuth2Authorize).not.toHaveBeenCalled();
-			},
-		);
 
 		test('keeps the modal open after a successful OAuth callback by default', async () => {
 			const { credentialsStore, uiStore, getByTestId } = setupExistingOAuthCredential();

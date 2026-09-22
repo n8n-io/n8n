@@ -1817,28 +1817,6 @@ describe('ParameterInputList', () => {
 	 * Ensures watchers respond correctly to parameter and nodeValue changes.
 	 */
 	describe('Parameter Watchers', () => {
-		it('marks updates caused by removing a control as cleanup', async () => {
-			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { rerender, emitted, findByTestId } = renderComponent({
-				props: {
-					parameters: [{ name: 'field', displayName: 'Field', type: 'string', default: '' }],
-					nodeValues: { parameters: { field: 'value' } },
-					path: 'parameters',
-				},
-			});
-			await findByTestId('parameter-input');
-			await rerender({ parameters: [] });
-			await waitFor(() =>
-				expect(emitted('valueChanged')).toContainEqual([
-					expect.objectContaining({
-						name: 'parameters.field',
-						value: undefined,
-						isCleanup: true,
-					}),
-				]),
-			);
-		});
-
 		it('should handle parameter changes that affect visibility', async () => {
 			const conditionalParameters: INodeProperties[] = [
 				{

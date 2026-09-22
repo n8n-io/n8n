@@ -154,7 +154,6 @@ function setupRuntimePinia() {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const rootStore = mockedStore(useRootStore);
-	rootStore.pushRef = 'test-ref';
 	rootStore.restApiContext = {
 		baseUrl: 'http://localhost:5678/api',
 		pushRef: 'test-ref',
@@ -1176,7 +1175,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			1,
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			{
-				session_id: 'test-ref',
 				thread_id: activeThreadId,
 				instance_id: 'instance-1',
 				is_first_message: true,
@@ -1190,7 +1188,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			2,
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			{
-				session_id: 'test-ref',
 				thread_id: activeThreadId,
 				instance_id: 'instance-1',
 				is_first_message: false,
@@ -1223,7 +1220,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			{
-				session_id: 'test-ref',
 				thread_id: activeThreadId,
 				instance_id: 'instance-1',
 				is_first_message: true,
@@ -1252,7 +1248,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			{
-				session_id: 'test-ref',
 				thread_id: activeThreadId,
 				instance_id: 'instance-1',
 				is_first_message: true,
@@ -1286,7 +1281,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			{
-				session_id: 'test-ref',
 				thread_id: activeThreadId,
 				instance_id: 'instance-1',
 				is_first_message: true,

@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import {
 	computed,
 	getCurrentScope,
@@ -65,15 +64,13 @@ export function useSetupPanelExecution(options: {
 	async function executeWorkflow(): Promise<SetupPanelExecutionResult | undefined> {
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId || runningWorkflows.has(workflowId) || disposed) return;
+		if (!pushStore.isConnected)
+			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId));
 		if (executionState.isWorkflowRunning) return;
 		runningWorkflows.add(workflowId);
 		let cleanup = () => {};
-		const testRequestId = uuid();
-		let requestSent = false;
 		try {
-			if (!pushStore.isConnected)
-				throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 			const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
 			await nodeTypesStore.loadNodeTypesIfNotLoaded();
 			if (
@@ -186,25 +183,15 @@ export function useSetupPanelExecution(options: {
 				cleanup();
 				completed.resolve(undefined);
 			});
-			requestSent = true;
 			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
 				...getTelemetryPayload(),
 				session_id: rootStore.pushRef,
-				test_request_id: testRequestId,
 				source: 'instance_ai_setup_panel',
 				workflow_id: workflowId,
 				thread_id: options.thread.id,
 			});
 			const response = await runWorkflowApi(
-				{
-					workflowId,
-					triggerToStartFrom: { name: trigger.name },
-					setupTestRequest: {
-						test_request_id: testRequestId,
-						thread_id: options.thread.id,
-						session_id: rootStore.pushRef,
-					},
-				},
+				{ workflowId, triggerToStartFrom: { name: trigger.name } },
 				executionState.documentId,
 			);
 			if (disposed) {
@@ -244,19 +231,6 @@ export function useSetupPanelExecution(options: {
 				},
 			);
 			return { ...result, notified };
-		} catch (error) {
-			if (!requestSent)
-				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED, {
-					...getTelemetryPayload(),
-					session_id: rootStore.pushRef,
-					workflow_id: workflowId,
-					thread_id: options.thread.id,
-					source: 'instance_ai_setup_panel',
-					initiated_by: 'user',
-					status: 'start_failed',
-					error_type: 'start',
-				});
-			throw error;
 		} finally {
 			cleanup();
 			cancelWaits.delete(workflowId);

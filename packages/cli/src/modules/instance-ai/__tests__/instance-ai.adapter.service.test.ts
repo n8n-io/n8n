@@ -115,14 +115,21 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+	overrides: {
+		allowSendingParameterValues?: boolean;
+		queueMode?: boolean;
+		instanceAiSetupPanelEnabled?: boolean;
+	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
-		instanceAi: { nodeUsageEnabled: false },
+		instanceAi: {
+			nodeUsageEnabled: false,
+			instanceAiSetupPanelEnabled: overrides.instanceAiSetupPanelEnabled ?? false,
+		},
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 
@@ -2286,6 +2293,7 @@ describe('createDataTableAdapter', () => {
 // ---------------------------------------------------------------------------
 
 function createWorkflowAdapterForTests(overrides?: {
+	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
@@ -2464,6 +2472,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		threadId: 'thread-1',
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
+		setupPanelVariant: overrides?.setupPanelVariant,
 	});
 	const adapter = context.workflowService;
 
@@ -3582,6 +3591,38 @@ describe('createWorkflowAdapter', () => {
 			executed_by: 'ai',
 		});
 	});
+
+	it.each(['control', 'variant', undefined] as const)(
+		'carries setup assignment %s on workflow creation, updates, and publishing',
+		async (setupPanelVariant) => {
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests({ setupPanelVariant });
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+			await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+			await adapter.publish('wf-new');
+
+			for (const event of [
+				'Builder created workflow',
+				'Builder modified workflow',
+				'Builder published workflow',
+			]) {
+				const properties = mockTelemetry.track.mock.calls.find(([name]) => name === event)?.[1];
+				expect(properties).toMatchObject({
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					workflow_id: 'wf-new',
+				});
+				if (setupPanelVariant) {
+					expect(properties).toMatchObject({
+						variant: setupPanelVariant,
+						[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: setupPanelVariant,
+					});
+				} else {
+					expect(properties).not.toHaveProperty('variant');
+					expect(properties).not.toHaveProperty(`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`);
+				}
+			}
+		},
+	);
 
 	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
 		const {
@@ -5321,6 +5362,7 @@ function createAdapterWithGatewayMock(
 		settingsService?: unknown;
 		getWallet?: Mock;
 		instanceContext?: InstanceContextService;
+		instanceAiSetupPanelEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5340,7 +5382,9 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({
+		instanceAiSetupPanelEnabled: overrides?.instanceAiSetupPanelEnabled,
+	});
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -6042,6 +6086,7 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
 			setupPanelEnabled: true,
+			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
@@ -6118,11 +6163,49 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			setupPanelEnabled: false,
+			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 		});
+	});
+
+	it.each([
+		{ assignment: 'control', override: false, enabled: false },
+		{ assignment: 'variant', override: false, enabled: true },
+		{ assignment: undefined, override: false, enabled: false },
+		{ assignment: 'control', override: true, enabled: true },
+		{ assignment: 'variant', override: true, enabled: true },
+		{ assignment: undefined, override: true, enabled: true },
+	])(
+		'keeps assignment $assignment with setup override $override',
+		async ({ assignment, override, enabled }) => {
+			const flags = Object.freeze<Record<string, string | boolean>>(
+				assignment ? { [INSTANCE_AI_SETUP_PANEL_FLAG]: assignment } : {},
+			);
+			const getFeatureFlags = stubContainer(flags);
+			const adapter = createAdapterWithGatewayMock(vi.fn(), {
+				instanceAiSetupPanelEnabled: override,
+			});
+
+			const gates = await adapter.resolveExperimentGates(user);
+
+			expect(gates.setupPanelEnabled).toBe(enabled);
+			expect(gates.setupPanelVariant).toBe(assignment);
+			expect(getFeatureFlags).toHaveBeenCalledTimes(1);
+			expect(flags[INSTANCE_AI_SETUP_PANEL_FLAG]).toBe(assignment);
+		},
+	);
+
+	it('keeps the setup override when flag evaluation fails', async () => {
+		stubContainer({}).mockRejectedValueOnce(new Error('PostHog unavailable'));
+		const adapter = createAdapterWithGatewayMock(vi.fn(), { instanceAiSetupPanelEnabled: true });
+
+		const gates = await adapter.resolveExperimentGates(user);
+
+		expect(gates.setupPanelEnabled).toBe(true);
+		expect(gates.setupPanelVariant).toBeUndefined();
 	});
 
 	// Regression guard for the shipped bug: the flag is multivariate, so a

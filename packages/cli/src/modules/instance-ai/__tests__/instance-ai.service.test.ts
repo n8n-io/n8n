@@ -830,6 +830,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				setupPanelEnabled: snapshotMode !== 'off',
+				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
@@ -920,7 +921,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			fakeUser,
-			expect.objectContaining({ instanceContextEnabled }),
+			expect.objectContaining({
+				instanceContextEnabled,
+				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
+			}),
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
 		expect(service.runState.setSetupPanelEnabled).toHaveBeenCalledWith(

@@ -31,7 +31,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:hasChanges': [value: boolean];
-	parameterStarted: [name: string];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -87,10 +86,10 @@ function onParameterValueChanged(update: IUpdateInformation) {
 	if (!parameterRoots.value.has(parameterName.split(/[.[\]]/)[0])) return;
 	const next = deepCopy(displayParameters.value);
 	setParameterValueByPath(next, parameterName, update.value);
-	const changes = getSetupParameterChanges(displayParameters.value, next);
-	if (changes.length && !update.isCleanup)
-		emit('parameterStarted', parameterName.split(/[.[\]]/)[0]);
-	parameterChanges.value = mergeSetupParameterChanges(parameterChanges.value, changes);
+	parameterChanges.value = mergeSetupParameterChanges(
+		parameterChanges.value,
+		getSetupParameterChanges(displayParameters.value, next),
+	);
 }
 
 function getSubmission(): SetupParameterSubmission | undefined {

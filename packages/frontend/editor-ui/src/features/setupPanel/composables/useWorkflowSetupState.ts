@@ -857,7 +857,7 @@ export const useWorkflowSetupState = (
 				}
 			}
 
-			const testPromises: Array<ReturnType<typeof testCredentialInBackground>> = [];
+			const testPromises: Array<Promise<void>> = [];
 			for (const [id, { name, type }] of credentialsToTest) {
 				testPromises.push(testCredentialInBackground(id, name, type));
 			}

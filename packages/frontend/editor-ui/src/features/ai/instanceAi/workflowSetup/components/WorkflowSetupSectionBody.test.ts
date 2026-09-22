@@ -1,5 +1,3 @@
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { CredentialConnectionEvent } from '@/features/credentials/credentials.types';
 import { createTestingPinia } from '@pinia/testing';
 import { computed, nextTick, ref } from 'vue';
 import { fireEvent } from '@testing-library/vue';
@@ -7,15 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { IUpdateInformation, INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import WorkflowSetupSectionBody from './WorkflowSetupSectionBody.vue';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
-
-const track = vi.hoisted(() => vi.fn());
-vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 const workflowSetupContext = vi.hoisted(() => ({
 	current: undefined as unknown as WorkflowSetupContext,
@@ -35,7 +29,6 @@ const workflowDocumentStoreRef = vi.hoisted(() => ({
 	current: null as WorkflowDocumentStore | null,
 }));
 const nodeCredentialsMock = vi.hoisted(() => ({
-	observeConnection: undefined as ((event: CredentialConnectionEvent) => void) | undefined,
 	emitCredentialSelected: null as ((update: unknown) => void) | null,
 	lastNodeProp: null as unknown,
 	lastFieldLabel: undefined as string | undefined,
@@ -54,7 +47,6 @@ const instanceAiHandoffMock = vi.hoisted(() => ({
 	startThread: vi.fn(),
 }));
 const parameterListMock = vi.hoisted(() => ({
-	emitUpdate: undefined as ((update: IUpdateInformation) => void) | undefined,
 	lastHiddenIssuesInputs: undefined as string[] | undefined,
 }));
 
@@ -84,7 +76,6 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 		default: defineComponent({
 			props: [
 				'node',
-				'observeConnection',
 				'credentialsFieldLabel',
 				'credentialSetupHint',
 				'instanceAiCredentialHelp',
@@ -93,9 +84,6 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 			],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
-				nodeCredentialsMock.observeConnection = props.observeConnection as (
-					event: CredentialConnectionEvent,
-				) => void;
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
@@ -146,7 +134,6 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 			props: ['node', 'hiddenIssuesInputs'],
 			emits: ['valueChanged', 'parameterBlur'],
 			setup(props, { emit }) {
-				parameterListMock.emitUpdate = (update) => emit('valueChanged', update);
 				const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 				workflowDocumentStoreRef.current = workflowDocumentStore?.value ?? null;
 
@@ -180,7 +167,6 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 	const parameters = ref({ formId: '' });
 
 	return {
-		threadId: 'thread-1',
 		sections: computed(() => [section]),
 		currentStepIndex: ref(0),
 		activeSection: computed(() => section),
@@ -242,58 +228,6 @@ describe('WorkflowSetupSectionBody', () => {
 			init: async () => {},
 			getByNameAndVersion: () => undefined,
 		});
-	});
-
-	it('reports delayed validation after an existing credential selection completes', async () => {
-		const section = makeWorkflowSetupSection({ credentialType: 'typeformApi' });
-		workflowSetupContext.current = makeContext(section);
-		const validation = createDeferredPromise<boolean>();
-		vi.mocked(workflowSetupContext.current.setCredential).mockReturnValue(validation.promise);
-		const { unmount } = renderComponent({ props: { section } });
-		await nextTick();
-		nodeCredentialsMock.observeConnection?.({ type: 'started', method: 'existing' });
-		const attempt = track.mock.calls.at(-1)?.[1];
-		nodeCredentialsMock.emitCredentialSelected?.({
-			properties: { credentials: { typeformApi: { id: 'cred-1' } } },
-		});
-		nodeCredentialsMock.observeConnection?.({ type: 'completed', credentialId: 'cred-1' });
-		unmount();
-		validation.resolve(false);
-		await validation.promise;
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.CREDENTIALS.USER_FAILED_CREDENTIAL_CONNECTION,
-			{ ...attempt, error_type: 'validation' },
-		);
-	});
-
-	it('tracks the first user edit after a parameter cleanup', async () => {
-		const section = makeWorkflowSetupSection({
-			parameterNames: ['formId'],
-			node: {
-				id: 'cleanup-node',
-				name: 'Trigger',
-				type: 'typeform',
-				typeVersion: 1,
-				parameters: { formId: '' },
-			},
-		});
-		workflowSetupContext.current = makeContext(section);
-		renderComponent({ props: { section } });
-		await nextTick();
-		parameterListMock.emitUpdate?.({
-			name: 'parameters.formId',
-			value: undefined,
-			isCleanup: true,
-		});
-		expect(track).not.toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_PARAMETER_SETUP,
-			expect.anything(),
-		);
-		parameterListMock.emitUpdate?.({ name: 'parameters.formId', value: 'form-1' });
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_PARAMETER_SETUP,
-			expect.objectContaining({ parameter_name: 'formId' }),
-		);
 	});
 
 	it('keeps the synthetic credentials object stable when parameter values change', async () => {

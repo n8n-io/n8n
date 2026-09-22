@@ -2464,6 +2464,7 @@ export class InstanceAiService {
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
 			setupPanelEnabled,
+			setupPanelVariant,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
 			aiPreferencesEnabled,
@@ -2492,6 +2493,7 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
+			setupPanelVariant,
 			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			instanceContextEnabled,

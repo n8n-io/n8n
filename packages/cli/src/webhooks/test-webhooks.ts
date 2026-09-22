@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Container, Service } from '@n8n/di';
-import { EventService } from '@/events/event.service';
+import { Service } from '@n8n/di';
 import type express from 'express';
 import { ExecutionContextService, InstanceSettings } from 'n8n-core';
 import {
@@ -12,7 +11,6 @@ import {
 } from 'n8n-workflow';
 import type {
 	IWebhookData,
-	IWorkflowExecutionTelemetryMetadata,
 	IWorkflowExecuteAdditionalData,
 	IHttpRequestMethods,
 	IRunData,
@@ -147,7 +145,6 @@ export class TestWebhooks implements IWebhookManager {
 			webhook: testWebhook,
 			destinationNode,
 			encryptedRunnerIdentity,
-			telemetryMetadata,
 		} = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
@@ -187,7 +184,7 @@ export class TestWebhooks implements IWebhookManager {
 							else resolve(data);
 						},
 						destinationNode,
-						{ encryptedRunnerIdentity, ...(telemetryMetadata ? { telemetryMetadata } : {}) },
+						{ encryptedRunnerIdentity },
 					);
 
 					// The workflow did not run as the request was probably setup related
@@ -404,7 +401,6 @@ export class TestWebhooks implements IWebhookManager {
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
-		telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
 		chatSessionId?: string;
@@ -425,7 +421,6 @@ export class TestWebhooks implements IWebhookManager {
 			workflowIsActive,
 			n8nAuthCookie,
 			timeoutMs,
-			telemetryMetadata,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -534,7 +529,6 @@ export class TestWebhooks implements IWebhookManager {
 
 				const registration: TestWebhookRegistration = {
 					version: 1,
-					...(telemetryMetadata ? { telemetryMetadata } : {}),
 					pushRef,
 					workflowEntity,
 					destinationNode,
@@ -578,11 +572,14 @@ export class TestWebhooks implements IWebhookManager {
 
 	async cancelWebhook(workflowId: string) {
 		let foundWebhook = false;
-		const cancelledRequests = new Set<string>();
 
-		const registrations = await this.registrations.getRegistrationsHash();
+		const allWebhookKeys = await this.registrations.getAllKeys();
 
-		for (const [key, registration] of Object.entries(registrations ?? {})) {
+		for (const key of allWebhookKeys) {
+			const registration = await this.registrations.get(key);
+
+			if (!registration) continue;
+
 			const { pushRef, workflowEntity } = registration;
 
 			const workflow = this.toWorkflow(workflowEntity);
@@ -599,14 +596,6 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
-			const request = registration.telemetryMetadata?.setupTestRequest;
-			if (request && !cancelledRequests.has(request.test_request_id)) {
-				cancelledRequests.add(request.test_request_id);
-				Container.get(EventService).emit('instance-ai-setup-test-cancelled', {
-					workflowId,
-					request,
-				});
-			}
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
 				void (async () => {

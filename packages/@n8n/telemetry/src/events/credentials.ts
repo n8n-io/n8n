@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { setupConnectionProperties } from '../setup-properties';
+import { setupTelemetryProperties } from '../setup-properties';
 
 const descriptionProperties = {
 	has_description: z.boolean().describe('Whether the saved credential has a nonempty description.'),
@@ -61,36 +61,29 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 	USER_STARTED_CREDENTIAL_CONNECTION: {
 		name: 'User started credential connection',
 		description:
-			'The user started a connection attempt or selected an existing credential during Assistant setup. Includes retries.',
+			'The user started a connection attempt or selected an existing credential in the setup panel. Includes retries.',
 		properties: z.object({
-			...setupConnectionProperties,
+			...setupTelemetryProperties,
+			source: z.literal('instance_ai_setup_panel'),
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			credential_type: z.string(),
+			method: z.enum(['oauth', 'api_key', 'gateway', 'advanced', 'existing']),
 		}),
 	},
 	USER_COMPLETED_CREDENTIAL_CONNECTION: {
 		name: 'User completed credential connection',
 		description:
-			'An Assistant setup credential was selected or connected and its workflow binding was applied or queued. This does not report workflow validation.',
+			'A setup-panel credential was selected or connected and its workflow binding was applied or queued. This does not report workflow validation.',
 		properties: z.object({
-			...setupConnectionProperties,
+			...setupTelemetryProperties,
+			source: z.literal('instance_ai_setup_panel'),
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			credential_type: z.string(),
 			credential_id: z.string().nullable(),
+			method: z.enum(['oauth', 'api_key', 'gateway', 'advanced', 'existing']),
 			binding_state: z.enum(['applied', 'noop', 'queued']),
-		}),
-	},
-	USER_FAILED_CREDENTIAL_CONNECTION: {
-		name: 'User failed credential connection',
-		description:
-			'An active Assistant setup connection attempt failed to connect, validate, or save.',
-		properties: z.object({
-			...setupConnectionProperties,
-			error_type: z.enum(['connection', 'validation', 'save', 'conflict']),
-		}),
-	},
-	USER_CANCELLED_CREDENTIAL_CONNECTION: {
-		name: 'User cancelled credential connection',
-		description: 'The user explicitly cancelled an active Assistant setup connection attempt.',
-		properties: z.object({
-			...setupConnectionProperties,
-			reason: z.enum(['oauth_closed', 'dialog_closed', 'user_cancelled', 'superseded']),
 		}),
 	},
 	USER_PROBED_CREDENTIAL: {

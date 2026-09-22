@@ -7,11 +7,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import {
-	setupContextProperties,
-	setupExperimentProperties,
-	setupRequirementSchema,
-} from '../setup-properties';
+import { setupTelemetryProperties } from '../setup-properties';
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
@@ -57,57 +53,14 @@ const threadActionSource = z.enum([
 const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
-	WORKFLOW_SETUP_STATE_OBSERVED: {
-		name: 'AI Assistant workflow setup state observed',
-		description:
-			'Saved setup requirements changed for an Assistant-built workflow, in either setup flow. The first observation includes workflows that need no setup.',
-		properties: z.object({
-			...setupContextProperties,
-			user_id: z.string(),
-			cohort_started_at: z.string(),
-			credential_count: z.number().int(),
-			parameter_count: z.number().int(),
-			pending_credential_count: z.number().int(),
-			pending_parameter_count: z.number().int(),
-			already_connected_count: z.number().int(),
-			build_complete: z.boolean(),
-			setup_complete: z.boolean(),
-			items: z.array(setupRequirementSchema),
-		}),
-	},
-	USER_STARTED_PARAMETER_SETUP: {
-		name: 'User started parameter setup',
-		description:
-			'The user first edited a required parameter in this browser session. Saved completion comes from backend setup observations.',
-		properties: z.object({
-			...setupContextProperties,
-			item_id: z.string(),
-			node_type: z.string(),
-			parameter_name: z.string(),
-			source: z.enum(['instance_ai_setup_panel', 'instance_ai_setup_wizard']),
-		}),
-	},
-	SETUP_TEST_FINISHED: {
-		name: 'AI Assistant setup test finished',
-		description:
-			'A real execution of an Assistant setup cohort workflow finished or failed to start. Simulation runs are excluded. This event is independent of the setup UI.',
-		properties: z.object({
-			...setupContextProperties,
-			user_id: z.string().optional(),
-			execution_id: z.string().optional(),
-			test_request_id: z.string().optional(),
-			source: z.enum(['instance_ai_setup_panel', 'assistant', 'canvas']),
-			initiated_by: z.enum(['user', 'assistant']),
-			status: z.enum(['success', 'error', 'canceled', 'start_failed']),
-			error_type: z.enum(['execution', 'start', 'connection']).optional(),
-		}),
-	},
 	SETUP_PANEL_STATE_OBSERVED: {
 		name: 'AI Assistant setup panel state observed',
 		description:
 			'The setup panel observed a new requirement snapshot. Also fires when no setup is needed, including workflows whose credentials were already connected.',
 		properties: z.object({
-			...setupContextProperties,
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
 			credential_count: z.number(),
 			pending_credential_count: z.number(),
 			pending_parameter_count: z.number(),
@@ -119,9 +72,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A setup checklist row became visible. Reopening the same row within the mounted panel does not emit another event.',
 		properties: z.object({
-			...setupContextProperties,
-			item_ids: z.array(z.string()).optional(),
-			node_types: z.array(z.string()).optional(),
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
 			kind: z.enum(['credential', 'parameters', 'details']),
 			credential_type: z.string().optional(),
 			parameter_count: z.number(),
@@ -132,7 +85,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A visible setup panel closed. The reason separates navigation and removed requirements from a finished execution or an explicit dismissal.',
 		properties: z.object({
-			...setupContextProperties,
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
 			reason: z.enum([
 				'navigation',
 				'items_removed',
@@ -470,14 +425,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
 		properties: z.object({
-			session_id: setupContextProperties.session_id,
-			...setupExperimentProperties,
-			has_pending_setup: z
-				.boolean()
-				.optional()
-				.describe(
-					'Unresolved requirements at the send attempt, only for async setup with known state',
-				),
 			thread_id: z.string(),
 			instance_id: z.string(),
 			is_first_message: z

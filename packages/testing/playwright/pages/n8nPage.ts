@@ -26,7 +26,6 @@ import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { EvaluationComparePage } from './EvaluationComparePage';
 import { ExecutionsPage } from './ExecutionsPage';
-import { InstanceAiSetupTrackingPage } from './InstanceAiSetupTrackingPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -91,7 +90,6 @@ export class n8nPage {
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
 	readonly instanceAi: InstanceAiPage;
-	readonly instanceAiSetupTracking: InstanceAiSetupTrackingPage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
@@ -182,7 +180,6 @@ export class n8nPage {
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
 		this.instanceAi = new InstanceAiPage(page);
-		this.instanceAiSetupTracking = new InstanceAiSetupTrackingPage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);

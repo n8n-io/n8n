@@ -158,7 +158,6 @@ describe('TestWebhookRegistrationsService', () => {
 			cacheService.getHash.mockResolvedValueOnce({
 				[webhookKey]: registration,
 				ANOTHER_KEY: { invalid: 'data' },
-				NEWER_KEY: { version: 2 },
 				EXPIRED_KEY: { version: 1, expiresAt: now - 1 },
 			});
 

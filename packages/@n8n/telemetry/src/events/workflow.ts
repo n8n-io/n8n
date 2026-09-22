@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { setupContextProperties } from '../setup-properties';
+import { setupTelemetryProperties } from '../setup-properties';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 	USER_REQUESTED_WORKFLOW_TEST: {
@@ -9,8 +9,7 @@ export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user started a manual workflow test from the AI Assistant setup panel. This event does not report execution success.',
 		properties: z.object({
-			...setupContextProperties,
-			test_request_id: z.string().optional(),
+			...setupTelemetryProperties,
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),
 			thread_id: z.string().optional(),

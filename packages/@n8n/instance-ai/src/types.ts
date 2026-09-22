@@ -1595,7 +1595,6 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
-	observeWorkflowSetup?: (workflowId: string, buildComplete: boolean) => Promise<void>;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as

@@ -7,8 +7,6 @@ import {
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_SETUP_PANEL_FLAG,
-	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
@@ -251,10 +249,6 @@ export class PostHogClient {
 
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
-		}
-
-		if (this.globalConfig.instanceAi.instanceAiSetupPanelEnabled) {
-			overrides[INSTANCE_AI_SETUP_PANEL_FLAG] = INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT;
 		}
 
 		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {

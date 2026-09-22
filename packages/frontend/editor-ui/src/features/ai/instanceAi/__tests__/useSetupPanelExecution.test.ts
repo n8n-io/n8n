@@ -13,6 +13,7 @@ import { getWorkflow } from '@/app/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -98,17 +99,13 @@ describe('useSetupPanelExecution', () => {
 	it.each(['success', 'error', 'canceled'] as const)(
 		'notifies the agent only after the actual execution finishes: %s',
 		async (status) => {
+			mockedStore(usePostHog).getVariant.mockReturnValue('variant');
 			const { executeWorkflow, workflows, thread } = harness();
 			const pending = executeWorkflow();
 			await flushPromises();
 			expect(workflows.runWorkflow).toHaveBeenCalledWith({
 				workflowId: 'wf-1',
 				triggerToStartFrom: { name: 'Start' },
-				setupTestRequest: {
-					test_request_id: expect.any(String),
-					thread_id: 'thread-1',
-					session_id: useRootStore().pushRef,
-				},
 			});
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 			finish(status);
@@ -126,11 +123,12 @@ describe('useSetupPanelExecution', () => {
 				},
 			);
 			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
+				variant: 'variant',
+				'$feature/118_instance_ai_setup_overhaul': 'variant',
+				session_id: useRootStore().pushRef,
 				source: 'instance_ai_setup_panel',
 				workflow_id: 'wf-1',
 				thread_id: 'thread-1',
-				session_id: useRootStore().pushRef,
-				test_request_id: expect.any(String),
 			});
 			expect(handlers.size).toBe(0);
 		},
@@ -281,11 +279,6 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenNthCalledWith(1, {
 			workflowId: 'wf-1',
 			triggerToStartFrom: { name: 'Start' },
-			setupTestRequest: {
-				test_request_id: expect.any(String),
-				thread_id: 'thread-1',
-				session_id: useRootStore().pushRef,
-			},
 		});
 		expect(isRunning.value).toBe(true);
 		workflowId.value = 'wf-2';
@@ -297,11 +290,6 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenNthCalledWith(2, {
 			workflowId: 'wf-2',
 			triggerToStartFrom: { name: 'Second start' },
-			setupTestRequest: {
-				test_request_id: expect.any(String),
-				thread_id: 'thread-1',
-				session_id: useRootStore().pushRef,
-			},
 		});
 		finish('success', 'exec-2', 'wf-2');
 		await expect(second).resolves.toMatchObject({
@@ -384,10 +372,6 @@ describe('useSetupPanelExecution', () => {
 		const { executeWorkflow, workflows, thread } = harness();
 		workflows.runWorkflow.mockRejectedValueOnce(new Error('Start failed'));
 		await expect(executeWorkflow()).rejects.toThrow('Start failed');
-		expect(track).not.toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED,
-			expect.anything(),
-		);
 		expect(
 			useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1')).activeExecutionId,
 		).toBeUndefined();
@@ -422,11 +406,6 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenCalledWith({
 			workflowId: 'wf-1',
 			triggerToStartFrom: { name: disabled ? 'Start' : 'Selected' },
-			setupTestRequest: {
-				test_request_id: expect.any(String),
-				thread_id: 'thread-1',
-				session_id: useRootStore().pushRef,
-			},
 		});
 		finish();
 		await pending;
@@ -441,10 +420,6 @@ describe('useSetupPanelExecution', () => {
 				nodes: reason === 'missing' ? [] : [{ ...workflow.nodes[0], disabled: true }],
 			});
 			await expect(executeWorkflow()).rejects.toThrow(/trigger node/i);
-			expect(track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.INSTANCE_AI.SETUP_TEST_FINISHED,
-				expect.objectContaining({ status: 'start_failed' }),
-			);
 			expect(workflows.runWorkflow).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 		},

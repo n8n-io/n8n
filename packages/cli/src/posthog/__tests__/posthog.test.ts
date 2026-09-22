@@ -1,5 +1,5 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG, INSTANCE_AI_SETUP_PANEL_FLAG } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
@@ -315,7 +315,6 @@ describe('PostHog', () => {
 				globalConfig.evaluation.collectionsEnabled = false;
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
-				globalConfig.instanceAi.instanceAiSetupPanelEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
 
@@ -559,7 +558,6 @@ describe('PostHog', () => {
 				globalConfig.evaluation.collectionsEnabled = true;
 				globalConfig.evaluation.configEvalsEnabled = true;
 				globalConfig.evaluation.agentEvalsEnabled = true;
-				globalConfig.instanceAi.instanceAiSetupPanelEnabled = true;
 				globalConfig.instanceAi.canvasNodeContextEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -571,7 +569,6 @@ describe('PostHog', () => {
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,
-					[INSTANCE_AI_SETUP_PANEL_FLAG]: 'variant',
 					'104_canvas_aia_node_context': true,
 				});
 			});

@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
 	type IWebhookData,
-	type IWorkflowExecutionTelemetryMetadata,
 	type IWorkflowBase,
 	type IDestinationNode,
 	UserError,
@@ -23,7 +22,6 @@ export type TestWebhookRegistration = {
 	// Any old records in the cache will just be ignored.
 	version: typeof TEST_WEBHOOK_REGISTRATION_VERSION;
 	pushRef?: string;
-	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	workflowEntity: IWorkflowBase;
 	destinationNode?: IDestinationNode;
 	webhook: IWebhookData;

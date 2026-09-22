@@ -1,4 +1,3 @@
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { computed, defineComponent, h, reactive, type PropType } from 'vue';
@@ -7,8 +6,6 @@ import { getActivePinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { IUpdateInformation } from '@/Interface';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -51,15 +48,11 @@ import type { SetupPanelThreadSource } from '../../../composables/useSetupPanelS
 import type { ThreadRuntime } from '../../../instanceAi.store';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 
-const { showMessage, testCredentialInBackground, authorize, track } = vi.hoisted(() => ({
+const { showMessage, testCredentialInBackground, authorize } = vi.hoisted(() => ({
 	showMessage: vi.fn(),
-	track: vi.fn(),
 	testCredentialInBackground: vi.fn().mockResolvedValue(undefined),
 	authorize: vi.fn(),
 }));
-
-vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
-let emitParameterUpdate: (update: IUpdateInformation) => void;
 
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
 vi.mock('@/features/credentials/composables/useCredentialTestInBackground', () => ({
@@ -156,7 +149,7 @@ const SetupCredentialStub = defineComponent({
 		projectId: String,
 		allowPerNode: Boolean,
 	},
-	emits: ['bindCredential', 'setCredentialsPerNode', 'connectStarted'],
+	emits: ['bindCredential', 'setCredentialsPerNode'],
 	setup(props, { emit }) {
 		return () =>
 			props.node
@@ -177,14 +170,12 @@ const SetupCredentialStub = defineComponent({
 							skipAutoSelect: true,
 							onCredentialSelected: (update: {
 								properties: { credentials: Record<string, { id: string }> };
-							}) => {
-								emit('connectStarted', 'existing');
+							}) =>
 								emit(
 									'bindCredential',
 									props.item,
 									update.properties.credentials[props.item.credentialType].id,
-								);
-							},
+								),
 						}),
 					])
 				: null;
@@ -198,7 +189,6 @@ const ParameterInputListStub = defineComponent({
 	},
 	emits: ['valueChanged'],
 	setup(props, { emit }) {
-		emitParameterUpdate = (update) => emit('valueChanged', update);
 		return () =>
 			h(
 				'div',
@@ -540,8 +530,6 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(authorize).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({ id: credential.id, type: credential.type, isResolvable: true }),
-			undefined,
-			{ onOutcome: expect.any(Function) },
 		);
 		expect(credentials.getUsableCredentialById(credential.id)).toMatchObject({
 			connectedByMe: true,
@@ -598,10 +586,6 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(workflows.runWorkflow).toHaveBeenCalledWith({
 			workflowId: 'wf-1',
 			triggerToStartFrom: { name: 'Start' },
-			setupTestRequest: expect.objectContaining({
-				test_request_id: expect.any(String),
-				thread_id: 'thread-1',
-			}),
 		});
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		await view.rerender({ workflowId: 'wf-2' });
@@ -684,42 +668,6 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(getByTestId('selected-account')).toHaveTextContent('Shared account');
 		expect(updateWorkflow).not.toHaveBeenCalled();
-	});
-
-	it('records delayed validation after binding an existing credential', async () => {
-		const validation = createDeferredPromise<boolean>();
-		testCredentialInBackground.mockReturnValueOnce(validation.promise);
-		const view = await openParameters();
-		await fireEvent.update(view.getByLabelText('Account'), 'cred-2');
-		await flushPromises();
-		const completed = track.mock.calls.find(
-			([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION,
-		)?.[1];
-		expect(completed).toMatchObject({ method: 'existing', credential_id: 'cred-2' });
-		view.unmount();
-		validation.resolve(false);
-		await validation.promise;
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.CREDENTIALS.USER_FAILED_CREDENTIAL_CONNECTION,
-			expect.objectContaining({ attempt_id: completed.attempt_id, error_type: 'validation' }),
-		);
-	});
-
-	it('tracks a parameter edit after cleanup without counting cleanup as an edit', async () => {
-		await openParameters();
-		track.mockClear();
-		emitParameterUpdate({ name: 'parameters.channel', value: undefined, isCleanup: true });
-		await flushPromises();
-		expect(track).not.toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_PARAMETER_SETUP,
-			expect.anything(),
-		);
-		emitParameterUpdate({ name: 'parameters.channel', value: 'announcements' });
-		await flushPromises();
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_PARAMETER_SETUP,
-			expect.objectContaining({ parameter_name: 'channel' }),
-		);
 	});
 
 	it('renders fields gated by defaults omitted from the saved workflow', async () => {

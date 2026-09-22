@@ -6,11 +6,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { computed, onBeforeUnmount, ref, h } from 'vue';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 
-import type {
-	CredentialConnectionOutcome,
-	CredentialFetchScope,
-	ICredentialsResponse,
-} from '../../credentials.types';
+import type { CredentialFetchScope, ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
 import { useToast } from '@n8n/composables/useToast';
@@ -150,7 +146,6 @@ export function useQuickConnect() {
 		projectId?: string;
 		workflowId?: string;
 		credentialFetchScope?: CredentialFetchScope;
-		onOutcome?: (outcome: CredentialConnectionOutcome) => void;
 	}): Promise<ICredentialsResponse | null> {
 		cleanUpDanglingHandlers();
 		const { credentialTypeName, nodeType, source } = connectParams;
@@ -163,10 +158,9 @@ export function useQuickConnect() {
 
 		if (isOAuthCredentialType(credentialTypeName)) {
 			const credential =
-				connectParams.projectId || connectParams.workflowId || connectParams.onOutcome
+				connectParams.projectId || connectParams.workflowId
 					? await createAndAuthorize(credentialTypeName, nodeType, {
 							projectId: connectParams.projectId,
-							onOutcome: connectParams.onOutcome,
 							workflowId: connectParams.workflowId,
 							credentialFetchScope: connectParams.credentialFetchScope,
 						})
@@ -178,7 +172,6 @@ export function useQuickConnect() {
 		if (quickConnectOption) {
 			const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 			if (!credentialType) {
-				connectParams.onOutcome?.({ type: 'failed', errorType: 'connection' });
 				return null;
 			}
 
@@ -200,14 +193,12 @@ export function useQuickConnect() {
 					);
 
 					if (confirmed !== MODAL_CONFIRM) {
-						connectParams.onOutcome?.({ type: 'cancelled', reason: 'user_cancelled' });
 						return null;
 					}
 				}
 				const credentialData = await getCredentialData(quickConnectOption);
 				if (!credentialData) {
 					// creation was aborted
-					connectParams.onOutcome?.({ type: 'cancelled', reason: 'user_cancelled' });
 					return null;
 				}
 				const credential = await credentialsStore.createNewCredential(
@@ -225,7 +216,6 @@ export function useQuickConnect() {
 
 				return credential;
 			} catch (error) {
-				connectParams.onOutcome?.({ type: 'failed', errorType: 'connection' });
 				toast.showError(
 					error,
 					i18n.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
@@ -237,7 +227,6 @@ export function useQuickConnect() {
 			}
 		}
 
-		connectParams.onOutcome?.({ type: 'failed', errorType: 'connection' });
 		return null;
 	}
 

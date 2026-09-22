@@ -258,7 +258,6 @@ const panelTelemetry = useSetupPanelTelemetry({
 	rows,
 	groups,
 	shownItemIds,
-	getNodeByName,
 	ready: () =>
 		!setupDismissed.value &&
 		credentialsReady.value &&
@@ -618,16 +617,9 @@ async function connectFromRow(id: string) {
 		const credential = await oauth.createAndAuthorize(item.credentialType, node?.type, {
 			projectId,
 			workflowId,
-			onOutcome: (outcome) => {
-				if (!active) return;
-				if (outcome.type === 'failed')
-					panelTelemetry.trackConnectionFailed(item, outcome.errorType);
-				else panelTelemetry.trackConnectionCancelled(item, outcome.reason);
-			},
 		});
 		if (credential) await bind(credential.id);
 	} catch (error) {
-		panelTelemetry.trackConnectionFailed(item, 'connection');
 		if (active) toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
 	} finally {
 		connectingItemId.value = undefined;
@@ -666,10 +658,7 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 			? credentialsStore.getUsableCredentialById(credentialId)
 			: undefined) ?? credentialsStore.getCredentialById(credentialId);
 	if (!credential) return;
-	panelTelemetry.trackConnectionValidation(
-		item,
-		testCredentialInBackground(credential.id, credential.name, item.credentialType),
-	);
+	void testCredentialInBackground(credential.id, credential.name, item.credentialType);
 	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });
 	await notifyApplyResult(result, workflowId);
 	panelTelemetry.trackConnectionCompleted(item, credential.id, result);
@@ -768,8 +757,6 @@ async function onConfirmParameters() {
 							(selectedItemId === item.id || (!selectedItemId && !$event)) &&
 							($event ? dirtyCredentials.add(section.id) : dirtyCredentials.delete(section.id))
 						"
-						@connect-failed="panelTelemetry.trackConnectionFailed(section.credential, $event)"
-						@connect-cancelled="panelTelemetry.trackConnectionCancelled(section.credential, $event)"
 						@connect-started="
 							selectedItemId === item.id &&
 							panelTelemetry.trackConnectionStarted(section.credential, $event)
@@ -779,7 +766,6 @@ async function onConfirmParameters() {
 						<div v-for="editor in section.editors" :key="editor.item.id">
 							<InstanceAiSetupPanelDetail
 								ref="parameterEditorComponents"
-								@parameter-started="panelTelemetry.trackParameterStarted(editor.node, $event)"
 								:item="editor.item"
 								:node="editor.node"
 								:workflow-id="workflowId"

@@ -137,7 +137,7 @@ export class InstanceAiPage extends BasePage {
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
-		return this.container.getByRole('textbox').and(this.container.locator('textarea'));
+		return this.container.getByRole('textbox');
 	}
 
 	getSendButton(): Locator {

@@ -1,7 +1,9 @@
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
 import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { mockedStore } from '@/__tests__/utils';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -13,7 +15,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
-const rootStoreState = { instanceId: 'instance-1' };
+const rootStoreState = { instanceId: 'instance-1', pushRef: 'session-1' };
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => rootStoreState,
 }));
@@ -92,6 +94,7 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 
 	const actions = useWorkflowSetupActions({
 		requestId: ref('req-1'),
+		workflowId: ref('workflow-1'),
 		sections,
 		activeSection,
 		currentStepIndex,
@@ -135,10 +138,41 @@ function getTelemetryCalls(eventName: string) {
 }
 
 describe('useWorkflowSetupActions', () => {
-	beforeEach(() => setActivePinia(createTestingPinia()));
 	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 		telemetryTrack.mockReset();
 	});
+
+	it.each(['control', 'variant', undefined, false])(
+		'includes workflow and session context with the known assignment %s',
+		async (variant) => {
+			mockedStore(usePostHog).getVariant.mockReturnValue(variant);
+			const h = setupHarness();
+			h.completedSet.add(h.sectionA.id);
+			await h.actions.apply();
+			expect(telemetryTrack.mock.calls.map(([event]) => event)).toEqual([
+				'Instance AI workflow setup step shown',
+				'Instance AI workflow setup step handled',
+				'User finished providing input',
+			]);
+			for (const [, payload] of telemetryTrack.mock.calls) {
+				expect(payload).toMatchObject({
+					workflow_id: 'workflow-1',
+					thread_id: 'thread-1',
+					session_id: 'session-1',
+				});
+				if (typeof variant === 'string') {
+					expect(payload).toMatchObject({
+						variant,
+						'$feature/118_instance_ai_setup_overhaul': variant,
+					});
+				} else {
+					expect(payload).not.toHaveProperty('variant');
+					expect(payload).not.toHaveProperty('$feature/118_instance_ai_setup_overhaul');
+				}
+			}
+		},
+	);
 
 	it('tracks the active setup step when it is shown', () => {
 		setupHarness();

@@ -46,7 +46,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
-| `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED` | boolean | `false` | Force-enable the non-blocking setup panel. When false, `118_instance_ai_setup_overhaul` selects the wizard (`control`) or panel (`variant`). |
+| `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED` | boolean | `false` | Force-enable the non-blocking setup panel without changing experiment assignment. When false, `118_instance_ai_setup_overhaul` selects the wizard (`control`) or panel (`variant`). |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
 | `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 

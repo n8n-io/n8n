@@ -790,11 +790,3 @@ export type {
 	OversizedAttachmentDetail,
 	OversizedAttachmentReason,
 } from './parsers/validate-attachments';
-
-import type * as SetupWorkflowServiceMod from './tools/workflows/setup-workflow.service';
-export async function analyzeWorkflow(
-	...args: Parameters<typeof SetupWorkflowServiceMod.analyzeWorkflow>
-) {
-	const service = await import('./tools/workflows/setup-workflow.service.js');
-	return await service.analyzeWorkflow(...args);
-}
