@@ -188,6 +188,26 @@ describe('Users in Public API', () => {
 
 			expect(returnedUser).toHaveProperty('mfaEnabled', true);
 		});
+
+		it('if the identifier is neither a valid ID nor a valid email, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/users/not-an-id');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: 'request/params/userId must be a valid ID or email',
+			});
+		});
 	});
 
 	describe('POST /users', () => {

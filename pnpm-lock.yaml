@@ -482,6 +482,9 @@ catalogs:
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
+    '@types/validator':
+      specifier: ^13.7.0
+      version: 13.7.10
     '@types/ws':
       specifier: ^8.18.1
       version: 8.18.1
@@ -1554,6 +1557,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      validator:
+        specifier: 13.15.26
+        version: 13.15.26
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -1564,6 +1570,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/validator':
+        specifier: 'catalog:'
+        version: 13.7.10
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
@@ -4818,7 +4827,7 @@ importers:
         specifier: 'catalog:'
         version: 11.0.0
       '@types/validator':
-        specifier: ^13.7.0
+        specifier: 'catalog:'
         version: 13.7.10
       '@types/ws':
         specifier: 'catalog:'

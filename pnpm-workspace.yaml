@@ -167,6 +167,7 @@ catalog:
   '@types/ssh2': 1.15.0
   '@types/turndown': ^5.0.6
   '@types/uuid': ^11.0.0
+  '@types/validator': ^13.7.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
   # Pinned exactly and kept together: these packages cross types with each other

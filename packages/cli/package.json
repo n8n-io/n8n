@@ -102,7 +102,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/turndown": "catalog:",
     "@types/uuid": "catalog:",
-    "@types/validator": "^13.7.0",
+    "@types/validator": "catalog:",
     "@types/ws": "catalog:",
     "@types/xml2js": "catalog:",
     "@types/yargs-parser": "21.0.0",
