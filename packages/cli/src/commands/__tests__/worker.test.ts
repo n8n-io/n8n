@@ -30,6 +30,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -70,6 +71,7 @@ mockInstance(CommunityPackagesConfig, { enabled: false });
 mockInstance(JwtService);
 mockInstance(BinaryDataConfig);
 mockInstance(TaskRunnerModule);
+const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 describe('Worker', () => {
 	beforeEach(() => {
@@ -316,6 +318,23 @@ describe('Worker', () => {
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
 			// The job processor is registered regardless of whether endpoints are enabled.
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
+		});
+
+		it('should start the system tasks once the server is up', async () => {
+			Container.get(GlobalConfig).queue.health.active = true;
+
+			await createWorkerForRun().run();
+
+			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
+			expect(mockWorkerServer.init.mock.invocationCallOrder[0]).toBeLessThan(
+				systemTaskRunner.init.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should start the system tasks without a server', async () => {
+			await createWorkerForRun().run();
+
+			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
 		});
 	});
 });
