@@ -154,7 +154,7 @@ export interface AgentRuntimeConfig {
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
-const MAX_LOOP_ITERATIONS = 30;
+const MAX_LOOP_ITERATIONS = 100;
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;

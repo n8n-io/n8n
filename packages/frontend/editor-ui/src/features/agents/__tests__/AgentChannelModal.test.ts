@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
@@ -20,8 +21,12 @@ const exampleIntegration = {
 	label: 'Example',
 	icon: 'zap',
 	credentialTypes: ['exampleApi'],
+	approvableActions: [
+		{ name: 'respond', sensitive: false },
+		{ name: 'send_dm', sensitive: true },
+	],
 };
-const catalog = ref([exampleIntegration]);
+const catalog = ref<ChatIntegrationDescriptor[]>([exampleIntegration]);
 const slackIntegration = {
 	type: 'slack',
 	label: 'Slack',
@@ -32,6 +37,7 @@ const statuses = ref<
 	Record<string, 'configured' | 'starting' | 'connected' | 'error' | 'disconnected'>
 >({});
 const connectedCredentials = ref<Record<string, string>>({});
+const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
@@ -147,6 +153,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		fetchStatus: mocks.fetchStatus,
 		connectedCredentials,
 		integrationSettings: ref({ example: { accessMode: 'all' } }),
+		integrationApproval,
 		loadingMap,
 		errorMessages: ref({}),
 		errorIsConflict: ref({}),
@@ -221,6 +228,22 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 				N8nIconButton: { template: '<button><slot /></button>' },
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
+				AgentChannelApprovalSetting: {
+					props: ['modelValue', 'actions'],
+					emits: ['update:modelValue', 'update:valid'],
+					template: `
+						<div data-testid="approval-setting" :data-model="JSON.stringify(modelValue ?? null)">
+							<button
+								data-testid="approval-select-all"
+								@click="$emit('update:modelValue', { mode: 'global' })"
+							/>
+							<button
+								data-testid="approval-clear"
+								@click="$emit('update:modelValue', { mode: 'selected', tools: [] }); $emit('update:valid', false)"
+							/>
+						</div>
+					`,
+				},
 				AgentChannelListItem: {
 					props: [
 						'integration',
@@ -256,6 +279,7 @@ describe('AgentChannelModal', () => {
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};
+		integrationApproval.value = {};
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};
@@ -541,6 +565,82 @@ describe('AgentChannelModal', () => {
 		// The backend releases the old channel once the swap is durable, so the
 		// modal must not issue a disconnect that could strand it.
 		expect(mocks.disconnect).not.toHaveBeenCalled();
+	});
+
+	describe('action approval', () => {
+		it('saves the approval that is on the channel, and an edit to it', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			integrationApproval.value.example = { mode: 'selected', tools: ['send_dm'] };
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			expect(wrapper.get('[data-testid="approval-setting"]').attributes('data-model')).toBe(
+				JSON.stringify({ mode: 'selected', tools: ['send_dm'] }),
+			);
+
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+			expect(mocks.connect).toHaveBeenLastCalledWith(
+				'example',
+				'credential-old',
+				{
+					accessMode: 'all',
+				},
+				{ approval: { mode: 'selected', tools: ['send_dm'] } },
+			);
+
+			await wrapper.get('[data-testid="approval-select-all"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+			expect(mocks.connect).toHaveBeenLastCalledWith(
+				'example',
+				'credential-old',
+				{
+					accessMode: 'all',
+				},
+				{ approval: { mode: 'global' } },
+			);
+		});
+
+		it("does not carry one channel's approval into another channel's setup", async () => {
+			catalog.value = [exampleIntegration, { ...slackIntegration, approvableActions: [] }];
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			integrationApproval.value.example = { mode: 'global' };
+			const wrapper = mountModal('list');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="edit-channel"]').trigger('click');
+			await wrapper.get('[data-testid="agent-modal-back"]').trigger('click');
+			await wrapper
+				.get('[data-testid="channel-list-item"]:last-child [data-testid="setup-channel"]')
+				.trigger('click');
+			await wrapper.get('[data-testid="select-credential"]').trigger('click');
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'slack',
+				'credential-new',
+				{ accessMode: 'all' },
+				{},
+			);
+		});
+
+		it('keeps Save disabled while the selection is empty', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			integrationApproval.value.example = { mode: 'selected', tools: ['send_dm'] };
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="approval-clear"]').trigger('click');
+
+			expect(
+				wrapper.get('[data-testid="agent-channel-save-channel-config"]').attributes('disabled'),
+			).toBeDefined();
+		});
 	});
 
 	it('delegates disconnect warning presentation to the platform', async () => {

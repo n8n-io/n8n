@@ -13,7 +13,7 @@ Notion for why the substrate looks the way it does.
 
 Two gates, both required:
 
-1. The license feature `feat:nodeTypePolicies`. Without it, `init()` never runs, so the
+1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
    controllers are not mounted and no check is registered.
 2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
 
@@ -233,7 +233,9 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
-| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments                                       |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins                                       |
+| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |

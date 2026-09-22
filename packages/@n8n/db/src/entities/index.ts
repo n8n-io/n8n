@@ -23,7 +23,7 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
-import { DeploymentKey } from './deployment-key';
+import { DeploymentKey, OAUTH_JWE_PRIVATE_KEY_TYPE } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -140,6 +140,7 @@ export {
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,

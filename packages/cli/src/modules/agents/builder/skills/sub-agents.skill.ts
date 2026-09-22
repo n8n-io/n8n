@@ -83,8 +83,8 @@ Example patch flow:
 
 ## Rules
 
-- Saved subagents run their current draft in Preview/test runs and their
-  published version in production runs. Delegating to a never-published agent
+- Saved subagents use their current draft in Preview and test sessions, and their
+  published version in production sessions. Delegating to a never-published agent
   fails in production, so tell the user to publish saved subagents the target
   agent relies on before production use.
 - If the resumed values include text that is not one of the listed agent ids,

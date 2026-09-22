@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AgentApproval } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -17,6 +18,7 @@ import type {
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
@@ -53,6 +55,7 @@ const {
 	fetchStatus,
 	connectedCredentials,
 	integrationSettings,
+	integrationApproval,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -171,6 +174,10 @@ const currentPlatform = computed(() =>
 );
 const currentRuntime = computed(() => runtimeFor(selectedChannelType.value ?? 'unknown'));
 const channelViewRef = ref<AgentChannelViewExpose>();
+/** Pending approval edit for the channel being edited, seeded from what is saved. */
+const channelApproval = ref<AgentApproval | undefined>();
+const channelApprovalValid = ref(true);
+const approvableActions = computed(() => currentIntegration.value?.approvableActions ?? []);
 const channelViewLoading = computed(() => channelViewRef.value?.loading === true);
 /**
  * Persisting the Agent and setting the channel up are one action from here: the
@@ -211,6 +218,7 @@ const headerContentComponent = computed(() => {
 });
 function prepareChannelEdit(channelType: string | null) {
 	captureConnectedCredential(channelType);
+	channelApproval.value = channelType ? integrationApproval.value[channelType] : undefined;
 	if (!channelType) return;
 	clearIntegrationError(channelType);
 	if (credentialIdAtEditOpen.value) {
@@ -289,7 +297,7 @@ function goToEdit(channelType: string) {
 
 function goBackToList() {
 	if (actionInFlight.value) return;
-	captureConnectedCredential(null);
+	prepareChannelEdit(null);
 	saveAttempted.value = false;
 	currentView.value = 'list';
 }
@@ -346,6 +354,7 @@ async function saveChannelConfig() {
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelViewRef.value?.validationError) return;
+	if (!channelApprovalValid.value) return;
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
@@ -363,6 +372,8 @@ async function saveChannelConfig() {
 		if (!(await runBeforeSave())) return;
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			// Only the edit view shows the approval control, so only it may carry one.
+			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
@@ -586,6 +597,13 @@ watch(
 				>
 					{{ i18n.baseText('agents.channels.modal.credentialRequired' as BaseTextKey) }}
 				</N8nText>
+
+				<AgentChannelApprovalSetting
+					v-if="isEditMode && approvableActions.length > 0"
+					v-model="channelApproval"
+					:actions="approvableActions"
+					@update:valid="channelApprovalValid = $event"
+				/>
 			</div>
 		</div>
 
@@ -607,7 +625,7 @@ watch(
 				variant="solid"
 				size="medium"
 				:loading="actionInFlight"
-				:disabled="actionInFlight"
+				:disabled="!channelApprovalValid || actionInFlight"
 				data-testid="agent-channel-save-channel-config"
 				@click="saveChannelConfig"
 			>
