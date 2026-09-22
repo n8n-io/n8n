@@ -6,6 +6,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 
 import { useMarkdownEditor } from './composables/useMarkdownEditor';
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
+import MarkdownEditorExpandedViewButton from './MarkdownEditorExpandedViewButton.vue';
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import { setEditorContent } from './markdownEditorUtils';
 import { useI18n } from '../../composables/useI18n';
@@ -14,6 +15,8 @@ import { N8nDialog } from '../N8nDialog';
 import N8nTooltip from '../N8nTooltip';
 
 const COLLAPSED_MAX_HEIGHT_OVERRIDE = 256;
+
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	modelValue: '',
@@ -32,6 +35,10 @@ const emit = defineEmits<N8nMarkdownEditorEmits>();
 
 const collapsed = ref(true);
 const isExpandedViewOpen = ref(false);
+const dialogContainer = ref<HTMLElement>();
+const isExpandedViewActive = computed(function getIsExpandedViewActive() {
+	return isExpandedViewOpen.value && !!dialogContainer.value;
+});
 const { t } = useI18n();
 const explicitHeight = ref<string>();
 
@@ -47,20 +54,22 @@ const expandButtonLabel = computed(() =>
 );
 const expandButtonIcon = computed(() => (collapsed.value ? 'arrow-down' : 'arrow-up'));
 
-const shouldShowInlineToolbar = computed(() => ['always', 'hover'].includes(props.showToolbar));
-const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
-const shouldPadContentTop = computed(() => shouldShowInlineToolbar.value);
+const toolbarMode = computed(function getToolbarMode() {
+	if (isExpandedViewActive.value && props.expandedViewToolbarMode) {
+		return props.expandedViewToolbarMode;
+	}
+	return props.showToolbar ?? 'always';
+});
+const fixedToolbarMode = computed(function getFixedToolbarMode() {
+	const mode = toolbarMode.value;
+	return mode === 'always' || mode === 'hover' ? mode : undefined;
+});
+const shouldPadContentTop = computed(() => !!fixedToolbarMode.value);
 
 const editor = useMarkdownEditor(props, emit);
 const isRawMode = ref(false);
 const rawMarkdown = ref(props.modelValue);
-const inlineContainer = ref<HTMLElement>();
-const dialogContainer = ref<HTMLElement>();
-const container = computed(function getActiveContainer() {
-	return isExpandedViewOpen.value
-		? (dialogContainer.value ?? inlineContainer.value)
-		: inlineContainer.value;
-});
+const container = ref<HTMLElement>();
 const rawEditor = ref<HTMLTextAreaElement>();
 const rawContentHeight = ref<string>();
 
@@ -80,7 +89,7 @@ watch(
 );
 
 function getBubbleMenuContainer() {
-	return isExpandedViewOpen.value ? dialogContainer.value : document.body;
+	return isExpandedViewActive.value ? dialogContainer.value : document.body;
 }
 
 const contentExceedsCollapsedHeight = ref(false);
@@ -92,6 +101,7 @@ const shouldBeCollapsable = computed(function getShouldBeCollapsable() {
 watch(
 	[
 		container,
+		isExpandedViewActive,
 		editor,
 		isRawMode,
 		rawMarkdown,
@@ -162,7 +172,7 @@ watch(
 
 /** Override maxHeight for collapsible state to ensure we properly trim the content */
 const setMaxHeight = computed(function getMaxHeightStyle() {
-	if (isExpandedViewOpen.value) return '--markdown-editor-max-height: 100%';
+	if (isExpandedViewActive.value) return '--markdown-editor-max-height: 100%';
 	if (!props.isCollapsible) return `--markdown-editor-max-height: ${maxHeight.value}`;
 
 	const collapsibleMaxHeight = collapsed.value
@@ -312,20 +322,116 @@ defineExpose({
 });
 </script>
 <template>
-	<div
-		ref="inlineContainer"
-		:class="[
-			'n8n-markdown-editor-container',
-			$style.container,
-			props.variant === 'ghost' ? $style.ghost : $style.contained,
-			props.containerClass,
-			props.disabled ? $style.disabled : '',
-			shouldBeCollapsable && collapsed ? $style.collapsed : '',
-		]"
-		:style="[setMaxHeight, containerHeightStyle]"
-		data-test-id="n8n-markdown-editor"
-		@transitionend="onHeightTransitionEnd"
-	>
+	<div :class="$style.root">
+		<Teleport :to="dialogContainer ?? 'body'" :disabled="!isExpandedViewActive">
+			<div
+				ref="container"
+				v-bind="$attrs"
+				:class="[
+					'n8n-markdown-editor-container',
+					$style.container,
+					isExpandedViewActive && $style.expandedContainer,
+					isExpandedViewActive && toolbarMode === 'floating' && $style.floatingToolbar,
+					props.variant === 'ghost' ? $style.ghost : $style.contained,
+					props.containerClass,
+					props.disabled ? $style.disabled : '',
+					shouldBeCollapsable && collapsed && !isExpandedViewActive ? $style.collapsed : '',
+				]"
+				:style="[setMaxHeight, isExpandedViewActive ? undefined : containerHeightStyle]"
+				data-test-id="n8n-markdown-editor"
+				@transitionend="onHeightTransitionEnd"
+			>
+				<div
+					v-if="isRawMode"
+					data-markdown-editor-content-wrapper
+					:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+				>
+					<textarea
+						ref="rawEditor"
+						:value="rawMarkdown"
+						:class="[$style.rawContent, shouldPadContentTop ? $style.padTop : '']"
+						:style="{ '--markdown-editor-raw-height': rawContentHeight }"
+						:placeholder="props.placeholder"
+						:disabled="props.disabled"
+						:readonly="props.readonly"
+						data-test-id="n8n-markdown-editor-raw-content"
+						@input="updateRawMarkdown"
+						@focus="handleRawFocus"
+						@blur="handleRawBlur"
+					/>
+				</div>
+				<EditorContent
+					v-else
+					data-markdown-editor-content-wrapper
+					:editor="editor"
+					:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+				/>
+				<MarkdownEditorToolbar
+					v-if="fixedToolbarMode && editor"
+					:editor="editor"
+					:disabled="props.disabled || props.readonly"
+					:is-raw-mode="isRawMode"
+					:mode="fixedToolbarMode"
+					:variant="props.variant"
+					:allow-expanded-view="props.allowExpandedView"
+					:is-expanded-view="isExpandedViewOpen"
+					@update:is-raw-mode="toggleRawMode"
+					@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
+				/>
+				<div v-if="toolbarMode === 'floating' && editor && !isRawMode">
+					<BubbleMenu
+						:editor="editor"
+						:options="bubbleMenuOptions"
+						:append-to="getBubbleMenuContainer"
+						:class="$style.bubbleMenu"
+					>
+						<MarkdownEditorToolbar
+							:editor="editor"
+							:disabled="props.disabled || props.readonly"
+							:is-raw-mode="false"
+							mode="floating"
+							:variant="props.variant"
+							:allow-expanded-view="props.allowExpandedView"
+							:is-expanded-view="isExpandedViewOpen"
+							@update:is-raw-mode="toggleRawMode"
+							@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
+						/>
+					</BubbleMenu>
+				</div>
+				<div
+					v-if="props.allowExpandedView && toolbarMode === 'floating'"
+					:class="[
+						$style.floatingExpandedViewButton,
+						isExpandedViewOpen ? $style.floatingExpandedViewButtonVisible : '',
+					]"
+				>
+					<MarkdownEditorExpandedViewButton
+						:is-expanded-view="isExpandedViewOpen"
+						variant="subtle"
+						icon-size="medium"
+						@toggle="isExpandedViewOpen = !isExpandedViewOpen"
+					/>
+				</div>
+				<div
+					v-if="shouldBeCollapsable && !isExpandedViewOpen"
+					:class="$style.expandButtonContainer"
+				>
+					<N8nTooltip :content="expandButtonLabel">
+						<N8nButton
+							size="small"
+							:icon="expandButtonIcon"
+							icon-only
+							icon-size="medium"
+							variant="subtle"
+							:class="$style.expandButton"
+							:aria-label="expandButtonLabel"
+							@click="toggleCollapsed"
+						/>
+					</N8nTooltip>
+				</div>
+			</div>
+		</Teleport>
+
 		<N8nDialog
 			v-if="props.allowExpandedView"
 			v-model:open="isExpandedViewOpen"
@@ -337,126 +443,10 @@ defineExpose({
 		>
 			<div
 				ref="dialogContainer"
-				:class="[
-					'n8n-markdown-editor-container',
-					$style.container,
-					$style.expandedContainer,
-					props.showToolbar === 'floating' && $style.floatingToolbar,
-					props.variant === 'ghost' ? $style.ghost : $style.contained,
-					props.containerClass,
-					props.disabled ? $style.disabled : '',
-				]"
-				:style="setMaxHeight"
 				data-test-id="n8n-markdown-editor-expanded"
 				@keydown.esc.capture="isExpandedViewOpen = false"
 			/>
 		</N8nDialog>
-
-		<Teleport v-if="container" :to="container">
-			<div
-				v-if="isRawMode"
-				data-markdown-editor-content-wrapper
-				:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
-			>
-				<textarea
-					ref="rawEditor"
-					:value="rawMarkdown"
-					:class="[$style.rawContent, shouldPadContentTop ? $style.padTop : '']"
-					:style="{ '--markdown-editor-raw-height': rawContentHeight }"
-					:placeholder="props.placeholder"
-					:disabled="props.disabled"
-					:readonly="props.readonly"
-					data-test-id="n8n-markdown-editor-raw-content"
-					@input="updateRawMarkdown"
-					@focus="handleRawFocus"
-					@blur="handleRawBlur"
-				/>
-			</div>
-			<EditorContent
-				v-else
-				data-markdown-editor-content-wrapper
-				:editor="editor"
-				:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
-			/>
-			<MarkdownEditorToolbar
-				v-if="shouldShowInlineToolbar && editor"
-				:editor="editor"
-				:disabled="props.disabled || props.readonly"
-				:is-raw-mode="isRawMode"
-				:mode="toolbarMode"
-				:variant="props.variant"
-				:allow-expanded-view="props.allowExpandedView"
-				:is-expanded-view="isExpandedViewOpen"
-				@update:is-raw-mode="toggleRawMode"
-				@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
-			/>
-			<BubbleMenu
-				v-if="props.showToolbar === 'floating' && editor && !isRawMode"
-				:editor="editor"
-				:options="bubbleMenuOptions"
-				:append-to="getBubbleMenuContainer"
-				:class="$style.bubbleMenu"
-			>
-				<MarkdownEditorToolbar
-					:editor="editor"
-					:disabled="props.disabled || props.readonly"
-					:is-raw-mode="false"
-					mode="floating"
-					:variant="props.variant"
-					:allow-expanded-view="props.allowExpandedView"
-					:is-expanded-view="isExpandedViewOpen"
-					@update:is-raw-mode="toggleRawMode"
-					@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
-				/>
-			</BubbleMenu>
-			<div
-				v-if="props.allowExpandedView && props.showToolbar === 'floating'"
-				:class="[
-					$style.floatingExpandedViewButton,
-					isExpandedViewOpen ? $style.floatingExpandedViewButtonVisible : '',
-				]"
-			>
-				<N8nTooltip
-					:content="
-						t(
-							isExpandedViewOpen
-								? 'markdownEditor.closeExpandedView'
-								: 'markdownEditor.openExpandedView',
-						)
-					"
-				>
-					<N8nButton
-						size="small"
-						:icon="isExpandedViewOpen ? 'minimize-2' : 'maximize-2'"
-						icon-only
-						icon-size="medium"
-						variant="subtle"
-						:aria-label="
-							t(
-								isExpandedViewOpen
-									? 'markdownEditor.closeExpandedView'
-									: 'markdownEditor.openExpandedView',
-							)
-						"
-						@click="isExpandedViewOpen = !isExpandedViewOpen"
-					/>
-				</N8nTooltip>
-			</div>
-			<div v-if="shouldBeCollapsable && !isExpandedViewOpen" :class="$style.expandButtonContainer">
-				<N8nTooltip :content="expandButtonLabel">
-					<N8nButton
-						size="small"
-						:icon="expandButtonIcon"
-						icon-only
-						icon-size="medium"
-						variant="subtle"
-						:class="$style.expandButton"
-						:aria-label="expandButtonLabel"
-						@click="toggleCollapsed"
-					/>
-				</N8nTooltip>
-			</div>
-		</Teleport>
 	</div>
 </template>
 
@@ -470,12 +460,16 @@ defineExpose({
 @use '../../css/mixins/motion';
 @use '../../css/mixins/mixins' as scrollMixins;
 
+.root {
+	display: contents;
+}
+
 .bubbleMenu {
 	z-index: var.$index-popper;
 }
 
 .dialog {
-	--n8n-dialog-content--padding: 0;
+	--n8n-dialog-content--padding: var(--spacing--5xs) 0 0 0;
 	aspect-ratio: 1/1;
 	max-height: 75dvh;
 }

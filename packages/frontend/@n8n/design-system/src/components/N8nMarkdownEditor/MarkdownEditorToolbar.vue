@@ -14,6 +14,7 @@ import N8nText from '../N8nText';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import N8nTooltip from '../N8nTooltip';
+import MarkdownEditorExpandedViewButton from './MarkdownEditorExpandedViewButton.vue';
 import type { MarkdownEditorVariant, MarkdownEditorToolbarMode } from './MarkdownEditor.types';
 import { isUrl } from './markdownEditorUtils';
 
@@ -503,29 +504,10 @@ const setTextStyle = (value: string | number) => {
 				/>
 			</div>
 			<div v-if="allowExpandedView && mode !== 'floating'" :class="$style.expandedViewGroup">
-				<N8nTooltip
-					:content="
-						translate(
-							isExpandedView
-								? 'markdownEditor.closeExpandedView'
-								: 'markdownEditor.openExpandedView',
-						)
-					"
-				>
-					<N8nIconButton
-						:icon="isExpandedView ? 'minimize-2' : 'maximize-2'"
-						variant="ghost"
-						size="small"
-						:aria-label="
-							translate(
-								isExpandedView
-									? 'markdownEditor.closeExpandedView'
-									: 'markdownEditor.openExpandedView',
-							)
-						"
-						@click="emit('toggle-expanded-view')"
-					/>
-				</N8nTooltip>
+				<MarkdownEditorExpandedViewButton
+					:is-expanded-view="isExpandedView"
+					@toggle="emit('toggle-expanded-view')"
+				/>
 			</div>
 		</div>
 	</div>
