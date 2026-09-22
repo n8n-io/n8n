@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
-import { ExecutionResponseSender, noopResponseFrameSender } from '../../response-channel';
+import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import {
@@ -58,7 +58,7 @@ function makeHandler(
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 	onStepSuspended?: () => void,
-	responseSender: ExecutionResponseSender = new ExecutionResponseSender(noopResponseFrameSender),
+	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
