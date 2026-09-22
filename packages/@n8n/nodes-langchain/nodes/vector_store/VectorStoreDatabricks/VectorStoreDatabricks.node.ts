@@ -82,6 +82,8 @@ const sharedFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
+		// Metadata Columns shapes the documents a read returns; the write path ignores it
+		displayOptions: { show: { mode: ['load', 'retrieve', 'retrieve-as-tool'] } },
 		options: [
 			{
 				displayName: 'Metadata Columns',
@@ -254,7 +256,7 @@ async function getIndexColumns(this: ILoadOptionsFunctions): Promise<INodeProper
 	const source = embedding.kind === 'managed' ? embedding.sourceColumn : undefined;
 	const vector = embedding.kind === 'self' ? embedding.vectorColumn : undefined;
 	const columns = (info.schemaColumns ?? [])
-		.filter((column) => column !== source && column !== vector)
+		.filter((column) => column !== info.primaryKey && column !== source && column !== vector)
 		.map((column) => ({ name: column, value: column }));
 	return source
 		? [{ name: source, value: source, description: 'Embedding source column' }, ...columns]

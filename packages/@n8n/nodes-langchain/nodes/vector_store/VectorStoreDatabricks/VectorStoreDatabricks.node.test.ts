@@ -127,6 +127,7 @@ describe('VectorStoreDatabricks', () => {
 			);
 			expect(metadataColumns?.type).toBe('multiOptions');
 			expect(metadataColumns?.typeOptions?.loadOptionsMethod).toBe('getIndexColumns');
+			expect(options?.displayOptions?.show?.mode).toEqual(['load', 'retrieve', 'retrieve-as-tool']);
 		});
 	});
 
@@ -409,7 +410,7 @@ describe('VectorStoreDatabricks', () => {
 			return ctx;
 		};
 
-		it('lists the embedding source column first', async () => {
+		it('lists the embedding source column first and hides the primary key', async () => {
 			mockedDescribeIndex.mockResolvedValue({
 				name: 'cat.sch.idx',
 				primaryKey: 'id',
@@ -431,7 +432,6 @@ describe('VectorStoreDatabricks', () => {
 			});
 			expect(result).toEqual([
 				{ name: 'text', value: 'text', description: 'Embedding source column' },
-				{ name: 'id', value: 'id' },
 				{ name: 'source', value: 'source' },
 			]);
 		});
@@ -447,7 +447,6 @@ describe('VectorStoreDatabricks', () => {
 			const ctx = setupLoadOptionsContext('cat.sch.idx');
 
 			await expect(methods.loadOptions.getIndexColumns.call(ctx)).resolves.toEqual([
-				{ name: 'id', value: 'id' },
 				{ name: 'text', value: 'text' },
 			]);
 		});

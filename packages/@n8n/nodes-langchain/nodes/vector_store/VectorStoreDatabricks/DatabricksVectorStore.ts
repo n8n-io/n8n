@@ -227,6 +227,12 @@ export class DatabricksVectorStore extends VectorStore {
 				`Index ${index.name} uses self-managed embeddings. Select a content column`,
 			);
 		}
+		// The upsert row would write the document text over its own primary key
+		if (contentColumn === index.primaryKey) {
+			throw new UserError(
+				`Column ${contentColumn} is the primary key of ${index.name}. Select another content column`,
+			);
+		}
 		this.fetch = config.fetch;
 		this.host = config.host;
 		this.index = index;
