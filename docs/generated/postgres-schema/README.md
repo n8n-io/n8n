@@ -155,6 +155,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | ReturnType | Arguments | Type |
 | ---- | ------- | ------- | ---- |
 | public.increment_workflow_version | trigger |  | FUNCTION |
+| public.prevent_deployment_key_delete | trigger |  | FUNCTION |
 | public.uuid_generate_v1 | uuid |  | FUNCTION |
 | public.uuid_generate_v1mc | uuid |  | FUNCTION |
 | public.uuid_generate_v3 | uuid | namespace uuid, name text | FUNCTION |
