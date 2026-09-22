@@ -29,6 +29,9 @@ const props = defineProps<{
 	loading?: boolean;
 	/** Already-translated message shown below the tag list. */
 	error?: string | null;
+	/** Hide the "Disabled" option — for callers that wrap the selector in a
+	 * toggle that already handles enable/disable. */
+	hideDisabledOption?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -42,11 +45,17 @@ const i18n = useI18n();
 const approvalMode = ref<ApprovalMode>('disabled');
 const selectedEntries = ref<string[]>([]);
 
-const modeOptions = computed(() => [
-	{ label: i18n.baseText('agents.toolConfig.mcpApproval.disabled'), value: 'disabled' },
-	{ label: i18n.baseText('agents.toolConfig.mcpApproval.askAll'), value: 'global' },
-	{ label: i18n.baseText('agents.toolConfig.mcpApproval.askSelected'), value: 'selected' },
-]);
+const modeOptions = computed(() => {
+	const all = [
+		{ label: i18n.baseText('agents.toolConfig.mcpApproval.disabled'), value: 'disabled' as const },
+		{ label: i18n.baseText('agents.toolConfig.mcpApproval.askAll'), value: 'global' as const },
+		{
+			label: i18n.baseText('agents.toolConfig.mcpApproval.askSelected'),
+			value: 'selected' as const,
+		},
+	];
+	return props.hideDisabledOption ? all.filter((option) => option.value !== 'disabled') : all;
+});
 
 const isValid = computed(
 	() => approvalMode.value !== 'selected' || selectedEntries.value.length > 0,

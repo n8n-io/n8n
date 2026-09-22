@@ -118,6 +118,7 @@ function handleToggle(value: boolean) {
 			:label="i18n.baseText('agents.channels.approval.actions.label')"
 			:hint="i18n.baseText('agents.channels.approval.actions.hint')"
 			:placeholder="i18n.baseText('agents.channels.approval.actions.placeholder')"
+			hide-disabled-option
 			test-id-prefix="agent-channel-approval"
 			@update:model-value="emit('update:modelValue', $event)"
 		/>

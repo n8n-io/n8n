@@ -63,7 +63,12 @@ const OPTIONS: ApprovalEntryOption[] = [
 function renderComponent({
 	modelValue,
 	options = OPTIONS,
-}: { modelValue?: AgentApproval; options?: ApprovalEntryOption[] } = {}) {
+	hideDisabledOption = false,
+}: {
+	modelValue?: AgentApproval;
+	options?: ApprovalEntryOption[];
+	hideDisabledOption?: boolean;
+} = {}) {
 	return mount(AgentApprovalSelector, {
 		props: {
 			modelValue,
@@ -72,6 +77,7 @@ function renderComponent({
 			hint: 'hint',
 			placeholder: 'placeholder',
 			testIdPrefix: 'approval',
+			hideDisabledOption,
 		},
 	});
 }
@@ -168,5 +174,20 @@ describe('AgentApprovalSelector', () => {
 
 		await pickMode(wrapper, 'selected');
 		expect(wrapper.text()).toContain('Could not load');
+	});
+
+	it('hides the disabled option when the caller wraps it in a toggle', () => {
+		const wrapper = renderComponent({
+			modelValue: { mode: 'global' },
+			hideDisabledOption: true,
+		});
+
+		const offered = wrapper
+			.find('[data-testid="approval-mode"]')
+			.findAll('[data-value]')
+			.map((option) => option.attributes('data-value'));
+
+		expect(offered).not.toContain('disabled');
+		expect(offered).toEqual(['global', 'selected']);
 	});
 });
