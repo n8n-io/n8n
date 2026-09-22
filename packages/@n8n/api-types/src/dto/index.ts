@@ -136,6 +136,8 @@ export {
 	UpdateCredentialPublicDto,
 	DeleteCredentialPublicDto,
 	TransferCredentialPublicDto,
+	CredentialTestPublicDto,
+	CredentialSchemaPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
@@ -260,11 +262,17 @@ export {
 	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
 	folderPublicSchema,
+	UpdateFolderPublicDto,
+	UpdatedFolderPublicDto,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export {
+	InsightsSummaryPublicDto,
+	InsightsSummaryQueryPublicDto,
+} from './insights/insights-summary-public.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
@@ -290,29 +298,29 @@ export type {
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
-} from './node-type-policies/policy-rule.types';
-export { policySelectorSchema } from './node-type-policies/policy-selector.schema';
+} from './type-availability-policies/policy-rule.types';
+export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
 export {
 	nonDelegatingPolicyActionSchema,
 	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
 	policyRuleListSchema,
 	policyRuleSchema,
-} from './node-type-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './node-type-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
-export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+} from './type-availability-policies/policy-rule.schema';
+export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
+export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
+export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
+export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
 	ListNodeTypePolicyDocumentsQueryDto,
-	NodeTypePolicyAttachmentsPublicDto,
-	NodeTypePolicyDocumentListPublicDto,
-	NodeTypePolicyDocumentPublicDto,
-	NodeTypePolicyDocumentWriteResultPublicDto,
-	NodeTypePolicyEffectivePublicDto,
-	NodeTypePolicyEffectiveWriteResultPublicDto,
-} from './node-type-policies/node-type-policy-public.dto';
+	PolicyAttachmentsPublicDto,
+	PolicyDocumentListPublicDto,
+	PolicyDocumentPublicDto,
+	PolicyDocumentWriteResultPublicDto,
+	PolicyEffectivePublicDto,
+	PolicyEffectiveWriteResultPublicDto,
+} from './type-availability-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -526,15 +534,18 @@ export {
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export {
+	PromotionChangesDto,
 	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotableResourceType,
 	type PromoteRequest,
+	type PromotionChanges,
 } from './promotions/promotable-resource.dto';
 
 export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
@@ -572,15 +583,21 @@ export {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionApplyConfigPublicSchema,
+	promotionConfigCheckoutSchema,
 	promotionConfigSettingsSchema,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 	promotionDirectionSchema,
 	promotionGitApplySettingsSchema,
 	promotionGitPromoteSettingsSchema,
 	promotionGitSettingsSchemas,
+	promotionApplyConfigSummarySchema,
+	promotionPromoteConfigSummarySchema,
 	promotionPromoteConfigPublicSchema,
+	type PromotionConfigCheckout,
 	type PromotionConfigSettings,
 	type PromotionConnectionConfigsPublic,
+	type PromotionConnectionConfigsSummary,
 	type PromotionDirection,
 } from './promotions/promotion-config.dto';
 export {
@@ -599,12 +616,16 @@ export {
 	promotionConnectionProjectPublicSchema,
 	promotionConnectionPublicSchema,
 	promotionConnectionScopeSchema,
+	promotionConnectionSummarySchema,
 	promotionConnectionTargetSchema,
+	type PromotionConnectionSummary,
 	type PromotionConnectionScope,
 	type PromotionConnectionTarget,
 } from './promotions/promotion-connection.dto';
 export {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,

@@ -1,4 +1,4 @@
-import { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import { CreateFolderDto, DeleteFolderDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -32,7 +32,6 @@ const handleError = (error: unknown) => {
 type FolderHandlers = {
 	createFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	deleteFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
-	updateFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
 };
 
 const folderHandlers: FolderHandlers = {
@@ -79,30 +78,6 @@ const folderHandlers: FolderHandlers = {
 			try {
 				await Container.get(FolderService).deleteFolder(req.user, folderId, projectId, query.data);
 				return res.status(204).send();
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	updateFolder: [
-		isLicensed('feat:folders'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'folder:update' }),
-		async (req, res) => {
-			const { projectId } = req.params;
-			await assertProjectScope(req.user, projectId, ['folder:update']);
-
-			const payload = UpdateFolderDto.safeParse(req.body);
-			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
-			}
-
-			try {
-				const folder = await Container.get(FolderService).updateFolder(
-					req.params.folderId,
-					projectId,
-					payload.data,
-				);
-				return res.json(folder);
 			} catch (error) {
 				return handleError(error);
 			}

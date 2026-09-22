@@ -3,7 +3,7 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_INSTANCE_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
@@ -52,13 +52,16 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import { McpConfig } from './mcp.config';
 import {
+	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -81,6 +84,14 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import {
+	createGetInstanceContextTool,
+	GET_INSTANCE_CONTEXT_TOOL_NAME,
+	instanceContextText,
+	INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+	INSTANCE_CONTEXT_RESOURCE_URI,
+	readInstanceContext,
+} from './tools/get-instance-context.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -133,10 +144,10 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
-/** Per-user resolution of every PostHog-gated MCP feature. */
+/** User experience gates and the shared instance activity gate. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/** The instance-context read surface: the activity tools and node-usage. */
+	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
@@ -242,25 +253,22 @@ export class McpService {
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly mcpConfig: McpConfig,
 	) {}
 
-	/**
-	 * Resolves every PostHog-gated MCP feature for a user with a single flags
-	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog.
-	 */
+	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpInstanceContextEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
-		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
-		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
-		// surfacing as `unassigned`).
-		const flags = await this.postHogClient.getFeatureFlags(user);
+		const [userFlags, instanceFlag] = await Promise.allSettled([
+			this.postHogClient.getFeatureFlags(user),
+			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+		]);
+		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			instanceContextEnabled:
-				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
+			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			// Multivariate flag: only the `variant` arm enables the feature.
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
@@ -434,9 +442,11 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
-		// Same rationale again: never point a caller at a tool it cannot see. Gates the sentence
-		// only; registration below goes through `registerIfAllowed` like every other tool. No
-		// RBAC check: a user's own preferences need no scope.
+		// Same rationale again: a grant that cannot reach the instance-context tools is not told
+		// to start by calling them, and does not get the resource that carries the same data.
+		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
+		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
+		// other tool. No RBAC check: a user's own preferences need no scope.
 		const userPreferencesInstructionsEnabled =
 			featureFlags.aiPreferencesEnabled &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
@@ -447,6 +457,10 @@ export class McpService {
 			},
 			{
 				instructions: getMcpInstructions({
+					isInstanceContextEnabled:
+						featureFlags.instanceContextEnabled &&
+						this.moduleRegistry.isActive('instance-ai') &&
+						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
@@ -607,17 +621,13 @@ export class McpService {
 			// permission, so the reader treats it as one half of the credential gate and resolves the
 			// caller's real access for the other half.
 			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
-
-			// The two activity tools also need the log to be *written*. `N8N_ACTIVITY_LOG_ENABLED`
-			// is off by default, and a tool that answers from a store nothing writes to reports an
-			// empty feed — which an agent reads as "nothing has happened here", the exact wrong
-			// conclusion. The inventory and run legs do not come from the log, so the context tool
-			// and node-usage stay available either way.
-			const activityLogWritten = this.globalConfig.activityLog.enabled;
+			// Same shape, for the run leg: it ships run counts and the id of the last failure, and
+			// every other execution read here sits behind `execution:read`.
+			const executionGranted = allowedToolNames?.has('get_workflow_execution') ?? true;
 
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (activityLogWritten && this.moduleRegistry.isActive('instance-ai')) {
+			if (this.moduleRegistry.isActive('instance-ai')) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);
@@ -626,11 +636,65 @@ export class McpService {
 				registerIfAllowed(
 					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
 						credentialGranted,
+						executionGranted,
 					}),
 				);
 				registerIfAllowed(
 					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
 						credentialGranted,
+						executionGranted,
+					}),
+				);
+
+				// The opening context, offered three ways because an MCP client has no turn to have
+				// it injected into: a resource for clients that read resources, a tool for the rest,
+				// and a line in the server instructions naming both.
+				//
+				// The resource carries the same instance data as the tool, so it follows the same
+				// scope gate — `registerResource` does no filtering of its own, and the resources
+				// that predate this one are static documents that needed none. Mirrors
+				// `McpAgentToolsService`, which gates its reference resource on its reference tool.
+				if (contextToolsAllowed) {
+					registerResource({
+						name: 'instance-context',
+						uri: INSTANCE_CONTEXT_RESOURCE_URI,
+						config: {
+							description: INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+							mimeType: 'text/plain',
+							// Per-user data: never cache it across callers. The SDK defaults to this
+							// today, so this states the requirement rather than changing behaviour.
+							cacheHint: { ttlMs: 0, cacheScope: 'private' },
+						},
+						read: async () => {
+							// The tool beside this emits `USER_CALLED_MCP_TOOL_EVENT`; without the same
+							// event here the resource is invisible, and it is the path the instructions
+							// send resource-reading clients to first. Same event with the surface on it
+							// beats a second event name.
+							const read = await readInstanceContext(user, instanceContext, {
+								executionGranted,
+							});
+							this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, {
+								user_id: user.id,
+								tool_name: GET_INSTANCE_CONTEXT_TOOL_NAME,
+								parameters: { surface: 'resource' },
+								results: { success: true, data: { outcome: read.kind } },
+							});
+
+							return {
+								contents: [
+									{
+										uri: INSTANCE_CONTEXT_RESOURCE_URI,
+										mimeType: 'text/plain',
+										text: instanceContextText(read),
+									},
+								],
+							};
+						},
+					});
+				}
+				registerIfAllowed(
+					createGetInstanceContextTool(user, instanceContext, this.telemetry, {
+						executionGranted,
 					}),
 				);
 			}
@@ -715,6 +779,68 @@ export class McpService {
 		return server;
 	}
 
+	/**
+	 * Whether `install_community_node` will really register for this session:
+	 * instance availability plus a grant that carries the install scope. Also
+	 * steers the uninstalled-node warnings, so the agent is only pointed at the
+	 * tool when this session can call it.
+	 */
+	private async isInstallToolAvailable(
+		user: User,
+		allowedToolNames: Set<string> | undefined,
+	): Promise<boolean> {
+		// This tool alone requires a scope-bearing credential. `undefined` means
+		// the caller authenticated with an API key or a legacy token, which grants
+		// every other tool by default; honouring that default here would let a key
+		// minted before this feature existed gain the ability to install code on
+		// the instance, with no consent screen and no action by its holder.
+		if (!allowedToolNames?.has(INSTALL_COMMUNITY_NODE_TOOL.toolName)) return false;
+
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		return isCommunityNodeInstallAvailable(
+			this.moduleRegistry,
+			Container.get(CommunityPackagesConfig),
+			this.globalConfig,
+			this.mcpConfig,
+			user,
+		);
+	}
+
+	/**
+	 * Register the community-package install tool, when it is available at all.
+	 * See {@link isCommunityNodeInstallAvailable} for why the gate sits here
+	 * rather than in the handler.
+	 */
+	private async registerInstallCommunityNodeTool(
+		user: User,
+		registerIfAllowed: RegisterToolFn,
+		installToolAvailable: boolean,
+	): Promise<void> {
+		if (!installToolAvailable) return;
+
+		const [{ CommunityNodeTypesService }, { CommunityPackagesLifecycleService }] =
+			await Promise.all([
+				import('@/modules/community-packages/community-node-types.service.js'),
+				import('@/modules/community-packages/community-packages.lifecycle.service.js'),
+			]);
+
+		const { createInstallCommunityNodeTool } = await import(
+			'./tools/workflow-builder/install-community-node.tool.js'
+		);
+
+		registerIfAllowed(
+			createInstallCommunityNodeTool(
+				user,
+				Container.get(CommunityNodeTypesService),
+				Container.get(CommunityPackagesLifecycleService),
+				this.nodeTypes,
+				this.telemetry,
+			),
+		);
+	}
+
 	private async registerBuilderTools(
 		server: McpServer,
 		user: User,
@@ -727,11 +853,24 @@ export class McpService {
 	) {
 		await this.nodeCatalogService.initialize();
 
+		// Only surfaces that can follow up with an install step opt into the
+		// verified-but-uninstalled tier.
+		const communityNodeDiscovery = this.mcpConfig.communityNodeDiscoveryEnabled;
+		const installToolAvailable = await this.isInstallToolAvailable(user, allowedToolNames);
+		const uninstalledNodeOptions = communityNodeDiscovery
+			? {
+					findUninstalledNodeTypes: async (nodeTypes: string[]) =>
+						await this.nodeCatalogService.findUninstalledNodeTypes(nodeTypes),
+					installToolAvailable,
+				}
+			: {};
+
 		const searchNodesTool = createSearchWorkflowNodesTool(
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
 			this.aiGatewayService,
+			communityNodeDiscovery,
 		);
 		registerIfAllowed(searchNodesTool);
 
@@ -740,6 +879,7 @@ export class McpService {
 			this.nodeCatalogService,
 			this.telemetry,
 			this.aiGatewayService,
+			communityNodeDiscovery,
 		);
 		registerIfAllowed(getNodeTypesTool);
 
@@ -770,6 +910,7 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
+			uninstalledNodeOptions,
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -874,6 +1015,7 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
+			uninstalledNodeOptions,
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -888,6 +1030,8 @@ export class McpService {
 			this.collaborationService,
 		);
 		registerIfAllowed(restoreVersionTool);
+
+		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

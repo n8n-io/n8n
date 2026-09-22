@@ -4,10 +4,15 @@ import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { N8nEmptyState } from '@n8n/design-system';
+import type * as AgentBuilderSessionModule from '@/features/agents/composables/useAgentBuilderSession';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
-import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	EXECUTIONS_SECTION_KEY,
+} from '../constants';
 
 interface SessionThread {
 	id: string;
@@ -19,6 +24,8 @@ const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const sessionThreads = reactive<SessionThread[]>([]);
 const pushListeners = new Set<(event: PushMessage) => void>();
+const agentPermissions = vi.hoisted(() => ({ canUpdate: { value: true } }));
+const deleteSession = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: routeParams, query: {} }),
@@ -75,6 +82,21 @@ vi.mock('@/features/agents/composables/useAgentConfig', () => ({
 	}),
 }));
 
+vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => agentPermissions,
+}));
+
+vi.mock('@/features/agents/composables/useAgentBuilderSession', async (importOriginal) => {
+	const actual = await importOriginal<typeof AgentBuilderSessionModule>();
+	return {
+		...actual,
+		useAgentBuilderSession: (...args: Parameters<typeof actual.useAgentBuilderSession>) => ({
+			...actual.useAgentBuilderSession(...args),
+			deleteSession,
+		}),
+	};
+});
+
 /** Mimic the backend recording a turn for `threadId`. */
 function emitExecutionUpdate(threadId: string) {
 	const event: PushMessage = {
@@ -86,6 +108,8 @@ function emitExecutionUpdate(threadId: string) {
 
 describe('AgentSessionTimelineView', () => {
 	beforeEach(() => {
+		agentPermissions.canUpdate.value = true;
+		deleteSession.mockClear();
 		routeParams.threadId = 'thread-a';
 		sessionThreads.splice(
 			0,
@@ -97,6 +121,39 @@ describe('AgentSessionTimelineView', () => {
 			'thread-b' as unknown as ReturnType<typeof globalThis.crypto.randomUUID>,
 		);
 	});
+
+	it('uses update permission for preview session deletion', async () => {
+		agentPermissions.canUpdate.value = false;
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		await flushPromises();
+
+		expect(wrapper.findComponent(AgentPreviewDock).props('canDeleteSession')).toBe(false);
+	});
+
+	it.each([
+		{ kind: 'current', sessionId: 'thread-a', shouldRedirect: true },
+		{ kind: 'non-current', sessionId: 'thread-c', shouldRedirect: false },
+	])(
+		'deletes a $kind preview session and redirects when needed',
+		async ({ sessionId, shouldRedirect }) => {
+			const wrapper = shallowMount(AgentSessionTimelineView);
+			await flushPromises();
+
+			wrapper.findComponent(AgentPreviewDock).vm.$emit('delete-session', sessionId);
+			await flushPromises();
+
+			expect(deleteSession).toHaveBeenCalledExactlyOnceWith(sessionId);
+			if (shouldRedirect) {
+				expect(routerReplace).toHaveBeenCalledExactlyOnceWith({
+					name: AGENT_BUILDER_VIEW,
+					params: { projectId: 'p1', agentId: 'a1' },
+					query: { section: EXECUTIONS_SECTION_KEY },
+				});
+			} else {
+				expect(routerReplace).not.toHaveBeenCalled();
+			}
+		},
+	);
 
 	afterEach(() => {
 		vi.restoreAllMocks();

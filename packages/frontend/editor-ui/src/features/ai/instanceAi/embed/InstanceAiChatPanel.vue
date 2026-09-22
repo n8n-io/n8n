@@ -23,7 +23,7 @@ import {
 } from 'vue';
 import { useRouter } from 'vue-router';
 import type { InstanceAiHandoffContext, InstanceAiThreadSummary } from '@n8n/api-types';
-import { N8nHeading, N8nIconButton } from '@n8n/design-system';
+import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
@@ -385,6 +385,9 @@ const ThreadScope = defineComponent({
 				// defined inside the panel's own `<script setup>`, and this is the
 				// only place that can reach the mounted conversation for `handoff()`.
 				ref: conversationRef,
+				// Forward the live subject so the chat-input context chip follows a
+				// host rename instead of the snapshot stashed at thread mint.
+				subject: props.subject,
 				beforeSend: props.beforeSend,
 				onThreadMissing: () => scopeEmit('thread-missing'),
 			});
@@ -406,34 +409,52 @@ const ThreadScope = defineComponent({
 				</N8nHeading>
 			</template>
 			<template #actions>
-				<N8nIconButton
-					icon="plus"
-					variant="ghost"
-					size="small"
-					icon-size="large"
-					:disabled="building"
-					:aria-label="i18n.baseText('instanceAi.thread.new')"
-					data-test-id="instance-ai-embed-new-thread"
-					@click="onNewThreadRequested"
-				/>
-				<N8nIconButton
-					icon="external-link"
-					variant="ghost"
-					size="small"
-					icon-size="large"
-					:aria-label="i18n.baseText('instanceAi.embed.openFullAssistant')"
-					data-test-id="instance-ai-embed-open-full"
-					@click="openFullAssistant"
-				/>
-				<N8nIconButton
-					icon="x"
-					variant="ghost"
-					size="small"
-					icon-size="large"
-					:aria-label="i18n.baseText('instanceAi.embed.close')"
-					data-test-id="instance-ai-embed-close"
-					@click="emit('close')"
-				/>
+				<N8nTooltip
+					:content="i18n.baseText('instanceAi.thread.new')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nIconButton
+						icon="message-circle-plus"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:disabled="building"
+						:aria-label="i18n.baseText('instanceAi.thread.new')"
+						data-test-id="instance-ai-embed-new-thread"
+						@click="onNewThreadRequested"
+					/>
+				</N8nTooltip>
+				<N8nTooltip
+					:content="i18n.baseText('instanceAi.embed.openFullAssistant')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nIconButton
+						icon="external-link"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:aria-label="i18n.baseText('instanceAi.embed.openFullAssistant')"
+						data-test-id="instance-ai-embed-open-full"
+						@click="openFullAssistant"
+					/>
+				</N8nTooltip>
+				<N8nTooltip
+					:content="i18n.baseText('instanceAi.embed.close')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:aria-label="i18n.baseText('instanceAi.embed.close')"
+						data-test-id="instance-ai-embed-close"
+						@click="emit('close')"
+					/>
+				</N8nTooltip>
 			</template>
 		</InstanceAiViewHeader>
 		<div :class="$style.body">
