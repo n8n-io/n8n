@@ -344,9 +344,9 @@ const activeToolAnnouncement = computed(() => {
 	if (!activeListRow.value) return '';
 
 	const title =
-		activeListRow.value.key === 'create-workflow'
-			? i18n.baseText('generic.create.workflow')
-			: activeListRow.value.item.title;
+		'item' in activeListRow.value
+			? activeListRow.value.item.title
+			: i18n.baseText('generic.create.workflow');
 
 	return i18n.baseText('tools.connection.search.activeItem', {
 		interpolate: {
@@ -376,7 +376,7 @@ function handleNavigateListIndex(delta: number) {
 function activateActiveListRow() {
 	if (!activeListRow.value) return;
 
-	if (activeListRow.value.key === 'create-workflow') {
+	if (!('item' in activeListRow.value)) {
 		emit('create-workflow');
 		return;
 	}
@@ -443,7 +443,7 @@ function onPointerMoveListRow(event: PointerEvent, row: NavigableRow) {
 		v-bind="fixedProps"
 		size="xlarge"
 		:open="open"
-		:aria-label="isDefaultView ? modalTitle : detailItem?.name"
+		:aria-label="isDefaultView ? modalTitle : detailItem?.title"
 		data-test-id="tools-connection-modal"
 		:class="$style.modal"
 		@keydown="onNavigationKeyPress"
