@@ -16,7 +16,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto, AiPreferenceDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -704,8 +704,30 @@ export class InstanceAiAdapterService {
 		return {
 			create: async ({ content, scope }) => {
 				const textLength = content.length;
+				// Only the write sits in the try: a telemetry fault after a committed row
+				// must not turn into `ok: false`, or the model reports a failed save and
+				// a retry runs into the duplicate check.
+				let dto: AiPreferenceDto;
 				try {
-					const dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
+					dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
+				} catch (error) {
+					const rejection = toPreferenceWriteRejection(error);
+					// The three mapped classes are expected outcomes with their own
+					// user-facing text. Anything else is a real fault whose message stays
+					// internal, so it must not go unlogged.
+					if (rejection.reason === 'failed') {
+						this.logger.error('Saving an AI preference from the assistant failed', { error });
+					}
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+						surface: 'aia',
+						reason: rejection.reason,
+						scope_type: scope,
+						text_length: textLength,
+					});
+					return { ok: false, ...rejection };
+				}
+
+				try {
 					// Write-first: the card is the confirmation, shown after the write, and
 					// doing nothing is agreement, so shown and resolved(accepted) fire together.
 					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN, {
@@ -731,23 +753,10 @@ export class InstanceAiAdapterService {
 						text_length: textLength,
 						replaced_existing: false,
 					});
-					return { ok: true, preference: { id: dto.id, content: dto.content, scope } };
 				} catch (error) {
-					const rejection = toPreferenceWriteRejection(error);
-					// The three mapped classes are expected outcomes with their own
-					// user-facing text. Anything else is a real fault whose message stays
-					// internal, so it must not go unlogged.
-					if (rejection.reason === 'failed') {
-						this.logger.error('Saving an AI preference from the assistant failed', { error });
-					}
-					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
-						surface: 'aia',
-						reason: rejection.reason,
-						scope_type: scope,
-						text_length: textLength,
-					});
-					return { ok: false, ...rejection };
+					this.logger.warn('Preference telemetry failed after the row was saved', { error });
 				}
+				return { ok: true, preference: { id: dto.id, content: dto.content, scope } };
 			},
 			recordRejection: (reason, textLength) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
