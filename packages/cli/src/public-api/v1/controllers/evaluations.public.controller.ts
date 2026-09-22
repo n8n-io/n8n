@@ -1,7 +1,9 @@
 import {
+	CancelledTestRunPublicDto,
 	CreatedTestRunPublicDto,
 	ListTestRunsQueryPublicDto,
 	TestRunListPublicDto,
+	testRunIdParamSchema,
 	workflowIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
@@ -128,6 +130,41 @@ export class EvaluationsPublicController {
 			status: testRun.status,
 			createdAt: testRun.createdAt.toISOString(),
 		};
+	}
+
+	@Post('/:runId/cancel')
+	@ApiKeyScope('testRun:cancel')
+	@ProjectScope('workflow:execute')
+	@ApiSummary('Cancel a test run')
+	@ApiDescription(
+		'Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project ' +
+			'scope in addition to the `testRun:cancel` API key scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(202, CancelledTestRunPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async cancelTestRun(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('runId', testRunIdParamSchema) runId: string,
+	): Promise<CancelledTestRunPublicDto> {
+		this.assertEvaluationsEnabled();
+
+		// Scoped lookup: a run from another workflow returns null (→ 404), so a
+		// caller can't reach another workflow's runs by guessing ids.
+		const testRun = await this.evaluationTestRunService.findOneByIdAndWorkflowId(runId, workflowId);
+		if (!testRun) throw new NotFoundError('Test run not found');
+
+		// `canBeCancelled` returns true when the run is in a terminal state.
+		if (this.testRunnerService.canBeCancelled(testRun)) {
+			throw new ConflictError(`The test run "${runId}" cannot be cancelled`);
+		}
+
+		await this.testRunnerService.cancelTestRun(runId);
+
+		return { id: runId, status: 'cancelled' };
 	}
 
 	// The quota doubles as the feature flag: 0 = disabled. Cheap in-memory gate.

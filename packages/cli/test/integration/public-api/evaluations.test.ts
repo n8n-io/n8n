@@ -442,6 +442,18 @@ describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
 		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
 	});
 
+	test('should return 404 for an unknown workflow', async () => {
+		// A member holds no global workflow scope, so the scope check has to look the workflow up.
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		const response = await memberAgent.post('/workflows/does-not-exist/test-runs/run-1/cancel');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
+		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
+	});
+
 	test('should return 403 when evaluations are not licensed (quota 0)', async () => {
 		testServer.license.setQuota(LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT, 0);
 		const workflow = await createWorkflow(undefined, owner);

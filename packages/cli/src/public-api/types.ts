@@ -46,7 +46,6 @@ export declare namespace TestRunRequest {
 			lastId?: string;
 		}
 	>;
-	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
 export declare namespace WorkflowRequest {

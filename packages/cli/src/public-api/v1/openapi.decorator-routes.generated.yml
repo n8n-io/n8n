@@ -32,6 +32,9 @@ paths:
       $ref: ./handlers/workflows/spec/paths/getTestRuns.generated.yml
     post:
       $ref: ./handlers/workflows/spec/paths/createTestRun.generated.yml
+  /workflows/{workflowId}/test-runs/{runId}/cancel:
+    post:
+      $ref: ./handlers/workflows/spec/paths/cancelTestRun.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
