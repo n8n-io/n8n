@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_1211055aa32911::t_0fa773e39b9258 641,645,649-650
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_1211055aa32911::t_0fa773e39b9258 140,143,591,593-597
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModalMultiStep.vue
+  s_1211055aa32911::t_7b33f8c2dae6e9 91-93
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/AgentModalTestStub.ts
+  s_1211055aa32911::t_0fa773e39b9258 12,56-60,63-75,91,109
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_1211055aa32911::t_0fa773e39b9258 73-75
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewButton.vue
+  s_1211055aa32911::t_0fa773e39b9258 14,21,73
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_1211055aa32911::t_0fa773e39b9258 62-64,185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fb8961cfa5fdd48d43414820ae2b0fbfd89854b0",
+  "prompts": {},
+  "sessions": {
+    "s_1211055aa32911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c500-f15a-7422-92f7-4133f49bfe35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
