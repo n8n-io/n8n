@@ -1,4 +1,12 @@
-import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	onScopeDispose,
+	ref,
+	shallowReactive,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
@@ -11,6 +19,8 @@ import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
 import {
 	createWorkflowDocumentId,
 	deriveHomeProject,
@@ -49,6 +59,8 @@ export function useWorkflowSetupItems(
 ) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
+	const oauth = useCredentialOAuth();
+	const oauthConnections = shallowReactive(new Map<string, boolean | undefined>());
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsLoadedForWorkflow = ref<string>();
@@ -177,6 +189,54 @@ export function useWorkflowSetupItems(
 		if (docStore?.hydrated) return docStore.allNodes;
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
+
+	const boundOAuthCredentials = computed(() => {
+		const ids = new Set(
+			(workflowNodes.value ?? []).flatMap((node) =>
+				Object.values(node.credentials ?? {}).map((credential) => credential.id),
+			),
+		);
+		return [...ids].flatMap((id) => {
+			const credential = getBoundCredential(id);
+			return credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)
+				? [credential]
+				: [];
+		});
+	});
+	watch(
+		[() => toValue(workflowId), boundOAuthCredentials],
+		async ([, credentials], _previous, onCleanup) => {
+			let stale = false;
+			onCleanup(() => {
+				stale = true;
+			});
+			oauthConnections.clear();
+			await Promise.all(
+				credentials.map(async (credential) => {
+					let connected: boolean | undefined = false;
+					try {
+						const loaded = await credentialsStore.getCredentialData({ id: credential.id });
+						const data = loaded?.data;
+						if (data && typeof data === 'object') {
+							// Other grants obtain tokens without a user sign-in.
+							connected =
+								Boolean(
+									data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
+								) || hasOAuthTokenData(loaded);
+						} else {
+							// ponytail: Shared credentials without data keep the existing completion behavior.
+							// Add a scoped status API if setup must verify their authorization.
+							connected = undefined;
+						}
+					} catch {
+						// A failed read cannot confirm completion. Retry on the next credential refresh.
+					}
+					if (!stale) oauthConnections.set(credential.id, connected);
+				}),
+			);
+		},
+		{ immediate: true },
+	);
 
 	/**
 	 * Node state is available from a hydrated canvas store or the fetched
@@ -313,17 +373,22 @@ export function useWorkflowSetupItems(
 		return items;
 	});
 
+	function getBoundCredential(credentialId: string | null | undefined) {
+		const id = toValue(workflowId);
+		return credentialId
+			? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
+					? credentialsStore.getUsableCredentialById(credentialId)
+					: undefined) ?? credentialsStore.getCredentialById(credentialId))
+			: undefined;
+	}
+
 	function isCredentialConfigured(assigned: INodeCredentialsDetails | string | undefined): boolean {
 		if (!isBoundCredential(assigned)) return false;
-		const id = toValue(workflowId);
-		const credential =
-			typeof assigned !== 'string' && assigned?.id
-				? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
-						? credentialsStore.getUsableCredentialById(assigned.id)
-						: undefined) ?? credentialsStore.getCredentialById(assigned.id))
-				: undefined;
-		if (credential?.oauthContext && credential.oauthContext.connectionStatus !== 'connected')
-			return false;
+		const credential = getBoundCredential(typeof assigned !== 'string' ? assigned?.id : undefined);
+		if (credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)) {
+			// Wait for the redacted token flag. Missing data remains unknown for shared credentials.
+			return oauthConnections.has(credential.id) && oauthConnections.get(credential.id) !== false;
+		}
 		return !credential?.isResolvable || credential.connectedByMe !== false;
 	}
 

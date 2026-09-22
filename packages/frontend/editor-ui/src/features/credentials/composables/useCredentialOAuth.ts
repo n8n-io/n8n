@@ -239,10 +239,7 @@ export function useCredentialOAuth() {
 
 	async function isConnected(credentialId: string): Promise<boolean> {
 		try {
-			const credential = await credentialsStore.getCredentialData({ id: credentialId });
-			return credential?.oauthContext
-				? credential.oauthContext.connectionStatus === 'connected'
-				: hasOAuthTokenData(credential);
+			return hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credentialId }));
 		} catch {
 			return false;
 		}

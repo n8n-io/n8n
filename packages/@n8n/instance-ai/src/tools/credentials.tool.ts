@@ -346,11 +346,7 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z
-		.literal('get')
-		.describe(
-			'Get credential metadata by ID, including OAuth mode and authorization state. Check this before troubleshooting an OAuth error.',
-		),
+	action: z.literal('get').describe('Get credential metadata by ID'),
 	credentialId: credentialIdField,
 });
 

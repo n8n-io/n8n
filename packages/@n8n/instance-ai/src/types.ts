@@ -15,7 +15,6 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
-	CredentialOAuthContext,
 	AgentSkill,
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
@@ -342,7 +341,6 @@ export interface CredentialSummary {
 }
 
 export interface CredentialDetail extends CredentialSummary {
-	oauthContext?: CredentialOAuthContext;
 	// NOTE: never include decrypted credential data
 	nodesWithAccess?: Array<{ nodeType: string }>;
 }

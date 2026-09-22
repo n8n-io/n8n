@@ -91,13 +91,11 @@ const accounts = [
 		id: 'cred-1',
 		name: 'First account',
 		type: 'slackApi',
-		oauthContext: undefined,
 	}),
 	mock<ICredentialsResponse>({
 		id: 'cred-2',
 		name: 'Second account',
 		type: 'slackApi',
-		oauthContext: undefined,
 	}),
 ];
 

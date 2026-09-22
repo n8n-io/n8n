@@ -283,9 +283,6 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
 		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
 		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
-		credential.oauthContext
-			? `- Selected OAuth mode: ${credential.oauthContext.mode}. Connection state: ${credential.oauthContext.connectionStatus}.`
-			: '',
 		placeholderTitles.length
 			? `- The credential form is fully pre-filled from a recipe; the user only pastes: ${placeholderTitles.map((title) => `"${title}"`).join(', ')}.`
 			: '',

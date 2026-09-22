@@ -94,6 +94,8 @@ function createForm() {
 		isOAuthType: computed(
 			() => mocks.isOAuth() && credentialData.value.grantType !== 'clientCredentials',
 		),
+		managedOAuthAvailable: computed(() => mocks.canQuickConnect()),
+		isManagedOAuthMode: computed(() => mocks.isOAuth() && mocks.canQuickConnect()),
 		setCredentialPropertyDefaults: vi.fn(),
 		requiredPropertiesFilled: computed(() => Boolean(credentialData.value.apiKey)),
 		showValidationWarning: ref(false),
@@ -167,7 +169,6 @@ const item = {
 } as const;
 const node = createTestNode({ name: 'Service', type: 'test.service' });
 const savedCredential = mock<ICredentialsResponse>({
-	oauthContext: undefined,
 	isResolvable: false,
 	id: 'new-credential',
 	name: 'Service account',
@@ -307,7 +308,7 @@ describe('InstanceAiSetupCredential', () => {
 		await fireEvent.click(view.getByRole('button', { name: 'Help me set this up' }));
 		expect(view.emitted<[unknown]>('askForHelp')?.[0]?.[0]).toMatchObject({
 			setupContext:
-				"The OAuth form asks for: Client ID, Client Secret. Managed OAuth isn't available on this instance. Help me configure my own OAuth app.",
+				"Selected OAuth mode: custom. Connection state: disconnected. The OAuth form asks for: Client ID, Client Secret. Managed OAuth isn't available on this instance. Help me configure my own OAuth app.",
 		});
 	});
 
@@ -434,11 +435,12 @@ describe('InstanceAiSetupCredential', () => {
 				required: true,
 			},
 		];
-		const credential = reactive({
-			...savedCredential,
-			oauthContext: { mode: 'custom' as const, connectionStatus: 'disconnected' as const },
-		});
+		const credential = reactive({ ...savedCredential });
 		mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(credential);
+		mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue({
+			...credential,
+			data: { clientId: 'client', clientSecret: '__n8n_BLANK_VALUE' },
+		});
 		const authorization = Promise.withResolvers<ICredentialsResponse | null>();
 		const reopen = vi.fn();
 		mocks.authorizeExisting.mockImplementationOnce((_credential, options) => {
@@ -457,7 +459,12 @@ describe('InstanceAiSetupCredential', () => {
 		expect(view.queryByText('Credential selected')).toBeNull();
 		await fireEvent.click(view.getByRole('button', { name: 'Help me set this up' }));
 		expect(view.emitted('askForHelp')?.[0]).toEqual([
-			expect.objectContaining({ id: credential.id, oauthContext: credential.oauthContext }),
+			expect.objectContaining({
+				id: credential.id,
+				setupContext: expect.stringContaining(
+					'Selected OAuth mode: custom. Connection state: disconnected.',
+				),
+			}),
 		]);
 		await fireEvent.click(view.getByRole('button', { name: 'Connect my account' }));
 		expect(view.getByRole('button', { name: 'Connect my account' })).toBeEnabled();
@@ -657,7 +664,10 @@ describe('InstanceAiSetupCredential', () => {
 		mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue({
 			...savedCredential,
 			name: 'Custom account',
-			oauthContext: { mode: 'custom', connectionStatus: 'connected' },
+		});
+		mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue({
+			...savedCredential,
+			data: { clientId: 'client', clientSecret: '__n8n_BLANK_VALUE', oauthTokenData: true },
 		});
 		const rendered = renderComponent({
 			props: {
@@ -669,7 +679,9 @@ describe('InstanceAiSetupCredential', () => {
 		});
 		await flushPromises();
 		await openMenu(rendered, 'Connect with OAuth instead');
-		expect(mockedStore(useCredentialsStore).getCredentialData).not.toHaveBeenCalled();
+		expect(mockedStore(useCredentialsStore).getCredentialData).toHaveBeenCalledWith({
+			id: savedCredential.id,
+		});
 		expect(mocks.authorize).toHaveBeenCalledWith(
 			'serviceApi',
 			node.type,
@@ -919,6 +931,7 @@ describe('InstanceAiSetupCredential', () => {
 		await rendered.rerender({
 			node: { ...node, credentials: { serviceApi: { id: 'existing', name: 'Existing account' } } },
 		});
+		await flushPromises();
 		expect(rendered.queryByLabelText('API key')).toBeNull();
 		expect(rendered.getByText('Existing account')).toBeVisible();
 		expect(mocks.authorize).not.toHaveBeenCalled();

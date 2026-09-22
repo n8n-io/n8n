@@ -10,7 +10,10 @@ import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetupPanelState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from '@/features/credentials/credentials.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -616,16 +619,23 @@ describe('useWorkflowSetupItems', () => {
 		).toBe(false);
 	});
 
-	it.each(['connected', 'disconnected', 'unknown'] as const)(
+	it.each(['connected', 'disconnected', 'unknown', 'clientCredentials', 'read-error'] as const)(
 		'derives saved OAuth completion after loading a workflow: %s',
 		async (connectionStatus) => {
 			const credential = {
 				id: 'gmail-1',
 				name: 'Gmail account',
 				type: 'gmailOAuth2',
-				oauthContext: { mode: 'custom', connectionStatus },
+				isManaged: false,
+				createdAt: '2026-09-22T00:00:00.000Z' as const,
+				updatedAt: '2026-09-22T00:00:00.000Z' as const,
 			};
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ extends: ['oAuth2Api'] });
+			const read = Promise.withResolvers<ICredentialsDecryptedResponse | ICredentialsResponse>();
+			credentialsStore.getCredentialData.mockReturnValue(read.promise);
 			workflowsListStore.fetchWorkflow.mockResolvedValue(
 				createTestWorkflow({
 					id: WORKFLOW_ID,
@@ -639,11 +649,30 @@ describe('useWorkflowSetupItems', () => {
 			);
 			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
 			await flushPromises();
-			expect(
-				state.isItemDone(
-					credentialItem({ credentialType: 'gmailOAuth2', nodeBindings: [{ nodeName: 'Gmail' }] }),
-				),
-			).toBe(connectionStatus === 'connected');
+			const item = credentialItem({
+				credentialType: 'gmailOAuth2',
+				nodeBindings: [{ nodeName: 'Gmail' }],
+			});
+			expect(state.isItemDone(item)).toBe(false);
+			if (connectionStatus === 'read-error') read.reject(new Error('Request failed'));
+			else
+				read.resolve({
+					...credential,
+					data:
+						connectionStatus === 'unknown'
+							? undefined
+							: {
+									grantType:
+										connectionStatus === 'clientCredentials'
+											? 'clientCredentials'
+											: 'authorizationCode',
+									oauthTokenData: connectionStatus === 'connected',
+								},
+				});
+			await flushPromises();
+			expect(state.isItemDone(item)).toBe(
+				!['disconnected', 'read-error'].includes(connectionStatus),
+			);
 		},
 	);
 

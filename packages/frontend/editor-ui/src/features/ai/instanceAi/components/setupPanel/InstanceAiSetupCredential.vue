@@ -31,6 +31,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
@@ -94,6 +95,9 @@ watch(
 	(value) => emit('update:hasChanges', value),
 );
 const chooseExisting = ref(false);
+const oauthConnection = ref<boolean>();
+const oauthMode = ref<'managed' | 'custom' | 'unknown'>('unknown');
+const loadingOAuth = ref(false);
 const mode = ref<'credits' | 'own'>('credits');
 const modeChanged = ref(false);
 let active = true;
@@ -145,6 +149,7 @@ const connected = computed(
 		!createNew.value &&
 		!hasDraft.value &&
 		Boolean(binding.value?.id || binding.value?.__aiGatewayManaged) &&
+		!loadingOAuth.value &&
 		!needsAuthorization.value,
 );
 const usableCredentials = computed(() =>
@@ -158,13 +163,53 @@ const storedCredential = computed(() =>
 			credentialsStore.getCredentialById(binding.value.id))
 		: undefined,
 );
-const usesCustomOAuth = computed(() => storedCredential.value?.oauthContext?.mode === 'custom');
-const needsAuthorization = computed(() =>
-	Boolean(
-		!createNew.value &&
-			storedCredential.value?.oauthContext &&
-			storedCredential.value.oauthContext.connectionStatus !== 'connected',
-	),
+const usesCustomOAuth = computed(() => oauthMode.value === 'custom');
+const selectedOAuthId = computed(() =>
+	!createNew.value && !hasDraft.value && isOAuth.value ? binding.value?.id : undefined,
+);
+watch(
+	[
+		selectedOAuthId,
+		() => storedCredential.value?.updatedAt,
+		() => storedCredential.value?.connectedByMe,
+	],
+	async ([id], _previous, onCleanup) => {
+		let stale = false;
+		onCleanup(() => {
+			stale = true;
+		});
+		oauthConnection.value = undefined;
+		oauthMode.value = 'unknown';
+		loadingOAuth.value = Boolean(id);
+		if (!id) return;
+		try {
+			const credential = await credentialsStore.getCredentialData({ id });
+			if (stale) return;
+			const data = credential?.data;
+			if (credential?.isResolvable) oauthConnection.value = credential.connectedByMe;
+			if (data && typeof data === 'object') {
+				if (!credential?.isResolvable) {
+					oauthConnection.value =
+						Boolean(
+							data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
+						) || hasOAuthTokenData(credential);
+				}
+				// Stored client fields identify a custom app even when managed OAuth is available.
+				const customClient = Boolean(
+					(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
+				);
+				oauthMode.value = customClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
+			}
+		} catch {
+			// A shared credential can be usable without permission to read its data.
+		} finally {
+			if (!stale) loadingOAuth.value = false;
+		}
+	},
+	{ immediate: true },
+);
+const needsAuthorization = computed(
+	() => Boolean(selectedOAuthId.value) && oauthConnection.value === false,
 );
 const showExistingPicker = computed(
 	() =>
@@ -269,7 +314,7 @@ const actionLabel = computed(() =>
 						? i18n.baseText('instanceAi.setupPanel.saveAndSignIn')
 						: i18n.baseText('generic.save'),
 );
-const actionDisabled = computed(() => !initialized.value);
+const actionDisabled = computed(() => !initialized.value || loadingOAuth.value);
 const redirectUrl = computed(() => {
 	const urls = rootStore.OAuthCallbackUrls;
 	if (form.parentTypes.value.includes('oAuth1Api') || props.item.credentialType === 'oAuth1Api') {
@@ -342,6 +387,12 @@ const helpLabel = computed(() => {
 
 function askForHelp() {
 	if (props.helpDisabled || busy.value) return;
+	const selectedMode = selectedOAuthId.value
+		? oauthMode.value
+		: form.isManagedOAuthMode.value
+			? 'managed'
+			: 'custom';
+	const selectedConnection = selectedOAuthId.value ? oauthConnection.value : false;
 	emit('askForHelp', {
 		id: binding.value?.id ?? undefined,
 		credentialType: props.item.credentialType,
@@ -351,16 +402,19 @@ function askForHelp() {
 		placeholderTitles: isOAuth.value ? undefined : fieldTitles.value,
 		documentationUrl: documentationUrl.value || undefined,
 		oauthRedirectUrl: isOAuth.value ? redirectUrl.value : undefined,
-		oauthContext:
-			storedCredential.value?.oauthContext ??
-			(isOAuth.value
-				? {
-						mode: canQuickConnect.value ? 'managed' : 'custom',
-						connectionStatus: 'disconnected',
-					}
-				: undefined),
 		setupContext: isOAuth.value
 			? [
+					i18n.baseText('instanceAi.setupPanel.helpOAuthState', {
+						interpolate: {
+							mode: selectedMode,
+							state:
+								selectedConnection === undefined
+									? 'unknown'
+									: selectedConnection
+										? 'connected'
+										: 'disconnected',
+						},
+					}),
 					!needsAuthorization.value && fieldTitles.value.length
 						? i18n.baseText('instanceAi.setupPanel.helpVisibleFields', {
 								interpolate: { fields: fieldTitles.value.join(', ') },
@@ -477,7 +531,10 @@ async function connect() {
 					reopenAuthorization.value = reopen;
 				},
 			});
-			if (credential) emitBinding(credential.id);
+			if (credential) {
+				oauthConnection.value = true;
+				emitBinding(credential.id);
+			}
 		} else if (useCredits.value) {
 			emit('connectStarted', 'gateway');
 			emitBinding(AI_GATEWAY_MANAGED_TAG);
@@ -591,7 +648,7 @@ async function initialize() {
 		if (active) toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
 	}
 }
-if (connected.value) initialized.value = true;
+if (binding.value?.id || binding.value?.__aiGatewayManaged) initialized.value = true;
 else void initialize();
 watch(
 	() => props.item.setupHint,
@@ -686,7 +743,7 @@ onScopeDispose(() => {
 			:action-label="actionLabel"
 			:actions="reopenAuthorization ? [] : actions"
 			:action-disabled="actionDisabled"
-			:loading="busy && !reopenAuthorization"
+			:loading="loadingOAuth || (busy && !reopenAuthorization)"
 			@action="connect"
 			@select="onMenuAction"
 		>
@@ -719,7 +776,15 @@ onScopeDispose(() => {
 				</N8nButton>
 			</template>
 			<N8nText v-if="needsAuthorization" size="small">{{ value }}</N8nText>
-			<template v-if="!needsAuthorization && !useCredits && !canQuickConnect && !useAdvancedForm">
+			<template
+				v-if="
+					!loadingOAuth &&
+					!needsAuthorization &&
+					!useCredits &&
+					!canQuickConnect &&
+					!useAdvancedForm
+				"
+			>
 				<label v-if="isOAuth && redirectUrl" :class="$style.redirect">
 					{{ i18n.baseText('instanceAi.setupPanel.redirectUrl') }}
 					<N8nCopyInput

@@ -35,7 +35,6 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -107,7 +106,6 @@ describe('CredentialsService', () => {
 	const dbLockService = mock<DbLockService>();
 	const eventService = mock<EventService>();
 	const transactionRunner = mock<TransactionRunner>();
-	const credentialsOverwrites = mock<CredentialsOverwrites>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -133,7 +131,6 @@ describe('CredentialsService', () => {
 		dbLockService,
 		eventService,
 		transactionRunner,
-		credentialsOverwrites,
 	);
 
 	beforeEach(() => {
@@ -2611,75 +2608,6 @@ describe('CredentialsService', () => {
 		});
 	});
 
-	describe('getOAuthContext', () => {
-		const credential = mock<CredentialsEntity>({
-			id: 'oauth-1',
-			type: 'googleSheetsOAuth2Api',
-			isResolvable: false,
-		});
-		beforeEach(() => {
-			credentialTypes.recognizes.mockReturnValue(true);
-			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
-			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
-		});
-		afterEach(() => vi.restoreAllMocks());
-
-		it.each([false, true])('returns only custom OAuth state, connected: %s', async (connected) => {
-			vi.spyOn(service, 'decrypt').mockResolvedValue({
-				clientId: 'private-client',
-				clientSecret: 'private-secret',
-				...(connected ? { oauthTokenData: { access_token: 'private-token' } } : {}),
-			});
-			await expect(service.getOAuthContext(credential)).resolves.toEqual({
-				mode: 'custom',
-				connectionStatus: connected ? 'connected' : 'disconnected',
-			});
-		});
-
-		it('identifies the effective managed client without returning its values', async () => {
-			vi.spyOn(service, 'decrypt').mockResolvedValue({});
-			credentialsOverwrites.applyOverwrite.mockReturnValue({
-				clientId: 'managed-client',
-				clientSecret: 'managed-secret',
-			});
-			await expect(service.getOAuthContext(credential)).resolves.toEqual({
-				mode: 'managed',
-				connectionStatus: 'disconnected',
-			});
-		});
-
-		it.each([false, true])(
-			'uses the current user connection for private OAuth, connected: %s',
-			async (connectedByMe) => {
-				vi.spyOn(service, 'decrypt').mockResolvedValue({
-					oauthTokenData: { access_token: 'shared-token' },
-				});
-				await expect(
-					service.getOAuthContext(
-						mock<CredentialsEntity>({ ...credential, isResolvable: true }),
-						connectedByMe,
-					),
-				).resolves.toEqual({
-					mode: 'custom',
-					connectionStatus: connectedByMe ? 'connected' : 'disconnected',
-				});
-			},
-		);
-
-		it('does not require interactive authorization for client credentials', async () => {
-			vi.spyOn(service, 'decrypt').mockResolvedValue({ grantType: 'clientCredentials' });
-			await expect(service.getOAuthContext(credential)).resolves.toBeUndefined();
-		});
-
-		it('keeps unreadable OAuth state unknown', async () => {
-			vi.spyOn(service, 'decrypt').mockRejectedValue(new Error('unavailable'));
-			await expect(service.getOAuthContext(credential)).resolves.toEqual({
-				mode: 'unknown',
-				connectionStatus: 'unknown',
-			});
-		});
-	});
-
 	describe('getCredentialsAUserCanUseInAWorkflow', () => {
 		const user = mock<User>({ id: 'user-1' });
 		const credentialCreatedAt = new Date('2024-01-01T00:00:00.000Z');
@@ -2741,20 +2669,6 @@ describe('CredentialsService', () => {
 					return c;
 				},
 			);
-		});
-
-		it('includes OAuth state in the scoped credential response without data', async () => {
-			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
-			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([regularCredential]);
-			sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([ownerShare]);
-			const context = { mode: 'custom' as const, connectionStatus: 'disconnected' as const };
-			const getContext = vi.spyOn(service, 'getOAuthContext').mockResolvedValue(context);
-			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
-				workflowId: 'workflow-1',
-			});
-			expect(result[0]).toMatchObject({ id: regularCredential.id, oauthContext: context });
-			expect(result[0]).not.toHaveProperty('data');
-			getContext.mockRestore();
 		});
 
 		it('should return a payload matching the ICredentialsResponse shape', async () => {

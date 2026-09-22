@@ -1,6 +1,5 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
-import { credentialOAuthContextSchema } from './credential-oauth.schema';
 
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
@@ -1462,7 +1461,6 @@ export const instanceAiCredentialHandoffContextSchema = z.object({
 		docsUrl: z.string().url().max(2048).optional(),
 		documentationUrl: z.string().url().max(2048).optional(),
 		oauthRedirectUrl: z.string().url().max(2048).optional(),
-		oauthContext: credentialOAuthContextSchema.optional(),
 	}),
 });
 export type InstanceAiCredentialHandoffContext = z.infer<

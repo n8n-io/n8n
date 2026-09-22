@@ -1,12 +1,9 @@
-import type { CredentialOAuthContext } from '../../schemas/credential-oauth.schema';
-
 /**
- * Authorization metadata surfaced on credential responses. The connectedByMe,
- * account identifier, and user count fields apply only to private credentials.
+ * Per-user connection state surfaced on credential responses. Set on private
+ * (resolvable) credentials only; omitted for static credentials whose
+ * connection is shared across everyone who can read them.
  */
 export interface CredentialConnectionStatus {
-	/** Authorization state for OAuth credentials that require interactive sign-in. */
-	oauthContext?: CredentialOAuthContext;
 	connectedByMe?: boolean;
 	/**
 	 * The provider account the requesting user's own connection authenticates as

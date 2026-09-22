@@ -1,11 +1,10 @@
-import type { CredentialOAuthContext, Iso8601DateTimeString } from '@n8n/api-types';
+import type { Iso8601DateTimeString } from '@n8n/api-types';
 import type { ICredentialsDecrypted, ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
-	oauthContext?: CredentialOAuthContext;
 	id: string;
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
@@ -45,7 +44,6 @@ export interface ICredentialsBase {
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
-	oauthContext?: CredentialOAuthContext;
 	id: string;
 	isResolvable?: boolean;
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */

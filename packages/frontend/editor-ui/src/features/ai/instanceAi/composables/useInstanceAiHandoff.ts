@@ -127,7 +127,6 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.docsUrl ? { docsUrl: credential.docsUrl } : {}),
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
-			...(credential.oauthContext ? { oauthContext: credential.oauthContext } : {}),
 		},
 	};
 }

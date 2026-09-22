@@ -160,11 +160,6 @@ export class EnterpriseCredentialsService {
 
 		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.credentialsService.populateConnectedByMe([enriched], user);
-		const oauthContext = await this.credentialsService.getOAuthContext(
-			credential,
-			enriched.connectedByMe,
-		);
-		if (oauthContext) enriched.oauthContext = oauthContext;
 
 		if (credential.isResolvable) {
 			enriched.connectedUserCount = await this.credentialsService.countConnectedUsers(

@@ -687,42 +687,32 @@ describe('useCredentialOAuth', () => {
 			await promise;
 		});
 
-		it.each([false, true])(
-			'confirms sign-in after popup isolation, metadata only: %s',
-			async (metadataOnly) => {
-				const credentialsStore = mockedStore(useCredentialsStore);
-				credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
-				// Provider COOP severs the opener relationship: popup.closed reads true
-				// from the first poll tick while the user is still authorizing.
-				mockPopup.closed = true;
-				MockBroadcastChannel.noopEventListener = true;
-				credentialsStore.getCredentialData
-					.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
-					.mockResolvedValue(
-						metadataOnly
-							? {
-									...mockCredential,
-									oauthContext: { mode: 'custom', connectionStatus: 'connected' },
-								}
-							: { ...mockCredential, data: { oauthTokenData: '__n8n_BLANK_VALUE' } },
-					);
+		it('should resolve true via backend verification when the popup reads as closed (COOP)', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			// Provider COOP severs the opener relationship: popup.closed reads true
+			// from the first poll tick while the user is still authorizing.
+			mockPopup.closed = true;
+			MockBroadcastChannel.noopEventListener = true;
+			credentialsStore.getCredentialData
+				.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
+				.mockResolvedValue({
+					data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+				} as unknown as ICredentialsResponse);
 
-				vi.useFakeTimers();
-				try {
-					const { authorize } = useCredentialOAuth();
-					const promise = authorize(mockCredential);
+			vi.useFakeTimers();
+			try {
+				const { authorize } = useCredentialOAuth();
+				const promise = authorize(mockCredential);
 
-					await vi.advanceTimersByTimeAsync(1000);
+				await vi.advanceTimersByTimeAsync(1000);
 
-					await expect(promise).resolves.toBe(true);
-					expect(mockShowMessage).toHaveBeenCalledWith(
-						expect.objectContaining({ type: 'success' }),
-					);
-				} finally {
-					vi.useRealTimers();
-				}
-			},
-		);
+				await expect(promise).resolves.toBe(true);
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 
 		it('should not treat a pre-existing token as success when reconnecting', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
