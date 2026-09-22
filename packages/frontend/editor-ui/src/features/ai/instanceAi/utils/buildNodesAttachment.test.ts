@@ -5,6 +5,7 @@ import {
 	resolveSetNeighbors,
 	resolveSetCanvasGroup,
 	buildNodesAttachment,
+	excludeNodeSets,
 	mergeNodeSets,
 	countAttachedNodes,
 } from './buildNodesAttachment';
@@ -200,6 +201,14 @@ describe('mergeNodeSets', () => {
 			instanceAiNodesAttachmentSchema.safeParse({ type: 'nodes', workflowId: 'w1', sets: merged })
 				.success,
 		).toBe(true);
+	});
+});
+
+describe('excludeNodeSets', () => {
+	const set = (...ids: string[]) => ({ nodes: ids.map((id) => ({ id })) });
+
+	it('drops sets whose membership matches one to exclude, regardless of order', () => {
+		expect(excludeNodeSets([set('A', 'B'), set('C')], [set('B', 'A')])).toEqual([set('C')]);
 	});
 });
 

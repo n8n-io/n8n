@@ -38,6 +38,15 @@ export function mergeNodeSets(
 	return merged.slice(0, MAX_SETS_PER_ATTACHMENT);
 }
 
+/** Drop every set from `sets` that also appears in `toExclude` (same node ids). */
+export function excludeNodeSets(
+	sets: InstanceAiNodesAttachment['sets'],
+	toExclude: InstanceAiNodesAttachment['sets'],
+): InstanceAiNodesAttachment['sets'] {
+	const seen = new Set(toExclude.map(setSignature));
+	return sets.filter((s) => !seen.has(setSignature(s)));
+}
+
 // Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema).
 const MAX_NODES_PER_SET = 50;
 const MAX_SETS_PER_ATTACHMENT = 50;

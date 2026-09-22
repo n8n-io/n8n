@@ -18,10 +18,17 @@ import { isNodeChipRemovalKey } from '../constants';
 // A set of this many nodes or more renders as one bundle chip instead of per-node chips.
 const NODE_BUNDLE_THRESHOLD = 2;
 
-const props = defineProps<{ attachment: InstanceAiNodesAttachment; isRemovable?: boolean }>();
+const props = defineProps<{
+	attachment: InstanceAiNodesAttachment;
+	isRemovable?: boolean;
+	// Greyed-out preview of the current canvas selection: chips render dashed, never
+	// expand, and a click confirms the whole attachment instead of removing/expanding.
+	unconfirmed?: boolean;
+}>();
 const emit = defineEmits<{
 	'update:attachment': [attachment: InstanceAiNodesAttachment];
 	'remove-all': [];
+	confirm: [];
 }>();
 
 const i18n = useI18n();
@@ -97,7 +104,7 @@ const chips = computed<ChipVM[]>(() => {
 				}),
 				icon: 'layers',
 				setIndex,
-				panel: set.nodes.map((node) => resolveAttachedNode(node)),
+				panel: props.unconfirmed ? undefined : set.nodes.map((node) => resolveAttachedNode(node)),
 			};
 		}
 		const resolved = resolveAttachedNode(set.nodes[0]);
@@ -289,8 +296,10 @@ const totalNodeCount = computed(() =>
 			"
 			icon="layers"
 			:removable="isRemovable"
+			:unconfirmed="unconfirmed"
 			:expanded="null"
 			@remove="emit('remove-all')"
+			@confirm="emit('confirm')"
 		/>
 		<template v-else>
 			<span
@@ -307,10 +316,12 @@ const totalNodeCount = computed(() =>
 					:icon="chip.icon"
 					:node-type="chip.nodeType"
 					:removable="isRemovable"
+					:unconfirmed="unconfirmed"
 					:expanded="chip.panel ? expandedSetIndex === chip.setIndex : null"
 					@remove="removeChip(chip)"
 					@toggle-expand="toggleExpanded(chip.setIndex)"
 					@enter-panel="enterPanel(chip.setIndex)"
+					@confirm="emit('confirm')"
 				/>
 				<!-- Teleported to <body>: the chip lives inside the chat input's
 				overflow-clipped `.leading` slot, which would otherwise crop the panel. -->

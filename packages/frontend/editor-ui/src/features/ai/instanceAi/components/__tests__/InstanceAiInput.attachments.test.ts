@@ -66,6 +66,54 @@ describe('InstanceAiInput — staged node attachments', () => {
 		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(2));
 	});
 
+	it('renders the canvas selection as a greyed-out unconfirmed chip', async () => {
+		const { findByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.setUnconfirmedNodes({
+			attachment: { type: 'nodes', workflowId: 'w1', sets: [{ nodes: [{ id: 'n1', name: 'A' }] }] },
+			truncated: false,
+		});
+
+		const chip = await findByTestId('nodes-chip-node');
+		// Unconfirmed chips are non-removable; the remove control must be absent.
+		expect(chip.querySelector('[data-test-id="nodes-chip-remove"]')).toBeNull();
+	});
+
+	it('confirms an unconfirmed chip on click: stages its sets and hides the preview', async () => {
+		const { findByTestId, queryByTestId, queryAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.setUnconfirmedNodes({
+			attachment: { type: 'nodes', workflowId: 'w1', sets: [{ nodes: [{ id: 'n1', name: 'A' }] }] },
+			truncated: false,
+		});
+
+		const chip = await findByTestId('nodes-chip-node');
+		await userEvent.click(chip);
+
+		// The set landed in the confirmed (now removable) attachment, and the preview
+		// of that same set is hidden instead of rendering a second chip.
+		await waitFor(() => expect(queryByTestId('nodes-chip-remove')).toBeInTheDocument());
+		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1);
+	});
+
+	it('hides an unconfirmed set that is already confirmed for the same workflow', async () => {
+		const { queryAllByTestId, findAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		await findAllByTestId('nodes-chip-node');
+
+		// Same selection re-offered as an unconfirmed preview → deduped away.
+		store.setUnconfirmedNodes({
+			attachment: { type: 'nodes', workflowId: 'w1', sets: [{ nodes: [{ id: 'n1', name: 'A' }] }] },
+			truncated: false,
+		});
+
+		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1));
+	});
+
 	it('enables send with staged chips and empty text, and restores chips on failed send', async () => {
 		const { emitted, findAllByTestId, findByTestId, queryAllByTestId } = renderComponent();
 		const store = useInstanceAiStore();

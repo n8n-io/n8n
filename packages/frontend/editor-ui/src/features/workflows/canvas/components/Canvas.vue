@@ -107,7 +107,10 @@ import {
 	useAddNodesToChat,
 	type AddNodesToChatSource,
 } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
-import type { NodeContextWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import {
+	buildNodesAttachment,
+	type NodeContextWorkflow,
+} from '@/features/ai/instanceAi/utils/buildNodesAttachment';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
@@ -693,6 +696,30 @@ watch(selectedNodeIds, (newIds) => {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
 });
+
+// Instance AI: mirror the canvas selection as a greyed-out "add as context" preview.
+// Only inside a thread — the main editor's confirm path hands off to a new thread
+// instead, so nothing there would read it. Group-expanded ids, same as the confirm
+// path (onAddNodesToChat). Keyed on the joined ids (not array identity) and
+// debounced so node updates and rubber-band drags don't rebuild it per tick; keyed
+// on the gate too because the flag loads async and may flip after a node is selected.
+if (!instanceAiCapability.openWorkflow) {
+	watchDebounced(
+		() => [selectedNodeIdsWithGroupMembers.value.join(','), isNodeContextEnabled.value] as const,
+		([, enabled]) => {
+			instanceAiStore.setUnconfirmedNodes(
+				enabled
+					? buildNodesAttachment(
+							workflowDocumentStore.value.workflowId,
+							selectedNodeIdsWithGroupMembers.value,
+							buildNodeContextWorkflow(),
+						)
+					: null,
+			);
+		},
+		{ debounce: 150, immediate: true },
+	);
+}
 
 // Surface a selected group so surfaces outside the canvas (logs panel) can sync to it
 const selectedCanvasGroupId = computed(() => {
@@ -1797,6 +1824,8 @@ onUnmounted(() => {
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
+	// The preview lives in a global store; don't let it outlive the canvas.
+	instanceAiStore.setUnconfirmedNodes(null);
 });
 
 onPaneReady(async () => {

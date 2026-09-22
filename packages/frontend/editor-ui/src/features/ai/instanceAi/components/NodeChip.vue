@@ -13,9 +13,12 @@ const props = defineProps<{
 	icon?: 'layers';
 	removable?: boolean;
 	expanded?: boolean | null;
+	// Greyed-out "add canvas selection as context" preview: dashed chip with a `+`
+	// prefix; a click confirms it instead of removing/expanding.
+	unconfirmed?: boolean;
 }>();
 
-const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>();
+const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': []; confirm: [] }>();
 
 const i18n = useI18n();
 
@@ -25,6 +28,17 @@ defineExpose({ focus: () => rootRef.value?.focus() });
 // stopPropagation prevents the canvas/logs panel's document-level
 // Arrow/Enter/Escape shortcuts from also firing (see shouldIgnoreCanvasShortcut).
 function handleKeydown(event: KeyboardEvent) {
+	if (props.unconfirmed) {
+		// The canvas selection this chip mirrors is still active, so no key may reach
+		// the canvas keymap (Delete would remove the selected nodes).
+		event.stopPropagation();
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			emit('confirm');
+		}
+		return;
+	}
+
 	const isExpandable = props.expanded !== null && props.expanded !== undefined;
 
 	if (event.key === 'Enter' && isExpandable) {
@@ -56,22 +70,31 @@ function handleKeydown(event: KeyboardEvent) {
 		emit('remove');
 	}
 }
+
+function handleClick() {
+	if (props.unconfirmed) emit('confirm');
+	else if (props.expanded !== null && props.expanded !== undefined) emit('toggle-expand');
+}
 </script>
 
 <template>
 	<span
 		ref="root"
-		:class="[$style.chip, { [$style.expandable]: expanded != null }]"
+		:class="[
+			$style.chip,
+			{ [$style.expandable]: expanded != null, [$style.unconfirmed]: unconfirmed },
+		]"
 		:data-test-id="testid"
 		tabindex="0"
-		role="group"
+		:role="unconfirmed ? 'button' : 'group'"
 		:aria-label="label"
 		@keydown="handleKeydown"
-		@click="expanded != null && emit('toggle-expand')"
+		@click="handleClick"
 	>
+		<N8nIcon v-if="unconfirmed" icon="plus" size="medium" :class="$style.plusIcon" />
 		<!-- Leading icon doubles as the remove control: node icon at rest, X on hover. -->
 		<button
-			v-if="removable"
+			v-if="removable && !unconfirmed"
 			type="button"
 			:class="[$style.iconBtn, $style.leadingBtn]"
 			data-test-id="nodes-chip-remove"
@@ -116,6 +139,22 @@ function handleKeydown(event: KeyboardEvent) {
 
 .expandable {
 	cursor: pointer;
+}
+
+.unconfirmed {
+	cursor: pointer;
+	border-style: dashed;
+	border-color: var(--border-color--subtle);
+	background: transparent;
+	color: var(--text-color--subtler);
+	font-style: italic;
+
+	&:hover,
+	&:focus-visible {
+		border-color: var(--border-color--strong);
+		background: var(--background--hover);
+		color: var(--color--text);
+	}
 }
 
 .name {

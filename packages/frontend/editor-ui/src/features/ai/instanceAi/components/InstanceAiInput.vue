@@ -1,17 +1,20 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nTag } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
+import { N8nIcon, N8nIconButton, N8nTag, N8nTooltip } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
+import NodesAttachmentChips from './NodesAttachmentChips.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
 	type InstanceAiAttachment,
+	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
@@ -25,7 +28,7 @@ import {
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillTypeReported,
 } from '../prefills';
-import { mergeNodeSets } from '../utils/buildNodesAttachment';
+import { excludeNodeSets, mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -133,6 +136,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const instanceAiStore = useInstanceAiStore();
+const toast = useToast();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
@@ -523,6 +527,39 @@ function removeResource(index: number) {
 	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
 }
 
+// The pending-attachments watch below merges all node sets of one workflow into a
+// single attachment, so there is at most one match.
+function findNodesAttachment(workflowId: string) {
+	return attachedResources.value.find(
+		(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+	);
+}
+
+// Greyed-out canvas-selection preview, minus sets already staged for the same
+// workflow — staging leaves the canvas selection active, so the grey chip would
+// otherwise reappear the instant it's confirmed.
+const unconfirmedNodesAttachment = computed(() => {
+	const attachment = instanceAiStore.unconfirmedNodes?.attachment;
+	if (!attachment) return null;
+	const staged = findNodesAttachment(attachment.workflowId)?.sets ?? [];
+	const sets = excludeNodeSets(attachment.sets, staged);
+	return sets.length ? { ...attachment, sets } : null;
+});
+
+function confirmUnconfirmedNodes() {
+	const built = instanceAiStore.unconfirmedNodes;
+	if (!built) return;
+	instanceAiStore.stageNodeSets(built.attachment.workflowId, built.attachment.sets);
+	instanceAiStore.requestComposerFocus();
+	if (built.truncated) {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('instanceAi.nodeContext.truncated.title'),
+			message: i18n.baseText('instanceAi.nodeContext.truncated.message'),
+		});
+	}
+}
+
 watch(
 	() => instanceAiStore.pendingComposerAttachments,
 	(pending) => {
@@ -531,10 +568,7 @@ watch(
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
 			if (attachment.type === 'nodes') {
-				const existing = attachedResources.value.find(
-					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
-						a.type === 'nodes' && a.workflowId === attachment.workflowId,
-				);
+				const existing = findNodesAttachment(attachment.workflowId);
 				if (existing) {
 					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
 					continue;
@@ -751,6 +785,20 @@ const resizable = computed(() => {
 					:disabled="isBusy || isGatedBySetup"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
+			</template>
+			<template v-if="!props.isAwaitingPlanReview && unconfirmedNodesAttachment" #footer-end>
+				<N8nTooltip
+					as-child
+					:content="i18n.baseText('instanceAi.nodeContext.unconfirmedTooltip')"
+					placement="top"
+					:show-after="300"
+				>
+					<NodesAttachmentChips
+						:attachment="unconfirmedNodesAttachment"
+						unconfirmed
+						@confirm="confirmUnconfirmedNodes"
+					/>
+				</N8nTooltip>
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
