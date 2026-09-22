@@ -131,8 +131,6 @@ paths:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
   /community-packages/{name}:
     $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
-  /discover:
-    $ref: './handlers/discover/spec/paths/discover.yml'
   /projects/{projectId}/folders:
     $ref: './handlers/folders/spec/paths/folders.yml'
   /projects/{projectId}/folders/{folderId}:
