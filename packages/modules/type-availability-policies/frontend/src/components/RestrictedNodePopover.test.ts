@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
-import { screen } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 
@@ -7,8 +7,6 @@ import RestrictedNodePopover from './RestrictedNodePopover.vue';
 
 const DESCRIPTION =
 	'An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.';
-/** Mirrors the leave delay in the component, so the wait below outlasts it. */
-const HOVER_GRACE_MS = 200;
 
 const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 	props: { nodeTypeName: 'Gmail', scope: 'instance' },
@@ -87,7 +85,9 @@ describe('RestrictedNodePopover', () => {
 		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
 		await userEvent.unhover(popover);
 		await userEvent.unhover(anchor);
-		await new Promise((resolve) => setTimeout(resolve, HOVER_GRACE_MS + 50));
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
 
 		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
 		anchor.remove();
