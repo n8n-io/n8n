@@ -200,8 +200,6 @@ of the two ends the wait.
 ## Links
 
 RFC: -
-Documentation: Engine 2.0 — Detailed Design, §3.3
-https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
+Documentation: Engine 2.0 — Detailed Design, §3.3 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
 Tickets: CAT-2881, CAT-2927, CAT-2928, CAT-2929
-Related ADRs: ADR-20260828-trigger-settlement-before-execution,
-ADR-20260904-store-the-workflow-with-the-execution
+Related ADRs: ADR-20260828-trigger-settlement-before-execution, ADR-20260904-store-the-workflow-with-the-execution
