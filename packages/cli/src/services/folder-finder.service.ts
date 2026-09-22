@@ -1,9 +1,7 @@
 import type { Folder, User } from '@n8n/db';
-import { chunkIds, FolderRepository } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import type { FindOptionsWhere } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
 
@@ -69,16 +67,15 @@ export class FolderFinderService {
 	): Promise<Folder[]> {
 		if (folderIds.length === 0) return [];
 
-		const accessWhere = await this.buildFolderReadWhere(user, scopes);
-
-		const folders = new Map<string, Folder>();
-		for (const chunk of chunkIds(folderIds)) {
-			const found = await this.folderRepository.find({
-				where: { id: In(chunk), ...accessWhere },
-			});
-			for (const folder of found) folders.set(folder.id, folder);
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			return await this.folderRepository.findByIdsForProjectRoles(folderIds, null);
 		}
-		return [...folders.values()];
+
+		const roleSlugs = await this.roleService.rolesWithScope('project', scopes);
+		return await this.folderRepository.findByIdsForProjectRoles(folderIds, {
+			userId: user.id,
+			roleSlugs,
+		});
 	}
 
 	/**
@@ -151,23 +148,5 @@ export class FolderFinderService {
 			select: { id: true },
 		});
 		return folders.map((folder) => folder.id);
-	}
-
-	private async buildFolderReadWhere(
-		user: User,
-		scopes: Scope[],
-	): Promise<FindOptionsWhere<Folder>> {
-		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
-
-		const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-
-		return {
-			homeProject: {
-				projectRelations: {
-					role: In(projectRoles),
-					userId: user.id,
-				},
-			},
-		};
 	}
 }

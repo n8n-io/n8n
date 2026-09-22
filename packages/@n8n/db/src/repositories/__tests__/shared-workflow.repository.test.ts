@@ -196,4 +196,28 @@ describe('SharedWorkflowRepository', () => {
 			expect(result).toEqual(new Set(['workflow-0', 'workflow-10000']));
 		});
 	});
+
+	describe('findOwnedWorkflowIdsByProjects', () => {
+		it('returns an empty list without querying for an empty projectIds list', async () => {
+			const result = await sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([]);
+
+			expect(result).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('returns the owned workflow ids for the given projects', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				{ workflowId: 'wf-1' },
+				{ workflowId: 'wf-2' },
+			] as unknown as SharedWorkflow[]);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowIdsByProjects(['proj-1']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: { workflowId: true },
+				where: { projectId: In(['proj-1']), role: 'workflow:owner' },
+			});
+			expect(result).toEqual(['wf-1', 'wf-2']);
+		});
+	});
 });

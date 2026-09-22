@@ -67,7 +67,7 @@ describe('MessageEventBus.initialize', () => {
 		});
 		mockedWriter.getLogFileName.mockReturnValue('mocked.log');
 		mockedWriter.isRecoveryProcessRunning.mockReturnValue(false);
-		executionRepository.find.mockResolvedValue([]);
+		executionRepository.findUnfinishedIds.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
