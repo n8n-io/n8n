@@ -209,12 +209,11 @@ export class Subscriber {
 	 */
 	private async checkLiveness() {
 		if (this.channels.size === 0) return;
+
 		const timeout = new Promise<never>((_, reject) => {
-			setTimeout(
-				() => reject(new Error('SUBSCRIBE timeout')),
-				SUBSCRIBER_LIVENESS_TIMEOUT_MS,
-			).unref();
+			setTimeout(() => reject(new Error('timeout')), SUBSCRIBER_LIVENESS_TIMEOUT_MS).unref();
 		});
+
 		try {
 			await Promise.race([this.client.subscribe(...this.channels), timeout]);
 		} catch (error) {
