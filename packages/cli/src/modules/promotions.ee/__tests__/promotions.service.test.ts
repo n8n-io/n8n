@@ -18,7 +18,6 @@ import {
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
 
-import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
@@ -62,7 +61,6 @@ describe('PromotionsService', () => {
 	const gitService = mock<PromotionsGitService>();
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const connectionRepository = mock<PromotionConnectionRepository>();
 	const projectService = mock<ProjectService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const bindingPreflight = mock<PromotionBindingPreflightService>();
@@ -129,7 +127,6 @@ describe('PromotionsService', () => {
 			gitService,
 			projectRepository,
 			sharedWorkflowRepository,
-			connectionRepository,
 			projectService,
 			n8nPackagesService,
 			bindingPreflight,
@@ -939,10 +936,20 @@ describe('PromotionsService', () => {
 	describe('promoteProjectSelection', () => {
 		const actor = mock<User>({ id: 'actor', email: 'ada@example.com' });
 
+		// The promote resolves the connection the same way the change preview does,
+		// so a selection pushes to the connection the user previewed.
 		beforeEach(() => {
-			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'team' } as never);
-			connectionRepository.findInstanceConnection.mockResolvedValue({ id: 'conn1' } as never);
+			resolver.resolveForProject.mockResolvedValue(promoteInput());
 		});
+
+		// promoteSelectionResolved is private; the cast lets the spy see it.
+		const spyPromoteSelectionResolved = () =>
+			vi.spyOn(
+				service as unknown as {
+					promoteSelectionResolved: (...args: unknown[]) => Promise<unknown>;
+				},
+				'promoteSelectionResolved',
+			);
 
 		it('promotes live and archived workflows and pushes only missing ones as deletions', async () => {
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
@@ -953,15 +960,16 @@ describe('PromotionsService', () => {
 					// w3 is left out on purpose: it no longer exists.
 				]),
 			);
-			const promoteSelection = vi.spyOn(service, 'promoteSelection').mockResolvedValue({} as never);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w2', 'w3', 'w4'],
 				canExportVariableValues: true,
 			});
 
-			expect(promoteSelection).toHaveBeenCalledWith(
-				'conn1',
+			expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'promote');
+			expect(promoteSelectionResolved).toHaveBeenCalledWith(
+				promoteInput(),
 				actor,
 				expect.objectContaining({
 					canExportVariableValues: true,
@@ -975,7 +983,7 @@ describe('PromotionsService', () => {
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([['w1', mock<Project>({ id: 'p1' })]]),
 			);
-			const promoteSelection = vi.spyOn(service, 'promoteSelection').mockResolvedValue({} as never);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
@@ -983,8 +991,8 @@ describe('PromotionsService', () => {
 				canExportVariableValues: true,
 			});
 
-			expect(promoteSelection).toHaveBeenCalledWith(
-				'conn1',
+			expect(promoteSelectionResolved).toHaveBeenCalledWith(
+				promoteInput(),
 				actor,
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
@@ -998,7 +1006,7 @@ describe('PromotionsService', () => {
 					['w9', mock<Project>({ id: 'other' })],
 				]),
 			);
-			const promoteSelection = vi.spyOn(service, 'promoteSelection');
+			const promoteSelectionResolved = spyPromoteSelectionResolved();
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
@@ -1006,11 +1014,11 @@ describe('PromotionsService', () => {
 					canExportVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);
-			expect(promoteSelection).not.toHaveBeenCalled();
+			expect(promoteSelectionResolved).not.toHaveBeenCalled();
 		});
 
 		it('rejects a selection with duplicate workflow ids', async () => {
-			const promoteSelection = vi.spyOn(service, 'promoteSelection');
+			const promoteSelectionResolved = spyPromoteSelectionResolved();
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
@@ -1018,11 +1026,13 @@ describe('PromotionsService', () => {
 					canExportVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);
-			expect(promoteSelection).not.toHaveBeenCalled();
+			expect(promoteSelectionResolved).not.toHaveBeenCalled();
 		});
 
-		it('rejects when the instance has no promotion connection', async () => {
-			connectionRepository.findInstanceConnection.mockResolvedValue(null);
+		it('propagates the resolver error when the project has no promotion connection', async () => {
+			resolver.resolveForProject.mockRejectedValue(
+				new NotFoundError('No promotion connection is configured for this instance'),
+			);
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
@@ -1032,8 +1042,10 @@ describe('PromotionsService', () => {
 			).rejects.toThrow(NotFoundError);
 		});
 
-		it('rejects a project that is not a team project', async () => {
-			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'personal' } as never);
+		it('propagates the resolver error for a project that is not a team project', async () => {
+			resolver.resolveForProject.mockRejectedValue(
+				new BadRequestError('Only team projects can use a promotion connection'),
+			);
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {

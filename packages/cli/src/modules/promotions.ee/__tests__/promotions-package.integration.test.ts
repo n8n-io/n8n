@@ -172,7 +172,6 @@ beforeEach(async () => {
 		gitService,
 		projectRepository,
 		Container.get(SharedWorkflowRepository),
-		connectionRepository,
 		projectService,
 		packagesService,
 		Container.get(PromotionBindingPreflightService),

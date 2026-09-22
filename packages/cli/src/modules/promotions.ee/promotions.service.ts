@@ -47,7 +47,6 @@ import {
 	PACKAGE_SUBFOLDER,
 	PROMOTE_SELECTION_COMMIT_MESSAGE,
 } from './constants';
-import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -103,7 +102,6 @@ export class PromotionsService {
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly connectionRepository: PromotionConnectionRepository,
 		private readonly projectService: ProjectService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
@@ -249,13 +247,26 @@ export class PromotionsService {
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 	): Promise<PromotePackageResultDto> {
+		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
+		return await this.promoteSelectionResolved(input, actor, request, selection);
+	}
+
+	/**
+	 * Selective promote against an already-resolved connection. The project path
+	 * resolves through `resolveForProject`, so it skips resolving the connection again.
+	 */
+	private async promoteSelectionResolved(
+		input: PromotionOperationInput,
+		actor: User,
+		request: PromotePackageDto & { canExportVariableValues: boolean },
+		selection: SelectivePushOptions,
+	): Promise<PromotePackageResultDto> {
 		if (request.force) {
 			throw new BadRequestError(
 				"Selective promotion doesn't support force. Set force to false and try again.",
 			);
 		}
 
-		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
 		this.assertInstanceScope(input, 'Promote');
 		this.workingCopy.validateSelection(selection);
 		await this.assertTeamProject(selection.projectId);
@@ -389,17 +400,14 @@ export class PromotionsService {
 			throw new BadRequestError('workflowIds contains duplicates');
 		}
 
-		await this.assertTeamProject(projectId);
-
-		const instance = await this.connectionRepository.findInstanceConnection();
-		if (!instance) {
-			throw new NotFoundError('No promotion connection is configured for this instance');
-		}
+		// Resolve like the change preview does, so the promote pushes to the connection
+		// the user previewed. resolveForProject validates the project and connection too.
+		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
 		const selection = await this.classifySelection(projectId, request.workflowIds);
 
-		return await this.promoteSelection(
-			instance.id,
+		return await this.promoteSelectionResolved(
+			input,
 			actor,
 			{
 				commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,

@@ -50,7 +50,6 @@ import {
 	Licensed,
 	Param,
 	Post,
-	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -590,7 +589,6 @@ export class PromotionsPublicController {
 	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
-	@ProjectScope('project:export')
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
 		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
@@ -631,7 +629,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary("Promote a selection of a project's workflows")
 	@ApiDescription(
-		"Promotes a chosen set of a team project's workflows to the instance connection's Promote branch. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows are exported, so an archived id stays on the branch as archived; only an id whose workflow no longer exists leaves the branch. An id from another project rejects the whole request before any write. Send an optional commitMessage to describe the commit; a default is used when omitted. Requires the Promote direction to be cloned first, and an instance connection to exist. The API key also needs variable:list when the workflows reference variables.",
+		"Promotes a chosen set of a team project's workflows to the Promote branch of the project's promotion configuration. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows are exported, so an archived id stays on the branch as archived; only an id whose workflow no longer exists leaves the branch. An id from another project rejects the whole request before any write. Send an optional commitMessage to describe the commit; a default is used when omitted. Requires the Promote direction to be cloned first, and a promotion connection to resolve for the project (its own connection, otherwise the instance connection). The API key also needs variable:list when the workflows reference variables.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
