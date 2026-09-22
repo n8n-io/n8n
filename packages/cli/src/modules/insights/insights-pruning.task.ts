@@ -22,7 +22,7 @@ export class InsightsPruningTask implements SystemTask {
 
 	readonly durable = true;
 
-	/** Only the in-memory timer, which runs while the system-task flag is off, honours this. */
+	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
 	readonly retryDelaySeconds = 1;
 
 	constructor(
