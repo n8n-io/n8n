@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { defineComponent, h, inject, type PropType, type Ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -484,6 +485,56 @@ describe('InstanceAiThreadView', () => {
 
 		return { ...rendered, user };
 	}
+
+	it('uses the message-circle-plus icon for the new chat button', function () {
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'New chat' });
+
+		expect(button.querySelector('[data-icon="message-circle-plus"]')).toBeInTheDocument();
+	});
+
+	it('opens a new chat when the new chat button is clicked', async function () {
+		const user = userEvent.setup();
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+
+		await user.click(getByRole('button', { name: 'New chat' }));
+
+		expect(routerPushSpy).toHaveBeenCalledExactlyOnceWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	it('hides the Chat history label when the session title is visible', function () {
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'Chat history' });
+
+		expect(getByRole('heading', { name: 'Test thread', level: 2 })).toBeVisible();
+		expect(within(button).queryByText('Chat history')).not.toBeInTheDocument();
+		expect(button).toHaveAttribute('data-icon-only', 'true');
+	});
+
+	it('shows the Chat history label when the session has no visible title', function () {
+		store.threads = [{ ...store.threads[0], title: NEW_CONVERSATION_TITLE }];
+		const { getByRole, queryByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'Chat history' });
+
+		expect(queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+		expect(within(button).getByText('Chat history')).toBeVisible();
+		expect(within(button).getByText('Chat history')).not.toHaveAttribute('aria-hidden', 'true');
+		expect(button).not.toHaveAttribute('data-icon-only', 'true');
+	});
+
+	it('hides the Chat history label when the session title becomes visible', async function () {
+		store.threads = [{ ...store.threads[0], title: NEW_CONVERSATION_TITLE }];
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'Chat history' });
+		expect(within(button).getByText('Chat history')).toBeVisible();
+
+		store.threads = [{ ...store.threads[0], title: 'Loaded session title' }];
+		await nextTick();
+
+		expect(getByRole('heading', { name: 'Loaded session title', level: 2 })).toBeVisible();
+		expect(within(button).queryByText('Chat history')).not.toBeInTheDocument();
+		expect(button).toHaveAttribute('data-icon-only', 'true');
+	});
 
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
@@ -1778,10 +1829,10 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
 
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await moveResize({ clientX: 720 });
 		expect(previewPanel.style.width).toBe('480px');
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
@@ -1845,8 +1896,8 @@ describe('InstanceAiThreadView', () => {
 		mockThreadAreaSizeState.width.value = 1200;
 		await vi.waitFor(() => expect(previewPanel.style.width).toBe('400px'));
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 720 });
 		await fireEvent.mouseUp(window);
 		expect(previewPanel.style.width).toBe('480px');
 
@@ -1863,8 +1914,8 @@ describe('InstanceAiThreadView', () => {
 
 		expect(previewPanel.style.width).toBe('400px');
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: 120 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 920 });
 		await fireEvent.mouseUp(window);
 
 		mockThreadAreaSizeState.width.value = 1600;

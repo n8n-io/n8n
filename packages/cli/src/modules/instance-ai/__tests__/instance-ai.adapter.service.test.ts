@@ -69,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
@@ -86,6 +87,7 @@ import type { NodeTypes } from '@/node-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 
 import { InstanceAiMcpRegistryService } from '../mcp';
+import type { InstanceContextService } from '../instance-context.service';
 
 import {
 	extractExecutionResult,
@@ -5316,6 +5318,7 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		instanceContext?: InstanceContextService;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5365,10 +5368,23 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	args[42] = overrides?.instanceContext;
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
 }
+
+describe('createContext activity gate', () => {
+	const user = mock<User>({ id: 'user-1' });
+	const instanceContext = mock<InstanceContextService>();
+
+	it.each([true, false, undefined])('uses the shared instance gate: %s', (enabled) => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { instanceContext });
+		const context = service.createContext(user, { instanceContextEnabled: enabled });
+
+		expect(context.activityService !== undefined).toBe(enabled === true);
+	});
+});
 
 describe('createExecutionAdapter runStep()', () => {
 	beforeEach(() => {
@@ -5992,10 +6008,13 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 
 describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+	const secondUser = mock<User>({ id: 'user-2', createdAt: new Date() });
+	const getFeatureFlagForInstance = vi.fn();
 
-	function stubContainer(flags: Record<string, string | boolean>) {
+	function stubContainer(flags: Record<string, string | boolean>, instanceFlag = false) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
-		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags });
+		getFeatureFlagForInstance.mockReset().mockResolvedValue(instanceFlag);
+		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags, getFeatureFlagForInstance });
 		return getFeatureFlags;
 	}
 
@@ -6012,7 +6031,7 @@ describe('resolveExperimentGates', () => {
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
-	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
+	it('resolves per-user gates with one user flag fetch', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -6022,9 +6041,61 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
+			instanceContextEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
+	});
+
+	it.each([true, false])(
+		'returns instance activity %s for users with different user flags',
+		async (instanceFlag) => {
+			const getFeatureFlags = stubContainer({}, instanceFlag);
+			getFeatureFlags
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+				})
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+				});
+			const adapter = createAdapter();
+
+			const [first, second] = await Promise.all([
+				adapter.resolveExperimentGates(user),
+				adapter.resolveExperimentGates(secondUser),
+			]);
+
+			expect(first.instanceContextEnabled).toBe(instanceFlag);
+			expect(second.instanceContextEnabled).toBe(instanceFlag);
+			expect(first.nodeUsageEnabled).toBe(true);
+			expect(second.nodeUsageEnabled).toBe(false);
+			expect(getFeatureFlagForInstance.mock.calls).toEqual([
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+			]);
+		},
+	);
+
+	it('keeps instance activity off when its evaluation fails', async () => {
+		stubContainer(allEnabled, true);
+		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
+			nodeUsageEnabled: true,
+		});
+	});
+
+	it('keeps the instance answer when user flag evaluation fails', async () => {
+		const getFeatureFlags = stubContainer(allEnabled, true);
+		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: true,
+			nodeUsageEnabled: false,
+		});
 	});
 
 	it('disables experiment gates for control variants', async () => {
@@ -6044,6 +6115,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -6078,6 +6150,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -6092,6 +6165,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 });

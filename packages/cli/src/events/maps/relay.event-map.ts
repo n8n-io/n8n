@@ -480,6 +480,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
+		credentialDescriptionLength: number;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -505,6 +506,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
+		credentialDescriptionLength: number;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;

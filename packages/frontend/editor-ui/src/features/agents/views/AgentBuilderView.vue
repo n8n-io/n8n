@@ -8,6 +8,7 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	type ActionDropdownItem,
+	type ResizeData,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -216,9 +217,12 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const previewDockWidth = ref(480);
+const isPreviewDockResizing = ref(false);
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
+const taskPreviewPrompt = ref<string>();
 const isPreviewActive = computed(function isPreviewActive() {
 	return isStandalonePreview.value || isPreviewDockOpen.value;
 });
@@ -241,6 +245,9 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // `isRouteAgentPending` to false, which must not close the panel out from
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
+watch([projectId, agentId], () => {
+	taskPreviewPrompt.value = undefined;
+});
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
 	// component instance, so `history.state` — just updated by that navigation —
@@ -808,13 +815,19 @@ async function onDeletePreviewSession(sessionId: string) {
 	await deleteSession(sessionId);
 }
 
-async function onOpenPreview() {
-	if (!isBuilt.value) return;
+async function onOpenPreview(expectedTarget?: {
+	projectId: string;
+	agentId: string;
+}): Promise<boolean> {
+	if (!isBuilt.value) return false;
 
 	try {
 		await flushAutosave();
 	} catch {
-		return;
+		return false;
+	}
+	if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
+		return false;
 	}
 	if (isArtifactMode.value) {
 		openArtifactPreview();
@@ -822,6 +835,18 @@ async function onOpenPreview() {
 		await openPreview();
 	}
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
+	return true;
+}
+
+async function onPreviewTask(instructions: string) {
+	const target = { projectId: projectId.value, agentId: agentId.value };
+	if (!(await onOpenPreview(target))) return;
+
+	// Reset first so the same objective can be previewed more than once.
+	taskPreviewPrompt.value = undefined;
+	await nextTick();
+	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
+	taskPreviewPrompt.value = instructions;
 }
 
 function getBuilderQuery() {
@@ -848,6 +873,10 @@ function returnToBuilderFromPreview() {
 function closePreviewDock() {
 	persistedPreviewOpen.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
+}
+
+function onPreviewDockResize({ width }: ResizeData) {
+	previewDockWidth.value = width;
 }
 
 function onPublished(updated: AgentResource) {
@@ -2360,9 +2389,13 @@ function onSwitchAgent(nextAgentId: string) {
 				{
 					[$style.previewOpen]: isPreviewDockOpen,
 					[$style.aiPanelOpen]: showAiPanel,
+					[$style.previewResizing]: isPreviewDockResizing,
 				},
 			]"
-			:style="{ '--agent-ai-panel-width': `${aiPanelWidth}px` }"
+			:style="{
+				'--agent-ai-panel-width': `${aiPanelWidth}px`,
+				'--agent-preview-chat-column-width': `${previewDockWidth}px`,
+			}"
 		>
 			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
 				<N8nResizeWrapper
@@ -2434,6 +2467,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
@@ -2452,6 +2486,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
+					@preview-task="onPreviewTask"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
@@ -2472,31 +2507,44 @@ function onSwitchAgent(nextAgentId: string) {
 					@unpublished="onUnpublished"
 				/>
 
-				<AgentPreviewDock
+				<N8nResizeWrapper
 					v-if="!isStandalonePreview"
-					:is-open="isPreviewDockOpen"
-					:session-title="currentSessionTitle"
-					:session-options="sessionMenu"
-					:has-session="currentSessionHasMessages"
-					:initialized="initialized"
-					:project-id="projectId"
-					:agent-id="agentId"
-					:agent="agent"
-					:local-config="localConfig"
-					:connected-triggers="connectedTriggers"
-					:effective-session-id="effectiveSessionId"
-					:can-delete-session="canDeletePreviewSession"
-					:is-deleting-session="isDeletingSession"
-					:can-send-to-assistant="instanceAiAvailable"
-					:before-send="beforePreviewSend"
-					@view-trace="viewPreviewTrace"
-					@new-session="startNewPreviewSession"
-					@delete-session="onDeletePreviewSession"
-					@session-select="onSessionPick"
-					@close="closePreviewDock"
-					@continue-loaded="onContinueLoaded"
-					@send-to-assistant="onSendPreviewToAssistant"
-				/>
+					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
+					:width="previewDockWidth"
+					:min-width="320"
+					:supported-directions="['left']"
+					:grid-size="8"
+					@resizestart="isPreviewDockResizing = true"
+					@resize="onPreviewDockResize"
+					@resizeend="isPreviewDockResizing = false"
+				>
+					<AgentPreviewDock
+						:is-open="isPreviewDockOpen"
+						:session-title="currentSessionTitle"
+						:session-options="sessionMenu"
+						:has-session="currentSessionHasMessages"
+						:initialized="initialized"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent="agent"
+						:local-config="localConfig"
+						:connected-triggers="connectedTriggers"
+						:effective-session-id="effectiveSessionId"
+						:initial-prompt="taskPreviewPrompt"
+						:can-delete-session="canDeletePreviewSession"
+						:is-deleting-session="isDeletingSession"
+						:can-send-to-assistant="instanceAiAvailable"
+						:before-send="beforePreviewSend"
+						@view-trace="viewPreviewTrace"
+						@new-session="startNewPreviewSession"
+						@delete-session="onDeletePreviewSession"
+						@session-select="onSessionPick"
+						@close="closePreviewDock"
+						@continue-loaded="onContinueLoaded"
+						@send-to-assistant="onSendPreviewToAssistant"
+						@initial-consumed="taskPreviewPrompt = undefined"
+					/>
+				</N8nResizeWrapper>
 			</template>
 		</div>
 	</div>
@@ -2534,7 +2582,26 @@ function onSwitchAgent(nextAgentId: string) {
 		padding-left: var(--agent-ai-panel-width);
 	}
 
+	&.previewResizing {
+		transition: none;
+	}
+
 	@include motion.reduced-motion;
+}
+
+.previewResizeWrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: var(--agent-preview-chat-column-width);
+	max-width: 100%;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.previewResizeOpen {
+	pointer-events: auto;
 }
 
 .loading {

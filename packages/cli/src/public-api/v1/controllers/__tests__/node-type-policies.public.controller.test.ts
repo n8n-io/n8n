@@ -1,5 +1,5 @@
 import type {
-	NodeTypePolicyEffectiveWriteResultPublicDto,
+	PolicyEffectiveWriteResultPublicDto,
 	PutInstancePolicyDto,
 	PutProjectPolicyDto,
 } from '@n8n/api-types';
@@ -192,7 +192,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
 
-		const result: NodeTypePolicyEffectiveWriteResultPublicDto = await controller.putInstancePolicy(
+		const result: PolicyEffectiveWriteResultPublicDto = await controller.putInstancePolicy(
 			req,
 			res,
 			dto,
