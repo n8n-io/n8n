@@ -120,7 +120,7 @@ export type WaitDeclaration =
  * emits a deadline's captured outputs itself; only a request reaches an
  * executor, which runs the node's resume path with the payload.
  */
-export type StepResume = { kind: 'deadline' } | { kind: 'request'; payload: JsonValue };
+export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; payload: JsonValue };
 
 /**
  * A wait with no deadline and no resume request would never end, and would

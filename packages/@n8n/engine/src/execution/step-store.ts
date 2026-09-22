@@ -2,7 +2,7 @@ import type {
 	StepError,
 	StepKey,
 	StepKeyId,
-	StepResume,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
@@ -37,9 +37,9 @@ export interface StepRecord {
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
 	/** The wait this step declared; `null` unless it has suspended. */
-	wait: WaitDeclaration | null;
+	waitDeclaration: WaitDeclaration | null;
 	/** What resumed this step's current dispatch; `null` on a first run. */
-	resume: StepResume | null;
+	resumeCause: ResumeCause | null;
 	/** Why the step failed; absent unless it did. */
 	error?: StepError | null;
 }
@@ -120,14 +120,14 @@ export interface StepStore {
 	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
 
 	/**
-	 * Record a wait: persist `wait` and move the step to `waiting`. A
+	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
 	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
 	 */
-	suspendStep(id: string, wait: WaitDeclaration): Promise<boolean>;
+	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
 
 	/**
-	 * Resume a wait: persist `resume` and return the step to `queued`, from
+	 * Resume a wait: persist `resume_cause` and return the step to `queued`, from
 	 * where the normal worker path re-dispatches it. A compare-and-set on
 	 * `waiting`, so a doubled resume — a webhook retry, a sweep racing a
 	 * request — resolves the wait once. The declaration stays on the row: a
@@ -139,7 +139,7 @@ export interface StepStore {
 	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
 	 * a resume request is the caller.
 	 */
-	resumeStep(id: string, resume: StepResume): Promise<boolean>;
+	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
 
 	/**
 	 * Resume every waiting step whose deadline has passed, up to `limit`, and

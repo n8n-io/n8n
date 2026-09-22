@@ -33,25 +33,26 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						comment: 'Name and message of the error that failed this step.',
 					},
 					{
-						name: 'wait',
+						name: 'wait_declaration',
 						type: 'jsonb',
 						isNullable: true,
 						comment:
-							'What the step is waiting for, as its executor declared it. Persisted without inspection and read back on resume.',
+							"What the step waits for, as its executor declared it. The engine reads the deadline and the outputs to emit at it. Why the node waits is the node's business.",
 					},
 					{
 						name: 'wait_till',
 						type: 'timestamptz',
 						precision: 3,
 						isNullable: true,
-						comment: "The wait's deadline, lifted out of `wait` so the sweep can index it.",
+						comment:
+							"The wait's deadline, lifted out of `wait_declaration` so the sweep can index it.",
 					},
 					{
-						name: 'resume',
+						name: 'resume_cause',
 						type: 'jsonb',
 						isNullable: true,
 						comment:
-							"What ended the step's wait, recorded when it is resumed. Persisted without inspection.",
+							"What ended the step's wait, recorded when it is resumed: a deadline, or a request. The engine reads which of the two it was; a request's payload goes unread to the node's resume path.",
 					},
 					{
 						name: 'created_at',

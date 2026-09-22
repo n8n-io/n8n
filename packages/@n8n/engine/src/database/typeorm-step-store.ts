@@ -6,7 +6,7 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
-	type StepResume,
+	type ResumeCause,
 	type WaitDeclaration,
 	type StepError,
 	type StepKey,
@@ -47,8 +47,8 @@ type ClaimedStepRow = {
 	execution_id: string;
 	node_id: string;
 	iteration: number;
-	wait: WaitDeclaration | null;
-	resume: StepResume | null;
+	wait_declaration: WaitDeclaration | null;
+	resume_cause: ResumeCause | null;
 };
 type DueStepRow = { id: string; execution_id: string };
 
@@ -135,7 +135,8 @@ export class TypeOrmStepStore implements StepStore {
 		// among the returned columns: a step claimed out of `queued` can't have
 		// an outcome yet, so it is `null` by the lifecycle.
 		//
-		// `wait` and `resume` are returned, because a resumed step is also claimed
+		// `wait_declaration` and `resume_cause` are returned, because a resumed step
+		// is also claimed
 		// out of `queued` and carries both. A deadline resume reads its captured
 		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
@@ -163,7 +164,7 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration', 'wait', 'resume'])
+				.returning(['id', 'executionId', 'nodeId', 'iteration', 'waitDeclaration', 'resumeCause'])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -176,8 +177,8 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
-				wait: row.wait,
-				resume: row.resume,
+				waitDeclaration: row.wait_declaration,
+				resumeCause: row.resume_cause,
 			};
 		});
 	}
@@ -186,20 +187,20 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.transition(id, 'running', 'completed', { outputs });
 	}
 
-	async suspendStep(id: string, wait: WaitDeclaration): Promise<boolean> {
+	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
 		// `wait_till` is derived from the declaration in the same statement that
 		// writes it, so the column the sweep reads can never disagree with the
 		// declaration it fires.
 		return await this.transition(id, 'running', 'waiting', {
-			wait,
-			waitTill: wait.resumeAt === undefined ? null : new Date(wait.resumeAt),
+			waitDeclaration,
+			waitTill: waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
 		});
 	}
 
-	async resumeStep(id: string, resume: StepResume): Promise<boolean> {
+	async resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean> {
 		// `wait_till` stays as it was, so the status is the only thing that keeps
 		// the sweep from firing this row again.
-		return await this.transition(id, 'waiting', 'queued', { resume });
+		return await this.transition(id, 'waiting', 'queued', { resumeCause });
 	}
 
 	async resumeDueSteps(due: Date, limit: number): Promise<DueStep[]> {
@@ -213,7 +214,7 @@ export class TypeOrmStepStore implements StepStore {
 		const result = await this.repo
 			.createQueryBuilder()
 			.update(WorkflowStepExecution)
-			.set({ status: 'queued', resume: { kind: 'deadline' } })
+			.set({ status: 'queued', resumeCause: { kind: 'deadline' } })
 			.where(
 				`id IN (
 					SELECT id FROM workflow_step_execution
@@ -284,9 +285,9 @@ export class TypeOrmStepStore implements StepStore {
 		fields: {
 			outputs?: StepSlots;
 			error?: StepError;
-			wait?: WaitDeclaration;
+			waitDeclaration?: WaitDeclaration;
 			waitTill?: Date | null;
-			resume?: StepResume;
+			resumeCause?: ResumeCause;
 		} = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });

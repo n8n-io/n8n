@@ -68,7 +68,7 @@ export class StepReadyHandler {
 		// either would fail a step that this worker can serve: a resume is
 		// announced to every worker, including one that carries no shim.
 		const executor =
-			node.type === 'batch' || step.resume?.kind === 'deadline'
+			node.type === 'batch' || step.resumeCause?.kind === 'deadline'
 				? undefined
 				: this.executorFor(step, node);
 
@@ -92,7 +92,7 @@ export class StepReadyHandler {
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
 		const dispatch: { kind: 'deadline' } | { kind: 'run'; inputs: StepSlots } =
-			step.resume?.kind === 'deadline'
+			step.resumeCause?.kind === 'deadline'
 				? { kind: 'deadline' }
 				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
 
@@ -175,8 +175,8 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
 			},
-			...(step.resume?.kind === 'request'
-				? { resumeRequest: { payload: step.resume.payload } }
+			...(step.resumeCause?.kind === 'request'
+				? { resumeRequest: { payload: step.resumeCause.payload } }
 				: {}),
 		});
 
@@ -383,7 +383,7 @@ function toStepError(error: unknown): StepError {
  * type system.
  */
 function capturedDeadlineOutputs(step: StepRecord): StepSlots {
-	const outputs = step.wait?.outputsAtDeadline;
+	const outputs = step.waitDeclaration?.outputsAtDeadline;
 	if (!outputs) {
 		throw new UnexpectedError(
 			`step ${step.id} resumes at its deadline but its declaration captured no outputs`,

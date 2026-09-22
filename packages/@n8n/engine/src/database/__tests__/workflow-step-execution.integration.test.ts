@@ -4,7 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
-	StepResume,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
@@ -76,9 +76,9 @@ describe('workflow_step_execution table (integration)', () => {
 		iteration?: number;
 		status: StepStatus;
 		outputs?: StepSlots;
-		wait?: WaitDeclaration;
+		waitDeclaration?: WaitDeclaration;
 		waitTill?: Date | null;
-		resume?: StepResume;
+		resumeCause?: ResumeCause;
 	}): Promise<{ id: string }> {
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		const row = await repo.save(repo.create(record));
@@ -398,7 +398,7 @@ describe('workflow_step_execution table (integration)', () => {
 			.getRepository(WorkflowStepExecution)
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('waiting');
-		expect(found.wait).toEqual(wait);
+		expect(found.waitDeclaration).toEqual(wait);
 		expect(found.waitTill).toEqual(new Date(wait.resumeAt));
 		// a suspension is not an outcome
 		expect(found.outputs).toBeNull();
@@ -435,7 +435,7 @@ describe('workflow_step_execution table (integration)', () => {
 			.getRepository(WorkflowStepExecution)
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
-		expect(found.wait).toBeNull();
+		expect(found.waitDeclaration).toBeNull();
 	});
 
 	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {
@@ -452,8 +452,13 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const wait: WaitDeclaration = { acceptsResumeRequest: true };
-		const { id } = await seedStep({ executionId, nodeId: 'a', status: 'waiting', wait });
-		const resume: StepResume = { kind: 'request', payload: { body: { approved: true } } };
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: wait,
+		});
+		const resume: ResumeCause = { kind: 'request', payload: { body: { approved: true } } };
 
 		expect(await store.resumeStep(id, resume)).toBe(true);
 
@@ -461,16 +466,16 @@ describe('workflow_step_execution table (integration)', () => {
 			.getRepository(WorkflowStepExecution)
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
-		expect(found.resume).toEqual(resume);
+		expect(found.resumeCause).toEqual(resume);
 		// the declaration stays: the row is the only place it lives, and the
 		// dispatch reads it after the claim
-		expect(found.wait).toEqual(wait);
+		expect(found.waitDeclaration).toEqual(wait);
 	});
 
 	it('TypeOrmStepStore.resumeStep only resumes a waiting step', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const resume: StepResume = { kind: 'deadline' };
+		const resume: ResumeCause = { kind: 'deadline' };
 
 		for (const status of ['queued', 'running', 'completed', 'cancelled'] as const) {
 			const { id } = await seedStep({ executionId, nodeId: `n-${status}`, status });
@@ -481,7 +486,7 @@ describe('workflow_step_execution table (integration)', () => {
 				.getRepository(WorkflowStepExecution)
 				.findOneOrFail({ where: { id } });
 			expect(found.status).toBe(status);
-			expect(found.resume).toBeNull();
+			expect(found.resumeCause).toBeNull();
 		}
 	});
 
@@ -493,15 +498,20 @@ describe('workflow_step_execution table (integration)', () => {
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
 			acceptsResumeRequest: false,
 		};
-		const { id } = await seedStep({ executionId, nodeId: 'a', status: 'waiting', wait });
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: wait,
+		});
 		await store.resumeStep(id, { kind: 'deadline' });
 
 		// the claim carries both, so dispatching a resumed step costs no extra read
 		expect(await store.claimStep(id)).toMatchObject({
 			id,
 			status: 'running',
-			wait,
-			resume: { kind: 'deadline' },
+			waitDeclaration: wait,
+			resumeCause: { kind: 'deadline' },
 		});
 	});
 
@@ -515,7 +525,7 @@ describe('workflow_step_execution table (integration)', () => {
 			executionId,
 			nodeId,
 			status: 'waiting',
-			wait:
+			waitDeclaration:
 				waitTill === null
 					? { acceptsResumeRequest: true }
 					: {
@@ -545,13 +555,13 @@ describe('workflow_step_execution table (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		const found = await repo.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
-		expect(found.resume).toEqual({ kind: 'deadline' });
+		expect(found.resumeCause).toEqual({ kind: 'deadline' });
 		// the declaration stays: the dispatch reads its captured outputs
-		expect(found.wait).not.toBeNull();
+		expect(found.waitDeclaration).not.toBeNull();
 
 		const later = await repo.findOneOrFail({ where: { id: laterId } });
 		expect(later.status).toBe('waiting');
-		expect(later.resume).toBeNull();
+		expect(later.resumeCause).toBeNull();
 	});
 
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {

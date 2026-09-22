@@ -11,7 +11,7 @@ export type {
 	StepError,
 	StepKey,
 	StepKeyId,
-	StepResume,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	TriggerOutputs,

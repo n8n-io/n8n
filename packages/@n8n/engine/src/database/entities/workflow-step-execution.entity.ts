@@ -10,7 +10,7 @@ import {
 
 import type {
 	StepError,
-	StepResume,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
@@ -47,21 +47,30 @@ export class WorkflowStepExecution {
 	@Column('jsonb', { nullable: true })
 	error!: StepError | null;
 
-	@Column('jsonb', { nullable: true })
-	wait!: WaitDeclaration | null;
+	/**
+	 * What the step waits for, as its executor declared it. The engine reads the
+	 * deadline and the outputs to emit at it. Why the node waits is the node's
+	 * business.
+	 */
+	@Column('jsonb', { name: 'wait_declaration', nullable: true })
+	waitDeclaration!: WaitDeclaration | null;
 
-	/** Lifted out of `wait` so the sweep can index it; `suspendStep` writes both. */
+	/**
+	 * Lifted out of `wait_declaration` so the sweep can index it; `suspendStep`
+	 * writes both.
+	 */
 	@Column({ name: 'wait_till', type: 'timestamptz', precision: 3, nullable: true })
 	waitTill!: Date | null;
 
 	/**
-	 * What ended the wait: a deadline, or a request and its payload. It holds no
-	 * output. A deadline resume emits `wait.outputsAtDeadline`. A request resume
-	 * hands the payload to the node's resume path, and what that returns lands
-	 * in `outputs`, as it does for every step.
+	 * What ended the wait: a deadline, or a request. It holds no output. The
+	 * engine reads which of the two it was: a deadline resume emits
+	 * `wait_declaration.outputsAtDeadline`, and a request's payload goes unread
+	 * to the node's resume path. What that path returns lands in `outputs`, as
+	 * it does for every step.
 	 */
-	@Column('jsonb', { nullable: true })
-	resume!: StepResume | null;
+	@Column('jsonb', { name: 'resume_cause', nullable: true })
+	resumeCause!: ResumeCause | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

@@ -26,8 +26,8 @@ function stepRow(nodeId: string, status: StepStatus, outputs: StepSlots | null =
 		iteration: 0,
 		status,
 		outputs,
-		wait: null,
-		resume: null,
+		waitDeclaration: null,
+		resumeCause: null,
 	};
 }
 
@@ -94,8 +94,8 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		iteration: 0,
 		status: 'running',
 		outputs: null,
-		wait: null,
-		resume: null,
+		waitDeclaration: null,
+		resumeCause: null,
 		...step,
 	};
 	return {
@@ -845,8 +845,8 @@ describe('StepReadyHandler resumes', () => {
 	it('emits the captured outputs when a deadline resume dispatches the step', async () => {
 		const stepStore = makeStepStore({
 			status: 'running',
-			wait: timeWait,
-			resume: { kind: 'deadline' },
+			waitDeclaration: timeWait,
+			resumeCause: { kind: 'deadline' },
 		});
 		const queue = makeQueue();
 		const executor = makeExecutor();
@@ -875,8 +875,8 @@ describe('StepReadyHandler resumes', () => {
 		// looking an executor up here would fail a resume this worker can serve.
 		const stepStore = makeStepStore({
 			status: 'running',
-			wait: timeWait,
-			resume: { kind: 'deadline' },
+			waitDeclaration: timeWait,
+			resumeCause: { kind: 'deadline' },
 		});
 		const queue = makeQueue();
 		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {});
@@ -896,8 +896,8 @@ describe('StepReadyHandler resumes', () => {
 		const stepStore = makeStepStore(
 			{
 				status: 'running',
-				wait: openWait,
-				resume: { kind: 'request', payload: { body: { approved: true } } },
+				waitDeclaration: openWait,
+				resumeCause: { kind: 'request', payload: { body: { approved: true } } },
 			},
 			{
 				loadStepsByKeys: vi.fn().mockResolvedValue({
@@ -928,8 +928,8 @@ describe('StepReadyHandler resumes', () => {
 		// from outside the type system reaches this — but the row is such a write.
 		const stepStore = makeStepStore({
 			status: 'running',
-			wait: null,
-			resume: { kind: 'deadline' },
+			waitDeclaration: null,
+			resumeCause: { kind: 'deadline' },
 		});
 		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: makeExecutor(),
@@ -1139,8 +1139,8 @@ describe('StepReadyHandler over loop iterations', () => {
 			iteration,
 			status: 'completed',
 			outputs,
-			wait: null,
-			resume: null,
+			waitDeclaration: null,
+			resumeCause: null,
 		};
 	}
 

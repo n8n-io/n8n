@@ -274,7 +274,7 @@ describe('step execution (integration)', () => {
 
 		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
 		expect(waiting?.status).toBe('waiting');
-		expect(waiting?.wait).toEqual(wait);
+		expect(waiting?.waitDeclaration).toEqual(wait);
 		expect(waiting?.waitTill).toEqual(new Date(wait.resumeAt));
 		expect(waiting?.outputs).toBeNull();
 	});
@@ -319,7 +319,7 @@ describe('step execution (integration)', () => {
 
 		const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
 		expect(nodeA?.status).toBe('completed');
-		expect(nodeA?.resume).toEqual({ kind: 'deadline' });
+		expect(nodeA?.resumeCause).toEqual({ kind: 'deadline' });
 		// the declaration's captured outputs are what the step emitted
 		expect(nodeA?.outputs).toEqual(wait.outputsAtDeadline);
 
@@ -372,7 +372,7 @@ describe('step execution (integration)', () => {
 		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
 		expect(waiting?.status).toBe('cancelled');
 		// the declaration stays on the row as a record of what it was waiting for
-		expect(waiting?.wait).toEqual(wait);
+		expect(waiting?.waitDeclaration).toEqual(wait);
 	});
 
 	it('runs the execution to completion even when every status batch is refused', async () => {

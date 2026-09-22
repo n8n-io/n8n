@@ -96,7 +96,7 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
-	StepResume,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
