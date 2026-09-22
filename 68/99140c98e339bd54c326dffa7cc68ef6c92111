@@ -7,6 +7,7 @@ packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
   s_934fec7376a80c::t_e6cd04aa4770af 929
 packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
   s_934fec7376a80c::t_e46a2ba69bbdaa 235
+  s_934fec7376a80c::t_985fa9756040c5 105-108,118
 packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
   s_934fec7376a80c::t_e46a2ba69bbdaa 23,29,34,81,88
 packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
@@ -73,6 +74,7 @@ packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.t
   s_934fec7376a80c::t_1d5aa533377d11 362,365
   s_934fec7376a80c::t_7fb315c8c2e3b0 412-415
   s_934fec7376a80c::t_f0a9db579e3982 423
+  s_934fec7376a80c::t_1cc5afe647ceae 23
 packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
   s_934fec7376a80c::t_e46a2ba69bbdaa 64,66,876-880,896,903-904
   s_934fec7376a80c::t_3783fc9611ed4f 897-902
@@ -82,6 +84,7 @@ packages/cli/src/modules/agents/agent-execution.service.ts
   s_934fec7376a80c::t_805f22103db948 154-173
   s_934fec7376a80c::t_d003f857df0864 753-754
   s_934fec7376a80c::t_15593b7952bfa0 755-756
+  s_934fec7376a80c::t_72f51bd0141705 15,39,724,734
 packages/cli/test/integration/agents/agent-conversation-state.test.ts
   s_934fec7376a80c::t_dabeddde09e8db 5,11,53,56
 packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
@@ -107,6 +110,7 @@ packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
   s_934fec7376a80c::t_53c7c440ed9d09 483-491,566,593,636,668-674
   s_934fec7376a80c::t_08c044641dbe5a 1036-1037,1047,1098
   s_934fec7376a80c::t_ded73007292799 1147
+  s_934fec7376a80c::t_3720ae3285af5c 401,611
 packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
   s_934fec7376a80c::t_fcca77154b39f8 180-182
 packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
@@ -138,6 +142,7 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
   s_934fec7376a80c::t_79e3c7b95cc840 610,615,662-663,667-671
   s_934fec7376a80c::t_fdf132663ab7c0 878-881
   s_934fec7376a80c::t_f5e4af1978fae7 779
+  s_934fec7376a80c::t_e13516aac53fb9 874-877
 packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
   s_934fec7376a80c::t_805f22103db948 213,397,544
 packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
@@ -148,10 +153,12 @@ packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test
 packages/cli/src/modules/agents/agent-test-run.service.ts
   s_934fec7376a80c::t_d003f857df0864 29,42,193-195,197,257,304-308
   s_934fec7376a80c::t_469e7b2280ce25 37,168,171-172,196
+  s_934fec7376a80c::t_039d7af9a1ab0a 179,273
 packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
   s_c0b5cb82f2f1c3::t_a6b75bf507b5f7 470-471,473-498
   s_934fec7376a80c::t_034c09bad61ae2 420,440-444,461,467-469
   s_934fec7376a80c::t_cb8cd30fc9d547 499-502
+  s_934fec7376a80c::t_c5861bdb4a3533 472
 packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
   s_934fec7376a80c::t_2b4cd6d737040a 136,185,458,549,1014
   s_934fec7376a80c::t_ff1a192cc6bc2d 656,663,699,703
