@@ -186,6 +186,23 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.statuses.value.slack).toBe('disconnected');
 	});
 
+	it('clears the cached approval on disconnect so a reconnect defaults off', async () => {
+		apiMocks.connectIntegration.mockResolvedValue({ status: 'connected' });
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.connect('slack', 'cred-slack', undefined, {
+			approval: { mode: 'selected', tools: ['send_dm'] },
+		});
+		expect(status.integrationApproval.value.slack).toEqual({
+			mode: 'selected',
+			tools: ['send_dm'],
+		});
+
+		apiMocks.disconnectIntegration.mockResolvedValue({ status: 'disconnected' });
+		await status.disconnect('slack', 'cred-slack');
+
+		expect(status.integrationApproval.value.slack).toBeUndefined();
+	});
+
 	it('does not let a builder re-seed downgrade a channel the server confirmed', async () => {
 		// Every builder write re-seeds this cache from local configuration, where a
 		// published agent's channels read as `starting`. That guess must not replace

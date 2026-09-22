@@ -33,7 +33,6 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -58,8 +57,6 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
-	useInstanceAiMcpConnectionsExperiment();
 const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
@@ -198,6 +195,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		],
 	},
 	{
+		id: 'nodes',
+		labelKey: 'settings.n8nAgent.permissions.group.nodes',
+		keys: ['executeNode'],
+	},
+	{
 		id: 'folders',
 		labelKey: 'settings.n8nAgent.permissions.group.folders',
 		keys: ['createFolder', 'deleteFolder'],
@@ -222,19 +224,12 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		labelKey: 'settings.n8nAgent.permissions.group.web',
 		keys: ['fetchUrl', 'webSearch'],
 	},
+	{
+		id: 'mcp',
+		labelKey: 'settings.n8nAgent.permissions.group.mcp',
+		keys: ['executeMcpTool'],
+	},
 ];
-
-const MCP_PERMISSION_GROUP: PermissionGroup = {
-	id: 'mcp',
-	labelKey: 'settings.n8nAgent.permissions.group.mcp',
-	keys: ['executeMcpTool'],
-};
-
-const permissionGroups = computed(() =>
-	isMcpConnectionsExperimentEnabled.value
-		? [...PERMISSION_GROUPS, MCP_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -735,7 +730,6 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				v-if="isMcpConnectionsExperimentEnabled"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>
@@ -764,7 +758,7 @@ function openAiUsageSettings() {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						v-for="group in permissionGroups"
+						v-for="group in PERMISSION_GROUPS"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
 						:class="{ [$style.dim]: isGroupLocked(group) }"
@@ -899,7 +893,7 @@ function openAiUsageSettings() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: 0 0 var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .permissionRow {

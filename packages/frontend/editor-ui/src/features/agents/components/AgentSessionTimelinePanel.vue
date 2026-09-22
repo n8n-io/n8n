@@ -22,6 +22,7 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
+import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	EventKind,
@@ -90,11 +91,16 @@ const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
+	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
+	if (backgroundJobKey) return i18n.baseText(backgroundJobKey);
+
 	switch (key) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -450,6 +456,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+	/* Keep the timeline's own stacking below the preview dock, which overlays
+	   this column as a sibling. Without it, a z-index inside the chart competes
+	   with the dock and paints over the chat. */
+	isolation: isolate;
 }
 .subHeader {
 	display: flex;

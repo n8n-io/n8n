@@ -12,9 +12,12 @@ import {
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 
+import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
+
 import {
 	type StartWorkflowParams,
 	type EndWorkflowParams,
+	type EndCrashedWorkflowParams,
 	type StartNodeParams,
 	type EndNodeParams,
 	isEndNodeError,
@@ -123,6 +126,54 @@ export class ExecutionLevelTracer {
 		} finally {
 			this.activeWorkflowSpans.delete(params.executionId);
 		}
+	}
+
+	endCrashedWorkflow(params: EndCrashedWorkflowParams): void {
+		try {
+			const tracked = this.activeWorkflowSpans.get(params.executionId);
+			const span = tracked?.span ?? this.reconstructWorkflowSpan(params);
+			span.setAttributes({
+				[ATTR.EXECUTION_MODE]: params.mode,
+				[ATTR.EXECUTION_STATUS]: 'crashed',
+				[ATTR.EXECUTION_ERROR_TYPE]: WorkflowCrashedError.name,
+				[ATTR.EXECUTION_CRASH_DETECTOR]: params.detector,
+				[ATTR.EXECUTION_RECONSTRUCTED]: tracked === undefined,
+				[ATTR.EXECUTION_IS_RETRY]: params.mode === 'retry',
+				...(params.retryOf ? { [ATTR.EXECUTION_RETRY_OF]: params.retryOf } : {}),
+			});
+			span.setStatus({ code: SpanStatusCode.ERROR });
+			span.recordException(new WorkflowCrashedError());
+			this.endDanglingNodeSpans(params.executionId, 'workflow_crashed');
+			span.end(params.stoppedAt);
+		} catch (error) {
+			this.logger.warn('Failed to end crashed workflow span', {
+				executionId: params.executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		} finally {
+			this.activeWorkflowSpans.delete(params.executionId);
+		}
+	}
+
+	private reconstructWorkflowSpan(params: EndCrashedWorkflowParams) {
+		return this.tracer.startSpan(
+			'workflow.execute',
+			{
+				startTime: params.startedAt,
+				attributes: {
+					[ATTR.WORKFLOW_ID]: params.workflowId,
+					...(params.workflowName && { [ATTR.WORKFLOW_NAME]: params.workflowName }),
+					...(params.workflowVersionId && {
+						[ATTR.WORKFLOW_VERSION_ID]: params.workflowVersionId,
+					}),
+					[ATTR.EXECUTION_ID]: params.executionId,
+					...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+					...buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, params.workflow?.customAttributes),
+					...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
+				},
+			},
+			this.parseTraceParentHeaders(params.tracingContext),
+		);
 	}
 
 	startNode(params: StartNodeParams): void {
@@ -266,12 +317,12 @@ export class ExecutionLevelTracer {
 		);
 	}
 
-	private endDanglingNodeSpans(executionId: string): void {
+	private endDanglingNodeSpans(executionId: string, reason = 'workflow_cancelled'): void {
 		const executionNodes = this.activeNodeSpansByExecutionId.get(executionId);
 		if (!executionNodes) return;
 
 		for (const tracked of executionNodes.values()) {
-			terminateSpan(tracked.span, 'workflow_cancelled');
+			terminateSpan(tracked.span, reason);
 		}
 
 		this.activeNodeSpansByExecutionId.delete(executionId);

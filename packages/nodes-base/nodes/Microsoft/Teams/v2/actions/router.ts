@@ -7,15 +7,38 @@ import {
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 
+import * as activityNotification from './activityNotification';
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chat from './chat';
+import { throwIfChatUnsupported } from './chat/sharedGuard';
 import * as chatMember from './chatMember';
+import { throwIfChatMemberUnsupported } from './chatMember/sharedGuard';
 import * as chatMessage from './chatMessage';
+import { throwIfChatMessageUnsupported } from './chatMessage/sharedGuard';
 import type { MicrosoftTeamsType } from './node.type';
 import * as onlineMeeting from './onlineMeeting';
 import * as task from './task';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { stampItemIndexOnError } from '../../../GenericFunctions';
+
+/**
+ * The resources whose operation selector is hidden under the Service Principal credential.
+ *
+ * `Workflow` drops a hidden parameter before execution, so `operation` is absent for these
+ * and the read below fails with `Could not get parameter "operation"` before any operation
+ * can run its own guard. Guard on the resource first, so the user gets the real reason.
+ * Each entry is the operation-level guard itself, so the message has one source.
+ *
+ * A `Map`, not an object: `resource` is a stored parameter, and a plain object walks
+ * `Object.prototype`, so a resource of `__proto__` returns a non-nullish value and fails
+ * with a raw `TypeError` instead of the node's own unsupported-operation error.
+ */
+const SERVICE_PRINCIPAL_RESOURCE_GUARDS = new Map<string, (this: IExecuteFunctions) => void>([
+	['chat', throwIfChatUnsupported],
+	['chatMember', throwIfChatMemberUnsupported],
+	['chatMessage', throwIfChatMessageUnsupported],
+]);
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -23,6 +46,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	let responseData;
 
 	const resource = this.getNodeParameter<MicrosoftTeamsType>('resource', 0);
+	SERVICE_PRINCIPAL_RESOURCE_GUARDS.get(String(resource))?.call(this);
 	const operation = this.getNodeParameter('operation', 0);
 
 	const nodeVersion = this.getNode().typeVersion;
@@ -55,6 +79,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (microsoftTeamsTypeData.resource) {
+				case 'activityNotification':
+					responseData = await activityNotification[microsoftTeamsTypeData.operation].execute.call(
+						this,
+						i,
+					);
+					break;
 				case 'channel':
 					responseData = await channel[microsoftTeamsTypeData.operation].execute.call(this, i);
 					break;
@@ -65,6 +95,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						nodeVersion,
 						instanceId,
 					);
+					break;
+				case 'chat':
+					responseData = await chat[microsoftTeamsTypeData.operation].execute.call(this, i);
 					break;
 				case 'chatMember':
 					responseData = await chatMember[microsoftTeamsTypeData.operation].execute.call(this, i);

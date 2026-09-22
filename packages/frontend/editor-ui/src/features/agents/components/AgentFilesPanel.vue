@@ -5,8 +5,6 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nTableBase,
-	N8nTooltip,
-	N8nText,
 	N8nEmptyState,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
@@ -136,41 +134,6 @@ function onFilesSelected(event: Event) {
 
 <template>
 	<div :class="$style.panel" data-testid="agent-files-panel">
-		<div :class="$style.toolbar">
-			<N8nText bold :class="$style.title" data-testid="agent-files-title">
-				{{ i18n.baseText('agents.builder.files.title') }}
-				<N8nTooltip
-					:content="i18n.baseText('agents.builder.files.titleTooltip' as BaseTextKey)"
-					placement="top"
-				>
-					<div :class="$style.titleIcon"><N8nIcon icon="circle-help" size="small" /></div>
-				</N8nTooltip>
-			</N8nText>
-
-			<input
-				ref="fileInput"
-				type="file"
-				:accept="acceptAttr"
-				multiple
-				:class="$style.fileInput"
-				data-testid="agent-files-upload-input"
-				@change="onFilesSelected"
-			/>
-
-			<N8nButton
-				v-if="!props.loading && props.files.length > 0"
-				variant="ghost"
-				size="small"
-				icon="plus"
-				:disabled="isUploadDisabled"
-				:aria-label="uploadButtonLabel"
-				data-testid="agent-files-upload"
-				@click="openFilePicker"
-			>
-				{{ uploadButtonLabel }}
-			</N8nButton>
-		</div>
-
 		<N8nEmptyState
 			v-if="!props.loading && props.files.length === 0"
 			:icon="{ type: 'icon', value: 'file' }"
@@ -234,6 +197,29 @@ function onFilesSelected(event: Event) {
 				</tbody>
 			</N8nTableBase>
 		</div>
+		<div :class="$style.toolbar">
+			<input
+				ref="fileInput"
+				type="file"
+				:accept="acceptAttr"
+				multiple
+				:class="$style.fileInput"
+				data-testid="agent-files-upload-input"
+				@change="onFilesSelected"
+			/>
+
+			<N8nButton
+				v-if="!props.loading && props.files.length > 0"
+				variant="ghost"
+				icon="plus"
+				:disabled="isUploadDisabled"
+				:aria-label="uploadButtonLabel"
+				data-testid="agent-files-upload"
+				@click="openFilePicker"
+			>
+				{{ uploadButtonLabel }}
+			</N8nButton>
+		</div>
 	</div>
 </template>
 
@@ -250,21 +236,8 @@ function onFilesSelected(event: Event) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--xs);
+	padding-inline: var(--spacing--4xs);
 	width: 100%;
-}
-
-.title {
-	display: inline-flex;
-	align-items: center;
-	min-width: 0;
-}
-
-.titleIcon {
-	width: var(--height--xs);
-	height: var(--height--xs);
-	display: grid;
-	place-items: center;
-	color: var(--text-color--subtler);
 }
 
 .fileInput {

@@ -13,7 +13,7 @@ import type {
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -61,7 +61,9 @@ export interface UseAgentChatStreamParams {
 	 * extend the same session.
 	 */
 	continueSessionId?: Ref<string | undefined>;
+	newSession?: Ref<boolean>;
 	onHistoryLoaded?: (count: number) => void;
+	onSessionCreated?: (sessionId: string) => void;
 }
 
 type ResumePayload =
@@ -106,8 +108,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	let refreshAfterStream = false;
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	let acknowledgedSessionId: string | undefined;
 	const targetKey = () =>
 		JSON.stringify([params.projectId.value, params.agentId.value, params.continueSessionId?.value]);
+	function acknowledgeSessionCreation(sessionId = params.continueSessionId?.value): void {
+		if (
+			!sessionId ||
+			params.newSession?.value !== true ||
+			sessionId !== params.continueSessionId?.value ||
+			sessionId === acknowledgedSessionId
+		) {
+			return;
+		}
+		acknowledgedSessionId = sessionId;
+		params.onSessionCreated?.(sessionId);
+	}
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
 	 * misconfigured (missing instructions / model / credential). Cleared on the
@@ -166,6 +181,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				openSuspensions = envelope.openSuspensions;
 			}
 			if (!isCurrent()) return false;
+			if (continueId) acknowledgeSessionCreation(continueId);
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreaming.value && streamAtStart === streamVersion) {
@@ -490,6 +506,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		event: AgentSseEvent,
 		session: StreamSession,
 	): { done?: boolean } | undefined {
+		// Controller validation failures only emit `error`. Any other event proves
+		// that the backend admitted and persisted this turn.
+		if (event.type !== 'error') acknowledgeSessionCreation();
 		switch (event.type) {
 			case 'start-step':
 			case 'finish-step':
@@ -871,8 +890,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
-		if (params.continueSessionId?.value) {
-			body.sessionId = params.continueSessionId.value;
+		const sessionId = params.continueSessionId?.value;
+		const newSession = params.newSession?.value === true;
+		if (sessionId) {
+			body.sessionId = sessionId;
+			if (newSession) body.newSession = true;
 		}
 		if (files?.length) {
 			body.attachments = await Promise.all(
@@ -882,13 +904,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					// backend requires a non-empty mime type and sniffs the real one.
 					return {
 						fileName: file.name,
-						mimeType: file.type || 'application/octet-stream',
+						mimeType: encoded.mimeType || 'application/octet-stream',
 						data: encoded.data,
 					};
 				}),
 			);
 		}
 		await postAndConsume(url, body);
+		if (
+			newSession &&
+			params.newSession?.value === true &&
+			sessionId &&
+			sessionId === params.continueSessionId?.value &&
+			sessionId !== acknowledgedSessionId
+		) {
+			await refreshHistory({ silent: true });
+		}
 	}
 
 	/**
@@ -969,6 +1000,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				role: 'user',
 				content: text,
 				status: 'success',
+				createdAt: Date.now(),
 			});
 		}
 
@@ -1029,10 +1061,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			createdAt: Date.now(),
 			...(files?.length && {
 				attachments: files.map((file) => ({
 					fileName: file.name,
-					mimeType: file.type || 'application/octet-stream',
+					mimeType: resolveFileMimeType(file.name, file.type) || 'application/octet-stream',
 					sizeBytes: file.size,
 					file,
 				})),

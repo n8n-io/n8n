@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -22,6 +23,8 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		checkIsRepo: vi.fn(),
 		listRemote: vi.fn(),
 		clone: vi.fn(),
+		show: vi.fn(),
+		branch: vi.fn(),
 	};
 	instance.env.mockReturnValue(instance);
 	// Match simple-git's timeout error shape.
@@ -266,6 +269,36 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
 		});
 
+		it("does not delete another request's in-progress staging directory", async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			const firstClone = createDeferredPromise();
+			const sentinelPath = path.join(paths.nextRepositoryFolder, 'clone-in-progress');
+			let cloneCalls = 0;
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				cloneCalls += 1;
+				await mkdir(String(dir), { recursive: true });
+				if (cloneCalls === 1) {
+					await writeFile(sentinelPath, 'first-clone');
+					await firstClone.promise;
+				}
+			});
+
+			const first = call();
+			await vi.waitFor(() => expect(mockGit.clone).toHaveBeenCalledTimes(1));
+
+			const second = call();
+			await vi.waitFor(() => {
+				const checkRefCalls = mockGit.raw.mock.calls.filter(
+					(args) => Array.isArray(args[0]) && args[0][0] === 'check-ref-format',
+				);
+				expect(checkRefCalls).toHaveLength(2);
+			});
+			await expect(readFile(sentinelPath, 'utf8')).resolves.toBe('first-clone');
+
+			firstClone.resolve();
+			await Promise.all([first, second]);
+		});
+
 		it('bootstraps a checkout on the target branch when the remote is empty', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
@@ -302,6 +335,7 @@ describe('PromotionsGitService (git operations)', () => {
 	});
 
 	describe('commitAndPush', () => {
+		const onCheckoutRestored = vi.fn(async () => {});
 		const call = async (over: Record<string, unknown> = {}) =>
 			await gitService.commitAndPush({
 				remoteUrl,
@@ -313,11 +347,75 @@ describe('PromotionsGitService (git operations)', () => {
 				commitMessage: 'sync',
 				force: false,
 				stagePathspec: 'n8n-export',
+				onCheckoutRestored,
 				...over,
 			});
 
 		beforeEach(() => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('pushes to a new branch and restores the local base branch', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+
+			const result = await call({
+				targetBranchName: 'n8n-promotion/2026-01-01T00-00-00-000Z',
+			});
+
+			expect(mockGit.push).toHaveBeenCalledWith(
+				'origin',
+				'HEAD:refs/heads/n8n-promotion/2026-01-01T00-00-00-000Z',
+			);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(onCheckoutRestored).toHaveBeenCalled();
+			expect(result).toEqual({ commitSha: 'commit' });
+		});
+
+		it('restores the local base branch when a new branch push fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+			mockGit.push.mockRejectedValueOnce(new Error('remote: rejected'));
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(BadRequestError);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(onCheckoutRestored).toHaveBeenCalled();
+		});
+
+		it('rejects a new branch push when the local base branch does not exist', async () => {
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(
+				'Local branch does not exist: main',
+			);
+			expect(mockGit.commit).not.toHaveBeenCalled();
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('keeps a successful result when the local reset fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n').mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).resolves.toEqual({
+				commitSha: 'commit',
+			});
+			expect(logger.warn).toHaveBeenCalledWith('Failed to restore Git checkout after promotion', {
+				branchName: 'main',
+				targetBranchName: 'n8n-promotion/x',
+			});
+			expect(onCheckoutRestored).not.toHaveBeenCalled();
+		});
+
+		it('keeps the push error when the local reset also fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n').mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+			mockGit.push.mockRejectedValueOnce(
+				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
+			);
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(
+				ServiceUnavailableError,
+			);
+			expect(onCheckoutRestored).not.toHaveBeenCalled();
 		});
 
 		it('reports a stalled push as a retryable 503', async () => {
@@ -327,10 +425,78 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(call()).rejects.toThrow(ServiceUnavailableError);
 		});
 
+		it.each([false, true])(
+			'preserves the push outcome when the checkout cannot be trusted again: push failure %s',
+			async (pushFails) => {
+				mockGit.raw.mockResolvedValueOnce('base\n');
+				mockGit.revparse.mockResolvedValueOnce('commit\n');
+				onCheckoutRestored.mockRejectedValueOnce(new Error('Descriptor write failed'));
+				if (pushFails) {
+					mockGit.push.mockRejectedValueOnce(
+						new GitPluginError(undefined, 'timeout', 'block timeout reached'),
+					);
+				}
+
+				const result = call({ targetBranchName: 'n8n-promotion/x' });
+
+				if (pushFails) {
+					await expect(result).rejects.toThrow(ServiceUnavailableError);
+				} else {
+					await expect(result).resolves.toEqual({ commitSha: 'commit' });
+				}
+				expect(onCheckoutRestored).toHaveBeenCalled();
+				// The reset worked, so the warning must point at the descriptor, not at Git.
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to trust the Git checkout after promotion',
+					{
+						branchName: 'main',
+						targetBranchName: 'n8n-promotion/x',
+					},
+				);
+			},
+		);
+
 		it('force-pushes when requested', async () => {
 			await call({ force: true });
 
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
+		});
+
+		it('restores HEAD and the index when the push fails', async () => {
+			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+			mockGit.push.mockRejectedValueOnce(new Error('push rejected'));
+
+			await expect(call({ rollbackOnFailure: true })).rejects.toThrow(BadRequestError);
+
+			expect(mockGit.revparse.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.add.mock.invocationCallOrder[0],
+			);
+			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith(['reset', '--mixed', 'before']);
+			expect(mockGit.raw.mock.invocationCallOrder[0]).toBeGreaterThan(
+				mockGit.push.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the push error when rollback fails', async () => {
+			const pushError = new ServiceUnavailableError('Push timed out');
+			mockGit.push.mockRejectedValueOnce(pushError);
+			mockGit.raw.mockRejectedValueOnce(new Error('reset failed'));
+
+			await expect(call({ rollbackOnFailure: true })).rejects.toBe(pushError);
+
+			expect(logger.warn.mock.calls).toContainEqual([
+				'Failed to restore the Git revision after a failed promotion',
+				{ configId, branchName: 'main' },
+			]);
+		});
+
+		it('keeps the new commit when the push succeeds', async () => {
+			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+
+			await expect(call({ rollbackOnFailure: true })).resolves.toEqual({ commitSha: 'after' });
+
+			expect(mockGit.push).toHaveBeenCalledExactlyOnceWith('origin', 'main');
+			expect(mockGit.raw).not.toHaveBeenCalled();
 		});
 
 		it('redacts a push failure and keeps raw git output out of the log', async () => {
@@ -343,6 +509,188 @@ describe('PromotionsGitService (git operations)', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('secret-token');
 			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('listBranchTree', () => {
+		const commitSha = 'c'.repeat(40);
+		// `paths` is created per test, so build the operation when a test runs.
+		const operation = () => ({
+			remoteUrl,
+			credentials,
+			paths,
+			branchName: 'main',
+			configId,
+			pathspecs: ['n8n-export/manifest.json', 'n8n-export/projects/'],
+		});
+
+		beforeEach(() => {
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('lists the tree at the fetched tip and returns that commit', async () => {
+			mockGit.raw.mockResolvedValueOnce('100644 blob b1\tn8n-export/manifest.json\0');
+
+			const result = await gitService.listBranchTree(operation());
+
+			expect(mockGit.fetch).toHaveBeenCalledWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
+			expect(mockGit.revparse).toHaveBeenCalledWith(['refs/remotes/origin/main']);
+			expect(mockGit.raw).toHaveBeenCalledWith([
+				'ls-tree',
+				'-r',
+				'-z',
+				commitSha,
+				'--',
+				'n8n-export/manifest.json',
+				'n8n-export/projects/',
+			]);
+			expect(result).toEqual({
+				commitSha,
+				lsTreeOutput: '100644 blob b1\tn8n-export/manifest.json\0',
+			});
+		});
+
+		it('reports no commit when the remote has none yet', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new Error("couldn't find remote ref"));
+			mockGit.branch.mockResolvedValueOnce({ all: [] } as never);
+			mockGit.listRemote.mockResolvedValueOnce('');
+
+			await expect(gitService.listBranchTree(operation())).resolves.toEqual({
+				commitSha: null,
+				lsTreeOutput: '',
+			});
+			expect(mockGit.revparse).not.toHaveBeenCalled();
+		});
+
+		it('runs operations on one checkout one at a time', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+
+			const first = gitService.listBranchTree(operation());
+			const second = gitService.listBranchTree(operation());
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+			fetching.resolve();
+			await Promise.all([first, second]);
+
+			const [firstFetch, secondFetch] = mockGit.fetch.mock.invocationCallOrder;
+			const [firstListing] = mockGit.raw.mock.invocationCallOrder;
+			expect(firstListing).toBeGreaterThan(firstFetch);
+			expect(firstListing).toBeLessThan(secondFetch);
+		});
+	});
+
+	describe('readFilesAtCommit', () => {
+		const commitSha = 'c'.repeat(40);
+		const filePaths = [
+			'n8n-export/manifest.json',
+			'n8n-export/projects/a-p1/workflows/b-w1/workflow.json',
+		];
+		const read = async (over: Record<string, unknown> = {}) =>
+			await gitService.readFilesAtCommit({
+				paths,
+				branchName: 'main',
+				configId,
+				commitSha,
+				filePaths,
+				...over,
+			});
+
+		it('reads the files of one commit in a batch with bounded concurrency', async () => {
+			mockGit.show.mockImplementation(async ([spec]: string[]) => `content of ${spec}`);
+
+			const files = await read();
+
+			expect([...files]).toEqual(
+				filePaths.map((filePath) => [filePath, `content of ${commitSha}:${filePath}`]),
+			);
+			expect(simpleGitMock).toHaveBeenCalledTimes(1);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseDir: paths.repositoryFolder,
+					trimmed: false,
+					maxConcurrentProcesses: 4,
+				}),
+			);
+		});
+
+		it('waits for the checkout lock, so a fetch in progress finishes first', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+			mockGit.show.mockResolvedValue('{}');
+			const listing = gitService.listBranchTree({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+				pathspecs: ['n8n-export/'],
+			});
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+
+			const reading = read();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(mockGit.show).not.toHaveBeenCalled();
+
+			fetching.resolve();
+			await Promise.all([listing, reading]);
+			expect(mockGit.show).toHaveBeenCalledTimes(filePaths.length);
+		});
+
+		it('returns nothing without calling Git for an empty list', async () => {
+			await expect(read({ filePaths: [] })).resolves.toEqual(new Map());
+			expect(simpleGitMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects a commit that is not an object name before calling Git', async () => {
+			await expect(read({ commitSha: 'origin/main' })).rejects.toThrow(
+				'The commit SHA is not a Git object name',
+			);
+			expect(mockGit.show).not.toHaveBeenCalled();
+		});
+
+		it('redacts a read failure', async () => {
+			mockGit.show.mockRejectedValue(new Error("fatal: path 'secret' does not exist"));
+
+			await expect(read()).rejects.toThrow('Could not complete the Git operation');
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');
+		});
+	});
+
+	describe('prepareCheckoutForPromotion', () => {
+		const call = async () =>
+			await gitService.prepareCheckoutForPromotion({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+			});
+
+		it('fetches and resets to the configured remote base branch', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+
+			await call();
+
+			expect(mockGit.fetch).toHaveBeenCalledWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
+		});
+
+		it('rejects a promotion when the remote base branch does not exist', async () => {
+			mockGit.listRemote.mockResolvedValue('');
+
+			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
+			expect(mockGit.fetch).not.toHaveBeenCalled();
 		});
 	});
 

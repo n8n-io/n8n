@@ -9,7 +9,7 @@ import type { RoleService } from '@/services/role.service';
 
 import { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
-const update = { projectId: 'project-1', agentId: 'agent-1' };
+const update = { projectId: 'project-1', agentId: 'agent-1', source: 'mcp' as const };
 
 describe('AgentUpdateBroadcaster', () => {
 	const logger = mock<Logger>();

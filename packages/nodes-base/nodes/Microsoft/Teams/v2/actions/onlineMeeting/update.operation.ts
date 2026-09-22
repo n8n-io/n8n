@@ -9,15 +9,10 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { resolveMeetingId } from './meetingLocator';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import {
-	MEETING_HINT,
-	meetingRequest,
-	optionalText,
-	throwIfOnlineMeetingUnsupported,
-	toGraphUtc,
-} from './shared';
+import { meetingHint, meetingRequest, meetingsPath, toGraphUtc } from './shared';
 import { meetingRLC } from '../../descriptions';
-import { buildTeamsPath, rewriteNotFound, SP_HIDE } from '../../transport';
+import { optionalText } from '../../helpers/parameters';
+import { rewriteNotFound } from '../../transport';
 
 const properties: INodeProperties[] = [
 	meetingRLC,
@@ -60,17 +55,12 @@ const displayOptions = {
 		resource: ['onlineMeeting'],
 		operation: ['update'],
 	},
-	hide: {
-		...SP_HIDE,
-	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/onlinemeeting-update?view=graph-rest-1.0&tabs=http
-	throwIfOnlineMeetingUnsupported.call(this);
-
 	const updateFields = this.getNodeParameter('updateFields', i);
 
 	const hasStart = Boolean(updateFields.startDateTime);
@@ -103,7 +93,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	}
 
 	const meetingId = await resolveMeetingId.call(this, i);
-	const endpoint = buildTeamsPath.call(this, ['/v1.0/me/onlineMeetings/', { id: meetingId }]);
+	const endpoint = await meetingsPath.call(this, i, ['/', { id: meetingId }]);
 
 	try {
 		return await meetingRequest.call(this, 'PATCH', endpoint, body);
@@ -112,7 +102,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			this,
 			error,
 			"The meeting you are trying to update doesn't exist",
-			MEETING_HINT,
+			meetingHint.call(this),
 		);
 	}
 }

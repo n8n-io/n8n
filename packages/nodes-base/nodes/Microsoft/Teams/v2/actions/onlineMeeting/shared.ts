@@ -25,22 +25,10 @@ function isServicePrincipal(this: IExecuteFunctions): boolean {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 }
 
-export const MEETING_HINT = "Check that the 'Meeting' parameter is correctly set";
-
 export function meetingHint(this: IExecuteFunctions): string {
 	return isServicePrincipal.call(this)
 		? "Check that the 'Meeting' and 'Organizer' parameters are correctly set"
 		: "Check that the 'Meeting' parameter is correctly set";
-}
-
-export function throwIfOnlineMeetingUnsupported(this: IExecuteFunctions): void {
-	if (isServicePrincipal.call(this)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'This online meeting operation is not available with the Service Principal credential yet',
-			{ description: 'Use an OAuth2 credential for this operation.' },
-		);
-	}
 }
 
 // Graph addresses app-only meetings by the organizer's object ID, not the principal name.
@@ -102,24 +90,6 @@ export async function meetingsPath(
 		? ['/v1.0/users/', { id: await resolveOrganizer.call(this, i) }, '/onlineMeetings']
 		: ['/v1.0/me/onlineMeetings'];
 	return buildTeamsPath.call(this, [...root, ...segments]);
-}
-
-export function optionalText(this: IExecuteFunctions, value: unknown, label: string) {
-	const text = value instanceof DateTime || value instanceof Date ? value.toJSON() : value;
-	if (typeof text === 'object' && text !== null) {
-		throw new NodeOperationError(this.getNode(), `The ${label} must be text`, {
-			description: `Check that the '${label}' expression resolves to text`,
-		});
-	}
-	return String(text ?? '').trim();
-}
-
-export function requiredText(this: IExecuteFunctions, name: string, i: number, label: string) {
-	const value = optionalText.call(this, this.getNodeParameter(name, i), label);
-	if (value) return value;
-	throw new NodeOperationError(this.getNode(), `The ${label} must not be empty`, {
-		description: `Check that the '${label}' parameter is correctly set`,
-	});
 }
 
 export function toGraphUtc(this: IExecuteFunctions, value: unknown, label: string) {

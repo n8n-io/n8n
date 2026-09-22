@@ -75,6 +75,14 @@ export class PromotionWorkingDirectoryService {
 		);
 	}
 
+	/**
+	 * Marks the checkout unusable before a branched promotion changes it.
+	 * A successful base reset or a new clone can restore the descriptor.
+	 */
+	async invalidateDescriptor(configId: string): Promise<void> {
+		await rm(this.paths(configId).descriptorFile, { force: true });
+	}
+
 	/** Drops the checkout and its descriptor. Keeps the pinned SSH host keys. */
 	async resetCheckout(configId: string): Promise<void> {
 		const { repositoryFolder, nextRepositoryFolder, descriptorFile } = this.paths(configId);

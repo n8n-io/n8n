@@ -41,7 +41,7 @@ This is only a template - your module may not need all of these files, or it may
 Backend modules currently live at `packages/cli/src/modules`, so imports can be:
 
 - from inside the module dir
-- from common packages like `@n8n/db`, `@n8n/backend-common`, `@n8n/backend-test-utils`, etc.
+- from common packages like `@n8n/db`, `@n8n/backend-common`, `@n8n/backend-services`, `@n8n/backend-test-utils`, etc.
 - from `cli`
 - from third-party libs available in, or added to, `cli`
 

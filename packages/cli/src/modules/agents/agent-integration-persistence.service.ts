@@ -116,6 +116,10 @@ export class AgentIntegrationPersistenceService {
 			label: i.displayLabel,
 			icon: i.displayIcon,
 			credentialTypes: i.credentialTypes,
+			approvableActions: i.actionToolDefinitions.map(({ name, sensitive }) => ({
+				name,
+				sensitive: sensitive === true,
+			})),
 			...(i.builderGuidance
 				? {
 						capabilities: i.builderGuidance.capabilities,

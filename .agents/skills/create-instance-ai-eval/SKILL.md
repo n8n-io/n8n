@@ -1,19 +1,21 @@
 ---
 name: n8n:create-instance-ai-eval
 description: >-
-  Authors a new Instance AI workflow eval case — written locally as JSON,
-  calibrated against a real build, then pushed to the LangTracer suite CI runs
-  — build cases, behaviour/process cases, credential cases, and seeded
+  Authors a new Instance AI workflow or Agent eval case — written locally as
+  JSON, calibrated against a real build, then pushed to the LangTracer suite CI
+  runs — build cases, behaviour/process cases, credential cases, and seeded
   (mid-conversation) cases — with intent-driven expectations. Use when adding
-  or changing an Instance AI workflow eval, or debugging why one is flaky.
+  or changing an Instance AI eval, or debugging why one is flaky.
 ---
 
-# Create an Instance AI workflow eval
+# Create an Instance AI eval
 
-Each eval is **one JSON case** — authored locally as a file in
-`packages/@n8n/instance-ai/evaluations/data/workflows/` (the disk loader
-auto-discovers `*.json`, no registration step), with a LangTracer suite as its
-durable home. Cases validate against
+Each eval is **one JSON case**. Author workflow cases in
+`packages/@n8n/instance-ai/evaluations/data/workflows/`. Author standalone Agent
+cases in `packages/@n8n/instance-ai/evaluations/data/agents/` and follow the
+[`create-agent-builder-eval` skill](../create-agent-builder-eval/SKILL.md).
+The disk loader auto-discovers `*.json` in both directories. A LangTracer suite
+is the durable home. Cases validate against
 [`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts)
 (`.strict()` — unknown keys fail at load). The eval
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
@@ -138,7 +140,7 @@ discover → verify → encode workflow.
 
 ## Pick the case shape first
 
-The corpus is four archetypes. Decide which you're writing before you draft — it
+The corpus is five archetypes. Decide which you're writing before you draft — it
 determines the fields, the grading, and how you validate. They compose (a seeded
 case can still assert outcome), but the primary shape drives the work.
 
@@ -148,9 +150,24 @@ case can still assert outcome), but the primary shape drives the work.
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
 | **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
+| **Context** | Does the agent still work once the conversation is long — does it reuse what it already read, and keep what matters after observational memory compacts the history? | `processExpectations` + a long `seed`; `requiresMemoryCompaction` for the compaction ones |
 
-**Build** is documented in full below. The other three, the director-script
+**Build** is documented in full below. The other four, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
+
+The judge also sees **token ground truth** for workflow-build cases: per-turn
+input and output tokens inline in each transcript turn header, a build-wide
+total, a cache read/write split, and the opening step's cost. So an expectation
+may reference cost or consumption directly ("does not re-read the same node's
+schema in turn 2"). The numbers cover the orchestrator's own LLM steps only. A
+delegated Agent build runs in a sub-agent whose steps are not in the snapshot,
+so do not write cost expectations on an Agent case. Those numbers come from run-debug snapshots, so they need
+`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
+the judge reads `(no run debug captured)` and cost expectations are ungradeable.
+
+The judge also sees the thread's **observation rows** — what observational
+memory kept after it compacted — so a memory case can grade the summary itself.
+That block is a separate REST read and needs no flag.
 
 ## Core principle (all shapes)
 
@@ -251,7 +268,7 @@ calibration you hand the driver the thread link + login to review the real build
 7. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
    into its curated lang-tracer suite with `eval:langtracer-push` (see
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
-   case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
+   case's home, not the repo. Leave the `data/{workflows,agents}/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
    is no longer the approach. (An `inline` seed pushes with the case; only a
    `replay` case is refused — it's a local throwaway; see
@@ -803,7 +820,10 @@ concluding whether the failure is your case, the build, or the harness.
 
 ```bash
 cd packages/@n8n/instance-ai
-npx tsx -e "import {loadWorkflowTestCasesWithFiles} from './evaluations/data/workflows/index.ts'; console.log(loadWorkflowTestCasesWithFiles('<slug>')[0].fileSlug)"
+pnpm exec tsx -e "import {loadWorkflowTestCasesWithFiles} from './evaluations/data/workflows/index.ts'; console.log(loadWorkflowTestCasesWithFiles('<slug>')[0].fileSlug)"
+
+# For a standalone Agent case:
+pnpm exec tsx -e "import {loadAgentEvalTestCasesWithFiles} from './evaluations/data/agents/index.ts'; console.log(loadAgentEvalTestCasesWithFiles('<slug>')[0].fileSlug)"
 ```
 
 ## Push to a lang-tracer suite
@@ -816,24 +836,24 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
-# preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
+# preview first — no writes:
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
 # then push (drop --dry-run):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
-  `data/workflows/*.json`, ideal right after authoring an uncommitted case),
+  `data/{workflows,agents}/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
 - **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
   eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
   (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a
   no-positional selector through pnpm (`--changed`), or run the script directly so
-  each slug is its own argv: `npx dotenvx run -f .env.eval -- npx tsx
+  each slug is its own argv: `pnpm exec dotenvx run -f .env.eval -- pnpm exec tsx
   evaluations/cli/langtracer-push.ts --suite <slug> <slug1> <slug2> …`.
 - **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
-  for MCP + REST) — put them in `.env.eval` and run under `npx dotenvx`.
+  for MCP + REST) — put them in `.env.eval` and run under `pnpm exec dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
   match the suite's kind), `--contains-user-data` (default is `synthetic`). A case
   whose **build is correct** (outcome expectations green) but that carries a
@@ -903,8 +923,9 @@ in *checkpoint* mode calibration this is how the driver opens the built thread
 
 ## Other eval harnesses (not this skill)
 
-This skill is for `data/workflows/` cases. Three siblings exist with their own
-data dirs and CLIs: **`eval:subagent`** (workflow-build compatibility corpus,
+Use the [`create-agent-builder-eval` skill](../create-agent-builder-eval/SKILL.md)
+for standalone Agent cases. Three other harnesses have their own data dirs and
+CLIs: **`eval:subagent`** (workflow-build compatibility corpus,
 binary-check scored), **`eval:discovery`** (asserts first-hop tool/dispatch
 routing, no n8n server), **`eval:pairwise`** (head-to-head build comparison vs
 `ai-workflow-builder.ee`). Authoring them is out of scope here — see the README

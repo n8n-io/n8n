@@ -91,6 +91,7 @@ export class AgentSessionLangSmithExportService {
 			input.threadId,
 			input.projectId,
 			input.agentId,
+			input.user.id,
 			new Set(),
 		);
 		const draft = buildSessionRun(tree, `sessions/${tree.thread.id}`);
@@ -131,6 +132,7 @@ export class AgentSessionLangSmithExportService {
 		threadId: string,
 		projectId: string,
 		agentId: string,
+		userId: string,
 		visited: Set<string>,
 	): Promise<LoadedSession> {
 		if (visited.has(threadId)) {
@@ -138,7 +140,12 @@ export class AgentSessionLangSmithExportService {
 		}
 		visited.add(threadId);
 
-		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId);
+		const detail = await this.agentExecutionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
 		if (!detail) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
@@ -154,7 +161,9 @@ export class AgentSessionLangSmithExportService {
 			) {
 				throw new ConflictError('Agent session child link is invalid');
 			}
-			children.push(await this.loadSessionTree(child.id, projectId, child.agentId, visited));
+			children.push(
+				await this.loadSessionTree(child.id, projectId, child.agentId, userId, visited),
+			);
 		}
 
 		return { ...detail, children };
@@ -308,6 +317,18 @@ function buildExecutionRun(
 
 function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: string): DraftRun {
 	switch (event.type) {
+		case 'background-task-signal':
+			return {
+				path,
+				name: 'Background task results received',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { tasks: event.signal.tasks },
+				outputs: {},
+				metadata: {},
+				children: [],
+			};
 		case 'text':
 			return {
 				path,

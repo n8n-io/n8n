@@ -26,6 +26,7 @@ import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 export interface WorkflowFailuresReport {
 	workflowId: string;
@@ -139,6 +140,7 @@ function handleWorkflowLoaded(workflowId: string) {
 // the canvas editable through workspace file edits and failed builds.
 const thread = useThread();
 const isAgentWorking = useIsAgentWorking();
+const settingsStore = useInstanceAiSettingsStore();
 
 // The workflow + execution the editor handed off, applied once when this
 // preview first opens. Consumed (cleared) here, so it never re-applies on a
@@ -173,6 +175,7 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
 	executionButtonType: 'secondary',
+	credentialSetupWarnings: settingsStore.isInstanceAiSetupPanelEnabled,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 
@@ -187,12 +190,11 @@ const instanceAiCapability: InstanceAiEditorCapability = {
 		// The handoff context carries the recipe's verified key page and the
 		// paste-only steering; without it the agent re-researches or suggests
 		// editing the pre-filled form.
-		void thread.sendMessage(
-			buildInstanceAiArtifactCredentialQuestion(credential),
-			undefined,
-			rootStore.pushRef,
-			buildInstanceAiCredentialHandoffContext(credential),
-		);
+		void thread.sendMessage(buildInstanceAiArtifactCredentialQuestion(credential), {
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			pushRef: rootStore.pushRef,
+			handoffContext: buildInstanceAiCredentialHandoffContext(credential),
+		});
 		// Appends to the current thread → close the modal so the conversation shows.
 		return true;
 	},

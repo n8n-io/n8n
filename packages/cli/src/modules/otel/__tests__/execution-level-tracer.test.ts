@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import { hrTimeToMilliseconds } from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
@@ -316,6 +317,123 @@ describe('ExecutionLevelTracer', () => {
 			).not.toThrow();
 
 			expect(otel.getFinishedSpans()).toHaveLength(0);
+		});
+	});
+
+	describe('endCrashedWorkflow', () => {
+		it('should end a tracked workflow span as crashed and stop tracking it', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-crashed',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({
+				executionId: 'exec-crashed',
+				node: { id: 'n1', name: 'Node1', type: 'n8n-nodes-base.set', typeVersion: 1 },
+			});
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crashed',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				mode: 'trigger',
+				detector: 'stall',
+				stoppedAt: new Date(),
+			});
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(2);
+
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.node.termination_reason']).toBe('workflow_crashed');
+
+			const span = spans.find((s) => s.name === 'workflow.execute')!;
+			expect(span.name).toBe('workflow.execute');
+			expect(span.attributes['n8n.execution.status']).toBe('crashed');
+			expect(span.attributes['n8n.execution.error_type']).toBe('WorkflowCrashedError');
+			expect(span.attributes['n8n.execution.crash.detector']).toBe('stall');
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(false);
+			expect(span.status.code).toBe(SpanStatusCode.ERROR);
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-crashed', undefined, headers);
+			expect(headers.traceparent).toBeUndefined();
+		});
+
+		it('should reconstruct the workflow span for an untracked execution', () => {
+			const startedAt = new Date('2025-01-01T00:00:00.000Z');
+			const stoppedAt = new Date('2025-01-01T00:01:00.000Z');
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-untracked',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				workflowVersionId: 'v1',
+				mode: 'trigger',
+				detector: 'queue-recovery',
+				startedAt,
+				stoppedAt,
+				tracingContext: inboundTracingContext,
+				workflow: { customAttributes: { workflowTag: 'checkout' } },
+				project: { id: 'project-1', customAttributes: { team: 'platform' } },
+			});
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(1);
+
+			const span = spans[0];
+			expect(span.name).toBe('workflow.execute');
+			expect(span.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(span.attributes['n8n.workflow.name']).toBe('Test');
+			expect(span.attributes['n8n.execution.id']).toBe('exec-untracked');
+			expect(span.attributes['n8n.execution.status']).toBe('crashed');
+			expect(span.attributes['n8n.execution.crash.detector']).toBe('queue-recovery');
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(true);
+			expect(span.attributes['n8n.workflow.version_id']).toBe('v1');
+			expect(span.attributes['n8n.project.id']).toBe('project-1');
+			expect(span.attributes['n8n.workflow.custom.workflowTag']).toBe('checkout');
+			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
+			expect(hrTimeToMilliseconds(span.startTime)).toBe(startedAt.getTime());
+			expect(hrTimeToMilliseconds(span.endTime)).toBe(stoppedAt.getTime());
+			expect(span.spanContext().traceId).toBe('abcdef1234567890abcdef1234567890');
+		});
+
+		it.each([
+			['tracked', true],
+			['reconstructed', false],
+		])('should attach the retry attributes to a %s span', (_kind, isTracked) => {
+			if (isTracked) {
+				tracer.startWorkflow({ executionId: 'exec-crashed-retry', workflow: defaultWorkflow });
+			}
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crashed-retry',
+				workflowId: 'wf-1',
+				mode: 'retry',
+				retryOf: 'exec-original',
+				detector: 'stall',
+				stoppedAt: new Date(),
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.execution.is_retry']).toBe(true);
+			expect(span.attributes['n8n.execution.retry_of']).toBe('exec-original');
+		});
+
+		it('should omit the version id, project and retry source a reconstructed span has no value for', () => {
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-untracked-bare',
+				workflowId: 'wf-1',
+				mode: 'trigger',
+				detector: 'queue-recovery',
+				stoppedAt: new Date(),
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes).not.toHaveProperty('n8n.workflow.version_id');
+			expect(span.attributes).not.toHaveProperty('n8n.project.id');
+			expect(span.attributes).not.toHaveProperty('n8n.execution.retry_of');
+			expect(span.attributes['n8n.execution.is_retry']).toBe(false);
 		});
 	});
 

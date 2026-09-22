@@ -174,6 +174,7 @@ import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {
 		id: 'thread-1',
+		canContinueInPreview: true,
 		agentId: 'agent-1',
 		agentName: 'Agent',
 		parentThreadId: null,

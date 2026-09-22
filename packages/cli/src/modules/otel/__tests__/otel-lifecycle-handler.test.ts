@@ -9,6 +9,8 @@ import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
@@ -109,6 +111,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
@@ -425,6 +428,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
@@ -592,6 +596,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 		});
 
@@ -650,6 +655,148 @@ describe('OtelLifecycleHandler', () => {
 		});
 	});
 
+	describe('onExecutionCrashed', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const ownershipService = mock<OwnershipService>();
+		const logger = mock<Logger>();
+		const licenseState = mock<LicenseState>();
+
+		const eventTracingContext: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		};
+
+		const startedAt = new Date('2025-01-01T00:00:00.000Z');
+		const stoppedAt = new Date('2025-01-01T00:01:00.000Z');
+
+		const makeEvent = (
+			overrides: Partial<RelayEventMap['execution-crashed']> = {},
+		): RelayEventMap['execution-crashed'] => ({
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			workflowName: 'Test',
+			mode: 'trigger',
+			startedAt,
+			stoppedAt,
+			detector: 'queue-recovery',
+			hostId: 'main-1',
+			...overrides,
+		});
+
+		const makeHandler = (overrides: Partial<OtelConfig> = {}, eventService?: EventService) =>
+			new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				mock<OtelService>(),
+				makeOtelSettingsService(overrides),
+				ownershipService,
+				logger,
+				licenseState,
+				eventService ?? mock<EventService>(),
+			);
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should handle the `execution-crashed` event once initialised', async () => {
+			const eventService = new EventService();
+			makeHandler({}, eventService).init();
+
+			eventService.emit('execution-crashed', makeEvent());
+			await new Promise(setImmediate);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ executionId: 'exec-1', detector: 'queue-recovery' }),
+			);
+		});
+
+		it('should end the crashed workflow span when the event carries no trace context', async () => {
+			await makeHandler().onExecutionCrashed(makeEvent());
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ executionId: 'exec-1', tracingContext: undefined }),
+			);
+		});
+
+		it('should do nothing when tracing is disabled', async () => {
+			await makeHandler({ enabled: false }).onExecutionCrashed(makeEvent());
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing for a manual execution when productionExecutionsOnly is true', async () => {
+			await makeHandler({ productionExecutionsOnly: true }).onExecutionCrashed(
+				makeEvent({ mode: 'manual' }),
+			);
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should end the crashed workflow span with the trace context on the event', async () => {
+			await makeHandler().onExecutionCrashed(makeEvent({ tracingContext: eventTracingContext }));
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				workflowVersionId: undefined,
+				mode: 'trigger',
+				retryOf: undefined,
+				detector: 'queue-recovery',
+				startedAt,
+				stoppedAt,
+				tracingContext: eventTracingContext,
+				workflow: { customAttributes: undefined },
+				project: undefined,
+			});
+		});
+
+		it('should pass the version id, retry source, project and custom attributes on the event', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
+
+			await makeHandler().onExecutionCrashed(
+				makeEvent({
+					workflowVersionId: 'version-1',
+					retryOf: 'exec-original',
+					workflowCustomTelemetryTags: [{ key: 'workflowTag', value: 'checkout' }],
+					project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
+				}),
+			);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowVersionId: 'version-1',
+					retryOf: 'exec-original',
+					workflow: { customAttributes: { workflowTag: 'checkout' } },
+					project: { id: 'project-1', customAttributes: { team: 'platform' } },
+				}),
+			);
+		});
+
+		it('should omit the custom attributes but keep the project id when they are not licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
+
+			await makeHandler().onExecutionCrashed(
+				makeEvent({
+					workflowCustomTelemetryTags: [{ key: 'workflowTag', value: 'checkout' }],
+					project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
+				}),
+			);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: { customAttributes: undefined },
+					project: { id: 'project-1', customAttributes: undefined },
+				}),
+			);
+		});
+	});
+
 	describe('onNodeStart / onNodeEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
@@ -703,6 +850,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 		});
@@ -717,6 +865,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 
 			handler.onNodeStart(makeStartCtx());
@@ -920,6 +1069,7 @@ describe('productionExecutionsOnly filter', () => {
 			ownershipService,
 			logger,
 			licenseState,
+			mock<EventService>(),
 		);
 		licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 	});
@@ -1012,6 +1162,7 @@ describe('onReloadOtelConfig', () => {
 			mock<OwnershipService>(),
 			mock<Logger>(),
 			licenseState,
+			mock<EventService>(),
 		);
 	}
 

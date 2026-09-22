@@ -4,7 +4,12 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
+
+const trackClickedNewAgentMock = vi.fn();
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackClickedNewAgent: trackClickedNewAgentMock }),
+}));
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
@@ -34,11 +39,16 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAssistantIcon: {
+		name: 'N8nAssistantIcon',
+		template: '<i data-testid="stub-assistant-icon" />',
+		props: ['size'],
+	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
-		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot><span v-if="label">{{ label }}</span></slot></component>',
+		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href', 'label'],
 		emits: ['click'],
 	},
 	N8nToggle: {
@@ -135,6 +145,8 @@ function mountHeader(
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
 		isPreviewOpen: boolean;
+		instanceAiAvailable: boolean;
+		isAiPanelOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -143,7 +155,7 @@ function mountHeader(
 ) {
 	return mount(AgentBuilderHeader, {
 		props: {
-			agent: overrides.agent ?? baseAgent,
+			agent: 'agent' in overrides ? (overrides.agent ?? null) : baseAgent,
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
@@ -151,6 +163,8 @@ function mountHeader(
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
 			isPreviewOpen: overrides.isPreviewOpen,
+			instanceAiAvailable: overrides.instanceAiAvailable,
+			isAiPanelOpen: overrides.isAiPanelOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -165,7 +179,55 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
+		trackClickedNewAgentMock.mockReset();
 		agentsListRef.value = null;
+	});
+
+	it('shows the Instance AI toggle when available', () => {
+		const wrapper = mountHeader({ instanceAiAvailable: true, isAiPanelOpen: false });
+		const button = wrapper.get('[data-testid="agent-builder-instance-ai-btn"]');
+
+		expect(button.attributes('aria-label')).toBe('agents.builder.header.editWithAi');
+		expect(button.attributes('aria-pressed')).toBe('false');
+	});
+
+	it('reflects isAiPanelOpen as aria-pressed', () => {
+		const wrapper = mountHeader({ instanceAiAvailable: true, isAiPanelOpen: true });
+
+		expect(
+			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('aria-pressed'),
+		).toBe('true');
+	});
+
+	it('emits toggle-instance-ai on click', async () => {
+		const wrapper = mountHeader({ instanceAiAvailable: true });
+
+		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+
+		expect(wrapper.emitted('toggle-instance-ai')).toEqual([[]]);
+	});
+
+	it.each([
+		{ label: 'Instance AI is unavailable', instanceAiAvailable: false },
+		{ label: 'artifact mode is active', instanceAiAvailable: true, artifactMode: true },
+	])('hides the Instance AI toggle when $label', (overrides) => {
+		const wrapper = mountHeader(overrides);
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('stays visible while the preview is open (both docks can coexist)', () => {
+		const wrapper = mountHeader({ instanceAiAvailable: true, isPreviewOpen: true });
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it('disables the Instance AI toggle when no agent is loaded', () => {
+		const wrapper = mountHeader({ agent: null, instanceAiAvailable: true });
+
+		expect(
+			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('disabled'),
+		).toBeDefined();
 	});
 
 	it('renders breadcrumbs, publish and action dropdown', () => {
@@ -311,9 +373,8 @@ describe('AgentBuilderHeader', () => {
 		async ({ isPreviewOpen, event, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-			expect(previewButton.attributes('data-icon')).toBe('play');
-			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
-			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
+			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
 			expect(wrapper.emitted(event)).toEqual([[]]);
@@ -365,11 +426,19 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('navigates to Instance AI for agent creation from the switcher footer', async () => {
+	it('navigates to the builder with a pending agent for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
-		expect(routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('p1'));
+		// Goes through `useCreateAgent` like every other entry point: the same
+		// minted id is tracked and carried into the route/pending-agent state.
+		expect(trackClickedNewAgentMock).toHaveBeenCalledWith('dropdown', expect.any(String));
+		const [, mintedAgentId] = trackClickedNewAgentMock.mock.calls[0] as [string, string];
+		expect(routerPush).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'p1', agentId: mintedAgentId },
+			state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
+		});
 	});
 });

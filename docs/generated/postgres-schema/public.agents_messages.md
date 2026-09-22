@@ -31,6 +31,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_agents_messages_resourceId_threadId | CREATE INDEX "IDX_agents_messages_resourceId_threadId" ON public.agents_messages USING btree ("resourceId", "threadId") |
 | IDX_agents_messages_threadId_createdAt | CREATE INDEX "IDX_agents_messages_threadId_createdAt" ON public.agents_messages USING btree ("threadId", "createdAt") |
 | IDX_fc7bf858660bfafd19181e8e35 | CREATE INDEX "IDX_fc7bf858660bfafd19181e8e35" ON public.agents_messages USING btree ("threadId", "createdAt") |
 | PK_81020dc608dfb0af1ede386d907 | CREATE UNIQUE INDEX "PK_81020dc608dfb0af1ede386d907" ON public.agents_messages USING btree (id) |

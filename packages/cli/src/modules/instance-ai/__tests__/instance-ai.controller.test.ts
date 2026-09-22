@@ -40,6 +40,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -55,7 +56,7 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
 	MAX_ATTACHMENT_BASE64_BYTES,
@@ -182,6 +183,7 @@ describe('InstanceAiController', () => {
 
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
+			observerThresholdTokens: undefined,
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
 			attachments: undefined,
@@ -209,7 +211,81 @@ describe('InstanceAiController', () => {
 				payload.pushRef,
 				payload.mode,
 				payload.promptVersion,
+				payload.computerUseChannels,
+				payload.threadArtifacts,
+				payload.observerThresholdTokens,
 			);
+		});
+
+		it('should forward thread artifacts to startRun', async () => {
+			const payloadWithArtifacts = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
+				message: 'Change this',
+				timeZone: 'UTC',
+				attachments: undefined,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-6');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithArtifacts);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithArtifacts.message,
+				payloadWithArtifacts.attachments,
+				payloadWithArtifacts.context,
+				payloadWithArtifacts.timeZone,
+				payloadWithArtifacts.pushRef,
+				payloadWithArtifacts.mode,
+				payloadWithArtifacts.promptVersion,
+				payloadWithArtifacts.computerUseChannels,
+				payloadWithArtifacts.threadArtifacts,
+				payloadWithArtifacts.observerThresholdTokens,
+			);
+		});
+
+		it('forwards the observer threshold override for a caller with the eval scope', async () => {
+			const evalPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const evalReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:eval' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-7');
+
+			await controller.chat(evalReq, res, THREAD_ID, evalPayload);
+
+			const args = instanceAiService.startRun.mock.calls[0];
+			expect(args[args.length - 1]).toBe(1000);
+		});
+
+		it('rejects the observer threshold override from a caller without the eval scope', async () => {
+			// The override changes how often the observer runs, so it stays an eval-only knob.
+			const chatPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const chatReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:message' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+
+			await expect(controller.chat(chatReq, res, THREAD_ID, chatPayload)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should allow new threads', async () => {
@@ -224,6 +300,7 @@ describe('InstanceAiController', () => {
 
 		it('should forward pushRef to startRun', async () => {
 			const payloadWithPushRef = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
@@ -245,11 +322,15 @@ describe('InstanceAiController', () => {
 				'iframe-push-ref-123',
 				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
+				payloadWithPushRef.computerUseChannels,
+				payloadWithPushRef.threadArtifacts,
+				payloadWithPushRef.observerThresholdTokens,
 			);
 		});
 
 		it('should forward the build mode and prompt version to startRun', async () => {
 			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
@@ -272,11 +353,15 @@ describe('InstanceAiController', () => {
 				payloadWithMode.pushRef,
 				'progressive',
 				'progressive@1',
+				payloadWithMode.computerUseChannels,
+				payloadWithMode.threadArtifacts,
+				payloadWithMode.observerThresholdTokens,
 			);
 		});
 
 		it('should forward handoff context to startRun', async () => {
 			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'How do I set up Gmail OAuth?',
 				context: {
 					source: 'credential-modal',
@@ -306,6 +391,9 @@ describe('InstanceAiController', () => {
 				payloadWithContext.pushRef,
 				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
+				payloadWithContext.computerUseChannels,
+				payloadWithContext.threadArtifacts,
+				payloadWithContext.observerThresholdTokens,
 			);
 		});
 
@@ -337,6 +425,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
@@ -355,6 +444,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-3');
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
@@ -385,6 +475,7 @@ describe('InstanceAiController', () => {
 				},
 			];
 			const nodesPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'what do these nodes do?',
 				timeZone: 'UTC',
 			});
@@ -406,6 +497,9 @@ describe('InstanceAiController', () => {
 				nodesPayload.pushRef,
 				nodesPayload.mode,
 				nodesPayload.promptVersion,
+				nodesPayload.computerUseChannels,
+				nodesPayload.threadArtifacts,
+				nodesPayload.observerThresholdTokens,
 			);
 		});
 
@@ -413,6 +507,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const oversizedPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see screenshot',
 				attachments: [
 					{
@@ -436,6 +531,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const halfBudget = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
 			const payloadOverBudget = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'two screenshots',
 				attachments: [
 					{
@@ -462,6 +558,42 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('events', () => {
+		// Bootstrap fixtures: one live run on group mg-1, and a request/response
+		// pair the handler can write to.
+		const RUN_START = {
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'a1',
+			payload: { messageGroupId: 'mg-1' },
+		};
+		function stubLiveRun(runEvents: unknown[] = []): void {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventLog.getEventsForRuns.mockResolvedValue(runEvents as never);
+		}
+		function sseIo(once: Mock = vi.fn()) {
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
+			});
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: once as never,
+			});
+			const frames = () => (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+			return { sseReq, sseRes, frames };
+		}
+
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
@@ -525,6 +657,83 @@ describe('InstanceAiController', () => {
 			expect(eventFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
 		});
 
+		it('should replay events that arrive while the run-sync confirmation check is in flight', async () => {
+			stubLiveRun([RUN_START]);
+			let liveHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				liveHandler ??= handler as (stored: { id: number; event: unknown }) => void;
+				return vi.fn();
+			});
+			// While the pending-row check is in flight, a relayed event arrives:
+			// the bootstrap must hold it and deliver it exactly once, after the frame.
+			const midAwaitEvent = {
+				id: 7,
+				event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: {} },
+			};
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async () => {
+				liveHandler!(midAwaitEvent);
+				eventLog.getEventsAfter.mockResolvedValue([midAwaitEvent] as never);
+			});
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const written = frames();
+			const runSyncIndex = written.findIndex((frame) => frame.startsWith('event: run-sync\n'));
+			const runFinishFrames = written.filter((frame) => frame.includes('run-finish'));
+			expect(runSyncIndex).toBeGreaterThanOrEqual(0);
+			expect(runFinishFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
+			expect(written.indexOf(runFinishFrames[0])).toBeGreaterThan(runSyncIndex);
+		});
+
+		it('should settle confirmation cards the server no longer holds before writing the run-sync frame', async () => {
+			stubLiveRun([RUN_START]);
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			// The fold only knows the card was requested. The run has since resumed
+			// (the pending row is gone), which is what the flagging reports.
+			vi.mocked(buildAgentTreeFromEvents).mockReturnValueOnce({
+				agentId: 'a1',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: true,
+						confirmation: { requestId: 'req-1', severity: 'info', message: 'Create workflow?' },
+					},
+				],
+				children: [],
+				timeline: [],
+			} as never);
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async (messages) => {
+				for (const message of messages) {
+					for (const tc of message.agentTree?.toolCalls ?? []) {
+						if (tc.confirmation) tc.confirmation.expired = true;
+					}
+				}
+			});
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncFrame = frames().find((frame) => frame.startsWith('event: run-sync\n'));
+			expect(runSyncFrame).toBeDefined();
+			const { agentTree } = JSON.parse(runSyncFrame!.slice('event: run-sync\ndata: '.length)) as {
+				agentTree: {
+					toolCalls: Array<{ confirmation?: { requestId: string; expired?: boolean } }>;
+				};
+			};
+			expect(agentTree.toolCalls[0].confirmation).toEqual(
+				expect.objectContaining({ requestId: 'req-1', expired: true }),
+			);
+		});
+
 		it('should clean up the subscription when the client disconnects during bootstrap', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.getThreadStatus.mockReturnValue({
@@ -565,6 +774,35 @@ describe('InstanceAiController', () => {
 				return [
 					{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
 				] as never;
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			// Both the live subscription (via the close handler) and the temporary
+			// buffering subscription (via the bootstrap finally) are removed.
+			expect(unsubscribers).toHaveLength(2);
+			expect(unsubscribers[0]).toHaveBeenCalledTimes(1);
+			expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
+			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
+		it('should write no run-sync frame when the client disconnects during the confirmation check', async () => {
+			stubLiveRun([RUN_START]);
+			const unsubscribers: Mock[] = [];
+			eventBus.subscribe.mockImplementation(() => {
+				const unsubscribe = vi.fn();
+				unsubscribers.push(unsubscribe);
+				return unsubscribe;
+			});
+			let closeHandler: (() => void) | undefined;
+			const { sseReq, sseRes } = sseIo(
+				vi.fn((event: string, handler: () => void) => {
+					if (event === 'close') closeHandler = handler;
+				}),
+			);
+			// The client disconnects while the pending-row check is in flight.
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async () => {
+				closeHandler!();
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
@@ -800,6 +1038,47 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('getEvalThreadMemory', () => {
+		const memory: InstanceAiEvalThreadMemoryResponse = {
+			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
+			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
+		};
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('getEvalThreadMemory')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should return the memory of an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadMemory.mockResolvedValue(memory);
+
+			const result = await controller.getEvalThreadMemory(req, res, THREAD_ID);
+
+			expect(result).toEqual(memory);
+			expect(instanceAiService.getThreadMemory).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.getThreadMemory).not.toHaveBeenCalled();
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
 	describe('restoreEvalThread', () => {
 		const seedMessages = [
 			{ id: 'm1', type: 'llm', role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' },
@@ -814,6 +1093,7 @@ describe('InstanceAiController', () => {
 		beforeEach(() => {
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
 			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
+			evalThreadRestore.restoreFolders.mockResolvedValue(new Map());
 			// The allowlist service is real and shared: drop what the allowlist tests pinned.
 			evalCredentialAllowlists.clearThread(THREAD_ID);
 		});
@@ -835,6 +1115,7 @@ describe('InstanceAiController', () => {
 				'project-1',
 				expect.any(Map),
 				undefined,
+				expect.any(Map),
 			);
 			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
 				USER_ID,
@@ -848,6 +1129,7 @@ describe('InstanceAiController', () => {
 				workflowIds: ['wf-1'],
 				dataTableIds: [],
 				agentIds: [],
+				folderIds: [],
 			});
 		});
 
@@ -876,6 +1158,7 @@ describe('InstanceAiController', () => {
 				'project-1',
 				idMap,
 				undefined,
+				expect.any(Map),
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
 		});
@@ -894,6 +1177,7 @@ describe('InstanceAiController', () => {
 				'project-1',
 				expect.any(Map),
 				new Set(['cred-1', 'cred-2']),
+				expect.any(Map),
 			);
 		});
 
@@ -968,6 +1252,116 @@ describe('InstanceAiController', () => {
 
 			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
 			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
+		});
+
+		describe('with seeded folders', () => {
+			const folder = { id: 'odwFolder0001', name: 'ODW' };
+			const placedWorkflow = { ...seedWorkflow, parentFolderId: 'odwFolder0001' };
+			const folderPayload = {
+				threadId: THREAD_ID,
+				messages: seedMessages,
+				folders: [folder],
+				workflows: [placedWorkflow],
+			} as InstanceAiEvalRestoreThreadRequest;
+
+			beforeEach(() => {
+				memoryService.checkThreadOwnership.mockResolvedValue('owned');
+				memoryService.getThreadProjectId.mockResolvedValue('project-1');
+				memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+				evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			});
+
+			it('creates the folders first, hands their id map to the workflow restore and returns the created ids', async () => {
+				const folderIdMap = new Map([['odwFolder0001', 'real-odw']]);
+				evalThreadRestore.restoreFolders.mockResolvedValue(folderIdMap);
+
+				const result = await controller.restoreEvalThread(req, res, folderPayload);
+
+				expect(evalThreadRestore.restoreFolders).toHaveBeenCalledWith(
+					[folder],
+					'project-1',
+					req.user,
+				);
+				expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+					[placedWorkflow],
+					'project-1',
+					expect.any(Map),
+					undefined,
+					folderIdMap,
+				);
+				// Folders before data tables, data tables before workflows.
+				const order = [
+					evalThreadRestore.restoreFolders,
+					evalThreadRestore.restoreDataTables,
+					evalThreadRestore.restoreWorkflows,
+				].map((fn) => fn.mock.invocationCallOrder[0]);
+				expect(order).toEqual([...order].sort((a, b) => a - b));
+				expect(result).toMatchObject({ folderIds: ['real-odw'] });
+			});
+
+			it('rolls the folders back after the workflows and data tables when a later step fails', async () => {
+				evalThreadRestore.restoreFolders.mockResolvedValue(
+					new Map([['odwFolder0001', 'real-odw']]),
+				);
+				evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+				evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+				memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+
+				await expect(controller.restoreEvalThread(req, res, folderPayload)).rejects.toThrow('boom');
+
+				expect(evalThreadRestore.deleteFolders).toHaveBeenCalledWith(
+					[folder],
+					new Map([['odwFolder0001', 'real-odw']]),
+					'project-1',
+					req.user,
+				);
+				// A folder delete cascades to the workflows inside it, so the workflows
+				// must already be gone by their own path (unpublished, then deleted).
+				const order = [
+					evalThreadRestore.deleteWorkflows,
+					evalThreadRestore.deleteDataTables,
+					evalThreadRestore.deleteFolders,
+				].map((fn) => fn.mock.invocationCallOrder[0]);
+				expect(order).toEqual([...order].sort((a, b) => a - b));
+			});
+
+			it('rolls the folders back when the data tables fail', async () => {
+				evalThreadRestore.restoreFolders.mockResolvedValue(
+					new Map([['odwFolder0001', 'real-odw']]),
+				);
+				evalThreadRestore.restoreDataTables.mockRejectedValueOnce(new Error('table refused'));
+
+				await expect(controller.restoreEvalThread(req, res, folderPayload)).rejects.toThrow(
+					'table refused',
+				);
+
+				expect(evalThreadRestore.deleteFolders).toHaveBeenCalledWith(
+					[folder],
+					new Map([['odwFolder0001', 'real-odw']]),
+					'project-1',
+					req.user,
+				);
+				expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
+			});
+
+			it('refuses a workflow placed in a folder the seed does not declare, before creating anything', async () => {
+				await expect(
+					controller.restoreEvalThread(req, res, {
+						...folderPayload,
+						folders: [],
+					} as InstanceAiEvalRestoreThreadRequest),
+				).rejects.toThrow(BadRequestError);
+
+				expect(evalThreadRestore.restoreFolders).not.toHaveBeenCalled();
+				expect(evalThreadRestore.restoreDataTables).not.toHaveBeenCalled();
+			});
+
+			it('creates no folders and reports none for a seed without them', async () => {
+				const result = await controller.restoreEvalThread(req, res, payload);
+
+				expect(evalThreadRestore.restoreFolders).toHaveBeenCalledWith([], 'project-1', req.user);
+				expect(result).toMatchObject({ folderIds: [] });
+			});
 		});
 
 		describe('with seeded agents', () => {

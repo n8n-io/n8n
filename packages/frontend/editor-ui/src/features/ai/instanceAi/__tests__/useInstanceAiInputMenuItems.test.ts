@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 
 import {
 	type InputMenuItem,
@@ -14,6 +15,7 @@ const {
 	ensureBrowserConnected,
 	computerUseTelemetry,
 	featureFlags,
+	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
 	settingsStore,
@@ -22,7 +24,8 @@ const {
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { browserUse: true, computerUse: true, mcp: true },
+	featureFlags: { browserUse: true, computerUse: true },
+	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -34,10 +37,10 @@ const {
 	},
 	settingsStore: {
 		fetch: vi.fn(),
-		settings: { mcpAccessEnabled: true },
+		isMcpAvailable: true,
 		isLocalGatewayDisabled: false,
-		isLocalGatewayDisabledByAdmin: false,
-		isBrowserUseEnabledByAdmin: true,
+		isComputerUseAvailable: true,
+		isBrowserUseAvailable: true,
 		isGatewayConnected: false,
 		computerUseConnectionStatus: 'none',
 		browserUseConnectionStatus: 'none',
@@ -59,16 +62,6 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStore,
-}));
-
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.mcp;
-			},
-		},
-	}),
 }));
 
 vi.mock('../composables/useBrowserUseConnection', () => ({
@@ -100,6 +93,10 @@ vi.mock('../instanceAiSettings.store', () => ({
 
 vi.mock('../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStore,
+}));
+
+vi.mock('../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({ ignorePendingConnectResult }),
 }));
 
 vi.mock('../instanceAiMcp.telemetry', () => ({
@@ -149,27 +146,50 @@ describe('useInstanceAiInputMenuItems', () => {
 		vi.clearAllMocks();
 		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
-		featureFlags.mcp = true;
 		mcpStore.connections = [];
-		settingsStore.settings.mcpAccessEnabled = true;
+		settingsStore.isMcpAvailable = true;
 		settingsStore.isLocalGatewayDisabled = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = false;
-		settingsStore.isBrowserUseEnabledByAdmin = true;
+		settingsStore.isComputerUseAvailable = true;
+		settingsStore.isBrowserUseAvailable = true;
 		settingsStore.isGatewayConnected = false;
 		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
-	it('omits connection groups disabled by feature or admin settings', () => {
-		featureFlags.mcp = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = true;
-		settingsStore.isBrowserUseEnabledByAdmin = false;
+	it('omits connection groups that instance settings report as unavailable', () => {
+		settingsStore.isMcpAvailable = false;
+		settingsStore.isComputerUseAvailable = false;
+		settingsStore.isBrowserUseAvailable = false;
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
 		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+	});
+
+	it('fetches MCP connections when MCP becomes available', async () => {
+		const isMcpAvailable = ref(false);
+		const originalDescriptor = Object.getOwnPropertyDescriptor(settingsStore, 'isMcpAvailable');
+		Object.defineProperty(settingsStore, 'isMcpAvailable', {
+			configurable: true,
+			get: () => isMcpAvailable.value,
+			set: (value: boolean) => {
+				isMcpAvailable.value = value;
+			},
+		});
+
+		try {
+			useInstanceAiInputMenuItems(vi.fn());
+			expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+
+			settingsStore.isMcpAvailable = true;
+			await nextTick();
+
+			expect(mcpStore.fetchConnectionsLazy).toHaveBeenCalledOnce();
+		} finally {
+			Object.defineProperty(settingsStore, 'isMcpAvailable', originalDescriptor!);
+		}
 	});
 
 	it.each(mcpStatusCases)(
@@ -292,6 +312,10 @@ describe('useInstanceAiInputMenuItems', () => {
 			data: { connectionId: '1' },
 		});
 		expect(mcpStore.disconnect).toHaveBeenCalledWith('1');
+		expect(ignorePendingConnectResult).toHaveBeenCalledWith('server-1');
+		expect(ignorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
+			mcpStore.disconnect.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
 		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
 	});

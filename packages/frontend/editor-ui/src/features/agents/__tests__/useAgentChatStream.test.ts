@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, reactive, nextTick, effectScope } from 'vue';
+import { ref, reactive, nextTick, effectScope, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import {
 	APPROVAL_TOOL_NAME,
@@ -161,7 +161,10 @@ afterEach(() => {
 	for (const scope of hookScopes.splice(0)) scope.stop();
 });
 
-function buildHook(continueSessionId?: string) {
+function buildHook(
+	continueSessionId?: string,
+	options: { newSession?: Ref<boolean>; onSessionCreated?: (sessionId: string) => void } = {},
+) {
 	const scope = effectScope();
 	hookScopes.push(scope);
 	return scope.run(() =>
@@ -169,6 +172,7 @@ function buildHook(continueSessionId?: string) {
 			projectId: ref('p1'),
 			agentId: ref('a1'),
 			...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
+			...options,
 		}),
 	)!;
 }
@@ -2150,6 +2154,20 @@ describe('useAgentChatStream — loadHistory', () => {
 		expect(msg.interactive?.runId).toBe('run-continued');
 		expect(msg.status).toBe('awaitingUser');
 	});
+
+	it('marks a client-minted session as created when persisted history exists', async () => {
+		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		const newSession = ref(true);
+		const onSessionCreated = vi.fn(() => {
+			newSession.value = false;
+		});
+		const hook = buildHook('thread-new', { newSession, onSessionCreated });
+
+		await hook.loadHistory();
+
+		expect(onSessionCreated).toHaveBeenCalledOnce();
+		expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
+	});
 });
 
 describe('useAgentChatStream — done executionId', () => {
@@ -2169,6 +2187,82 @@ describe('useAgentChatStream — done executionId', () => {
 		expect(assistant?.content).toBe('Hello');
 		expect(assistant?.executionId).toBe('exec-live-1');
 	});
+
+	it.each(['error', 'stop'] as const)(
+		'clears creation intent after admission followed by %s',
+		async (outcome) => {
+			const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				makeSseResponse([
+					{ type: 'start-step' },
+					{ type: 'error', message: 'The turn failed after admission' },
+				]),
+			);
+			if (outcome === 'stop') {
+				fetchMock.mockImplementationOnce(async (_input, init) =>
+					makeAbortableSseResponse([{ type: 'start-step' }], init?.signal ?? null),
+				);
+			}
+			globalThis.fetch = fetchMock as typeof fetch;
+			const newSession = ref(true);
+			const onSessionCreated = vi.fn(() => {
+				newSession.value = false;
+			});
+			const hook = buildHook('thread-new', {
+				newSession,
+				onSessionCreated,
+			});
+
+			const firstTurn = hook.sendMessage('hi');
+			await vi.waitFor(() => expect(onSessionCreated).toHaveBeenCalledOnce());
+			if (outcome === 'stop') await hook.stopGenerating();
+			await firstTurn;
+			await hook.sendMessage('try again');
+
+			expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+				message: 'hi',
+				sessionId: 'thread-new',
+				newSession: true,
+			});
+			expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+				message: 'try again',
+				sessionId: 'thread-new',
+			});
+			expect(onSessionCreated).toHaveBeenCalledOnce();
+			expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
+		},
+	);
+
+	it.each(['http', 'stream'] as const)(
+		'keeps creation intent after a %s failure before admission',
+		async (failure) => {
+			getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+			const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				failure === 'http'
+					? new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 })
+					: makeSseResponse([{ type: 'error', message: 'Unavailable' }]),
+			);
+			globalThis.fetch = fetchMock as typeof fetch;
+			const newSession = ref(true);
+			const onSessionCreated = vi.fn(() => {
+				newSession.value = false;
+			});
+			const hook = buildHook('thread-new', { newSession, onSessionCreated });
+
+			await hook.loadHistory();
+			await hook.sendMessage('hi');
+			await hook.sendMessage('try again');
+
+			expect(onSessionCreated).not.toHaveBeenCalled();
+			expect(newSession.value).toBe(true);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			for (const [, init] of fetchMock.mock.calls) {
+				expect(JSON.parse(String(init?.body))).toMatchObject({
+					sessionId: 'thread-new',
+					newSession: true,
+				});
+			}
+		},
+	);
 });
 
 describe('useAgentChatStream — subagent-chunk', () => {
@@ -2411,6 +2505,37 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 });
 
 describe('useAgentChatStream — transcript push', () => {
+	it('loads a signal before output without starting a local stream', async () => {
+		const { hook, dispose } = scopedHook('thread-1');
+		const backgroundJobSignal = {
+			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+		};
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'exec-1:assistant',
+					executionId: 'exec-1',
+					role: 'assistant',
+					content: [],
+					executionStatus: 'running',
+					backgroundTaskSignal: backgroundJobSignal,
+				},
+			],
+			openSuspensions: [],
+		});
+		try {
+			emitPush(update());
+			emitPush(update());
+			await flushPromises();
+			expect(hook.messages.value).toHaveLength(1);
+			expect(hook.messages.value[0]).toMatchObject({ backgroundJobSignal, content: '' });
+			expect(hook.isStreaming.value).toBe(false);
+			expect(hook.messagingState.value).toBe('idle');
+		} finally {
+			dispose();
+		}
+	});
+
 	/** The subscription is eager, so an effect scope is enough — no mount needed. */
 	function scopedHook(continueSessionId?: string) {
 		const scope = effectScope();
