@@ -169,6 +169,30 @@ describe('GET /discover', () => {
 		expect(response.body.data.resources).toEqual({});
 	});
 
+	test('should keep only create endpoints with ?operation=create', async () => {
+		const response = await authOwnerAgent.get('/discover?operation=create');
+		expect(response.statusCode).toBe(200);
+
+		const resources = Object.values(response.body.data.resources) as Array<{
+			operations: string[];
+		}>;
+		expect(resources.length).toBeGreaterThan(0);
+		for (const resource of resources) {
+			expect(resource.operations.map((o) => o.toLowerCase())).toEqual(['create']);
+		}
+	});
+
+	// The legacy validator also answered 400 here: a repeated parameter arrives as an array,
+	// and the parameter is declared as a string.
+	test('should return 400 for a repeated query parameter', async () => {
+		const response = await authOwnerAgent.get('/discover?resource=tags&resource=workflow');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: 'request/query/resource Expected string, received array',
+		});
+	});
+
 	test.each([
 		[
 			'an invalid include value',
