@@ -357,7 +357,7 @@ describe('AgentWorkflowExecutionService', () => {
 	});
 
 	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
-		'returns workflow output when %s fails',
+		'reports required persistence failures from %s',
 		async (recordingOperation) => {
 			const { service, agentRepository, reconstructionService, executionService } = makeService();
 			const runtime = makeRuntime([
@@ -366,36 +366,42 @@ describe('AgentWorkflowExecutionService', () => {
 			]);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-			executionService[recordingOperation].mockRejectedValue(new Error('recording unavailable'));
+			const cause = new Error('recording unavailable');
+			executionService[recordingOperation].mockRejectedValue(cause);
+			const creationFailed = recordingOperation === 'startExecutionRecording';
 
 			await expect(
 				service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
-			).resolves.toMatchObject({ response: 'answer' });
+			).rejects.toMatchObject({
+				phase: creationFailed ? 'create' : 'finalize',
+				executionStarted: !creationFailed,
+				cause,
+				...(!creationFailed ? { executionId: 'execution-1' } : {}),
+			});
+			expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+			if (creationFailed) {
+				expect(runtime.agent.stream).not.toHaveBeenCalled();
+				expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+			}
 		},
 	);
 
-	it('retries initial recording after a workflow stream failure', async () => {
+	it('records a workflow initialization failure without invoking the SDK', async () => {
 		const { service, agentRepository, reconstructionService, executionService } = makeService();
-		const runtime = makeRuntime();
-		runtime.agent.stream.mockResolvedValue({
-			stream: makeFailingStream(new Error('stream failed')),
-		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording
-			.mockRejectedValueOnce(new Error('recording unavailable'))
-			.mockResolvedValueOnce('retry-execution');
+		reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+			new Error('runtime setup failed'),
+		);
 
 		await expect(
 			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
-		).rejects.toThrow('stream failed');
+		).rejects.toThrow('runtime setup failed');
 
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
-			'retry-execution',
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
-					assistantResponse: 'partial answer',
-					error: 'stream failed',
+					error: 'Failed to compile agent: runtime setup failed',
 					finishReason: 'error',
 				}),
 			}),

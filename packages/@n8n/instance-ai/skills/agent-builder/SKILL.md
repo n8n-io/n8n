@@ -170,3 +170,13 @@ those tools do not appear in your toolset.
 When the builder needs a user choice, credential, chat channel, or approval, it
 surfaces an interactive card in this chat. Do not relay the question yourself;
 the `build-agent` call resumes with the user's answer.
+
+## Agent UI labels
+
+When you send the user to the agent editor, use the labels they see:
+
+- Sessions tab: past agent conversations, tests, and activity. Each item is a session.
+- Preview: the live test-chat dock, not the history list.
+- Workflow execution history stays "Executions". Do not reuse that name for agents.
+
+Never say Runs tab, Executions tab, Activity History, or Runs Activity History for an agent.

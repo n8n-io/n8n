@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime } from '@n8n/engine';
+import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
@@ -59,11 +59,11 @@ export class EngineV2Runtime {
 		this.logger = this.logger.scoped('engine-v2');
 	}
 
-	async init(): Promise<void> {
+	async init(responseSender: ExecutionResponseSender): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine();
+			this.initEngine(responseSender);
 
 			await this.initServer();
 		} catch (error) {
@@ -92,7 +92,7 @@ export class EngineV2Runtime {
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine(): void {
+	private initEngine(responseSender: ExecutionResponseSender): void {
 		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -105,6 +105,7 @@ export class EngineV2Runtime {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
+			responseSender,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),

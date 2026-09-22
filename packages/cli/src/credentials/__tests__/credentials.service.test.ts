@@ -21,6 +21,7 @@ import {
 	GLOBAL_OWNER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
+import type { PolicyCleared } from '@n8n/decorators';
 import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -42,6 +43,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialUseRegistry } from '@/credentials/instance-credential-use.registry';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -106,6 +109,8 @@ describe('CredentialsService', () => {
 	const dbLockService = mock<DbLockService>();
 	const eventService = mock<EventService>();
 	const transactionRunner = mock<TransactionRunner>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const cleared = mock<PolicyCleared<'credentialSave'>>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -131,10 +136,12 @@ describe('CredentialsService', () => {
 		dbLockService,
 		eventService,
 		transactionRunner,
+		policyEnforcementService,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		policyEnforcementService.enforceCredentialSave.mockResolvedValue(cleared);
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
 		);
@@ -168,20 +175,19 @@ describe('CredentialsService', () => {
 		const credentialId = options?.credentialId ?? 'new-cred-id';
 		const onSave = options?.onSave;
 
-		// @ts-expect-error - Mocking manager for testing
-		credentialsRepository.manager = {
-			transaction: vi.fn().mockImplementation(async (callback) => {
-				const mockManager = {
-					save: vi.fn().mockImplementation(async (entity) => {
-						if (onSave) {
-							onSave(entity);
-						}
-						return { ...entity, id: credentialId };
-					}),
-				};
-				return await callback(mockManager);
-			}),
-		};
+		const transactionManager = mock<EntityManager>();
+		credentialsRepository.runInTransaction.mockImplementation(
+			async (ctx, callback) => await callback(transactionManager, ctx),
+		);
+		// The credential row goes through the sealed repository method; the sharing row stays
+		// on the transaction manager.
+		credentialsRepository.createContent.mockImplementation(async (entity) => {
+			if (onSave) {
+				onSave(entity);
+			}
+			return { ...entity, id: credentialId } as CredentialsEntity;
+		});
+		return transactionManager;
 	};
 
 	describe('clearOauthTokenData', () => {
@@ -1368,15 +1374,15 @@ describe('CredentialsService', () => {
 
 	describe('update', () => {
 		const setRepositoryTransaction = (transactionManager: EntityManager) => {
-			const transaction = vi.fn(
-				async (run: (manager: EntityManager) => Promise<unknown>) => await run(transactionManager),
+			credentialsRepository.runInTransaction.mockImplementation(
+				async (ctx, run) => await run(transactionManager, ctx),
 			);
-			Object.defineProperty(credentialsRepository, 'manager', {
-				configurable: true,
-				value: { transaction },
-				writable: true,
-			});
-			return transaction;
+			return credentialsRepository.runInTransaction;
+		};
+
+		/** The host loads the stored row before the check, so every update test needs one. */
+		const storeCredential = (credential: CredentialsEntity) => {
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
 		};
 
 		it('serializes instance credential validation and persistence with settings updates', async () => {
@@ -1385,6 +1391,7 @@ describe('CredentialsService', () => {
 				name: 'Provider connection',
 				type: 'apiKey',
 			});
+			storeCredential(credential);
 			const encrypted = await service.createEncryptedData({
 				id: credential.id,
 				name: credential.name,
@@ -1419,20 +1426,21 @@ describe('CredentialsService', () => {
 				instanceCredential: credential,
 			});
 			await vi.waitFor(() => expect(dbLockService.withLock).toHaveBeenCalledOnce());
-			expect(lockTransactionManager.update).not.toHaveBeenCalled();
+			expect(credentialsRepository.updateContent).not.toHaveBeenCalled();
 			releaseLock();
 			await expect(update).resolves.toBe(credential);
 
 			expect(repositoryTransaction).not.toHaveBeenCalled();
-			expect(lockTransactionManager.update).toHaveBeenCalledWith(
-				CredentialsEntity,
+			expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
 				credential.id,
 				encrypted,
+				expect.objectContaining({ policyCleared: cleared }),
 			);
 		});
 
 		it('keeps project credential updates on their existing transaction path', async () => {
-			const credential = mock<CredentialsEntity>({ id: 'project-credential' });
+			const credential = mock<CredentialsEntity>({ id: 'project-credential', type: 'apiKey' });
+			storeCredential(credential);
 			const transactionManager = mock<EntityManager>();
 			transactionManager.findOneBy.mockResolvedValue(credential);
 			const repositoryTransaction = setRepositoryTransaction(transactionManager);
@@ -1445,13 +1453,63 @@ describe('CredentialsService', () => {
 
 			await expect(service.update(credential.id, encrypted)).resolves.toBe(credential);
 
-			expect(repositoryTransaction).toHaveBeenCalledOnce();
+			expect(repositoryTransaction).toHaveBeenCalledExactlyOnceWith(
+				{ policyCleared: cleared },
+				expect.any(Function),
+			);
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
-			expect(transactionManager.update).toHaveBeenCalledWith(
-				CredentialsEntity,
+			expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
 				credential.id,
 				encrypted,
+				expect.objectContaining({ policyCleared: cleared }),
 			);
+		});
+
+		it('gates the write on a policy clearance for the stored type and owning project', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'project-credential', type: 'githubApi' });
+			storeCredential(credential);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id, type: 'slackApi' });
+
+			await service.update(credential.id, encrypted);
+
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: credential.id, type: 'slackApi' },
+				storedCredential: { id: credential.id, type: 'githubApi' },
+				projectId: 'project-1',
+			});
+		});
+
+		it('returns null without checking policy when the credential does not exist', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(
+				service.update('missing', mock<ICredentialsDb>({ id: 'missing' })),
+			).resolves.toBeNull();
+
+			expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
+			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing when policy refuses the save', async () => {
+			storeCredential(mock<CredentialsEntity>({ id: 'project-credential', type: 'githubApi' }));
+			policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+				new PolicyViolationError([
+					{ kind: 'test', checkId: 'test', message: 'Blocked by the test policy' },
+				]),
+			);
+
+			await expect(
+				service.update('project-credential', mock<ICredentialsDb>({ id: 'project-credential' })),
+			).rejects.toThrow(PolicyViolationError);
+
+			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
+			expect(credentialsRepository.updateContent).not.toHaveBeenCalled();
 		});
 
 		it('enriches the returned credential with connectedByMe when a user is passed', async () => {
@@ -1459,6 +1517,7 @@ describe('CredentialsService', () => {
 				id: 'private-credential',
 				isResolvable: true,
 			});
+			storeCredential(credential);
 			const transactionManager = mock<EntityManager>();
 			transactionManager.findOneBy.mockResolvedValue(credential);
 			setRepositoryTransaction(transactionManager);
@@ -1485,6 +1544,7 @@ describe('CredentialsService', () => {
 				id: 'private-credential',
 				isResolvable: true,
 			});
+			storeCredential(credential);
 			const transactionManager = mock<EntityManager>();
 			transactionManager.findOneBy.mockResolvedValue(credential);
 			setRepositoryTransaction(transactionManager);
@@ -1539,6 +1599,36 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.updateInstanceCredential).not.toHaveBeenCalled();
 		});
 
+		it('gates the update on a policy clearance for the stored type, with no project', async () => {
+			vi.spyOn(service, 'prepareUpdateData').mockResolvedValue(preparedCredential);
+			credentialsRepository.updateInstanceCredential.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'instance-credential' }),
+			);
+
+			await service.updateInstanceCredential(ownerUser, 'instance-credential', payload, ctx);
+
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: 'instance-credential', type: 'openAiApi' },
+				storedCredential: { id: 'instance-credential', type: 'openAiApi' },
+				projectId: null,
+			});
+		});
+
+		it('writes nothing when policy refuses the update', async () => {
+			vi.spyOn(service, 'prepareUpdateData').mockResolvedValue(preparedCredential);
+			policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+				new PolicyViolationError([
+					{ kind: 'test', checkId: 'test', message: 'Blocked by the test policy' },
+				]),
+			);
+
+			await expect(
+				service.updateInstanceCredential(ownerUser, 'instance-credential', payload, ctx),
+			).rejects.toThrow(PolicyViolationError);
+
+			expect(credentialsRepository.updateInstanceCredential).not.toHaveBeenCalled();
+		});
+
 		it('runs the update hook unless the caller already ran it', async () => {
 			const encrypted = await service.createEncryptedData({
 				id: 'instance-credential',
@@ -1561,7 +1651,7 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.updateInstanceCredential).toHaveBeenCalledWith(
 				'instance-credential',
 				encrypted,
-				ctx,
+				{ ...ctx, policyCleared: cleared },
 			);
 
 			const hooked = { ...encrypted, name: 'Updated by hook' };
@@ -1572,7 +1662,7 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.updateInstanceCredential).toHaveBeenLastCalledWith(
 				'instance-credential',
 				hooked,
-				ctx,
+				{ ...ctx, policyCleared: cleared },
 			);
 		});
 
@@ -1645,6 +1735,49 @@ describe('CredentialsService', () => {
 				}),
 			).rejects.toThrow(`Provider connection hooks cannot change the credential ${invariant}`);
 			expect(credentialsRepository.updateInstanceCredential).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createInstanceCredential', () => {
+		const dto = {
+			name: 'Instance Credential',
+			type: 'apiKey',
+			data: { apiKey: 'valid' },
+			usageScope: 'instance' as const,
+		};
+
+		beforeEach(() => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
+			credentialsRepository.saveInstanceCredential.mockImplementation(async (entity) => entity);
+		});
+
+		it('gates the create on a policy clearance for its type, with no project', async () => {
+			await service.createInstanceCredential(dto, ownerUser, {});
+
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: null, type: 'apiKey' },
+				storedCredential: null,
+				projectId: null,
+			});
+			expect(credentialsRepository.saveInstanceCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'apiKey', usageScope: 'instance' }),
+				{ policyCleared: cleared },
+			);
+		});
+
+		it('writes nothing when policy refuses the create', async () => {
+			policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+				new PolicyViolationError([
+					{ kind: 'test', checkId: 'test', message: 'Blocked by the test policy' },
+				]),
+			);
+
+			await expect(service.createInstanceCredential(dto, ownerUser, {})).rejects.toThrow(
+				PolicyViolationError,
+			);
+
+			expect(credentialsRepository.saveInstanceCredential).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2616,6 +2749,7 @@ describe('CredentialsService', () => {
 			id: 'cred-1',
 			name: 'Regular Credential',
 			type: 'apiKey',
+			description: null,
 			isGlobal: false,
 			isManaged: false,
 			isResolvable: false,
@@ -2626,6 +2760,7 @@ describe('CredentialsService', () => {
 			id: 'cred-2',
 			name: 'Global Credential',
 			type: 'oauth2',
+			description: null,
 			isGlobal: true,
 			isManaged: false,
 			isResolvable: true,
@@ -2671,6 +2806,25 @@ describe('CredentialsService', () => {
 			);
 		});
 
+		it.each([null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)])(
+			'returns the stored description in a workflow-scoped list',
+			async (description) => {
+				const credential = Object.assign(new CredentialsEntity(), regularCredential, {
+					description,
+					data: 'encrypted-test-value',
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([credential]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result[0].description).toBe(description);
+				expect(result[0]).not.toHaveProperty('data');
+			},
+		);
+
 		it('should return a payload matching the ICredentialsResponse shape', async () => {
 			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
 			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([regularCredential]);
@@ -2688,6 +2842,7 @@ describe('CredentialsService', () => {
 					id: 'cred-1',
 					name: 'Regular Credential',
 					type: 'apiKey',
+					description: null,
 					createdAt: credentialCreatedAt.toISOString(),
 					updatedAt: credentialUpdatedAt.toISOString(),
 					scopes: ['credential:read'],
@@ -3028,6 +3183,61 @@ describe('CredentialsService', () => {
 			expect(savedCredential.isGlobal).toBeUndefined();
 		});
 
+		it('gates the create on a policy clearance for its type and project', async () => {
+			mockTransactionManager();
+
+			await service.createUnmanagedCredential(
+				{ ...credentialData, projectId: 'project-1' },
+				ownerUser,
+			);
+
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: null, type: credentialData.type },
+				storedCredential: null,
+				projectId: 'project-1',
+			});
+			expect(credentialsRepository.runInTransaction).toHaveBeenCalledWith(
+				{ policyCleared: cleared },
+				expect.any(Function),
+			);
+			expect(credentialsRepository.createContent).toHaveBeenCalledWith(
+				expect.objectContaining({ type: credentialData.type }),
+				{ policyCleared: cleared },
+			);
+		});
+
+		it('authorizes the project before asking policy, so a denied caller never sees the verdict', async () => {
+			mockTransactionManager();
+			projectService.getProjectWithScope.mockResolvedValue(null);
+			projectRepository.existsBy.mockResolvedValue(true);
+
+			await expect(
+				service.createUnmanagedCredential(
+					{ ...credentialData, projectId: 'project-1' },
+					memberUser,
+				),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
+			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing when policy refuses the create', async () => {
+			mockTransactionManager();
+			policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+				new PolicyViolationError([
+					{ kind: 'test', checkId: 'test', message: 'Blocked by the test policy' },
+				]),
+			);
+
+			await expect(service.createUnmanagedCredential(credentialData, ownerUser)).rejects.toThrow(
+				PolicyViolationError,
+			);
+
+			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
+			expect(credentialsRepository.createContent).not.toHaveBeenCalled();
+		});
+
 		it('should allow creating credential when required field has default value and is not provided', async () => {
 			// ARRANGE
 			// Mock credential properties with a required field that has a default value
@@ -3056,17 +3266,7 @@ describe('CredentialsService', () => {
 				projectId: 'project-1',
 			};
 
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: vi.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: vi.fn().mockImplementation(async (entity) => {
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager();
 
 			// ACT & ASSERT
 			await expect(service.createUnmanagedCredential(payload, ownerUser)).resolves.toBeDefined();
@@ -3283,8 +3483,13 @@ describe('CredentialsService', () => {
 				expect.objectContaining({ id: 'source-id' }),
 				'project-1',
 				[],
-				{},
+				{ policyCleared: cleared },
 			);
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: null, type: 'githubApi' },
+				storedCredential: null,
+				projectId: 'project-1',
+			});
 			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(ownerUser, 'project-1', [
 				'credential:create',
 			]);

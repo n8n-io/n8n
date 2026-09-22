@@ -46,6 +46,7 @@ describe('get_instance_context', () => {
 				scope: { surface: 'mcp', credentialGranted: false, executionGranted: true },
 				// Stateless server, no thread to track against, so every read is a full snapshot.
 				cursor: null,
+				enabled: true,
 			}),
 		);
 	});
@@ -71,7 +72,13 @@ describe('get_instance_context', () => {
 		const { tool, instanceContext } = harness();
 		instanceContext.buildBlock.mockResolvedValue({
 			block: 'Workflows that already exist here: 3',
-			cursor: { activityMark: 9, activitySeen: [], runsThrough: '2026-09-10T00:00:00.000Z' },
+			cursor: {
+				activityMark: 9,
+				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
+				activitySeen: [],
+				runsThrough: '2026-09-10T00:00:00.000Z',
+			},
 		});
 
 		const result = await tool.handler({}, mock());
@@ -130,7 +137,13 @@ describe('get_instance_context', () => {
 		const { tool, telemetry, instanceContext } = harness();
 		instanceContext.buildBlock.mockResolvedValue({
 			block: 'Workflows that already exist here: 3',
-			cursor: { activityMark: 9, activitySeen: [], runsThrough: '2026-09-10T00:00:00.000Z' },
+			cursor: {
+				activityMark: 9,
+				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
+				activitySeen: [],
+				runsThrough: '2026-09-10T00:00:00.000Z',
+			},
 		});
 
 		await tool.handler({}, mock());

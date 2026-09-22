@@ -205,11 +205,48 @@ describe('credentials tool', () => {
 	// ── list ────────────────────────────────────────────────────────────────
 
 	describe('list action', () => {
+		it.each([
+			{ label: 'unset', description: null, expected: null },
+			{ label: 'omitted', description: undefined, expected: null },
+			{ label: 'short', description: 'Reporting database', expected: 'Reporting database' },
+			{ label: 'at the preview limit', description: 'x'.repeat(256), expected: 'x'.repeat(256) },
+			{
+				label: 'with a Unicode character at the boundary',
+				description: 'x'.repeat(252) + '😀extra',
+				expected: 'x'.repeat(252) + '...',
+			},
+			{
+				label: 'above the preview limit',
+				description: 'x'.repeat(257),
+				expected: 'x'.repeat(253) + '...',
+			},
+			{
+				label: 'at the storage limit',
+				description: 'x'.repeat(512),
+				expected: 'x'.repeat(253) + '...',
+			},
+		])('returns a $label description', async ({ description, expected }) => {
+			const context = createMockContext();
+			vi.mocked(context.credentialService.list).mockResolvedValue([
+				{ id: '1', name: 'Postgres account', type: 'postgres', description },
+			]);
+
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{ action: 'list' },
+				noSuspendCtx(),
+			);
+
+			expect(result.credentials).toEqual([
+				{ id: '1', name: 'Postgres account', type: 'postgres', description: expected },
+			]);
+		});
+
 		it('should call credentialService.list and return paginated results', async () => {
 			const credentials: CredentialSummary[] = [
-				{ id: '1', name: 'Slack Token', type: 'slackApi' },
-				{ id: '2', name: 'GitHub Token', type: 'githubApi' },
-				{ id: '3', name: 'Notion Key', type: 'notionApi' },
+				{ id: '1', name: 'Slack Token', type: 'slackApi', description: null },
+				{ id: '2', name: 'GitHub Token', type: 'githubApi', description: null },
+				{ id: '3', name: 'Notion Key', type: 'notionApi', description: null },
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -220,9 +257,9 @@ describe('credentials tool', () => {
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: undefined });
 			expect(result).toEqual({
 				credentials: [
-					{ id: '1', name: 'Slack Token', type: 'slackApi' },
-					{ id: '2', name: 'GitHub Token', type: 'githubApi' },
-					{ id: '3', name: 'Notion Key', type: 'notionApi' },
+					{ id: '1', name: 'Slack Token', type: 'slackApi', description: null },
+					{ id: '2', name: 'GitHub Token', type: 'githubApi', description: null },
+					{ id: '3', name: 'Notion Key', type: 'notionApi', description: null },
 				],
 				total: 3,
 				hasMore: false,
@@ -230,7 +267,9 @@ describe('credentials tool', () => {
 		});
 
 		it('should filter by type when provided', async () => {
-			const credentials: CredentialSummary[] = [{ id: '1', name: 'Slack Token', type: 'slackApi' }];
+			const credentials: CredentialSummary[] = [
+				{ id: '1', name: 'Slack Token', type: 'slackApi', description: null },
+			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
@@ -258,8 +297,8 @@ describe('credentials tool', () => {
 
 			expect(result).toEqual({
 				credentials: [
-					{ id: '3', name: 'Cred 3', type: 'testType' },
-					{ id: '4', name: 'Cred 4', type: 'testType' },
+					{ id: '3', name: 'Cred 3', type: 'testType', description: null },
+					{ id: '4', name: 'Cred 4', type: 'testType', description: null },
 				],
 				total: 10,
 				hasMore: true,
@@ -285,9 +324,9 @@ describe('credentials tool', () => {
 
 		it('should filter by query (case-insensitive name substring)', async () => {
 			const credentials: CredentialSummary[] = [
-				{ id: '1', name: 'Slack Work', type: 'slackApi' },
-				{ id: '2', name: 'Slack Personal', type: 'slackApi' },
-				{ id: '3', name: 'Notion Key', type: 'notionApi' },
+				{ id: '1', name: 'Slack Work', type: 'slackApi', description: null },
+				{ id: '2', name: 'Slack Personal', type: 'slackApi', description: null },
+				{ id: '3', name: 'Notion Key', type: 'notionApi', description: null },
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -301,8 +340,8 @@ describe('credentials tool', () => {
 
 			expect(result).toEqual({
 				credentials: [
-					{ id: '1', name: 'Slack Work', type: 'slackApi' },
-					{ id: '2', name: 'Slack Personal', type: 'slackApi' },
+					{ id: '1', name: 'Slack Work', type: 'slackApi', description: null },
+					{ id: '2', name: 'Slack Personal', type: 'slackApi', description: null },
 				],
 				total: 2,
 				hasMore: false,
@@ -326,7 +365,9 @@ describe('credentials tool', () => {
 			);
 
 			expect(result).toEqual({
-				credentials: [{ id: '55', name: 'Production Notion', type: 'notionApi' }],
+				credentials: [
+					{ id: '55', name: 'Production Notion', type: 'notionApi', description: null },
+				],
 				total: 1,
 				hasMore: false,
 			});
@@ -372,9 +413,9 @@ describe('credentials tool', () => {
 			expect(result.hint).toBeUndefined();
 		});
 
-		it('should only return id, name, and type fields', async () => {
+		it('returns credential metadata without secret data', async () => {
 			const credentials = [
-				{ id: '1', name: 'Slack Token', type: 'slackApi', extraField: 'should-be-stripped' },
+				{ id: '1', name: 'Slack Token', type: 'slackApi', data: { apiKey: 'test-secret' } },
 			];
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
@@ -383,7 +424,7 @@ describe('credentials tool', () => {
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
-				{ id: '1', name: 'Slack Token', type: 'slackApi' },
+				{ id: '1', name: 'Slack Token', type: 'slackApi', description: null },
 			]);
 		});
 	});
@@ -394,7 +435,7 @@ describe('credentials tool', () => {
 		function makeContextWithGateway(isGatewaySupported: boolean | undefined) {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([
-				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi', description: null },
 			]);
 			if (isGatewaySupported !== undefined) {
 				(
@@ -420,9 +461,10 @@ describe('credentials tool', () => {
 				expect.objectContaining({
 					id: '__AI_GATEWAY_MANAGED__',
 					type: 'openAiApi',
+					description: null,
 					__aiGatewayManaged: true,
 				}),
-				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi', description: null },
 			]);
 		});
 
@@ -437,7 +479,7 @@ describe('credentials tool', () => {
 			);
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
-				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi', description: null },
 			]);
 		});
 
@@ -474,7 +516,12 @@ describe('credentials tool', () => {
 			name: 'Google Gemini account',
 			type: 'googlePalmApi',
 		};
-		const slack: CredentialSummary = { id: 's1', name: 'Slack token', type: 'slackApi' };
+		const slack: CredentialSummary = {
+			id: 's1',
+			name: 'Slack token',
+			type: 'slackApi',
+			description: null,
+		};
 
 		function makeContextWithStored(stored: CredentialSummary[]) {
 			const context = createMockContext();
@@ -499,7 +546,12 @@ describe('credentials tool', () => {
 		});
 
 		it('does not hint when a stored credential of the requested type exists', async () => {
-			const openAi: CredentialSummary = { id: 'o1', name: 'My OpenAI', type: 'openAiApi' };
+			const openAi: CredentialSummary = {
+				id: 'o1',
+				name: 'My OpenAI',
+				type: 'openAiApi',
+				description: null,
+			};
 			const context = makeContextWithStored([openAi, gemini]);
 			const tool = createCredentialsTool(context);
 
@@ -571,12 +623,41 @@ describe('credentials tool', () => {
 	// ── get ─────────────────────────────────────────────────────────────────
 
 	describe('get action', () => {
+		it.each([null, undefined, 'x'.repeat(512)])(
+			'returns the full description %j without secret data',
+			async (description) => {
+				const context = createMockContext();
+				const credential = {
+					id: '1',
+					name: 'Postgres account',
+					type: 'postgres',
+					description,
+					data: { password: 'test-secret' },
+				};
+				vi.mocked(context.credentialService.get).mockResolvedValue(credential);
+
+				const result = await executeTool(
+					createCredentialsTool(context),
+					{ action: 'get', credentialId: '1' },
+					noSuspendCtx(),
+				);
+
+				expect(result).toEqual({
+					id: '1',
+					name: 'Postgres account',
+					type: 'postgres',
+					description: description ?? null,
+				});
+			},
+		);
+
 		it('should call credentialService.get with the credential ID', async () => {
 			const detail: CredentialDetail = {
 				id: '42',
 				name: 'My Notion Key',
 				type: 'notionApi',
 				nodesWithAccess: [{ nodeType: 'n8n-nodes-base.notion' }],
+				description: null,
 			};
 			const context = createMockContext();
 			(context.credentialService.get as Mock).mockResolvedValue(detail);
