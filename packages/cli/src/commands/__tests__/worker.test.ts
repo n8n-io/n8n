@@ -320,22 +320,21 @@ describe('Worker', () => {
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
 		});
 
-		it('should start the per-instance system tasks once the server is up, and never the cluster ones', async () => {
+		it('should start the system tasks once the server is up', async () => {
 			Container.get(GlobalConfig).queue.health.active = true;
 
 			await createWorkerForRun().run();
 
-			expect(systemTaskRunner.initPerInstance).toHaveBeenCalledTimes(1);
-			expect(systemTaskRunner.initCluster).not.toHaveBeenCalled();
+			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
 			expect(mockWorkerServer.init.mock.invocationCallOrder[0]).toBeLessThan(
-				systemTaskRunner.initPerInstance.mock.invocationCallOrder[0],
+				systemTaskRunner.init.mock.invocationCallOrder[0],
 			);
 		});
 
-		it('should start the per-instance system tasks without a server', async () => {
+		it('should start the system tasks without a server', async () => {
 			await createWorkerForRun().run();
 
-			expect(systemTaskRunner.initPerInstance).toHaveBeenCalledTimes(1);
+			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -106,7 +106,7 @@ export class Webhook extends BaseCommand {
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
 		// After the server started, so the metrics collector is subscribed before the tasks are routed.
-		Container.get(SystemTaskRunner).initPerInstance();
+		await Container.get(SystemTaskRunner).init();
 		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
 

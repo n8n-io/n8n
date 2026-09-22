@@ -228,7 +228,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		// After the server started, so the metrics collector is subscribed before the tasks are routed.
-		Container.get(SystemTaskRunner).initPerInstance();
+		await Container.get(SystemTaskRunner).init();
 
 		// Register the job processor only after `init()` has fully completed,
 		// so that jobs cannot be pulled before all modules and their

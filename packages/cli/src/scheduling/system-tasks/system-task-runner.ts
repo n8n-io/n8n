@@ -89,11 +89,7 @@ export class SystemTaskRunner {
 
 	private initialized = false;
 
-	private clusterInitialized = false;
-
 	private timersStarted = false;
-
-	private instanceTimersStarted = false;
 
 	/**
 	 * Bumped on every start and stop of the timers. A stop awaits the in-flight
@@ -126,74 +122,53 @@ export class SystemTaskRunner {
 
 	/**
 	 * Take ownership of the registry: route every task registered so far and
-	 * every one registered later, then start the timers of the instance-scoped
-	 * tasks. Runs in every instance, whatever its type and whether or not it has
-	 * a role, so an instance-scoped task runs where its state lives.
+	 * every one registered later. An instance-scoped task starts its timer as
+	 * soon as it is routed, in every kind of instance, so it runs where its
+	 * state lives. On a main, also take ownership of the cluster-scoped tasks:
+	 * start their in-memory timers if this instance already leads, provision the
+	 * durable jobs and remove the stale ones. Later leadership changes arrive
+	 * through {@link startTimers} and {@link stopTimers}.
+	 *
+	 * Only a main touches the durable jobs: `removeStale` deletes the stored jobs
+	 * of every task this instance does not run durably, so on a worker it would
+	 * wipe the cluster's durable jobs.
 	 */
-	initPerInstance(): void {
-		if (this.initialized) return;
+	async init(): Promise<void> {
+		if (!this.initialized) return;
+		const isMain = this.instanceSettings.instanceType === 'main';
+		if (isMain) {
+			strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
+		}
 		this.initialized = true;
 
 		this.metadata.subscribe((taskClass) => this.route(taskClass));
 
-		this.startInstanceTimers();
+		if (isMain) {
+			if (this.instanceSettings.isLeader) {
+				this.startTimers();
+			}
+
+			for (const { task } of this.durableTasks()) {
+				await this.jobRegistrar.provision(task);
+			}
+			await this.jobRegistrar.removeStale();
+		}
 	}
 
-	/**
-	 * Take ownership of the cluster-scoped tasks: start their in-memory timers if
-	 * this instance is already the leader, provision the durable jobs and remove
-	 * the stale ones. Later leadership changes arrive through {@link startTimers}
-	 * and {@link stopTimers}.
-	 *
-	 * Takes ownership of the registry first, if nothing did yet.
-	 *
-	 * Only a main instance may call this. `removeStale` deletes the stored jobs of
-	 * every task this instance does not run durably, so on a worker it would wipe
-	 * the cluster's durable jobs.
-	 */
-	async initCluster(): Promise<void> {
-		strict(this.instanceSettings.instanceType === 'main', 'Only a main runs the cluster tasks');
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		this.initPerInstance();
-
-		if (this.clusterInitialized) return;
-		this.clusterInitialized = true;
-
-		if (this.instanceSettings.isLeader) {
-			this.startTimers();
-		}
-
-		for (const { task } of this.durableTasks()) {
-			await this.jobRegistrar.provision(task);
-		}
-		await this.jobRegistrar.removeStale();
-	}
-
-	/**
-	 * Start the timers of the instance-scoped tasks routed so far. Idempotent, and
-	 * never stopped by a leadership change: only shutdown stops them.
-	 */
-	private startInstanceTimers(): void {
-		if (this.isShuttingDown) return;
-		this.instanceTimersStarted = true;
-		const from = new Date();
-		const timers = this.instanceTimers();
-		for (const routed of timers) {
-			routed.timer.start(from);
-		}
-		this.logger.debug('Started the per-instance system task timers', { count: timers.length });
+	/** The per-instance timers run from {@link init} until shutdown, whatever the leadership. */
+	private get instanceTimersRunning(): boolean {
+		return this.initialized && !this.isShuttingDown;
 	}
 
 	/**
 	 * Start the leader-gated in-memory timers of this instance. Does nothing
-	 * before {@link initCluster}, which starts them itself when this instance
-	 * already leads. An earlier takeover has no routed task to start, and marking
-	 * the timers started would skip the real start.
+	 * before {@link init}, which starts them itself when this instance already
+	 * leads. An earlier takeover has no routed task to start, and marking the
+	 * timers started would skip the real start.
 	 */
 	@OnLeaderTakeover()
 	startTimers(): void {
-		if (this.clusterInitialized && !this.isShuttingDown && !this.timersStarted) {
+		if (this.initialized && !this.isShuttingDown && !this.timersStarted) {
 			this.timersStarted = true;
 			this.timerGeneration++;
 			this.inMemoryRunsController = new AbortController();
@@ -261,7 +236,6 @@ export class SystemTaskRunner {
 	async shutdown(): Promise<void> {
 		this.isShuttingDown = true;
 		this.shutdownController.abort();
-		this.instanceTimersStarted = false;
 		const instanceTimers = this.instanceTimers();
 		for (const routed of instanceTimers) {
 			routed.timer.stop();
@@ -280,7 +254,7 @@ export class SystemTaskRunner {
 	 *
 	 * @throws {UnexpectedError} When a name is registered more than once, whether
 	 * by two tasks claiming it or by one task being registered twice. It surfaces
-	 * out of {@link initPerInstance} for a task registered before it, and out of the
+	 * out of {@link init} for a task registered before it, and out of the
 	 * `SystemTaskMetadata.register` call for one registered after. Either way the
 	 * runner is left half-routed and startup fails, which is the point: a
 	 * duplicate name is a coding mistake.
@@ -347,7 +321,7 @@ export class SystemTaskRunner {
 				intervalSeconds,
 			});
 
-			if (this.instanceTimersStarted) {
+			if (this.instanceTimersRunning) {
 				routed.timer.start(new Date());
 			}
 		} else if (this.runsDurably(placement)) {
@@ -503,7 +477,7 @@ export class SystemTaskRunner {
 	private scheduleRetry(routed: RoutedTask): void {
 		const { retryDelaySeconds, effects } = routed.task;
 		const timersRunning =
-			routed.placement.scope === 'instance' ? this.instanceTimersStarted : this.timersStarted;
+			routed.placement.scope === 'instance' ? this.instanceTimersRunning : this.timersStarted;
 		if (retryDelaySeconds === undefined || effects === 'non-idempotent' || !timersRunning) {
 			return;
 		}
