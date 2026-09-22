@@ -78,7 +78,7 @@ const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	const items: Array<ActionToggleItem> = [];
+	const items: ActionToggleItem[] = [];
 
 	items.push({
 		value: 'toggleFavorite',
