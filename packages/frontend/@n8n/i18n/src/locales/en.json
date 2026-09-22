@@ -7788,7 +7788,7 @@
 	"ai.thinking.done": "Thought for {duration}",
 	"ai.thinking.doneFallback": "Finished thinking",
 	"ai.thinking.waitingForInput": "Waiting for your input",
-	"projects.menu.instanceAi": "n8n Assistant",
+	"projects.menu.instanceAi": "Assistant",
 	"chatInputBase.button.attach": "Attach files",
 	"chatInputBase.button.dictate": "Dictate",
 	"chatInputBase.dropOverlay": "Drop files here to attach",
