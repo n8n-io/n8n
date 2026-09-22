@@ -1,0 +1,25 @@
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_a4556b837ab6e9::t_ed0d94104a1b02 671-672,674-678
+  s_a4556b837ab6e9::t_59b48732438b31 679-687,689-696
+packages/cli/src/auth/auth.service.ts
+  s_a4556b837ab6e9::t_ab4a3ae9726a09 41-46,50,52-58
+  s_a4556b837ab6e9::t_84b4aea97f0c84 51,59
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_a4556b837ab6e9::t_364de6aeed6470 2,4,31,33-39,41-44,48,60,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6f4c6837b3072a562a0646932b362522230c9eb0",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
