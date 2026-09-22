@@ -21,12 +21,11 @@ const computedIconSize = computed((): IconSize => {
 	if (props.size === 'mini' || props.size === 'xmini' || props.size === 'xsmall') {
 		return 'xsmall';
 	}
-	return props.size as IconSize;
+	return props.size;
 });
 </script>
 
 <template>
-	<!-- Slot the icon from here so N8nIcon is a Vue child of IconButton, same as Alert. -->
 	<N8nButton v-bind="{ ...$attrs, ...props, icon: undefined }">
 		<template v-if="!loading" #icon>
 			<slot name="icon">
