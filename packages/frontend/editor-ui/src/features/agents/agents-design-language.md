@@ -96,7 +96,7 @@ Workflows, and Vector stores.
 Keep the picker mounted. Preserve its search query, selected category, and
 scroll position. Always show the search input. Put a create row first when the
 user can create the asset. Workflows use `Create workflow`. Sub-agents use
-`Create agent`.
+`Create agent`. Give the create row a short subtitle that describes the action.
 
 Put an explicit action in every selectable row. The action must name the
 outcome. Use `Add node`, `Add MCP`, `Add workflow`, or the matching asset label.

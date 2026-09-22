@@ -22,6 +22,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.modal.addAriaLabel': `Add ${options?.interpolate?.name ?? ''} as a sub-agent`,
 				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
 				'projects.header.create.agent': 'Create agent',
+				'projectRoles.agent:create.tooltip': 'Create new agents',
 				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
 				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
 				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
@@ -82,7 +83,10 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 					v-if="createAction"
 					data-testid="agent-sub-agents-modal-create"
 					@click="$emit('create')"
-				>{{ createAction.label }}</button>
+				>
+					<span>{{ createAction.label }}</span>
+					<span data-testid="agent-sub-agents-modal-create-description">{{ createAction.description }}</span>
+				</button>
 				<div
 					v-if="filteredItems.length === 0"
 					:data-testid="searchQuery.trim() ? 'agent-sub-agents-modal-no-results' : 'agent-sub-agents-modal-empty'"
@@ -410,5 +414,25 @@ describe('AgentSubAgentsModal', () => {
 
 		expect(wrapper.find('[data-testid="agent-sub-agents-modal-empty"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-sub-agents-modal-add"]').exists()).toBe(false);
+	});
+
+	it('shows a subtitle for the create agent action', () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [],
+					onCreateAgent: vi.fn(),
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-create"]').text()).toContain(
+			'Create agent',
+		);
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-create-description"]').text()).toBe(
+			'Create new agents',
+		);
 	});
 });

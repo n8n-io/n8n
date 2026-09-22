@@ -179,6 +179,7 @@ function onConfirm() {
 					? {
 							category: 'agents',
 							label: i18n.baseText('projects.header.create.agent'),
+							description: i18n.baseText('projectRoles.agent:create.tooltip'),
 							testId: 'agent-sub-agents-modal-create',
 						}
 					: undefined
