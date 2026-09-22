@@ -65,7 +65,7 @@ jobs:
       revision_sha: ${{ steps.resolve.outputs.revision_sha }}
       head_ref: ${{ steps.resolve.outputs.head_ref }}
       pr_number: ${{ steps.resolve.outputs.pr_number }}
-      suite: ${{ steps.resolve.outputs.suite }}
+      suite: ${{ fromJSON(steps.ci-filter.outputs.results)['agent-builder'] == true && 'agents' || 'baseline' }}
       tier: ${{ steps.resolve.outputs.tier }}
     steps:
       - name: Resolve target ref
@@ -79,6 +79,7 @@ jobs:
           INPUT_TIER: ${{ inputs.tier }}
           EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
           EVENT_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EVENT_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           if [ -n "$INPUT_PR" ]; then
@@ -98,6 +99,7 @@ jobs:
             fi
             head_sha=$(echo "$pr_json" | jq -r '.head.sha')
             head_ref=$(echo "$pr_json" | jq -r '.head.ref')
+            base_ref=$(echo "$pr_json" | jq -r '.base.ref')
             merge_sha=$(echo "$pr_json" | jq -r '.merge_commit_sha // empty')
             tested_sha="$head_sha"
             if [ -n "$merge_sha" ] && \
@@ -114,30 +116,46 @@ jobs:
             # PR open/reopen/ready: unchanged - test the merge commit, which also
             # matches the SHA-keyed prepare-docker image cache.
             branch="$GH_SHA"; cache_sha="$GH_SHA"; revision_sha="$GH_SHA"
-            head_ref="$EVENT_HEAD_REF"; pr_number="$EVENT_PR_NUMBER"; tier="${INPUT_TIER:-pr}"
+            head_ref="$EVENT_HEAD_REF"; base_ref="$EVENT_BASE_REF"; pr_number="$EVENT_PR_NUMBER"; tier="${INPUT_TIER:-pr}"
           else
             # workflow_dispatch enforces `pr` as required; this is unreachable.
             echo "::error::manual dispatch requires the pr input"
             exit 1
           fi
 
-          # Agent Builder sub-agent paths pick the `agents` suite. The rest of the
-          # agents module (runtime, channels, sessions) is not exercised by the
-          # builder cases, so it stays on `baseline`.
-          changed_files=$(gh api --paginate "repos/$REPO/pulls/$pr_number/files" --jq '.[].filename')
-          suite=baseline
-          if grep -qE '^(packages/cli/src/modules/agents/(builder|json-config|adapters)/|packages/cli/src/modules/agents/instance-ai-builder-delegate\.adapter\.ts$|packages/@n8n/instance-ai/skills/agent-builder/)' <<< "$changed_files"; then
-            suite=agents
-          fi
           {
             echo "branch=$branch"
             echo "cache_sha=$cache_sha"
             echo "revision_sha=$revision_sha"
             echo "head_ref=$head_ref"
+            echo "base_ref=$base_ref"
             echo "pr_number=$pr_number"
-            echo "suite=$suite"
             echo "tier=$tier"
           } >> "$GITHUB_OUTPUT"
+
+      # Same classifier as the rest of CI. On pull_request the checkout is the
+      # test-merge commit and ci-filter diffs its PR-head parent against the
+      # merge base; on dispatch it diffs the resolved SHA the same way.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.resolve.outputs.revision_sha }}
+
+      # Agent Builder sub-agent paths pick the `agents` suite. The rest of the
+      # agents module (runtime, channels, sessions) is not exercised by the
+      # builder cases, so it stays on `baseline`.
+      - name: Classify changed files
+        id: ci-filter
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: filter
+          base-ref: ${{ steps.resolve.outputs.base_ref }}
+          filters: |
+            agent-builder:
+              packages/cli/src/modules/agents/builder/**
+              packages/cli/src/modules/agents/json-config/**
+              packages/cli/src/modules/agents/adapters/**
+              packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+              packages/@n8n/instance-ai/skills/agent-builder/**
 
   run-evals:
     name: Instance AI Workflow Evals
