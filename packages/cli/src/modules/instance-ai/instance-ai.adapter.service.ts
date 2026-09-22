@@ -703,8 +703,34 @@ export class InstanceAiAdapterService {
 
 		return {
 			create: async ({ content, scope }) => {
+				const textLength = content.length;
 				try {
 					const dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
+					// Write-first: the card is the confirmation, shown after the write, and
+					// doing nothing is agreement, so shown and resolved(accepted) fire together.
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN, {
+						surface: 'aia',
+						scope_type: scope,
+						text_length: textLength,
+					});
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+						surface: 'aia',
+						outcome: 'accepted',
+						scope_type: scope,
+						text_length: textLength,
+					});
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+						surface: 'aia',
+						offered_scope: scope,
+						accepted_scope: scope,
+						scope_changed: false,
+					});
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE, {
+						surface: 'aia',
+						scope_type: scope,
+						text_length: textLength,
+						replaced_existing: false,
+					});
 					return { ok: true, preference: { id: dto.id, content: dto.content, scope } };
 				} catch (error) {
 					const rejection = toPreferenceWriteRejection(error);
@@ -714,8 +740,22 @@ export class InstanceAiAdapterService {
 					if (rejection.reason === 'failed') {
 						this.logger.error('Saving an AI preference from the assistant failed', { error });
 					}
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+						surface: 'aia',
+						reason: rejection.reason,
+						scope_type: scope,
+						text_length: textLength,
+					});
 					return { ok: false, ...rejection };
 				}
+			},
+			recordRejection: (reason, textLength) => {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: textLength,
+				});
 			},
 		};
 	}

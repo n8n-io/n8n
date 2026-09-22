@@ -52,13 +52,15 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			count: z.number().describe('How many preferences the operation deleted'),
 			source: z
-				.enum(['row', 'bulk'])
-				.describe('`row` is the per-row Delete button, `bulk` is the selection toolbar'),
+				.enum(['row', 'bulk', 'rejected'])
+				.describe(
+					'`row` is the per-row Delete button and `bulk` the selection toolbar on the settings page. `rejected` is the Undo on the chat card: the user did not accept a preference the assistant saved, a late refusal of one they first let stand',
+				),
 			scope_types: z.array(scopeType).describe('Distinct scopes the deleted preferences covered'),
 		}),
 	},
 
-	// ─── Assistant-written preferences (CONTEXT-137 defines, later tickets fire) ───
+	// ─── Assistant-written preferences ───
 
 	PREFERENCES_APPLIED_TO_TURN: {
 		name: 'Preferences applied to a turn',
@@ -92,7 +94,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	ASSISTANT_SAVED_PREFERENCE: {
 		name: 'Assistant saved preference',
 		description:
-			'An AI surface created or updated a preference on the user behalf, after the user accepted it. Kept apart from the UI events so an assistant write is never counted as a person writing in settings. CONTEXT-138 fires it.',
+			'An AI surface created or updated a preference on the user behalf, after the user accepted it. Kept apart from the UI events so an assistant write is never counted as a person writing in settings.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			scope_type: scopeType,
@@ -106,7 +108,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_CONFIRMATION_SHOWN: {
 		name: 'Preference confirmation shown',
 		description:
-			'The assistant proposed a preference and the confirmation card was shown. Fires when the card appears, whatever the user does next. CONTEXT-138 fires it.',
+			'The assistant proposed a preference and the confirmation card was shown. Fires when the card appears, whatever the user does next.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			scope_type: scopeType.describe('Scope the assistant offered'),
@@ -117,7 +119,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_CONFIRMATION_RESOLVED: {
 		name: 'Preference confirmation resolved',
 		description:
-			'The user answered a preference confirmation. A high `rejected` share means the assistant proposes the wrong preferences, and no other number shows that. CONTEXT-138 fires it.',
+			'The user answered a preference confirmation. A high `rejected` share means the assistant proposes the wrong preferences, and no other number shows that.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			outcome: z
@@ -133,7 +135,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_SCOPE_ACCEPTED: {
 		name: 'Preference scope accepted',
 		description:
-			'The scope the user accepted against the scope the assistant offered. Shows whether the assistant reads the difference between a personal habit and a team rule. Fires only on an accepted write. CONTEXT-138 and the scope ticket fire it.',
+			'The scope the user accepted against the scope the assistant offered. Shows whether the assistant reads the difference between a personal habit and a team rule. Fires only on an accepted write.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			offered_scope: scopeType,
@@ -145,7 +147,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_WRITE_REJECTED: {
 		name: 'Preference write rejected',
 		description:
-			'A preference write was refused before it reached the database. Separates a rule the code applied from a user saying no, which is `Preference confirmation resolved`. CONTEXT-138 fires it.',
+			'A preference write was refused before it reached the database. Separates a rule the code applied from a user saying no, which is `Preference confirmation resolved`.',
 		properties: z.object({
 			surface,
 			reason: z

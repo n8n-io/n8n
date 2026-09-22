@@ -5,6 +5,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import type { InstanceAiEvent, InstanceAiToolCallState } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import PreferenceCard from '../components/PreferenceCard.vue';
 import { createThreadComponentRenderer, makeThread } from './createThreadComponentRenderer';
@@ -14,6 +15,11 @@ const editPreferenceCard = vi.fn();
 vi.mock('../instanceAi.api', () => ({
 	undoPreferenceCard: (...args: unknown[]) => undoPreferenceCard(...args),
 	editPreferenceCard: (...args: unknown[]) => editPreferenceCard(...args),
+}));
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -325,6 +331,44 @@ describe('PreferenceCard', () => {
 			await waitFor(() =>
 				expect(screen.queryByTestId('instance-ai-preference-modal-text')).toBeNull(),
 			);
+		});
+
+		it('undo reports a rejected delete once it succeeded', async () => {
+			undoPreferenceCard.mockResolvedValue({ ok: true, event: undoneEvent });
+			renderActive();
+			await openModal();
+
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+					count: 1,
+					source: 'rejected',
+					scope_types: ['user'],
+				}),
+			);
+		});
+
+		it('undo reports nothing when the delete failed', async () => {
+			undoPreferenceCard.mockRejectedValue(new Error('nope'));
+			renderActive();
+			await openModal();
+
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
+
+			await waitFor(() => expect(undoPreferenceCard).toHaveBeenCalled());
+			expect(track).not.toHaveBeenCalled();
+		});
+
+		it('undo reports nothing when the response carries no valid event', async () => {
+			undoPreferenceCard.mockResolvedValue({ ok: true, event: { type: 'nope' } });
+			renderActive();
+			await openModal();
+
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
+
+			await waitFor(() => expect(undoPreferenceCard).toHaveBeenCalled());
+			expect(track).not.toHaveBeenCalled();
 		});
 
 		it('keeps the modal open and shows the error when Remove fails', async () => {
