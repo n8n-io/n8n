@@ -200,13 +200,6 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Force-enable the non-blocking setup panel. When false, PostHog selects
-	 * the setup flow through `118_instance_ai_setup_overhaul`.
-	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
-
-	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
 	 * the `nodeTypes` filter on `workflows(action="list")`.
 	 *

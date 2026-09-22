@@ -2,6 +2,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -31,7 +33,7 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
-const rollouts = { computerUse: true, browserUse: true, setupPanel: false };
+const rollouts = { computerUse: true, browserUse: true };
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: () => ({
@@ -43,10 +45,6 @@ vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 	useInstanceAiBrowserUseExperiment: () => ({
 		isFeatureEnabled: computed(() => rollouts.browserUse),
 	}),
-}));
-
-vi.mock('@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment', () => ({
-	useInstanceAiSetupPanelExperiment: () => ({ isEnabled: computed(() => rollouts.setupPanel) }),
 }));
 
 const mockFetchSettings = vi.fn();
@@ -134,7 +132,6 @@ describe('useInstanceAiSettingsStore', () => {
 		vi.clearAllMocks();
 		rollouts.computerUse = true;
 		rollouts.browserUse = true;
-		rollouts.setupPanel = false;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -163,19 +160,20 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	it.each([
-		{ override: undefined, variant: false, enabled: false },
-		{ override: false, variant: false, enabled: false },
-		{ override: false, variant: true, enabled: true },
-		{ override: true, variant: false, enabled: true },
-	])(
-		'uses the setup panel override $override with variant $variant',
-		({ override, variant, enabled }) => {
-			rollouts.setupPanel = variant;
-			setModuleSettings(settingsStore, { instanceAiSetupPanelEnabled: override });
-			expect(store.isInstanceAiSetupPanelEnabled).toBe(enabled);
-		},
-	);
+	it.each(['control', 'variant', false, undefined])('uses the setup panel flag %s', (variant) => {
+		if (variant !== undefined)
+			usePostHog().overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: variant };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(variant === 'variant');
+	});
+
+	it('updates the setup flow when the standard feature flag override changes', () => {
+		const posthog = usePostHog();
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'variant' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(true);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'control' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+	});
 
 	describe('isInstanceAiDisabled', () => {
 		it('returns true when module settings has enabled=false', () => {
@@ -549,7 +547,6 @@ describe('useInstanceAiSettingsStore', () => {
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
-				instanceAiSetupPanelEnabled: true,
 			});
 
 			const adminResponse = {
@@ -579,7 +576,6 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.sandboxEnabled).toBe(false);
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
-			expect(ms?.instanceAiSetupPanelEnabled).toBe(true);
 		});
 	});
 

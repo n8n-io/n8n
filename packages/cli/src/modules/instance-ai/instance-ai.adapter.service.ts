@@ -592,7 +592,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Resolves experiment assignments and local feature overrides. */
+	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
@@ -624,7 +624,7 @@ export class InstanceAiAdapterService {
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// Fall back to local settings if the client cannot evaluate flags.
+			// Leave unreadable flags unassigned.
 		}
 		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		return {
@@ -635,9 +635,7 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
-			setupPanelEnabled:
-				this.globalConfig.instanceAi.instanceAiSetupPanelEnabled ||
-				setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
 				? { setupPanelVariant }
 				: {}),
