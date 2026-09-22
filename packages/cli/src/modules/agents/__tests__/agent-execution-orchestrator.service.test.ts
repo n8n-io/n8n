@@ -390,13 +390,15 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 
 		if (operation === 'resume') {
-			it('admits and registers an automatic preview continuation', async () => {
+			it('admits one automatic preview continuation for a suspended run', async () => {
 				const started = createDeferredPromise<AbortSignal>();
 				const release = createDeferredPromise();
 				const {
+					service,
 					stream,
 					runtime,
 					chatExecutionService,
+					checkpointStorage,
 					executionService,
 					executionRepository,
 					onExecutionStarted,
@@ -409,6 +411,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				runtime.agent.resume.mockImplementation(
 					async (_method, _data, options: ResumeOptions & ExecutionOptions) => {
 						await options.onResumeClaimed?.();
+						checkpointStorage.getStatus.mockResolvedValue({
+							status: 'active',
+							checkpoint: { ...makeCheckpoint(), status: 'running' },
+						});
 						if (!options.abortSignal) throw new Error('Expected an execution abort signal.');
 						started.resolve(options.abortSignal);
 						await release.promise;
@@ -420,6 +426,22 @@ describe('AgentExecutionOrchestratorService', () => {
 				);
 				const result = collect(stream);
 				const signal = await started.promise;
+				const resumeAgain = async () =>
+					await collect(
+						service.resumeForChat({
+							user,
+							usePublishedVersion: false,
+							agentId,
+							projectId,
+							runId: 'run-1',
+							toolCallId: 'tc-1',
+							resumeData: { approved: true },
+							previewChat: true,
+							automaticPreviewContinuation: true,
+						}),
+					);
+
+				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 
 				await chatExecutionService.handleCancel({
 					projectId,
@@ -435,6 +457,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect(signal.aborted).toBe(true);
 				release.resolve();
 				await result;
+				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+				expect(runtime.agent.resume).toHaveBeenCalledOnce();
 				expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 					'execution-1',
 					expect.objectContaining({

@@ -450,7 +450,8 @@ export class AgentExecutionOrchestratorService {
 						onExecutionRecorded,
 						abortSignal,
 						access,
-						automaticPreviewContinuation: config.automaticPreviewContinuation,
+						automaticContinuationRunId:
+							config.previewChat && config.automaticPreviewContinuation ? runId : undefined,
 					},
 				),
 			(runtime) =>
@@ -1097,11 +1098,10 @@ export class AgentExecutionOrchestratorService {
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
-			automaticPreviewContinuation?: boolean;
+			automaticContinuationRunId?: string;
 		},
 	): Promise<AgentRuntime> {
-		const { onExecutionRecorded, abortSignal, automaticPreviewContinuation, ...recording } =
-			session;
+		const { onExecutionRecorded, abortSignal, automaticContinuationRunId, ...recording } = session;
 		abortSignal?.throwIfAborted();
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
@@ -1134,7 +1134,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					error,
 					onExecutionRecorded,
-					{ previewChat: params.previewChat, automaticPreviewContinuation },
+					{ previewChat: params.previewChat, automaticContinuationRunId },
 				);
 			}
 			throw error;

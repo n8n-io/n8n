@@ -601,7 +601,7 @@ export const cancelAgentChatExecution = async (
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/executions/${executionId}`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
 	);
 };
 

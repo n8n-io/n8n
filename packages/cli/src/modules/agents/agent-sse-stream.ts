@@ -62,6 +62,7 @@ export function initSseStream(res: FlushableResponse) {
 			emitChunkEvents(chunk, send);
 		} catch {
 			detach();
+			close();
 		}
 	};
 

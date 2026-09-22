@@ -1061,7 +1061,11 @@ describe('ExecutionRecorder — subagent-chunk', () => {
 				expect(onSnapshot.mock.lastCall?.[0][0]).toMatchObject({
 					type: 'tool-call',
 					childTrace: {
-						text: expect.stringContaining('a'.repeat(3_000)),
+						text: type === 'text-delta' ? 'a'.repeat(3_000) + 'b'.repeat(1_000) : 'a'.repeat(3_000),
+						reasoningSegments:
+							type === 'reasoning-delta'
+								? [expect.objectContaining({ id: 't-1', content: 'b'.repeat(1_000) })]
+								: [],
 						steps: [{ toolCallId: 'child-tc-1', running: false }],
 					},
 				});

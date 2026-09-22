@@ -137,26 +137,36 @@ export class AgentTurnExecutionService {
 				preparedTurn.options.abortSignal?.throwIfAborted();
 				return id;
 			};
-			if (previewControl) {
-				executionId = await this.chatExecutionService.admit(config.context.threadId, recordStart, {
-					automaticContinuation: config.automaticPreviewContinuation,
-				});
-				this.chatExecutionService.register(
-					{
-						...config.context,
-						userId: previewControl.userId,
-						executionId,
-					},
-					previewControl.controller,
+			const startAcceptedTurn = async (id: string) => {
+				if (previewControl) {
+					this.chatExecutionService.register(
+						{
+							...config.context,
+							userId: previewControl.userId,
+							executionId: id,
+						},
+						previewControl.controller,
+					);
+					previewControl.detachRequest();
+				}
+				config.onExecutionStarted?.(id, config.context.threadId);
+				preparedTurn.options.abortSignal?.throwIfAborted();
+				return await this.startTurn(preparedTurn, config, recorder, state);
+			};
+			let stream: ReadableStream<StreamChunk>;
+			if (previewControl && config.automaticPreviewContinuation && preparedTurn.type === 'resume') {
+				stream = await this.chatExecutionService.admitAutomaticContinuation(
+					config.context.agentId,
+					preparedTurn.options.runId,
+					async () => await startAcceptedTurn(await recordStart()),
 				);
-				previewControl.detachRequest();
 			} else {
-				executionId = await recordStart();
+				executionId = previewControl
+					? await this.chatExecutionService.admit(config.context.threadId, recordStart)
+					: await recordStart();
+				stream = await startAcceptedTurn(executionId);
 			}
-			config.onExecutionStarted?.(executionId, config.context.threadId);
-			turn.options.abortSignal?.throwIfAborted();
-			const stream = await this.startTurn(turn, config, recorder, state);
-			yield* this.streamTurn(stream, turn, config, recorder, state);
+			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
 		} catch (error) {
 			state.executionError = error;
 			recorder.record({ type: 'error', error });
@@ -361,24 +371,33 @@ export class AgentTurnExecutionService {
 		params: StartExecutionParams,
 		executionError: unknown,
 		onExecutionRecorded?: (executionId: string) => void,
-		options: { previewChat?: boolean; automaticPreviewContinuation?: boolean } = {},
+		options: { previewChat?: boolean; automaticContinuationRunId?: string } = {},
 	): Promise<void> {
 		const recorder = this.createRecorder();
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
 		const recordStart = async () =>
 			await this.startExecution(params, recorder.startedAt, executionError);
-		const executionId = options.previewChat
-			? await this.chatExecutionService.admit(params.threadId, recordStart, {
-					automaticContinuation: options.automaticPreviewContinuation,
-				})
-			: await recordStart();
-		await this.finalizeExecution({
-			executionId,
-			executionStarted: false,
-			executionError,
-			onExecutionRecorded,
-			params: { ...params, record: recorder.getMessageRecord() },
-		});
+		const recordFailure = async (executionId: string) => {
+			await this.finalizeExecution({
+				executionId,
+				executionStarted: false,
+				executionError,
+				onExecutionRecorded,
+				params: { ...params, record: recorder.getMessageRecord() },
+			});
+		};
+		if (options.previewChat && options.automaticContinuationRunId) {
+			await this.chatExecutionService.admitAutomaticContinuation(
+				params.agentId,
+				options.automaticContinuationRunId,
+				async () => await recordFailure(await recordStart()),
+			);
+		} else {
+			const executionId = options.previewChat
+				? await this.chatExecutionService.admit(params.threadId, recordStart)
+				: await recordStart();
+			await recordFailure(executionId);
+		}
 	}
 }

@@ -1060,9 +1060,13 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('cancelled');
 	});
 
-	it.each([makeSseResponse, makeInterruptedSseResponse])(
-		'keeps the suspended card after a rejected resume and failed refresh (%s)',
-		async (response) => {
+	it.each([
+		['failed', makeSseResponse, undefined],
+		['interrupted', makeInterruptedSseResponse, undefined],
+		['busy', makeSseResponse, 'turn_already_running'],
+	] as const)(
+		'keeps the suspended card after a %s resume and failed refresh',
+		async (_outcome, response, errorCode) => {
 			const approvalInput = {
 				type: 'approval' as const,
 				toolName: 'calculator',
@@ -1090,7 +1094,13 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 					]),
 				)
 				.mockResolvedValueOnce(
-					response([{ type: 'error', message: 'Resume failed' }]),
+					response([
+						{
+							type: 'error',
+							message: 'Resume failed',
+							...(errorCode ? { errorCode } : {}),
+						},
+					]),
 				) as unknown as typeof fetch;
 			getTestChatMessagesMock.mockRejectedValue(
 				Object.assign(new Error('thread not found'), { httpStatusCode: 404 }),
@@ -1098,12 +1108,13 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 
 			const hook = buildHook();
 			await hook.sendMessage('calculate 2 + 2');
-			await hook.resume({
+			const result = await hook.resume({
 				runId: 'run-approval',
 				toolCallId: 'tc-approval',
 				resumeData: { approved: false },
 			});
 
+			expect(result).toBe(errorCode ? 'busy' : 'sent');
 			expect(getTestChatMessagesMock).toHaveBeenCalled();
 			expect(hook.messages.value[0].content).toBe('calculate 2 + 2');
 			const assistant = hook.messages.value[1];
@@ -2638,7 +2649,7 @@ describe('useAgentChatStream — transcript push', () => {
 		}
 	});
 
-	it('discards a snapshot from a previous session', async () => {
+	it('blocks submission during initial load and discards its stale snapshot', async () => {
 		const stale = Promise.withResolvers<ReturnType<typeof history>>();
 		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockResolvedValue(history('current'));
 		const scope = effectScope();
@@ -2647,6 +2658,8 @@ describe('useAgentChatStream — transcript push', () => {
 			useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1'), continueSessionId: threadId }),
 		)!;
 		const loading = hook.loadHistory();
+		expect(hook.isStreaming.value).toBe(true);
+		expect(await hook.sendMessage('too soon')).toBe('busy');
 		threadId.value = 'thread-2';
 		await flushPromises();
 		stale.resolve(history('old session'));
@@ -3010,6 +3023,42 @@ describe('useAgentChatStream — execution recovery', () => {
 			expect(fetch).toHaveBeenCalledOnce();
 		},
 	);
+
+	it('recovers when Stop waits too long for acceptance', async () => {
+		vi.useFakeTimers();
+		try {
+			getChatMessagesMock.mockResolvedValue({
+				messages: [],
+				openSuspensions: [],
+				activeExecutionId: null,
+			});
+			vi.mocked(fetch).mockImplementation(
+				async (_url, init) =>
+					await new Promise<Response>((_resolve, reject) => {
+						init?.signal?.addEventListener(
+							'abort',
+							() => reject(new DOMException('Aborted', 'AbortError')),
+							{ once: true },
+						);
+					}),
+			);
+			const hook = buildHook('thread-1');
+			const request = hook.sendMessage('hello');
+			await flushPromises();
+
+			await hook.stopGenerating();
+			await vi.advanceTimersByTimeAsync(30_000);
+			await request;
+			await flushPromises();
+
+			expect(vi.mocked(fetch).mock.calls[0][1]?.signal?.aborted).toBe(true);
+			expect(getChatMessagesMock).toHaveBeenCalled();
+			expect(hook.isCancelling.value).toBe(false);
+			expect(hook.isStreaming.value).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 
 	it.each(['start', 'resume'] as const)(
 		'follows snapshots after %s disconnects and never resubmits',

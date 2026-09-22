@@ -78,6 +78,8 @@ type ResumePayload =
 			text: string;
 	  };
 
+const STOP_ACCEPTANCE_TIMEOUT_MS = 30 * TIME.SECOND;
+
 function getApprovalDecision(value: unknown): boolean | undefined {
 	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
 	return value.approved;
@@ -113,6 +115,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	let refreshAfterStream = false;
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	let stopAcceptanceTimer: ReturnType<typeof setTimeout> | undefined;
 	const targetKey = () =>
 		JSON.stringify([params.projectId.value, params.agentId.value, params.continueSessionId?.value]);
 	/**
@@ -220,6 +223,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function loadHistory(): Promise<void> {
 		if (historyLoaded.value) return;
+		isRecovering.value = true;
 		const loaded = await refreshHistory({ clearOnNotFound: true });
 		historyLoaded.value = true;
 		// A running resume can have no messages yet. Keep its session selected.
@@ -520,6 +524,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	): { done?: boolean } | undefined {
 		switch (event.type) {
 			case 'execution-started':
+				clearTimeout(stopAcceptanceTimer);
 				session.executionId = event.executionId;
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
@@ -893,6 +898,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			return { outcome: 'detached' };
 		} finally {
 			if (abortController.value === controller) {
+				clearTimeout(stopAcceptanceTimer);
 				abortController.value = null;
 				isStreamOpen.value = false;
 			}
@@ -1029,7 +1035,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (outcome === 'failed' || outcome === 'busy') {
 			reconciled = await refreshHistory();
 		}
-		if (outcome === 'failed' && !reconciled && !activeExecutionId.value && snapshot) {
+		if (
+			(outcome === 'failed' || outcome === 'busy') &&
+			!reconciled &&
+			!activeExecutionId.value &&
+			snapshot
+		) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
 			snapshot.tc.canceled = snapshot.prevCanceled;
@@ -1124,10 +1135,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function detachStream(): void {
+		clearTimeout(stopAcceptanceTimer);
 		const controller = abortController.value;
 		abortController.value = null;
 		isStreamOpen.value = false;
 		controller?.abort();
+	}
+
+	function retainStopUntilAcceptance(): void {
+		isCancelling.value = true;
+		const controller = abortController.value;
+		if (!controller) return;
+		stopAcceptanceTimer = setTimeout(() => {
+			if (controller !== abortController.value || !isCancelling.value || activeExecutionId.value)
+				return;
+			isRecovering.value = true;
+			detachStream();
+		}, STOP_ACCEPTANCE_TIMEOUT_MS);
 	}
 
 	function reconcileStop(): void {
@@ -1180,7 +1204,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		const openSuspension = findOpenSuspension();
 		if (!openSuspension) {
-			if (isStreaming.value) isCancelling.value = true;
+			if (isStreaming.value) retainStopUntilAcceptance();
 			else settleStaleInFlightToolCalls();
 			return;
 		}

@@ -44,27 +44,42 @@ export class AgentChatExecutionService {
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 	) {}
 
-	async admit<T>(
-		threadId: string,
-		create: () => Promise<T>,
-		options: { automaticContinuation?: boolean } = {},
+	async admit<T>(threadId: string, create: () => Promise<T>): Promise<T> {
+		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
+			if (await this.executionRepository.existsRunningByThread(threadId)) {
+				throw new AgentTurnAlreadyRunningError();
+			}
+			signal.throwIfAborted();
+			return await create();
+		});
+	}
+
+	async admitAutomaticContinuation<T>(
+		agentId: string,
+		runId: string,
+		createAndClaim: () => Promise<T>,
+	): Promise<T> {
+		return await this.withAdmissionLease(
+			`agent-preview-resume:${agentId}:${runId}`,
+			async (signal) => {
+				const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
+				if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') {
+					throw new AgentTurnAlreadyRunningError();
+				}
+				signal.throwIfAborted();
+				return await createAndClaim();
+			},
+		);
+	}
+
+	private async withAdmissionLease<T>(
+		key: string,
+		admit: (signal: AbortSignal) => Promise<T>,
 	): Promise<T> {
 		try {
-			return await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				`agent-preview-turn:${threadId}`,
-				async (signal) => {
-					if (
-						!options.automaticContinuation &&
-						(await this.executionRepository.existsRunningByThread(threadId))
-					) {
-						throw new AgentTurnAlreadyRunningError();
-					}
-					signal.throwIfAborted();
-					return await create();
-				},
-				{ waitTimeoutMs: 0 },
-			);
+			return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, key, admit, {
+				waitTimeoutMs: 0,
+			});
 		} catch (error) {
 			if (error instanceof LockAcquisitionTimeoutError) throw new AgentTurnAlreadyRunningError();
 			throw error;
