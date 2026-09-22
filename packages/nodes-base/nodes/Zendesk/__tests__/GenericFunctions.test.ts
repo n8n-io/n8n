@@ -51,9 +51,11 @@ describe('Zendesk > GenericFunctions', () => {
 			marketplaceOrganizationId: 'org-1',
 		});
 
-		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets');
+		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets', {}, {}, undefined, {
+			headers: { 'Content-Type': 'application/json' },
+		});
 
-		expect(sentHeaders()).toBeUndefined();
+		expect(sentHeaders()).toEqual({ 'Content-Type': 'application/json' });
 	});
 
 	it('should send no marketplace headers for API token authentication', async () => {
