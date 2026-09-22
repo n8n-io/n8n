@@ -74,19 +74,20 @@ splitting fragments by stability:
   sees the instruction the moment the tool loads, just outside the cached
   prefix.
 
-Runtime skills follow the same principle. On models that accept a
-`{ role: 'system' }` message inside `messages`
-(`supportsMidConversationSystemMessages`: Opus 4.8, Opus 5, Fable, Mythos),
-`ActiveSkills.modelMessages()` inserts each active skill as a system message
-directly after the tool result that activated it. The activating call is
-stamped with `activatedSkillIds` on its tool-call block, so the anchor
-persists and compacts with the message; anchors that fall out of the visible
-window re-anchor after the first user message. The prompt therefore only
-grows on activation and every prefix before the new skill — tool block,
-system prompt, earlier conversation — keeps its cache entry. Models without
-that support (Sonnet 5, other providers) get the skills joined into the
-top-level system prompt as `<active_skills>`, which rewrites the prefix on
-each activation.
+Runtime skills follow the same principle, keyed to observational memory. As
+long as the tool result that activated a skill (`load_skill`, or any tool that
+calls `ctx.loadSkill`) is inside the visible LLM window,
+`ActiveSkills.modelMessages()` delivers the current skill body as an extra
+text part appended to that result (recorded `load_skill` results are collapsed
+to `{ skillId, active }` first, so an obsolete persisted body is never
+replayed). The `<active_skills>` block in the top-level system prompt does not
+mention the skill at all, so activating and carrying a skill never rewrites
+the cached prefix — within a run or across runs. Only when observational
+memory masks the activating result does `instructions()` fold the skill into
+the block — and observation already rewrote the prefix at that moment (masked
+window, new observation in the system prompt), so the move costs no extra
+cache invalidation. Skills activated through another tool's `ctx.loadSkill`
+have no persisted anchor, so they fold into the block on the next run.
 
 Other prefix-stability hygiene, already true or verified: tool ordering is
 append-only (`getCurrentTools()` only ever appends), and none of the current

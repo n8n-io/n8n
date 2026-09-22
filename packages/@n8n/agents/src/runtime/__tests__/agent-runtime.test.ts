@@ -7522,7 +7522,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
-	it('delivers skills as mid-conversation system messages after their activating call on supporting models', async () => {
+	it('delivers skills on their activating tool results and keeps the system prompt unchanged while they stay visible', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'builder',
@@ -7549,7 +7549,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		const memory = new InMemoryMemory();
 		const options = {
 			name: 'skills-agent',
-			model: 'anthropic/claude-opus-4-8',
+			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'You are a test assistant.',
 			memory,
 			skillSource: source,
@@ -7567,7 +7567,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		await runtime.dispose();
 
 		const roles = (index: number) => capturedCall(index).messages.map((message) => message.role);
-		const systemAt = (index: number, position: number) =>
+		const toolResultAt = (index: number, position: number) =>
 			JSON.stringify(capturedCall(index).messages[position]);
 
 		// The top-level system prompt never changes across the run.
@@ -7577,76 +7577,35 @@ describe('AgentRuntime — mid-run observation', () => {
 			);
 			expect(capturedCall(index).instructions).toEqual(capturedCall(0).instructions);
 		}
-		// First activation: the skill follows the load_skill result.
-		expect(roles(1)).toEqual(['user', 'assistant', 'tool', 'system']);
-		expect(systemAt(1, 3)).toContain('Wait for a real execution');
-		// Second activation appends after the build result; the first stays put.
-		expect(roles(2)).toEqual([
-			'user',
-			'assistant',
-			'tool',
-			'system',
-			'assistant',
-			'tool',
-			'system',
-		]);
-		expect(systemAt(2, 3)).toContain('Wait for a real execution');
-		expect(systemAt(2, 6)).toContain('Verify the workflow before publishing.');
-		expect(capturedCall(2).messages.slice(0, 4)).toEqual(capturedCall(1).messages);
+		// First activation: the skill text rides on the collapsed load_skill result.
+		expect(roles(1)).toEqual(['user', 'assistant', 'tool']);
+		expect(toolResultAt(1, 2)).toContain('\\"active\\":true');
+		expect(toolResultAt(1, 2)).toContain('Wait for a real execution');
+		// Second activation rides on the build result; the earlier prefix is unchanged.
+		expect(roles(2)).toEqual(['user', 'assistant', 'tool', 'assistant', 'tool']);
+		expect(capturedCall(2).messages.slice(0, 3)).toEqual(capturedCall(1).messages);
+		expect(toolResultAt(2, 4)).toContain('\\"built\\":true');
+		expect(toolResultAt(2, 4)).toContain('Verify the workflow before publishing.');
+		// Persisted messages carry no appended skill text.
+		const persisted = JSON.stringify(await memory.getMessages(PERSISTENCE.threadId));
+		expect(persisted).not.toContain('Wait for a real execution');
+		expect(persisted).not.toContain('Verify the workflow before publishing.');
 
-		// A later turn restores the same placement from the persisted anchors.
+		// Next run, nothing masked yet: the recorded load_skill anchor still
+		// carries the builder skill, so the system prompt stays unchanged for it.
+		// The post-build skill was activated through another tool's ctx.loadSkill
+		// (no persisted anchor), so it folds into the block.
 		const next = new AgentRuntime(options);
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('Still here.'));
 		await next.generate('Continue', { persistence: PERSISTENCE });
 		await next.dispose();
-		expect(roles(3)).toEqual([
-			'user',
-			'assistant',
-			'tool',
-			'system',
-			'assistant',
-			'tool',
-			'system',
-			'assistant',
-			'user',
-		]);
-		expect(systemAt(3, 3)).toContain('Wait for a real execution');
-		expect(systemAt(3, 6)).toContain('Verify the workflow before publishing.');
-		expect(flattenInstructions(capturedCall(3).instructions)).not.toContain('<active_skills>');
-	});
-
-	it('keeps skills in the top-level system prompt for models without mid-conversation system support', async () => {
-		const source = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Wait for a real execution before extending the workflow.',
-			},
-		]);
-		const runtime = new AgentRuntime({
-			name: 'skills-agent',
-			model: 'anthropic/claude-sonnet-4-5',
-			instructions: 'You are a test assistant.',
-			memory: new InMemoryMemory(),
-			skillSource: source,
-			tools: createRuntimeSkillTools(source),
-		});
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'));
-
-		await runtime.generate('Build it', { persistence: PERSISTENCE });
-		await runtime.dispose();
-
-		expect(flattenInstructions(capturedCall(1).instructions)).toContain('<active_skills>');
-		expect(capturedCall(1).messages.map((message) => message.role)).toEqual([
-			'user',
-			'assistant',
-			'tool',
-		]);
+		const block = flattenInstructions(capturedCall(3).instructions);
+		expect(block).toContain('<active_skills>');
+		expect(block).not.toContain('Wait for a real execution');
+		expect(block).toContain('Verify the workflow before publishing.');
+		const nextMessages = JSON.stringify(capturedCall(3).messages);
+		expect(nextMessages).toContain('Wait for a real execution');
+		expect(nextMessages).not.toContain('Verify the workflow before publishing.');
 	});
 
 	it.each(['load_skill', 'inspect_node'])(

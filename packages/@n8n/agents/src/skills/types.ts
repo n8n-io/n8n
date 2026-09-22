@@ -139,8 +139,8 @@ export interface RuntimeSkillContent extends RuntimeSkillIndexEntry {
 
 /**
  * Loads a skill. When the runtime binds this into a tool call, `anchor` names
- * the tool call that activated the skill so the runtime can place the skill
- * text right after that call's result in the model prompt.
+ * the tool call that activated the skill. The active-skills block is frozen
+ * for the run, so the runtime appends the skill text to that call's result.
  */
 export type RuntimeSkillLoader = (
 	skillId: string,

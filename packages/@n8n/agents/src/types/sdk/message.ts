@@ -133,13 +133,6 @@ export type ContentToolCall = ContentMetadata & {
 	input: JSONValue;
 
 	providerExecuted?: boolean;
-
-	/**
-	 * Runtime skills this call activated, in activation order. The runtime
-	 * anchors each skill's instructions to this call in the model prompt, so
-	 * the anchor travels with the message that memory persists and compacts.
-	 */
-	activatedSkillIds?: string[];
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }

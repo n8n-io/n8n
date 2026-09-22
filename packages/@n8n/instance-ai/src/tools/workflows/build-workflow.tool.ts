@@ -346,11 +346,13 @@ const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
 /**
  * Where the follow-up instructions live depends on the branch: an activated
- * skill sits in the system prompt, an inlined copy sits in `instructions`.
+ * skill is delivered by the runtime (appended to this result on the turn that
+ * activates it, in the system prompt on later turns), an inlined copy sits in
+ * `instructions`.
  */
 function followInstructionsClause(skillId: string, label: string, activated: boolean): string {
 	return activated
-		? `Follow the active ${skillId} skill instructions in your system prompt now (do NOT call load_skill for it — it is already active)`
+		? `Follow the active ${skillId} skill instructions now (do NOT call load_skill for it — it is already active)`
 		: `Follow the ${label} instructions in \`instructions\` now (do NOT load the ${skillId} skill — they are the same instructions)`;
 }
 

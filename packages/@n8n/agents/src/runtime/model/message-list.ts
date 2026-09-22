@@ -295,23 +295,6 @@ export class AgentMessageList {
 		block.suspension = suspension;
 	}
 
-	/**
-	 * Record on a tool-call block which runtime skill it activated. The block
-	 * anchors the skill's instructions in the model prompt, so the anchor
-	 * persists and compacts together with the message. Returns false when the
-	 * toolCallId is unknown.
-	 */
-	markToolCallActivatedSkill(toolCallId: string, skillId: string): boolean {
-		const host = this.findToolCallHost(toolCallId);
-		if (!host) return false;
-		const block = this.findToolCallBlock(host, toolCallId);
-		if (!block) return false;
-		const ids = block.activatedSkillIds ?? [];
-		if (!ids.includes(skillId)) block.activatedSkillIds = [...ids, skillId];
-		this.responseSet.add(host);
-		return true;
-	}
-
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {

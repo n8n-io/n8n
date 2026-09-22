@@ -122,8 +122,8 @@ export async function executeTool(
 	toolCallId?: string,
 	executionContext: ToolExecutionContext = {},
 ): Promise<unknown> {
-	// Anchor skill activations to this call so the runtime can place the skill
-	// text right after its result in the prompt instead of in the system block.
+	// Anchor skill activations to this call so the runtime can append the skill
+	// text to its result; the system block does not change until the next run.
 	const loadSkill = bindSkillLoaderAnchor(executionContext.loadSkill, toolCallId);
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);

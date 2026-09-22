@@ -1,4 +1,4 @@
-import type { ModelMessage } from 'ai';
+import type { ModelMessage, ToolResultPart } from 'ai';
 
 import { formatActiveSkill } from '../../skills/tools';
 import {
@@ -11,9 +11,27 @@ import {
 import type { AgentPersistenceOptions } from '../../types/sdk/agent';
 import type { AgentMessageList } from '../model/message-list';
 
-/** Keeps trusted skill instructions outside the conversation's compaction window. */
+/**
+ * Keeps trusted skill instructions available without invalidating the cached
+ * prompt prefix.
+ *
+ * Each active skill is delivered in one of two places, decided by whether the
+ * tool call that activated it is still in the visible LLM window:
+ *
+ * - Anchor visible: the current skill body rides on that tool result (the
+ *   recorded result is collapsed first, so an obsolete persisted body is
+ *   never replayed). The top-level system prompt does not mention the skill,
+ *   so activating and carrying a skill never rewrites the cached prefix —
+ *   within a run or across runs.
+ * - Anchor masked by observational memory (or unknown, e.g. a non-`load_skill`
+ *   activation from an earlier run): the skill moves into the
+ *   `<active_skills>` block of the system prompt. Observation already rewrote
+ *   the prefix at that moment, so the move costs no extra cache invalidation.
+ */
 export class ActiveSkills {
 	private readonly loaded = new Map<string, RuntimeSkillContent>();
+	/** skillId → toolCallId for activations this run without a recorded `load_skill` call. */
+	private readonly midRunAnchors = new Map<string, string>();
 	private list?: AgentMessageList;
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
@@ -26,6 +44,7 @@ export class ActiveSkills {
 
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
+		this.midRunAnchors.clear();
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -64,9 +83,9 @@ export class ActiveSkills {
 		if (!this.loaded.has(skillId)) {
 			this.loaded.set(skillId, skill);
 			this.list.activeSkillIds = [...this.loaded.keys()];
-			// Only the first activation anchors the skill; a repeat load must not
-			// move the instructions and rewrite the cached prefix behind them.
-			if (anchor) this.list.markToolCallActivatedSkill(anchor.toolCallId, skillId);
+			// The first activating call carries the skill text in its result. A
+			// repeat load must not move it and rewrite the cached prompt behind it.
+			if (anchor) this.midRunAnchors.set(skillId, anchor.toolCallId);
 			await this.persist();
 		}
 		return skill;
@@ -79,12 +98,17 @@ export class ActiveSkills {
 	}
 
 	/**
-	 * All active skills as one block for the top-level system prompt. Used
-	 * only for models that cannot take system messages mid-conversation; every
-	 * activation changes this block and so rewrites the cached prefix.
+	 * The active skills whose delivering tool result is no longer visible, as
+	 * one block for the top-level system prompt. A skill enters this block only
+	 * after observational memory masked its anchor — the moment the prefix was
+	 * rewritten anyway — so the block itself never breaks a warm cache.
 	 */
 	instructions(): string | undefined {
-		const sections = this.formattedSkills().map(([, text]) => text);
+		const { inBlock } = this.placement();
+		const sections = inBlock.flatMap((id) => {
+			const text = this.formatSkill(id);
+			return text ? [text] : [];
+		});
 		if (sections.length === 0) return undefined;
 		return [
 			'<active_skills>',
@@ -97,102 +121,81 @@ export class ActiveSkills {
 	/**
 	 * Per-call view of the conversation for the model.
 	 *
-	 * Always collapses recorded `load_skill` results to `{ skillId, active }`:
-	 * old conversations can contain full skill bodies, and an obsolete version
-	 * must not be replayed.
-	 *
-	 * With `inMessages`, each active skill is also inserted as a system message
-	 * directly after the tool result that activated it. The prompt then only
-	 * grows on activation, so the tool block, system prompt and earlier
-	 * conversation stay cached (request-level caching reuses any prefix a
-	 * prior request wrote). Skills whose anchor is not in the visible window
-	 * (compacted away, or activated before anchors were recorded) go after the
-	 * first user message so they stay mid-conversation rather than being
-	 * hoisted into the top-level system prompt.
+	 * Collapses recorded `load_skill` results to `{ skillId, active }`: old
+	 * conversations can contain full skill bodies, and an obsolete version must
+	 * not be replayed. Skills anchored to a visible tool call then get their
+	 * current body appended to that result, keeping them out of the system
+	 * block for as long as observational memory keeps the result visible.
 	 */
-	modelMessages(
-		messages: ModelMessage[],
-		list: AgentMessageList,
-		options?: { inMessages?: boolean },
-	): ModelMessage[] {
+	modelMessages(messages: ModelMessage[], list: AgentMessageList): ModelMessage[] {
 		const loads = this.recordedLoads(list);
-		const collapsed = messages.map((message) => {
+		const { anchors } = this.placement(loads);
+		const appendices = new Map<string, string[]>();
+		for (const [skillId, toolCallId] of anchors) {
+			const text = this.formatSkill(skillId);
+			if (text) appendices.set(toolCallId, [...(appendices.get(toolCallId) ?? []), text]);
+		}
+		return messages.map((message) => {
 			if (message.role !== 'tool') return message;
 			return {
 				...message,
 				content: message.content.map((part) => {
 					if (part.type !== 'tool-result') return part;
 					const skillId = loads.get(part.toolCallId);
-					if (!skillId) return part;
-					return {
-						...part,
-						output: {
-							type: 'json' as const,
-							value: { skillId, active: this.loaded.has(skillId) },
-						},
-					};
+					const collapsed: ToolResultPart = skillId
+						? {
+								...part,
+								output: {
+									type: 'json' as const,
+									value: { skillId, active: this.loaded.has(skillId) },
+								},
+							}
+						: part;
+					const texts = appendices.get(part.toolCallId);
+					return texts ? appendToolResultText(collapsed, texts) : collapsed;
 				}),
 			};
-		});
-		if (!options?.inMessages) return collapsed;
-
-		const skills = this.formattedSkills();
-		if (skills.length === 0) return collapsed;
-		const anchors = this.anchors(list, loads);
-		const pending = new Map(skills);
-		const out: ModelMessage[] = [];
-		for (const message of collapsed) {
-			out.push(message);
-			if (message.role !== 'tool') continue;
-			const resultIds = new Set(
-				message.content.flatMap((part) => (part.type === 'tool-result' ? [part.toolCallId] : [])),
-			);
-			for (const [skillId, text] of skills) {
-				const anchor = anchors.get(skillId);
-				if (!pending.has(skillId) || !anchor || !resultIds.has(anchor)) continue;
-				out.push({ role: 'system', content: text });
-				pending.delete(skillId);
-			}
-		}
-		if (pending.size > 0) {
-			const firstUser = out.findIndex((message) => message.role === 'user');
-			const fallback: ModelMessage[] = [...pending.values()].map((text) => ({
-				role: 'system',
-				content: text,
-			}));
-			out.splice(firstUser + 1, 0, ...fallback);
-		}
-		return out;
-	}
-
-	/** `[skillId, prompt text]` for each active skill, in activation order. */
-	private formattedSkills(): Array<[string, string]> {
-		return [...this.loaded].flatMap(([id, skill]) => {
-			const entry = this.source.registry.skills.find((candidate) => candidate.id === id);
-			return entry ? [[id, formatActiveSkill(skill, entry)] as [string, string]] : [];
 		});
 	}
 
 	/**
-	 * skillId → toolCallId of the call that first activated it. Reads the
-	 * `activatedSkillIds` stamp the runtime writes on activation, and falls
-	 * back to recorded `load_skill` calls for history that predates the stamp.
+	 * Where each active skill is delivered on this call: anchored to a visible
+	 * tool result, or in the system block. The anchor is the first visible
+	 * recorded `load_skill` call for the skill, else this run's activating
+	 * call. `instructions()` and `modelMessages()` share this so a skill is
+	 * always delivered exactly once.
 	 */
-	private anchors(list: AgentMessageList, loads: Map<string, string>): Map<string, string> {
+	private placement(loads?: Map<string, string>): {
+		anchors: Map<string, string>;
+		inBlock: string[];
+	} {
 		const anchors = new Map<string, string>();
-		for (const message of list.messages()) {
-			if (!('content' in message)) continue;
-			for (const part of message.content) {
-				if (part.type !== 'tool-call') continue;
-				for (const skillId of part.activatedSkillIds ?? []) {
-					if (!anchors.has(skillId)) anchors.set(skillId, part.toolCallId);
+		if (this.list) {
+			const visible = new Set<string>();
+			for (const message of this.list.llmVisibleMessages()) {
+				if (!('content' in message)) continue;
+				for (const part of message.content) {
+					if (part.type === 'tool-call') visible.add(part.toolCallId);
+				}
+			}
+			for (const [toolCallId, skillId] of loads ?? this.recordedLoads(this.list)) {
+				if (!anchors.has(skillId) && this.loaded.has(skillId) && visible.has(toolCallId)) {
+					anchors.set(skillId, toolCallId);
+				}
+			}
+			for (const [skillId, toolCallId] of this.midRunAnchors) {
+				if (!anchors.has(skillId) && this.loaded.has(skillId) && visible.has(toolCallId)) {
+					anchors.set(skillId, toolCallId);
 				}
 			}
 		}
-		for (const [toolCallId, skillId] of loads) {
-			if (!anchors.has(skillId)) anchors.set(skillId, toolCallId);
-		}
-		return anchors;
+		return { anchors, inBlock: [...this.loaded.keys()].filter((id) => !anchors.has(id)) };
+	}
+
+	private formatSkill(skillId: string): string | undefined {
+		const skill = this.loaded.get(skillId);
+		const entry = this.source.registry.skills.find((candidate) => candidate.id === skillId);
+		return skill && entry ? formatActiveSkill(skill, entry) : undefined;
 	}
 
 	private recordedLoads(list: AgentMessageList): Map<string, string> {
@@ -238,5 +241,34 @@ export class ActiveSkills {
 		const save = this.pendingSave.then(async () => await store.save(scope, ids));
 		this.pendingSave = save.catch(() => undefined);
 		await save;
+	}
+}
+
+/**
+ * Append trusted text parts after a tool result's own output. Text and JSON
+ * outputs become content parts so the skill text is a separate block from the
+ * (possibly untrusted-wrapped) tool output. Error outputs are left alone.
+ */
+function appendToolResultText(part: ToolResultPart, texts: string[]): ToolResultPart {
+	const extra = texts.map((text) => ({ type: 'text' as const, text }));
+	const { output } = part;
+	switch (output.type) {
+		case 'content':
+			return { ...part, output: { type: 'content', value: [...output.value, ...extra] } };
+		case 'text':
+			return {
+				...part,
+				output: { type: 'content', value: [{ type: 'text', text: output.value }, ...extra] },
+			};
+		case 'json':
+			return {
+				...part,
+				output: {
+					type: 'content',
+					value: [{ type: 'text', text: JSON.stringify(output.value) }, ...extra],
+				},
+			};
+		default:
+			return part;
 	}
 }

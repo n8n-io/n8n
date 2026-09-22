@@ -62,11 +62,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import {
-	supportsMidConversationSystemMessages,
-	supportsSplitSystemMessages,
-	type FetchFn,
-} from '../model/model-factory';
+import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -941,16 +937,12 @@ export class AgentRuntime {
 				.map((value) => value?.trim())
 				.filter((value): value is string => Boolean(value))
 				.join('\n\n');
-			// Skill content changes only on activation. Where the model allows it,
-			// each skill goes into `messages` right after the call that activated
-			// it, so the tool block, system prompt and earlier conversation keep
-			// their cache entries. Otherwise it joins the system prompt, and every
-			// activation rewrites that prefix.
-			const skillsInMessages = supportsMidConversationSystemMessages(this.config.model);
+			// A skill rides on its activating tool result while that result is in
+			// the visible window; it joins this system block only after
+			// observational memory masked the result — which already rewrote the
+			// prefix. So skills never break a warm cache (see ActiveSkills).
 			const { system, messages } = list.forLlm(
-				[effectiveInstructions, skillsInMessages ? undefined : this.activeSkills?.instructions()]
-					.filter(Boolean)
-					.join('\n\n'),
+				[effectiveInstructions, this.activeSkills?.instructions()].filter(Boolean).join('\n\n'),
 				instructionProviderOptions,
 				combinedVolatileInstructions || undefined,
 				supportsSplitSystemMessages(this.config.model),
@@ -959,9 +951,7 @@ export class AgentRuntime {
 			// only — never persisted back to the message list or tool set.
 			const cached = applyRuntimeCacheBreakpoints({
 				system,
-				messages:
-					this.activeSkills?.modelMessages(messages, list, { inMessages: skillsInMessages }) ??
-					messages,
+				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
 				aiTools,
 				promptCaching: this.config.promptCaching,
 				modelId: this.modelIdString,
