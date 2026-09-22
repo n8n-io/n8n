@@ -44,6 +44,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
+const instanceSettings = mock<InstanceSettings>({ isWorker: false });
 const unsavedManualExecutionService = mock<UnsavedManualExecutionService>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
@@ -93,7 +94,7 @@ describe('ActiveExecutions', () => {
 			concurrencyControl,
 			mock(),
 			executionsConfig,
-			mock(),
+			instanceSettings,
 			unsavedManualExecutionService,
 		);
 
@@ -327,7 +328,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
-				mock(),
+				instanceSettings,
 				unsavedManualExecutionService,
 			);
 
@@ -357,7 +358,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
-				mock(),
+				instanceSettings,
 				unsavedManualExecutionService,
 			);
 
@@ -514,7 +515,7 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
-				mock(),
+				instanceSettings,
 				unsavedManualExecutionService,
 			);
 
