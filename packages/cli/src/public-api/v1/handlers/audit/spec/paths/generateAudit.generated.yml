@@ -629,6 +629,7 @@ responses:
             - type: array
               items:
                 nullable: true
+              maxItems: 0
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

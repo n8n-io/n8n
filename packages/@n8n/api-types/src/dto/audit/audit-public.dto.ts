@@ -80,7 +80,7 @@ const auditReportsPublicSchema = z.object({
 
 export const auditPublicSchema = z.union([
 	auditReportsPublicSchema,
-	z.array(z.unknown()).length(0),
+	z.array(z.unknown()).length(0).openapi({ maxItems: 0 }),
 ]);
 
 export type AuditPublic = z.infer<typeof auditPublicSchema>;
