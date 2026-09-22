@@ -377,6 +377,11 @@ describe('AdrConventionsRule', () => {
 				content.replace('Date: 2026-09-22\n\nStatus', 'Date: 2026-09-22\nStatus'),
 		},
 		{
+			name: 'metadata and unexpected Markdown',
+			transform: (content: string) =>
+				content.replace('\n\nDate: 2026-09-22', '\n### Unexpected heading\nDate: 2026-09-22'),
+		},
+		{
 			name: 'a heading and its body',
 			transform: (content: string) => content.replace('## Decision\n\nWe', '## Decision\n\n\nWe'),
 		},

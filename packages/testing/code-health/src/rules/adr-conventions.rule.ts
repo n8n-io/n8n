@@ -193,7 +193,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 			);
 		}
 
-		if (!hasExactMetadataSpacing(metadata.fieldIndexes, contextIndex)) {
+		if (!hasExactMetadataSpacing(file.lines, metadata.fieldIndexes, contextIndex)) {
 			violations.push(
 				this.createViolation(
 					filePath,

@@ -173,11 +173,16 @@ export function parseField(line: string): { key: string; value: string } | undef
 }
 
 /** Checks for one blank line between metadata fields. */
-export function hasExactMetadataSpacing(fieldIndexes: number[], contextIndex: number): boolean {
+export function hasExactMetadataSpacing(
+	lines: string[],
+	fieldIndexes: number[],
+	contextIndex: number,
+): boolean {
 	if (contextIndex === -1 || fieldIndexes.length === 0) return false;
 	const structuralIndexes = [0, ...fieldIndexes, contextIndex];
 	return structuralIndexes.every(
-		(index, position) => position === 0 || index - structuralIndexes[position - 1] === 2,
+		(index, position) =>
+			position === 0 || (index - structuralIndexes[position - 1] === 2 && lines[index - 1] === ''),
 	);
 }
 

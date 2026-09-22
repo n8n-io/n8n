@@ -168,9 +168,21 @@ describe('ADR convention Markdown', () => {
 
 	describe('hasExactMetadataSpacing', () => {
 		it('checks metadata and Context line spacing', () => {
-			expect(hasExactMetadataSpacing([2, 4, 6], 8)).toBe(true);
-			expect(hasExactMetadataSpacing([2, 3, 6], 8)).toBe(false);
+			const lines = metadataSource.split('\n');
+
+			expect(hasExactMetadataSpacing(lines, [2, 4, 6], 8)).toBe(true);
+			expect(hasExactMetadataSpacing(lines, [2, 3, 6], 8)).toBe(false);
 		});
+
+		it.each(['### Unexpected heading', '- Unexpected list item'])(
+			'rejects %s in place of a blank line',
+			(unexpectedContent) => {
+				const lines = metadataSource.split('\n');
+				lines[1] = unexpectedContent;
+
+				expect(hasExactMetadataSpacing(lines, [2, 4, 6], 8)).toBe(false);
+			},
+		);
 	});
 
 	describe('containsAdrReference', () => {
