@@ -141,10 +141,7 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	};
 }
 
-async function renderComponent(
-	agent: AgentResource = createAgent(),
-	showOwnershipBadge = false,
-) {
+async function renderComponent(agent: AgentResource = createAgent(), showOwnershipBadge = false) {
 	const { default: AgentCard } = await import('../components/AgentCard.vue');
 	return mount(AgentCard, {
 		props: { agent, projectId: 'project-1', showOwnershipBadge },
