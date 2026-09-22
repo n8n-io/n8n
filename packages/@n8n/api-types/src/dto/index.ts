@@ -157,6 +157,7 @@ export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dt
 export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';

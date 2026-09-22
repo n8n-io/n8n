@@ -2085,6 +2085,11 @@ export interface InstanceAiRichMessagesResponse {
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
+	/**
+	 * The latest `preferences-applied` fact of the thread, so a reopened thread can show
+	 * which preferences its last turn carried. Absent when no turn has reported any.
+	 */
+	appliedPreferences?: AiPreferencesAppliedPayload;
 }
 
 // ---------------------------------------------------------------------------

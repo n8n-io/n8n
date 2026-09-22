@@ -2021,6 +2021,38 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it('should carry the latest applied-preferences payload when a turn reported one', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			const appliedPreferences = {
+				preferences: [{ id: 'pref-1', scope: 'user' as const }],
+				renderedLength: 80,
+				injectedThisTurn: true as const,
+			};
+			eventLog.getLastAppliedPreferences.mockResolvedValue(appliedPreferences);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).toMatchObject({ nextEventId: 42, appliedPreferences });
+			expect(eventLog.getLastAppliedPreferences).toHaveBeenCalledWith(THREAD_ID);
+		});
+
+		it('should omit appliedPreferences when no turn has reported any', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			eventLog.getLastAppliedPreferences.mockResolvedValue(undefined);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).not.toHaveProperty('appliedPreferences');
+		});
+
 		it('should return raw messages when raw=true', async () => {
 			const rawResult = mock<InstanceAiThreadMessagesResponse>();
 			memoryService.getThreadMessages.mockResolvedValue(rawResult);
