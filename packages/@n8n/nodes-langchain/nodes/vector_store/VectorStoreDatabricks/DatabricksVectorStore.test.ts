@@ -329,19 +329,6 @@ describe('DatabricksVectorStore', () => {
 				}),
 			).rejects.toThrow('content column');
 		});
-
-		it('rejects the primary key as the content column', async () => {
-			fetchMock.mockResolvedValueOnce(json(directDescribe));
-
-			await expect(
-				DatabricksVectorStore.fromExistingIndex(embeddings, {
-					fetch: fetchMock,
-					host,
-					indexName: 'cat.sch.idx',
-					contentColumn: 'id',
-				}),
-			).rejects.toThrow('primary key');
-		});
 	});
 
 	describe('filters', () => {
@@ -471,6 +458,18 @@ describe('DatabricksVectorStore', () => {
 			await expect(
 				store.addDocuments([{ pageContent: 'hello', metadata: {}, id: 'row-7' }]),
 			).rejects.toThrow('Failed primary keys: row-7');
+		});
+
+		it('rejects the primary key as the content column without a request', async () => {
+			const store = await createStore(directDescribe, { contentColumn: 'id' });
+
+			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
+				'primary key',
+			);
+			expect(fetchMock).not.toHaveBeenCalledWith(
+				expect.stringContaining('upsert-data'),
+				expect.anything(),
+			);
 		});
 
 		it('rejects a managed Delta Sync index without a request', async () => {

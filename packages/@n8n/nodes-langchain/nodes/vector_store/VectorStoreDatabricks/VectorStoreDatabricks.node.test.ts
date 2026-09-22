@@ -84,9 +84,10 @@ describe('VectorStoreDatabricks', () => {
 	};
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 		node = new VectorStoreDatabricks();
 		embeddings = mock<Embeddings>();
+		mockedDescribeIndex.mockResolvedValue(indexInfo);
 		vi.mocked(getDatabricksTokenProvider).mockReturnValue({
 			getToken: vi.fn(async () => 'test-token'),
 			expiredStatus: 403,

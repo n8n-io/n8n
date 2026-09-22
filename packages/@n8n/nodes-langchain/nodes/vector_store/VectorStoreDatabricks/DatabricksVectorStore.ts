@@ -227,12 +227,6 @@ export class DatabricksVectorStore extends VectorStore {
 				`Index ${index.name} uses self-managed embeddings. Select a content column`,
 			);
 		}
-		// The upsert row would write the document text over its own primary key
-		if (contentColumn === index.primaryKey) {
-			throw new UserError(
-				`Column ${contentColumn} is the primary key of ${index.name}. Select another content column`,
-			);
-		}
 		this.fetch = config.fetch;
 		this.host = config.host;
 		this.index = index;
@@ -317,6 +311,12 @@ export class DatabricksVectorStore extends VectorStore {
 	): Promise<string[]> {
 		const vectorColumn = this.assertDirectAccess();
 		const { primaryKey, name } = this.index;
+		// The row below would write the document text over its own primary key
+		if (this.contentColumn === primaryKey) {
+			throw new UserError(
+				`Column ${primaryKey} is the primary key of ${name}. Select another content column`,
+			);
+		}
 		const schemaColumns = new Set(this.index.schemaColumns ?? []);
 		const ids = documents.map((doc, i) => options?.ids?.[i] ?? doc.id ?? randomUUID());
 
