@@ -71,7 +71,12 @@ export type {
 } from './materializer';
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
-export type { ReaperOptions, ReapResult } from './reaper';
+export type {
+	ReaperOptions,
+	ReapResult,
+	RetireMissedResult,
+	RetiredOccurrence,
+} from './reaper';
 export {
 	reconcile,
 	DEFAULT_RECONCILIATION_OPTIONS,

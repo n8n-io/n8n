@@ -30,6 +30,24 @@ export interface ExpiredLeaseRow extends ClaimedTask {
 	dispatchedAt: Date | null;
 }
 
+/** Identity of one occurrence a sweep retired as `missed`. */
+export interface RetiredOccurrence {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+/** Outcome of one sweep's retire step. */
+export interface RetireMissedResult {
+	/** How many `pending` occurrences were retired as `missed`. */
+	retired: number;
+	/**
+	 * The retired occurrences whose job was already running as many occurrences as
+	 * its concurrency limit allows, so the limit is what kept them from a claim.
+	 */
+	heldByConcurrencyLimit: RetiredOccurrence[];
+}
+
 /**
  * The store operations a sweep needs, defined here as the reaper's own surface so
  * it depends on nothing concrete. `ScheduledTaskRepository` structurally satisfies
@@ -48,7 +66,7 @@ export interface ReaperTaskStore {
 	 * Retire up to `limit` `pending` occurrences past their `missedAfter` as `missed`.
 	 * One statement rather than a row at a time: there is no per-row decision to make.
 	 */
-	retireMissedPending(limit: number): Promise<number>;
+	retireMissedPending(limit: number): Promise<RetireMissedResult>;
 }
 
 /** Knobs of one reaper sweep. */
@@ -67,6 +85,11 @@ export interface ReaperHooks {
 	onRowError?: (taskId: string, error: unknown) => void;
 	/** Notified when retiring stale `pending` rows fails; the rest of the sweep still runs. */
 	onRetireError?: (error: unknown) => void;
+	/**
+	 * Notified, once per sweep, with the occurrences a job's concurrency limit held
+	 * back until their deadline passed. Never called with an empty list.
+	 */
+	onHeldByConcurrencyLimit?: (occurrences: RetiredOccurrence[]) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
 	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
 	/**
@@ -89,7 +112,15 @@ async function retireStale(
 ): Promise<number> {
 	if (signal?.aborted === true) return 0;
 	try {
-		return await store.retireMissedPending(options.batchSize);
+		const { retired, heldByConcurrencyLimit } = await store.retireMissedPending(options.batchSize);
+		if (heldByConcurrencyLimit.length > 0) {
+			try {
+				hooks.onHeldByConcurrencyLimit?.(heldByConcurrencyLimit);
+			} catch {
+				// A host-supplied reporter must not break the sweep it observes.
+			}
+		}
+		return retired;
 	} catch (error) {
 		try {
 			hooks.onRetireError?.(error);
