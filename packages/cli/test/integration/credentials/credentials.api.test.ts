@@ -2110,6 +2110,35 @@ describe('pending authorization', () => {
 		expect(await listedIds()).toEqual([]);
 	});
 
+	test('should reject the flag on end-user and instance credentials', async () => {
+		const resolvable = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true, isResolvable: true });
+		expect(resolvable.statusCode).toBe(400);
+
+		const instance = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true, usageScope: 'instance' });
+		expect(instance.statusCode).toBe(400);
+	});
+
+	test('should leave a pending global credential out of lists', async () => {
+		const pendingGlobal = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true, isGlobal: true });
+		expect(pendingGlobal.statusCode).toBe(200);
+
+		const list = await authMemberAgent.get('/credentials').query({ includeGlobal: true });
+		expect(list.statusCode).toBe(200);
+		expect(list.body.data).toEqual([]);
+
+		const forProject = await authMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: memberPersonalProject.id });
+		expect(forProject.statusCode).toBe(200);
+		expect(forProject.body.data).toEqual([]);
+	});
+
 	test('should not count toward the next credential name', async () => {
 		const name = randomCredentialPayload().name;
 		await authMemberAgent.post('/credentials').send({

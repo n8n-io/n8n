@@ -469,7 +469,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		options: { includeData?: boolean } = {},
 	): Promise<CredentialsEntity[]> {
 		const findManyOptions = this.toFindManyOptions({ includeData: options.includeData ?? false });
-		findManyOptions.where = { ...findManyOptions.where, isGlobal: true, usageScope: 'project' };
+		findManyOptions.where = this.excludePendingAuthorization({
+			...findManyOptions.where,
+			isGlobal: true,
+			usageScope: 'project',
+		});
 		return await this.find(findManyOptions);
 	}
 

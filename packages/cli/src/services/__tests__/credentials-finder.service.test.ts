@@ -447,6 +447,14 @@ describe('CredentialsFinderService', () => {
 				where: { isGlobal: true, usageScope: 'project' },
 				relations: { shared: true },
 			});
+			expect(credentialsRepository.excludePendingAuthorization).toHaveBeenCalledWith({
+				isGlobal: false,
+				usageScope: 'project',
+			});
+			expect(credentialsRepository.excludePendingAuthorization).toHaveBeenCalledWith({
+				isGlobal: true,
+				usageScope: 'project',
+			});
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
 			expect(result).toEqual([...credentials]);
 		});
