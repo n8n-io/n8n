@@ -111,11 +111,12 @@ jobs:
               echo "PR #$INPUT_PR: testing head $head_sha (merge ref stale/unavailable; image rebuilt)"
             fi
             branch="$tested_sha"; cache_sha="$tested_sha"; revision_sha="$tested_sha"
-            pr_number="$INPUT_PR"; tier="${INPUT_TIER:-pr}"
+            classify_sha="$head_sha"; pr_number="$INPUT_PR"; tier="${INPUT_TIER:-pr}"
           elif [ "$EVENT_NAME" = "pull_request" ]; then
             # PR open/reopen/ready: unchanged - test the merge commit, which also
             # matches the SHA-keyed prepare-docker image cache.
             branch="$GH_SHA"; cache_sha="$GH_SHA"; revision_sha="$GH_SHA"
+            classify_sha="$GH_SHA"
             head_ref="$EVENT_HEAD_REF"; base_ref="$EVENT_BASE_REF"; pr_number="$EVENT_PR_NUMBER"; tier="${INPUT_TIER:-pr}"
           else
             # workflow_dispatch enforces `pr` as required; this is unreachable.
@@ -127,6 +128,7 @@ jobs:
             echo "branch=$branch"
             echo "cache_sha=$cache_sha"
             echo "revision_sha=$revision_sha"
+            echo "classify_sha=$classify_sha"
             echo "head_ref=$head_ref"
             echo "base_ref=$base_ref"
             echo "pr_number=$pr_number"
@@ -135,10 +137,12 @@ jobs:
 
       # Same classifier as the rest of CI. On pull_request the checkout is the
       # test-merge commit and ci-filter diffs its PR-head parent against the
-      # merge base; on dispatch it diffs the resolved SHA the same way.
+      # merge base; on dispatch it diffs the PR head, so a stacked PR is not
+      # charged with files its parent branch changed since the merge commit.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ steps.resolve.outputs.revision_sha }}
+          ref: ${{ steps.resolve.outputs.classify_sha }}
+          persist-credentials: false
 
       # Agent Builder sub-agent paths pick the `agents` suite. The rest of the
       # agents module (runtime, channels, sessions) is not exercised by the
