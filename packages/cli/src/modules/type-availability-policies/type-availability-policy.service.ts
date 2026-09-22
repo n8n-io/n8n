@@ -612,6 +612,11 @@ export class TypeAvailabilityPolicyService {
 	 * `getEffectivePolicy`/`setDefaultAction` call, and a scope row is shared by both instance
 	 * and project scope, so this stays reusable without resolving `(kind, projectId)` again.
 	 *
+	 * `kind` scopes that lookup the same way `getPolicyDocument` scopes its own id lookup: a
+	 * caller authorized for one kind (e.g. `credentialTypePolicy:manage`, not
+	 * `nodeTypePolicy:manage`) must not reach a scope of a different kind by id, even with an
+	 * empty or same-kind-only attachment list that `assertAttachableToScope` would not catch.
+	 *
 	 * No `expectedVersion` check: the real `ReplaceAttachmentsDto` from IAM-1328 carries no
 	 * version field (unlike `PutInstancePolicyDto`), so this endpoint is last-write-wins. The
 	 * write still runs in one transaction with the scope's version bump, so a concurrent
@@ -622,6 +627,7 @@ export class TypeAvailabilityPolicyService {
 	 * policies), the same scope → policy order every other write path uses.
 	 */
 	async replaceAttachments(
+		kind: string,
 		scopeId: string,
 		attachments: readonly AttachmentInput[],
 		updatedBy: string,
@@ -629,7 +635,7 @@ export class TypeAvailabilityPolicyService {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeById(scopeId, ctx, true);
+			const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx, true);
 			if (!scope) {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
 			}

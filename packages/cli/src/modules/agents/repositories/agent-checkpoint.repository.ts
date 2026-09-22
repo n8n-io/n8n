@@ -24,6 +24,10 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		});
 	}
 
+	async findRetainedByThreadId(threadId: string): Promise<AgentCheckpoint[]> {
+		return await this.find({ where: { threadId } });
+	}
+
 	async findForSandboxReconciliation(agentId: string): Promise<AgentCheckpoint[]> {
 		return await this.find({
 			where: { agentId, expired: false },

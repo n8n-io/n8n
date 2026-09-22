@@ -16,10 +16,12 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
 	AGENT_TOOLS,
 	BUILDER_TOOLS,
+	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
+import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
@@ -207,6 +209,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(EventService),
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
+			mockInstance(McpConfig),
 		);
 
 	beforeEach(() => {
@@ -226,11 +229,17 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Instance-context
-		// tools need the `instance-ai` module, inactive here for the same reason.
+		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// tools need that module, the verified catalog, and a scope-bearing
+		// caller; their registration guard lives in
+		// install-community-node.registration.test.ts. Instance-context tools
+		// need the `instance-ai` module, inactive here for the same reason.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
 			(name) =>
-				!registered.has(name) && !AGENT_TOOLS.has(name) && !INSTANCE_CONTEXT_TOOLS.has(name),
+				!registered.has(name) &&
+				!AGENT_TOOLS.has(name) &&
+				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
+				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
@@ -424,7 +433,11 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
-		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+		// Community-package tools are builder-gated but register in neither
+		// service here, because this harness has the module inactive. Their
+		// builder gating is asserted in install-community-node.registration.test.ts.
+		const expected = [...BUILDER_TOOLS].filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name)).sort();
+		expect(gated).toEqual(expected);
 	});
 
 	describe('get_user_preferences registration', () => {

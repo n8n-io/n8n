@@ -490,6 +490,7 @@ export class EvalExecutionService {
 			startNode,
 			hints.triggerContent,
 			binaryRequirement,
+			hints.triggerEmitsNoItems,
 		);
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
@@ -761,7 +762,12 @@ export class EvalExecutionService {
 		startNode: INode,
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
+		triggerEmitsNoItems = false,
 	): IPinData {
+		// A pinned empty array is "this node emitted nothing": downstream nodes stay idle,
+		// which is the point of a "no new items" scenario. No pin at all would instead
+		// start the trigger with one injected empty item.
+		if (triggerEmitsNoItems) return { [startNode.name]: [] };
 		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
 
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays

@@ -345,6 +345,7 @@ export class NodeTypePoliciesPublicController {
 		@Body dto: ReplaceAttachmentsDto,
 	): Promise<PolicyAttachmentsPublicDto> {
 		const result = await (await this.service()).replaceAttachments(
+			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
 			req.user.id,

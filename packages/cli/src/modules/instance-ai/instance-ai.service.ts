@@ -2403,6 +2403,13 @@ export class InstanceAiService {
 		}
 	}
 
+	areMcpConnectionsAvailable(): boolean {
+		return (
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
+		);
+	}
+
 	private async createExecutionEnvironment(
 		user: User,
 		threadId: string,
@@ -2424,6 +2431,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
+		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -2444,7 +2452,6 @@ export class InstanceAiService {
 		const gates = await this.adapterService.resolveExperimentGates(user);
 		const {
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
 			folderExplorationEnabled,
@@ -2474,7 +2481,7 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			instanceContextEnabled,
 			conversationHistory,
@@ -2817,7 +2824,7 @@ export class InstanceAiService {
 		context.resolvePreviewSession = async (ref) => {
 			const service = this.getAgentExecutionService();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -3956,6 +3963,7 @@ export class InstanceAiService {
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
+					userId: user.id,
 					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
 				});
 				handoffContextBlock = resolved.block;
