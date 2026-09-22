@@ -511,6 +511,17 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
+	it('ignores surrounding whitespace in a search query', async () => {
+		const { getByPlaceholderText, queryByText } = renderWith({ categories: ['mcp'] });
+
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), '  github  ');
+
+		await waitFor(() => {
+			expect(queryByText('GitHub')).toBeTruthy();
+			expect(queryByText('Gmail')).toBeNull();
+		});
+	});
+
 	it('feeds every flattened row through to the scroller', async () => {
 		const items = makeLargeMcpList(300);
 		const { getAllByTestId } = renderWith({ items, categories: ['mcp'] });

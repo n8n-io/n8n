@@ -158,11 +158,12 @@ onMounted(() => {
 	}
 });
 
-const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
+const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
+const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
 
 function matchesQuery(item: ToolConnectionItem): boolean {
-	if (!debouncedSearchQuery.value) return true;
-	const query = debouncedSearchQuery.value.toLowerCase();
+	if (!normalizedSearchQuery.value) return true;
+	const query = normalizedSearchQuery.value.toLowerCase();
 	return (
 		item.title.toLowerCase().includes(query) ||
 		(item.description ?? '').toLowerCase().includes(query)
@@ -298,7 +299,7 @@ const resolvedEmptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		if (props.noResultsMessage) return props.noResultsMessage;
 		return i18n.baseText('tools.connection.empty.noResults', {
-			interpolate: { query: debouncedSearchQuery.value },
+			interpolate: { query: normalizedSearchQuery.value },
 		});
 	}
 	return props.emptyMessage ?? i18n.baseText('tools.connection.empty.title');
