@@ -87,8 +87,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
-	props: ['beforeSend', 'visible'],
-	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
+	props: ['beforeSend', 'initialPrompt', 'visible'],
+	emits: ['continue-loaded', 'open-build', 'send-to-assistant', 'initial-consumed'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({ focusInput: vi.fn(), getConversationMarkdown: () => '**User:**\n\nHello' });
 	},
@@ -119,6 +119,7 @@ function mountDock(
 		isOpen: boolean;
 		isDeletingSession: boolean;
 		canDeleteSession: boolean;
+		initialPrompt?: string;
 		sessionOptions: Array<{
 			id: string;
 			title: string;
@@ -324,17 +325,20 @@ describe('AgentPreviewDock', () => {
 				},
 			],
 		};
-		const wrapper = mountDock({ beforeSend });
+		const wrapper = mountDock({ beforeSend, initialPrompt: 'Test these instructions' });
 		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
+		expect(chatPage.props('initialPrompt')).toBe('Test these instructions');
 		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
 		chatPage.vm.$emit('send-to-assistant', fixEvent);
+		chatPage.vm.$emit('initial-consumed');
 
 		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
 		expect(wrapper.emitted('open-build')).toEqual([[]]);
 		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 	});
 
 	it('shows the new-session shortcut tooltip', () => {
@@ -464,6 +468,43 @@ describe('AgentPreviewChatPage', () => {
 		const wrapper = mountChatPage(beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
+	});
+
+	it('sends the initial prompt once when the chat panel is ready', async () => {
+		const sendMessageFromOutside = vi.fn();
+		const wrapper = shallowMount(AgentPreviewChatPage, {
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+				initialPrompt: 'Test these instructions',
+			},
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div />',
+						emits: ['initial-consumed'],
+						methods: { sendMessageFromOutside },
+					},
+				},
+			},
+		});
+
+		await wrapper.vm.$nextTick();
+
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+
+		await wrapper.setProps({ visible: false });
+		expect(sendMessageFromOutside).toHaveBeenCalledTimes(1);
 	});
 
 	it('forwards the session-aware history event from the chat panel', () => {

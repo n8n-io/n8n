@@ -88,7 +88,8 @@ export async function readInstanceContext(
 	projectId?: string,
 ): Promise<InstanceContextRead> {
 	const scope = buildScope(options.executionGranted, projectId);
-	const built = await instanceContext.buildBlock({ user, scope, cursor: null });
+	// Registration has already checked the shared instance flag.
+	const built = await instanceContext.buildBlock({ user, scope, cursor: null, enabled: true });
 	if (built) return { kind: 'context', text: built.block };
 
 	// An empty block has two very different causes, and the client acts on them differently.

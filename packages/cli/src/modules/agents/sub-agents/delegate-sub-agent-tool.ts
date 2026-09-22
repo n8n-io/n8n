@@ -10,6 +10,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
+import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';
 import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
@@ -149,6 +150,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 }
 
 function shouldRetrySubAgentResumeError(error: unknown): boolean {
+	if (error instanceof AgentExecutionRecordingError && error.phase === 'finalize') return false;
 	if (error instanceof OperationalError) return true;
 	if (!(error instanceof ResponseError)) return false;
 	return [408, 425, 429, 502, 503, 504].includes(error.httpStatusCode);

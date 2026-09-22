@@ -217,6 +217,7 @@ describe('update-workflow MCP tool', () => {
 			subworkflowPolicyChecker,
 			workflowPublishedDataService,
 			aiGatewayService,
+			{},
 			logger,
 			postSaveMetrics,
 		);
@@ -2485,6 +2486,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3832,6 +3834,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3871,6 +3874,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3910,6 +3914,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);

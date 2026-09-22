@@ -27,6 +27,8 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Why the step failed; absent unless it did. */
+	error?: StepError | null;
 }
 
 /**

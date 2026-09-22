@@ -1,3 +1,6 @@
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { vi } from 'vitest';
 import type {
 	SimplifiedNodeType,
 	ActionTypeDescription,
@@ -12,6 +15,21 @@ import type {
 	SectionCreateElement,
 } from '@/Interface';
 import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Makes the active pinia's policy store report these node types as restricted. Call after
+ * `setActivePinia` (or after rendering with the pinia the component uses).
+ */
+export function mockRestrictedNodeTypes(
+	restricted: Record<string, NodeTypeAvailabilityScope> = {},
+): void {
+	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+		(name) => {
+			const scope = restricted[name];
+			return scope ? { name, available: false, scope } : { name, available: true };
+		},
+	);
+}
 
 export const mockSimplifiedNodeType = (
 	overrides?: Partial<SimplifiedNodeType>,

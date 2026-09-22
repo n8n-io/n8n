@@ -409,6 +409,20 @@ describe('EvalExecutionService', () => {
 			expect(result.executionId).toBe(DB_EXECUTION_ID);
 		});
 
+		it('pins the trigger to zero items when the scenario says it emits nothing', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {};
+			hints.triggerEmitsNoItems = true;
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.Webhook).toEqual([]);
+		});
+
 		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = { body: { email: 'jane@example.com' } };
