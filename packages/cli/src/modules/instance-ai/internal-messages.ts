@@ -127,6 +127,7 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'project-context',
 	'past-conversations',
 	'ai-preferences',
+	'onboarding-answer',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -239,6 +240,46 @@ export function sanitisePromptText(value: string): string {
  *  this project", "check it before you build") lives in the system prompt, which is
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
  *  every turn of every conversation. Measured: the fact alone is enough. */
+/**
+ * The onboarding skill's SKILL.md body, one section of the opening turn's thread-context block, so
+ * the flow runs without a `load_skill` call.
+ */
+export function buildOnboardingSkillBlock(instructions: string): string {
+	return `<onboarding-skill>\nThis skill is loaded for this thread: follow it and do not call load_skill for it.\n${instructions}\n</onboarding-skill>`;
+}
+
+/** One opening-card answer as the agent gets it: the question text plus what the user chose or typed. */
+export interface OnboardingAnswer {
+	question: string;
+	selectedOptions: string[];
+	customText?: string;
+}
+
+/**
+ * The answers to an onboarding thread's opening card, one line per question, so a question added
+ * to the opening file reaches the agent without a code change. The card is not in the LLM
+ * history (it lives in the event log), so the answers ride a hidden user turn; the parser drops
+ * that turn from the UI.
+ */
+export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): string {
+	return [
+		AUTO_FOLLOW_UP_MESSAGE,
+		'',
+		'<onboarding-answer>',
+		'The user answered the opening questions:',
+		...answers.map((answer) => `- ${answer.question} ${formatOnboardingAnswer(answer)}`),
+		'These answers are final: use them as they are and do not ask these questions again.',
+		'</onboarding-answer>',
+	].join('\n');
+}
+
+/** The selected options plus the free text; `(not answered)` when the card had neither. */
+function formatOnboardingAnswer({ selectedOptions, customText }: OnboardingAnswer): string {
+	const text = customText?.trim();
+	const values = [...selectedOptions, ...(text ? [text] : [])];
+	return values.length > 0 ? values.join(', ') : '(not answered)';
+}
+
 export function getProjectContextSection(project: { name: string; type: string }): string {
 	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}).`;
 }

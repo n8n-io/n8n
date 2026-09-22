@@ -90,6 +90,7 @@ import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import type { InstanceAiOnboardingService } from '../onboarding';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -145,6 +146,7 @@ describe('InstanceAiController', () => {
 		gatewayService,
 		browserSessionService,
 		memoryService,
+		mock<InstanceAiOnboardingService>(),
 		pendingAgentService,
 		settingsService,
 		modelCatalogService,
@@ -2396,6 +2398,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiGatewayService>(),
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
+		mock<InstanceAiOnboardingService>(),
 		mock<InstanceAiPendingAgentService>(),
 		settingsService,
 		mock<InstanceAiModelCatalogService>(),
