@@ -888,7 +888,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-routed', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				intervalSeconds: 60,
 			});
 		});
@@ -902,7 +902,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-routed', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				intervalSeconds: undefined,
 			});
 		});
@@ -937,11 +937,11 @@ describe('SystemTaskRunner', () => {
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-settled', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				result: 'success',
 				durationMs: 250,
 			});
@@ -1084,7 +1084,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'system-task-run-settled',
-				expect.objectContaining({ name: 'dummy', mode: 'in_memory', result: 'failure' }),
+				expect.objectContaining({ name: 'dummy', mode: 'leader_timer', result: 'failure' }),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-retry-scheduled', {
 				name: 'dummy',
@@ -1185,7 +1185,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-scheduling-failed', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 			});
 		});
 
