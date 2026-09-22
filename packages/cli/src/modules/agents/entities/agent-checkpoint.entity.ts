@@ -4,7 +4,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8
 import { Agent } from './agent.entity';
 
 @Entity({ name: 'agent_checkpoints' })
-@Index(['agentId', 'threadId', 'expired', 'updatedAt'])
+@Index('IDX_agent_checkpoints_thread', ['agentId', 'threadId', 'expired', 'updatedAt'])
 export class AgentCheckpoint extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 255 })
 	runId: string;

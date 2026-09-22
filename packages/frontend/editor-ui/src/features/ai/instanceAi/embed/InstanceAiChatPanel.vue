@@ -441,7 +441,7 @@ const ThreadScope = defineComponent({
 					:show-after="TOOLTIP_DELAY_MS"
 				>
 					<N8nIconButton
-						icon="plus"
+						icon="message-circle-plus"
 						variant="ghost"
 						size="small"
 						icon-size="large"

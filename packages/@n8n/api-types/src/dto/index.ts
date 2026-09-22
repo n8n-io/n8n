@@ -296,20 +296,20 @@ export type {
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
-} from './node-type-policies/policy-rule.types';
-export { policySelectorSchema } from './node-type-policies/policy-selector.schema';
+} from './type-availability-policies/policy-rule.types';
+export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
 export {
 	nonDelegatingPolicyActionSchema,
 	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
 	policyRuleListSchema,
 	policyRuleSchema,
-} from './node-type-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './node-type-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
-export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+} from './type-availability-policies/policy-rule.schema';
+export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
+export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
+export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
+export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
 	ListNodeTypePolicyDocumentsQueryDto,
 	PolicyAttachmentsPublicDto,
@@ -318,7 +318,7 @@ export {
 	PolicyDocumentWriteResultPublicDto,
 	PolicyEffectivePublicDto,
 	PolicyEffectiveWriteResultPublicDto,
-} from './node-type-policies/node-type-policy-public.dto';
+} from './type-availability-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
