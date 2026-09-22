@@ -916,6 +916,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * rows that are `running` when the sweep happens: the run that held the row
 	 * back has usually ended by then, and a run that started after the deadline
 	 * never held it back.
+	 *
+	 * The limit itself is read live from the job, because no row records the value
+	 * in force at the deadline: the claim reads it live too. A limit changed between
+	 * the deadline and the sweep is classified with its new value.
 	 */
 	private atConcurrencyLimitSql(alias: string, jobAlias: string): string {
 		const deadline = `${alias}"missedAfter"`;
