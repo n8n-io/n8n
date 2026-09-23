@@ -323,9 +323,9 @@ describe('FrontendService', () => {
 
 		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
-			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
-			const { service } = createMockService();
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(true);
 
 			const settings = await service.getSettings();
 
@@ -334,9 +334,9 @@ describe('FrontendService', () => {
 
 		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
 			globalConfig.aiAssistant.baseUrl = '';
-			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
-			const { service } = createMockService();
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(false);
 
 			const settings = await service.getSettings();
 
