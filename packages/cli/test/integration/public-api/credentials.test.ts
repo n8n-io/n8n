@@ -1889,9 +1889,7 @@ describe('GET /credentials/schema/:credentialType', () => {
 		expect(additionalProperties).toBe(false);
 		expect(type).toBe('object');
 		expect(properties.host.type).toBe('string');
-		expect(properties.port).toEqual({
-			anyOf: [{ type: 'number' }, { type: 'string', pattern: '^=' }],
-		});
+		expect(properties.port.type).toBe('number');
 		expect(properties.username.type).toBe('string');
 		expect(properties.password.type).toBe('string');
 		// `port` has a default value, so it is not required.

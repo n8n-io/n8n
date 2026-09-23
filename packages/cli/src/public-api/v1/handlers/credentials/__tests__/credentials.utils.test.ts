@@ -156,29 +156,6 @@ describe('credentials.utils', () => {
 			);
 		});
 
-		it('accepts an expression string in a non-string field', () => {
-			const credentialsHelper = credentialsHelperWithProperties([
-				{ name: 'port', type: 'number', displayName: 'Port', default: 21 },
-				{
-					name: 'mode',
-					type: 'options',
-					options: [{ value: 'a', name: 'A' }],
-					displayName: 'Mode',
-					default: 'a',
-				},
-			]);
-
-			expect(() =>
-				validateCredentialData(credentialsHelper, 'someType', {
-					port: '={{ $vars.PORT }}',
-					mode: '={{ $vars.MODE }}',
-				}),
-			).not.toThrow();
-			expect(() =>
-				validateCredentialData(credentialsHelper, 'someType', { port: 'twenty-one' }),
-			).toThrow(/request\.body\.data/);
-		});
-
 		it('enforces conditionally-required fields when partialData is not set', () => {
 			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
 
@@ -337,10 +314,8 @@ describe('credentials.utils', () => {
 			const props = schema.properties as IDataObject;
 			expect(props).toBeDefined();
 			expect(props.keyType).toEqual({
-				anyOf: [
-					{ type: 'string', enum: ['passphrase', 'pemKey'] },
-					{ type: 'string', pattern: '^=' },
-				],
+				type: 'string',
+				enum: ['passphrase', 'pemKey'],
 			});
 
 			expect(schema.required).not.toContain('secret');
@@ -566,10 +541,8 @@ describe('credentials.utils', () => {
 			expect(props).toBeDefined();
 			expect(props.field1).toEqual({ type: 'string' });
 			expect(props.field2).toEqual({
-				anyOf: [
-					{ type: 'string', enum: ['opt1', 'opt2'] },
-					{ type: 'string', pattern: '^=' },
-				],
+				type: 'string',
+				enum: ['opt1', 'opt2'],
 			});
 			expect(props.field3).toEqual({ type: 'string' });
 
