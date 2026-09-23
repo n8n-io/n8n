@@ -102,10 +102,22 @@ export function isSafeInteger(val: number) {
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
-		acc[cur.field].push(values);
+		acc[cur.field].push(coerceFilterValue(cur.values, cur.type));
 		return acc;
 	}, {});
+}
+
+/**
+ * Grist's filter API matches by exact JSON type, so a numeric-looking value has to be sent as the
+ * same type the target column actually stores. Since the node has no way to know that column's
+ * type, 'autoDetect' (the default, kept for filters saved before this field existed) guesses from
+ * the value's shape - which is wrong for a text column whose values happen to look numeric, hence
+ * the explicit 'string'/'number' overrides.
+ */
+function coerceFilterValue(value: string, type: 'autoDetect' | 'string' | 'number' = 'autoDetect') {
+	if (type === 'string') return value;
+	if (type === 'number') return Number(value);
+	return isSafeInteger(Number(value)) ? Number(value) : value;
 }
 
 export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
