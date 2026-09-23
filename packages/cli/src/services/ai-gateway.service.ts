@@ -1,6 +1,8 @@
 import {
 	AiGatewayConfigDto,
+	AiGatewayMcpServersResponse,
 	getAgentModelProviderCredentialTypes,
+	type AiGatewayMcpServer,
 	type AiGatewayUsageResponse,
 	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
@@ -12,12 +14,13 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { isMcpGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -25,6 +28,41 @@ import { UrlService } from '@/services/url.service';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
+}
+
+/**
+ * Maps a gateway-served MCP server DTO to a registry entry. The remote URL is
+ * built from the configured gateway base and the server slug, so it tracks
+ * feature/staging/prod. `authType: 'gateway'` means Gateway credits.
+ */
+function mcpServerToRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
+	return {
+		name: server.name,
+		slug: server.slug,
+		title: server.title,
+		description: server.description,
+		tagline: server.tagline,
+		version: server.version,
+		updatedAt: server.updatedAt,
+		icons: server.icons.map((icon) => ({
+			src: icon.src,
+			...(icon.theme ? { theme: icon.theme } : {}),
+		})),
+		websiteUrl: server.websiteUrl,
+		authType: 'gateway',
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
+		tools: server.tools.map((tool) => ({
+			name: tool.name,
+			title: tool.title,
+			...(tool.readOnlyHint !== undefined
+				? { annotations: { readOnlyHint: tool.readOnlyHint } }
+				: {}),
+		})),
+		isOfficial: true,
+		origin: 'registry',
+		status: 'active',
+		tags: server.tags,
+	};
 }
 
 export type AiGatewayAvailability =
@@ -51,6 +89,11 @@ export class AiGatewayService {
 	 */
 	private configFetchFailedAt = 0;
 	private static readonly CONFIG_FAILURE_TTL_MS = 60 * 1000; // 1 minute
+
+	/** Cached hosted MCP servers (mapped to registry entries). Same TTL as the config. */
+	private hostedMcpServers: McpRegistryServer[] | null = null;
+	private hostedFetchedAt = 0;
+	private hostedFetchFailedAt = 0;
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
@@ -197,6 +240,24 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
+		// MCP servers the gateway hosts carry no provider config: the endpoint URL
+		// comes from the registry entry on the node, so the credential is just the
+		// bearer token. The token is not provider-scoped, so one mint serves any
+		// gateway path the entry points at. The type is authorized by the persisted
+		// registry binding that produced it, so minting stays independent of the
+		// gateway being reachable at execution time (and of startup order).
+		if (isMcpGatewayAuthentication(credentialType)) {
+			const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
+			// Billed, non-provider-scoped token: pin its egress to the gateway host so
+			// no consumer can send it elsewhere, whatever URL the node carries. This is
+			// what contains a token minted for a hand-planted managed marker.
+			return {
+				token: jwt,
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: new URL(baseUrl).hostname,
+			};
+		}
+
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
@@ -214,6 +275,38 @@ export class AiGatewayService {
 			}
 		}
 
+		const { jwt, resolvedProjectId } = await this.resolveAndMintToken({
+			userId,
+			workflowId,
+			projectId,
+		});
+
+		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
+			executionId,
+			workflowId,
+			projectId: resolvedProjectId,
+			agentId,
+		});
+
+		return {
+			[providerConfig.apiKeyField]: jwt,
+			...urlFields,
+		};
+	}
+
+	/**
+	 * Resolves the project and user a credential is attributed to, then mints a
+	 * gateway token for that user.
+	 */
+	private async resolveAndMintToken({
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<{ jwt: string; resolvedProjectId?: string }> {
 		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
 		const resolvedUserId = await this.resolveUserId({
 			userId,
@@ -227,18 +320,7 @@ export class AiGatewayService {
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
-
-		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
-			executionId,
-			workflowId,
-			projectId: resolvedProjectId,
-			agentId,
-		});
-
-		return {
-			[providerConfig.apiKeyField]: jwt,
-			...urlFields,
-		};
+		return { jwt, resolvedProjectId };
 	}
 
 	/**
@@ -391,6 +473,65 @@ export class AiGatewayService {
 	 * and its config fetches successfully; `{ available: false }` otherwise.
 	 * Never propagates gateway or config errors.
 	 */
+	/**
+	 * Gateway-hosted MCP servers to inject into the registry listing. The gateway
+	 * (not the remote MCP registry) is their source of truth, fetched from
+	 * `/v1/gateway/mcp-servers` and cached. Returns `[]` unless n8n Connect is
+	 * licensed and enabled, and never throws: a gateway outage serves the last
+	 * good list, or `[]` if none was ever fetched, so seeding is not blocked.
+	 */
+	async getHostedMcpServers(): Promise<McpRegistryServer[]> {
+		if (!this.isEnabled()) return [];
+		try {
+			await this.refreshHostedMcpServers();
+		} catch {
+			// Keep the last good list (empty if never fetched).
+		}
+		return this.hostedMcpServers ?? [];
+	}
+
+	/**
+	 * Refreshes the cached hosted-server list from the gateway. Serves the cache
+	 * while fresh, throttles retries after a failure, and serves a stale list
+	 * rather than re-hitting a down gateway.
+	 */
+	private async refreshHostedMcpServers(): Promise<void> {
+		const fresh =
+			this.hostedMcpServers !== null &&
+			Date.now() - this.hostedFetchedAt <= AiGatewayService.CONFIG_TTL_MS;
+		if (fresh) return;
+
+		if (
+			this.hostedFetchFailedAt > 0 &&
+			Date.now() - this.hostedFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
+		) {
+			if (this.hostedMcpServers !== null) return;
+			throw new OperationalError(
+				'Gateway credits MCP server fetch recently failed; retry is throttled.',
+			);
+		}
+
+		const baseUrl = this.requireBaseUrl();
+		try {
+			const data = await this.gatewayRequest<unknown>(
+				{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers` },
+				'Failed to fetch Gateway credits MCP servers',
+			);
+			const parsed = AiGatewayMcpServersResponse.safeParse(data);
+			if (!parsed.success) {
+				throw new UserError('Gateway credits returned an invalid MCP servers response.');
+			}
+			this.hostedMcpServers = parsed.data.servers.map((server) =>
+				mcpServerToRegistryServer(server, baseUrl),
+			);
+			this.hostedFetchedAt = Date.now();
+			this.hostedFetchFailedAt = 0;
+		} catch (error) {
+			this.hostedFetchFailedAt = Date.now();
+			throw error;
+		}
+	}
+
 	async isAvailable(): Promise<AiGatewayAvailability> {
 		if (!this.isEnabled()) return { available: false };
 		try {

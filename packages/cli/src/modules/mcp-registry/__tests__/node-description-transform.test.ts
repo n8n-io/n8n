@@ -840,6 +840,10 @@ describe('serverToCredentialDescription', () => {
 });
 
 describe('getMcpRegistryCredentialTypeName', () => {
+	it('suffixes by auth type so the runtime picks the right auth strategy', () => {
+		expect(getMcpRegistryCredentialTypeName(notionMockServer)).toBe('notionMcpOAuth2Api');
+	});
+
 	it.each([
 		{ slug: 'notion', expected: 'notionMcpOAuth2Api' },
 		{ slug: 'linear', expected: 'linearMcpOAuth2Api' },

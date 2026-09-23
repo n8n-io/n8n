@@ -3,7 +3,9 @@ import {
 	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
 	type ICredentialTypes,
+	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
+	type McpGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	type PrepareMcpRegistryConnectionInput,
@@ -25,10 +27,28 @@ export function getMcpRegistryCredentialTypeName(
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+export function getMcpRegistryGatewayCredentialTypeName(
+	server: McpRegistryServer,
+): McpGatewayCredentialType {
+	return `${camelCase(server.slug)}McpGatewayApi`;
+}
+
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
 	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
+	// A gateway-hosted server authenticates with the minted Gateway credential, not
+	// an OAuth2 one, so its binding must carry the gateway credential type — else it
+	// never matches the node's credential and the connection resolves to nothing.
+	if (server.authType === 'gateway') {
+		return [
+			{
+				credentialType: getMcpRegistryGatewayCredentialTypeName(server),
+				name: 'Gateway credits',
+				value: 'gateway',
+			},
+		];
+	}
 	return [
 		{
 			credentialType: getMcpRegistryCredentialTypeName(server),
@@ -67,7 +87,9 @@ export function resolveMcpRegistryConnection(
 	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
 	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
 		({ credentialType, value }) =>
-			isMcpOAuth2Authentication(credentialType) ? [{ credentialType, selector: value }] : [],
+			isMcpOAuth2Authentication(credentialType) || isMcpGatewayAuthentication(credentialType)
+				? [{ credentialType, selector: value }]
+				: [],
 	);
 
 	// A templated remote's url is an unresolved `$self`-expression, not a

@@ -8,6 +8,9 @@ const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
 export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
 
+/** Either credential kind an MCP registry binding can carry: user OAuth2 or gateway-managed. */
+export type McpRegistryCredentialType = McpOAuth2CredentialType | McpGatewayCredentialType;
+
 interface McpRegistryConnectionBase {
 	nodeTypeName: string;
 	transport: 'httpStreamable' | 'sse';
@@ -19,7 +22,7 @@ interface McpRegistryConnectionBase {
 }
 
 export interface McpRegistryCredentialBinding {
-	credentialType: McpOAuth2CredentialType;
+	credentialType: McpRegistryCredentialType;
 	selector: string;
 }
 
@@ -60,7 +63,7 @@ export function getConfiguredEndpointUrl(connection: McpRegistryConnection): str
 
 export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
-	credentialType: McpOAuth2CredentialType;
+	credentialType: McpRegistryCredentialType;
 	credentialData: ICredentialDataDecryptedObject;
 	headers?: Record<string, string>;
 }
@@ -70,7 +73,7 @@ export type PrepareMcpRegistryConnectionResult =
 			ok: true;
 			value: {
 				nodeTypeName: string;
-				credentialType: McpOAuth2CredentialType;
+				credentialType: McpRegistryCredentialType;
 				transport: 'httpStreamable' | 'sse';
 				/** Always a literal URL, templated or not. */
 				endpointUrl: string;
@@ -145,7 +148,9 @@ export function getMcpAuthHeaders(
 			: {};
 	}
 
-	if (authentication === 'bearerAuth') {
+	if (authentication === 'bearerAuth' || isMcpGatewayAuthentication(authentication)) {
+		// A gateway-hosted server's synthetic credential carries the minted Gateway
+		// token as `token`, sent as a plain bearer to the gateway's MCP endpoint.
 		return typeof credentialData.token === 'string' && credentialData.token.length > 0
 			? { ['Authorization']: `Bearer ${credentialData.token}` }
 			: {};
@@ -171,4 +176,19 @@ export function getMcpAuthHeaders(
 			return typeof name === 'string' && typeof value === 'string' ? [[name, value]] : [];
 		}),
 	);
+}
+
+/** Covers `mcpGatewayApi` and registry-specific variants like `firecrawlMcpGatewayApi`. */
+export type McpGatewayCredentialType = 'mcpGatewayApi' | `${string}McpGatewayApi`;
+
+/**
+ * Returns `true` for `mcpGatewayApi` and any type ending in `McpGatewayApi`
+ * (e.g. `firecrawlMcpGatewayApi`). Tells the MCP runtime to read a bearer token
+ * from the credential; the `__aiGatewayManaged` marker on the entry is what
+ * decides the token is minted per execution rather than loaded.
+ */
+export function isMcpGatewayAuthentication(
+	authentication: string,
+): authentication is McpGatewayCredentialType {
+	return authentication === 'mcpGatewayApi' || authentication.endsWith('McpGatewayApi');
 }

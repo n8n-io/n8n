@@ -8,7 +8,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
-	type McpOAuth2CredentialType,
 	type McpRegistryRuntime,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
@@ -24,6 +23,7 @@ import {
 	loadMcpToolOptions,
 	type ResolvedMcpConfig,
 } from '../shared/runtime';
+import type { McpRegistryCredentialType } from '../shared/types';
 
 /**
  * Nodes from the MCP registry are saved as `@n8n/mcp-registry.<slug>`
@@ -241,7 +241,7 @@ function resolveConfig(
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
 	resolved: ResolvedMcpRegistryConnection,
-): McpOAuth2CredentialType {
+): McpRegistryCredentialType {
 	const node = ctx.getNode();
 	const { credentialType } = resolved.binding;
 	if (!Object.hasOwn(node.credentials ?? {}, credentialType)) {

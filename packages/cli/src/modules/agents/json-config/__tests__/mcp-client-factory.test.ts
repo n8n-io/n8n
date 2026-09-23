@@ -7,6 +7,7 @@ import { UserError } from 'n8n-workflow';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import {
+	type AiGatewayMcpCredentialResolver,
 	buildMcpClientForServer,
 	listMcpServerTools,
 	mapApprovalToSdk,
@@ -153,6 +154,59 @@ describe('buildMcpClientForServer — header derivation', () => {
 			{ oauthTokenData: { access_token: 'oauth-token' } },
 		);
 		expect(headers.Authorization).toBe('Bearer oauth-token');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — gateway-hosted registry server
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — gateway-hosted registry server', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	it('mints the managed gateway token from the connection binding and sends it as a bearer', async () => {
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		// A gateway-hosted server has no stored credential to resolve; the token is
+		// minted on demand, keyed by the gateway credential type the node binds.
+		credentialProvider.resolveAiGatewayMcpCredential.mockResolvedValue({
+			token: 'gw-jwt',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		const server = makeServer({
+			name: 'firecrawl-mcp',
+			authentication: 'none',
+			url: 'http://localhost:3000/v1/gateway/mcp/firecrawl',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+		} as never);
+
+		await buildMcpClientForServer(server, {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+			resolveRegistryConnection: async () => ({
+				nodeTypeName: '@n8n/mcp-registry.firecrawl',
+				endpointUrl: 'http://localhost:3000/v1/gateway/mcp/firecrawl',
+				endpointHostname: 'localhost',
+				transport: 'httpStreamable',
+				isTemplated: false,
+				credentialBindings: [{ credentialType: 'firecrawlMcpGatewayApi', selector: 'gateway' }],
+			}),
+		});
+
+		expect(credentialProvider.resolveAiGatewayMcpCredential).toHaveBeenCalledWith(
+			'firecrawlMcpGatewayApi',
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await configs[0].fetch('http://localhost:3000/v1/gateway/mcp/firecrawl');
+		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
+		expect(headersToCaseInsensitiveRecord(init.headers).Authorization).toBe('Bearer gw-jwt');
 	});
 });
 

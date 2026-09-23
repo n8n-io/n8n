@@ -148,6 +148,26 @@ describe('McpRegistryClientTool', () => {
 			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
 		});
 
+		it('accepts a Gateway credits credential type', async () => {
+			const ctx = createLoadOptionsCtx(
+				{ serverTransport: 'httpStreamable', endpointUrl: 'https://gw.example.com/mcp' },
+				{ credentials: { firecrawlMcpGatewayApi: {} } },
+			);
+			loadMcpToolOptionsMock.mockResolvedValue([]);
+
+			// Gateway servers ride the same registry-credential path as OAuth2 ones;
+			// the binding carries the minted gateway credential type.
+			const node = createRegisteredNode('https://gw.example.com/mcp', 'httpStreamable', [
+				{ credentialType: 'firecrawlMcpGatewayApi', selector: 'gateway' },
+			]);
+			await node.methods.loadOptions.getTools.call(ctx);
+
+			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
+				ctx,
+				expect.objectContaining({ authentication: 'firecrawlMcpGatewayApi' }),
+			);
+		});
+
 		it('throws an error when no OAuth2 credentials are defined on the node', async () => {
 			const ctx = createLoadOptionsCtx(
 				{

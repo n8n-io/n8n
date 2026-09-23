@@ -1,5 +1,11 @@
 import type { JSONSchema7 } from 'json-schema';
-import { isMcpOAuth2Authentication, type McpOAuth2CredentialType } from 'n8n-workflow';
+import {
+	isMcpGatewayAuthentication,
+	isMcpOAuth2Authentication,
+	type McpGatewayCredentialType,
+	type McpOAuth2CredentialType,
+	type McpRegistryCredentialType,
+} from 'n8n-workflow';
 
 export type McpTool = { name: string; description?: string; inputSchema: JSONSchema7 };
 
@@ -10,6 +16,12 @@ export type McpAuthenticationOption =
 	| 'headerAuth'
 	| 'bearerAuth'
 	| 'multipleHeadersAuth'
-	| McpOAuth2CredentialType;
+	| McpRegistryCredentialType;
 
-export { isMcpOAuth2Authentication, type McpOAuth2CredentialType };
+export {
+	isMcpGatewayAuthentication,
+	isMcpOAuth2Authentication,
+	type McpGatewayCredentialType,
+	type McpOAuth2CredentialType,
+	type McpRegistryCredentialType,
+};

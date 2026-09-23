@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';
 import { McpRegistryNodeLoader } from '../../mcp-registry-node-loader';
@@ -27,6 +28,8 @@ function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
 	instanceType?: 'main' | 'worker';
+	/** n8n Connect enabled — gates `authType: 'gateway'` entries out of every read. */
+	aiGatewayEnabled?: boolean;
 };
 
 function createService(options: CreateServiceOptions = {}) {
@@ -43,6 +46,10 @@ function createService(options: CreateServiceOptions = {}) {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
 	const push = mock<Push>({ broadcast: vi.fn() });
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
+	const aiGatewayService = mock<AiGatewayService>({
+		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
+		getHostedMcpServers: vi.fn().mockResolvedValue([]),
+	});
 
 	if (options.storedServers === null) {
 		repository.find.mockResolvedValue([]);
@@ -83,12 +90,14 @@ function createService(options: CreateServiceOptions = {}) {
 		loadNodesAndCredentials,
 		push,
 		publisher,
+		aiGatewayService,
 	);
 
 	return {
 		service,
 		repository,
 		apiClient,
+		aiGatewayService,
 		push,
 		publisher,
 		loadNodesAndCredentials,
