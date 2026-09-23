@@ -450,28 +450,12 @@ export function useCredentialOAuth() {
 					credentialTypeName,
 					fallbackName: credentialType.displayName,
 				}));
-<<<<<<< HEAD
-			credential = await credentialsStore.createNewCredential(
-				{
-					id: '',
-					name,
-					type: credentialTypeName,
-					data,
-				},
-				options.projectId ?? projectsStore.currentProject?.id,
-				undefined,
-				{ skipStoreUpdate: true },
-			);
-=======
 			credential =
 				existingCredential ??
 				(await credentialsStore.createNewCredential(
 					{
 						id: '',
 						name,
-						...(credentialDescriptionsEnabled.value && options.description !== undefined
-							? { description: options.description }
-							: {}),
 						type: credentialTypeName,
 						data,
 					},
@@ -479,7 +463,6 @@ export function useCredentialOAuth() {
 					undefined,
 					{ skipStoreUpdate: true },
 				));
->>>>>>> 1e1f3cb7 (fix(editor): Improve n8n Assistant async credential setup (no-changelog) (#39229))
 
 			if (!existingCredential)
 				telemetry.track('User created credentials', {
