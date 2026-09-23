@@ -117,7 +117,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, attachments } = payload;
+		const { message, sessionId, newSession, attachments } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -135,6 +135,8 @@ export class AgentChatController {
 				projectId,
 				user: req.user,
 				sessionId,
+				previewChat: true,
+				newSession,
 				credentialProvider,
 			});
 			if (abortSignal.aborted) return;
@@ -169,6 +171,7 @@ export class AgentChatController {
 				attachments: storedAttachments,
 				user: req.user,
 				sessionId: threadId,
+				sessionMode: prepared.sessionMode,
 				previewChat: true,
 				errorMode: 'forward',
 				onChunk,
@@ -319,7 +322,7 @@ export class AgentChatController {
 					undefined
 				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
 					(!thread &&
-						!(await this.agentExecutionService.canUsePreviewThread(
+						!(await this.agentExecutionService.canUseDraftThread(
 							threadId,
 							projectId,
 							agentId,
@@ -346,7 +349,7 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
-			!(await this.agentExecutionService.canUsePreviewThread(
+			!(await this.agentExecutionService.canUseDraftThread(
 				chatThreadId(agentId, req.user.id),
 				projectId,
 				agentId,
@@ -436,7 +439,7 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
-			!(await this.agentExecutionService.canUsePreviewThread(
+			!(await this.agentExecutionService.canUseDraftThread(
 				chatThreadId(agentId, req.user.id),
 				projectId,
 				agentId,

@@ -111,8 +111,8 @@ export class EngineV2Dispatcher {
 				// workflow that ran even after the live one is edited.
 				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
-				// Only manual, webhook and trigger route here, so anything that is not a
-				// manual run is a production run.
+				// The engine keeps only a coarse manual/production distinction. The exact
+				// host mode is carried in callerContext for reads and lifecycle events.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',
 				// The step executor needs the v1 mode and the caller to resolve credentials.
 				callerContext: {

@@ -33,7 +33,7 @@ const SET = 'n8n-nodes-base.set';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'activeWorkflows', 'type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;

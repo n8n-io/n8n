@@ -28,7 +28,7 @@ const SearchExecutionsBody = z
 	.object({
 		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
 		status: z.array(ExecutionStatusSchema).min(1).optional(),
-		mode: z.string().min(1).max(32).optional(),
+		hostMode: z.string().min(1).max(32).optional(),
 		createdAfter: datetimeStringWithOffset().optional(),
 		createdBefore: datetimeStringWithOffset().optional(),
 		before: z
@@ -80,6 +80,7 @@ function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): Ex
 		workflowId: record.workflowId,
 		status: record.status,
 		mode: record.mode,
+		hostMode: record.hostMode,
 		graph: record.graph,
 		workflow: record.workflow,
 		createdAt: record.createdAt.toISOString(),

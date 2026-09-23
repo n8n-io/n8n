@@ -21,6 +21,10 @@ export default defineConfig({
 						rule: 'no-unsealed-workflow-entity-write',
 						message: 'Route the write through a token-gated `WorkflowRepository` method.',
 					},
+					{
+						rule: 'no-unsealed-credentials-entity-write',
+						message: 'Route the write through a token-gated `CredentialsRepository` method.',
+					},
 				],
 			},
 		],

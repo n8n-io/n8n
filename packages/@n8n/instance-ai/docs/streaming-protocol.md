@@ -306,6 +306,20 @@ progress indicator from this data.
 }
 ```
 
+### `instance-context`
+
+The server publishes a context summary before the agent starts. The raw block
+stays on the server. An injected block has
+`{ state: 'injected', isUpdate, legs, chars }`. A failed read has
+`{ state: 'absent', reason: 'failed' }`.
+
+Empty results, disabled instance gates, and machine follow-ups emit no trace row.
+Telemetry still records these outcomes for comparison.
+
+The reducer stores one row per run on the root agent timeline. History replay
+restores it. The `contextReach` field on `run-finish` adds reads from all segments,
+including reads before a suspension.
+
 ### `setup-items`
 
 The setup panel checklist for a workflow (service-keyed items, kinds
@@ -665,7 +679,7 @@ creating duplicate messages.
 | Event Type | Payload Key Fields | Purpose |
 |------------|-------------------|---------|
 | `run-start` | `messageId` | First event in a run |
-| `run-finish` | `status`, `reason?` | Ends orchestrator streaming; detached events can follow |
+| `run-finish` | `status`, `reason?`, `contextReach?` | Ends orchestrator streaming; detached events can follow |
 | `text-delta` | `text` | Incremental agent text |
 | `reasoning-delta` | `text` | Incremental agent reasoning |
 | `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation (before execution) |
@@ -675,6 +689,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `instance-context` | `injection` | What the turn was handed as instance context (once, before the agent runs) |
 | `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |

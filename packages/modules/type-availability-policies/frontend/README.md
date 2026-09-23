@@ -7,7 +7,7 @@ The descriptor `id` must match the backend module id
 (`packages/cli/src/modules/type-availability-policies`). Both `settings.activeModules` and
 `/rest/module-settings` are keyed by that string, and a mismatch fails silently.
 
-The module is license-gated on `feat:nodeTypePolicies` and is not a default module. Enable it
+The module is license-gated on `feat:typeAvailabilityPolicies` and is not a default module. Enable it
 in a dev instance with `N8N_ENABLED_MODULES=type-availability-policies`.
 
 `useTypeAvailabilityPoliciesStore` answers whether a project may use a node type. The store is

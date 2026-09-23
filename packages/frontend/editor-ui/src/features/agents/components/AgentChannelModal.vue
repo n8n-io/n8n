@@ -12,6 +12,7 @@ import {
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentApproval } from '@n8n/api-types';
 import { FocusScope } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
@@ -28,6 +29,7 @@ import type {
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
 
 export type ChannelView = AgentChannelView;
@@ -63,6 +65,7 @@ const {
 	fetchStatus,
 	connectedCredentials,
 	integrationSettings,
+	integrationApproval,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -179,6 +182,10 @@ const currentPlatform = computed(() =>
 );
 const currentRuntime = computed(() => runtimeFor(selectedChannelType.value ?? 'unknown'));
 const channelViewRef = ref<AgentChannelViewExpose>();
+/** Pending approval edit for the channel being edited, seeded from what is saved. */
+const channelApproval = ref<AgentApproval | undefined>();
+const channelApprovalValid = ref(true);
+const approvableActions = computed(() => currentIntegration.value?.approvableActions ?? []);
 const channelViewLoading = computed(() => channelViewRef.value?.loading === true);
 /**
  * Persisting the Agent and setting the channel up are one action from here: the
@@ -220,6 +227,7 @@ const headerContentComponent = computed(() => {
 const canClose = computed(() => !actionInFlight.value);
 function prepareChannelEdit(channelType: string | null) {
 	captureConnectedCredential(channelType);
+	channelApproval.value = channelType ? integrationApproval.value[channelType] : undefined;
 	if (!channelType) return;
 	clearIntegrationError(channelType);
 	if (credentialIdAtEditOpen.value) {
@@ -245,7 +253,8 @@ const canSaveChannelConfig = computed(() => {
 		selectedChannelType.value !== null &&
 		currentChannelCredentialId.value.length > 0 &&
 		!channelViewLoading.value &&
-		!channelViewRef.value?.validationError
+		!channelViewRef.value?.validationError &&
+		channelApprovalValid.value
 	);
 });
 
@@ -306,7 +315,7 @@ function goToEdit(channelType: string) {
 
 function goBackToList() {
 	if (actionInFlight.value) return;
-	captureConnectedCredential(null);
+	prepareChannelEdit(null);
 	currentView.value = 'list';
 }
 
@@ -387,6 +396,8 @@ async function saveChannelConfig() {
 		if (!(await runBeforeSave())) return;
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			// Only the edit view shows the approval control, so only it may carry one.
+			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
@@ -650,6 +661,13 @@ watch(
 						@edit="editCredential"
 						@connect="saveChannelConfig"
 						@connected="handlePlatformConnected"
+					/>
+
+					<AgentChannelApprovalSetting
+						v-if="isEditMode && approvableActions.length > 0"
+						v-model="channelApproval"
+						:actions="approvableActions"
+						@update:valid="channelApprovalValid = $event"
 					/>
 				</div>
 			</Transition>

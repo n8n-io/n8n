@@ -16,8 +16,11 @@ import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
+	DropdownMenuWidthKey,
+	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
+	type DropdownMenuSearchMode,
 } from './DropdownMenu.types';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 import N8nText from '../N8nText/Text.vue';
@@ -30,6 +33,7 @@ const props = withDefaults(
 			htmlId?: string;
 			disablePointerFocus?: boolean;
 			closeOnSelect?: boolean;
+			searchMode?: DropdownMenuSearchMode;
 		}
 	>(),
 	{
@@ -37,6 +41,7 @@ const props = withDefaults(
 		disablePointerFocus: false,
 		checkbox: false,
 		closeOnSelect: true,
+		searchMode: 'internal',
 	},
 );
 defineSlots<DropdownMenuItemSlots<T, D>>();
@@ -51,6 +56,8 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
+const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
@@ -107,13 +114,68 @@ const handleItemSelect = (event: Event) => {
 };
 
 const handlePointerMove = (event: PointerEvent) => {
+	if (props.disablePointerFocus && props.searchMode === 'external') event.preventDefault();
 	emit('pointermove', event);
+};
+
+const openSubMenu = () => {
+	if (props.disabled || internalSubMenuOpen.value) return;
+	handleSubMenuOpenChange(true);
+};
+
+const handleSelectableParentKeydown = (event: KeyboardEvent) => {
+	if (
+		!props.selectable ||
+		props.disabled ||
+		event.key !== 'Enter' ||
+		event.isComposing ||
+		event.keyCode === 229
+	) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	emit('select', props.id);
+};
+
+const handleSelectableParentClick = (event: MouseEvent) => {
+	if (props.disabled) return;
+	event.preventDefault();
+	emit('select', props.id);
+};
+
+const handleSubMenuIndicatorClick = (event: MouseEvent) => {
+	event.preventDefault();
+	openSubMenu();
+	if (props.searchMode === 'external') externalNavigation?.focusTarget();
+};
+
+const handleSubMenuTriggerClick = (event: MouseEvent) => {
+	if (!props.disablePointerFocus || props.searchMode !== 'external') return;
+
+	const action = (event.target as HTMLElement | null)?.closest?.('[data-sub-menu-action]');
+	if (props.selectable && action) return;
+
+	event.preventDefault();
+	openSubMenu();
+	if (props.searchMode === 'external') externalNavigation?.focusTarget();
 };
 
 const handleSubContentFocusOutside = (event: Event) => {
 	if (props.disablePointerFocus) {
 		event.preventDefault();
 	}
+};
+
+const handleSubContentOpenAutoFocus = (event: Event) => {
+	if (props.searchMode !== 'external') return;
+	event.preventDefault();
+	externalNavigation?.focusTarget();
+};
+
+const handleSubContentCloseAutoFocus = (event: Event) => {
+	if (props.searchMode === 'external') event.preventDefault();
 };
 
 const updateSubContentMaxHeight = async () => {
@@ -207,6 +269,8 @@ onBeforeUnmount(() => {
 					props.class,
 					{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
 				]"
+				@keydown.capture="handleSelectableParentKeydown"
+				@click.capture="handleSubMenuTriggerClick"
 				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -221,7 +285,24 @@ onBeforeUnmount(() => {
 						{{ icon.value }}
 					</span>
 				</slot>
-				<slot name="item-label" :item="props" :ui="labelProps">
+				<span
+					v-if="selectable"
+					:class="$style['selectable-label']"
+					data-sub-menu-action="select"
+					@click.stop="handleSelectableParentClick"
+				>
+					<slot name="item-label" :item="props" :ui="labelProps">
+						<N8nText
+							:class="$style['item-label']"
+							:title="titleAttr"
+							size="medium"
+							:color="disabled ? 'text-xlight' : 'text-dark'"
+						>
+							{{ label }}
+						</N8nText>
+					</slot>
+				</span>
+				<slot v-else name="item-label" :item="props" :ui="labelProps">
 					<N8nText
 						:class="$style['item-label']"
 						:title="titleAttr"
@@ -231,7 +312,21 @@ onBeforeUnmount(() => {
 						{{ label }}
 					</N8nText>
 				</slot>
+				<span
+					v-if="selectable"
+					:class="$style['sub-indicator-action']"
+					data-sub-menu-action="open"
+					@click.stop="handleSubMenuIndicatorClick"
+				>
+					<Icon
+						icon="chevron-right"
+						:class="$style['sub-indicator']"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+						size="large"
+					/>
+				</span>
 				<Icon
+					v-else
 					icon="chevron-right"
 					:class="$style['sub-indicator']"
 					:color="disabled ? 'text-xlight' : 'text-light'"
@@ -245,20 +340,26 @@ onBeforeUnmount(() => {
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
+						{ '--n8n--dropdown-menu-width': menuWidth },
 					]"
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
+					@open-auto-focus="handleSubContentOpenAutoFocus"
+					@close-auto-focus="handleSubContentCloseAutoFocus"
 					@focus-outside="handleSubContentFocusOutside"
 				>
 					<DropdownMenuSearchableContent
-						v-if="searchable"
+						v-if="searchable || searchMode === 'external'"
 						:open="internalSubMenuOpen"
 						:items="children ?? []"
 						:search-placeholder="searchPlaceholder"
+						:search-mode="searchMode"
+						:is-sub-menu="true"
 						@select="handleSelect"
 						@search="(term: string, itemId?: T) => emit('search', term, itemId ?? props.id)"
 						@close="closeSubMenu"
+						@back="closeSubMenu"
 					>
 						<template #default="searchableContent">
 							<div v-if="loading" :class="$style['loading-container']">
@@ -283,6 +384,7 @@ onBeforeUnmount(() => {
 											:highlighted="searchableContent.highlightedIndex === childIndex"
 											:sub-menu-open="searchableContent.openSubMenuIndex === childIndex"
 											:disable-pointer-focus="true"
+											:search-mode="searchMode"
 											:divided="child.divided && childIndex > 0"
 											@select="handleSelect"
 											@search="handleChildSearch"
@@ -324,6 +426,7 @@ onBeforeUnmount(() => {
 									<N8nDropdownMenuItem
 										v-bind="child"
 										:divided="child.divided && childIndex > 0"
+										:search-mode="searchMode"
 										@select="handleSelect"
 										@search="handleChildSearch"
 									>
@@ -509,12 +612,6 @@ onBeforeUnmount(() => {
 
 .sub-trigger {
 	&:not([data-disabled]) {
-		&:hover,
-		&[data-highlighted] {
-			background-color: transparent;
-			cursor: pointer;
-		}
-
 		&[aria-selected='true'],
 		&[data-state='open'] {
 			background-color: var(--background--hover);
@@ -529,14 +626,30 @@ onBeforeUnmount(() => {
 	color: var(--color--text--tint-1);
 }
 
+.selectable-label {
+	display: flex;
+	flex-grow: 1;
+	min-width: 0;
+}
+
+.sub-indicator-action {
+	display: flex;
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.sub-indicator-action .sub-indicator {
+	margin-left: 0;
+}
+
 .sub-content {
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
 	z-index: var.$index-popper;
 	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
-	max-width: var(--n8n--dropdown-menu-width);
+	min-width: calc(var(--n8n--dropdown-menu-width, 24rem) / 4);
+	max-width: var(--n8n--dropdown-menu-width, 24rem);
 	max-height: min(
 		var(--reka-dropdown-menu-content-available-height),
 		var(--n8n-dropdown-sub-max-height, 75vh)
