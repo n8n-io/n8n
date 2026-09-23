@@ -810,7 +810,7 @@ export function createSeedReviews(
 						at: 0,
 						label: 'Investigation skipped. Nothing in the workflow to change',
 					},
-					{ type: 'event', at: 0, label: 'Sent to your inbox as Needs you' },
+					{ type: 'event', at: 0, label: 'Sent to your inbox as Action needed' },
 				],
 			},
 			nextEntryId,
