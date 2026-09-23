@@ -59,13 +59,22 @@ const availableCredentials = computed(() => {
 	);
 });
 
+const selectedCredentialName = computed(() => {
+	for (const credentialRef of props.credentials) {
+		if (!credentialRef.credentialId) continue;
+		const credential = adapter
+			?.getCredentialsByType(credentialRef.authType)
+			.find(({ id }) => id === credentialRef.credentialId);
+		if (credential) return credential.name;
+	}
+	return undefined;
+});
+
 const statusLabel = computed(() => {
-	if (props.item.status === 'connected') {
-		return i18n.baseText('tools.connection.action.connected');
-	}
-	if (props.item.status === 'disconnected') {
+	if (selectedCredentialName.value) return selectedCredentialName.value;
+	if (props.item.status === 'connected') return i18n.baseText('tools.connection.action.connected');
+	if (props.item.status === 'disconnected')
 		return i18n.baseText('tools.connection.action.reconnect');
-	}
 	return '';
 });
 
@@ -150,15 +159,16 @@ function editCredential(credentialId: string) {
 				v-if="item.status === 'disconnected'"
 				variant="outline"
 				size="small"
+				:class="$style.disconnectedTrigger"
 				data-test-id="tool-credential-picker-trigger-disconnected"
 			>
 				<N8nIcon
 					icon="circle-x"
-					:size="14"
+					:size="16"
 					:class="$style.statusIconDisconnected"
 					aria-hidden="true"
 				/>
-				<span>{{ statusLabel }}</span>
+				<span :class="$style.statusLabel" :title="statusLabel">{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</N8nButton>
 			<button
@@ -167,8 +177,8 @@ function editCredential(credentialId: string) {
 				:class="$style.statusPill"
 				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
-				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
-				<span>{{ statusLabel }}</span>
+				<N8nIcon icon="check" :size="12" :class="$style.statusIconConnected" aria-hidden="true" />
+				<span :class="$style.statusLabel" :title="statusLabel">{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>
 			<N8nButton
@@ -270,17 +280,36 @@ function editCredential(credentialId: string) {
 .statusPill {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--3xs);
+	gap: var(--spacing--4xs);
+	min-height: var(--height--xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
+}
+
+.statusMarker {
+	border: var(--border-width) dashed var(--border-color);
+	border-radius: var(--radius--3xs);
 }
 
 .statusPill {
 	background: none;
 	border: 0;
 	cursor: pointer;
+	max-width: 180px;
+}
+
+.disconnectedTrigger {
+	max-width: 180px;
+	white-space: nowrap;
+}
+
+.statusLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .statusIconConnected,

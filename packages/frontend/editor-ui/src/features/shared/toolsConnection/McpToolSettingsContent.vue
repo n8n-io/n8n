@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import {
-	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nDialogFooter,
@@ -21,9 +20,15 @@ import {
 	type McpToolPermission,
 } from '@n8n/api-types';
 
-const props = defineProps<{
-	item: McpServerConnectionItem;
-}>();
+const props = withDefaults(
+	defineProps<{
+		item: McpServerConnectionItem;
+		actor?: 'assistant' | 'agent';
+	}>(),
+	{
+		actor: 'assistant',
+	},
+);
 
 const emit = defineEmits<{
 	save: [settings: McpToolSettings];
@@ -51,6 +56,16 @@ const recoveryActionKey = computed<BaseTextKey>(() =>
 	props.item.connectionFailureReason === 'authentication'
 		? 'tools.connection.action.reconnect'
 		: 'generic.retry',
+);
+const permissionDescriptionKey = computed<BaseTextKey>(() =>
+	props.actor === 'agent'
+		? 'tools.connection.permissions.description.agent'
+		: 'tools.connection.permissions.description.assistant',
+);
+const writeConfirmationDescriptionKey = computed<BaseTextKey>(() =>
+	props.actor === 'agent'
+		? 'tools.connection.permissions.write.confirm.description.agent'
+		: 'tools.connection.permissions.write.confirm.description.assistant',
 );
 
 const initialSettings = (): McpToolSettings =>
@@ -126,7 +141,7 @@ async function updateCategory(category: McpToolCategory, permission: McpToolPerm
 			(tool) => (tool.category ?? 'write') === 'write',
 		).length;
 		const confirmed = await message.confirm(
-			i18n.baseText('tools.connection.permissions.write.confirm.description.assistant', {
+			i18n.baseText(writeConfirmationDescriptionKey.value, {
 				interpolate: { server: props.item.title, count: writeToolCount },
 			}),
 			{
@@ -228,85 +243,44 @@ function handleRecovery() {
 					{{ i18n.baseText('tools.connection.permissions.title') }}
 				</N8nText>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('tools.connection.permissions.description.assistant') }}
+					{{ i18n.baseText(permissionDescriptionKey) }}
 				</N8nText>
 			</div>
 
-			<div v-for="group in groups" :key="group.category" :class="$style.permissionGroup">
-				<div :class="$style.groupHeader">
-					<N8nButton
-						variant="subtle"
-						size="small"
-						icon-only
-						:disabled="arePermissionsDisabled"
-						:aria-label="group.title"
-						:aria-expanded="expandedCategory === group.category"
-						@click="expandedCategory = expandedCategory === group.category ? null : group.category"
-					>
-						<N8nIcon
-							:icon="expandedCategory === group.category ? 'chevron-down' : 'chevron-right'"
-							:size="16"
-						/>
-					</N8nButton>
-					<div :class="$style.groupSummary">
-						<div :class="$style.groupTitle">
-							<N8nText bold>{{ group.title }}</N8nText>
-							<N8nBadge
-								:show-border="false"
-								:data-test-id="`tools-connection-count-${group.category}`"
-								theme="tertiary"
-								size="xsmall"
-							>
-								{{ arePermissionsDisabled ? '—' : group.tools.length }}
-							</N8nBadge>
-						</div>
-						<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
-					</div>
-					<N8nSelect
-						:class="$style.permissionSelect"
-						:model-value="
-							hasCategoryOverrides(group.category) ? undefined : categories[group.category]
-						"
-						:placeholder="hasCategoryOverrides(group.category) ? ' ' : undefined"
-						size="small"
-						:disabled="arePermissionsDisabled"
-						:data-test-id="`tools-connection-permission-${group.category}`"
-						@update:model-value="onCategoryChange(group.category, $event)"
-					>
-						<template v-if="hasCategoryOverrides(group.category)" #prefix>
-							<N8nText size="small">
-								{{ i18n.baseText('tools.connection.permissions.custom') }}
-							</N8nText>
-						</template>
-						<N8nOption
-							v-for="option in permissionOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</div>
-
-				<div v-if="expandedCategory === group.category" :class="$style.toolList">
-					<div v-for="tool in group.tools" :key="tool.id" :class="$style.toolRow">
-						<div :class="$style.toolSummary">
-							<N8nText size="small" bold>{{ tool.name }}</N8nText>
-							<N8nText
-								v-if="tool.description"
-								:class="$style.toolDescription"
-								:title="tool.description"
-								size="small"
-								color="text-light"
-							>
-								{{ tool.description }}
-							</N8nText>
+			<div
+				:class="[
+					$style.permissionGroups,
+					{ [$style.permissionGroupsDisabled]: arePermissionsDisabled },
+				]"
+				:data-disabled="arePermissionsDisabled || undefined"
+			>
+				<div v-for="group in groups" :key="group.category" :class="$style.permissionGroup">
+					<div :class="$style.groupHeader">
+						<div :class="$style.groupSummary">
+							<div :class="$style.groupTitle">
+								<N8nText :class="$style.groupTitleText">{{ group.title }}</N8nText>
+								<span
+									:class="$style.countBadge"
+									:data-test-id="`tools-connection-count-${group.category}`"
+								>
+									<N8nText size="xsmall" bold compact>
+										{{ arePermissionsDisabled ? '—' : group.tools.length }}
+									</N8nText>
+								</span>
+							</div>
+							<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
 						</div>
 						<N8nSelect
 							:class="$style.permissionSelect"
-							:model-value="toolPermissions[tool.id] ?? categories[group.category]"
+							:model-value="
+								hasCategoryOverrides(group.category)
+									? i18n.baseText('tools.connection.permissions.custom')
+									: categories[group.category]
+							"
 							size="small"
 							:disabled="arePermissionsDisabled"
-							@update:model-value="onToolChange(tool.id, group.category, $event)"
+							:data-test-id="`tools-connection-permission-${group.category}`"
+							@update:model-value="onCategoryChange(group.category, $event)"
 						>
 							<N8nOption
 								v-for="option in permissionOptions"
@@ -315,6 +289,53 @@ function handleRecovery() {
 								:label="option.label"
 							/>
 						</N8nSelect>
+						<N8nButton
+							variant="outline"
+							size="small"
+							icon-only
+							:disabled="arePermissionsDisabled"
+							:aria-label="group.title"
+							:aria-expanded="expandedCategory === group.category"
+							@click="
+								expandedCategory = expandedCategory === group.category ? null : group.category
+							"
+						>
+							<N8nIcon
+								:icon="expandedCategory === group.category ? 'chevron-up' : 'chevron-down'"
+								:size="16"
+							/>
+						</N8nButton>
+					</div>
+
+					<div v-if="expandedCategory === group.category" :class="$style.toolList">
+						<div v-for="tool in group.tools" :key="tool.id" :class="$style.toolRow">
+							<div :class="$style.toolSummary">
+								<N8nText size="small">{{ tool.name }}</N8nText>
+								<N8nText
+									v-if="tool.description"
+									:class="$style.toolDescription"
+									:title="tool.description"
+									size="small"
+									color="text-light"
+								>
+									{{ tool.description }}
+								</N8nText>
+							</div>
+							<N8nSelect
+								:class="[$style.permissionSelect, $style.toolPermissionSelect]"
+								:model-value="toolPermissions[tool.id] ?? categories[group.category]"
+								size="small"
+								:disabled="arePermissionsDisabled"
+								@update:model-value="onToolChange(tool.id, group.category, $event)"
+							>
+								<N8nOption
+									v-for="option in permissionOptions"
+									:key="option.value"
+									:value="option.value"
+									:label="option.label"
+								/>
+							</N8nSelect>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -379,19 +400,30 @@ function handleRecovery() {
 	color: var(--color--text);
 }
 
+.permissionGroups {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.permissionGroupsDisabled {
+	opacity: 0.5;
+}
+
 .permissionGroup {
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 	border: var(--border);
-	border-radius: var(--radius--md);
+	border-radius: var(--radius--xs);
 }
 
-.groupHeader,
-.toolRow {
+.groupHeader {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs);
+	gap: var(--spacing--xs);
+	min-height: var(--height--4xl);
+	padding-inline: var(--spacing--sm);
 }
 
 .groupSummary,
@@ -403,20 +435,46 @@ function handleRecovery() {
 	min-width: 0;
 }
 
+.groupSummary {
+	padding-block: var(--spacing--xs);
+}
+
 .groupTitle {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 }
 
+.groupTitleText {
+	font-weight: var(--font-weight--medium);
+}
+
+.countBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: var(--height--3xs);
+	height: var(--height--3xs);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border-radius: var(--radius--full);
+	background: var(--background--brand--disabled);
+	color: var(--text-color--subtler);
+}
+
 .toolList {
 	display: flex;
 	flex-direction: column;
-	border-top: var(--border);
+	margin-inline: var(--spacing--sm);
+	padding-block: var(--spacing--4xs);
+	border-top: 1px solid var(--border-color--subtle);
 }
 
-.toolRow + .toolRow {
-	border-top: var(--border);
+.toolRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding-block: var(--spacing--2xs);
 }
 
 .toolDescription {
@@ -430,6 +488,11 @@ function handleRecovery() {
 .permissionSelect {
 	flex: 0 0 auto;
 	width: auto;
+}
+
+.toolPermissionSelect {
+	/* The design fixes tool selectors at 100 px. No width token matches this value. */
+	width: 100px;
 }
 
 .footer {

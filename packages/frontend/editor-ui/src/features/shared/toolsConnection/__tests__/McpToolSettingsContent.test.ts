@@ -82,6 +82,40 @@ describe('McpToolSettingsContent', () => {
 		expect(getByText('Can look things up')).toHaveTextContent(/^Can look things up$/);
 	});
 
+	it('does not render a permission group with no tools', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				item: item({
+					availableTools: [{ id: 'search', name: 'Search issues', category: 'read' }],
+				}),
+			},
+		});
+
+		expect(getByTestId('tools-connection-count-read')).toBeVisible();
+		expect(queryByTestId('tools-connection-count-write')).not.toBeInTheDocument();
+	});
+
+	it('uses actor-specific permission and confirmation copy', async () => {
+		confirm.mockResolvedValue(MODAL_CONFIRM);
+		const { getByText, getByTestId } = renderComponent({
+			props: {
+				item: item({
+					settings: { categories: { read: 'always_allow', write: 'require_approval' } },
+				}),
+				actor: 'agent',
+			},
+		});
+
+		expect(getByText('Choose when the agent can use these tools')).toBeVisible();
+		await selectPermission(getByTestId('tools-connection-permission-write'), 'Allow');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledWith(
+			'The agent can change or delete Linear content without asking first. This applies to all 1 tools in this group.',
+			expect.any(Object),
+		);
+	});
+
 	it('clears category overrides when the category permission changes', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: { item: item() },
@@ -144,12 +178,14 @@ describe('McpToolSettingsContent', () => {
 		const disconnected = item({
 			status: 'disconnected',
 			connectionFailureReason: 'authentication',
+			availableTools: [],
 		});
-		const { emitted, getByLabelText, getByTestId, getByText } = renderComponent({
+		const { container, emitted, getByLabelText, getByTestId, getByText } = renderComponent({
 			props: { item: disconnected },
 		});
 
 		expect(getByTestId('tools-connection-failure')).toBeVisible();
+		expect(container.querySelector('[data-disabled="true"]')).not.toBeNull();
 		expect(getByText(/credential expired/i)).toBeVisible();
 		expect(getByLabelText('Read-only tools')).toBeDisabled();
 		expect(getByTestId('tools-connection-count-read')).toHaveTextContent('—');

@@ -41,6 +41,7 @@ const props = withDefaults(
 		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
+		showSuggestionFooter?: boolean;
 	}>(),
 	{
 		open: false,
@@ -49,6 +50,7 @@ const props = withDefaults(
 		size: 'xlarge',
 		allowWorkflowCreation: false,
 		workflowCreationLoading: false,
+		showSuggestionFooter: false,
 	},
 );
 
@@ -192,7 +194,9 @@ const toolRows = computed<FlattenedRow[]>(() =>
 );
 
 const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+	isMcpCategory.value || props.showSuggestionFooter
+		? [...toolRows.value, { key: 'suggestion' }]
+		: toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -391,7 +395,7 @@ function handleOpenChange(value: boolean) {
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 						</div>
-						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 							<slot name="suggestion-footer" />
 						</div>
 					</template>

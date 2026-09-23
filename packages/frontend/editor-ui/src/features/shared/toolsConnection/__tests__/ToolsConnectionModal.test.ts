@@ -92,6 +92,7 @@ function renderWith(
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
 		allowWorkflowCreation: boolean;
+		showSuggestionFooter: boolean;
 	}>,
 ) {
 	return renderModal({
@@ -102,6 +103,7 @@ function renderWith(
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
 			allowWorkflowCreation: props.allowWorkflowCreation,
+			showSuggestionFooter: props.showSuggestionFooter,
 		},
 		slots: {
 			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
@@ -181,6 +183,19 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('GitHub')).toBeTruthy();
 		expect(queryByText('OpenAI')).toBeTruthy();
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+	});
+
+	it('supports a flat all-items list with a suggestion footer', () => {
+		const { getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all'],
+			showSuggestionFooter: true,
+		});
+
+		expect(queryByTestId('tab-all')).not.toBeInTheDocument();
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('GitHub')).toBeTruthy();
+		expect(queryByText('OpenAI')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
 	});
 
 	it('labels and populates the n8n-connect tab and finds its items in search', async () => {

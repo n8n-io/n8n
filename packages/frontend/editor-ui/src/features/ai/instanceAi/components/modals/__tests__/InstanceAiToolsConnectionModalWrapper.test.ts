@@ -226,7 +226,15 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: ['open', 'detailItem', 'detailMode', 'hideBackButton', 'items'],
+	props: [
+		'open',
+		'detailItem',
+		'detailMode',
+		'hideBackButton',
+		'items',
+		'categories',
+		'showSuggestionFooter',
+	],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
@@ -324,6 +332,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	it('configures the suggestion footer copy', () => {
 		const { getByText } = renderComponent();
 
+		expect(modalProps.categories).toEqual(['all']);
+		expect(modalProps.showSuggestionFooter).toBe(true);
 		expect(getByText('instanceAi.connections.modal.suggestion.prompt')).toBeInTheDocument();
 		expect(getByText('instanceAi.connections.modal.suggestion.action')).toBeInTheDocument();
 	});
