@@ -451,7 +451,7 @@ export class CredentialsPublicController {
 		@Param('credentialId', credentialIdParamSchema) credentialId: string,
 	): Promise<CredentialTestPublicDto> {
 		try {
-			return await this.credentialsService.testById(req.user.id, credentialId);
+			return await this.credentialsService.testById(req.user, credentialId);
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new NotFoundError(error.message);

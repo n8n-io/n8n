@@ -28,6 +28,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'apiKey',
 	'tag',
 	'variable',
+	'credential',
 	'project',
 	'insights',
 ];
@@ -40,6 +41,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	apiKey: 'instanceRoles.resource.apiKey',
 	tag: 'instanceRoles.resource.tag',
 	variable: 'instanceRoles.resource.variable',
+	credential: 'instanceRoles.resource.credential',
 	project: 'instanceRoles.resource.project',
 	insights: 'instanceRoles.resource.insights',
 };
@@ -50,6 +52,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
  */
 export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	View: 'instanceRoles.option.view',
+	Use: 'instanceRoles.option.use',
 	Create: 'instanceRoles.option.create',
 	Manage: 'instanceRoles.option.manage',
 	'Manage own': 'instanceRoles.option.manageOwn',
@@ -108,6 +111,11 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		View: 'instanceRoles.description.variable.view',
 		Manage: 'instanceRoles.description.variable.manage',
 	},
+	credential: {
+		View: 'instanceRoles.description.credential.view',
+		Use: 'instanceRoles.description.credential.use',
+		Manage: 'instanceRoles.description.credential.manage',
+	},
 	project: { Create: 'instanceRoles.description.project.create' },
 	insights: { View: 'instanceRoles.description.insights.view' },
 };
@@ -115,6 +123,7 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 /** Display order of options within a resource group. */
 export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
+	'Use',
 	'Create',
 	'Manage project roles',
 	'Mcp use',
@@ -211,29 +220,71 @@ export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
  * resource group. If the superseding option is fully checked, the superseded
  * option is implied — it should render as disabled ✔︎ with an explanatory
  * tooltip rather than as an independently active selection.
+ *
+ * Option labels are shared across resources, so the map is keyed by option label
+ * alone. Groups sit at different heights on the same ladder — `credential` has
+ * View, Use and Manage while `tag` has only View and Manage — which the
+ * transitive walk below handles: it steps over the rungs a group does not
+ * declare, so tag's View still resolves to its Manage.
  */
 export const SUPERSEDED_BY: Partial<Record<string, string>> = {
 	'Manage own': 'Manage all',
 	'Manage project roles': 'Manage',
-	View: 'Manage',
+	View: 'Use',
+	Use: 'Manage',
 	'Mcp use': 'Mcp manage',
 	'AiAssistant use': 'AiAssistant manage',
 };
 
+/** The option one rung above `optionKey` on the ladder, if any. */
+export function supersedingKey(optionKey: string): string | undefined {
+	return SUPERSEDED_BY[optionKey];
+}
+
+/**
+ * The chain of options that supersede `optionKey`, nearest first. Walking the
+ * whole chain is what lets one flat map serve groups of different heights, and
+ * `chain.includes` guards against a mis-declared cycle.
+ */
+function supersedingChain(optionKey: string): string[] {
+	const chain: string[] = [];
+	let current = supersedingKey(optionKey);
+	while (current && !chain.includes(current)) {
+		chain.push(current);
+		current = supersedingKey(current);
+	}
+	return chain;
+}
+
+/**
+ * The option that implies `option` — the nearest one up the ladder that this group
+ * actually declares and that is fully checked. The caller should render an implied
+ * option as disabled with a tooltip naming this one.
+ */
+export function impliedByOption(
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+	roleScopes: readonly string[],
+): InstanceScopeOption | undefined {
+	for (const key of supersedingChain(option.key)) {
+		const superseding = groupOptions.find((o) => o.key === key);
+		if (superseding && getOptionState(roleScopes, superseding.scopes) === 'checked') {
+			return superseding;
+		}
+	}
+	return undefined;
+}
+
 /**
  * Returns true when another option in the same group is fully checked and
- * supersedes this option. The caller should render implied options as disabled
- * with a tooltip explaining they are included in the superseding option.
+ * supersedes this option, directly or transitively.
  */
 export function isOptionImplied(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 	roleScopes: readonly string[],
 ): boolean {
-	const supersededByKey = SUPERSEDED_BY[option.key];
-	if (!supersededByKey) return false;
-	const superseding = groupOptions.find((o) => o.key === supersededByKey);
-	return !!superseding && getOptionState(roleScopes, superseding.scopes) === 'checked';
+	return !!impliedByOption(option, groupOptions, roleScopes);
 }
 
 /**
@@ -315,20 +366,23 @@ export function resolveOptionState(
 }
 
 /**
- * Find the option that `option` supersedes within its group, if any. SUPERSEDED_BY
- * maps a sub-option to its superseding option, so the subordinate of a superseding
- * option is the key that points back to it. Different resources can reuse the same
- * superseding key (e.g. "Manage" backs both role's "Manage project roles" and user's
- * "View"), so the reverse lookup must only consider keys present in this group.
+ * Find the option `option` supersedes most closely within its group — the one
+ * whose superseding chain reaches `option` in the fewest steps. Distance decides
+ * it because a group can hold several rungs below one option: credential Manage
+ * supersedes Use and View both, and unchecking it must fall back to Use rather
+ * than skip a rung down to View.
  */
 export function findSubordinateOption(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 ): InstanceScopeOption | undefined {
-	const subordinateKey = Object.keys(SUPERSEDED_BY).find(
-		(key) => SUPERSEDED_BY[key] === option.key && groupOptions.some((o) => o.key === key),
-	);
-	return subordinateKey ? groupOptions.find((o) => o.key === subordinateKey) : undefined;
+	let nearest: { option: InstanceScopeOption; distance: number } | undefined;
+	for (const candidate of groupOptions) {
+		const distance = supersedingChain(candidate.key).indexOf(option.key);
+		if (distance === -1) continue;
+		if (!nearest || distance < nearest.distance) nearest = { option: candidate, distance };
+	}
+	return nearest?.option;
 }
 
 /**
@@ -395,6 +449,15 @@ export const ESCALATION_WARNING_SCOPES: Partial<
 				(scope: Scope) => !userViewScopes.has(scope),
 			),
 			messageKey: 'instanceRoles.warning.manageMembers',
+		},
+	],
+	credential: [
+		{
+			// Manage's `credential:update` also unlocks plaintext decrypt, because
+			// decryption is gated on `credential:read` + `credential:update`. View and
+			// Use hold neither, so they are not an escalation on their own.
+			scopes: ['credential:update'],
+			messageKey: 'instanceRoles.warning.manageCredentials',
 		},
 	],
 	role: [
