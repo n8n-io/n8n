@@ -725,6 +725,16 @@ describe('mapConnectionsToVisibleNodes', () => {
 		).toEqual(connections);
 	});
 
+	it('preserves direct visible self-connections', () => {
+		const connections: IConnections = {
+			Visible: { main: [[{ node: 'Visible', type: 'main', index: 0 }]] },
+		};
+
+		expect(mapConnectionsToVisibleNodes(connections, [{ name: 'Visible' } as INodeUi])).toEqual(
+			connections,
+		);
+	});
+
 	it('reconnects visible nodes through hidden nodes', () => {
 		const connections: IConnections = {
 			Source: { main: [[{ node: 'Hidden', type: 'main', index: 0 }]] },

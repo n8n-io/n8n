@@ -14,6 +14,8 @@ import {
 import type { INodeUi } from '@/Interface';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { mockedStore } from '@/__tests__/utils';
 
 const TEST_WF_ID = 'test-wf-validation';
 const INJECTED_WF_ID = 'injected-wf-validation';
@@ -116,6 +118,7 @@ describe('useSelectionValidation', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		useWorkflowsStore().workflowId = TEST_WF_ID;
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -419,6 +422,18 @@ describe('useSelectionValidation', () => {
 
 			expect(resolveGroupableNodeIds(['a'])).toEqual(['a']);
 			expect(resolveGroupableNodeIds(['a', 'sticky'])).toEqual(['a', 'sticky']);
+		});
+
+		it('rejects a single connectable member when empty groups are disabled', () => {
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a'])).toBeNull();
 		});
 
 		it('counts connectable members after sub-node expansion for the minimum', () => {

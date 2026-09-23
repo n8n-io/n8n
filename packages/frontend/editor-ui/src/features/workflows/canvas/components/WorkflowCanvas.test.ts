@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
-import { STICKY_NODE_TYPE } from '@/app/constants';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
 import { CANVAS_NODE_GROUP_ID_PREFIX, CanvasNodeRenderType } from '../canvas.types';
 import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -14,6 +14,12 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+
+const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
+
+vi.mock('../composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
+}));
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -49,6 +55,7 @@ const renderComponent = createComponentRenderer(WorkflowCanvas, {
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	mockEmptyCanvasGroupsEnabled.value = true;
 
 	const nodeTypesStore = useNodeTypesStore();
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
@@ -111,6 +118,34 @@ describe('WorkflowCanvas', () => {
 			container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
 		).toBeInTheDocument();
 		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
+	});
+
+	it('hides persisted empty groups when the feature is disabled without changing workflow data', async () => {
+		const anchor = createTestNode({
+			id: 'anchor',
+			name: 'Empty group anchor',
+			type: NO_OP_NODE_TYPE,
+			parameters: { emptyGroupAnchor: true },
+		});
+		const visibleNode = createTestNode({ id: 'visible', name: 'Visible' });
+		const workflow = createTestWorkflow({
+			nodes: [anchor, visibleNode],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Empty group', nodeIds: [anchor.id] }],
+		});
+		setupWorkflow(workflow);
+		mockEmptyCanvasGroupsEnabled.value = false;
+
+		const { container } = renderComponent();
+
+		await waitFor(() => expect(container.querySelector('[data-id="visible"]')).toBeInTheDocument());
+		expect(container.querySelector('[data-id="anchor"]')).not.toBeInTheDocument();
+		expect(useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).allNodes).toHaveLength(
+			2,
+		);
+		expect(useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).allGroups).toHaveLength(
+			1,
+		);
 	});
 
 	it('expands every group when groupExpansionMode is "all"', async () => {

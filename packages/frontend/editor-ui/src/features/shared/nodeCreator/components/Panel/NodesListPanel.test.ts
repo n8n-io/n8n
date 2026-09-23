@@ -22,6 +22,12 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
+const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
+
+vi.mock('@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
+}));
+
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
 }));
@@ -55,6 +61,10 @@ function getWrapperComponent(setup: () => void) {
 }
 
 describe('NodesListPanel', () => {
+	beforeEach(() => {
+		mockEmptyCanvasGroupsEnabled.value = true;
+	});
+
 	// Every panel mount schedules a keyboard-navigation refresh via setTimeout.
 	// Drain it while the document still exists — a timer surviving the last test
 	// fires after jsdom teardown and fails the run with an unhandled error.

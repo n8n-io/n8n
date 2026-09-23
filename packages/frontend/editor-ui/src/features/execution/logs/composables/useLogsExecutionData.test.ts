@@ -7,6 +7,7 @@ import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { nodeTypes } from '../__test__/data';
 import {
 	createTestNode,
@@ -15,6 +16,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createRunExecutionData, type INode, type IRunExecutionData } from 'n8n-workflow';
+import { NO_OP_NODE_TYPE } from '@/app/constants';
 import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
@@ -29,6 +31,7 @@ describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let posthogStore: ReturnType<typeof mockedStore<typeof usePostHog>>;
 	let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let documentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
@@ -45,6 +48,8 @@ describe(useLogsExecutionData, () => {
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
+		posthogStore = mockedStore(usePostHog);
+		posthogStore.isFeatureEnabled.mockReturnValue(false);
 	});
 
 	describe('isEnabled', () => {
@@ -69,6 +74,46 @@ describe(useLogsExecutionData, () => {
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(1);
+		});
+	});
+
+	describe('empty canvas groups', () => {
+		function setUpEmptyGroupExecution() {
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty group anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+
+			executionStateStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					data: createRunExecutionData({
+						resultData: { runData: { [anchor.name]: [createTestTaskData()] } },
+					}),
+					workflowData: createTestWorkflow({
+						nodes: [anchor],
+						nodeGroups: [{ id: 'empty-group', name: 'Empty Group', nodeIds: [anchor.id] }],
+					}),
+				}),
+			);
+		}
+
+		it('hides empty groups when the feature is disabled', async () => {
+			setUpEmptyGroupExecution();
+
+			const { entries } = useLogsExecutionData({ isEnabled: computed(() => true) });
+
+			await waitFor(() => expect(entries.value).toHaveLength(0));
+		});
+
+		it('keeps empty groups visible when the feature is enabled', async () => {
+			posthogStore.isFeatureEnabled.mockReturnValue(true);
+			setUpEmptyGroupExecution();
+
+			const { entries } = useLogsExecutionData({ isEnabled: computed(() => true) });
+
+			await waitFor(() => expect(entries.value).toHaveLength(1));
 		});
 	});
 
