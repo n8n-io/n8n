@@ -1,4 +1,5 @@
 import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -183,7 +184,7 @@ export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string
 export type TimelineItemStatus = {
 	kind: 'hitl-response' | 'tool-error';
 	labelKey: BaseTextKey;
-	theme: 'default' | 'success' | 'danger';
+	theme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 };
 
 export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
@@ -201,7 +202,7 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 				item.hitlResponseStatus === 'declined'
 					? 'agentSessions.timeline.declined'
 					: 'agentSessions.timeline.responseReceived',
-			theme: 'default',
+			theme: 'outline',
 		};
 	}
 	if (isErroredTimelineItem(item)) {

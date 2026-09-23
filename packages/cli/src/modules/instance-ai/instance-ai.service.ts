@@ -2505,6 +2505,7 @@ export class InstanceAiService {
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 		} = gates;
 		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
@@ -2538,6 +2539,7 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			modelId,
 		});
 

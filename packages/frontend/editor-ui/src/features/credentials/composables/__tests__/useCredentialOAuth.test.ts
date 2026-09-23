@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { OAUTH_FLOW_TIMEOUT } from '../oauthCallback';
 import { useCredentialsStore } from '../../credentials.store';
@@ -949,6 +951,37 @@ describe('useCredentialOAuth', () => {
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User saved credentials',
 				expect.objectContaining({ workflow_id: 'setup-workflow' }),
+			);
+		});
+
+		it('includes the description when the flag is enabled', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			usePostHog().overrides = { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: true } };
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ description: 'Use for production alerts' }),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it.each([false, undefined])('omits the description when the flag is %s', async (flag) => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			usePostHog().overrides =
+				flag === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: flag } };
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledOnce();
+			expect(credentialsStore.createNewCredential.mock.calls[0][0]).not.toHaveProperty(
+				'description',
 			);
 		});
 

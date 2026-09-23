@@ -88,6 +88,7 @@ jobs:
               !packages/@n8n/task-runner-python/**
               !packages/testing/playwright/**
               !.github/**
+              .github/workflows/test-unit-reusable.yml
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
