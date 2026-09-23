@@ -471,30 +471,30 @@ async function onSubmit(): Promise<SubmitResult> {
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
 		const result = await cancelAndSteer(text, () => {
-			if (disposed) return;
+			if (!isCurrentTarget()) return;
 			if (inputText.value.trim() === text) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 		});
-		consumeQueuedExternalMessage(text);
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
 		return result === 'busy' ? 'busy' : 'sent';
 	}
 
 	isPreparingToSend.value = true;
 	try {
-		const target = {
-			projectId: props.projectId,
-			agentId: props.agentId,
-			continueSessionId: props.continueSessionId,
-		};
-		const isCurrentTarget = () =>
-			!disposed &&
-			props.projectId === target.projectId &&
-			props.agentId === target.agentId &&
-			props.continueSessionId === target.continueSessionId;
 		try {
 			await props.beforeSend?.();
 		} catch {
@@ -524,7 +524,7 @@ async function onSubmit(): Promise<SubmitResult> {
 		});
 		isPreparingToSend.value = false;
 		const result = await sending;
-		consumeQueuedExternalMessage(text);
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
 		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {

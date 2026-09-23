@@ -723,6 +723,24 @@ describe('AgentChatPanel', () => {
 		await flushPromises();
 	});
 
+	it('does not consume a queued message when its session changes during send', async () => {
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ continueSessionId: 'session-1' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('update config');
+		await vi.waitFor(() => expect(sendMessageMock).toHaveBeenCalledOnce());
+		await wrapper.setProps({ continueSessionId: 'session-2' });
+		isStreamingMock.value = true;
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+		wrapper.unmount();
+	});
+
 	it.each([
 		[
 			'the session changes',

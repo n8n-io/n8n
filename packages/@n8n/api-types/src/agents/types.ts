@@ -382,7 +382,11 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
-	/** Running preview turn, including a turn with no recorded output yet. */
+	/**
+	 * Running preview turn, including a turn with no recorded output yet.
+	 * `null` means that the server found no running execution.
+	 * An omitted value means that the endpoint does not report execution state.
+	 */
 	activeExecutionId?: string | null;
 }
 
