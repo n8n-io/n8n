@@ -36,7 +36,7 @@
 	"postStartCommand": "git config --global --get-all credential.helper 2>/dev/null | grep -qs gitcredential-refresh || git config --global --add credential.helper /usr/local/bin/gitcredential-refresh.sh",
 	// Declarations only. All of these are set at the repository level, so Codespaces
 	// injects them into every preview box whether or not they are listed here.
-	// scripts/preview-serve.mjs reads them with codespaceSecret().
+	// scripts/codespace-preview/preview-serve.mjs reads them with codespaceSecret().
 	"secrets": {
 		"N8N_LICENSE_ACTIVATION_KEY": {
 			"description": "Sandbox licence key. The preview:enterprise label decides whether it reaches n8n."
