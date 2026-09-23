@@ -66,12 +66,9 @@ export interface SystemTask {
 	readonly maxAttempts?: number;
 
 	/**
-	 * Overrides how many of the task's durable occurrences may run at the same
-	 * time. `null` lets them overlap. Defaults to
-	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}: one at a time, so a run that
-	 * outlasts its own cadence holds the next occurrence back instead of
-	 * overlapping it. The in-memory timer never overlaps a task with itself
-	 * either. Durable runs only.
+	 * Overrides how many durable occurrences may run at the same time.
+	 * `null` removes the limit. Defaults to
+	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}.
 	 */
 	readonly concurrencyLimit?: number | null;
 
@@ -89,21 +86,17 @@ export interface SystemTaskRunOptions {
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	misfireGraceSeconds: number;
 	maxAttempts: number;
-	/** `null` lets the task's occurrences overlap. */
+	/** `null` means no limit. */
 	concurrencyLimit: number | null;
 }
 
-/**
- * One occurrence at a time, the overlap behavior of the in-memory timer.
- */
+/** One occurrence at a time, like the in-memory timer. */
 export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
 
 /**
  * Run options a task's effects imply, when the task declares no override:
  * retries and late runs only where a repeat is harmless.
- * The grace window and the concurrency limit do not depend on effects, so every
- * task defaults to {@link DEFAULT_MISFIRE_GRACE_SECONDS} and
- * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}.
+ * The grace window and the concurrency limit do not depend on effects.
  */
 const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 	SystemTaskEffects,
@@ -147,7 +140,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	// intervals, so whatever provisions a task still has to clamp against those.
 	assertInRange(task.name, 'maxAttempts', options.maxAttempts, 1);
 	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
-	// A ceiling below one would hold every occurrence back until its deadline passed.
+	// A limit below 1 would block every occurrence.
 	if (options.concurrencyLimit !== null) {
 		assertInRange(task.name, 'concurrencyLimit', options.concurrencyLimit, 1);
 	}
