@@ -1,11 +1,31 @@
-import { useCommunityNodesStore } from './communityNodes.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { type PublicInstalledPackage } from 'n8n-workflow';
 import semver from 'semver';
 
-export type ExtendedPublicInstalledPackage = PublicInstalledPackage & {
-	unverifiedUpdate: boolean;
-};
+interface CommunityPackageUpdateAvailability {
+	installedVersion: string;
+	updateAvailable?: string;
+	latestVerifiedVersion?: string;
+	isCommunityNodesFeatureEnabled: boolean;
+	isUnverifiedPackagesEnabled: boolean;
+	isManagedByEnv: boolean;
+}
+
+export function isCommunityPackageUpdateAvailable({
+	installedVersion,
+	updateAvailable,
+	latestVerifiedVersion,
+	isCommunityNodesFeatureEnabled,
+	isUnverifiedPackagesEnabled,
+	isManagedByEnv,
+}: CommunityPackageUpdateAvailability) {
+	if (isManagedByEnv) return false;
+	if (isUnverifiedPackagesEnabled && updateAvailable) return true;
+
+	return Boolean(
+		isCommunityNodesFeatureEnabled &&
+			latestVerifiedVersion &&
+			semver.gt(latestVerifiedVersion, installedVersion),
+	);
+}
 
 interface IncompatibleNodesApiVersionErrorResponse {
 	httpStatusCode: number;
@@ -23,20 +43,3 @@ export const isNodesApiVersionError = (
 	const e = error as IncompatibleNodesApiVersionErrorResponse | undefined;
 	return e?.httpStatusCode === 400 && 'requiredNodesApiVersion' in (e.meta ?? {});
 };
-
-export async function fetchInstalledPackageInfo(
-	packageName: string,
-): Promise<ExtendedPublicInstalledPackage | undefined> {
-	const installedPackage: PublicInstalledPackage | undefined =
-		await useCommunityNodesStore().getInstalledPackage(packageName);
-	const communityNodeType = useNodeTypesStore().communityNodeType(packageName);
-	if (!installedPackage) {
-		return undefined;
-	}
-	const checkIsUnverifiedUpdate = () => {
-		if (!installedPackage?.updateAvailable || !communityNodeType) return false;
-		return semver.gt(installedPackage.updateAvailable, communityNodeType.npmVersion);
-	};
-
-	return { ...installedPackage, unverifiedUpdate: checkIsUnverifiedUpdate() };
-}

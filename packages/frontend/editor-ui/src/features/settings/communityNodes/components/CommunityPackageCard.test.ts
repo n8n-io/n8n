@@ -43,7 +43,7 @@ describe('CommunityPackageCard', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 
 	beforeEach(() => {
-		setupPinia();
+		setupPinia({ communityNodesEnabled: true });
 		nodeTypesStore = useNodeTypesStore();
 	});
 
@@ -54,7 +54,7 @@ describe('CommunityPackageCard', () => {
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });
 
-		renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				communityPackage,
 			},
@@ -64,6 +64,7 @@ describe('CommunityPackageCard', () => {
 
 		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
 		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-test');
+		expect(getByText('Update')).toBeInTheDocument();
 	});
 
 	describe('uninstall action visibility', () => {

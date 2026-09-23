@@ -6,15 +6,17 @@ import CommunityNodeFooter from './CommunityNodeFooter.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { vi } from 'vitest';
 import { ref } from 'vue';
-import type { ExtendedPublicInstalledPackage } from '../../communityNodes.utils';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 // Mock the useInstalledCommunityPackage composable
-const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
+const mockInstalledPackage = ref<PublicInstalledPackage>();
+const mockHasUpdateAvailable = ref(false);
 
 vi.mock('../../composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => ({
 		installedPackage: mockInstalledPackage,
-		isUpdateCheckAvailable: ref(false),
+		canUpdatePackage: ref(false),
+		hasUpdateAvailable: mockHasUpdateAvailable,
 		isCommunityNode: ref(true),
 		initInstalledPackage: vi.fn(),
 	})),
@@ -48,6 +50,7 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 
 		// Reset the mock installed package before each test
 		mockInstalledPackage.value = undefined;
+		mockHasUpdateAvailable.value = false;
 	});
 
 	afterEach(() => {
@@ -56,7 +59,11 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 
 	it('calls router.push to open settings page when "Manage" is clicked', async () => {
 		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
-			props: { packageName: 'n8n-nodes-test', showManage: true },
+			props: {
+				packageName: 'n8n-nodes-test',
+				nodeTypeName: 'n8n-nodes-test.test',
+				showManage: true,
+			},
 		});
 
 		const manageLink = getByText('Manage');
@@ -67,26 +74,31 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 
 	it('Manage should not be in the footer', () => {
 		const { queryByText } = createComponentRenderer(CommunityNodeFooter)({
-			props: { packageName: 'n8n-nodes-test', showManage: false },
+			props: {
+				packageName: 'n8n-nodes-test',
+				nodeTypeName: 'n8n-nodes-test.test',
+				showManage: false,
+			},
 		});
 
 		expect(queryByText('Manage')).not.toBeInTheDocument();
 	});
 
-	it('displays "Legacy" when updateAvailable', () => {
+	it('displays "Legacy" when an update is available', () => {
 		mockInstalledPackage.value = {
 			packageName: 'n8n-nodes-test',
 			installedVersion: '1.0.0',
 			updateAvailable: '1.0.1',
-			unverifiedUpdate: false,
 			installedNodes: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		};
+		mockHasUpdateAvailable.value = true;
 
 		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: {
 				packageName: 'n8n-nodes-test',
+				nodeTypeName: 'n8n-nodes-test.test',
 				showManage: false,
 			},
 		});
@@ -94,11 +106,10 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		expect(getByText('Package version 1.0.0 (Legacy)')).toBeInTheDocument();
 	});
 
-	it('displays "Latest" when not updateAvailable', () => {
+	it('displays "Latest" when no update is available', () => {
 		mockInstalledPackage.value = {
 			packageName: 'n8n-nodes-test',
 			installedVersion: '1.0.0',
-			unverifiedUpdate: false,
 			installedNodes: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -107,26 +118,7 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: {
 				packageName: 'n8n-nodes-test',
-				showManage: false,
-			},
-		});
-
-		expect(getByText('Package version 1.0.0 (Latest)')).toBeInTheDocument();
-	});
-
-	it('displays "Latest" when only unverified update is available', () => {
-		mockInstalledPackage.value = {
-			packageName: 'n8n-nodes-test',
-			installedVersion: '1.0.0',
-			unverifiedUpdate: true,
-			installedNodes: [],
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		};
-
-		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
-			props: {
-				packageName: 'n8n-nodes-test',
+				nodeTypeName: 'n8n-nodes-test.test',
 				showManage: false,
 			},
 		});
@@ -139,6 +131,7 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		const { queryByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: {
 				packageName: 'n8n-nodes-test',
+				nodeTypeName: 'n8n-nodes-test.test',
 				showManage: false,
 			},
 		});
