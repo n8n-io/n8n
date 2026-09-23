@@ -41,8 +41,7 @@ properties:
       Defaults to workflowsFromSameOwner.
 
       Available options:
-      - `any`: **Deprecated, removed in version 3.** Any workflow can call this workflow.
-        Switch to `workflowsFromAList` or `workflowsFromSameOwner` before upgrading.
+      - `any`: Any workflow can call this workflow (no restrictions)
       - `none`: No other workflows can call this workflow (completely blocked)
       - `workflowsFromSameOwner` (default): Only workflows owned by the same project can call this workflow
         * For personal projects: Only workflows created by the same user
