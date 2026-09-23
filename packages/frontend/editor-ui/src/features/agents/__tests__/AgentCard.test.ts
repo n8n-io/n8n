@@ -40,6 +40,10 @@ vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => favoritesStoreMock,
 }));
 
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({ personalProject: { id: 'personal-project' } }),
+}));
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
@@ -137,10 +141,10 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	};
 }
 
-async function renderComponent(agent: AgentResource = createAgent()) {
+async function renderComponent(agent: AgentResource = createAgent(), showOwnershipBadge = false) {
 	const { default: AgentCard } = await import('../components/AgentCard.vue');
 	return mount(AgentCard, {
-		props: { agent, projectId: 'project-1' },
+		props: { agent, projectId: 'project-1', showOwnershipBadge },
 		global: { stubs: STUBS },
 	});
 }
@@ -174,6 +178,16 @@ describe('AgentCard', () => {
 		const badge = wrapper.find('[data-test-id="agent-card-readonly-badge"]');
 		expect(badge.exists()).toBe(true);
 		expect(badge.text()).toBe('agents.list.readonly');
+	});
+
+	it('shows the team project on an overview card', async () => {
+		// AGENT-839: Overview cards must identify the project that owns each agent.
+		const agent = Object.assign(createAgent(), {
+			project: { id: 'project-1', name: 'Customer Success', type: 'team' },
+		});
+		const wrapper = await renderComponent(agent, true);
+
+		expect(wrapper.get('[data-test-id="card-badge"]').text()).toContain('Customer Success');
 	});
 
 	it('starts a new chat from the dedicated button', async () => {

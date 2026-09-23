@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
-import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type ListAgentsQueryDto } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -580,6 +580,25 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
 		expect(agentRepository.remove).not.toHaveBeenCalled();
+	});
+
+	it('loads project metadata when listing agents across user projects', async () => {
+		const { service, agentRepository, projectRelationRepository } = makeService();
+		const options: ListAgentsQueryDto = { skip: 0, take: 10 };
+		const response = { count: 0, data: [] };
+		projectRelationRepository.findAllByUser.mockResolvedValue([
+			{ projectId: 'project-1' },
+			{ projectId: 'project-2' },
+		] as never);
+		agentRepository.findByProjectIdsPaginated.mockResolvedValue(response);
+
+		await expect(service.findByUserPaginated('user-1', options)).resolves.toBe(response);
+
+		expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+			['project-1', 'project-2'],
+			options,
+			{ withProject: true },
+		);
 	});
 
 	describe('findByIdForUser', () => {

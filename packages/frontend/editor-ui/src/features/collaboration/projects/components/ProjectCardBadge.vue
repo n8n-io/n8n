@@ -10,9 +10,15 @@ import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import ProjectIcon from './ProjectIcon.vue';
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import type { DataTableResource } from '@/features/core/dataTable/types';
+import type { AgentResource } from '@/features/agents/types';
 
 type Props = {
-	resource: WorkflowResource | CredentialsResource | FolderResource | DataTableResource;
+	resource:
+		| WorkflowResource
+		| CredentialsResource
+		| FolderResource
+		| DataTableResource
+		| AgentResource;
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
@@ -35,7 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const homeProject = computed(() => {
-	if (props.resource.resourceType === 'dataTable') {
+	if (props.resource.resourceType === 'dataTable' || props.resource.resourceType === 'agent') {
 		return props.resource.project;
 	}
 	return props.resource.homeProject;
@@ -175,9 +181,9 @@ const projectLocation = computed(() => {
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<RouterLink v-if="projectLocation" :to="projectLocation">
-					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap">{{ badgeText }}</span>
 				</RouterLink>
-				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap">{{ badgeText }}</span>
 			</N8nBadge>
 			<template #content>
 				{{ badgeTooltip }}
