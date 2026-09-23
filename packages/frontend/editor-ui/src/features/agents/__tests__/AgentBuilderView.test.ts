@@ -3039,11 +3039,15 @@ describe('AgentBuilderView — three-column shell', () => {
 	it('closes the preview when opening the AI panel would make the editor too narrow', async () => {
 		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		const wrapper = await renderView();
-		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1100;
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1100;
 		await nextTick();
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
 
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		vm.toggleAiPanel();
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
@@ -3067,10 +3071,14 @@ describe('AgentBuilderView — three-column shell', () => {
 	it('shrinks both side panels before closing either one', async () => {
 		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		const wrapper = await renderView();
-		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1200;
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1200;
 		await nextTick();
 
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		vm.toggleAiPanel();
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
