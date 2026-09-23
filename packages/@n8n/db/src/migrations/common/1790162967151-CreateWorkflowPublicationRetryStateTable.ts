@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateWorkflowPublicationRetryStateTable1790069151495 implements ReversibleMigration {
+export class CreateWorkflowPublicationRetryStateTable1790162967151 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('workflow_publication_retry_state')
 			.withColumns(
