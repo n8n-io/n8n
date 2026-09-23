@@ -561,7 +561,7 @@ describe('setupResponseNodePromise', () => {
 		expect(error).toBeInstanceOf(Error);
 		expect(error).toMatchObject({
 			message: 'Error that was not an instance of Error was thrown',
-			cause: rejection,
+			cause: new Error(rejection),
 		});
 		expect(logger.error).toHaveBeenCalledWith(
 			`Error with Webhook-Response for execution "${executionId}": "Error that was not an instance of Error was thrown"`,
