@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_8fd52fd7e536ef 227
+packages/cli/test/integration/agents/agent-session-fence.test.ts
+  s_782619aac31c26::t_4345d0fe166748 272
+  s_782619aac31c26::t_8fd52fd7e536ef 14-15,240-271
+  s_782619aac31c26::t_dee4b576e60838 273-274
+packages/cli/src/modules/agents/integrations/__tests__/integration-message-context.service.test.ts
+  s_782619aac31c26::t_8fd52fd7e536ef 2,10,31-34,36,38-42,47,49,86,132,192,198,215,227,250,260-279,283
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_782619aac31c26::t_8fd52fd7e536ef 3,17,25-28,35,87-96,101-105,109,113-116,120-128,130-152,158,160,166,169-170,177,181-186,195,198-199,206,214,216,224,228-229,236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b1a683511928b6fb4571dc1e67214174085f5257",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
