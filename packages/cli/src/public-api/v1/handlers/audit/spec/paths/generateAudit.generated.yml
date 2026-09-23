@@ -139,7 +139,7 @@ responses:
                           nextVersions:
                             type: array
                             items:
-                              nullable: true
+                              $ref: ../../../../shared/spec/schemas/auditVersion.generated.yml
                         required:
                           - title
                           - description
@@ -255,7 +255,7 @@ responses:
                           nextVersions:
                             type: array
                             items:
-                              nullable: true
+                              $ref: ../../../../shared/spec/schemas/auditVersion.generated.yml
                         required:
                           - title
                           - description
@@ -374,7 +374,7 @@ responses:
                           nextVersions:
                             type: array
                             items:
-                              nullable: true
+                              $ref: ../../../../shared/spec/schemas/auditVersion.generated.yml
                         required:
                           - title
                           - description
@@ -493,7 +493,7 @@ responses:
                           nextVersions:
                             type: array
                             items:
-                              nullable: true
+                              $ref: ../../../../shared/spec/schemas/auditVersion.generated.yml
                         required:
                           - title
                           - description
@@ -609,7 +609,7 @@ responses:
                           nextVersions:
                             type: array
                             items:
-                              nullable: true
+                              $ref: ../../../../shared/spec/schemas/auditVersion.generated.yml
                         required:
                           - title
                           - description

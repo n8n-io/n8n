@@ -1,5 +1,6 @@
 import '../../openapi-extend';
 
+import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { auditReportFieldDocs, auditRequestFieldDocs } from './audit-public.openapi';
@@ -66,13 +67,38 @@ const riskLocationSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
+// Node shape varies across n8n versions and workflow history, so — matching how
+// `nodesPublicSchema` (workflow-public.dto.ts) treats saved workflow nodes — this only checks
+// "is an array" rather than validating individual node fields.
+const versionNodeArraySchema = z.custom<INode[]>((value) => Array.isArray(value), {
+	message: 'Nodes must be an array',
+});
+
+// Registered under a refId so the generator emits it once as a shared component instead of
+// inlining it under each of the five named risk reports below.
+const versionSchema = z
+	.object({
+		name: z.string(),
+		nodes: versionNodeArraySchema,
+		createdAt: z.string(),
+		description: z.string(),
+		documentationUrl: z.string(),
+		hasBreakingChange: z.boolean(),
+		// The version-notifications API returns `null`, not `false`/`''`, when a release has no
+		// security fix or issue to report.
+		hasSecurityFix: z.boolean().nullable(),
+		hasSecurityIssue: z.boolean().nullable(),
+		securityIssueFixVersion: z.string().nullable(),
+	})
+	.openapi('AuditVersion');
+
 const riskReportSectionSchema = z.object({
 	title: z.string(),
 	description: z.string(),
 	recommendation: z.string(),
 	location: z.array(riskLocationSchema).optional(),
 	settings: z.record(z.string(), z.unknown()).optional(),
-	nextVersions: z.array(z.unknown()).optional(),
+	nextVersions: z.array(versionSchema).optional(),
 });
 
 const riskReportSchema = z.object({

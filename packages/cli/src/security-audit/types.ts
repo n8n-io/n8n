@@ -79,9 +79,11 @@ export namespace n8n {
 		description: string;
 		documentationUrl: string;
 		hasBreakingChange: boolean;
-		hasSecurityFix: boolean;
-		hasSecurityIssue: boolean;
-		securityIssueFixVersion: string;
+		// The version-notifications API returns `null`, not `false`/`''`, when a release has no
+		// security fix or issue to report.
+		hasSecurityFix: boolean | null;
+		hasSecurityIssue: boolean | null;
+		securityIssueFixVersion: string | null;
 	};
 }
 
