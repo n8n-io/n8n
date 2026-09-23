@@ -3677,6 +3677,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       nock:
         specifier: 'catalog:'
         version: 14.0.14
