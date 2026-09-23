@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest';
 import {
 	applyEngineEnv,
 	assertEngineSupported,
-	ENGINE_AUTH_SECRET,
 	ENGINE_DATABASE,
 	engineContainerEnv,
 } from '../services/engine';
@@ -21,6 +20,13 @@ const postgresEnv: Record<string, string> = {
 };
 
 const projectName = 'proj';
+const authSecret = 'test-stack-secret'.repeat(3);
+const engineOptions = { projectName, authSecret };
+const dedicatedEngineEnv = {
+	...postgresEnv,
+	N8N_ENGINE_DATABASE_URL:
+		'postgres://engine_user:engine_test_password@engine-postgres:5432/n8n_engine',
+};
 
 describe('applyEngineEnv', () => {
 	test('leaves the env untouched when no engine mode is set', () => {
@@ -83,7 +89,7 @@ describe('applyEngineEnv', () => {
 				...postgresEnv,
 				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',
 			};
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
 			return env;
 		};
 
@@ -107,13 +113,13 @@ describe('applyEngineEnv', () => {
 
 		test('keeps the control plane port the engine dials, whatever the caller set', () => {
 			const env: Record<string, string> = { ...postgresEnv, N8N_ENGINE_CONTROL_PLANE_PORT: '4001' };
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
 
 			expect(env.N8N_ENGINE_CONTROL_PLANE_PORT).toBe('3001');
 		});
 
 		test('shares the secret both planes verify against', () => {
-			expect(containerEnv().N8N_ENGINE_AUTH_SECRET).toBe(ENGINE_AUTH_SECRET);
+			expect(containerEnv().N8N_ENGINE_AUTH_SECRET).toBe(authSecret);
 		});
 
 		test('gives the main no data plane database, even when a service provided one', () => {
@@ -146,7 +152,7 @@ describe('applyEngineEnv', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, projectName }),
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions }),
 		).toThrow(/queue mode/);
 	});
 
@@ -154,63 +160,60 @@ describe('applyEngineEnv', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'container', mains: 0, isQueueMode: false, projectName }),
+			applyEngineEnv(env, { engine: 'container', mains: 0, isQueueMode: false, ...engineOptions }),
 		).toThrow(/exactly one main/);
 	});
 });
 
 describe('engineContainerEnv', () => {
 	test('has no control plane database access', () => {
-		const env = engineContainerEnv(postgresEnv, { projectName });
+		const env = engineContainerEnv(dedicatedEngineEnv, engineOptions);
 
 		expect(Object.keys(env).filter((key) => key.startsWith('DB_'))).toEqual([]);
 	});
 
 	test('has no encryption key, since it holds no credential store', () => {
-		expect(engineContainerEnv(postgresEnv, { projectName }).N8N_ENCRYPTION_KEY).toBeUndefined();
+		expect(
+			engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENCRYPTION_KEY,
+		).toBeUndefined();
 	});
 
 	test('keeps the rest of the shared env', () => {
-		expect(engineContainerEnv(postgresEnv, { projectName }).N8N_LOG_LEVEL).toBe('debug');
+		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_LOG_LEVEL).toBe('debug');
 	});
 
-	test('builds the data plane database URL from the Postgres values before dropping them', () => {
-		expect(engineContainerEnv(postgresEnv, { projectName }).N8N_ENGINE_DATABASE_URL).toBe(
-			`postgres://n8n_user:test_password@postgres:5432/${ENGINE_DATABASE}`,
-		);
+	test('requires a dedicated data plane database URL', () => {
+		expect(() => engineContainerEnv(postgresEnv, engineOptions)).toThrow(/N8N_ENGINE_DATABASE_URL/);
 	});
 
 	test('keeps an explicit data plane database URL', () => {
 		const env = engineContainerEnv(
 			{ ...postgresEnv, N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db' },
-			{ projectName },
+			engineOptions,
 		);
 
 		expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
 	});
 
 	test('dials the control plane server on the main', () => {
-		expect(engineContainerEnv(postgresEnv, { projectName }).N8N_ENGINE_CONTROL_PLANE_BASE_URL).toBe(
-			'http://proj-n8n:3001',
-		);
+		expect(
+			engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_CONTROL_PLANE_BASE_URL,
+		).toBe('http://proj-n8n:3001');
 	});
 
 	test('shares the secret both planes verify against', () => {
-		expect(engineContainerEnv(postgresEnv, { projectName }).N8N_ENGINE_AUTH_SECRET).toBe(
-			ENGINE_AUTH_SECRET,
+		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_AUTH_SECRET).toBe(
+			authSecret,
 		);
 	});
 
 	test('serves on the port the main dials and the stack probes, whatever the caller set', () => {
-		const env = engineContainerEnv({ ...postgresEnv, N8N_ENGINE_PORT: '4000' }, { projectName });
+		const env = engineContainerEnv(
+			{ ...dedicatedEngineEnv, N8N_ENGINE_PORT: '4000' },
+			engineOptions,
+		);
 
 		expect(env.N8N_ENGINE_PORT).toBe('3000');
-	});
-
-	test('rejects an env that is missing Postgres connection values', () => {
-		expect(() => engineContainerEnv({ DB_TYPE: 'postgresdb' }, { projectName })).toThrow(
-			/missing DB_POSTGRESDB_USER/,
-		);
 	});
 });
 

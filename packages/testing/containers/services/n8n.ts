@@ -83,6 +83,7 @@ export interface N8NInstancesOptions {
 	userEnvironment?: Record<string, string>;
 	usePostgres: boolean;
 	engine?: EngineMode;
+	engineAuthSecret?: string;
 	/**
 	 * In `container` engine mode, do not start an engine: one from an earlier
 	 * call is still running. `replaceN8N` sets this when it swaps the main.
@@ -138,6 +139,7 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		usePostgres,
 		engine,
 		baseUrl,
+		engineAuthSecret,
 		projectName,
 		serviceEnvironment,
 		userEnvironment = {},
@@ -154,12 +156,13 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	if (!usePostgres) {
 		env.DB_TYPE = 'sqlite';
 	}
-
-	// Before `applyEngineEnv`: it drops the values the engine URL is built from.
+	// Before `applyEngineEnv`: it removes the dedicated engine URL from the main.
 	const engineEnvironment =
-		engine === 'container' ? engineContainerEnv(env, { projectName }) : undefined;
+		engine === 'container'
+			? engineContainerEnv(env, { projectName, authSecret: engineAuthSecret ?? '' })
+			: undefined;
 
-	applyEngineEnv(env, { engine, mains, isQueueMode, projectName });
+	applyEngineEnv(env, { engine, authSecret: engineAuthSecret, mains, isQueueMode, projectName });
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
