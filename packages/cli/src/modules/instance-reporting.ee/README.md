@@ -81,13 +81,47 @@ N8N_INSTANCE_REPORTING_BASE_URL=https://monitoring.example.com
 The `insights` module must stay enabled, since the daily figure comes from
 there.
 
+The instance must hold a license certificate, unless
+`N8N_INSTANCE_REPORTING_AUTH_TOKEN` is set. Reporting is for licensed
+instances, and the certificate is how the receiver knows that, see
+[Authentication](#authentication). Without a credential the module loads but
+warns and never sends, exactly as without a receiver.
+
+## Authentication
+
+There are two credentials. The token wins when it is set.
+
+**License certificate (default).** Every report carries the instance's license
+certificate, the string `License.loadCertStr()` returns (`N8N_LICENSE_CERT`,
+or the persisted certificate of an activated license), as the `licenseCert`
+field of the body. The receiver verifies that the certificate was issued by
+n8n and then discards it; nothing from it is stored. There is no token to
+configure or distribute.
+
+The certificate is read fresh for every report, so a renewed license is sent
+as soon as it is stored. An expired certificate is still sent and still
+accepted: the receiver checks the issuer, not the validity period.
+
+It travels in the body, not in an `Authorization` header, because a
+certificate is several KB and grows with the license, which is more than
+common reverse proxies allow per header.
+
+**Bearer token.** When `N8N_INSTANCE_REPORTING_AUTH_TOKEN` is set, every
+report carries it as `Authorization: Bearer …` and the body has no
+`licenseCert` field. The certificate is not read at all, so an unlicensed
+instance can report with a token.
+
+Redirects are never followed, so either credential reaches only the configured
+host.
+
 ## Configuration
 
 | Env var | Default | Notes |
 |---|---|---|
 | `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it starts no scheduler and claims no report time. |
 | `N8N_INSTANCE_REPORTING_LABEL` | `''` | Sent as `label` in the payload, when set. |
-| `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. |
+| `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. Replaces the license certificate as the credential; `licenseCert` is then omitted from the body. |
+| `N8N_LICENSE_CERT` | `''` | Not owned by this module. Its value, or the persisted certificate of an activated license, is sent as `licenseCert` and is the credential the receiver checks, unless a token is set. |
 
 ## Report time
 
@@ -113,9 +147,11 @@ is enabled on this instance:
 }
 ```
 
-`enabled` says whether a receiver is configured. Without one the key reads
-`{ "enabled": false }` and carries no `reportTime`, since no time is claimed. A
-missing key means the module is not enabled at all.
+`enabled` says whether a receiver is configured and a credential (an auth
+token or a license certificate) is present. Without either the key reads
+`{ "enabled": false }` and carries no
+`reportTime`, since no time is claimed. A missing key means the module is not
+enabled at all.
 
 These settings are built once, during module init, and served from a cache
 afterwards, so they carry only values that stay the same for the lifetime of

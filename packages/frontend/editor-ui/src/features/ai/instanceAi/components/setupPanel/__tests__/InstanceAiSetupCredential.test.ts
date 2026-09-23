@@ -1,6 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { computed, defineComponent, h, ref, type PropType } from 'vue';
+import { computed, defineComponent, h, reactive, ref, type PropType } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
 	isOAuth: vi.fn(),
 	canQuickConnect: vi.fn(),
 	authorize: vi.fn(),
+	authorizeExisting: vi.fn(),
 	cancelAuthorize: vi.fn(),
 	quickOption: vi.fn(),
 	quickConnect: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 		isOAuthCredentialType: mocks.isOAuth,
 		canOAuthCredentialQuickConnect: mocks.canQuickConnect,
 		createAndAuthorize: mocks.authorize,
+		authorizeExistingCredential: mocks.authorizeExisting,
 		cancelAuthorize: mocks.cancelAuthorize,
 	}),
 }));
@@ -92,6 +94,8 @@ function createForm() {
 		isOAuthType: computed(
 			() => mocks.isOAuth() && credentialData.value.grantType !== 'clientCredentials',
 		),
+		managedOAuthAvailable: computed(() => mocks.canQuickConnect()),
+		isManagedOAuthMode: computed(() => mocks.isOAuth() && mocks.canQuickConnect()),
 		setCredentialPropertyDefaults: vi.fn(),
 		requiredPropertiesFilled: computed(() => Boolean(credentialData.value.apiKey)),
 		showValidationWarning: ref(false),
@@ -304,7 +308,7 @@ describe('InstanceAiSetupCredential', () => {
 		await fireEvent.click(view.getByRole('button', { name: 'Help me set this up' }));
 		expect(view.emitted<[unknown]>('askForHelp')?.[0]?.[0]).toMatchObject({
 			setupContext:
-				"The OAuth form asks for: Client ID, Client Secret. Managed OAuth isn't available on this instance. Help me configure my own OAuth app.",
+				"Selected OAuth mode: custom. Connection state: disconnected. The OAuth form asks for: Client ID, Client Secret. Managed OAuth isn't available on this instance. Help me configure my own OAuth app.",
 		});
 	});
 
@@ -373,6 +377,142 @@ describe('InstanceAiSetupCredential', () => {
 		expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
 	});
 
+	it.each([false, true])(
+		'validates on submission without starting a connection, OAuth: %s',
+		async (isOAuth) => {
+			mocks.isOAuth.mockReturnValue(isOAuth);
+			const view = renderComponent({ global: { stubs: { CredentialInputs: false } } });
+			await flushPromises();
+			await fireEvent.blur(view.getByLabelText('API key'));
+			expect(view.queryByRole('alert')).toBeNull();
+			await fireEvent.click(
+				view.getByRole('button', { name: isOAuth ? 'Save and sign in' : 'Save' }),
+			);
+			expect(view.getByRole('alert')).toHaveTextContent('This field is required');
+			expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
+			expect(mocks.authorize).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['https://generativelanguage.googleapis.com', 'https://gemini.example.test'])(
+		'preserves Gemini Host while hiding only its default: %s',
+		async (host) => {
+			const defaultHost = 'https://generativelanguage.googleapis.com';
+			form.credentialData.value = { apiKey: 'test-key', host };
+			form.credentialProperties.value = [
+				{ name: 'host', displayName: 'Host', type: 'string', default: defaultHost, required: true },
+				{ name: 'apiKey', displayName: 'API key', type: 'string', default: '', required: true },
+			];
+			mockedStore(useCredentialsStore).createNewCredential.mockResolvedValue(savedCredential);
+			const view = renderComponent({
+				props: {
+					item: { ...item, nodeBindings: [...item.nodeBindings], credentialType: 'googlePalmApi' },
+				},
+			});
+			await flushPromises();
+			if (host === defaultHost) expect(view.getByTestId('fields')).not.toHaveTextContent('Host');
+			else expect(view.getByTestId('fields')).toHaveTextContent('Host');
+			await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+			await flushPromises();
+			expect(mockedStore(useCredentialsStore).createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ data: { apiKey: 'test-key', host } }),
+				'workflow-project',
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		},
+	);
+
+	it('keeps the same sign-in button available without creating another credential', async () => {
+		mocks.isOAuth.mockReturnValue(true);
+		form.credentialProperties.value = [
+			{ name: 'clientId', displayName: 'Client ID', type: 'string', default: '', required: true },
+			{
+				name: 'clientSecret',
+				displayName: 'Client Secret',
+				type: 'string',
+				default: '',
+				required: true,
+			},
+		];
+		const credential = reactive({ ...savedCredential });
+		mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(credential);
+		mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue({
+			...credential,
+			data: { clientId: 'client', clientSecret: '__n8n_BLANK_VALUE' },
+		});
+		const authorization = Promise.withResolvers<ICredentialsResponse | null>();
+		const reopen = vi.fn();
+		mocks.authorizeExisting.mockImplementationOnce((_credential, options) => {
+			options.onAuthorizationStarted(reopen);
+			return authorization.promise;
+		});
+		const view = renderComponent({
+			props: {
+				node: {
+					...node,
+					credentials: { serviceApi: { id: credential.id, name: credential.name } },
+				},
+			},
+		});
+		await flushPromises();
+		expect(view.queryByText('Credential selected')).toBeNull();
+		await fireEvent.click(view.getByRole('button', { name: 'Help me set this up' }));
+		expect(view.emitted('askForHelp')?.[0]).toEqual([
+			expect.objectContaining({
+				id: credential.id,
+				setupContext: expect.stringContaining(
+					'Selected OAuth mode: custom. Connection state: disconnected.',
+				),
+			}),
+		]);
+		await fireEvent.click(view.getByRole('button', { name: 'Connect my account' }));
+		expect(view.getByRole('button', { name: 'Connect my account' })).toBeEnabled();
+		expect(view.queryByRole('button', { name: 'Reopen sign-in' })).toBeNull();
+		expect(view.queryByRole('button', { name: 'Cancel' })).toBeNull();
+		await fireEvent.click(view.getByRole('button', { name: 'Connect my account' }));
+		expect(reopen).toHaveBeenCalledOnce();
+		expect(mocks.authorizeExisting).toHaveBeenCalledOnce();
+		authorization.resolve(null);
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Connect my account' })).toBeEnabled();
+		expect(mocks.authorizeExisting).toHaveBeenCalledWith(
+			credential,
+			expect.objectContaining({ workflowId: 'wf' }),
+		);
+		expect(mocks.authorize).not.toHaveBeenCalled();
+		expect(view.emitted('bindCredential')).toBeUndefined();
+	});
+
+	it('uses edited fields for the next attempt instead of reopening the old sign-in', async () => {
+		mocks.isOAuth.mockReturnValue(true);
+		const authorization = Promise.withResolvers<ICredentialsResponse | null>();
+		const reopen = vi.fn();
+		mocks.authorize
+			.mockImplementationOnce((_type, _node, options) => {
+				options.onAuthorizationStarted(reopen);
+				return authorization.promise;
+			})
+			.mockResolvedValueOnce(null);
+		const view = renderComponent();
+		await flushPromises();
+		await fireEvent.update(view.getByLabelText('API key'), 'first');
+		await fireEvent.click(view.getByRole('button', { name: 'Save and sign in' }));
+		expect(view.getByRole('button', { name: 'Save and sign in' })).toBeEnabled();
+		await fireEvent.update(view.getByLabelText('API key'), 'updated');
+		expect(mocks.cancelAuthorize).toHaveBeenCalledOnce();
+		authorization.resolve(null);
+		await flushPromises();
+		await fireEvent.click(view.getByRole('button', { name: 'Save and sign in' }));
+		await flushPromises();
+		expect(reopen).not.toHaveBeenCalled();
+		expect(mocks.authorize).toHaveBeenLastCalledWith(
+			'serviceApi',
+			node.type,
+			expect.objectContaining({ data: { apiKey: 'updated' } }),
+		);
+	});
+
 	it('shows required fields and tests the key before publishing and binding it in the workflow project', async () => {
 		const rendered = renderComponent();
 		const store = mockedStore(useCredentialsStore);
@@ -383,7 +523,7 @@ describe('InstanceAiSetupCredential', () => {
 		expect(rendered.getByTestId('fields')).toHaveTextContent('apiKey');
 		expect(rendered.getByTestId('fields')).not.toHaveTextContent('optional');
 		expect(rendered.getByTestId('fields')).not.toHaveTextContent('hidden');
-		expect(rendered.getByRole('button', { name: 'Save' })).toBeDisabled();
+		expect(rendered.getByRole('button', { name: 'Save' })).toBeEnabled();
 		await fireEvent.update(rendered.getByLabelText('API key'), 'submitted-key');
 		await fireEvent.click(rendered.getByRole('button', { name: 'Save' }));
 		await flushPromises();
@@ -489,7 +629,12 @@ describe('InstanceAiSetupCredential', () => {
 	it('reuses managed OAuth and leaves the current account unchanged on cancellation', async () => {
 		mocks.isOAuth.mockReturnValue(true);
 		mocks.canQuickConnect.mockReturnValue(true);
-		mocks.authorize.mockResolvedValue(null);
+		const authorization = Promise.withResolvers<ICredentialsResponse | null>();
+		const reopen = vi.fn();
+		mocks.authorize.mockImplementationOnce((_type, _node, options) => {
+			options.onAuthorizationStarted(reopen);
+			return authorization.promise;
+		});
 		const rendered = renderComponent({
 			props: {
 				node: { ...node, credentials: { serviceApi: { id: 'existing', name: 'Current account' } } },
@@ -503,6 +648,11 @@ describe('InstanceAiSetupCredential', () => {
 			'test.service',
 			expect.objectContaining({ workflowId: 'wf', projectId: 'workflow-project' }),
 		);
+		await fireEvent.click(rendered.getByRole('button', { name: 'Connect' }));
+		expect(reopen).toHaveBeenCalledOnce();
+		expect(mocks.authorize).toHaveBeenCalledOnce();
+		authorization.resolve(null);
+		await flushPromises();
 		expect(rendered.getByText('Current account')).toBeVisible();
 		expect(rendered.emitted<[unknown, string]>('bindCredential')).toBeUndefined();
 	});
@@ -511,9 +661,13 @@ describe('InstanceAiSetupCredential', () => {
 		mocks.isOAuth.mockReturnValue(true);
 		mocks.canQuickConnect.mockReturnValue(true);
 		mocks.authorize.mockResolvedValue(null);
+		mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue({
+			...savedCredential,
+			name: 'Custom account',
+		});
 		mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue({
 			...savedCredential,
-			data: { clientId: 'custom-client', clientSecret: 'custom-secret' },
+			data: { clientId: 'client', clientSecret: '__n8n_BLANK_VALUE', oauthTokenData: true },
 		});
 		const rendered = renderComponent({
 			props: {
@@ -569,6 +723,7 @@ describe('InstanceAiSetupCredential', () => {
 			projectId: 'workflow-project',
 			data: { apiKey: 'client-secret' },
 			name: 'Service account',
+			onAuthorizationStarted: expect.any(Function),
 		});
 	});
 
@@ -776,6 +931,7 @@ describe('InstanceAiSetupCredential', () => {
 		await rendered.rerender({
 			node: { ...node, credentials: { serviceApi: { id: 'existing', name: 'Existing account' } } },
 		});
+		await flushPromises();
 		expect(rendered.queryByLabelText('API key')).toBeNull();
 		expect(rendered.getByText('Existing account')).toBeVisible();
 		expect(mocks.authorize).not.toHaveBeenCalled();
@@ -813,7 +969,7 @@ describe('InstanceAiSetupCredential', () => {
 		await openMenu(rendered, 'Use my API key');
 		await flushPromises();
 		expect(rendered.getByLabelText('API key')).toBeVisible();
-		expect(rendered.getByRole('button', { name: 'Save' })).toBeDisabled();
+		expect(rendered.getByRole('button', { name: 'Save' })).toBeEnabled();
 	});
 
 	it.each([
