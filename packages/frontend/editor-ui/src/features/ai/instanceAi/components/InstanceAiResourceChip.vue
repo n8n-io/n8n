@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { N8nIcon, N8nIconButton, N8nTag } from '@n8n/design-system';
+import { useTemplateRef } from 'vue';
 
 const props = defineProps<{
 	label: string;
-	icon: string;
+	icon?: string;
 	trailingIcon?: string;
 	removable?: boolean;
 	removeLabel?: string;
@@ -12,14 +13,18 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ remove: [] }>();
+const rootRef = useTemplateRef<HTMLElement>('root');
+
+defineExpose({ focus: () => rootRef.value?.focus() });
 </script>
 
 <template>
-	<div :class="$style.resourceChip" :data-test-id="props.testId">
+	<div ref="root" :class="$style.resourceChip" :data-test-id="props.testId">
 		<N8nTag :text="props.label" :clickable="false" size="lg">
 			<template #tag>
 				<span :class="$style.content">
-					<N8nIcon :icon="props.icon" size="medium" :class="$style.icon" />
+					<span v-if="$slots.icon" :class="$style.icon"><slot name="icon" /></span>
+					<N8nIcon v-else-if="props.icon" :icon="props.icon" size="medium" :class="$style.icon" />
 					<span :class="$style.label" :title="props.label">{{ props.label }}</span>
 					<N8nIcon v-if="props.trailingIcon" :icon="props.trailingIcon" size="xsmall" />
 				</span>
@@ -32,6 +37,7 @@ const emit = defineEmits<{ remove: [] }>();
 					:title="props.removeLabel"
 					:aria-label="props.removeLabel"
 					:data-test-id="props.removeTestId"
+					@keydown.stop
 					@click.stop="emit('remove')"
 				/>
 			</template>
@@ -44,7 +50,13 @@ const emit = defineEmits<{ remove: [] }>();
 	--tag--min-width: 0;
 	--tag--max-width: 100%;
 
-	max-width: 80%;
+	max-width: 100%;
+
+	&:focus-visible {
+		outline: var(--spacing--5xs) solid var(--color--primary);
+		outline-offset: var(--spacing--5xs);
+		border-radius: var(--radius);
+	}
 }
 
 .content {
