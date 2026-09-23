@@ -17,6 +17,14 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/
   "base_commit_sha": "f673690fa8e18fd49cafe1e6dfe364d6be18935b",
   "prompts": {},
   "sessions": {
+    "s_e119f4a041ed36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c960-8f83-7942-9390-94d55512f1a1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_f70599bfc29ca2": {
       "agent_id": {
         "tool": "claude",
