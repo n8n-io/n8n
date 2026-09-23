@@ -1,20 +1,9 @@
-<<<<<<< HEAD
-import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-
-import { assertToolsAgentMode, getInputs } from '../utils';
-=======
-import type { Tool } from '@langchain/classic/tools';
-import { DynamicStructuredTool } from '@langchain/classic/tools';
 import { ExecuteContext, SupplyDataContext } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
-import { z } from 'zod';
 
-import type { ZodObjectAny } from '../../../../types/types';
-import { checkForStructuredTools, isExecuteFunctions } from '../agents/utils';
-import { getInputs } from '../utils';
->>>>>>> 522d8795b03406bc31d7c096f95431e7894000b6
+import { isExecuteFunctions } from '../agents/utils';
+import { assertToolsAgentMode, getInputs } from '../utils';
 
 describe('assertToolsAgentMode', () => {
 	const createContext = (parameters: INode['parameters'], typeVersion = 1.6) =>

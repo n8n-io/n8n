@@ -13,17 +13,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { jsonSizeExceeds } from '@n8n/utils/json/json-size-exceeds';
-<<<<<<< HEAD
-import { BinaryDataService, FileLocation, FileTooLargeError } from 'n8n-core';
-=======
-import {
-	BinaryDataConfig,
-	BinaryDataService,
-	encodeBufferBody,
-	FileLocation,
-	FileTooLargeError,
-} from 'n8n-core';
->>>>>>> 522d8795b03406bc31d7c096f95431e7894000b6
+import { BinaryDataService, encodeBufferBody, FileLocation, FileTooLargeError } from 'n8n-core';
 import type { BinaryData } from 'n8n-core';
 import { jsonParse, OperationalError } from 'n8n-workflow';
 import type {
