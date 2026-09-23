@@ -396,8 +396,8 @@ describe('OidcService', () => {
 
 	describe('state redirect target', () => {
 		beforeEach(() => {
-			vi.mocked(jwtService.sign).mockImplementation((payload) => JSON.stringify(payload));
-			vi.mocked(jwtService.verify).mockImplementation((token) => JSON.parse(token));
+			vi.mocked(jwtService.sign).mockImplementation((_purpose, payload) => JSON.stringify(payload));
+			vi.mocked(jwtService.verify).mockImplementation((_purpose, token) => JSON.parse(token));
 		});
 
 		it('round-trips the in-app destination through the signed state', () => {
