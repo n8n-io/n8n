@@ -37,4 +37,7 @@ ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=$PNPM_HOME/bin:$PATH
 
 USER node
-RUN mkdir -p $PNPM_HOME ~/.pnpm-store && pnpm config set store-dir ~/.pnpm-store --global
+# The store must sit on the same filesystem as the worktrees (/workspaces is its own
+# mount), or pnpm copies node_modules into every worktree instead of hardlinking.
+# The directory is created on the first install: Codespaces mounts /workspaces at runtime.
+RUN mkdir -p $PNPM_HOME && pnpm config set store-dir /workspaces/.pnpm-store --global
