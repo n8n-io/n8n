@@ -206,17 +206,17 @@ export class SystemTaskRunner {
 
 	/** The leader-gated timers, which a leadership change starts and stops. */
 	private getClusterTimerTasks(): ClusterTimerTask[] {
-		return this.timers().filter(
+		return this.getTimerTasks().filter(
 			(routed): routed is ClusterTimerTask => routed.placement.scope === 'cluster',
 		);
 	}
 
 	/** The per-instance timers, which only shutdown stops. */
 	private getInstanceTimerTasks(): TimerTask[] {
-		return this.timers().filter((routed) => routed.placement.scope === 'instance');
+		return this.getTimerTasks().filter((routed) => routed.placement.scope === 'instance');
 	}
 
-	private timers(): TimerTask[] {
+	private getTimerTasks(): TimerTask[] {
 		return [...this.routedTasksByName.values()].filter(
 			(routed): routed is TimerTask => routed.timer !== undefined,
 		);
