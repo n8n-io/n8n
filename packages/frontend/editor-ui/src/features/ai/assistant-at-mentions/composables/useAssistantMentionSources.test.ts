@@ -214,6 +214,50 @@ describe('useAssistantMentionSources', () => {
 		scope.stop();
 	});
 
+	it('prioritizes a matching node from a loaded artifact over workflow matches', async () => {
+		const artifacts = [{ id: 'workflow-1', name: 'Qualify B2B leads' }];
+		const scope = effectScope();
+		let sources!: ReturnType<typeof useAssistantMentionSources>;
+		scope.run(() => {
+			const artifactIndex = useArtifactMentionIndex({
+				artifacts,
+				activeWorkflowId: 'workflow-1',
+				fetchWorkflow: async () => makeWorkflow('workflow-1', 'Qualify B2B leads'),
+				getActiveWorkflow: () => ({
+					id: 'workflow-1',
+					name: 'Qualify B2B leads',
+					versionId: 'version-1',
+					nodes: [
+						{
+							id: 'if-node',
+							name: 'If',
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2.2,
+						},
+					],
+				}),
+			});
+			sources = useAssistantMentionSources([
+				createArtifactMentionSourceProvider({ artifacts, artifactIndex }),
+				provider('workflows', [
+					buildWorkflowMentionItem(
+						makeWorkflow('workflow-2', 'Personal life manager'),
+						'workflows',
+					),
+				]),
+			]);
+		});
+
+		await sources.search('if');
+
+		expect(sources.searchResults.value[0]).toMatchObject({
+			kind: 'node',
+			label: 'If',
+			workflowId: 'workflow-1',
+		});
+		scope.stop();
+	});
+
 	it('ignores an older search response after a newer query completes', async () => {
 		const older = deferred<AssistantMentionItem[]>();
 		const newerItem = buildWorkflowMentionItem(makeWorkflow('newer', 'Newer'), 'workflows');
@@ -284,7 +328,7 @@ describe('useAssistantMentionSources', () => {
 		scope.stop();
 	});
 
-	it('refreshes ready artifact results as compact indexes load', async () => {
+	it('shows workflow results while artifact indexes load, then adds matching nodes', async () => {
 		const artifacts = [{ id: '1', name: 'Workflow 1' }];
 		const fetchResponse = deferred<IWorkflowDb>();
 		const indexScope = effectScope();
@@ -298,7 +342,7 @@ describe('useAssistantMentionSources', () => {
 		});
 		const artifactProvider = createArtifactMentionSourceProvider({ artifacts, artifactIndex });
 		const workflowItem = buildWorkflowMentionItem(
-			makeWorkflow('workflow-result', 'Order search'),
+			makeWorkflow('workflow-result', 'Personal life manager'),
 			'workflows',
 		);
 		const sourceScope = effectScope();
@@ -310,16 +354,27 @@ describe('useAssistantMentionSources', () => {
 			]);
 		});
 
-		await sources.search('order');
-		expect(sources.searchResults.value).toEqual([workflowItem]);
+		const pendingSearch = sources.search('if');
+		await vi.waitFor(() => expect(sources.searchResults.value).toEqual([workflowItem]));
 
-		fetchResponse.resolve(makeWorkflow('1', 'Order artifact'));
-		await vi.waitFor(() =>
-			expect(sources.searchResults.value.map(({ label }) => label)).toEqual([
-				'Order artifact',
-				'Order search',
-			]),
-		);
+		const indexedWorkflow = makeWorkflow('1', 'Qualify B2B leads');
+		indexedWorkflow.nodes = [
+			{
+				id: 'if-node',
+				name: 'If',
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2.2,
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+		fetchResponse.resolve(indexedWorkflow);
+		await pendingSearch;
+		expect(sources.searchResults.value.map(({ label }) => label)).toEqual([
+			'If',
+			'Qualify B2B leads',
+			'Personal life manager',
+		]);
 
 		sourceScope.stop();
 		indexScope.stop();

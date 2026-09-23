@@ -31,7 +31,7 @@ export function createArtifactMentionSourceProvider(options: {
 			return buildArtifactBrowseItems(toValue(options.artifacts), options.artifactIndex.getIndex);
 		},
 		async search(query) {
-			void options.artifactIndex.loadAll();
+			await options.artifactIndex.loadAll();
 			return searchMentionItems(
 				buildArtifactSearchItems(toValue(options.artifacts), options.artifactIndex.getIndex),
 				query,
