@@ -391,7 +391,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 		const { results_count, trigger_count, regular_count, community_count } = filteredNodes.reduce(
 			(accu, node) => {
-				if (!('properties' in node)) {
+				if (!('properties' in node) || node.type === 'command') {
 					return accu;
 				}
 				const isCustomAction =
