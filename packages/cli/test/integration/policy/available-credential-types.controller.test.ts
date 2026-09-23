@@ -116,6 +116,14 @@ describe('available credential types endpoint RBAC', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
+	test('rejects a nonexistent project id with 403, rather than an empty or misleading list', async () => {
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.get(availableCredentialTypesRoute('nonexistent-project-id'));
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('rejects an unauthenticated caller with 401', async () => {
 		const response = await testServer.authlessAgent.get(availableCredentialTypesRoute(project.id));
 
