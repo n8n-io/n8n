@@ -47,6 +47,7 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
           # Include recent history so the PR filter can reuse the checkout.
           fetch-depth: 200
+          filter: blob:none
 
       - name: Capture commit SHA for cache consistency
         id: commit-sha
@@ -262,6 +263,8 @@ jobs:
   format-check:
     name: Format check
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
