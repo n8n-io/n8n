@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import CharacterCount from '@/app/components/CharacterCount.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { ElCol, ElRow } from 'element-plus';
@@ -20,6 +21,7 @@ const emit = defineEmits<{ 'update:description': [value: string] }>();
 
 const i18n = useI18n();
 const descriptionId = useId();
+const descriptionCountId = `${descriptionId}-count`;
 </script>
 
 <template>
@@ -34,9 +36,10 @@ const descriptionId = useId();
 			<ElCol :span="16">
 				<N8nInput
 					:id="descriptionId"
+					:aria-describedby="readonly ? undefined : descriptionCountId"
 					:model-value="description"
 					type="textarea"
-					:rows="4"
+					:autosize="{ minRows: 4, maxRows: 8 }"
 					:maxlength="CREDENTIAL_DESCRIPTION_MAX_LENGTH"
 					:readonly="readonly"
 					:placeholder="
@@ -46,6 +49,14 @@ const descriptionId = useId();
 					"
 					data-test-id="credential-description"
 					@update:model-value="emit('update:description', $event)"
+				/>
+				<CharacterCount
+					v-if="!readonly"
+					:id="descriptionCountId"
+					:value="description"
+					:max="CREDENTIAL_DESCRIPTION_MAX_LENGTH"
+					show-when-empty
+					data-test-id="credential-description-character-count"
 				/>
 			</ElCol>
 		</ElRow>
