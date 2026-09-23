@@ -1048,7 +1048,11 @@ export type InstanceAiPreferenceWriteRejection =
 export interface InstanceAiSavedPreference {
 	id: string;
 	content: string;
-	scope: 'user';
+	/** The tool writes `user`. A later fact from the card can move the row, so the type is wide. */
+	scope: 'user' | 'project' | 'instance';
+	projectId?: string | null;
+	/** The owner of a user-scoped row. An edit from the card must name it. */
+	userId?: string | null;
 }
 
 /** A cap refusal always carries the cap and the measured value, so the model can fit under it. */

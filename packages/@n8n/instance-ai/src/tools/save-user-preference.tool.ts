@@ -28,7 +28,13 @@ const inputSchema = z.object({
 const outputSchema = z.object({
 	ok: z.boolean(),
 	preference: z
-		.object({ id: z.string(), content: z.string(), scope: z.literal('user') })
+		.object({
+			id: z.string(),
+			content: z.string(),
+			scope: z.enum(['user', 'project', 'instance']),
+			projectId: z.string().nullable().optional(),
+			userId: z.string().nullable().optional(),
+		})
 		.optional(),
 	reason: z
 		.enum(['too_long', 'scope_full', 'duplicate', 'not_permitted', 'blocked_by_admin', 'failed'])

@@ -715,8 +715,9 @@ export class InstanceAiAdapterService {
 					scope,
 				});
 				if (!result.ok) return result;
-				const { id, content: saved } = result.preference;
-				return { ok: true, preference: { id, content: saved, scope } };
+				// The card names the owner, so the write returns it.
+				const { id, content: saved, userId, projectId } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope, userId, projectId } };
 			},
 			recordRejection: (reason, textLength) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
