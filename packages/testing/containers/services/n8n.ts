@@ -449,6 +449,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota,
 		filesToMount,
+		coverageHostDir,
 		registerContainer,
 		startupDeadline,
 		image,

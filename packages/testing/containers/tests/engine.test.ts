@@ -83,8 +83,6 @@ describe('applyEngineEnv', () => {
 
 	describe('container', () => {
 		const containerEnv = (): Record<string, string> => {
-			// Annotated: an inline spread of a plain Record narrows to the literal
-			// key added here, which then loses the mutation applyEngineEnv makes.
 			const env: Record<string, string> = {
 				...postgresEnv,
 				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',

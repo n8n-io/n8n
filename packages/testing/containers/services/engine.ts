@@ -28,7 +28,7 @@ const CONNECTION_KEYS = [
 ] as const;
 
 /** Env the engine container must never receive: control plane database access and its key. */
-const CONTROL_PLANE_ONLY_KEYS = ['N8N_ENCRYPTION_KEY'];
+const CONTROL_PLANE_ONLY_KEYS = ['N8N_ENCRYPTION_KEY', 'N8N_ENCRYPTION_KEY_FILE'];
 const CONTROL_PLANE_ONLY_PREFIXES = ['DB_'];
 
 interface EngineEnvOptions {
