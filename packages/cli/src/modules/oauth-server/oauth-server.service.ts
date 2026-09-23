@@ -165,6 +165,15 @@ export class OAuthServerService implements OAuthServerProvider {
 					return await this.resolveVirtualClient(clientId);
 				}
 
+				// A persisted first-party row is only an FK placeholder (see
+				// `resolveVirtualClient`): the live resource decides whether the URL may
+				// still act as a virtual client, e.g. after a webhook is switched to
+				// bearer-only or a trigger is disabled.
+				if (client.isFirstParty) {
+					const resource = await this.resourceRegistry.getByResourceUrl(clientId);
+					if (!resource?.isFirstParty) return undefined;
+				}
+
 				// Some clients echo back the `scope` they saw on registration and
 				// reject responses that include `scope: ''`. Omit the field
 				// entirely when no scopes are advertised.

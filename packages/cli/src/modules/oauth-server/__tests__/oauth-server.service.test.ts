@@ -275,6 +275,46 @@ describe('OAuthServerService', () => {
 				});
 			});
 
+			// The persisted row is only an FK placeholder; the live resource decides. Covers
+			// a webhook switched to bearer-only after its virtual client was already created.
+			it('returns undefined for a persisted first-party row whose resource is no longer first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue({
+					id: NON_FIRST_PARTY_URL,
+					name: 'Stale',
+					redirectUris: [NON_FIRST_PARTY_URL],
+					grantTypes: ['authorization_code', 'refresh_token'],
+					tokenEndpointAuthMethod: 'none',
+					clientSecret: null,
+					clientSecretExpiresAt: null,
+					isFirstParty: true,
+				} as OAuthClient);
+
+				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('returns a persisted first-party row while its resource is still first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue({
+					id: FIRST_PARTY_URL,
+					name: 'My Form',
+					redirectUris: [FIRST_PARTY_URL],
+					grantTypes: ['authorization_code', 'refresh_token'],
+					tokenEndpointAuthMethod: 'none',
+					clientSecret: null,
+					clientSecretExpiresAt: null,
+					isFirstParty: true,
+				} as OAuthClient);
+
+				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(result).toMatchObject({
+					client_id: FIRST_PARTY_URL,
+					redirect_uris: [FIRST_PARTY_URL],
+				});
+			});
+
 			it('returns undefined and does not upsert when the resolved resource is not first-party', async () => {
 				oauthClientRepository.findOneBy.mockResolvedValue(null);
 

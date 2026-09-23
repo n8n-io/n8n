@@ -19,6 +19,7 @@ const VALID_COMPLETION = {
 const buildContext = (
 	req: {
 		method?: string;
+		protocol?: string;
 		accept?: string;
 		headers?: Record<string, string>;
 		cookie?: string;
@@ -37,20 +38,21 @@ const buildContext = (
 	const context = mock<IWebhookFunctions>();
 	context.logger = mock<Logger>();
 	context.getResponseObject.mockReturnValue(response);
-	context.getRequestObject.mockReturnValue({
+	const request = {
 		method: req.method ?? 'GET',
-		protocol: 'https',
+		protocol: req.protocol ?? 'https',
 		headers: {
 			...(req.accept === undefined ? { accept: 'text/html' } : { accept: req.accept }),
 			...(req.cookie ? { cookie: req.cookie } : {}),
 			...req.headers,
-		},
+		} as Record<string, string>,
 		query: req.query ?? {},
 		originalUrl: req.originalUrl ?? '/webhook/abc?ref=email',
-	} as never);
+	};
+	context.getRequestObject.mockReturnValue(request as never);
 	context.beginN8nOAuth2Flow.mockResolvedValue(AUTHORIZE_URL);
 
-	return { context, response };
+	return { context, response, request };
 };
 
 describe('n8nBrowserOAuth2Flow', () => {
@@ -100,6 +102,22 @@ describe('n8nBrowserOAuth2Flow', () => {
 
 		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
 		expect(context.completeN8nOAuth2Flow).not.toHaveBeenCalled();
+		expect(response.writeHead).not.toHaveBeenCalled();
+	});
+
+	// SameSite=Lax only restricts cross-site requests, so a same-origin fetch() still
+	// carries the one-hop cookie; only a top-level navigation may spend it or the
+	// callback code.
+	it.each([
+		['the one-hop cookie', { cookie: 'n8n-webhook-oauth=fresh-token' }],
+		['callback code/state', { query: { code: 'c1', state: 's1' } }],
+	])('leaves a non-navigation GET carrying %s to bearer-token auth', async (_label, req) => {
+		const { context, response } = buildContext({ ...req, headers: { 'sec-fetch-mode': 'cors' } });
+
+		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
+		expect(context.validateN8nOAuth2Token).not.toHaveBeenCalled();
+		expect(context.completeN8nOAuth2Flow).not.toHaveBeenCalled();
+		expect(response.clearCookie).not.toHaveBeenCalled();
 		expect(response.writeHead).not.toHaveBeenCalled();
 	});
 
@@ -192,6 +210,33 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: '/webhook/abc?ref=email' });
 	});
 
+	// `secure` follows the request scheme, not config: over plain http in dev a Secure
+	// cookie would never come back on the follow-up GET and the flow would loop.
+	it.each([
+		['https', 'https', {}, true],
+		['http', 'http', {}, false],
+		['http behind a TLS-terminating proxy', 'http', { 'x-forwarded-proto': 'https' }, true],
+	])(
+		'sets the cookie Secure flag from the request scheme (%s)',
+		async (_label, protocol, headers, secure) => {
+			const { context, response } = buildContext({
+				protocol,
+				headers,
+				query: { code: 'c1', state: 's1' },
+				originalUrl: '/webhook/abc?method=GET&code=c1&state=s1',
+			});
+			context.completeN8nOAuth2Flow.mockResolvedValue(VALID_COMPLETION);
+
+			await n8nBrowserOAuth2Flow(context, RESOURCE_URL);
+
+			expect(response.cookie).toHaveBeenCalledWith(
+				'n8n-webhook-oauth',
+				'fresh-token',
+				expect.objectContaining({ secure }),
+			);
+		},
+	);
+
 	// A dynamic webhook's resource URL is the templated path, so it is also the
 	// registered redirect_uri — the callback hop lands on the literal `:id` path while
 	// the hop that consumes the cookie sits on the resolved one. Scoping the cookie to
@@ -252,7 +297,9 @@ describe('n8nBrowserOAuth2Flow', () => {
 	});
 
 	it('authenticates the follow-up GET from the cookie and consumes it', async () => {
-		const { context, response } = buildContext({ cookie: 'n8n-webhook-oauth=fresh-token' });
+		const { context, response, request } = buildContext({
+			cookie: 'theme=dark; n8n-webhook-oauth=fresh-token; lang=en',
+		});
 		context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: USER });
 
 		const outcome = await n8nBrowserOAuth2Flow(context, RESOURCE_URL);
@@ -261,6 +308,17 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('fresh-token', RESOURCE_URL);
 		expect(response.clearCookie).toHaveBeenCalledWith('n8n-webhook-oauth', expect.anything());
 		expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+		// The token never reaches the workflow's header data; unrelated cookies stay.
+		expect(request.headers.cookie).toBe('theme=dark; lang=en');
+	});
+
+	it('removes the cookie header entirely when the one-hop cookie was the only cookie', async () => {
+		const { context, request } = buildContext({ cookie: 'n8n-webhook-oauth=fresh-token' });
+		context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: USER });
+
+		await n8nBrowserOAuth2Flow(context, RESOURCE_URL);
+
+		expect(request.headers).not.toHaveProperty('cookie');
 	});
 
 	it('restarts the flow when the cookie token no longer validates', async () => {

@@ -264,8 +264,8 @@ describe('n8nOAuth2Auth', () => {
 		});
 
 		it('resolves ok from the one-hop cookie once the browser flow completes', async () => {
-			const { context } = buildContext({
-				otherHeaders: { cookie: 'n8n-webhook-oauth=cookie-token' },
+			const { context, response, request } = buildContext({
+				otherHeaders: { cookie: 'n8n-webhook-oauth=cookie-token; theme=dark', accept: 'text/html' },
 			});
 			context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: USER });
 
@@ -285,6 +285,14 @@ describe('n8nOAuth2Auth', () => {
 				'cookie-token',
 				`${WEBHOOK_URL}?method=GET`,
 			);
+			// The cookie carried the access token: it is cleared in the browser, stripped
+			// from the request, and the header is recorded as consumed.
+			expect(response.clearCookie).toHaveBeenCalledWith(
+				'n8n-webhook-oauth',
+				expect.objectContaining({ path: '/webhook/protected-path' }),
+			);
+			expect(request.headers.cookie).toBe('theme=dark');
+			expect(redactedHeaders(request)).toEqual({ cookie: REDACTED, accept: 'text/html' });
 		});
 	});
 });

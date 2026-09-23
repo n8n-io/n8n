@@ -185,6 +185,7 @@ describe('protected resource metadata for test webhook triggers', () => {
 
 		const resource = await resolveResource(webhookPath);
 
+		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
 		expect(resource?.isFirstParty).toBeUndefined();
 	});
 
@@ -194,6 +195,7 @@ describe('protected resource metadata for test webhook triggers', () => {
 
 		const resource = await resolveResource(webhookPath, 'GET');
 
+		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath, 'GET'));
 		expect(resource?.isFirstParty).toBeUndefined();
 	});
 
@@ -226,6 +228,8 @@ describe('protected resource metadata for test webhook triggers', () => {
 
 		const resource = await resolveResource(webhookPath, 'GET');
 
+		// Still a resource, so a DCR client can be used against it — just not a virtual one.
+		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath, 'GET'));
 		expect(resource?.isFirstParty).toBeUndefined();
 	});
 

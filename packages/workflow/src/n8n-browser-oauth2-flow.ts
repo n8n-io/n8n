@@ -63,6 +63,21 @@ function readCookie(req: Request): string | null {
 }
 
 /**
+ * Drops the one-hop cookie from the request header once it has been read, so the
+ * access token it carries never reaches the workflow's `headers` data. Unrelated
+ * cookies stay. The cli-side webhook sanitizer cannot do this: it runs before the
+ * node, and the flow still has to read the cookie back on the redirect hop.
+ */
+function stripCookie(req: Request): void {
+	const rest = (req.headers.cookie ?? '')
+		.split(';')
+		.map((cookie) => cookie.trim())
+		.filter((cookie) => cookie && !cookie.startsWith(`${BROWSER_OAUTH_COOKIE_NAME}=`));
+	if (rest.length) req.headers.cookie = rest.join('; ');
+	else delete req.headers.cookie;
+}
+
+/**
  * True for a request that only a *top-level* browser navigation can produce —
  * the address bar changing, not a page embedding the URL in a frame. `Sec-Fetch-Mode:
  * navigate` alone doesn't distinguish those: an `<iframe src="...">` on someone
@@ -148,13 +163,17 @@ export const n8nBrowserOAuth2Flow = async (
 		return 'not-applicable';
 	}
 
+	// Every shape below is a top-level navigation: the AS callback and the follow-up
+	// GET are redirects the browser follows. A same-origin `fetch()` carries the
+	// one-hop cookie too (SameSite=Lax only restricts cross-site), so it must not be
+	// able to spend it — it keeps the bearer-token path.
+	if (!isBrowserNavigation(req, force)) {
+		return 'not-applicable';
+	}
+
 	const { code, state, error } = (req.query ?? {}) as Record<string, unknown>;
 	const isCallback = typeof code === 'string' && typeof state === 'string';
 	const cookieToken = readCookie(req);
-
-	if (!isCallback && cookieToken === null && !isBrowserNavigation(req, force)) {
-		return 'not-applicable';
-	}
 
 	if (typeof error === 'string') {
 		// The user denied consent (or the AS refused). Restarting here would loop straight
@@ -191,6 +210,7 @@ export const n8nBrowserOAuth2Flow = async (
 	} else if (cookieToken !== null) {
 		// Cleared at the path it was set for: this request *is* the redirect target.
 		res.clearCookie(BROWSER_OAUTH_COOKIE_NAME, cookieOptions(req, pathOf(req.originalUrl)));
+		stripCookie(req);
 		const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
 		if (validation.valid) {
 			return { status: 'ok', token: cookieToken, user: validation.user };
