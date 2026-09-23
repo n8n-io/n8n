@@ -24,6 +24,7 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
@@ -61,6 +62,7 @@ mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
+mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
