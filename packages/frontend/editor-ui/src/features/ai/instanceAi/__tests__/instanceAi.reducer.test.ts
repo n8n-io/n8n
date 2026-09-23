@@ -643,6 +643,78 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages).toHaveLength(1);
 			expect(state.messages[0].agentTree!.agentId).toBe('parent-agent');
 		});
+
+		// The opening turn refines the thread title and publishes the result with an
+		// empty runId, because the title belongs to the thread and not to a run. That
+		// fact must not invent a turn: a placeholder here would sit after the real
+		// message and make the transcript tail the wrong one.
+		test('a thread-level fact with no runId creates no placeholder message', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, {
+				type: 'thread-title-updated',
+				runId: '',
+				agentId: 'orchestrator',
+				payload: { title: 'Trigger node naming' },
+			});
+
+			expect(state.messages).toHaveLength(1);
+			expect(state.messages.at(-1)?.id).toBe('run-1');
+		});
+	});
+
+	describe('preference-card', () => {
+		function stateWithSavedPreference(): InstanceAiReducerState {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'save_user_preference'));
+			handleEvent(
+				state,
+				makeToolResultEvent('run-1', 'agent-root', 'tc-1', {
+					ok: true,
+					preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+				}),
+			);
+			return state;
+		}
+
+		test('an undone fact reaches the rendered tool call of a finished run', () => {
+			const state = stateWithSavedPreference();
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+			const rendered = state.messages[0].agentTree!.toolCalls[0];
+
+			handleEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			// In-place update: the card renders the mutated object, so no reload is needed.
+			expect(rendered).toBe(state.messages[0].agentTree!.toolCalls[0]);
+			expect(rendered.preferenceCard).toEqual({ state: 'undone', content: undefined });
+		});
+
+		test('applying the same fact twice sets the same fields', () => {
+			const state = stateWithSavedPreference();
+			const fact: InstanceAiEvent = {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies brief.',
+				},
+			};
+
+			handleEvent(state, fact);
+			const afterFirst = { ...state.messages[0].agentTree!.toolCalls[0].preferenceCard };
+			handleEvent(state, fact);
+
+			expect(state.messages[0].agentTree!.toolCalls[0].preferenceCard).toEqual(afterFirst);
+			expect(state.messages).toHaveLength(1);
+		});
 	});
 
 	describe('unsafe identifiers', () => {

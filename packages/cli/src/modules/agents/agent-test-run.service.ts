@@ -43,6 +43,14 @@ export type PrepareDraftRunResult =
 	| { status: 'session_not_found' }
 	| { status: 'agent_misconfigured'; missing: string[] };
 
+interface DraftRunState {
+	response: string;
+	suspensions: AgentTestRunSuspension[];
+	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
+	observerFailed: boolean;
+	observerError?: unknown;
+}
+
 interface DraftRunConsumptionOptions {
 	errorMode?: 'throw' | 'forward';
 	onChunk?: (chunk: StreamChunk) => void;
@@ -299,33 +307,7 @@ export class AgentTestRunService {
 		const continuation = agentTestRunContinuationSchema.safeParse(input.continuation);
 		if (!continuation.success) throw new InvalidAgentTestRunCheckpointError();
 
-		let checkpoint: SerializableAgentState | undefined;
-		try {
-			checkpoint = await this.n8nCheckpointStorage.load(continuation.data.runId, input.agentId);
-		} catch (error) {
-			if (error instanceof UserError) throw new InvalidAgentTestRunCheckpointError();
-			throw error;
-		}
-
-		const pendingToolCall = checkpoint?.pendingToolCalls[continuation.data.toolCallId];
-		const expectedResourceId = draftChatMemoryResourceId(input.user.id);
-		if (
-			checkpoint?.status !== 'suspended' ||
-			checkpoint.persistence?.delegated === true ||
-			checkpoint.persistence?.threadId !== continuation.data.sessionId ||
-			checkpoint.persistence?.resourceId !== expectedResourceId ||
-			!pendingToolCall?.suspended ||
-			pendingToolCall.runId !== continuation.data.runId ||
-			!parseStandardApprovalSuspension({
-				runId: pendingToolCall.runId,
-				toolCallId: pendingToolCall.toolCallId,
-				toolName: pendingToolCall.toolName,
-				suspendPayload: pendingToolCall.suspendPayload,
-				resumeSchema: pendingToolCall.resumeSchema,
-			})
-		) {
-			throw new InvalidAgentTestRunCheckpointError();
-		}
+		await this.validateDraftApprovalCheckpoint(continuation.data, input.agentId, input.user.id);
 
 		return await this.resumeDraftRun({
 			agentId: input.agentId,
@@ -374,56 +356,101 @@ export class AgentTestRunService {
 		getExecutionId: () => string | undefined,
 		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
 	): Promise<PreparedDraftRunResult> {
-		let response = initialResponse;
-		const suspensions: AgentTestRunSuspension[] = [];
-		let errorChunk: Extract<StreamChunk, { type: 'error' }> | undefined;
-		let observerFailed = false;
-		let observerError: unknown;
-
+		const state: DraftRunState = {
+			response: initialResponse,
+			suspensions: [],
+			observerFailed: false,
+		};
 		try {
 			for await (const chunk of stream) {
-				if (!observerFailed && onChunk) {
-					try {
-						onChunk(chunk);
-					} catch (error) {
-						observerFailed = true;
-						observerError = error;
-					}
-				}
-				if (chunk.type === 'error' && errorMode === 'throw' && !observerFailed) {
-					errorChunk ??= chunk;
-					continue;
-				}
-				if (errorChunk) continue;
-				if (chunk.type === 'text-delta') {
-					response += chunk.delta;
-				} else if (chunk.type === 'tool-call-suspended') {
-					suspensions.push({
-						runId: chunk.runId,
-						toolCallId: chunk.toolCallId,
-						toolName: chunk.toolName,
-						...(chunk.input !== undefined ? { input: chunk.input } : {}),
-						...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
-						...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
-					});
-				}
+				this.observeDraftChunk(chunk, onChunk, state);
+				this.collectDraftChunk(chunk, errorMode, state);
 			}
 		} catch (error) {
-			if (observerFailed) throw observerError;
+			if (state.observerFailed) throw state.observerError;
 			throw error;
 		}
-		if (observerFailed) throw observerError;
-
-		// Draining preserves terminal usage and lets finalization failures take precedence.
-		if (errorChunk) throw errorChunk.error;
+		if (state.observerFailed) throw state.observerError;
+		// Drain first so terminal usage and finalization errors are preserved.
+		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
-		const metadata = {
-			response,
-			executionId,
-		};
-		return suspensions.length > 0
-			? { status: 'suspended', ...metadata, suspensions }
-			: { status: 'completed', ...metadata };
+		const metadata = { response: state.response, executionId };
+		if (state.suspensions.length > 0) {
+			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
+		}
+		return { status: 'completed', ...metadata };
+	}
+
+	private async validateDraftApprovalCheckpoint(
+		continuation: AgentTestRunContinuation,
+		agentId: string,
+		userId: string,
+	): Promise<void> {
+		let checkpoint: SerializableAgentState | undefined;
+		try {
+			checkpoint = await this.n8nCheckpointStorage.load(continuation.runId, agentId);
+		} catch (error) {
+			if (error instanceof UserError) throw new InvalidAgentTestRunCheckpointError();
+			throw error;
+		}
+
+		const pendingToolCall = checkpoint?.pendingToolCalls[continuation.toolCallId];
+		const expectedResourceId = draftChatMemoryResourceId(userId);
+		if (
+			checkpoint?.status !== 'suspended' ||
+			checkpoint.persistence?.delegated === true ||
+			checkpoint.persistence?.threadId !== continuation.sessionId ||
+			checkpoint.persistence?.resourceId !== expectedResourceId ||
+			!pendingToolCall?.suspended ||
+			pendingToolCall.runId !== continuation.runId ||
+			!parseStandardApprovalSuspension({
+				runId: pendingToolCall.runId,
+				toolCallId: pendingToolCall.toolCallId,
+				toolName: pendingToolCall.toolName,
+				suspendPayload: pendingToolCall.suspendPayload,
+				resumeSchema: pendingToolCall.resumeSchema,
+			})
+		) {
+			throw new InvalidAgentTestRunCheckpointError();
+		}
+	}
+
+	private observeDraftChunk(
+		chunk: StreamChunk,
+		onChunk: DraftRunConsumptionOptions['onChunk'],
+		state: DraftRunState,
+	): void {
+		if (state.observerFailed || !onChunk) return;
+		try {
+			onChunk(chunk);
+		} catch (error) {
+			state.observerFailed = true;
+			state.observerError = error;
+		}
+	}
+
+	private collectDraftChunk(
+		chunk: StreamChunk,
+		errorMode: DraftRunConsumptionOptions['errorMode'],
+		state: DraftRunState,
+	): void {
+		if (chunk.type === 'error' && errorMode === 'throw' && !state.observerFailed) {
+			state.errorChunk ??= chunk;
+			return;
+		}
+		if (state.errorChunk) return;
+		if (chunk.type === 'text-delta') {
+			state.response += chunk.delta;
+		} else if (chunk.type === 'tool-call-suspended') {
+			state.suspensions.push({
+				runId: chunk.runId,
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				...(chunk.input !== undefined ? { input: chunk.input } : {}),
+				...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
+				...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
+			});
+		}
 	}
 }

@@ -5,6 +5,7 @@ import { waitFor } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { GLOBAL_ADMIN_SCOPES } from '@n8n/permissions';
 import InstanceRoleView from './InstanceRoleView.vue';
 import {
 	BASELINE_INSTANCE_SCOPES,
@@ -176,6 +177,34 @@ describe('InstanceRoleView', () => {
 				title: "Couldn't create role",
 				message: 'Enter a name of at least 2 characters',
 			});
+		});
+
+		it('ticks Credentials "Manage" when starting from the real Admin preset', async () => {
+			// Before the credential group existed, setPreset's ALL_INSTANCE_SCOPES filter
+			// silently dropped all 12 credential scopes, so "Start from Admin" produced a
+			// role that could not see credentials at all. It now ticks Credentials Manage.
+			rolesStore.processedInstanceRoles = [
+				{ ...mockSystemRole, scopes: [...GLOBAL_ADMIN_SCOPES] },
+			] as typeof rolesStore.processedInstanceRoles;
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+					'false',
+				),
+			);
+
+			await userEvent.click(getByTestId('role-preset-global:admin'));
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+					'true',
+				),
+			);
+			// The lower rungs render as implied, not as independent selections.
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
 		});
 
 		it('populates scopes from a system-role preset', async () => {

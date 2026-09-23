@@ -22,6 +22,7 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -168,6 +169,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		project: Project,
 		ctx: OperationContext,
 	) {
+		await Container.get(CredentialDescriptionsService).stripIfDisabled(credential);
 		if (credential.description !== undefined) {
 			const parsed = credentialDescriptionSchema.safeParse(credential.description);
 

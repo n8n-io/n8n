@@ -1,4 +1,5 @@
 import type {
+	AgentExecutionStatus,
 	AgentMessageAuthor,
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
@@ -16,18 +17,20 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
-import {
-	AgentChatAttachmentService,
-	type StoredAttachmentRef,
-} from './agent-chat-attachment.service';
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
-import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
+import {
+	AgentExecutionLogStore,
+	type AgentExecutionLogRef,
+} from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -60,7 +63,7 @@ export interface RecordMessageParams {
 	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
-	hitlStatus?: 'suspended' | 'resumed';
+	hitlStatus?: AgentExecutionHitlStatus;
 	/** Where the message originated from, e.g. 'chat', 'slack', 'task'. */
 	source?: string;
 	/** Optional metadata persisted on the thread when it is first created. */
@@ -83,11 +86,8 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	initialTimeline?: TimelineEvent[];
 }
 
-interface TimelineSnapshotParams {
-	executionId: string;
+interface TimelineSnapshotParams extends AgentExecutionLogRef {
 	projectId: string;
-	agentId: string;
-	threadId: string;
 	timeline: TimelineEvent[];
 }
 
@@ -196,7 +196,7 @@ export class AgentExecutionService {
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
 		this.stopHeartbeat(executionId);
 		this.pendingTimelineSnapshots.delete(executionId);
-		const { record, hitlStatus } = params;
+		const { record } = params;
 		const status = executionStatus(record);
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const failureSummary = computeExecutionFailureSummary({
@@ -209,41 +209,10 @@ export class AgentExecutionService {
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
-			await this.timelineSnapshotWrites.get(executionId);
-			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
-				status,
-				stoppedAt,
-				duration: record.duration,
-				model: record.model,
-				promptTokens: record.usage?.promptTokens ?? null,
-				completionTokens: record.usage?.completionTokens ?? null,
-				totalTokens: record.usage?.totalTokens ?? null,
-				cost: record.totalCost,
-				timeline: record.timeline.length > 0 ? record.timeline : null,
-				storedAt: 'db',
-				error: record.error,
-				failureSummary,
-				hitlStatus: hitlStatus ?? null,
-			});
-			if (!finalized) {
-				throw new OperationalError('Agent execution is no longer running', {
-					extra: { executionId },
-				});
-			}
+			await this.writeTerminalExecution(executionId, params, status, stoppedAt, failureSummary);
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
-			if (storedAt !== 'db') {
-				const logRef = { agentId: params.agentId, threadId: params.threadId, executionId };
-				let blobWritten = false;
-				try {
-					await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
-					blobWritten = true;
-					await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
-				} catch (error) {
-					this.errorReporter.error(error);
-					if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);
-				}
-			}
+			await this.moveFinalTimelineToBlob(executionId, params, storedAt);
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -262,7 +231,7 @@ export class AgentExecutionService {
 	}
 
 	private async deleteUnreferencedTimelineBlob(
-		ref: { agentId: string; threadId: string; executionId: string },
+		ref: AgentExecutionLogRef,
 		storedAt: StorageLocation,
 	): Promise<void> {
 		try {
@@ -361,36 +330,7 @@ export class AgentExecutionService {
 			const snapshot = this.pendingTimelineSnapshots.get(executionId);
 			if (!snapshot) return;
 			this.pendingTimelineSnapshots.delete(executionId);
-			try {
-				if (
-					!(await this.agentExecutionRepository.updateTimelineIfRunning(
-						executionId,
-						snapshot.timeline,
-					))
-				) {
-					this.pendingTimelineSnapshots.delete(executionId);
-					return;
-				}
-				this.executionUpdateBroadcaster.notify({
-					projectId: snapshot.projectId,
-					agentId: snapshot.agentId,
-					threadId: snapshot.threadId,
-					executionId,
-				});
-			} catch (error) {
-				if (!this.heartbeatTimers.has(executionId)) return;
-				if (!this.pendingTimelineSnapshots.has(executionId)) {
-					this.pendingTimelineSnapshots.set(executionId, snapshot);
-				}
-				this.logger.warn('Failed to persist an agent execution timeline snapshot; retrying', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				await new Promise<void>((resolve) => {
-					const timer = setTimeout(resolve, TIMELINE_SNAPSHOT_RETRY_DELAY_MS);
-					timer.unref();
-				});
-			}
+			if (!(await this.writeTimelineSnapshot(executionId, snapshot))) return;
 		}
 	}
 
@@ -419,53 +359,10 @@ export class AgentExecutionService {
 		executionId: string,
 		status: AgentExecution['status'],
 	): Promise<void> {
-		const { threadId, agentId, record, hitlStatus } = params;
-		const updates: Array<Promise<unknown>> = [];
-		if (hitlStatus === 'resumed' && record.model) {
-			updates.push(this.backfillSuspendedExecutions(threadId, record.model));
-		}
-		if (record.usage) {
-			updates.push(
-				this.agentExecutionThreadRepository.incrementUsage(
-					threadId,
-					record.usage.promptTokens,
-					record.usage.completionTokens,
-					record.totalCost ?? 0,
-					record.duration,
-				),
-			);
-		}
-		for (const result of await Promise.allSettled(updates)) {
-			if (result.status === 'rejected') {
-				this.logger.warn('Failed to update agent execution thread metadata', {
-					executionId,
-					threadId,
-					error: result.reason,
-				});
-			}
-		}
-		if (params.telemetry) {
-			try {
-				this.telemetry.trackAgentTurnFinished({
-					agent_id: agentId,
-					user_id: params.telemetry.userId,
-					thread_id: threadId,
-					run_type: params.telemetry.runType,
-					turn_status: status === 'success' ? 'succeeded' : 'failed',
-					configuration: params.telemetry.configuration,
-					latency_ms: record.duration,
-					cost: record.totalCost ?? 0,
-					token_count: record.usage?.totalTokens ?? 0,
-					tool_call_count: record.timeline.filter((event) => event.type === 'tool-call').length,
-				});
-			} catch (error) {
-				this.logger.warn('Failed to track agent execution telemetry', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
+		const { threadId, agentId, record } = params;
+		await this.updateThreadAfterExecution(params, executionId);
+
+		this.trackFinishedTurn(params, status);
 		this.logger.debug('Recorded agent execution', {
 			executionId,
 			threadId,
@@ -753,6 +650,146 @@ export class AgentExecutionService {
 	/** Narrow refs to those whose data lives in a blob store, i.e. all but `db`. */
 	private toBlobRefs<T extends { storedAt: AgentExecution['storedAt'] }>(refs: T[]) {
 		return refs.filter((r): r is T & { storedAt: StorageLocation } => r.storedAt !== 'db');
+	}
+
+	private async writeTerminalExecution(
+		executionId: string,
+		params: RecordMessageParams,
+		status: AgentExecutionStatus,
+		stoppedAt: Date,
+		failureSummary: ReturnType<typeof computeExecutionFailureSummary>,
+	): Promise<void> {
+		const { record, hitlStatus } = params;
+		await this.timelineSnapshotWrites.get(executionId);
+		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
+			status,
+			stoppedAt,
+			duration: record.duration,
+			model: record.model,
+			promptTokens: record.usage?.promptTokens ?? null,
+			completionTokens: record.usage?.completionTokens ?? null,
+			totalTokens: record.usage?.totalTokens ?? null,
+			cost: record.totalCost,
+			timeline: record.timeline.length > 0 ? record.timeline : null,
+			storedAt: 'db',
+			error: record.error,
+			failureSummary,
+			hitlStatus: hitlStatus ?? null,
+		});
+		if (!finalized) {
+			throw new OperationalError('Agent execution is no longer running', {
+				extra: { executionId },
+			});
+		}
+	}
+
+	private async moveFinalTimelineToBlob(
+		executionId: string,
+		params: RecordMessageParams,
+		storedAt: AgentExecution['storedAt'],
+	): Promise<void> {
+		if (storedAt === 'db') return;
+		const { record } = params;
+		const logRef = { agentId: params.agentId, threadId: params.threadId, executionId };
+		let blobWritten = false;
+		try {
+			await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
+			blobWritten = true;
+			await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
+		} catch (error) {
+			this.errorReporter.error(error);
+			if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);
+		}
+	}
+
+	private async writeTimelineSnapshot(
+		executionId: string,
+		snapshot: Omit<TimelineSnapshotParams, 'executionId'>,
+	): Promise<boolean> {
+		try {
+			if (
+				!(await this.agentExecutionRepository.updateTimelineIfRunning(
+					executionId,
+					snapshot.timeline,
+				))
+			) {
+				this.pendingTimelineSnapshots.delete(executionId);
+				return false;
+			}
+			this.executionUpdateBroadcaster.notify({
+				projectId: snapshot.projectId,
+				agentId: snapshot.agentId,
+				threadId: snapshot.threadId,
+				executionId,
+			});
+		} catch (error) {
+			if (!this.heartbeatTimers.has(executionId)) return false;
+			if (!this.pendingTimelineSnapshots.has(executionId)) {
+				this.pendingTimelineSnapshots.set(executionId, snapshot);
+			}
+			this.logger.warn('Failed to persist an agent execution timeline snapshot; retrying', {
+				executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			await new Promise<void>((resolve) => {
+				const timer = setTimeout(resolve, TIMELINE_SNAPSHOT_RETRY_DELAY_MS);
+				timer.unref();
+			});
+		}
+		return true;
+	}
+
+	private async updateThreadAfterExecution(
+		params: RecordMessageParams,
+		executionId: string,
+	): Promise<void> {
+		const { threadId, record, hitlStatus } = params;
+		const updates: Array<Promise<unknown>> = [];
+		if (hitlStatus === 'resumed' && record.model) {
+			updates.push(this.backfillSuspendedExecutions(threadId, record.model));
+		}
+		if (record.usage) {
+			updates.push(
+				this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					record.usage.promptTokens,
+					record.usage.completionTokens,
+					record.totalCost ?? 0,
+					record.duration,
+				),
+			);
+		}
+		for (const result of await Promise.allSettled(updates)) {
+			if (result.status === 'rejected') {
+				this.logger.warn('Failed to update agent execution thread metadata', {
+					executionId,
+					threadId,
+					error: result.reason,
+				});
+			}
+		}
+	}
+
+	private trackFinishedTurn(params: RecordMessageParams, status: AgentExecutionStatus): void {
+		if (!params.telemetry) return;
+		const { agentId, threadId, record } = params;
+		try {
+			this.telemetry.trackAgentTurnFinished({
+				agent_id: agentId,
+				user_id: params.telemetry.userId,
+				thread_id: threadId,
+				run_type: params.telemetry.runType,
+				turn_status: status === 'success' ? 'succeeded' : 'failed',
+				configuration: params.telemetry.configuration,
+				...buildAgentTurnMetrics(record),
+			});
+		} catch (error) {
+			this.logger.warn('Failed to track agent execution telemetry', {
+				agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }
 

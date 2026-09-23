@@ -1,4 +1,5 @@
-import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -48,6 +49,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+	Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = true;
 	await testDb.truncate([
 		'InstanceCredentialAssignment',
 		'CredentialsEntity',
@@ -260,6 +262,50 @@ test.each([
 
 		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
 		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	},
+);
+
+test.each([false, undefined])(
+	'import:credentials ignores descriptions and preserves stored values when the flag is %s',
+	async (enabled) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+		if (enabled === undefined) {
+			delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
+		} else {
+			Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;
+		}
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify(
+				['desc-untrimmed', 'desc-new'].map((id) => ({
+					id,
+					name: 'Reporting account',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description: 42,
+				})),
+			),
+		);
+
+		try {
+			await command.run([`--input=${inputPath}`]);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map(
+			(await getAllCredentials()).map((credential) => [credential.id, credential]),
+		);
+		expect(byId.get('desc-untrimmed')).toMatchObject({
+			name: 'Reporting account',
+			description: 'Read-only key for reporting.',
+		});
+		expect(byId.get('desc-new')?.description).toBeNull();
 	},
 );
 
@@ -787,4 +833,8 @@ test('`import:credential --projectId ... --userId ...` fails explaining that onl
 	).rejects.toThrowError(
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
+});
+
+afterEach(() => {
+	delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
 });

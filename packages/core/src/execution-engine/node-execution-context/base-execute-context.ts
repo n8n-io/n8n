@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
@@ -36,6 +37,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
 	WorkflowDataProxy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
@@ -130,7 +132,19 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	async putExecutionToWait(waitTill: Date): Promise<void> {
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		const waitMs = Math.max(waitTill.getTime() - Date.now(), 0);
+
+		// Suspending a short wait costs a write and a reload, and the tracker polls too
+		// slowly to promise an on-time resume.
+		if (options?.acceptsResumeRequest === false && waitMs < MAX_IN_PROCESS_WAIT_MS) {
+			// A cancelled execution ends the wait, and the step still returns its input.
+			return await sleep(waitMs, this.abortSignal).catch(() => undefined);
+		}
+
 		this.runExecutionData.waitTill = waitTill;
 		if (this.additionalData.setExecutionStatus) {
 			this.additionalData.setExecutionStatus('waiting');

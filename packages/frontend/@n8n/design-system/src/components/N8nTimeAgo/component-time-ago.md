@@ -18,6 +18,7 @@ Cards, tables, and detail views show when a resource changed. One component keep
 | `date` | `string` | Required | Date to render, as an ISO 8601 string. |
 | `capitalize` | `boolean` | `false` | Keep the casing of the locale text instead of lowercasing it. |
 | `locale` | `string` | `undefined` | Name of a timeago.js locale that the app registered. Omit to use the timeago.js default. |
+| `live` | `boolean` | `false` | Re-render as the date ages, on a 30 second tick. Off by default, so long lists cost no timers. |
 
 ### Events
 

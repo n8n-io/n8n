@@ -72,6 +72,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
+import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import {
@@ -81,6 +82,8 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -315,7 +318,6 @@ function isEnabledFormPageNode(node: INode): boolean {
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
 }
 
-// eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
@@ -835,6 +837,7 @@ export async function executeWebhook(
 	let didSendResponse = false;
 	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
+	let pendingEngineV2Response: PendingWebhookResponse | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
@@ -1105,6 +1108,16 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		// Before the run, because a short workflow answers before `startExecution`
+		// returns and nothing replays a missed response. The id is minted here, so
+		// the run and the listener agree on it.
+		if (routesToEngineV2 && responseMode !== 'onReceived') {
+			const engineExecutionId = createExecutionIdV2();
+			pendingEngineV2Response =
+				Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
+			runData.engineExecutionId = engineExecutionId;
+		}
+
 		// Extract W3C trace context from webhook headers for OTEL propagation.
 		const traceparent = req.headers.traceparent;
 		if (
@@ -1195,14 +1208,46 @@ export async function executeWebhook(
 			{ executionId },
 		);
 
-		// Engine 2.0 serves `onReceived` only, so the response is already out. Nothing
-		// below applies: the run has no control-plane execution to wait on.
-		if (routesToEngineV2) return executionId;
+		if (routesToEngineV2 && responseMode === 'onReceived') return executionId;
 
-		const activeExecutions = Container.get(ActiveExecutions);
+		/**
+		 * A callback to handle the pending execution response from the data plane.
+		 * Returns the run data if we get a response in time. Otherwise sends a 504
+		 * timeout to the webhook caller.
+		 */
+		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
+			try {
+				const outcome = await waiting.settled;
+				if (outcome.status !== 'timeout') {
+					return await engineV2Webhooks.toRun(outcome, executionMode);
+				}
 
-		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = activeExecutions.getPostExecutePromise(executionId);
+				Container.get(Logger).warn('No answer arrived for an engine 2.0 webhook run', {
+					executionId,
+					workflowId: workflowData.id,
+				});
+				// The webhook node can answer before the execution starts. Do not send a
+				// second response if the execution response later times out.
+				if (!didSendResponse) {
+					responseCallback(null, {
+						data: { message: 'The workflow did not answer in time' },
+						responseCode: 504,
+					});
+					didSendResponse = true;
+				}
+
+				return undefined;
+			} finally {
+				waiting.release();
+			}
+		};
+
+		// Get a promise which resolves when the workflow did execute and send then response.
+		// Engine 2.0 keeps no control-plane execution to wait on, so its answer comes
+		// off the response channel, shaped like the run the handler below reads.
+		const executePromise = pendingEngineV2Response
+			? waitForDataPlaneRun(pendingEngineV2Response)
+			: Container.get(ActiveExecutions).getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
@@ -1332,6 +1377,9 @@ export async function executeWebhook(
 		}
 		return executionId;
 	} catch (e) {
+		// Nothing will ever answer this one, so stop waiting for it.
+		pendingEngineV2Response?.release();
+
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;

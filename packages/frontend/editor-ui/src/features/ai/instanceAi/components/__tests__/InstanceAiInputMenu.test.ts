@@ -5,7 +5,12 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInputMenu from '../InstanceAiInputMenu.vue';
 
-const { action, track } = vi.hoisted(() => ({ action: vi.fn(), track: vi.fn() }));
+const { action, track, refreshAppliedPreferences, receivedThreadId } = vi.hoisted(() => ({
+	action: vi.fn(),
+	track: vi.fn(),
+	refreshAppliedPreferences: vi.fn(),
+	receivedThreadId: vi.fn<(threadId: string | undefined) => void>(),
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
@@ -47,10 +52,14 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 	const { ref } = await import('vue');
 
 	return {
-		useInstanceAiInputMenuItems: () => ({
-			menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
-			disconnectedConnectionCount: ref(0),
-		}),
+		useInstanceAiInputMenuItems: (_attachFiles: () => void, threadId: () => string | undefined) => {
+			receivedThreadId(threadId());
+			return {
+				menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
+				disconnectedConnectionCount: ref(0),
+				refreshAppliedPreferences,
+			};
+		},
 	};
 });
 
@@ -78,6 +87,22 @@ describe('InstanceAiInputMenu', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON,
 			{},
 		);
+	});
+
+	it('re-reads the applied preferences each time the menu opens', async () => {
+		const { getByRole } = renderComponent();
+
+		await fireEvent.click(getByRole('button', { name: /Add .*files/ }));
+		expect(refreshAppliedPreferences).toHaveBeenCalledOnce();
+
+		await fireEvent.click(getByRole('button', { name: /Add .*files/ }));
+		expect(refreshAppliedPreferences).toHaveBeenCalledTimes(2);
+	});
+
+	it('hands its thread to the menu items', () => {
+		renderComponent({ props: { threadId: 'thread-7' } });
+
+		expect(receivedThreadId).toHaveBeenCalledWith('thread-7');
 	});
 
 	it('runs the selected menu action once', async () => {
