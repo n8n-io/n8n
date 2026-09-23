@@ -55,6 +55,7 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		availableInMCP: z.boolean().optional(),
+		availableInChat: z.boolean().optional(),
 	})
 	.strict();
 
