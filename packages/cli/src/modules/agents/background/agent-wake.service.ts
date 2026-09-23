@@ -15,6 +15,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
@@ -63,6 +64,7 @@ export class AgentWakeService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -127,10 +129,13 @@ export class AgentWakeService {
 
 	private scheduleLocal(threadId: string): void {
 		if (this.timers.has(threadId)) return;
-		const timer = setTimeout(() => {
-			this.timers.delete(threadId);
-			void this.attemptWake(threadId);
-		}, WAKE_DEBOUNCE_MS);
+		// A turn can request the wake, but the wake is not part of that turn.
+		const timer = this.sessionLeases.runOutsideTurn(() =>
+			setTimeout(() => {
+				this.timers.delete(threadId);
+				void this.attemptWake(threadId);
+			}, WAKE_DEBOUNCE_MS),
+		);
 		timer.unref();
 		this.timers.set(threadId, timer);
 	}

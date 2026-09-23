@@ -174,6 +174,7 @@ describe('AgentExecutionRepository', () => {
 				mockLogger(),
 				executionService,
 				mock<AgentChatExecutionService>(),
+				sessionLeases,
 			),
 		};
 	}

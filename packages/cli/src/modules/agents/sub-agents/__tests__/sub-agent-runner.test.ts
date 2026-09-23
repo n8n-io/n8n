@@ -29,6 +29,7 @@ import {
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import { SubAgentRunner } from '../sub-agent-runner';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
@@ -128,6 +129,7 @@ describe('SubAgentRunner', () => {
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
+	let sessionLeases: ReturnType<typeof mockSessionLeases>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -143,16 +145,19 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
+		sessionLeases = mockSessionLeases();
 		runner = new SubAgentRunner(
 			sourceResolver,
 			new AgentTurnExecutionService(
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
+				sessionLeases,
 			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
+			sessionLeases,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -933,6 +938,32 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('starts the child run in the scope of the child session lease', async () => {
+		let inChildTurn = false;
+		sessionLeases.runInTurn.mockImplementation(async (_executionId, fn) => {
+			inChildTurn = true;
+			try {
+				return await fn();
+			} finally {
+				inChildTurn = false;
+			}
+		});
+		let startedInChildTurn = false;
+		childAgent.stream.mockImplementation(async () => {
+			startedInChildTurn = inChildTurn;
+			return makeStreamResult(defaultStreamChunks);
+		});
+
+		const result = await runner.run(
+			{ ...spawnRequest, childThreadId: 'child-thread-1' },
+			{ parentAgentId, projectId, credentialProvider, runType: 'production' },
+		);
+
+		expect(result.threadId).toBe('child-thread-1');
+		expect(sessionLeases.runInTurn).toHaveBeenCalledWith('agent-execution-1', expect.any(Function));
+		expect(startedInChildTurn).toBe(true);
+	});
+
 	it('stops the child run and reads it to its end when the parent stops taking its chunks', async () => {
 		const chunkError = new Error('parent stream closed');
 		childAgent.stream.mockImplementation(async (_input, options) => ({
@@ -966,6 +997,43 @@ describe('SubAgentRunner', () => {
 				}),
 			}),
 		);
+	});
+
+	it('runs a child without a lease outside the turn scope and cancels its stream when the parent stops', async () => {
+		agentExecutionService.startExecutionRecording.mockResolvedValue({
+			executionId: 'agent-execution-1',
+		});
+		const chunkError = new Error('parent stream closed');
+		const cancel = vi.fn();
+		childAgent.stream.mockImplementation(async () => ({
+			runId: 'child-run-1',
+			stream: new ReadableStream<StreamChunk>({
+				start(controller) {
+					controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+				},
+				cancel,
+			}),
+			getState: () => {
+				throw new Error('not implemented');
+			},
+		}));
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onChunk: () => {
+					throw chunkError;
+				},
+			}),
+		).rejects.toBe(chunkError);
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		expect(sessionLeases.runInTurn).not.toHaveBeenCalled();
+		expect(options?.abortSignal?.aborted).toBe(false);
+		expect(cancel).toHaveBeenCalledOnce();
 	});
 
 	it('derives sub-agent telemetry from the parent context and passes it to the child stream', async () => {

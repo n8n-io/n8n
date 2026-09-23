@@ -7,6 +7,7 @@ import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { SubAgentRunner, SubAgentRunResult } from '../../sub-agents/sub-agent-runner';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { SUB_AGENT_BACKGROUND_TIMEOUT_MS } from '../agent-background-job.service';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 import {
 	SubAgentBackgroundRunner,
 	type BackgroundSpawnRequest,
@@ -49,14 +50,15 @@ function setup() {
 	jobService.settle.mockResolvedValue(true);
 	runner.run.mockResolvedValue(completedRunResult());
 
-	const backgroundRunner = new SubAgentBackgroundRunner(runner, jobService, logger);
+	const sessionLeases = mockSessionLeases();
+	const backgroundRunner = new SubAgentBackgroundRunner(runner, jobService, logger, sessionLeases);
 	const context = {
 		projectId: 'project-1',
 		parentAgentId: 'agent-1',
 		credentialProvider: mock<CredentialProvider>(),
 		runType: 'production' as const,
 	};
-	return { backgroundRunner, runner, jobService, context };
+	return { backgroundRunner, runner, jobService, context, sessionLeases };
 }
 
 async function flushDetachedRun() {
@@ -66,6 +68,35 @@ async function flushDetachedRun() {
 }
 
 describe('spawn', () => {
+	it('registers the job in the turn and starts the detached run outside it', async () => {
+		const { backgroundRunner, runner, jobService, context, sessionLeases } = setup();
+		let outsideTurn = false;
+		sessionLeases.runOutsideTurn.mockImplementation((fn) => {
+			outsideTurn = true;
+			try {
+				return fn();
+			} finally {
+				outsideTurn = false;
+			}
+		});
+		let registeredOutsideTurn: boolean | undefined;
+		jobService.registerSubAgentJob.mockImplementation(async ({ id }) => {
+			registeredOutsideTurn = outsideTurn;
+			return { status: 'started', jobId: id };
+		});
+		let startedOutsideTurn: boolean | undefined;
+		runner.run.mockImplementation(async () => {
+			startedOutsideTurn = outsideTurn;
+			return completedRunResult();
+		});
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(registeredOutsideTurn).toBe(false);
+		expect(startedOutsideTurn).toBe(true);
+	});
+
 	it('returns a started receipt before the detached run settles', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
 		let resolveRun!: (result: SubAgentRunResult) => void;

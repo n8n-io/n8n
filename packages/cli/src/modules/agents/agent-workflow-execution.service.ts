@@ -34,7 +34,10 @@ import { Telemetry } from '@/telemetry';
 import type { StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
-import { WORKFLOW_NODE_SESSION_WAIT_MS } from './agent-session-lease.service';
+import {
+	AgentSessionLeaseService,
+	WORKFLOW_NODE_SESSION_WAIT_MS,
+} from './agent-session-lease.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
@@ -89,8 +92,11 @@ interface WorkflowAgentStreamParams {
 	recordingParams?: StartExecutionParams;
 	streamObserver?: WorkflowAgentStreamObserver;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
-	/** Aborts the run when its session lease is lost. Only recorded runs have one. */
-	leaseSignal?: AbortSignal;
+	/**
+	 * The turn that holds the session lease. Only recorded runs have one, and
+	 * only while the message queue flag is on.
+	 */
+	turn?: { executionId: string; leaseSignal: AbortSignal };
 }
 
 interface WorkflowAgentStreamConsumption {
@@ -166,6 +172,7 @@ export class AgentWorkflowExecutionService {
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 		private readonly aiConfig: AiConfig,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -373,14 +380,21 @@ export class AgentWorkflowExecutionService {
 		const stopRun = new AbortController();
 		const options = await this.getWorkflowStreamOptions(params, hasParentContext, stopRun.signal);
 		state.executionStarted = true;
-		const resultStream = await params.agentInstance.stream(params.message, options);
-		const stopOnEarlyExit = {
-			abortRun: () => stopRun.abort(),
-			// The error that stopped the consumer is recorded as the execution error.
-			onDrainedChunk: (chunk: StreamChunk) => {
-				if (chunk.type !== 'error') recorder.record(chunk);
-			},
-		};
+		const startRun = async () => await params.agentInstance.stream(params.message, options);
+		// A leased run is a turn, so its writes are fenced by the session lease.
+		const resultStream = params.turn
+			? await this.sessionLeases.runInTurn(params.turn.executionId, startRun)
+			: await startRun();
+		// Only a leased run stops before its lease is released. Other runs cancel the stream.
+		const stopOnEarlyExit = params.turn
+			? {
+					abortRun: () => stopRun.abort(),
+					// The error that stopped the consumer is recorded as the execution error.
+					onDrainedChunk: (chunk: StreamChunk) => {
+						if (chunk.type !== 'error') recorder.record(chunk);
+					},
+				}
+			: undefined;
 		for await (const value of streamAgentChunks(resultStream.stream, stopOnEarlyExit)) {
 			this.recordWorkflowChunk(value, params.outputSchema, recorder, state);
 			await streamAdapter.observe(value);
@@ -441,7 +455,7 @@ export class AgentWorkflowExecutionService {
 			}),
 			...modelStreamStallOptions(this.aiConfig),
 			...(telemetry ? { telemetry } : {}),
-			abortSignal: anyAbortSignal(params.leaseSignal, stopSignal),
+			abortSignal: anyAbortSignal(params.turn?.leaseSignal, stopSignal),
 		};
 	}
 
@@ -486,7 +500,7 @@ export class AgentWorkflowExecutionService {
 		const { recordingParams } = params;
 		const streamAdapter = new WorkflowAgentStreamAdapter(params.streamObserver);
 		let agentExecutionId: string | undefined;
-		let leaseSignal: AbortSignal | undefined;
+		let turn: WorkflowAgentStreamParams['turn'];
 		const recorder = this.turnExecutionService.createRecorder(
 			undefined,
 			() => agentExecutionId,
@@ -494,16 +508,20 @@ export class AgentWorkflowExecutionService {
 		);
 		if (recordingParams) {
 			// Another execution on the same session runs first. The node fails only after the wait.
-			({ executionId: agentExecutionId, leaseSignal } =
-				await this.turnExecutionService.startExecutionWhenSessionFree(
-					recordingParams,
-					recorder.startedAt,
-					{ waitMs: WORKFLOW_NODE_SESSION_WAIT_MS },
-				));
+			const started = await this.turnExecutionService.startExecutionWhenSessionFree(
+				recordingParams,
+				recorder.startedAt,
+				{ waitMs: WORKFLOW_NODE_SESSION_WAIT_MS },
+			);
+			agentExecutionId = started.executionId;
+			// TODO(AGENT-1031): Always set the turn when the message queue flag is removed.
+			if (started.leaseSignal) {
+				turn = { executionId: started.executionId, leaseSignal: started.leaseSignal };
+			}
 		}
 
 		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
-			await this.consumeWorkflowAgentStream({ ...params, leaseSignal }, recorder, streamAdapter);
+			await this.consumeWorkflowAgentStream({ ...params, turn }, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
 		if (recordingParams && agentExecutionId) {

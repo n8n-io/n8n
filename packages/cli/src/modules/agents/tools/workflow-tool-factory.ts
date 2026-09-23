@@ -44,6 +44,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
@@ -1069,13 +1070,18 @@ function assembleWorkflowTool(
 					toolInputs,
 					currentFullSchema,
 				);
-				result = await executeWorkflow(
-					current.workflow,
-					current.triggerNode,
-					parsedInput,
-					{ ...context, agentRun: agentRunOf(context, ctx) },
-					allOutputs,
-					toolName,
+				const { workflow, triggerNode } = current;
+				// The sub-workflow runs on its own: its nodes and hooks are not part of this turn.
+				result = await Container.get(AgentSessionLeaseService).runOutsideTurn(
+					async () =>
+						await executeWorkflow(
+							workflow,
+							triggerNode,
+							parsedInput,
+							{ ...context, agentRun: agentRunOf(context, ctx) },
+							allOutputs,
+							toolName,
+						),
 				);
 			}
 

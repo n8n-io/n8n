@@ -31,6 +31,13 @@ import {
 	type WorkflowToolContext,
 } from '../workflow-tool-factory';
 import type { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
+import { AgentSessionLeaseService } from '../../agent-session-lease.service';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
+
+// The tool runs a sub-workflow outside the turn scope of the lease service.
+beforeEach(() => {
+	Container.set(AgentSessionLeaseService, mockSessionLeases());
+});
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
@@ -747,6 +754,36 @@ describe('workflow tool → parentAgentRun stamping', () => {
 
 	afterEach(() => {
 		Container.reset();
+	});
+
+	it('runs the sub-workflow outside the turn that calls the tool', async () => {
+		const sessionLeases = mockSessionLeases();
+		let outsideTurn = 0;
+		sessionLeases.runOutsideTurn.mockImplementation(async (fn) => {
+			outsideTurn++;
+			try {
+				return await fn();
+			} finally {
+				outsideTurn--;
+			}
+		});
+		Container.set(AgentSessionLeaseService, sessionLeases);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		let startedOutsideTurn = false;
+		const run = vi.fn().mockImplementation(async () => {
+			startedOutsideTurn = outsideTurn > 0;
+			return 'exec-1';
+		});
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
+			...buildContext(run, { workflowLoader, agentId: 'agent-1', integrationType: 'slack' }),
+			projectId: 'project-1',
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+
+		await tool.handler?.({}, agentCtx as never);
+
+		expect(startedOutsideTurn).toBe(true);
 	});
 
 	it('stamps the agent run onto the sub-execution so a Wait node can resume it', async () => {

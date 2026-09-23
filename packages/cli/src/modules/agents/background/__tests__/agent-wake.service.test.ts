@@ -25,6 +25,7 @@ import {
 } from '../agent-wake.service';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { formatWakeMessage, WAKE_RESULT_TEXT_MAX_CHARS } from '../background-job-messages';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
@@ -94,6 +95,7 @@ function setup(
 		return await callback(new AbortController().signal);
 	});
 
+	const sessionLeases = mockSessionLeases();
 	const service = new AgentWakeService(
 		jobRepository,
 		new AgentConversationStateService(executionRepository, checkpointStorage),
@@ -107,10 +109,12 @@ function setup(
 		agentsConfig,
 		logger,
 		backgroundJobService,
+		sessionLeases,
 	);
 
 	return {
 		service,
+		sessionLeases,
 		backgroundJobService,
 		jobRepository,
 		executionRepository,
@@ -303,6 +307,21 @@ describe('AgentWakeService', () => {
 			expect(hintDuringWake).toBeUndefined();
 			expect(await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`)).toBeDefined();
 		});
+	});
+
+	it('schedules the wake outside the turn that requested it', async () => {
+		vi.useFakeTimers();
+		try {
+			const { service, sessionLeases, orchestrator } = setup();
+
+			await service.requestWake('thread-1');
+			expect(sessionLeases.runOutsideTurn).toHaveBeenCalledOnce();
+
+			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
+			expect(orchestrator.executeForWake).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('delivers pending job results and marks them as delivered', async () => {

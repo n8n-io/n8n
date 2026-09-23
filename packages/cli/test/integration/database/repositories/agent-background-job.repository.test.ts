@@ -13,6 +13,7 @@ import { AgentConversationStateService } from '@/modules/agents/agent-conversati
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
+import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
@@ -257,6 +258,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				logger,
 				jobService,
+				Container.get(AgentSessionLeaseService),
 			);
 			Container.set(AgentWakeService, wakeService);
 

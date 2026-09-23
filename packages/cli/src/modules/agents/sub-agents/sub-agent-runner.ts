@@ -34,6 +34,7 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
@@ -127,6 +128,7 @@ export class SubAgentRunner {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {}
 
 	async run(
@@ -282,9 +284,10 @@ export class SubAgentRunner {
 				executionCounter: context.executionCounter,
 			};
 			executionStarted = operation.type === 'run';
-			const resultStream =
+			// The child run is its own turn, so its writes are fenced by the child lease.
+			const startChildRun = async () =>
 				operation.type === 'run'
-					? await agent.stream(userMessage ?? '', {
+					? await reconstructed.agent.stream(userMessage ?? '', {
 							...executionOptions,
 							persistence: {
 								resourceId,
@@ -300,7 +303,7 @@ export class SubAgentRunner {
 									: {}),
 							},
 						})
-					: await agent.resume('stream', operation.request.resumeData, {
+					: await reconstructed.agent.resume('stream', operation.request.resumeData, {
 							...executionOptions,
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
@@ -312,11 +315,17 @@ export class SubAgentRunner {
 								);
 							},
 						});
+			// TODO(AGENT-1031): Always run in the turn scope when the message queue flag is removed.
+			// A leased child run starts in its turn scope, so its writes are fenced.
+			const startInScope = leaseSignal
+				? async () => await this.sessionLeases.runInTurn(executionId, startChildRun)
+				: startChildRun;
+			const resultStream = await startInScope();
 			const consumed = await consumeAgentStream(
 				resultStream,
 				recorder,
 				createAttributionTracker(reconstructed.mcpServerAttributions),
-				stopRun,
+				leaseSignal ? stopRun : undefined,
 				context.onChunk,
 			);
 			executionError = consumed.executionError;
@@ -413,17 +422,20 @@ async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
 	attributionTracker: ReturnType<typeof createAttributionTracker>,
-	stopRun: AbortController,
+	stopRun: AbortController | undefined,
 	onChunk?: (chunk: StreamChunk) => void,
 ): Promise<{ result: GenerateResult; executionError: unknown }> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
 
-	const stopOnEarlyExit = {
-		abortRun: () => stopRun.abort(),
-		onDrainedChunk: (chunk: StreamChunk) => recorder.record(chunk),
-	};
+	// Only a leased run stops before its lease is released. Other runs cancel the stream.
+	const stopOnEarlyExit = stopRun
+		? {
+				abortRun: () => stopRun.abort(),
+				onDrainedChunk: (chunk: StreamChunk) => recorder.record(chunk),
+			}
+		: undefined;
 	for await (const value of streamAgentChunks(resultStream.stream, stopOnEarlyExit)) {
 		recorder.record(value);
 		if (value.type === 'error') executionError = value.error;

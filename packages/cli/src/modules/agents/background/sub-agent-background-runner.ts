@@ -9,6 +9,7 @@ import {
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import type { AgentBackgroundJobSettlement } from '../repositories/agent-background-job.repository';
 import { formatSubAgentToolOutput } from '../sub-agents/format-sub-agent-tool-output';
 import {
@@ -26,6 +27,11 @@ export type BackgroundSubAgentRunContext = Pick<
 	| 'instrumentation'
 	| 'parentWorkspaceHandle'
 >;
+
+type BackgroundSpawnContext = {
+	projectId: string;
+	parentAgentId: string;
+} & BackgroundSubAgentRunContext;
 
 export interface BackgroundSpawnRequest {
 	subAgentId: string;
@@ -56,16 +62,14 @@ export class SubAgentBackgroundRunner {
 		private readonly runner: SubAgentRunner,
 		private readonly jobService: AgentBackgroundJobService,
 		private readonly logger: Logger,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
 	async spawn(
 		request: BackgroundSpawnRequest,
-		context: {
-			projectId: string;
-			parentAgentId: string;
-		} & BackgroundSubAgentRunContext,
+		context: BackgroundSpawnContext,
 	): Promise<BackgroundJobReceipt> {
 		// Throws on an unusable task name — before the job row exists, so a bad
 		// name cannot leave a phantom `running` row holding a thread slot.
@@ -86,6 +90,24 @@ export class SubAgentBackgroundRunner {
 		});
 		if (receipt.status !== 'started') return receipt;
 
+		// The job outlives the turn that spawned it, so its run and its timeout belong to no turn.
+		this.sessionLeases.runOutsideTurn(() =>
+			this.startDetachedRun({ jobId, childThreadId, taskPath }, request, context),
+		);
+
+		return receipt;
+	}
+
+	private startDetachedRun(
+		job: {
+			jobId: string;
+			childThreadId: string;
+			taskPath: ReturnType<typeof createChildSubAgentTaskPath>;
+		},
+		request: BackgroundSpawnRequest,
+		context: BackgroundSpawnContext,
+	): void {
+		const { jobId, childThreadId, taskPath } = job;
 		// The job runs on its own abort scope: the parent's signal dies with the
 		// chat connection, and the parent's live telemetry does not outlive its
 		// turn — neither is forwarded.
@@ -161,8 +183,6 @@ export class SubAgentBackgroundRunner {
 				this.logger.error('Failed to settle background sub-agent job', { jobId, error });
 			})
 			.finally(() => clearTimeout(timeout));
-
-		return receipt;
 	}
 }
 

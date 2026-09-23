@@ -18,6 +18,13 @@ import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
+import { mockSessionLeases } from './test-utils/session-leases';
+
+// The tool runs a sub-workflow outside the turn scope of the lease service.
+beforeEach(() => {
+	Container.set(AgentSessionLeaseService, mockSessionLeases());
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

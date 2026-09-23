@@ -20,6 +20,7 @@ import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconst
 import { WORKFLOW_NODE_SESSION_WAIT_MS } from '../agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import { mockSessionLeases } from './test-utils/session-leases';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -163,6 +164,7 @@ function makeService() {
 	// gateway reconcile — default to none so unrelated tests don't need to.
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+	const sessionLeases = mockSessionLeases();
 
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
@@ -171,6 +173,7 @@ function makeService() {
 			mockLogger(),
 			executionService,
 			mock<AgentChatExecutionService>(),
+			sessionLeases,
 		),
 		telemetry,
 		credentialsService,
@@ -180,10 +183,12 @@ function makeService() {
 		nodeToolAiGatewayService,
 		aiConfigMock,
 		integrationMessageContextService,
+		sessionLeases,
 	);
 
 	return {
 		service,
+		sessionLeases,
 		agentRepository,
 		executionService,
 		telemetry,
@@ -467,6 +472,18 @@ describe('AgentWorkflowExecutionService', () => {
 		}
 	});
 
+	it('starts a recorded run in the scope of its session lease', async () => {
+		const { service, agentRepository, reconstructionService, sessionLeases } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		expect(sessionLeases.runInTurn).toHaveBeenCalledWith('execution-1', expect.any(Function));
+		expect(runtime.agent.stream).toHaveBeenCalledOnce();
+	});
+
 	it('stops the agent run and reads it to its end when the stream observer fails', async () => {
 		const { service, agentRepository, reconstructionService, executionService } = makeService();
 		const runtime = makeRuntime();
@@ -509,6 +526,49 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+	});
+
+	it('runs a recorded run without a lease outside the turn scope and cancels its stream when the observer fails', async () => {
+		const { service, agentRepository, reconstructionService, executionService, sessionLeases } =
+			makeService();
+		executionService.startExecutionRecording.mockResolvedValue({ executionId: 'execution-1' });
+		const cancel = vi.fn();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({
+			runId: 'runtime-run-1',
+			stream: new ReadableStream<StreamChunk>({
+				start(controller) {
+					controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+				},
+				cancel,
+			}),
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		const streamObserver = vi
+			.fn<WorkflowAgentStreamObserver>()
+			.mockRejectedValue(new Error('response stream closed'));
+
+		await expect(
+			service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				streamObserver,
+			),
+		).rejects.toThrow('response stream closed');
+
+		const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+		expect(sessionLeases.runInTurn).not.toHaveBeenCalled();
+		expect(streamOptions.abortSignal?.aborted).toBe(false);
+		expect(cancel).toHaveBeenCalledOnce();
 	});
 
 	it('records a workflow initialization failure without invoking the SDK', async () => {
@@ -898,6 +958,7 @@ describe('AgentWorkflowExecutionService', () => {
 				telemetry,
 				agentRunTracingService,
 				integrationMessageContextService,
+				sessionLeases,
 			} = makeService();
 			const runtime = makeRuntime([
 				{ type: 'text-start', id: 'text-1' },
@@ -966,6 +1027,8 @@ describe('AgentWorkflowExecutionService', () => {
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
 			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			// Without a recorded session there is no lease, so the run is not a fenced turn.
+			expect(sessionLeases.runInTurn).not.toHaveBeenCalled();
 			expect(integrationMessageContextService.getLatest).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused

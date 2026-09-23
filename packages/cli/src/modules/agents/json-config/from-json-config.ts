@@ -570,6 +570,8 @@ async function applyMemoryFromConfig(
 		});
 	}
 
+	// Keep this synchronous: the title write is fenced by the session lease only
+	// while it runs inside the turn.
 	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);

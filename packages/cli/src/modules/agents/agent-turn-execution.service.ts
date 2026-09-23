@@ -21,6 +21,7 @@ import {
 	type StartedExecution,
 	type StartExecutionParams,
 } from './agent-execution.service';
+import { AgentSessionLeaseService } from './agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
@@ -83,6 +84,9 @@ interface TurnExecutionState {
 	suspendedRunId?: string;
 	/** Stops the SDK run when the consumer of the turn stops reading early. */
 	stopRun: AbortController;
+	// TODO(AGENT-1031): Remove with the message queue flag. Each recorded turn holds a lease then.
+	/** The turn holds a session lease, so its writes are fenced and it stops before release. */
+	leased: boolean;
 }
 
 interface PreviewExecutionControl {
@@ -126,6 +130,7 @@ export class AgentTurnExecutionService {
 		private readonly logger: Logger,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -139,6 +144,7 @@ export class AgentTurnExecutionService {
 			executionStarted: false,
 			receivedFinish: false,
 			stopRun: new AbortController(),
+			leased: false,
 		};
 		const recorder = this.createRecorder(
 			config.toolRegistry,
@@ -187,7 +193,20 @@ export class AgentTurnExecutionService {
 		};
 	}
 
+	/** Starts the SDK run in the scope of a leased turn, so the writes of the run are fenced. */
 	private async startTurn(
+		executionId: string,
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		state: TurnExecutionState,
+	): Promise<ReadableStream<StreamChunk>> {
+		const startRun = async () => await this.startSdkRun(turn, config, recorder, state);
+		if (!state.leased) return await startRun();
+		return await this.sessionLeases.runInTurn(executionId, startRun);
+	}
+
+	private async startSdkRun(
 		turn: AgentTurnRequest,
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
@@ -220,10 +239,13 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<StreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		const stopOnEarlyExit = {
-			abortRun: () => state.stopRun.abort(),
-			onDrainedChunk: (chunk: StreamChunk) => recorder.record(chunk),
-		};
+		// Only a leased turn stops before its lease is released. Other turns cancel the stream.
+		const stopOnEarlyExit = state.leased
+			? {
+					abortRun: () => state.stopRun.abort(),
+					onDrainedChunk: (chunk: StreamChunk) => recorder.record(chunk),
+				}
+			: undefined;
 		for await (const value of streamAgentChunks(stream, stopOnEarlyExit)) {
 			const chunk = config.includeHitlToolDetails
 				? withApprovalToolDetails(value, config.toolRegistry)
@@ -254,11 +276,16 @@ export class AgentTurnExecutionService {
 	): Promise<void> {
 		const finalize = async () =>
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
-		if (config.previewChat) {
-			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
-		} else {
-			await finalize();
-		}
+		const settle = async () => {
+			if (config.previewChat) {
+				await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
+			} else {
+				await finalize();
+			}
+		};
+		if (!state.leased) return await settle();
+		// In the scope of the turn, cancelling a stopped suspension is a fenced write.
+		await this.sessionLeases.runInTurn(executionId, settle);
 	}
 
 	private async finalizeTurn(
@@ -441,6 +468,7 @@ export class AgentTurnExecutionService {
 			},
 		);
 		state.executionId = executionId;
+		state.leased = leaseSignal !== undefined;
 		turn.options.abortSignal = anyAbortSignal(
 			turn.options.abortSignal,
 			leaseSignal,
@@ -510,7 +538,7 @@ export class AgentTurnExecutionService {
 		}
 		config.onExecutionStarted?.(executionId, config.context.threadId);
 		turn.options.abortSignal?.throwIfAborted();
-		return await this.startTurn(turn, config, recorder, state);
+		return await this.startTurn(executionId, turn, config, recorder, state);
 	}
 
 	private *streamStartTurnNotices(

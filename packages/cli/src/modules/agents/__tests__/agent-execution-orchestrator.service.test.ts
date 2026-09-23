@@ -39,6 +39,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import { mockSessionLeases } from './test-utils/session-leases';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -210,10 +211,12 @@ function makeService(sandboxEnabled = false, messageQueueEnabled = true) {
 		mock<AgentExecutionUpdateBroadcaster>(),
 		agentsConfig,
 	);
+	const sessionLeases = mockSessionLeases();
 	const turnExecutionService = new AgentTurnExecutionService(
 		mockLogger(),
 		executionService,
 		chatExecutionService,
+		sessionLeases,
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -277,6 +280,7 @@ function makeService(sandboxEnabled = false, messageQueueEnabled = true) {
 
 	return {
 		service,
+		sessionLeases,
 		chatExecutionService,
 		turnExecutionService,
 		executionRepository,
@@ -1132,6 +1136,39 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(streamOptions.abortSignal?.aborted).toBe(true);
 		});
 
+		it('starts the SDK run and settles the turn in the scope of its session lease', async () => {
+			const { service, executionService, sessionLeases } = makeService();
+			let turnScopes = 0;
+			sessionLeases.runInTurn.mockImplementation(async (_executionId, fn) => {
+				turnScopes++;
+				try {
+					return await fn();
+				} finally {
+					turnScopes--;
+				}
+			});
+			const runtime = makeRuntime();
+			let startedInTurn = false;
+			runtime.agent.stream.mockImplementation(async () => {
+				startedInTurn = turnScopes > 0;
+				return {
+					runId: 'runtime-run-1',
+					stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+				};
+			});
+			let finalizedInTurn = false;
+			executionService.finalizeExecution.mockImplementation(async () => {
+				finalizedInTurn = turnScopes > 0;
+				return 'execution-1';
+			});
+
+			await collect(streamChat(service, runtime));
+
+			expect(sessionLeases.runInTurn).toHaveBeenCalledWith('execution-1', expect.any(Function));
+			expect(startedInTurn).toBe(true);
+			expect(finalizedInTurn).toBe(true);
+		});
+
 		it('stops the run and reads it to its end before the turn settles when the consumer leaves early', async () => {
 			const { service, executionService } = makeService();
 			const runtime = makeRuntime();
@@ -1157,6 +1194,29 @@ describe('AgentExecutionOrchestratorService', () => {
 					}),
 				}),
 			);
+		});
+
+		it('runs a turn without a lease outside the turn scope and cancels its stream on an early exit', async () => {
+			const { service, executionService, sessionLeases } = makeService();
+			executionService.startExecutionRecording.mockResolvedValue({ executionId: 'execution-1' });
+			const cancel = vi.fn();
+			const runtime = makeRuntime();
+			runtime.agent.stream.mockResolvedValue({
+				runId: 'runtime-run-1',
+				stream: new ReadableStream<StreamChunk>({
+					start(controller) {
+						controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+					},
+					cancel,
+				}),
+			});
+
+			for await (const _chunk of streamChat(service, runtime)) break;
+
+			const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+			expect(sessionLeases.runInTurn).not.toHaveBeenCalled();
+			expect(streamOptions.abortSignal?.aborted).toBe(false);
+			expect(cancel).toHaveBeenCalledOnce();
 		});
 	});
 
