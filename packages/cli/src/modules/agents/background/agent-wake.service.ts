@@ -15,6 +15,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
@@ -166,13 +167,11 @@ export class AgentWakeService {
 			return;
 		}
 
-		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
+		const { suspendedCheckpoint } = await this.conversationState.inspect(
 			first.parentAgentId,
 			threadId,
 		);
-		if (running || suspendedCheckpoint !== null) {
-			return;
-		}
+		if (suspendedCheckpoint !== null) return;
 
 		const target = await this.resolveWakeTarget(first, threadId, generation);
 		if (!target) return;
@@ -190,8 +189,10 @@ export class AgentWakeService {
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
-		} catch {
+		} catch (error) {
 			if (signal.aborted) return;
+			// Another turn holds the session. That turn requests a new wake when it settles.
+			if (error instanceof AgentTurnAlreadyRunningError) return;
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation, 'Wake run failed');

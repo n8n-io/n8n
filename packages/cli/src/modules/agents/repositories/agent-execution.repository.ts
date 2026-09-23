@@ -52,10 +52,6 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		});
 	}
 
-	async existsRunningByThread(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'running' });
-	}
-
 	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {
 		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC', id: 'DESC' } });
 	}

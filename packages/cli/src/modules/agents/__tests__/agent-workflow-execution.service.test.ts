@@ -17,6 +17,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -400,6 +401,20 @@ describe('AgentWorkflowExecutionService', () => {
 			}
 		},
 	);
+
+	it('fails the node run without starting the agent while another turn holds the session', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockRejectedValue(new AgentTurnAlreadyRunningError());
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow(AgentTurnAlreadyRunningError);
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+	});
 
 	it('records a workflow initialization failure without invoking the SDK', async () => {
 		const { service, agentRepository, reconstructionService, executionService } = makeService();

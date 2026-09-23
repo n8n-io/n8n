@@ -282,7 +282,7 @@ describe('AgentExecutionRepository', () => {
 			provider: 'mock',
 			modelId: 'recorded-turn',
 			doStream: async () => {
-				expect(await repository.existsRunningByThread(threadId)).toBe(true);
+				expect(await repository.existsBy({ threadId, status: 'running' })).toBe(true);
 				if (ownerId) {
 					expect(await threadRepo.findOneByOrFail({ id: threadId })).toMatchObject({
 						accessScope: 'user',

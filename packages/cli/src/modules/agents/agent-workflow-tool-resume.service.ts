@@ -11,7 +11,9 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentResumeAlreadyHandledError } from './agent-resume-already-handled.error';
 import { AgentTestRunService } from './agent-test-run.service';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import {
 	AgentBackgroundJobService,
 	collectResultData,
@@ -22,6 +24,14 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { readIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+
+const RESUME_RETRY_BASE_MS = 1_000;
+const RESUME_RETRY_MAX_MS = 30_000;
+
+/** 1 s, 2 s, 4 s, and so on, up to 30 s between attempts. */
+function resumeRetryDelayMs(attempt: number): number {
+	return Math.min(RESUME_RETRY_BASE_MS * 2 ** attempt, RESUME_RETRY_MAX_MS);
+}
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -124,21 +134,53 @@ export class AgentWorkflowToolResumeService {
 		}
 	}
 
-	/** Never let a failed agent resume disturb the execution that triggered it. */
-	private async resumeSafely(agentRun: RelatedAgentRun, status: string): Promise<void> {
+	/**
+	 * Never let a failed agent resume disturb the execution that triggered it.
+	 * While another turn holds the session, the next attempt runs later, off
+	 * this lifecycle hook.
+	 */
+	private async resumeSafely(
+		agentRun: RelatedAgentRun,
+		status: string,
+		attempt = 0,
+	): Promise<void> {
+		if (!(await this.tryResume(agentRun, status))) return;
+		setTimeout(() => {
+			void this.resumeSafely(agentRun, status, attempt + 1);
+		}, resumeRetryDelayMs(attempt)).unref();
+	}
+
+	/** Never throws. Returns true when the session is busy and a retry is due. */
+	private async tryResume(agentRun: RelatedAgentRun, status: string): Promise<boolean> {
 		try {
 			await this.resume(agentRun, status);
+			return false;
 		} catch (error) {
-			this.logger.error('Failed to resume agent run after sub-workflow completed', {
-				agentId: agentRun.agentId,
-				runId: agentRun.runId,
-				error: error instanceof Error ? error.message : String(error),
-			});
+			return this.handleResumeError(agentRun, error);
 		}
+	}
+
+	/** Logs a failed resume. Returns true when the session is busy and a retry is due. */
+	private handleResumeError(agentRun: RelatedAgentRun, error: unknown): boolean {
+		const { agentId, runId } = agentRun;
+		if (error instanceof AgentTurnAlreadyRunningError) return true;
+		if (error instanceof AgentResumeAlreadyHandledError) {
+			this.logger.debug('Agent run was already resumed', { agentId, runId });
+			return false;
+		}
+		this.logger.error('Failed to resume agent run after sub-workflow completed', {
+			agentId,
+			runId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return false;
 	}
 
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
+		// Another main, or an earlier attempt, may have resumed the run already.
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
 		const resumeData = { type: 'workflow_finished', value: status };
 
 		if (agentRun.integrationType === N8N_CHAT_INTEGRATION_TYPE) {
@@ -154,8 +196,6 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
-		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
-		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
 		const persistence = checkpoint.checkpoint.persistence;
 		if (!persistence) return;
 		const route = await this.getIntegrationResumeRoute(
