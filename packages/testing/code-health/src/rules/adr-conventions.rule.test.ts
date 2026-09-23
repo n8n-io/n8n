@@ -532,6 +532,36 @@ describe('AdrConventionsRule', () => {
 		).toBe(true);
 	});
 
+	it('allows Links field lines longer than 100 characters', async () => {
+		addTestFile(
+			tmpDir,
+			'docs/adr/ADR-20260828-obtain-trigger-output-before-creating-the-execution.md',
+			validAdr({
+				title: 'Obtain trigger output before creating the execution',
+				date: '2026-08-28',
+			}),
+		);
+		addTestFile(
+			tmpDir,
+			'docs/adr/ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution.md',
+			validAdr({
+				title: 'Store the workflow revision that ran with the execution',
+				date: '2026-09-04',
+			}),
+		);
+		addTestFile(
+			tmpDir,
+			'docs/adr/ADR-20260922-adopt-a-stable-interface.md',
+			validAdr({
+				relatedAdrs:
+					'ADR-20260828-obtain-trigger-output-before-creating-the-execution, ' +
+					'ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution',
+			}),
+		);
+
+		await expect(rule.analyze(context())).resolves.toEqual([]);
+	});
+
 	it.each([
 		{
 			name: 'a missing Links field',

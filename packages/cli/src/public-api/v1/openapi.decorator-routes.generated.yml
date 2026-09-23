@@ -57,6 +57,8 @@ paths:
   /projects/{projectId}/folders:
     get:
       $ref: ./handlers/projects/spec/paths/listFolders.generated.yml
+    post:
+      $ref: ./handlers/projects/spec/paths/createFolder.generated.yml
   /projects/{projectId}/folders/{folderId}:
     get:
       $ref: ./handlers/projects/spec/paths/getFolder.generated.yml

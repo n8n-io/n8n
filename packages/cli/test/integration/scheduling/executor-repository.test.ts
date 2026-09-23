@@ -276,14 +276,13 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 			const claimed = await taskRepository.claimDueTasks(claimOpts());
 
-			// Earliest runAt wins the single slot.
 			expect(claimed.map((t) => t.id)).toEqual([first.id]);
 			expect(await statusOf(second.id)).toBe('pending');
 			expect((await reload(second.id)).claimedBy).toBeNull();
 			expect(await runningCountOf(limited.id)).toBe(1);
 		});
 
-		it('counts an occurrence already running elsewhere against the limit', async () => {
+		it('counts an occurrence already running elsewhere against the limit, even past its deadline', async () => {
 			const limited = await createLimitedJob(1);
 			await createTask({
 				jobId: limited.id,
@@ -291,6 +290,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 				claimedBy: HOST_B,
 				leaseExpiresAt: new Date(Date.now() + 60_000),
 				leaseEpoch: 1,
+				missedAfter: new Date(Date.now() - 60_000),
 			});
 			const due = await createTask({ jobId: limited.id });
 
@@ -363,7 +363,6 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(1);
 			expect(await statusOf(held.id)).toBe('pending');
 
-			// The slot stays taken until the deadline is behind us.
 			await taskRepository.update(held.id, { missedAfter: new Date(Date.now() - 1_000) });
 
 			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(0);
@@ -375,7 +374,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(retired.startedAt).toBeNull();
 		});
 
-		it('waits for an expired slot holder to retire before claiming the next occurrence', async () => {
+		it('claims the next occurrence without waiting for an expired one to retire', async () => {
 			const limited = await createLimitedJob(1);
 			const expired = await createTask({
 				jobId: limited.id,
@@ -387,13 +386,32 @@ describe('ScheduledTaskRepository executor methods', () => {
 				runAt: new Date(Date.now() - 20_000),
 			});
 
-			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(0);
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((task) => task.id)).toEqual([ready.id]);
+			expect(await statusOf(expired.id)).toBe('pending');
 			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect(await statusOf(expired.id)).toBe('missed');
+		});
+
+		it('lets a retry past its deadline take a slot', async () => {
+			const limited = await createLimitedJob(1);
+			const retry = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 30_000),
+				missedAfter: new Date(Date.now() - 60_000),
+				attempts: 1,
+				maxAttempts: 2,
+			});
+			const next = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 20_000),
+			});
 
 			const claimed = await taskRepository.claimDueTasks(claimOpts());
 
-			expect(await statusOf(expired.id)).toBe('missed');
-			expect(claimed.map((task) => task.id)).toEqual([ready.id]);
+			expect(claimed.map((task) => task.id)).toEqual([retry.id]);
+			expect(await statusOf(next.id)).toBe('pending');
 		});
 
 		it('fills the batch with other jobs when a limited job holds occurrences back', async () => {
@@ -401,7 +419,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			for (const offset of [50_000, 40_000, 30_000]) {
 				await createTask({ jobId: limited.id, runAt: new Date(Date.now() - offset) });
 			}
-			// Later runAt than every held row, so a limit applied after LIMIT would starve them.
+			// Later than every limited task, so a cap applied after the batch size would skip them.
 			const unlimitedA = await createTask({ runAt: new Date(Date.now() - 20_000) });
 			const unlimitedB = await createTask({ runAt: new Date(Date.now() - 10_000) });
 
@@ -428,7 +446,6 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		it('never lets two concurrent claimers exceed a limit together', async () => {
-			// Postgres checks the job version under a lock. SQLite serializes writers.
 			const limited = await createLimitedJob(1);
 			await Promise.all([
 				createTask({ jobId: limited.id }),
@@ -461,8 +478,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(ids).toHaveLength(unlimited.length + 1);
 		});
 
-		// Postgres alone needs the job-row lock and the `xmin` check: SQLite's
-		// single-writer claim transaction makes both moot.
+		// Only Postgres needs these checks. SQLite runs one claim at a time.
 		describe.runIf(isPostgres)('across concurrent Postgres claimers', () => {
 			const PAUSE_UPDATE = 46202026;
 			const PAUSE_SNAPSHOT = 46202027;
@@ -488,8 +504,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 			it('fills the batch from other jobs when a limited job is locked', async () => {
 				const limited = await createLimitedJob(1);
-				// Earlier than the unlimited row, so a claim that waited on the job would
-				// return it first instead of skipping to other work.
+				// Earlier than the other task, so a claim that waited for the lock would return it first.
 				await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 50_000) });
 				const available = await createTask({ runAt: new Date(Date.now() - 10_000) });
 				const locker = dataSource.createQueryRunner();
@@ -518,7 +533,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 					runAt: new Date(Date.now() - 30_000),
 				});
 
-				// Holds claim A inside its UPDATE, after it has chosen its candidates.
+				// Pause claim A inside its update, after it picks its tasks.
 				await dataSource.query(`CREATE FUNCTION pause_claim_update() RETURNS trigger LANGUAGE plpgsql AS $$
 						BEGIN
 							IF NEW."claimedBy" = '${HOST_A}' THEN PERFORM pg_advisory_xact_lock(${PAUSE_UPDATE}); END IF;
@@ -526,8 +541,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 						END $$`);
 				await dataSource.query(`CREATE TRIGGER pause_claim_update BEFORE UPDATE ON ${taskTable()}
 						FOR EACH ROW EXECUTE FUNCTION pause_claim_update()`);
-				// Holds claim B just after its statement takes a snapshot, before it
-				// reaches the job row.
+				// Pause claim B after it reads the tasks, before it reaches the job row.
 				await dataSource.query(`CREATE FUNCTION pause_claim_snapshot(types text[]) RETURNS text[] LANGUAGE plpgsql AS $$
 						BEGIN
 							PERFORM pg_advisory_xact_lock(${PAUSE_SNAPSHOT});
@@ -550,8 +564,8 @@ describe('ScheduledTaskRepository executor methods', () => {
 					claimA = taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
 					await waitForBlockedOn(PAUSE_UPDATE);
 
-					// An earlier occurrence moves the job's single slot onto a different
-					// row, so B's stale snapshot would pick one A never took.
+					// An earlier task takes the job's only place, so B's old read would
+					// pick a task that A never claimed.
 					const earlier = new Date(first.runAt.getTime() - 1_000);
 					await dataSource.transaction(
 						async (manager) =>
@@ -596,7 +610,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(a.map((task) => task.id)).toEqual([first.id]);
 				expect(b).toHaveLength(0);
 				expect(await runningCountOf(limited.id)).toBe(1);
-				// The version bump must leave the job's own columns untouched.
+				// The claim must not change the job's data.
 				expect(await jobRepository.findOneByOrFail({ id: limited.id })).toEqual(limited);
 			}, 20_000);
 		});

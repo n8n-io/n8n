@@ -38,7 +38,7 @@ const MAX_PARAGRAPH_LINE_LENGTH = 100;
  * - Use full ADR IDs in supersession metadata.
  * - Add the required RFC, Documentation, and Related ADRs link fields.
  * - Resolve local ADR references and allow references in external URLs.
- * - Limit paragraph lines to 100 characters.
+ * - Limit paragraph lines before the Links section to 100 characters.
  * - Apply structural rules to the root ADR template.
  */
 export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
@@ -92,8 +92,12 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		const violations: Violation[] = [];
 		const { filePath, relativePath, fileName } = file;
 		const isTemplate = relativePath === 'docs/ADR_TEMPLATE.md';
+		const headingResult = validateHeadings(file.tokens);
+		// Links fields hold ADR IDs and URLs, not prose. Their length is not limited.
+		const linksLine = headingResult.valid ? headingResult.indexes.at(-1)! : Infinity;
 
 		for (const { line, length } of findLongParagraphLines(file, MAX_PARAGRAPH_LINE_LENGTH)) {
+			if (line > linksLine) continue;
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -168,7 +172,6 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 			);
 		}
 
-		const headingResult = validateHeadings(file.tokens);
 		if (!headingResult.valid) {
 			violations.push(
 				this.createViolation(
