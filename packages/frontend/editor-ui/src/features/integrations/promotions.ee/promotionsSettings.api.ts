@@ -1,6 +1,7 @@
 import type {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
@@ -235,5 +236,18 @@ export const applyPromotion = async (
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply`,
+		data: payload,
+	});
+
+/** Resumes an apply that paused on unresolved bindings, once they are created. */
+export const continueApplyPromotion = async (
+	context: PublicApiContext,
+	connectionId: string,
+	payload: ContinueApplyPackageDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply/continue`,
 		data: payload,
 	});
