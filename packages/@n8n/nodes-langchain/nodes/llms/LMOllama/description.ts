@@ -71,6 +71,14 @@ export const ollamaOptions: INodeProperties = {
 	default: {},
 	options: [
 		{
+			displayName: 'Streaming',
+			name: 'streaming',
+			type: 'boolean',
+			default: true,
+			description:
+				'Whether to stream the response as it is generated. Disable to receive the full response at once.',
+		},
+		{
 			displayName: 'Enable Thinking',
 			name: 'think',
 			type: 'boolean',

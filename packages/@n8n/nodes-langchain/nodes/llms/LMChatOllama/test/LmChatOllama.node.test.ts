@@ -48,13 +48,17 @@ function filterReachedProxyFetch(filter: unknown): boolean {
 describe('LmChatOllama', () => {
 	let node: LmChatOllama;
 
-	const setupContext = (credentials: Record<string, unknown>, egressFilter: NodeEgressFilter) => {
+	const setupContext = (
+		credentials: Record<string, unknown>,
+		egressFilter: NodeEgressFilter,
+		options: Record<string, unknown> = {},
+	) => {
 		const ctx = mockDeep<ISupplyDataFunctions>();
 		ctx.getNode.mockReturnValue(nodeDef);
 		ctx.getCredentials.mockResolvedValue(credentials);
 		ctx.getNodeParameter.mockImplementation((name: string) => {
 			if (name === 'model') return 'llama3';
-			if (name === 'options') return {};
+			if (name === 'options') return options;
 			return undefined;
 		});
 		ctx.helpers.getSecureEgressFilter.mockReturnValue(egressFilter);
@@ -125,5 +129,54 @@ describe('LmChatOllama', () => {
 
 		await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('configured to prevent use');
 		expect(MockedChatOllama).not.toHaveBeenCalled();
+	});
+
+	it('passes streaming: false through to the model', async () => {
+		const egressFilter: NodeEgressFilter = {
+			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
+		};
+		const ctx = setupContext({ baseUrl: 'http://ollama.example.com:11434' }, egressFilter, {
+			streaming: false,
+		});
+
+		await node.supplyData.call(ctx, 0);
+
+		const [modelOptions] = MockedChatOllama.mock.calls[0];
+		expect(modelOptions?.streaming).toBe(false);
+	});
+
+	it('passes streaming: true through to the model', async () => {
+		const egressFilter: NodeEgressFilter = {
+			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
+		};
+		const ctx = setupContext({ baseUrl: 'http://ollama.example.com:11434' }, egressFilter, {
+			streaming: true,
+		});
+
+		await node.supplyData.call(ctx, 0);
+
+		const [modelOptions] = MockedChatOllama.mock.calls[0];
+		expect(modelOptions?.streaming).toBe(true);
+	});
+
+	it('leaves streaming unset when the option is untouched', async () => {
+		const egressFilter: NodeEgressFilter = {
+			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
+		};
+		const ctx = setupContext({ baseUrl: 'http://ollama.example.com:11434' }, egressFilter);
+
+		await node.supplyData.call(ctx, 0);
+
+		const [modelOptions] = MockedChatOllama.mock.calls[0];
+		expect(modelOptions?.streaming).toBeUndefined();
 	});
 });
