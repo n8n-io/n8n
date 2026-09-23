@@ -17,8 +17,11 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
+	type StartedExecution,
 	type StartExecutionParams,
 } from './agent-execution.service';
+import { withLeaseSignal } from './agent-session-lease.service';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
@@ -286,10 +289,12 @@ export class AgentTurnExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		executionError?: unknown,
-	): Promise<string> {
+	): Promise<StartedExecution> {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (cause) {
+			// Callers map a busy session to their own response, so keep its type.
+			if (cause instanceof AgentTurnAlreadyRunningError) throw cause;
 			throw new AgentExecutionRecordingError({ phase: 'create', cause, executionError });
 		}
 	}
@@ -327,7 +332,7 @@ export class AgentTurnExecutionService {
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
 		const recordStart = async () =>
-			await this.startExecution(params, recorder.startedAt, executionError);
+			(await this.startExecution(params, recorder.startedAt, executionError)).executionId;
 		const recordFailure = async (executionId: string) => {
 			await this.finalizeExecution({
 				executionId,
@@ -384,7 +389,7 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 	): Promise<string> {
 		turn.options.abortSignal?.throwIfAborted();
-		const id = await this.startExecution(
+		const { executionId, leaseSignal } = await this.startExecution(
 			{
 				...turn.recording,
 				...(config.backgroundJobSignal
@@ -393,9 +398,10 @@ export class AgentTurnExecutionService {
 			},
 			recorder.startedAt,
 		);
-		state.executionId = id;
-		turn.options.abortSignal?.throwIfAborted();
-		return id;
+		state.executionId = executionId;
+		turn.options.abortSignal = withLeaseSignal(turn.options.abortSignal, leaseSignal);
+		turn.options.abortSignal.throwIfAborted();
+		return executionId;
 	}
 
 	private async startAcceptedTurn(

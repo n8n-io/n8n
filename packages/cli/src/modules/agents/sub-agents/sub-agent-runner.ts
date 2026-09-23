@@ -34,6 +34,7 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
+import { withLeaseSignal } from '../agent-session-lease.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
@@ -236,15 +237,16 @@ export class SubAgentRunner {
 			recording,
 		);
 		context.abortSignal?.throwIfAborted();
-		const executionId = await this.turnExecutionService.startExecution(
+		const { executionId, leaseSignal } = await this.turnExecutionService.startExecution(
 			recording,
 			recorder.startedAt,
 		);
+		const abortSignal = withLeaseSignal(context.abortSignal, leaseSignal);
 		let executionStarted = false;
 		let executionError: unknown;
 		let agent: BuiltAgent | undefined;
 		try {
-			context.abortSignal?.throwIfAborted();
+			abortSignal.throwIfAborted();
 			const reconstructed = await reconstructionService.reconstructFromResolvedSource({
 				config: childConfig,
 				memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -271,9 +273,9 @@ export class SubAgentRunner {
 			});
 
 			agent = reconstructed.agent;
-			context.abortSignal?.throwIfAborted();
+			abortSignal.throwIfAborted();
 			const executionOptions = {
-				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
+				abortSignal,
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...modelStreamStallOptions(this.aiConfig),
 				executionCounter: context.executionCounter,
@@ -344,7 +346,7 @@ export class SubAgentRunner {
 					executionError,
 					params: {
 						...recording,
-						record: context.abortSignal?.aborted
+						record: abortSignal.aborted
 							? { ...record, finishReason: 'cancelled', error: null }
 							: record,
 						hitlStatus: recorder.suspended

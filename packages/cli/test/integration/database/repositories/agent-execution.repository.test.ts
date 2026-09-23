@@ -18,7 +18,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import chunk from 'lodash/chunk';
-import type { ErrorReporter, StorageConfig } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { createRequire } from 'node:module';
 import { v4 as uuid } from 'uuid';
@@ -38,9 +38,14 @@ import {
 import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
-import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import {
+	AgentExecutionService,
+	type StartedExecution,
+} from '@/modules/agents/agent-execution.service';
+import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
+import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
@@ -56,6 +61,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import { AgentSessionLeaseRepository } from '@/modules/agents/repositories/agent-session-lease.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createMember, createAdmin } from '../../shared/db/users';
@@ -147,6 +153,11 @@ describe('AgentExecutionRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
 			txRunner,
+			new AgentSessionLeaseService(
+				mockLogger(),
+				new AgentSessionLeaseRepository(connection ?? repository.manager.connection, txRunner),
+				mock<InstanceSettings>({ hostId: 'main-test' }),
+			),
 		);
 		return {
 			txRunner,
@@ -410,8 +421,9 @@ describe('AgentExecutionRepository', () => {
 				mockLogger(),
 				new AgentsConfig(),
 			);
-			const bothLoaded = createDeferredPromise<boolean>();
-			let loaded = 0;
+			// The admitted attempt waits until the other one is rejected, so the
+			// other attempt competes for the session lease while it is held.
+			const oneRejected = createDeferredPromise();
 			const onResumeClaimed = vi.fn();
 			const attempts = [storage, otherStorage].map(async (checkpointStorage) => {
 				let agent: ReturnType<typeof makeAgent> | undefined;
@@ -420,12 +432,8 @@ describe('AgentExecutionRepository', () => {
 					agent = makeAgent({
 						...store,
 						load: async (key) => {
-							const state = await store.load(key);
-							if (++loaded === 2) bothLoaded.resolve(true);
-							if (!(await bothLoaded.promise)) {
-								throw new Error('A resume attempt failed before both checkpoints loaded');
-							}
-							return state;
+							await oneRejected.promise;
+							return await store.load(key);
 						},
 					});
 					return await collect(
@@ -445,7 +453,7 @@ describe('AgentExecutionRepository', () => {
 						}),
 					);
 				} catch (error) {
-					bothLoaded.resolve(false);
+					oneRejected.resolve();
 					throw error;
 				} finally {
 					await agent?.close();
@@ -675,7 +683,7 @@ describe('AgentExecutionRepository', () => {
 			await competing.started;
 			await waitForPeerLock(ctx);
 			releaseAdmission.resolve();
-			const executionId = await start;
+			const { executionId } = await start;
 			await rejected;
 
 			expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
@@ -810,27 +818,102 @@ describe('AgentExecutionRepository', () => {
 		}
 	});
 
-	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
+	it('admits one of two resumes from separate connections and rejects the other as busy', async () => {
 		const fixture = await startSuspendedApprovalRun();
 		const { outcomes, onResumeClaimed } = await resumeApprovalFromSeparateConnections(fixture);
 
 		expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+		const rejected = outcomes.find(
+			(outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected',
+		);
+		expect(rejected?.reason).toBeInstanceOf(AgentTurnAlreadyRunningError);
 		expect(onResumeClaimed).toHaveBeenCalledOnce();
 		expect(fixture.action).toHaveBeenCalledOnce();
+		// The rejected attempt records nothing: the lease refused it before recording.
 		const executions = await repository.findByThreadIdOrdered(fixture.threadId);
-		expect(executions).toHaveLength(3);
-		expect(executions.map(({ status }) => status).sort()).toEqual(['error', 'success', 'success']);
+		expect(executions.map(({ status }) => status)).toEqual(['success', 'success']);
 		const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
 		expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
 		expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
-		const rejected = executions.find(({ status }) => status === 'error');
-		expect(rejected).toMatchObject({ userMessage: null, hitlStatus: null });
-		expect(rejected?.timeline ?? []).not.toContainEqual(
-			expect.objectContaining({ type: 'hitl-response' }),
-		);
 		expect(await fixture.checkpointRepo.findByRunId(fixture.suspension.runId)).toMatchObject({
 			expired: true,
 			state: null,
+		});
+	});
+
+	describe('session lease', () => {
+		const finishedRecord = () => {
+			const recorder = new ExecutionRecorder();
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+			return recorder.getMessageRecord();
+		};
+
+		const startParams = (threadId: string) => ({
+			access: { accessScope: 'project' as const, ownerId: null },
+			threadId,
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			userMessage: 'Run',
+			sessionMode: 'existing' as const,
+		});
+
+		it('records only one of two turns that start on a session from separate connections', async () => {
+			const thread = await createThread();
+			const params = startParams(thread.id);
+			const services = [recordingServices(), recordingServices(mock(), peer)];
+
+			const results = await Promise.allSettled(
+				services.map(
+					async ({ executionService }) =>
+						await executionService.startExecutionRecording(params, new Date()),
+				),
+			);
+
+			const rejected = results.filter(
+				(result): result is PromiseRejectedResult => result.status === 'rejected',
+			);
+			expect(rejected).toHaveLength(1);
+			expect(rejected[0].reason).toBeInstanceOf(AgentTurnAlreadyRunningError);
+			expect(await repository.findByThreadIdOrdered(thread.id)).toEqual([
+				expect.objectContaining({ status: 'running' }),
+			]);
+
+			const winner = results.findIndex(({ status }) => status === 'fulfilled');
+			const started = results[winner] as PromiseFulfilledResult<StartedExecution>;
+			await services[winner].executionService.finalizeExecution(started.value.executionId, {
+				...params,
+				record: finishedRecord(),
+			});
+		});
+
+		it('marks the previous execution interrupted when another main takes over an expired lease', async () => {
+			const thread = await createThread();
+			const params = startParams(thread.id);
+			const local = recordingServices();
+			const remote = recordingServices(mock(), peer);
+			const stale = await local.executionService.startExecutionRecording(params, new Date());
+			const leases = new AgentSessionLeaseRepository(repository.manager.connection, local.txRunner);
+			await leases.update({ threadId: thread.id }, { expiresAt: new Date(Date.now() - 60_000) });
+
+			const takeover = await remote.executionService.startExecutionRecording(params, new Date());
+
+			expect(await repository.findOneByOrFail({ id: stale.executionId })).toMatchObject({
+				status: 'interrupted',
+			});
+			expect(await repository.findOneByOrFail({ id: takeover.executionId })).toMatchObject({
+				status: 'running',
+			});
+			await expect(
+				local.executionService.finalizeExecution(stale.executionId, {
+					...params,
+					record: finishedRecord(),
+				}),
+			).rejects.toThrow('Agent execution is no longer running');
+			await remote.executionService.finalizeExecution(takeover.executionId, {
+				...params,
+				record: finishedRecord(),
+			});
 		});
 	});
 
@@ -930,7 +1013,7 @@ describe('AgentExecutionRepository', () => {
 			userMessage: 'Run',
 		};
 		const recorder = new ExecutionRecorder();
-		const executionId = await turns.startExecution(params, recorder.startedAt);
+		const { executionId } = await turns.startExecution(params, recorder.startedAt);
 		const timeline: TimelineEvent[] = [{ type: 'text', content: 'Saved output', timestamp: 1 }];
 		executionService.recordTimelineSnapshot({ ...params, executionId, timeline });
 		await vi.waitFor(async () =>

@@ -20,6 +20,8 @@ import { Telemetry } from '@/telemetry';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentSessionLeaseLostError } from './agent-session-lease-lost.error';
+import { AgentSessionLeaseService, type SessionLeaseGrant } from './agent-session-lease.service';
 import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
@@ -86,6 +88,19 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	initialTimeline?: TimelineEvent[];
 }
 
+export interface StartedExecution {
+	executionId: string;
+	/** Aborts when the session lease is lost, so the turn must stop. */
+	leaseSignal: AbortSignal;
+}
+
+interface RecordedStart {
+	executionId: string;
+	created: boolean;
+	needsTitleSync: boolean;
+	lease: SessionLeaseGrant;
+}
+
 interface TimelineSnapshotParams extends AgentExecutionLogRef {
 	projectId: string;
 	timeline: TimelineEvent[];
@@ -142,49 +157,101 @@ export class AgentExecutionService {
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {}
 
-	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const { inserted, created, needsTitleSync } = await this.txRunner.run({}, async (ctx) => {
-			const prepared = await this.prepareThread(params, ctx);
-			const execution = this.agentExecutionRepository.create({
-				threadId: params.threadId,
-				status: 'running',
-				startedAt,
-				stoppedAt: null,
-				duration: 0,
-				userMessage: prepared.userMessage,
-				author: params.author ?? null,
-				model: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
-				cost: null,
-				// Save the background job signal before notifying clients that the execution started.
-				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
-				storedAt: 'db',
-				error: null,
-				failureSummary: null,
-				hitlStatus: null,
-				source: params.source ?? null,
-				attachments: params.attachments?.length ? params.attachments : null,
-			});
-			return {
-				inserted: await this.agentExecutionRepository.saveInContext(execution, ctx),
-				created: prepared.created,
-				needsTitleSync: !prepared.created && !prepared.thread.title,
-			};
-		});
-		this.startHeartbeat(inserted.id);
-		if (created) this.executionsNeedingTitleSync.add(inserted.id);
-		if (needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
+	/**
+	 * Records a `running` execution and takes the session lease in one
+	 * transaction. Throws `AgentTurnAlreadyRunningError` when another turn holds
+	 * the session; nothing is recorded then.
+	 */
+	async startExecutionRecording(
+		params: StartExecutionParams,
+		startedAt: Date,
+	): Promise<StartedExecution> {
+		const recorded = await this.txRunner.run(
+			{},
+			async (ctx) => await this.recordRunningExecution(params, startedAt, ctx),
+		);
+		const { executionId } = recorded;
+		const leaseSignal = this.sessionLeases.hold(recorded.lease);
+		this.startHeartbeat(executionId, params.threadId);
+		await this.interruptSupersededExecution(recorded.lease.previousExecutionId);
+		if (recorded.created) this.executionsNeedingTitleSync.add(executionId);
+		if (recorded.needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
 			threadId: params.threadId,
-			executionId: inserted.id,
+			executionId,
 		});
-		return inserted.id;
+		return { executionId, leaseSignal };
+	}
+
+	private async recordRunningExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		ctx: OperationContext,
+	): Promise<RecordedStart> {
+		const prepared = await this.prepareThread(params, ctx);
+		const execution = this.createRunningExecution(params, startedAt, prepared.userMessage);
+		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		const lease = await this.sessionLeases.acquire(
+			{ threadId: params.threadId, agentId: params.agentId, executionId: inserted.id },
+			ctx,
+		);
+		return {
+			executionId: inserted.id,
+			created: prepared.created,
+			needsTitleSync: !prepared.created && !prepared.thread.title,
+			lease,
+		};
+	}
+
+	private createRunningExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		userMessage: string | null,
+	): AgentExecution {
+		return this.agentExecutionRepository.create({
+			threadId: params.threadId,
+			status: 'running',
+			startedAt,
+			stoppedAt: null,
+			duration: 0,
+			userMessage,
+			author: params.author ?? null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			// Save the background job signal before notifying clients that the execution started.
+			timeline: params.initialTimeline?.length ? params.initialTimeline : null,
+			storedAt: 'db',
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: params.source ?? null,
+			attachments: params.attachments?.length ? params.attachments : null,
+		});
+	}
+
+	/**
+	 * Marks the execution whose expired lease was taken over as interrupted.
+	 * Best effort: the interrupted-execution sweeper catches what this misses.
+	 */
+	private async interruptSupersededExecution(executionId: string | null): Promise<void> {
+		if (!executionId) return;
+		try {
+			const execution = await this.agentExecutionRepository.findRunningById(executionId);
+			if (execution) await this.finalizeInterruptedExecution(execution);
+		} catch (error) {
+			this.logger.warn('Failed to interrupt a superseded agent execution', {
+				executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
@@ -223,10 +290,12 @@ export class AgentExecutionService {
 			await this.completeRecordedExecution(params, executionId, status);
 			return executionId;
 		} catch (error) {
-			this.errorReporter.error(error);
+			// A lost lease is expected after a stall: another main took over the session.
+			if (!(error instanceof AgentSessionLeaseLostError)) this.errorReporter.error(error);
 			throw error;
 		} finally {
 			this.executionsNeedingTitleSync.delete(executionId);
+			await this.sessionLeases.release(params.threadId, executionId);
 		}
 	}
 
@@ -292,7 +361,8 @@ export class AgentExecutionService {
 		}
 	}
 
-	private startHeartbeat(executionId: string): void {
+	/** Keeps the execution alive for the sweeper and renews its session lease. */
+	private startHeartbeat(executionId: string, threadId: string): void {
 		const timer = setInterval(() => {
 			void this.agentExecutionRepository.touchRunning(executionId).catch((error: unknown) => {
 				this.logger.warn('Failed to heartbeat a running agent execution', {
@@ -300,6 +370,7 @@ export class AgentExecutionService {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
+			void this.sessionLeases.renew(threadId, executionId);
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);
@@ -676,11 +747,13 @@ export class AgentExecutionService {
 			failureSummary,
 			hitlStatus: hitlStatus ?? null,
 		});
-		if (!finalized) {
-			throw new OperationalError('Agent execution is no longer running', {
-				extra: { executionId },
-			});
+		if (finalized) return;
+		if (this.sessionLeases.isLost(params.threadId, executionId)) {
+			throw new AgentSessionLeaseLostError();
 		}
+		throw new OperationalError('Agent execution is no longer running', {
+			extra: { executionId },
+		});
 	}
 
 	private async moveFinalTimelineToBlob(
