@@ -31,7 +31,7 @@ const toSecurityPolicyPublicDto = (
 	publishedPersonalWorkflowsCount: settings.publishedPersonalWorkflowsCount,
 	sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 	sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
-	redactionEnforcement: settings.redactionEnforcement,
+	redactionEnforcement: { floor: settings.redactionEnforcement.floor },
 });
 
 @PublicApiController('/settings/security-policy')
