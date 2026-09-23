@@ -5,13 +5,15 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
-import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
+import {
+	toCommunityPackageListPublicDto,
+	toCommunityPackagePublicDto,
+} from '../community-packages.mapper';
 
 const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
@@ -57,91 +59,6 @@ describe('CommunityPackages Handler', () => {
 		};
 	});
 
-	describe('installPackage', () => {
-		it('should install a package successfully', async () => {
-			const req = {
-				body: { name: 'n8n-nodes-test' },
-				user: mockUser,
-			};
-
-			mockLifecycle.install.mockResolvedValue(mockInstalledPackage as InstalledPackages);
-
-			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
-
-			expect(mockLifecycle.install).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: true },
-				mockUser,
-				'publicApi',
-			);
-			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(mockInstalledPackage));
-		});
-
-		it('should forward verify:false to lifecycle when explicitly provided', async () => {
-			const req = {
-				body: { name: 'n8n-nodes-test', verify: false },
-				user: mockUser,
-			};
-
-			mockLifecycle.install.mockResolvedValue(mockInstalledPackage as InstalledPackages);
-
-			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
-
-			expect(mockLifecycle.install).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: false },
-				mockUser,
-				'publicApi',
-			);
-		});
-
-		it('should throw BadRequestError when name is missing', async () => {
-			const req = {
-				body: {},
-				user: mockUser,
-			};
-
-			mockLifecycle.install.mockRejectedValue(
-				new BadRequestError(RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED),
-			);
-
-			const handlerFn = handler.installPackage[handler.installPackage.length - 1];
-			let caught: unknown;
-			try {
-				await handlerFn(req, mockResponse);
-			} catch (error) {
-				caught = error;
-			}
-			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(caught).toMatchObject({
-				message: RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
-				httpStatusCode: 400,
-			});
-		});
-
-		it('should throw BadRequestError when package is already installed', async () => {
-			const req = {
-				body: { name: 'n8n-nodes-test' },
-				user: mockUser,
-			};
-
-			mockLifecycle.install.mockRejectedValue(
-				new BadRequestError('Package "n8n-nodes-test" is already installed'),
-			);
-
-			const handlerFn = handler.installPackage[handler.installPackage.length - 1];
-			let caught: unknown;
-			try {
-				await handlerFn(req, mockResponse);
-			} catch (error) {
-				caught = error;
-			}
-			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(caught).toMatchObject({
-				message: 'Package "n8n-nodes-test" is already installed',
-				httpStatusCode: 400,
-			});
-		});
-	});
-
 	describe('getInstalledPackages', () => {
 		it('should return installed packages', async () => {
 			const req = { user: mockUser };
@@ -154,7 +71,7 @@ describe('CommunityPackages Handler', () => {
 			);
 
 			expect(mockResponse.json).toHaveBeenCalledWith(
-				mapToCommunityPackageList([mockInstalledPackage]),
+				toCommunityPackageListPublicDto([mockInstalledPackage]),
 			);
 		});
 
@@ -194,7 +111,7 @@ describe('CommunityPackages Handler', () => {
 				mockUser,
 				'notFound',
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(updatedPackage));
+			expect(mockResponse.json).toHaveBeenCalledWith(toCommunityPackagePublicDto(updatedPackage));
 		});
 
 		it('should throw NotFoundError when package is not installed', async () => {

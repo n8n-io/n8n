@@ -127,6 +127,12 @@ export { DeleteUserQueryPublicDto } from './user/delete-user-query-public.dto';
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
 export {
+	CommunityPackagePublicDto,
+	InstallCommunityPackagePublicDto,
+	communityPackagePublicSchema,
+} from './community-packages/community-package-public.dto';
+
+export {
 	PullWorkFolderRequestDto,
 	AUTO_PUBLISH_MODE,
 } from './source-control/pull-work-folder-request.dto';

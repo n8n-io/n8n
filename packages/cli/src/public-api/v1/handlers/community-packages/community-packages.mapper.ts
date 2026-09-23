@@ -1,4 +1,4 @@
-import { communityPackageResponseSchema } from '@n8n/api-types';
+import { CommunityPackagePublicDto } from '@n8n/api-types';
 import type { PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
 
 function toIsoString(value: Date | string): string {
@@ -19,8 +19,10 @@ function stripInstalledNode(node: PublicInstalledNode): Record<string, unknown> 
 	return rest;
 }
 
-export function mapToCommunityPackage(pkg: PublicInstalledPackage) {
-	return communityPackageResponseSchema.parse({
+export function toCommunityPackagePublicDto(
+	pkg: PublicInstalledPackage,
+): CommunityPackagePublicDto {
+	return CommunityPackagePublicDto.parse({
 		packageName: pkg.packageName,
 		installedVersion: pkg.installedVersion,
 		authorName: optionalString(pkg.authorName),
@@ -33,6 +35,6 @@ export function mapToCommunityPackage(pkg: PublicInstalledPackage) {
 	});
 }
 
-export function mapToCommunityPackageList(packages: PublicInstalledPackage[]) {
-	return packages.map(mapToCommunityPackage);
+export function toCommunityPackageListPublicDto(packages: PublicInstalledPackage[]) {
+	return packages.map(toCommunityPackagePublicDto);
 }
