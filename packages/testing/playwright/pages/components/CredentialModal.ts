@@ -19,7 +19,8 @@ export class CredentialModal extends BaseModal {
 	}
 
 	static fromPage(page: Page): CredentialModal {
-		return new CredentialModal(page.getByTestId('editCredential-modal'));
+		const content = page.getByTestId('editCredential-modal');
+		return new CredentialModal(page.getByRole('dialog').filter({ has: content }));
 	}
 
 	/**
@@ -33,7 +34,13 @@ export class CredentialModal extends BaseModal {
 	}
 
 	getModal(): Locator {
-		return this.root;
+		return this.root.getByTestId('editCredential-modal');
+	}
+
+	async close(): Promise<void> {
+		const closeButton = this.getCloseButton();
+		if (!(await closeButton.isVisible())) return;
+		await closeButton.click();
 	}
 
 	getCredentialName(): Locator {

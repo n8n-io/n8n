@@ -170,25 +170,29 @@ export interface SessionBinding {
 	resourceId: string;
 }
 
+export interface IntegrationContextQueryParams {
+	descriptor: IntegrationToolConnectionDescriptor;
+	query: IntegrationContextQuery;
+	input: Record<string, unknown>;
+	persistence?: { threadId: string; resourceId: string };
+}
+
 export interface IntegrationContextQueryExecutor {
-	execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		query: IntegrationContextQuery;
-		input: Record<string, unknown>;
-		persistence?: { threadId: string; resourceId: string };
-	}): Promise<unknown>;
+	execute(params: IntegrationContextQueryParams): Promise<unknown>;
+}
+
+export interface IntegrationActionParams {
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+	awaitResponse: boolean;
+	runId?: string;
+	toolCallId?: string;
+	currentMessageContext?: IntegrationMessageContext;
 }
 
 export interface IntegrationActionExecutor {
-	execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult>;
+	execute(params: IntegrationActionParams): Promise<IntegrationActionResult>;
 }
 
 export type IntegrationActionResult =

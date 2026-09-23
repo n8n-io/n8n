@@ -535,7 +535,7 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)" :data-instance-ai-available="String(instanceAiAvailable)" :data-ai-panel-open="String(isAiPanelOpen)"><button data-testid="stub-toggle-instance-ai" @click="$emit(\'toggle-instance-ai\')" /><button data-testid="stub-switch-agent" @click="$emit(\'switch-agent\', \'a2\')" /></div>',
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"><button data-testid="stub-switch-agent" @click="$emit(\'switch-agent\', \'a2\')" /></div>',
 		props: [
 			'agent',
 			'projectId',
@@ -545,8 +545,6 @@ const commonStubs = {
 			'beforeRevertToPublished',
 			'artifactMode',
 			'isPreviewOpen',
-			'instanceAiAvailable',
-			'isAiPanelOpen',
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
@@ -2719,9 +2717,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
-		expect(
-			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-ai-panel-open'),
-		).toBe('true');
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 	});
 
 	it('keeps the AI panel open after a pending agent persists', async () => {
@@ -2759,9 +2755,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
-		expect(
-			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-ai-panel-open'),
-		).toBe('false');
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
 	});
 
 	it('keeps the embedded AI panel closed by default for a pending agent when Instance AI is not ready, and writes nothing to storage', async () => {
@@ -2777,7 +2771,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe('true');
@@ -2830,15 +2824,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 	});
 
-	it('reports Instance AI availability to the header', async () => {
+	it('reports Instance AI availability through the panel toggle', async () => {
 		instanceAiAvailableRef.value = false;
 		const wrapper = await renderView();
 
-		expect(
-			wrapper
-				.find('[data-testid="stub-agent-builder-header"]')
-				.attributes('data-instance-ai-available'),
-		).toBe('false');
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 	});
 
 	it.each([
@@ -3025,22 +3015,81 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
 	});
 
-	it('toggles the AI panel from the header', async () => {
+	it('hides the AI panel button while open and restores it after closing', async () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="ai-panel-emit-close"]').trigger('click');
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it('closes the preview when opening the AI panel would make the editor too narrow', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1100;
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+
+		vm.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+	});
+
+	it('closes the AI panel when opening the preview would make the editor too narrow', async () => {
+		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1100;
+		await nextTick();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		await (wrapper.vm as unknown as { onOpenPreview: () => Promise<boolean> }).onOpenPreview();
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it('shrinks both side panels before closing either one', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1200;
+		await nextTick();
+
+		vm.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		const builder = wrapper.get('[data-testid="agent-builder-container"]').element as HTMLElement;
+		const aiWidth = Number.parseFloat(builder.style.getPropertyValue('--agent-ai-panel-width'));
+		const previewWidth = Number.parseFloat(
+			builder.style.getPropertyValue('--agent-preview-chat-column-width'),
+		);
+		expect(aiWidth).toBeGreaterThanOrEqual(320);
+		expect(previewWidth).toBeGreaterThanOrEqual(320);
+		expect(aiWidth + previewWidth).toBeCloseTo(720);
 	});
 
 	it('routes to the assistant setup instead of opening the panel when setup is unfinished', async () => {
 		instanceAiReadyRef.value = false;
 		const wrapper = await renderView();
 
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 
 		expect(routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
@@ -3107,7 +3156,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	it('closes the AI panel when the embedded panel emits close', async () => {
 		const wrapper = await renderView();
-		await wrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 
 		await wrapper.find('[data-testid="ai-panel-emit-close"]').trigger('click');
@@ -4299,7 +4348,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([]);
 	});
 
-	it('opens the add skill modal and applies the created skill', async () => {
+	it('adds a skill without a duplicate config save or success toast', async () => {
 		const skill = {
 			name: 'Summarize Meetings',
 			description: 'Use when summarizing meeting notes',
@@ -4326,6 +4375,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const wrapper = await renderView();
+		fetchConfigMock.mockClear();
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
 		await nextTick();
 
@@ -4354,10 +4404,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
-		expect(showMessageMock).toHaveBeenCalledWith({
-			title: 'agents.builder.skills.added',
-			type: 'success',
-		});
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(showMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('applies skill modal edits to the local config and agent resource', async () => {

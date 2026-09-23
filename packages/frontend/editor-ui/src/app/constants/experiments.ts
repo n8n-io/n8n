@@ -1,4 +1,8 @@
-import { INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG } from '@n8n/api-types';
+import {
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+} from '@n8n/api-types';
 
 function createExperiment<
 	const TName extends string,
@@ -144,6 +148,8 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 );
 
+export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
+
 /**
  * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
  * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
@@ -151,7 +157,10 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
  */
 export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
 
+export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
+
 export const EXPERIMENTS_TO_TRACK = [
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -190,4 +199,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	MCP_JSON_NUDGE_EXPERIMENT.name,
+	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 ];

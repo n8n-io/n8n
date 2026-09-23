@@ -236,7 +236,15 @@ function buildLogDerivedSnapshots(
 		}
 		if (!group.runIds.includes(row.runId)) group.runIds.push(row.runId);
 		group.events.push(row.event);
-		if (row.runId === group.runIds[0] && row.createdAt > group.anchorAt) {
+		// A `preference-card` fact is appended by an Edit or an Undo, which can
+		// happen long after the turn. It must not move the anchor: the parser
+		// drops a snapshot anchored after the next conversational message, so a
+		// late fact would unpair the whole turn instead of correcting one card.
+		if (
+			row.runId === group.runIds[0] &&
+			row.event.type !== 'preference-card' &&
+			row.createdAt > group.anchorAt
+		) {
 			group.anchorAt = row.createdAt;
 		}
 		if (row.createdAt > group.lastAt) group.lastAt = row.createdAt;

@@ -123,8 +123,6 @@ paths:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
   /community-packages/{name}:
     $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
-  /projects/{projectId}/folders:
-    $ref: './handlers/folders/spec/paths/folders.yml'
   /n8n-packages/export:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
