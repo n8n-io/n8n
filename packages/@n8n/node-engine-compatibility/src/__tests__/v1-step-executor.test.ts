@@ -16,6 +16,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	EngineRequestNotSupportedError,
+	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
@@ -363,6 +364,12 @@ describe('V1StepExecutor', () => {
 			});
 		});
 
+		it('fails the step when the node asks to wait until a value that is not a date', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: 'not a date' });
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(InvalidWaitDateError);
+		});
+
 		it('declares a deadline-only wait when the node says only the deadline ends it', async () => {
 			const graph = graphWith('test.waitsUntil', {
 				waitTill: '2026-10-01T12:00:00.000Z',
@@ -373,7 +380,8 @@ describe('V1StepExecutor', () => {
 		});
 
 		// The Wait node's time modes used to sleep in the process below 65 seconds,
-		// so the engine never saw them. The wait now suspends like any other.
+		// so the engine never saw them. The wait now suspends like any other: a
+		// sleep would return without a declaration, so `result.wait` proves it.
 		it('suspends a short time wait of the Wait node instead of sleeping', async () => {
 			const graph = graphWith('n8n-nodes-base.wait', {
 				resume: 'timeInterval',
@@ -384,7 +392,6 @@ describe('V1StepExecutor', () => {
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			const after = Date.now();
 
-			expect(after - before).toBeLessThan(1000);
 			expect(result.wait).toMatchObject({ outputsAtDeadline: input, acceptsResumeRequest: false });
 			const resumeAt = Date.parse(result.wait!.resumeAt!);
 			expect(resumeAt).toBeGreaterThanOrEqual(before + 2000);
