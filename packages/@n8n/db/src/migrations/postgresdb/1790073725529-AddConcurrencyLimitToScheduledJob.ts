@@ -10,33 +10,30 @@ const maxInt = 2147483647;
  * over the jobs that carry one. NULL means no limit, so existing rows need no backfill.
  */
 export class AddConcurrencyLimitToScheduledJob1790073725529 implements ReversibleMigration {
-	// Rollback rebuilds scheduled_job. Disable foreign keys to preserve scheduled_task rows.
-	withFKsDisabled = true as const;
-
 	async up({ runQuery, escape, tablePrefix, schemaBuilder: { createIndex } }: MigrationContext) {
 		const tableName = escape.tableName(table);
 		const columnName = escape.columnName(column);
 
-		// Limits below one would block all runs. CAST rejects fractional limits, which an
-		// `int` column stores as-is here. The CHECK takes the name the DSL would give it,
-		// so down() can find it with dropCheckConstraint.
+		// Limits below one would block all runs.
 		await runQuery(
 			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} int ` +
 				`CONSTRAINT "CHK_${tablePrefix}${table}_${column}" CHECK (${columnName} IS NULL OR ` +
-				`(${columnName} >= 1 AND ${columnName} <= ${maxInt} AND CAST(${columnName} AS INTEGER) = ${columnName}))`,
+				`(${columnName} >= 1 AND ${columnName} <= ${maxInt}))`,
+		);
+
+		await runQuery(
+			`COMMENT ON COLUMN ${tableName}.${columnName} IS ` +
+				"'How many occurrences of this job may run at the same time. NULL means no limit.'",
 		);
 
 		// Each task claim scans limited jobs. Exclude unlimited jobs to keep the index small.
 		await createIndex(table, [column], false, undefined, `${columnName} IS NOT NULL`);
 	}
 
-	async down({ queryRunner, schemaBuilder, tablePrefix }: MigrationContext) {
+	async down({ runQuery, escape, schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropIndex(table, [column]);
-		// Drop the CHECK first so the rebuild cannot reference the removed column.
-		await queryRunner.dropCheckConstraint(
-			`${tablePrefix}${table}`,
-			`CHK_${tablePrefix}${table}_${column}`,
+		await runQuery(
+			`ALTER TABLE ${escape.tableName(table)} DROP COLUMN ${escape.columnName(column)}`,
 		);
-		await schemaBuilder.dropColumns(table, [column], { recreatesOnSqlite: true });
 	}
 }
