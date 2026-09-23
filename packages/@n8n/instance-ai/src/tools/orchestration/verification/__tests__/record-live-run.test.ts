@@ -193,9 +193,20 @@ describe('recordLiveRunVerification', () => {
 		expect(claim).toBeUndefined();
 	});
 
-	it('logs and returns undefined when recording fails', async () => {
+	it.each([
+		['reading the build outcome', 'outcome'],
+		['reading the workflow head', 'head'],
+		['recording the claim', 'record'],
+	] as const)('logs and returns undefined when %s fails', async (_label, failingCall) => {
 		const { context, workflowTaskService } = createContext();
-		workflowTaskService.recordVerification.mockRejectedValueOnce(new Error('storage down'));
+		const error = new Error('storage down');
+		if (failingCall === 'outcome') {
+			workflowTaskService.getLatestBuildOutcomeForWorkflow.mockRejectedValueOnce(error);
+		} else if (failingCall === 'head') {
+			vi.mocked(context.workflowService.getWorkflowHead).mockRejectedValueOnce(error);
+		} else {
+			workflowTaskService.recordVerification.mockRejectedValueOnce(error);
+		}
 
 		const claim = await recordLiveRunVerification({
 			context,
