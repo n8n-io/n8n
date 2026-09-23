@@ -67,10 +67,6 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		trx?: EntityManager,
 	): Promise<void> {
 		const enqueueWithManager = async (manager: EntityManager) => {
-			if (reason === WorkflowPublicationReason.Publish) {
-				await manager.delete(WorkflowPublicationRetryState, { workflowId });
-			}
-
 			if (this.globalConfig.database.type === 'postgresdb') {
 				await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, reason, manager);
 				return;
@@ -79,17 +75,17 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, reason, manager);
 		};
 
-		if (trx) {
-			await enqueueWithManager(trx);
-			return;
-		}
-
 		if (reason === WorkflowPublicationReason.Publish) {
-			await this.manager.transaction(enqueueWithManager);
+			const enqueuePublish = async (manager: EntityManager) => {
+				await manager.delete(WorkflowPublicationRetryState, { workflowId });
+				await enqueueWithManager(manager);
+			};
+			if (trx) await enqueuePublish(trx);
+			else await this.manager.transaction(enqueuePublish);
 			return;
 		}
 
-		await enqueueWithManager(this.manager);
+		await enqueueWithManager(trx ?? this.manager);
 	}
 
 	private async enqueueWithPostgresUpsert(
