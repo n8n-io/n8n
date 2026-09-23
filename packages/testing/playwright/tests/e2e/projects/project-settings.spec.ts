@@ -110,15 +110,15 @@ test.describe(
 			await expect(n8n.projectSettings.getTitle()).toHaveText(projectName);
 
 			// Current user (instance owner) should not have a role dropdown. Their row
-			// shows the global role, because that access cannot be changed here.
+			// shows an access label, because that access cannot be changed here.
 			const currentUserRow = n8n.projectSettings.getMemberRowByEmail(
 				INSTANCE_OWNER_CREDENTIALS.email,
 			);
-			await n8n.projectSettings.expectRowAlwaysHasAccess(currentUserRow, 'Owner');
+			await n8n.projectSettings.expectRowAlwaysHasAccess(currentUserRow, 'Project Owner');
 
 			// The instance admin is listed too, with the same treatment.
 			const adminRow = n8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email);
-			await n8n.projectSettings.expectRowAlwaysHasAccess(adminRow, 'Admin');
+			await n8n.projectSettings.expectRowAlwaysHasAccess(adminRow, 'Full access');
 		});
 
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
@@ -261,16 +261,16 @@ test.describe(
 			// A project admin sees who really has access, and cannot change it.
 			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
 				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_OWNER_CREDENTIALS.email),
-				'Owner',
+				'Project Owner',
 			);
 			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
 				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email),
-				'Admin',
+				'Full access',
 			);
 
 			// Their own row is a real relation, so it keeps the project role.
 			const ownRow = adminN8n.projectSettings.getMemberRowByEmail(projectAdmin.email);
-			await expect(ownRow.getByTestId('project-member-always-has-access')).toHaveCount(0);
+			await expect(ownRow.getByTestId('project-member-access-label')).toHaveCount(0);
 
 			// They cannot be offered as members, because the list gives no way to
 			// undo the add.
@@ -278,6 +278,27 @@ test.describe(
 			await expect(
 				adminN8n.projectSettings.getVisiblePopoverOption(INSTANCE_ADMIN_CREDENTIALS.email),
 			).toHaveCount(0);
+		});
+
+		test('should list the project creator first and the current user second @auth:owner', async ({
+			n8n,
+			api,
+		}) => {
+			const projectAdmin = await api.publicApi.createUser({
+				email: `order-admin-${nanoid()}@test.com`.toLowerCase(),
+				firstName: 'Zed',
+				lastName: 'Admin',
+			});
+
+			const project = await api.projects.createProject(`Member Order ${nanoid(8)}`);
+			await api.projects.addUserToProject(project.id, projectAdmin.id, 'project:admin');
+
+			const adminN8n = await n8n.start.withUser(projectAdmin);
+			await adminN8n.navigate.toProjectSettings(project.id);
+
+			const rows = adminN8n.projectSettings.getMemberRows();
+			await expect(rows.nth(0)).toContainText(INSTANCE_OWNER_CREDENTIALS.email);
+			await expect(rows.nth(1)).toContainText(projectAdmin.email);
 		});
 
 		test('should persist settings after page reload @auth:owner', async ({ n8n }) => {

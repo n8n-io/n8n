@@ -24,6 +24,7 @@ import { Telemetry } from '@/telemetry';
 import {
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
+	createAdmin,
 	createMember,
 	createUserShell,
 } from '@test-integration/db/users';
@@ -1165,6 +1166,26 @@ describe('Projects in Public API', () => {
 					'message',
 					'Your instance is not licensed to use role "project:viewer".',
 				);
+			});
+
+			it('should skip instance owners and admins and add the rest', async () => {
+				const owner = await createOwnerWithApiKey();
+				const [admin, member] = await Promise.all([createAdmin(), createMember()]);
+				const project = await createTeamProject('shared-project', owner);
+
+				await testServer
+					.publicApiAgentFor(owner)
+					.post(`/projects/${project.id}/users`)
+					.send({
+						relations: [
+							{ userId: admin.id, role: 'project:admin' },
+							{ userId: member.id, role: 'project:admin' },
+						],
+					})
+					.expect(201);
+
+				const relations = await getAllProjectRelations({ projectId: project.id });
+				expect(relations.map((r) => r.userId).sort()).toEqual([owner.id, member.id].sort());
 			});
 
 			describe('when project roles are managed', () => {

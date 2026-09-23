@@ -32,8 +32,10 @@ export type ProjectMemberData = {
 	role: Role['slug'];
 	/** Access comes from a global role, so the row is read-only and cannot be removed. */
 	alwaysHasAccess?: boolean;
-	/** Shown in the role column in place of the project role for `alwaysHasAccess` rows. */
-	globalRoleDisplayName?: string;
+	/** The instance role behind `alwaysHasAccess`. */
+	instanceRole?: { slug: string; displayName: string };
+	isPendingUser?: boolean;
+	isCurrentUser?: boolean;
 };
 export type ProjectSharingData = {
 	id: string;
@@ -49,6 +51,8 @@ export type Project = ProjectSharingData & {
 	implicitMembers?: ProjectImplicitMember[];
 	scopes: Scope[];
 	customTelemetryTags?: Array<{ key: string; value: string }>;
+	/** Null on older team projects that predate creator tracking. */
+	creatorId?: string | null;
 	rolesManaged: boolean;
 };
 export type ProjectListItem = ProjectSharingData & {

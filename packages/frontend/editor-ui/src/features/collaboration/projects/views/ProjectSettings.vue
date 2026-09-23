@@ -111,11 +111,7 @@ const search = ref('');
 const membersTableState = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: 10,
-	sortBy: [
-		{ id: 'firstName', desc: false },
-		{ id: 'lastName', desc: false },
-		{ id: 'email', desc: false },
-	],
+	sortBy: [],
 });
 
 const userSearchQuery = ref('');
@@ -512,6 +508,7 @@ watch(
 // So that the table has access to the full user data
 const relationUsers = computed<ProjectMemberData[]>(() => {
 	const implicitMembers = implicitMembersById.value;
+	const currentUserId = usersStore.currentUser?.id;
 
 	const rows: ProjectMemberData[] = formData.value.relations.map((relation) => {
 		const user = usersStore.usersById[relation.id];
@@ -526,9 +523,10 @@ const relationUsers = computed<ProjectMemberData[]>(() => {
 			firstName: relation?.firstName ?? user?.firstName ?? null,
 			lastName: relation?.lastName ?? user?.lastName ?? null,
 			email: relation?.email ?? user?.email ?? null,
+			isCurrentUser: relation.id === currentUserId,
 			...(implicitMember && {
 				alwaysHasAccess: true,
-				globalRoleDisplayName: implicitMember.globalRole.displayName,
+				instanceRole: implicitMember.globalRole,
 			}),
 		};
 	});
@@ -543,31 +541,67 @@ const relationUsers = computed<ProjectMemberData[]>(() => {
 			lastName: member.lastName ?? null,
 			email: member.email ?? null,
 			role: member.globalRole.slug,
+			isPendingUser: usersStore.usersById[member.id]?.isPendingUser ?? false,
+			isCurrentUser: member.id === currentUserId,
 			alwaysHasAccess: true,
-			globalRoleDisplayName: member.globalRole.displayName,
+			instanceRole: member.globalRole,
 		});
 	}
 
 	return rows;
 });
 
-const membersTableData = computed(() => ({
-	items: relationUsers.value,
-	count: relationUsers.value.length,
-}));
-
-const filteredMembersData = computed(() => {
-	if (!search.value.trim()) return membersTableData.value;
+const filteredMembers = computed(() => {
+	if (!search.value.trim()) return relationUsers.value;
 
 	const searchTerm = search.value.toLowerCase();
-	const filtered = relationUsers.value.filter((member) => {
+	return relationUsers.value.filter((member) => {
 		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
 		const email = (member.email ?? '').toLowerCase();
 		return fullName.includes(searchTerm) || email.includes(searchTerm);
 	});
-
-	return { items: filtered, count: filtered.length };
 });
+
+const memberSortName = (member: ProjectMemberData) =>
+	`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || (member.email ?? '');
+
+// The project creator comes first and the current user second, so both are
+// always on page one. Pending users have no name, so they sort by email.
+const sortedMembers = computed(() => {
+	const creatorId = projectsStore.currentProject?.creatorId;
+	const currentUserId = usersStore.currentUser?.id;
+	const rank = (member: ProjectMemberData) => {
+		if (creatorId && member.id === creatorId) return 0;
+		if (member.id === currentUserId) return 1;
+		return 2;
+	};
+
+	return [...filteredMembers.value].sort(
+		(a, b) =>
+			rank(a) - rank(b) ||
+			memberSortName(a).localeCompare(memberSortName(b), undefined, { sensitivity: 'base' }),
+	);
+});
+
+const membersPageData = computed(() => {
+	const { page, itemsPerPage } = membersTableState.value;
+	const start = page * itemsPerPage;
+	return {
+		items: sortedMembers.value.slice(start, start + itemsPerPage),
+		count: sortedMembers.value.length,
+	};
+});
+
+// Step back when a removal empties the last page.
+watch(
+	() => sortedMembers.value.length,
+	(count) => {
+		const { page, itemsPerPage } = membersTableState.value;
+		if (page > 0 && page * itemsPerPage >= count) {
+			membersTableState.value.page = Math.max(0, Math.ceil(count / itemsPerPage) - 1);
+		}
+	},
+);
 
 const SEARCH_THRESHOLD = 10;
 const shouldShowSearch = computed(() => relationUsers.value.length >= SEARCH_THRESHOLD);
@@ -777,7 +811,7 @@ onMounted(async () => {
 						<ProjectMembersTable
 							v-model:table-options="membersTableState"
 							data-test-id="project-members-table"
-							:data="filteredMembersData"
+							:data="membersPageData"
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"

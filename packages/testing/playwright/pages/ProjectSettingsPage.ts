@@ -79,18 +79,15 @@ export class ProjectSettingsPage extends BasePage {
 	 */
 	getAlwaysHasAccessRows(): Locator {
 		return this.getMemberRows().filter({
-			has: this.page.getByTestId('project-member-always-has-access'),
+			has: this.page.getByTestId('project-member-access-label'),
 		});
 	}
 
-	async expectRowAlwaysHasAccess(row: Locator, globalRole: string) {
-		await expect(row.getByTestId('project-member-always-has-access')).toHaveText(globalRole);
+	/** `label` is "Project Owner" for the instance owner and "Full access" for an instance admin. */
+	async expectRowAlwaysHasAccess(row: Locator, label: 'Project Owner' | 'Full access') {
+		await expect(row.getByTestId('project-member-access-label')).toHaveText(label);
 		await expect(this.getMemberRoleDropdownForRow(row)).toHaveCount(0);
 		await expect(row.getByTestId('action-toggle')).toHaveCount(0);
-		// The row is greyed out, so it reads as access you cannot act on.
-		await expect
-			.poll(async () => await row.evaluate((el) => getComputedStyle(el).opacity))
-			.not.toBe('1');
 	}
 
 	getMembersTableHeader(name: string): Locator {

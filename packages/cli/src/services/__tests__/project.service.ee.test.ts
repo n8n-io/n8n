@@ -24,6 +24,7 @@ import type { RoleService } from '../role.service';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
@@ -68,7 +69,11 @@ describe('ProjectService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		projectRelationRepository.find.mockResolvedValue([]);
+		userRepository.findManyByIds.mockResolvedValue([]);
 	});
+
+	const instanceUser = (id: string, slug: string, disabled = false) =>
+		mock<User>({ id, disabled, role: mock({ slug }) });
 
 	describe('getAccessibleProjectsAndCount', () => {
 		const options = { skip: 0, take: 10, search: 'test' };
@@ -181,6 +186,27 @@ describe('ProjectService', () => {
 				newSharees: [{ userId: 'newcomer', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
 			});
+		});
+
+		it('skips instance owners and admins and saves the rest', async () => {
+			const projectId = '12345';
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({ id: projectId, name: 'Team Project', type: 'team', projectRelations: [] }),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+			userRepository.findManyByIds.mockResolvedValueOnce([
+				instanceUser('admin', 'global:admin'),
+				instanceUser('member', 'global:member'),
+			]);
+
+			await projectService.addUsersToProject(user, projectId, [
+				{ userId: 'admin', role: 'project:viewer' },
+				{ userId: 'member', role: 'project:viewer' },
+			]);
+
+			expect(projectRelationRepository.save).toHaveBeenCalledWith([
+				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
+			]);
 		});
 
 		it('does not notify when no users are new', async () => {
@@ -383,6 +409,67 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('addUsersWithConflictSemantics', () => {
+		it('treats an instance owner as already having access and adds the rest', async () => {
+			const projectId = '12345';
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({ id: projectId, name: 'Team Project', type: 'team', projectRelations: [] }),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+			userRepository.findManyByIds.mockResolvedValueOnce([instanceUser('owner', 'global:owner')]);
+
+			const result = await projectService.addUsersWithConflictSemantics(user, projectId, [
+				{ userId: 'owner', role: 'project:viewer' },
+				{ userId: 'member', role: 'project:viewer' },
+			]);
+
+			expect(result.added).toEqual([{ userId: 'member', role: 'project:viewer' }]);
+			expect(result.conflicts).toEqual([]);
+			expect(projectRelationRepository.insert).toHaveBeenCalledWith([
+				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
+			]);
+		});
+
+		it('does not report a conflict for an instance admin who holds another role', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: '12345',
+					type: 'team',
+					projectRelations: [{ userId: 'admin', role: PROJECT_VIEWER_ROLE }],
+				}),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+			userRepository.findManyByIds.mockResolvedValueOnce([instanceUser('admin', 'global:admin')]);
+
+			const result = await projectService.addUsersWithConflictSemantics(user, '12345', [
+				{ userId: 'admin', role: 'project:editor' },
+			]);
+
+			expect(result).toMatchObject({ added: [], conflicts: [] });
+			expect(projectRelationRepository.insert).not.toHaveBeenCalled();
+		});
+
+		it('adds a disabled instance admin like any other user', async () => {
+			const projectId = '12345';
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({ id: projectId, name: 'Team Project', type: 'team', projectRelations: [] }),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+			userRepository.findManyByIds.mockResolvedValueOnce([
+				instanceUser('disabled-admin', 'global:admin', true),
+			]);
+
+			const result = await projectService.addUsersWithConflictSemantics(user, projectId, [
+				{ userId: 'disabled-admin', role: 'project:editor' },
+			]);
+
+			expect(result.added).toEqual([{ userId: 'disabled-admin', role: 'project:editor' }]);
+			expect(projectRelationRepository.insert).toHaveBeenCalledWith([
+				{ projectId, userId: 'disabled-admin', role: { slug: 'project:editor' } },
+			]);
+		});
+	});
+
 	describe('deleteUserFromProject', () => {
 		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
 
@@ -441,6 +528,22 @@ describe('ProjectService', () => {
 				'Project owner cannot be removed from the project',
 			);
 			expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+		});
+
+		it('throws when trying to remove an instance admin', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: 'proj-1',
+					type: 'team',
+					projectRelations: [{ userId: 'admin', role: PROJECT_ADMIN_ROLE }],
+				}),
+			);
+			userRepository.findManyByIds.mockResolvedValueOnce([instanceUser('admin', 'global:admin')]);
+
+			await expect(projectService.deleteUserFromProject(user, 'proj-1', 'admin')).rejects.toThrow(
+				"This user has access through their instance role and can't be removed from the project.",
+			);
+			expect(manager.delete).not.toHaveBeenCalled();
 		});
 	});
 
@@ -583,6 +686,19 @@ describe('ProjectService', () => {
 				) => Promise<unknown>;
 				return await runInTransaction(manager);
 			});
+		});
+
+		it('throws when trying to change the role of an instance admin', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({ id: projectId, type: 'team', projectRelations: mockRelations }),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+			userRepository.findManyByIds.mockResolvedValueOnce([instanceUser('user1', 'global:owner')]);
+
+			await expect(
+				projectService.changeUserRoleInProject(user, projectId, 'user1', 'project:viewer'),
+			).rejects.toThrow(ForbiddenError);
+			expect(manager.update).not.toHaveBeenCalled();
 		});
 
 		it('should successfully change the user role in the project', async () => {

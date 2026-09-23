@@ -326,5 +326,32 @@ describe('ProjectController', () => {
 			]);
 			expect(result.relations).toEqual([]);
 		});
+
+		it.each([
+			['creator-1', 'creator-1'],
+			[null, null],
+			[undefined, null],
+		])('exposes creatorId %s as %s on getProject', async (creatorId, expected) => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+			(projectsService.getProject as Mock).mockResolvedValue({
+				id: 'p1',
+				name: 'Project',
+				icon: null,
+				type: 'team',
+				description: null,
+				customTelemetryTags: [],
+				creatorId,
+			});
+			(projectsService.getProjectRelations as Mock).mockResolvedValue([]);
+			(projectsService.getImplicitProjectMembers as Mock).mockResolvedValue([]);
+
+			const scopedReq = {
+				user: { id: 'actor-user', role: { slug: 'global:owner', scopes: [] } },
+			} as unknown as AuthenticatedRequest;
+
+			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
+
+			expect(result.creatorId).toBe(expected);
+		});
 	});
 });

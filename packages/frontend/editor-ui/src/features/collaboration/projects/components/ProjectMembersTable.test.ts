@@ -22,11 +22,17 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				sortBy: { type: Array },
 				page: { type: Number },
 				itemsPerPage: { type: Number },
+				pageSizes: { type: Array },
 				rowProps: { type: [Object, Function] },
 			},
 			emits: ['update:sort-by', 'update:page', 'update:items-per-page', 'update:options'],
 			template: `
-				<div data-test-id="data-table">
+				<div
+					data-test-id="data-table"
+					:data-items-length="itemsLength"
+					:data-items-per-page="itemsPerPage"
+					:data-page-sizes="pageSizes?.join(',')"
+				>
 					<table>
 						<thead>
 							<tr>
@@ -534,98 +540,121 @@ describe('ProjectMembersTable', () => {
 	});
 
 	describe('Pagination Configuration', () => {
-		it('should configure page-sizes to hide pagination controls', () => {
-			renderComponent();
-
-			// Find the N8nDataTableServer component mock
-			const tableElement = screen.getByTestId('data-table');
-			expect(tableElement).toBeInTheDocument();
-
-			// Verify that pagination is effectively hidden by checking the table renders
-			// without pagination controls (this is tested indirectly through the mock)
-			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
-		});
-
-		it('should handle empty data without pagination', () => {
+		it('should pass page sizes and the page size from table options', () => {
 			renderComponent({
 				props: {
-					data: { items: [], count: 0 },
+					data: { items: mockMembers, count: 12 },
+					tableOptions: { page: 0, itemsPerPage: 25, sortBy: [] },
 				},
 			});
 
-			expect(screen.getByTestId('data-table')).toBeInTheDocument();
-			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+			const table = screen.getByTestId('data-table');
+			expect(table).toHaveAttribute('data-page-sizes', '10,25,50');
+			expect(table).toHaveAttribute('data-items-per-page', '25');
+			expect(table).toHaveAttribute('data-items-length', '12');
 		});
 
-		it('should handle large datasets without showing pagination', () => {
-			const largeDataset = Array.from({ length: 50 }, (_, i) => ({
-				id: `user-${i}`,
-				firstName: `User${i}`,
-				lastName: `Test${i}`,
-				email: `user${i}@example.com`,
-				role: 'project:viewer' as ProjectRole,
-			}));
-
+		it('should default to 10 items per page', () => {
 			renderComponent({
 				props: {
-					data: { items: largeDataset, count: largeDataset.length },
+					data: { items: mockMembers, count: mockMembers.length },
 				},
 			});
 
-			expect(screen.getByTestId('data-table')).toBeInTheDocument();
-			// Pagination should still be hidden due to our page-sizes configuration
-			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+			expect(screen.getByTestId('data-table')).toHaveAttribute('data-items-per-page', '10');
 		});
 	});
 	describe('Members with access from a global role', () => {
-		const implicitMember: ProjectMemberData = {
+		const ownerMember: ProjectMemberData = {
 			id: 'owner-1',
 			firstName: 'Olive',
 			lastName: 'Owner',
 			email: 'owner@example.com',
 			role: 'global:owner',
 			alwaysHasAccess: true,
-			globalRoleDisplayName: 'Owner',
+			instanceRole: { slug: 'global:owner', displayName: 'Owner' },
+		};
+		const adminMember: ProjectMemberData = {
+			id: 'admin-1',
+			firstName: 'Marcus',
+			lastName: 'Chen',
+			email: 'marcus@example.com',
+			role: 'global:admin',
+			alwaysHasAccess: true,
+			instanceRole: { slug: 'global:admin', displayName: 'Admin' },
 		};
 
-		it('should show the global role name instead of a role dropdown', () => {
+		it('should show "Project Owner" for the instance owner instead of a role dropdown', () => {
 			renderComponent({
 				props: {
-					data: { items: [implicitMember], count: 1 },
+					data: { items: [ownerMember], count: 1 },
 					currentUserId: 'someone-else',
 					canEditRole: true,
 				},
 			});
 
-			expect(screen.queryByTestId(`role-dropdown-${implicitMember.id}`)).not.toBeInTheDocument();
-			expect(screen.getByTestId('project-member-always-has-access')).toHaveTextContent('Owner');
+			expect(screen.queryByTestId(`role-dropdown-${ownerMember.id}`)).not.toBeInTheDocument();
+			expect(screen.getByTestId('project-member-access-label')).toHaveTextContent('Project Owner');
+		});
+
+		it('should show "Full access" and explain the instance role for an instance admin', () => {
+			renderComponent({
+				props: {
+					data: { items: [adminMember], count: 1 },
+					currentUserId: 'someone-else',
+					canEditRole: true,
+				},
+			});
+
+			const tooltip =
+				"Marcus has full access to every project on this instance through their instance role (Admin). This can't be changed from within a project.";
+			const label = screen.getByTestId('project-member-access-label');
+			expect(label).toHaveTextContent('Full access');
+			expect(label).toHaveAttribute('aria-label', `Full access. ${tooltip}`);
+			expect(screen.getByTestId('tooltip')).toHaveAttribute('data-tooltip-content', tooltip);
+		});
+
+		it('should mention a stored project role in the tooltip', () => {
+			renderComponent({
+				props: {
+					data: { items: [{ ...ownerMember, role: 'project:admin' }], count: 1 },
+					currentUserId: 'someone-else',
+				},
+			});
+
+			expect(screen.getByTestId('tooltip')).toHaveAttribute(
+				'data-tooltip-content',
+				"Olive has full access to every project on this instance through their instance role (Owner). This can't be changed from within a project. They're also assigned the Admin role in this project, which applies if their instance role changes.",
+			);
+		});
+
+		it('should name a user without a first name by email', () => {
+			renderComponent({
+				props: {
+					data: { items: [{ ...adminMember, firstName: null, lastName: null }], count: 1 },
+					currentUserId: 'someone-else',
+				},
+			});
+
+			expect(screen.getByTestId('tooltip')).toHaveAttribute(
+				'data-tooltip-content',
+				expect.stringMatching(/^marcus@example\.com has full access/),
+			);
 		});
 
 		it('should offer no actions even when the table has actions', () => {
 			renderComponent({
 				props: {
-					data: { items: [implicitMember], count: 1 },
+					data: { items: [ownerMember], count: 1 },
 					currentUserId: 'someone-else',
 					actions: [{ label: 'Remove user', value: 'remove' }],
 				},
 			});
 
-			expect(screen.getByTestId(`actions-cell-${implicitMember.id}`)).toHaveAttribute(
+			expect(screen.getByTestId(`actions-cell-${ownerMember.id}`)).toHaveAttribute(
 				'data-actions-count',
 				'0',
 			);
-		});
-
-		it('should grey out only the rows that have access from a global role', () => {
-			renderComponent({
-				props: {
-					data: { items: [mockMembers[0], implicitMember], count: 2 },
-					currentUserId: 'someone-else',
-				},
-			});
-
-			expect(screen.getByTestId('row-0')).not.toHaveClass('alwaysHasAccessRow');
-			expect(screen.getByTestId('row-1')).toHaveClass('alwaysHasAccessRow');
 		});
 	});
 });

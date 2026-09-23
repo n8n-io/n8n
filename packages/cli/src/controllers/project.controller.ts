@@ -155,6 +155,7 @@ export class ProjectController {
 			type,
 			description,
 			customTelemetryTags,
+			creatorId: project.creatorId ?? null,
 			relations: relations.map((r) => ({
 				id: r.user.id,
 				email: r.user.email,

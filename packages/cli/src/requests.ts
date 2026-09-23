@@ -305,6 +305,7 @@ export declare namespace ProjectRequest {
 		type: ProjectType;
 		description: string | null;
 		customTelemetryTags: Array<{ key: string; value: string }>;
+		creatorId: string | null;
 		relations: ProjectRelationResponse[];
 		implicitMembers: ProjectImplicitMemberResponse[];
 		scopes: Scope[];
