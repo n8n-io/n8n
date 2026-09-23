@@ -13,16 +13,9 @@ type InstallPackageRequest = AuthenticatedRequest<
 	{ name: string; version?: string; verify?: boolean }
 >;
 
-type UpdatePackageRequest = AuthenticatedRequest<
-	{ name: string },
-	{},
-	{ version?: string; verify?: boolean }
->;
-
 type CommunityPackageHandlers = {
 	installPackage: PublicAPIEndpoint<InstallPackageRequest>;
 	getInstalledPackages: PublicAPIEndpoint<AuthenticatedRequest>;
-	updatePackage: PublicAPIEndpoint<UpdatePackageRequest>;
 	uninstallPackage: PublicAPIEndpoint<AuthenticatedRequest<{ name: string }>>;
 };
 
@@ -48,24 +41,6 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 			const packages = await lifecycle.listInstalledPackages();
 			return res.json(mapToCommunityPackageList(packages));
-		},
-	],
-
-	updatePackage: [
-		publicApiScope('communityPackage:update'),
-		async (req, res) => {
-			const lifecycle = Container.get(CommunityPackagesLifecycleService);
-
-			const updated = await lifecycle.update(
-				{
-					name: req.params.name,
-					version: req.body?.version,
-					verify: req.body?.verify ?? true,
-				},
-				req.user,
-				'notFound',
-			);
-			return res.json(mapToCommunityPackage(updated));
 		},
 	],
 

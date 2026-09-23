@@ -172,57 +172,6 @@ describe('CommunityPackages Handler', () => {
 		});
 	});
 
-	describe('updatePackage', () => {
-		it('should update a package successfully', async () => {
-			const req = {
-				params: { name: 'n8n-nodes-test' },
-				body: {},
-				user: mockUser,
-			};
-
-			const updatedPackage = {
-				...mockInstalledPackage,
-				installedVersion: '2.0.0',
-			};
-
-			mockLifecycle.update.mockResolvedValue(updatedPackage);
-
-			await handler.updatePackage[handler.updatePackage.length - 1](req, mockResponse);
-
-			expect(mockLifecycle.update).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: true },
-				mockUser,
-				'notFound',
-			);
-			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(updatedPackage));
-		});
-
-		it('should throw NotFoundError when package is not installed', async () => {
-			const req = {
-				params: { name: 'n8n-nodes-missing' },
-				body: {},
-				user: mockUser,
-			};
-
-			mockLifecycle.update.mockRejectedValue(
-				new NotFoundError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED),
-			);
-
-			const handlerFn = handler.updatePackage[handler.updatePackage.length - 1];
-			let caught: unknown;
-			try {
-				await handlerFn(req, mockResponse);
-			} catch (error) {
-				caught = error;
-			}
-			expect(caught).toBeInstanceOf(NotFoundError);
-			expect(caught).toMatchObject({
-				message: RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
-				httpStatusCode: 404,
-			});
-		});
-	});
-
 	describe('uninstallPackage', () => {
 		it('should uninstall a package successfully', async () => {
 			const req = {
