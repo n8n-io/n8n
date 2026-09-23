@@ -58,10 +58,7 @@ export class EngineV2Module implements ModuleInterface {
 		const responseChannel = new InMemoryExecutionResponseChannel();
 		const scopedLogger = Container.get(Logger).scoped('engine-v2');
 		const responseSender = new InMemoryExecutionResponseSender(responseChannel, scopedLogger);
-		const responseReceiver = new InMemoryExecutionResponseReceiver(
-			responseChannel,
-			scopedLogger,
-		);
+		const responseReceiver = new InMemoryExecutionResponseReceiver(responseChannel, scopedLogger);
 		Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
 		this.responseSender = responseSender;
 		this.responseReceiver = responseReceiver;
