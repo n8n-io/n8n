@@ -81,6 +81,7 @@ import {
 	executeWebhook,
 	_privateGetWebhookErrorMessage,
 	invokeWebhook,
+	handleImmediateWebhookResponse,
 } from '../webhook-helpers';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
@@ -1323,6 +1324,56 @@ describe('invokeWebhook', () => {
 			'nodeFetchedData',
 			expect.any(Object),
 		);
+	});
+});
+
+describe('handleImmediateWebhookResponse', () => {
+	it('handles a no-response result and continues with workflow data', () => {
+		const responseCallback = vi.fn();
+
+		const result = handleImmediateWebhookResponse({
+			webhookResultData: { noWebhookResponse: true, workflowData: [[{ json: {} }]] },
+			didSendResponse: false,
+			responseCode: 200,
+			responseCallback,
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+		expect(result).toEqual({
+			didSendResponse: true,
+			shouldContinueWorkflowExecution: true,
+		});
+	});
+
+	it.each([
+		{
+			name: 'a custom response',
+			webhookResultData: { webhookResponse: { ok: true } },
+			expectedData: { ok: true },
+		},
+		{
+			name: 'the default response',
+			webhookResultData: {},
+			expectedData: { message: 'Webhook call received' },
+		},
+	])('handles $name and stops execution', ({ webhookResultData, expectedData }) => {
+		const responseCallback = vi.fn();
+
+		const result = handleImmediateWebhookResponse({
+			webhookResultData,
+			didSendResponse: false,
+			responseCode: 201,
+			responseCallback,
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: expectedData,
+			responseCode: 201,
+		});
+		expect(result).toEqual({
+			didSendResponse: true,
+			shouldContinueWorkflowExecution: false,
+		});
 	});
 });
 
