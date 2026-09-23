@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/requireFoundryEndpoint.test.ts
+  s_34985ccb3740e2::t_f9dc39c9e4cb99 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a1c3d1b10257667a8bc12329818bd49b346228c6",
+  "prompts": {},
+  "sessions": {
+    "s_34985ccb3740e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f9b98b0-92c2-4b52-b807-1f44b42c1cf2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
