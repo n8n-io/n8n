@@ -490,11 +490,6 @@ function handleRecovery() {
 	width: auto;
 }
 
-.toolPermissionSelect {
-	/* The design fixes tool selectors at 100 px. No width token matches this value. */
-	width: 100px;
-}
-
 .footer {
 	flex-shrink: 0;
 }
