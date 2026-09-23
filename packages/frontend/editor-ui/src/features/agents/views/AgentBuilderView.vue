@@ -2628,10 +2628,10 @@ function onSwitchAgent(nextAgentId: string) {
 
 useKeybindings({
 	ctrl_j: {
-		disabled: () => !instanceAiAvailable,
-		run: () => {
-			isAiPanelOpen.value = !isAiPanelOpen.value;
+		disabled: function isAiPanelShortcutDisabled() {
+			return !instanceAiAvailable.value;
 		},
+		run: toggleAiPanel,
 		/** Enables closing with command whilst panel input is focused */
 		allowInInputs: true,
 	},

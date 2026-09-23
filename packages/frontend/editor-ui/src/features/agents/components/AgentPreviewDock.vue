@@ -145,17 +145,27 @@ watch(
 	{ flush: 'post' },
 );
 
-function isEscapeDisabled() {
-	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+/** Handle the escape shortcut locally instead of useKeybindings so it also works while inputs have focus. */
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.defaultPrevented || event.isComposing || event.key !== 'Escape') {
+		return;
+	}
+
+	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+		return;
+	}
+
+	if (!props.isOpen || dock.value?.contains(event.target as Node) !== true) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	close();
 }
 
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
-	Escape: {
-		disabled: isEscapeDisabled,
-		run: close,
-		allowInInputs: true,
-	},
 });
 </script>
 
@@ -166,6 +176,7 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
+		@keydown="handleEscapeKey"
 		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
