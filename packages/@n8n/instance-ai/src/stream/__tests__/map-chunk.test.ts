@@ -735,6 +735,14 @@ describe('mapAgentChunkToEvent', () => {
 				deadlineAt: '2026-01-01T00:10:00.000Z',
 			},
 		],
+		[
+			'with a relative trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: 'webhook-test/abc/intake', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
 	])('drops a malformed testListener payload %s', (_, testListener) => {
 		const event = map({
 			type: 'tool-call-suspended',

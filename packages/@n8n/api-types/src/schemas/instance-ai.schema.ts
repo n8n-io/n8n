@@ -754,7 +754,7 @@ export const testListenerCardSchema = z.object({
 		.array(
 			z.object({
 				nodeName: z.string().min(1),
-				url: z.string().min(1),
+				url: z.string().url(),
 				method: z.string().min(1),
 			}),
 		)

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -1054,9 +1055,10 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: false });
 		});
 
-		it('settles the card with the execution id when the test webhook push event arrives', () => {
+		it('settles the card with the execution id when the test webhook push event arrives', async () => {
 			injectPendingConfirmation(thread, listenerConfirmation);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 			renderComponent({ props: { kind: 'inline' } });
 
 			capturedPushListener?.({
@@ -1080,6 +1082,9 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				approved: true,
 				userInput: 'exec-9',
 			});
+			// Telemetry and resolution run after the awaited POST, so flush it first.
+			await flushPromises();
+			expect(resolveSpy).toHaveBeenCalledWith('req-listen', 'approved');
 			// The user made no choice, so no input telemetry is recorded.
 			expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
 				'User finished providing input',
