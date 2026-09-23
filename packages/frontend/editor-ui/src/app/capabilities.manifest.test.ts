@@ -6,17 +6,15 @@ import { registerShellCapabilities } from './capabilities.manifest';
 
 import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
-const { mockWorkflowDocumentStore, openDocumentIds } = vi.hoisted(() => ({
-	mockWorkflowDocumentStore: { mergeSettings: vi.fn() },
-	openDocumentIds: new Set<string>(),
+const { openDocumentStores } = vi.hoisted(() => ({
+	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useExistingWorkflowDocumentStore: vi.fn((id: string) =>
-		openDocumentIds.has(id) ? mockWorkflowDocumentStore : undefined,
-	),
+	useExistingWorkflowDocumentStore: vi.fn((id: string) => openDocumentStores.get(id)),
 	createWorkflowDocumentId: (id: string) => id,
 }));
 
@@ -81,7 +79,7 @@ describe('registerShellCapabilities', () => {
 		};
 
 		beforeEach(() => {
-			openDocumentIds.clear();
+			openDocumentStores.clear();
 			registerShellCapabilities();
 			workflowsListStore = useWorkflowsListStore();
 		});
@@ -116,14 +114,17 @@ describe('registerShellCapabilities', () => {
 		});
 
 		it('merges the new value only into open document stores', () => {
-			openDocumentIds.add('wf-1');
+			const openStore = { mergeSettings: vi.fn() };
+			const otherOpenStore = { mergeSettings: vi.fn() };
+			openDocumentStores.set('wf-1', openStore);
+			openDocumentStores.set('wf-3', otherOpenStore);
 
 			capabilityRegistry.use(capabilities.workflowMcpAccessSync)(['wf-1', 'wf-2'], false);
 
-			expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledTimes(1);
-			expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({
-				availableInMCP: false,
-			});
+			expect(openStore.mergeSettings).toHaveBeenCalledTimes(1);
+			expect(openStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: false });
+			expect(otherOpenStore.mergeSettings).not.toHaveBeenCalled();
+			expect(useExistingWorkflowDocumentStore).toHaveBeenCalledWith('wf-2');
 		});
 	});
 });
