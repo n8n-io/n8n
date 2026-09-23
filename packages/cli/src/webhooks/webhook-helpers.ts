@@ -1201,7 +1201,7 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2 && responseMode !== 'onReceived') {
 			const engineExecutionId = createExecutionIdV2();
-			pendingEngineV2Response = Container.get(EngineV2WebhookResponder).waitForResponse(
+			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
 				responseMode === 'responseNode',
 			);

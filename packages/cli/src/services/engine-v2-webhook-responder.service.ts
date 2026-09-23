@@ -61,7 +61,10 @@ export class EngineV2WebhookResponder {
 	 * @throws {UnexpectedError} If the execution response receiver is not set.
 	 * @throws {OperationalError} If the service is at capacity.
 	 */
-	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
+	async waitForResponse(
+		executionId: ExecutionIdV2,
+		acceptsResponse = false,
+	): Promise<PendingWebhookResponse> {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
@@ -79,7 +82,7 @@ export class EngineV2WebhookResponder {
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
-		const unsubscribe = receiver.receive(executionId, (received) =>
+		const unsubscribe = await receiver.receive(executionId, (received) =>
 			this.handle(received, response),
 		);
 		this.pendingWebhooks.set(executionId, { response, unsubscribe });

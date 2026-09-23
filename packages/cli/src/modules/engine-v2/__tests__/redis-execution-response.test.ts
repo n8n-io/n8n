@@ -12,7 +12,7 @@ import {
 } from '../response-channel/redis-execution-response-sender';
 
 const channelPrefix = 'n8n:engine-v2-responses';
-const pattern = `${channelPrefix}:*`;
+const executionChannel = `${channelPrefix}:exec-1`;
 
 const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionResponse => ({
 	type: 'ended',
@@ -61,128 +61,136 @@ describe('Redis execution response sender', () => {
 
 describe('Redis execution response receiver', () => {
 	const messageHandler = (subscriber: MockProxy<RedisResponseSubscriber>) => {
-		const registration = subscriber.on.mock.calls.find(([event]) => event === 'pmessage');
+		const registration = subscriber.on.mock.calls.find(([event]) => event === 'message');
 		expect(registration).toBeDefined();
 		return registration![1];
 	};
 
-	it('waits for the pattern subscription during startup', async () => {
+	it('waits for the execution subscription before registration completes', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		let finishSubscription: (() => void) | undefined;
-		subscriber.psubscribe.mockReturnValue(
+		subscriber.subscribe.mockReturnValue(
 			new Promise((resolve) => {
 				finishSubscription = () => resolve(1);
 			}),
 		);
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
-		let started = false;
+		await receiver.start();
+		let registered = false;
 
-		const start = receiver.start().then(() => {
-			started = true;
+		const receive = receiver.receive('exec-1', vi.fn()).then(() => {
+			registered = true;
 		});
 		await Promise.resolve();
 
-		expect(subscriber.psubscribe).toHaveBeenCalledExactlyOnceWith(pattern);
-		expect(started).toBe(false);
+		expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(executionChannel);
+		expect(registered).toBe(false);
 		finishSubscription?.();
-		await start;
-		expect(started).toBe(true);
+		await receive;
+		expect(registered).toBe(true);
 	});
 
-	it('routes a valid response to all handlers for its execution', async () => {
+	it('routes a valid response to its execution subscriber', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
-		subscriber.psubscribe.mockResolvedValue(1);
+		subscriber.subscribe.mockResolvedValue(1);
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
-		const first = vi.fn();
-		const second = vi.fn();
-		receiver.receive('exec-1', first);
-		receiver.receive('exec-1', second);
+		const handler = vi.fn();
 		await receiver.start();
+		await receiver.receive('exec-1', handler);
 
-		messageHandler(subscriber)(pattern, `${channelPrefix}:exec-1`, JSON.stringify(ended()));
+		messageHandler(subscriber)(executionChannel, JSON.stringify(ended()));
 
-		expect(first).toHaveBeenCalledExactlyOnceWith(ended());
-		expect(second).toHaveBeenCalledExactlyOnceWith(ended());
+		expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(executionChannel);
+		expect(handler).toHaveBeenCalledExactlyOnceWith(ended());
+	});
+
+	it('refuses a second subscriber for the same execution', async () => {
+		const subscriber = mock<RedisResponseSubscriber>();
+		subscriber.subscribe.mockResolvedValue(1);
+		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		await receiver.start();
+		await receiver.receive('exec-1', vi.fn());
+
+		await expect(receiver.receive('exec-1', vi.fn())).rejects.toThrow('already has a subscriber');
+		expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(executionChannel);
 	});
 
 	it('does not route responses from another channel or execution', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
-		subscriber.psubscribe.mockResolvedValue(1);
+		subscriber.subscribe.mockResolvedValue(1);
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
 		const handler = vi.fn();
-		receiver.receive('exec-1', handler);
 		await receiver.start();
+		await receiver.receive('exec-1', handler);
 		const onMessage = messageHandler(subscriber);
 
-		onMessage(pattern, 'other:exec-1', JSON.stringify(ended()));
-		onMessage(pattern, `${channelPrefix}:exec-2`, JSON.stringify(ended('exec-2')));
+		onMessage('other:exec-1', JSON.stringify(ended()));
+		onMessage(`${channelPrefix}:exec-2`, JSON.stringify(ended('exec-2')));
 
 		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it('discards invalid frames and isolates a handler failure', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
-		subscriber.psubscribe.mockResolvedValue(1);
+		subscriber.subscribe.mockResolvedValue(1);
 		const logger = mockLogger();
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, logger);
-		const workingHandler = vi.fn();
-		receiver.receive('exec-1', () => {
+		await receiver.start();
+		await receiver.receive('exec-1', () => {
 			throw new Error('Handler failed');
 		});
-		receiver.receive('exec-1', workingHandler);
-		await receiver.start();
 		const onMessage = messageHandler(subscriber);
 
-		onMessage(pattern, `${channelPrefix}:exec-1`, '{"type":"unknown"}');
-		onMessage(pattern, `${channelPrefix}:exec-1`, 'not JSON');
-		onMessage(pattern, `${channelPrefix}:exec-1`, JSON.stringify(ended()));
+		onMessage(executionChannel, '{"type":"unknown"}');
+		onMessage(executionChannel, 'not JSON');
+		onMessage(executionChannel, JSON.stringify(ended()));
 
-		expect(workingHandler).toHaveBeenCalledExactlyOnceWith(ended());
 		expect(logger.error).toHaveBeenCalledTimes(3);
 	});
 
-	it('removes a handler when it unsubscribes', async () => {
+	it('unsubscribes from Redis when its subscriber leaves', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
-		subscriber.psubscribe.mockResolvedValue(1);
+		subscriber.subscribe.mockResolvedValue(1);
+		subscriber.unsubscribe.mockResolvedValue(1);
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
-		const handler = vi.fn();
-		const unsubscribe = receiver.receive('exec-1', handler);
 		await receiver.start();
+		const unsubscribe = await receiver.receive('exec-1', vi.fn());
 
 		unsubscribe();
-		messageHandler(subscriber)(pattern, `${channelPrefix}:exec-1`, JSON.stringify(ended()));
 
-		expect(handler).not.toHaveBeenCalled();
+		expect(subscriber.unsubscribe).toHaveBeenCalledExactlyOnceWith(executionChannel);
 	});
 
 	it('removes handlers and disconnects during shutdown', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
-		subscriber.psubscribe.mockResolvedValue(1);
-		subscriber.punsubscribe.mockResolvedValue(1);
+		subscriber.subscribe.mockResolvedValue(1);
+		subscriber.unsubscribe.mockResolvedValue(1);
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
 		const handler = vi.fn();
-		receiver.receive('exec-1', handler);
 		await receiver.start();
+		await receiver.receive('exec-1', handler);
 		const onMessage = messageHandler(subscriber);
 
 		await receiver.stop();
-		onMessage(pattern, `${channelPrefix}:exec-1`, JSON.stringify(ended()));
+		onMessage(executionChannel, JSON.stringify(ended()));
 		await receiver.stop();
 
 		expect(handler).not.toHaveBeenCalled();
-		expect(subscriber.punsubscribe).toHaveBeenCalledExactlyOnceWith(pattern);
-		expect(subscriber.off).toHaveBeenCalledWith('pmessage', onMessage);
+		expect(subscriber.unsubscribe).toHaveBeenCalledExactlyOnceWith(executionChannel);
+		expect(subscriber.off).toHaveBeenCalledWith('message', onMessage);
 		expect(subscriber.disconnect).toHaveBeenCalledTimes(1);
 	});
 
-	it('disconnects when startup fails', async () => {
+	it('removes the execution after its subscription fails', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
-		subscriber.psubscribe.mockRejectedValue(new Error('Redis is unavailable'));
+		subscriber.subscribe.mockRejectedValue(new Error('Redis is unavailable'));
 		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const handler = vi.fn();
+		await receiver.start();
 
-		await expect(receiver.start()).rejects.toThrow('Redis is unavailable');
+		await expect(receiver.receive('exec-1', handler)).rejects.toThrow('Redis is unavailable');
+		messageHandler(subscriber)(executionChannel, JSON.stringify(ended()));
 
-		expect(subscriber.off).toHaveBeenCalledWith('pmessage', messageHandler(subscriber));
-		expect(subscriber.disconnect).toHaveBeenCalledExactlyOnceWith();
+		expect(handler).not.toHaveBeenCalled();
 	});
 });

@@ -7,8 +7,6 @@ import type { ExecutionResponseSender } from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
-import type { ExecutionResponseReceiver } from './response-channel/execution-response-receiver';
-
 /**
  * Runs the engine 2.0 data plane in-process.
  *
@@ -23,7 +21,7 @@ import type { ExecutionResponseReceiver } from './response-channel/execution-res
 export class EngineV2Module implements ModuleInterface {
 	private responseSender?: ExecutionResponseSender;
 
-	private responseReceiver?: ExecutionResponseReceiver;
+	private responseReceiver?: { stop(): Promise<void> };
 
 	async init() {
 		if (Container.get(ExecutionsConfig).mode === 'queue') {
@@ -45,7 +43,7 @@ export class EngineV2Module implements ModuleInterface {
 		// before `startExecution` returns, and responses are not replayed.
 		const logger = Container.get(Logger).scoped('engine-v2');
 		let responseSender: ExecutionResponseSender;
-		let responseReceiver: ExecutionResponseReceiver;
+		let responseReceiver;
 		if (engineConfig.responseTransport === 'redis') {
 			const { RedisClientService } = await import('@/services/redis-client.service.js');
 			const { RedisExecutionResponseSender } = await import(

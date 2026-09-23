@@ -2333,7 +2333,7 @@ describe('executeWebhook on engine 2.0', () => {
 		// handler is how a test plays the data plane answering.
 		Container.get(EngineV2WebhookResponder).useReceiver(
 			mock<ExecutionResponseReceiver>({
-				receive: vi.fn((executionId: string, handler: (r: ExecutionResponse) => void) => {
+				receive: vi.fn(async (executionId: string, handler: (r: ExecutionResponse) => void) => {
 					dataPlane.set(executionId, handler);
 					return vi.fn();
 				}),
@@ -2440,7 +2440,7 @@ describe('executeWebhook on engine 2.0', () => {
 		it('answers with a timeout when the run does not send an ended message', async () => {
 			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = waitForResponse.mock.results[0]?.value;
+			const pending = await waitForResponse.mock.results[0]?.value;
 
 			expect(pending).toBeDefined();
 			pending?.resolve({ status: 'timeout' });
@@ -2458,7 +2458,7 @@ describe('executeWebhook on engine 2.0', () => {
 		it('answers with the channel error when the response is undeliverable', async () => {
 			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = waitForResponse.mock.results[0]?.value;
+			const pending = await waitForResponse.mock.results[0]?.value;
 
 			expect(pending).toBeDefined();
 			pending?.resolve({
@@ -2552,7 +2552,7 @@ describe('executeWebhook on engine 2.0', () => {
 		it('answers with a timeout when no terminal outcome arrives', async () => {
 			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const pending = waitForResponse.mock.results[0]?.value;
+			const pending = await waitForResponse.mock.results[0]?.value;
 
 			expect(pending).toBeDefined();
 			pending?.resolve({ status: 'timeout' });

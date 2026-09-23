@@ -17,10 +17,10 @@ export class InMemoryExecutionResponseReceiver implements ExecutionResponseRecei
 		private readonly logger: Logger,
 	) {}
 
-	receive(
+	async receive(
 		executionId: string,
 		handler: (response: ExecutionResponse) => void,
-	): UnsubscribeExecutionResponse {
+	): Promise<UnsubscribeExecutionResponse> {
 		if (this.stopped) return () => {};
 
 		const unsubscribeFromChannel = this.channel.subscribe(executionId, (frame) => {
