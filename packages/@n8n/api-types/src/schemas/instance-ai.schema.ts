@@ -1777,6 +1777,18 @@ export type InstanceAiPrefillTypeReported =
 	| InstanceAiPrefillType
 	| typeof INSTANCE_AI_PREFILL_TYPE_FALLBACK;
 
+/**
+ * Payload for putting n8n-authored text into the composer without sending it.
+ * The submit attributes the message using `prefillType` (and optional
+ * `prefillId`), so pre-fills must go through this shape rather than plain
+ * `setText`.
+ */
+export interface InstanceAiPrefillPayload {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+}
+
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
 

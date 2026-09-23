@@ -528,6 +528,7 @@ export type {
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
+	InstanceAiPrefillPayload,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
