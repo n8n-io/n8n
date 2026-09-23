@@ -357,9 +357,37 @@ describe('V1StepExecutor', () => {
 				wait: {
 					resumeAt: '2026-10-01T12:00:00.000Z',
 					outputsAtDeadline: input,
-					acceptsResumeRequest: false,
+					acceptsResumeRequest: true,
 				},
 			});
+		});
+
+		it('declares a deadline-only wait when the node says only the deadline ends it', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: '2026-10-01T12:00:00.000Z',
+				acceptsResumeRequest: false,
+			});
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			expect(result.wait?.acceptsResumeRequest).toBe(false);
+		});
+
+		// The Wait node's time modes used to sleep in the process below 65 seconds,
+		// so the engine never saw them. The wait now suspends like any other.
+		it('suspends a short time wait of the Wait node instead of sleeping', async () => {
+			const graph = graphWith('n8n-nodes-base.wait', {
+				resume: 'timeInterval',
+				amount: 2,
+				unit: 'seconds',
+			});
+			const before = Date.now();
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			const after = Date.now();
+
+			expect(after - before).toBeLessThan(1000);
+			expect(result.wait).toMatchObject({ outputsAtDeadline: input, acceptsResumeRequest: false });
+			const resumeAt = Date.parse(result.wait!.resumeAt!);
+			expect(resumeAt).toBeGreaterThanOrEqual(before + 2000);
+			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
 		});
 
 		// Nothing can deliver a resume request yet, and a year-3000 deadline would

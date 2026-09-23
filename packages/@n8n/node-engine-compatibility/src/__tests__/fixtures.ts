@@ -2,6 +2,7 @@ import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from 
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
+import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import type {
 	CloseFunction,
 	IConnections,
@@ -202,11 +203,21 @@ class WaitsUntil implements INodeType {
 		defaults: { name: 'Waits Until' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		properties: [{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' }],
+		properties: [
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+			{
+				displayName: 'Accepts Resume Request',
+				name: 'acceptsResumeRequest',
+				type: 'boolean',
+				default: true,
+			},
+		],
 	} as unknown as INodeType['description'];
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		await this.putExecutionToWait(new Date(this.getNodeParameter('waitTill', 0) as string));
+		await this.putExecutionToWait(new Date(this.getNodeParameter('waitTill', 0) as string), {
+			acceptsResumeRequest: this.getNodeParameter('acceptsResumeRequest', 0) as boolean,
+		});
 		return [this.getInputData().map((item) => ({ json: { ...item.json, returned: true } }))];
 	}
 }
@@ -222,6 +233,7 @@ const registry = new Map<string, INodeType>([
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
 	['test.waitsUntil', new WaitsUntil()],
+	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
 export const testNodeTypes: INodeTypes = {

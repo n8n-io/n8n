@@ -5,7 +5,6 @@ import type {
 	StepExecutionResult,
 	StepSlots,
 } from '@n8n/engine';
-import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import { Expression, isIndefiniteWait, isNodeClassInstance, UnexpectedError } from 'n8n-workflow';
@@ -26,6 +25,7 @@ import type {
 	V1NodeStepConfig,
 	V1StepExecutorDeps,
 } from './types';
+import type { DurableWaitExecuteContext } from './v1-adapters';
 import {
 	toAdditionalDataContext,
 	toV1ExecuteContext,
@@ -36,11 +36,12 @@ import {
 } from './v1-adapters';
 
 /**
- * A v1 node asks to pause through `putExecutionToWait(date)`, which only sets
- * `waitTill` on the run data. A finite date becomes a deadline declaration.
- * v1 resumes a timed wait by disabling the node and running it again, and a
- * disabled node passes its first input through, so that input, not the value
- * the node returned before pausing, is what the step emits at the deadline.
+ * A v1 node asks to pause through `putExecutionToWait`, and the context records
+ * the date and whether a request may end the wait. A finite date becomes a
+ * deadline declaration. v1 resumes a timed wait by disabling the node and
+ * running it again, and a disabled node passes its first input through, so that
+ * input, not the value the node returned before pausing, is what the step emits
+ * at the deadline.
  *
  * A sentinel (`WAIT_INDEFINITELY`, `WAIT_FOR_SUB_EXECUTION`) means the node
  * expects a resume request, which nothing can deliver yet: the data plane has
@@ -48,7 +49,7 @@ import {
  * the call stays a no-op and the step completes with the node's outputs, as
  * it does today.
  */
-function toStepResult(context: ExecuteContext, outputs: StepSlots): StepExecutionResult {
+function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): StepExecutionResult {
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined || isIndefiniteWait(waitTill)) return { outputs };
 
@@ -56,7 +57,7 @@ function toStepResult(context: ExecuteContext, outputs: StepSlots): StepExecutio
 		wait: {
 			resumeAt: waitTill.toISOString(),
 			outputsAtDeadline: toStepOutputs([context.getInputData()]),
-			acceptsResumeRequest: false,
+			acceptsResumeRequest: context.acceptsResumeRequest,
 		},
 	};
 }
