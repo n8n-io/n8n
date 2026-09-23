@@ -2044,17 +2044,7 @@ describe('executeWebhook on engine 2.0', () => {
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 		engineDataPlaneProxy.isAvailable.mockReturnValue(true);
 		workflowRunner.run.mockResolvedValue(ENGINE_EXECUTION_ID);
-		// The host hands the responder its receiver at boot. Keeping each run's
-		// handler is how a test plays the data plane answering.
 		dataPlane = new Map();
-		Container.get(EngineV2WebhookResponder).useReceiver(
-			mock<ExecutionResponseReceiver>({
-				receive: vi.fn((executionId: string, handler: (r: ExecutionResponse) => void) => {
-					dataPlane.set(executionId, handler);
-					return vi.fn();
-				}),
-			}),
-		);
 	});
 
 	/** Ends the run the request is waiting on, as the data plane would. */
@@ -2068,6 +2058,19 @@ describe('executeWebhook on engine 2.0', () => {
 			lastStep,
 		});
 	};
+
+	beforeAll(() => {
+		// The host hands the responder its receiver at boot. Keeping each run's
+		// handler is how a test plays the data plane answering.
+		Container.get(EngineV2WebhookResponder).useReceiver(
+			mock<ExecutionResponseReceiver>({
+				receive: vi.fn((executionId: string, handler: (r: ExecutionResponse) => void) => {
+					dataPlane.set(executionId, handler);
+					return vi.fn();
+				}),
+			}),
+		);
+	});
 
 	describe('onReceived', () => {
 		it('answers on receipt and returns the data plane execution id', async () => {

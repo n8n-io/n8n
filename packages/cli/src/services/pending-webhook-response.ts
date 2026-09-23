@@ -22,11 +22,8 @@ export type PendingWebhookResponseOptions = {
 };
 
 /**
- * One run's answer, held by the request that started it.
- *
- * Created before dispatch, so the listener exists before the data plane can
- * publish. Holding this object is what makes this replica the one that answers:
- * only the replica that created it listens to that run.
+ * This represents a pending webhook response. The webhook responder connects it
+ * to the execution responses coming from the engine.
  */
 export class PendingWebhookResponse {
 	/** Resolves when the run ends, or when the hold runs out — whichever is first. */

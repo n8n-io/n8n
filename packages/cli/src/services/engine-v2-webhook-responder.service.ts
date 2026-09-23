@@ -24,11 +24,11 @@ type PendingWebhook = {
 export const MAX_PENDING_WEBHOOKS = 5000;
 
 /**
- * Answers a webhook request from the responses its data-plane run sends.
+ * A service for hooking up responses from the data plane with webhook callers
+ * expecting that response.
  *
- * The control-plane half: a listener is created for one run, and it hears that
- * run alone. A run this replica did not start is another replica's business,
- * and nothing here ever hears about it.
+ * `waitForResponse` should be called before starting the execution in case a
+ * fast execution sends a response before we're listening for it.
  */
 @Service()
 export class EngineV2WebhookResponder {
@@ -45,17 +45,20 @@ export class EngineV2WebhookResponder {
 
 	/** The host calls this once with the receiver for execution responses. */
 	useReceiver(receiver: ExecutionResponseReceiver): void {
+		if (this.receiver) {
+			throw new UnexpectedError('Engine 2.0 webhook response receiver is already set');
+		}
 		this.receiver = receiver;
 	}
 
 	/**
-	 * Listens for one run's answer. Call this before dispatch, with the id the
-	 * run is started under: a short workflow answers before `startExecution`
-	 * returns.
+	 * Call this before starting the execution. Otherwise, a fast execution can
+	 * finish before we are waiting for its response.
 	 *
-	 * Refuses at capacity, so the run never starts. Dropping an older listener
-	 * instead would hold its request open until the response timeout, and the
-	 * answer it was waiting for would arrive with nobody to take it.
+	 * @param executionId The caller must mint this ID, use it here, and pass it to
+	 * `StartExecution`.
+	 * @throws {UnexpectedError} If the execution response receiver is not set.
+	 * @throws {OperationalError} If the service is at capacity.
 	 */
 	waitForResponse(executionId: ExecutionIdV2): PendingWebhookResponse {
 		const { receiver } = this;

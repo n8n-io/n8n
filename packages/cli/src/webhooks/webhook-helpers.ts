@@ -838,8 +838,7 @@ export async function executeWebhook(
 	let didSendResponse = false;
 	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	/** The engine 2.0 run's answer, once one is being waited for. */
-	let pending: PendingWebhookResponse | undefined;
+	let pendingEngineV2Response: PendingWebhookResponse | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
@@ -1115,7 +1114,8 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2 && responseMode !== 'onReceived') {
 			const engineExecutionId = createExecutionIdV2();
-			pending = Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
+			pendingEngineV2Response =
+				Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
 			runData.engineExecutionId = engineExecutionId;
 		}
 
@@ -1212,9 +1212,9 @@ export async function executeWebhook(
 		if (routesToEngineV2 && responseMode === 'onReceived') return executionId;
 
 		/**
-		 * The data plane's answer for this run. A run that never answers is reported
-		 * here: 504 says what happened, where the handler below would call it a
-		 * failed run. Every branch there checks `didSendResponse` first.
+		 * A callback to handle the pending execution response from the data plane.
+		 * Returns the run data if we get a response in time. Otherwise sends a 504
+		 * timeout to the webhook caller.
 		 */
 		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
 			try {
@@ -1227,6 +1227,8 @@ export async function executeWebhook(
 					executionId,
 					workflowId: workflowData.id,
 				});
+				// The webhook node can answer before the execution starts. Do not send a
+				// second response if the execution response later times out.
 				if (!didSendResponse) {
 					responseCallback(null, {
 						data: { message: 'The workflow did not answer in time' },
@@ -1244,8 +1246,8 @@ export async function executeWebhook(
 		// Get a promise which resolves when the workflow did execute and send then response.
 		// Engine 2.0 keeps no control-plane execution to wait on, so its answer comes
 		// off the response channel, shaped like the run the handler below reads.
-		const executePromise = pending
-			? waitForDataPlaneRun(pending)
+		const executePromise = pendingEngineV2Response
+			? waitForDataPlaneRun(pendingEngineV2Response)
 			: Container.get(ActiveExecutions).getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
@@ -1377,7 +1379,7 @@ export async function executeWebhook(
 		return executionId;
 	} catch (e) {
 		// Nothing will ever answer this one, so stop waiting for it.
-		pending?.release();
+		pendingEngineV2Response?.release();
 
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
