@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { StorageSerializers, useEventListener, useLocalStorage, useStorage } from '@vueuse/core';
+import {
+	StorageSerializers,
+	useElementSize,
+	useEventListener,
+	useLocalStorage,
+	useStorage,
+} from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
 	N8nAssistantIcon,
@@ -180,6 +186,11 @@ const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { isCtrlKeyPressed } = useDeviceSupport();
 
+// No design tokens cover these layout widths. Keep the editor usable while the
+// two resizable side panels adapt to the available viewport.
+const AGENT_BUILDER_EDITOR_MIN_WIDTH = 480;
+const AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH = 320;
+
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
 // PROVIDER=daytona) OR AI Assistant proxy availability. The Knowledge tab and
@@ -223,6 +234,10 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
 const previewDockWidth = ref(480);
 const isPreviewDockResizing = ref(false);
+const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
+const { width: builderContainerWidth } = useElementSize(builderContainer, undefined, {
+	box: 'border-box',
+});
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
@@ -300,7 +315,94 @@ watch(aiPanelRef, (panel) => {
 });
 const isEditingLocked = computed(() => props.artifactEditingLocked || embeddedAiBuilding.value);
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
+type SidePanel = 'assistant' | 'preview';
+const preferredSidePanel = ref<SidePanel>('assistant');
+
+function bothSidePanelsFit() {
+	if (builderContainerWidth.value === 0) return true;
+	return (
+		builderContainerWidth.value >=
+		AGENT_BUILDER_EDITOR_MIN_WIDTH + AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH * 2
+	);
+}
+
+const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
+	const desiredAiWidth = Math.max(aiPanelWidth.value, AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH);
+	const desiredPreviewWidth = Math.max(previewDockWidth.value, AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH);
+	const containerWidth = builderContainerWidth.value;
+	if (containerWidth === 0) {
+		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
+	}
+
+	const availableSidePanelWidth = Math.max(
+		AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH,
+		containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH,
+	);
+	if (showAiPanel.value && !isPreviewDockOpen.value) {
+		return {
+			ai: Math.min(desiredAiWidth, availableSidePanelWidth),
+			preview: desiredPreviewWidth,
+		};
+	}
+	if (!showAiPanel.value && isPreviewDockOpen.value) {
+		return {
+			ai: desiredAiWidth,
+			preview: Math.min(desiredPreviewWidth, availableSidePanelWidth),
+		};
+	}
+	if (!showAiPanel.value || !isPreviewDockOpen.value || !bothSidePanelsFit()) {
+		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
+	}
+
+	if (desiredAiWidth + desiredPreviewWidth <= availableSidePanelWidth) {
+		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
+	}
+
+	const availableExtraWidth = availableSidePanelWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH * 2;
+	const desiredAiExtraWidth = desiredAiWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH;
+	const desiredPreviewExtraWidth = desiredPreviewWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH;
+	const desiredExtraWidth = desiredAiExtraWidth + desiredPreviewExtraWidth;
+	const renderedAiWidth =
+		AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH +
+		availableExtraWidth * (desiredAiExtraWidth / desiredExtraWidth);
+
+	return {
+		ai: renderedAiWidth,
+		preview: availableSidePanelWidth - renderedAiWidth,
+	};
+});
+
+function keepPreferredSidePanel() {
+	if (!showAiPanel.value || !isPreviewDockOpen.value || bothSidePanelsFit()) return;
+	if (preferredSidePanel.value === 'preview') {
+		isAiPanelOpen.value = false;
+		return;
+	}
+	closePreviewDock();
+}
+
+watch(
+	showAiPanel,
+	(open, wasOpen) => {
+		if (open && !wasOpen) preferredSidePanel.value = 'assistant';
+	},
+	{ flush: 'sync' },
+);
+watch(
+	isPreviewDockOpen,
+	(open, wasOpen) => {
+		if (open && !wasOpen) preferredSidePanel.value = 'preview';
+	},
+	{ flush: 'sync' },
+);
+watch(
+	[builderContainerWidth, showAiPanel, isPreviewDockOpen, aiPanelWidth, previewDockWidth],
+	keepPreferredSidePanel,
+	{ flush: 'post' },
+);
+
 function onAiPanelResize({ width }: { width: number }) {
+	preferredSidePanel.value = 'assistant';
 	aiPanelWidth.value = width;
 }
 function toggleAiPanel() {
@@ -794,6 +896,7 @@ function sessionIdForPreview(): string | undefined {
 }
 
 async function openPreview(preferredSessionId?: string) {
+	preferredSidePanel.value = 'preview';
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
 	persistedPreviewOpen.value = true;
@@ -890,6 +993,7 @@ function closePreviewDock() {
 }
 
 function onPreviewDockResize({ width }: ResizeData) {
+	preferredSidePanel.value = 'preview';
 	previewDockWidth.value = width;
 }
 
@@ -1460,6 +1564,8 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	beforeAgentMutation: flushAutosave,
+	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
@@ -1509,22 +1615,29 @@ function persistMissingPersonalisationGradient() {
 	replaceConfigAndScheduleSave(nextConfig);
 }
 
-async function onConfigUpdated() {
+async function onConfigUpdated(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+): Promise<boolean> {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
-	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
+	agentsEventBus.emit('agentUpdated', { agentId: targetAgentId, source: 'agent-builder' });
 	await Promise.all([
-		fetchAgent(),
-		fetchConfig(projectId.value, agentId.value),
-		refreshConfigValidation(projectId.value, agentId.value),
+		fetchAgent(targetProjectId, targetAgentId),
+		fetchConfig(targetProjectId, targetAgentId),
+		refreshConfigValidation(targetProjectId, targetAgentId),
 	]);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
-	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+	const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	if (connected) connectedTriggers.value = connected;
 	tasksReloadKey.value += 1;
+	return true;
 }
 
 async function refreshArtifactShell() {
@@ -2271,21 +2384,7 @@ function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
 	});
 }
 
-async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
-	const confirmed = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.vectorStores.panel.removeModal.title', {
-			interpolate: { name: vectorStore.name },
-		}),
-		description: locale.baseText('agents.builder.vectorStores.panel.removeModal.description', {
-			interpolate: { name: vectorStore.name },
-		}),
-		confirmButtonText: locale.baseText(
-			'agents.builder.vectorStores.panel.removeModal.button.remove',
-		),
-		cancelButtonText: locale.baseText('generic.cancel'),
-	});
-	if (confirmed !== MODAL_CONFIRM) return;
-
+function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 	onConfigFieldUpdate({
 		vectorStores: (localConfig.value?.vectorStores ?? []).filter(
 			(existing) => existing.name !== vectorStore.name,
@@ -2402,6 +2501,7 @@ function onSwitchAgent(nextAgentId: string) {
 		</div>
 		<div
 			ref="builderContainer"
+			data-testid="agent-builder-container"
 			:class="[
 				$style.builder,
 				{
@@ -2411,14 +2511,15 @@ function onSwitchAgent(nextAgentId: string) {
 				},
 			]"
 			:style="{
-				'--agent-ai-panel-width': `${aiPanelWidth}px`,
-				'--agent-preview-chat-column-width': `${previewDockWidth}px`,
+				'--agent-ai-panel-width': `${renderedSidePanelWidths.ai}px`,
+				'--agent-preview-chat-column-width': `${renderedSidePanelWidths.preview}px`,
+				'--agent-builder-editor-min-width': `${AGENT_BUILDER_EDITOR_MIN_WIDTH}px`,
 			}"
 		>
 			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
 				<N8nResizeWrapper
-					:width="aiPanelWidth"
-					:min-width="320"
+					:width="renderedSidePanelWidths.ai"
+					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
 					:max-width="720"
 					:supported-directions="['right']"
 					@resize="onAiPanelResize"
@@ -2530,8 +2631,8 @@ function onSwitchAgent(nextAgentId: string) {
 				<N8nResizeWrapper
 					v-if="!isStandalonePreview"
 					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
-					:width="previewDockWidth"
-					:min-width="320"
+					:width="renderedSidePanelWidths.preview"
+					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
 					:supported-directions="['left']"
 					:grid-size="8"
 					@resizestart="isPreviewDockResizing = true"

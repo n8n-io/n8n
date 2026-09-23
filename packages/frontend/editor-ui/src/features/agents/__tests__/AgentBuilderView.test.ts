@@ -3028,6 +3028,63 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
 	});
 
+	it('closes the preview when opening the AI panel would make the editor too narrow', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1100;
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+
+		vm.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+	});
+
+	it('closes the AI panel when opening the preview would make the editor too narrow', async () => {
+		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1100;
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+
+		await (wrapper.vm as unknown as { onOpenPreview: () => Promise<boolean> }).onOpenPreview();
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it('shrinks both side panels before closing either one', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1200;
+		await nextTick();
+
+		vm.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		const builder = wrapper.get('[data-testid="agent-builder-container"]').element as HTMLElement;
+		const aiWidth = Number.parseFloat(builder.style.getPropertyValue('--agent-ai-panel-width'));
+		const previewWidth = Number.parseFloat(
+			builder.style.getPropertyValue('--agent-preview-chat-column-width'),
+		);
+		expect(aiWidth).toBeGreaterThanOrEqual(320);
+		expect(previewWidth).toBeGreaterThanOrEqual(320);
+		expect(aiWidth + previewWidth).toBeCloseTo(720);
+	});
+
 	it('routes to the assistant setup instead of opening the panel when setup is unfinished', async () => {
 		instanceAiReadyRef.value = false;
 		const wrapper = await renderView();
@@ -4291,7 +4348,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([]);
 	});
 
-	it('opens the add skill modal and applies the created skill', async () => {
+	it('adds a skill without a duplicate config save or success toast', async () => {
 		const skill = {
 			name: 'Summarize Meetings',
 			description: 'Use when summarizing meeting notes',
@@ -4318,6 +4375,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const wrapper = await renderView();
+		fetchConfigMock.mockClear();
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
 		await nextTick();
 
@@ -4346,10 +4404,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
-		expect(showMessageMock).toHaveBeenCalledWith({
-			title: 'agents.builder.skills.added',
-			type: 'success',
-		});
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(showMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('applies skill modal edits to the local config and agent resource', async () => {
