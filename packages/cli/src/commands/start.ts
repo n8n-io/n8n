@@ -41,6 +41,7 @@ import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
+import { ProcessTitleService } from '@/services/process-title.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { RoleCacheService } from '@/services/role-cache.service';
@@ -313,6 +314,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
+			Container.get(ProcessTitleService).update();
 		}
 
 		await this.executionContextHookRegistry.init();

@@ -46,6 +46,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { ProcessTitleService } from '@/services/process-title.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -108,6 +109,7 @@ export abstract class BaseCommand<F = never> {
 		// env vars. Sentry is unaffected either way: its transport builds its own
 		// agent and reads only the lowercase http(s)_proxy / no_proxy variables.
 		this.installOutboundProxyAgents();
+		Container.get(ProcessTitleService).update();
 
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
