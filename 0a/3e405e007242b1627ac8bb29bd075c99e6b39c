@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_cc06288fbace90::t_75692fd8970acd 468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a3e405e007242b1627ac8bb29bd075c99e6b39c",
+  "prompts": {},
+  "sessions": {
+    "s_cc06288fbace90": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cd4c-59e2-7d72-8b9a-6c22ff685f09",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
