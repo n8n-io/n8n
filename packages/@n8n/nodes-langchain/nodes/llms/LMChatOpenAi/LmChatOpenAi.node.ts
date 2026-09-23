@@ -1,10 +1,7 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
-import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
-	jsonParse,
 	NodeConnectionTypes,
-	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -17,6 +14,7 @@ import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
+import { parseExtraBody } from '../shared/extra-body';
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
@@ -807,24 +805,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		if (options.extraBody) {
-			let extraBody: Record<string, unknown>;
-			try {
-				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field is not valid JSON',
-					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
-				);
-			}
-			if (!isPlainObject(extraBody)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field must be a JSON object',
-					{ itemIndex },
-				);
-			}
-			Object.assign(modelKwargs, extraBody);
+			Object.assign(modelKwargs, parseExtraBody(this, options.extraBody, itemIndex));
 		}
 
 		const includedOptions = pick(options, [
