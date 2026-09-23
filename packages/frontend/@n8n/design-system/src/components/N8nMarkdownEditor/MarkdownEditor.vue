@@ -15,6 +15,7 @@ import { N8nDialog } from '../N8nDialog';
 import N8nTooltip from '../N8nTooltip';
 
 const COLLAPSED_MAX_HEIGHT_OVERRIDE = 256;
+const EXPANDED_VIEW_MAX_HEIGHT_OVERRIDE = '75dvh';
 
 defineOptions({ inheritAttrs: false });
 
@@ -172,7 +173,8 @@ watch(
 
 /** Override maxHeight for collapsible state to ensure we properly trim the content */
 const setMaxHeight = computed(function getMaxHeightStyle() {
-	if (isExpandedViewActive.value) return '--markdown-editor-max-height: 100%';
+	if (isExpandedViewActive.value)
+		return `--markdown-editor-max-height: ${EXPANDED_VIEW_MAX_HEIGHT_OVERRIDE}`;
 	if (!props.isCollapsible) return `--markdown-editor-max-height: ${maxHeight.value}`;
 
 	const collapsibleMaxHeight = collapsed.value
@@ -470,8 +472,7 @@ defineExpose({
 
 .dialog {
 	--n8n-dialog-content--padding: var(--spacing--5xs) 0 0 0;
-	aspect-ratio: 1/1;
-	max-height: 75dvh;
+	max-height: var(--markdown-editor-max-height);
 }
 
 .disabled {
@@ -509,7 +510,6 @@ defineExpose({
 
 .ghost {
 	--n8n--markdown-editor--background-color: transparent;
-
 	background-color: transparent;
 }
 
@@ -609,7 +609,7 @@ defineExpose({
 }
 
 .expandedContainer {
-	max-height: 75dvh;
+	max-height: var(--markdown-editor-max-height);
 }
 
 .expandedContainer.ghost,
