@@ -394,7 +394,6 @@ export default defineConfig({
 				'./src/modules/agents/integrations/platforms/discord-integration.ts',
 				'./src/modules/token-exchange/services/trusted-key.service.ts',
 				'./src/services/pruning/workflow-history-compaction.service.ts',
-				'./src/services/process-title.service.ts',
 			],
 			rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 		},
