@@ -138,7 +138,7 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 									:href="CUSTOM_ROLES_DOCS_URL"
 									:new-window="true"
 									size="small"
-									theme="secondary"
+									theme="text"
 									:bold="true"
 									:underline="true"
 								>
@@ -226,5 +226,13 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 	margin-top: var(--spacing--2xs);
 	/* Opt out of the option alignment above: the callout spans the whole card. */
 	align-self: stretch;
+}
+
+/* The link keeps the warning text color; the underline marks it as a link.
+   Both the callout (on the anchor) and N8nLink (on its span) set the purple
+   secondary color, so both are reset. */
+.warning a:global(.n8n-link),
+.warning a:global(.n8n-link) > span {
+	color: inherit;
 }
 </style>

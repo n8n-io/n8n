@@ -83,7 +83,7 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 					<N8nLink
 						:to="{ name: VIEWS.SECURITY_SETTINGS }"
 						size="small"
-						theme="secondary"
+						theme="text"
 						:bold="true"
 						:underline="true"
 					>
@@ -145,5 +145,13 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 	/* The info callout is white by default. On the white card it needs the page
 	   background to read as a callout. */
 	--callout--color--background--info: var(--color--background);
+}
+
+/* The link keeps the callout's text color; the underline marks it as a link.
+   Both the callout (on the anchor) and N8nLink (on its span) set the purple
+   secondary color, so both are reset. */
+.callout a:global(.n8n-link),
+.callout a:global(.n8n-link) > span {
+	color: inherit;
 }
 </style>
