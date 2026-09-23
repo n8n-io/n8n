@@ -7,7 +7,7 @@ import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
@@ -20,7 +20,7 @@ import {
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -149,6 +149,33 @@ export class McpProtectedResource implements ProtectedResource {
 
 	async getAllowedRedirectUris(): Promise<string[]> {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
+	}
+
+	/**
+	 * Scopes narrowed to what this user can actually exercise on this instance.
+	 *
+	 * `communityPackage:install` is dropped unless `install_community_node` would
+	 * really register, so the consent screen never records a grant that can do
+	 * nothing. Delegates to the same predicate registration uses rather than
+	 * re-checking one of its conditions: the screen pre-checks every offered
+	 * scope on first consent, so a scope offered here is a scope granted.
+	 */
+	async getGrantableScopes(user: User): Promise<string[]> {
+		const scopes = this.scopes;
+
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		const installAvailable = isCommunityNodeInstallAvailable(
+			this.moduleRegistry,
+			Container.get(CommunityPackagesConfig),
+			this.globalConfig,
+			this.mcpConfig,
+			user,
+		);
+		if (installAvailable) return scopes;
+
+		return scopes.filter((scope) => scope !== 'communityPackage:install');
 	}
 
 	async isAvailable(): Promise<boolean> {

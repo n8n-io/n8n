@@ -3,7 +3,8 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import { meetingRequest, meetingsPath, requiredText, toGraphUtc } from './shared';
+import { meetingRequest, meetingsPath, toGraphUtc } from './shared';
+import { requiredText } from '../../helpers/parameters';
 
 const properties: INodeProperties[] = [
 	{

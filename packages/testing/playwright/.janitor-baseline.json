@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-07-27T03:21:27.407Z",
-	"totalViolations": 56,
+	"totalViolations": 52,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -24,19 +24,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 61,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 85,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 109,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			},
@@ -69,12 +57,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 170,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 360,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -153,12 +135,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 84,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 92,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			},
