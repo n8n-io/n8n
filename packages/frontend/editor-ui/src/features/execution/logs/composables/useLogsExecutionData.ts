@@ -15,6 +15,7 @@ import {
 	createLogTree,
 	findSubExecutionLocator,
 	mergeStartData,
+	removeEmptyGroupLogs,
 } from '@/features/execution/logs/logs.utils';
 import { useToast } from '@n8n/composables/useToast';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
@@ -24,6 +25,7 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 
 interface UseLogsExecutionDataOptions {
 	/**
@@ -35,6 +37,7 @@ interface UseLogsExecutionDataOptions {
 
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -104,7 +107,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		// Group membership comes from the execution snapshot so historical executions group too
 		const nodeGroups = mergedExecutionData.workflowData.nodeGroups ?? [];
 
-		return createLogTree(
+		const logEntries = createLogTree(
 			workflow.value,
 			mergedExecutionData,
 			subWorkflows.value,
@@ -113,6 +116,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			nodeGroups,
 			subWorkflowNodeGroups.value,
 		);
+
+		return emptyCanvasGroupsEnabled.value ? logEntries : removeEmptyGroupLogs(logEntries);
 	});
 
 	function resetExecutionData() {

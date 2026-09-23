@@ -14,6 +14,7 @@ import {
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
@@ -26,6 +27,7 @@ type GroupValidationOptions = {
 export function useSelectionValidation() {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 	/**
 	 * Expands a selection of node ids to include all sub-nodes (memory, tools,
@@ -98,7 +100,8 @@ export function useSelectionValidation() {
 		const connectableCount = expandedIds.filter(
 			(id) => store?.getNodeById(id)?.type !== STICKY_NODE_TYPE,
 		).length;
-		if (connectableCount === 0) return null;
+		const minimumConnectableCount = emptyCanvasGroupsEnabled.value ? 1 : 2;
+		if (connectableCount < minimumConnectableCount) return null;
 
 		return isSelectionGroupable(expandedIds).valid ? expandedIds : null;
 	}

@@ -89,6 +89,7 @@ import type {
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import {
 	createCanvasConnectionHandleString,
+	mapConnectionsToVisibleNodes,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyConnectionToCanvasConnection,
@@ -137,6 +138,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	getEmptyGroupAnchor,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
@@ -172,6 +174,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
@@ -242,6 +245,44 @@ function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDesc
 	return DEFAULT_NODE_SIZE[0];
 }
 
+export function removeEmptyCanvasGroupsFromWorkflowData(workflowData: WorkflowDataUpdate) {
+	const nodes = workflowData.nodes ?? [];
+	const emptyGroupAnchorIds = new Set<string>();
+	const emptyGroupAnchorNames = new Set<string>();
+
+	for (const group of workflowData.nodeGroups ?? []) {
+		const anchor = getEmptyGroupAnchor(group, nodes);
+		if (anchor) {
+			emptyGroupAnchorIds.add(anchor.id);
+			emptyGroupAnchorNames.add(anchor.name);
+		}
+	}
+
+	if (emptyGroupAnchorIds.size === 0) return;
+
+	workflowData.nodes = nodes.filter((node) => !emptyGroupAnchorIds.has(node.id));
+	workflowData.nodeGroups = workflowData.nodeGroups?.filter(
+		(group) => getEmptyGroupAnchor(group, nodes) === undefined,
+	);
+
+	if (workflowData.nodeGroups?.length === 0) {
+		workflowData.nodeGroups = undefined;
+	}
+
+	if (workflowData.pinData) {
+		for (const anchorName of emptyGroupAnchorNames) {
+			delete workflowData.pinData[anchorName];
+		}
+	}
+
+	if (workflowData.connections) {
+		workflowData.connections = mapConnectionsToVisibleNodes(
+			workflowData.connections,
+			workflowData.nodes,
+		);
+	}
+}
+
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -261,6 +302,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
 	// router guards) as well as inside the editor, so derive the NDV store from
@@ -667,6 +709,7 @@ export function useCanvasOperations() {
 
 		const group = workflowDocumentStore.value.getGroupForNode(id);
 		const shouldRestoreEmptyGroupAnchor =
+			emptyCanvasGroupsEnabled.value &&
 			preserveEmptyGroupAnchor &&
 			group?.nodeIds.length === 1 &&
 			node.type !== STICKY_NODE_TYPE &&
@@ -3169,6 +3212,10 @@ export function useCanvasOperations() {
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
 
+		if (source === 'paste' && !emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+		}
+
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			toast.showError(
@@ -3605,6 +3652,9 @@ export function useCanvasOperations() {
 		if (hasRestrictedNode) return false;
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+		}
 
 		workflowData.meta = {
 			...workflowData.meta,

@@ -679,6 +679,20 @@ export function isEmptyGroupLog(entry: LogEntry): entry is GroupLogEntry {
 	);
 }
 
+/** Remove empty-group rows from the log tree when the canvas group feature is disabled. */
+export function removeEmptyGroupLogs(entries: LogEntry[]): LogEntry[] {
+	const visibleEntries: LogEntry[] = [];
+
+	for (const entry of entries) {
+		if (isEmptyGroupLog(entry)) continue;
+
+		entry.children = removeEmptyGroupLogs(entry.children);
+		visibleEntries.push(entry);
+	}
+
+	return visibleEntries;
+}
+
 export function getEntryAtRelativeIndex(
 	entries: LogEntry[],
 	id: string,

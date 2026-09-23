@@ -2,6 +2,7 @@ import {
 	checkOverlap,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	mapConnectionsToVisibleNodes,
 	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
@@ -696,6 +697,48 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				},
 			},
 		]);
+	});
+});
+
+describe('mapConnectionsToVisibleNodes', () => {
+	it('removes hidden sources and targets', () => {
+		const connections: IConnections = {
+			Hidden: { main: [[{ node: 'Visible', type: 'main', index: 0 }]] },
+			Visible: {
+				main: [[{ node: 'Hidden', type: 'main', index: 0 }]],
+			},
+		};
+
+		expect(mapConnectionsToVisibleNodes(connections, [{ name: 'Visible' } as INodeUi])).toEqual({});
+	});
+
+	it('preserves connections between visible nodes', () => {
+		const connections: IConnections = {
+			Source: { main: [[{ node: 'Target', type: 'main', index: 0 }]] },
+		};
+
+		expect(
+			mapConnectionsToVisibleNodes(connections, [
+				{ name: 'Source' } as INodeUi,
+				{ name: 'Target' } as INodeUi,
+			]),
+		).toEqual(connections);
+	});
+
+	it('reconnects visible nodes through hidden nodes', () => {
+		const connections: IConnections = {
+			Source: { main: [[{ node: 'Hidden', type: 'main', index: 0 }]] },
+			Hidden: { main: [[{ node: 'Target', type: 'main', index: 0 }]] },
+		};
+
+		expect(
+			mapConnectionsToVisibleNodes(connections, [
+				{ name: 'Source' } as INodeUi,
+				{ name: 'Target' } as INodeUi,
+			]),
+		).toEqual({
+			Source: { main: [[{ node: 'Target', type: 'main', index: 0 }]] },
+		});
 	});
 });
 

@@ -3,6 +3,7 @@ import type {
 	IConnections,
 	INodeTypeDescription,
 	NodeConnectionType,
+	NodeInputConnections,
 } from 'n8n-workflow';
 import { computed, shallowReactive, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
@@ -124,6 +125,85 @@ export function createEmptyCanvasRenderData(
 		additionalPropertiesByNodeId: computed(() => ({})),
 		...overrides,
 	};
+}
+
+/**
+ * Builds the connection graph for visible nodes, reconnecting visible endpoints through hidden nodes.
+ */
+export function mapConnectionsToVisibleNodes(
+	connections: IConnections,
+	visibleNodes: ReadonlyArray<Pick<INodeUi, 'name'>>,
+): IConnections {
+	const visibleNodeNames = new Set(visibleNodes.map((node) => node.name));
+	const visibleConnections: IConnections = {};
+
+	const addVisibleConnection = (
+		sourceName: string,
+		sourceType: string,
+		sourceIndex: number,
+		target: IConnection,
+	) => {
+		const sourceConnections = (visibleConnections[sourceName] ??= {});
+		const typeConnections = (sourceConnections[sourceType] ??= []);
+		const outputConnections = (typeConnections[sourceIndex] ??= []);
+
+		if (
+			!outputConnections.some(
+				(connection) =>
+					connection.node === target.node &&
+					connection.type === target.type &&
+					connection.index === target.index,
+			)
+		) {
+			outputConnections.push(target);
+		}
+	};
+
+	const addConnectionsToVisibleNodes = (
+		sourceName: string,
+		sourceType: string,
+		sourceIndex: number,
+		target: IConnection,
+		visitedHiddenNodes: Set<string>,
+	) => {
+		if (visibleNodeNames.has(target.node)) {
+			if (visitedHiddenNodes.size > 0 && target.node === sourceName) return;
+			addVisibleConnection(sourceName, sourceType, sourceIndex, target);
+			return;
+		}
+
+		if (visitedHiddenNodes.has(target.node)) return;
+
+		const nextVisitedHiddenNodes = new Set(visitedHiddenNodes).add(target.node);
+		const hiddenNodeConnections = connections[target.node]?.[target.type] ?? [];
+		for (const outputConnections of hiddenNodeConnections) {
+			for (const nextTarget of outputConnections ?? []) {
+				addConnectionsToVisibleNodes(
+					sourceName,
+					sourceType,
+					sourceIndex,
+					nextTarget,
+					nextVisitedHiddenNodes,
+				);
+			}
+		}
+	};
+
+	for (const [sourceName, sourceConnections] of Object.entries(connections)) {
+		if (!visibleNodeNames.has(sourceName)) continue;
+
+		for (const [sourceType, typeConnections] of Object.entries(sourceConnections) as Array<
+			[string, NodeInputConnections]
+		>) {
+			for (const [sourceIndex, outputConnections] of typeConnections.entries()) {
+				for (const target of outputConnections ?? []) {
+					addConnectionsToVisibleNodes(sourceName, sourceType, sourceIndex, target, new Set());
+				}
+			}
+		}
+	}
+
+	return visibleConnections;
 }
 
 /**
