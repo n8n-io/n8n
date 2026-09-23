@@ -641,7 +641,7 @@ works.
 The action refuses a run whose input would not keep the nodes above the target
 out of it. It applies the rules of `findStartNodes`, so the engine re-runs:
 
-- A node with no run data.
+- A node with neither run data nor pin data.
 - A node whose saved run failed, even a pinned one. The engine retries it.
 - A Loop Over Items node whose last run left the `done` output empty. The
   engine restarts the loop. A loop edge that runs through the target does not
