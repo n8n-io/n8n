@@ -39,6 +39,7 @@ const MAX_PARAGRAPH_LINE_LENGTH = 100;
  * - Add the required RFC, Documentation, and Related ADRs link fields.
  * - Resolve local ADR references and allow references in external URLs.
  * - Limit paragraph lines to 100 characters.
+ * - Apply structural rules to the root ADR template.
  */
 export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'adr-conventions';
@@ -90,6 +91,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 	): Violation[] {
 		const violations: Violation[] = [];
 		const { filePath, relativePath, fileName } = file;
+		const isTemplate = relativePath === 'docs/ADR_TEMPLATE.md';
 
 		for (const { line, length } of findLongParagraphLines(file, MAX_PARAGRAPH_LINE_LENGTH)) {
 			violations.push(
@@ -102,7 +104,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 			);
 		}
 
-		if (!allowedDirectories.has(normalizePath(path.dirname(filePath)))) {
+		if (!isTemplate && !allowedDirectories.has(normalizePath(path.dirname(filePath)))) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -114,7 +116,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 			);
 		}
 
-		if (!file.fileId) {
+		if (!isTemplate && !file.fileId) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -124,7 +126,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 					'Rename the file with a valid date and kebab-case title.',
 				),
 			);
-		} else if ((ids.get(file.fileId)?.length ?? 0) > 1) {
+		} else if (file.fileId && (ids.get(file.fileId)?.length ?? 0) > 1) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -142,7 +144,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 			violations.push(
 				this.createViolation(filePath, 1, 1, 'The ADR must start with one nonempty H1 title.'),
 			);
-		} else if (file.fileSlug && kebabCase(title) !== file.fileSlug) {
+		} else if (!isTemplate && file.fileSlug && kebabCase(title) !== file.fileSlug) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -205,7 +207,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		}
 
 		const date = metadata.values.get('Date');
-		if (!date || !isValidIsoDate(date)) {
+		if (!isTemplate && (!date || !isValidIsoDate(date))) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -214,7 +216,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 					'Date must be a valid calendar date in YYYY-MM-DD format.',
 				),
 			);
-		} else if (file.fileDate && date.replaceAll('-', '') !== file.fileDate) {
+		} else if (!isTemplate && file.fileDate && date?.replaceAll('-', '') !== file.fileDate) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -226,7 +228,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		}
 
 		const status = metadata.values.get('Status');
-		if (!status || !ALLOWED_STATUSES.has(status)) {
+		if (!isTemplate && (!status || !ALLOWED_STATUSES.has(status))) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -238,7 +240,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		}
 
 		const owner = metadata.values.get('Decision Owner');
-		if (!owner || !owners.has(owner)) {
+		if (!isTemplate && (!owner || !owners.has(owner))) {
 			violations.push(
 				this.createViolation(
 					filePath,
@@ -251,6 +253,8 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		}
 
 		for (const field of OPTIONAL_METADATA) {
+			if (isTemplate) continue;
+
 			if (metadata.values.has(field) && !isMeaningfulValue(metadata.values.get(field))) {
 				violations.push(
 					this.createViolation(
@@ -279,7 +283,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		}
 
 		if (headingResult.valid) {
-			violations.push(...this.validateSections(file, headingResult.indexes));
+			violations.push(...this.validateSections(file, headingResult.indexes, isTemplate));
 		}
 
 		violations.push(...this.validateReferences(file, ids));
@@ -287,7 +291,11 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		return violations;
 	}
 
-	private validateSections(file: AdrFile, headingIndexes: number[]): Violation[] {
+	private validateSections(
+		file: AdrFile,
+		headingIndexes: number[],
+		allowPlaceholders: boolean,
+	): Violation[] {
 		const violations: Violation[] = [];
 		const { filePath, lines } = file;
 
@@ -334,7 +342,7 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 				return (
 					block.line === linksIndex + 2 + index * 2 &&
 					field?.key === linkPattern[index] &&
-					isMeaningfulLinkValue(field.value)
+					(allowPlaceholders || isMeaningfulLinkValue(field.value))
 				);
 			}) &&
 			hasOnlyParagraphsAfterHeading(file.tokens, linksIndex);
