@@ -212,7 +212,7 @@ export class SystemTaskRunner {
 	}
 
 	/** The per-instance timers, which only shutdown stops. */
-	private instanceTimers(): TimerTask[] {
+	private getInstanceTimerTasks(): TimerTask[] {
 		return this.timers().filter((routed) => routed.placement.scope === 'instance');
 	}
 
@@ -236,7 +236,7 @@ export class SystemTaskRunner {
 	async shutdown(): Promise<void> {
 		this.isShuttingDown = true;
 		this.shutdownController.abort();
-		const instanceTimers = this.instanceTimers();
+		const instanceTimers = this.getInstanceTimerTasks();
 		for (const routed of instanceTimers) {
 			routed.timer.stop();
 			clearTimeout(routed.retryTimer);
