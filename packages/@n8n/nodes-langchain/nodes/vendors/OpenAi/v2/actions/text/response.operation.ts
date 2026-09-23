@@ -646,9 +646,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		const stream = await apiRequestStream.call(this, 'POST', '/responses', {
 			body: { ...body, stream: true },
+			abortSignal,
 		});
 
-		return await collectStreamedResponse(this, stream);
+		return await collectStreamedResponse(this, stream, { abortSignal });
 	};
 
 	let response: ChatResponse = await requestResponse();

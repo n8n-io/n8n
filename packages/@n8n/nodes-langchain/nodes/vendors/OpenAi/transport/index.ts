@@ -86,9 +86,9 @@ export async function apiRequestStream(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	parameters?: RequestParameters,
+	parameters?: RequestParameters & { abortSignal?: AbortSignal },
 ): Promise<Readable> {
-	const { body, qs } = parameters ?? {};
+	const { body, qs, abortSignal } = parameters ?? {};
 
 	const credentials = await this.getCredentials('openAiApi');
 
@@ -108,6 +108,9 @@ export async function apiRequestStream(
 		encoding: 'stream',
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true,
+		// Propagate execution cancellation to the network layer so a cancelled
+		// run closes the upstream connection instead of leaking it.
+		abortSignal,
 	})) as { statusCode: number; body: Readable };
 
 	if (response.statusCode >= 400) {
