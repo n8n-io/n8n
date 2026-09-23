@@ -1,0 +1,40 @@
+packages/@n8n/telemetry/src/registry-checks.ts
+  s_5be157f6e91b85::t_962fdcdb1de224 27-30
+packages/@n8n/telemetry/src/catalog.ts
+  s_5be157f6e91b85::t_962fdcdb1de224 1,23,41-47,54-60,63-65
+packages/@n8n/telemetry/src/__tests__/registry-checks.test.ts
+  s_5be157f6e91b85::t_b7a92bfc5ad5e0 85-113
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_5be157f6e91b85::t_11e22a088b4565 732-736,2504,2534,2542-2544,5114,5127-5128,5196-5197,5339,5357,5496,6828,6845,6847
+packages/@n8n/instance-ai/src/__tests__/index.lazy.test.ts
+  s_5be157f6e91b85::t_0bf5b4914013f0 1-40,42-45,49-52,57-64,68-71,75-82,86-87
+  s_5be157f6e91b85::t_4078629c9c2c25 41,46-48,53-56,65-67,72-74,83-85
+packages/@n8n/telemetry/src/__tests__/instance-context-turn.test.ts
+  s_5be157f6e91b85::t_178e2f24579a10 4,17-37,46,52-53,55,59-113,115-119,137
+packages/@n8n/telemetry/src/__tests__/catalog.test.ts
+  s_5be157f6e91b85::t_4852d1836aa4f1 51
+  s_5be157f6e91b85::t_b7a92bfc5ad5e0 5,43-50,52-74
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5be157f6e91b85::t_d9770e0910d02a 779-793,795,802-805,808,897,979-982,984-988,991,993
+  s_5be157f6e91b85::t_c1b7550d30f43b 2121-2126,2784,2887,3020,3037-3072,6862-6871
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_5be157f6e91b85::t_962fdcdb1de224 57-98,463-486
+packages/@n8n/instance-ai/src/index.ts
+  s_5be157f6e91b85::t_35de4e5d45b3b9 17,26,29,127-135,450-453,545,587-594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94641a398dd08fd2cec91299ae3efd0e4b91ad2b",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

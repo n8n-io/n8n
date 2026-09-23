@@ -1,0 +1,25 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_e9d4f9e371b4bb::t_7c16c9e6183da4 2,128
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_e9d4f9e371b4bb::t_7c16c9e6183da4 7
+  s_e9d4f9e371b4bb::t_aa28c130c7142f 56
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_e9d4f9e371b4bb::t_7c16c9e6183da4 177,267,280,293,301,347,394,437,466,493
+  s_e9d4f9e371b4bb::t_aa28c130c7142f 486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92447292ca70e9304cf4393907b014d3fd4d0545",
+  "prompts": {},
+  "sessions": {
+    "s_e9d4f9e371b4bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a481-36cc-7000-82d3-ce1bf91cdc42",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

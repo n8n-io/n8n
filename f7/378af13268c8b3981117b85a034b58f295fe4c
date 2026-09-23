@@ -1,0 +1,14 @@
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  h_c63dce324dfc7b 161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f7378af13268c8b3981117b85a034b58f295fe4c",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.ts
+  s_348adf29065e6e::t_d4b19410d2478c 40-43,46-52
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.test.ts
+  s_348adf29065e6e::t_8bc0875675d24b 38-46
+packages/frontend/@n8n/frontend-module-sdk/src/declareCapability.ts
+  s_348adf29065e6e::t_8bc0875675d24b 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9d407767212e8bbcc10b47db9cd4b7f1224bc622",
+  "prompts": {},
+  "sessions": {
+    "s_348adf29065e6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e448448-aa3c-475b-97de-f54507c164b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

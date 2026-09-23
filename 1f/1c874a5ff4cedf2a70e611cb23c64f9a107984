@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_cb6e837fea1b37 15
+  s_adb5d982725a9c::t_50763638c35cc8 90-93
+  s_adb5d982725a9c::t_333ccf505e4ea9 161
+  s_adb5d982725a9c::t_4603e8fbd86989 232-239,241
+  s_adb5d982725a9c::t_0ff6b0643240fe 265
+  s_adb5d982725a9c::t_28ef55f6f7e761 267-280
+  s_adb5d982725a9c::t_7e3d716d6dd166 372-387,390-396
+  s_adb5d982725a9c::t_9050cae6a5a0eb 400-412
+  s_adb5d982725a9c::t_5a18f710697a64 1293,1304-1307
+  s_adb5d982725a9c::t_687f9b8a81e9c2 2227
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_adb5d982725a9c::t_931c6dd1f8a908 311
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_adb5d982725a9c::t_635aa47e9a2f1b 339
+  s_adb5d982725a9c::t_e5226faf842aa2 303-304
+  s_adb5d982725a9c::t_1a46f5b5b0d311 536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f1c874a5ff4cedf2a70e611cb23c64f9a107984",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
