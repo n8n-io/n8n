@@ -73,6 +73,24 @@ function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> 
 	});
 }
 
+/** A run that streams one delta and answers an abort with its terminal chunks, as the SDK does. */
+function makeAbortableStream(signal: AbortSignal | undefined): ReadableStream<StreamChunk> {
+	return new ReadableStream<StreamChunk>({
+		start(controller) {
+			controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+			signal?.addEventListener('abort', () => {
+				controller.enqueue({ type: 'error', error: new Error('Agent run was aborted') });
+				controller.enqueue({
+					type: 'finish',
+					finishReason: 'error',
+					usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+				});
+				controller.close();
+			});
+		},
+	});
+}
+
 function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 	const chunks: StreamChunk[] = [
 		{ type: 'text-start', id: 'text-1' },
@@ -447,6 +465,50 @@ describe('AgentWorkflowExecutionService', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('stops the agent run and reads it to its end when the stream observer fails', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockImplementation(
+			async (_message: unknown, options: { abortSignal?: AbortSignal }) => ({
+				runId: 'runtime-run-1',
+				stream: makeAbortableStream(options.abortSignal),
+			}),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		const streamObserver = vi
+			.fn<WorkflowAgentStreamObserver>()
+			.mockRejectedValue(new Error('response stream closed'));
+
+		await expect(
+			service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				streamObserver,
+			),
+		).rejects.toThrow('response stream closed');
+
+		const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+		expect(streamOptions.abortSignal?.aborted).toBe(true);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					error: 'response stream closed',
+					usage: expect.objectContaining({ totalTokens: 5 }),
+				}),
+			}),
+		);
 	});
 
 	it('records a workflow initialization failure without invoking the SDK', async () => {

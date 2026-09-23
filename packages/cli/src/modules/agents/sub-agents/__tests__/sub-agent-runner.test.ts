@@ -933,6 +933,41 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('stops the child run and reads it to its end when the parent stops taking its chunks', async () => {
+		const chunkError = new Error('parent stream closed');
+		childAgent.stream.mockImplementation(async (_input, options) => ({
+			runId: 'child-run-1',
+			stream: makeAbortableStream(options?.abortSignal),
+			getState: () => {
+				throw new Error('not implemented');
+			},
+		}));
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onChunk: () => {
+					throw chunkError;
+				},
+			}),
+		).rejects.toBe(chunkError);
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		expect(options?.abortSignal?.aborted).toBe(true);
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					finishReason: 'cancelled',
+					usage: expect.objectContaining({ totalTokens: 5 }),
+				}),
+			}),
+		);
+	});
+
 	it('derives sub-agent telemetry from the parent context and passes it to the child stream', async () => {
 		const parentTelemetry: BuiltTelemetry = {
 			enabled: true,
@@ -976,6 +1011,24 @@ describe('SubAgentRunner', () => {
 		expect(options).not.toHaveProperty('telemetry');
 	});
 });
+
+/** A run that streams one delta and answers an abort with its terminal chunks, as the SDK does. */
+function makeAbortableStream(signal: AbortSignal | undefined): ReadableStream<StreamChunk> {
+	return new ReadableStream<StreamChunk>({
+		start(controller) {
+			controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+			signal?.addEventListener('abort', () => {
+				controller.enqueue({ type: 'error', error: new Error('Agent run was aborted') });
+				controller.enqueue({
+					type: 'finish',
+					finishReason: 'error',
+					usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+				});
+				controller.close();
+			});
+		},
+	});
+}
 
 function makeStreamResult(chunks: StreamChunk[]): StreamResult {
 	return {

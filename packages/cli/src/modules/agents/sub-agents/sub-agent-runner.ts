@@ -34,7 +34,6 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
-import { withLeaseSignal } from '../agent-session-lease.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
@@ -50,6 +49,7 @@ import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
 import { modelStreamStallOptions } from '../model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
+import { anyAbortSignal } from '../utils/abort-signal';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { createAttributionTracker } from '../utils/mcp-attribution';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
@@ -241,12 +241,13 @@ export class SubAgentRunner {
 			recording,
 			recorder.startedAt,
 		);
-		const abortSignal = withLeaseSignal(context.abortSignal, leaseSignal);
+		const stopRun = new AbortController();
+		const abortSignal = anyAbortSignal(context.abortSignal, leaseSignal, stopRun.signal);
 		let executionStarted = false;
 		let executionError: unknown;
 		let agent: BuiltAgent | undefined;
 		try {
-			abortSignal?.throwIfAborted();
+			abortSignal.throwIfAborted();
 			const reconstructed = await reconstructionService.reconstructFromResolvedSource({
 				config: childConfig,
 				memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -273,9 +274,9 @@ export class SubAgentRunner {
 			});
 
 			agent = reconstructed.agent;
-			abortSignal?.throwIfAborted();
+			abortSignal.throwIfAborted();
 			const executionOptions = {
-				...(abortSignal !== undefined ? { abortSignal } : {}),
+				abortSignal,
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...modelStreamStallOptions(this.aiConfig),
 				executionCounter: context.executionCounter,
@@ -315,6 +316,7 @@ export class SubAgentRunner {
 				resultStream,
 				recorder,
 				createAttributionTracker(reconstructed.mcpServerAttributions),
+				stopRun,
 				context.onChunk,
 			);
 			executionError = consumed.executionError;
@@ -346,7 +348,7 @@ export class SubAgentRunner {
 					executionError,
 					params: {
 						...recording,
-						record: abortSignal?.aborted
+						record: abortSignal.aborted
 							? { ...record, finishReason: 'cancelled', error: null }
 							: record,
 						hitlStatus: recorder.suspended
@@ -411,13 +413,18 @@ async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
 	attributionTracker: ReturnType<typeof createAttributionTracker>,
+	stopRun: AbortController,
 	onChunk?: (chunk: StreamChunk) => void,
 ): Promise<{ result: GenerateResult; executionError: unknown }> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
 
-	for await (const value of streamAgentChunks(resultStream.stream)) {
+	const stopOnEarlyExit = {
+		abortRun: () => stopRun.abort(),
+		onDrainedChunk: (chunk: StreamChunk) => recorder.record(chunk),
+	};
+	for await (const value of streamAgentChunks(resultStream.stream, stopOnEarlyExit)) {
 		recorder.record(value);
 		if (value.type === 'error') executionError = value.error;
 		// Recorded before the record is read, so the label reaches the child's

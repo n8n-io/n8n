@@ -57,6 +57,7 @@ import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { anyAbortSignal } from './utils/abort-signal';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
@@ -369,10 +370,18 @@ export class AgentWorkflowExecutionService {
 		state: WorkflowAgentStreamState,
 		hasParentContext: boolean,
 	): Promise<void> {
-		const options = await this.getWorkflowStreamOptions(params, hasParentContext);
+		const stopRun = new AbortController();
+		const options = await this.getWorkflowStreamOptions(params, hasParentContext, stopRun.signal);
 		state.executionStarted = true;
 		const resultStream = await params.agentInstance.stream(params.message, options);
-		for await (const value of streamAgentChunks(resultStream.stream)) {
+		const stopOnEarlyExit = {
+			abortRun: () => stopRun.abort(),
+			// The error that stopped the consumer is recorded as the execution error.
+			onDrainedChunk: (chunk: StreamChunk) => {
+				if (chunk.type !== 'error') recorder.record(chunk);
+			},
+		};
+		for await (const value of streamAgentChunks(resultStream.stream, stopOnEarlyExit)) {
 			this.recordWorkflowChunk(value, params.outputSchema, recorder, state);
 			await streamAdapter.observe(value);
 			this.collectWorkflowChunk(value, state);
@@ -382,6 +391,7 @@ export class AgentWorkflowExecutionService {
 	private async getWorkflowStreamOptions(
 		params: WorkflowAgentStreamParams,
 		hasParentContext: boolean,
+		stopSignal: AbortSignal,
 	) {
 		const {
 			telemetryAgentId,
@@ -431,7 +441,7 @@ export class AgentWorkflowExecutionService {
 			}),
 			...modelStreamStallOptions(this.aiConfig),
 			...(telemetry ? { telemetry } : {}),
-			...(params.leaseSignal ? { abortSignal: params.leaseSignal } : {}),
+			abortSignal: anyAbortSignal(params.leaseSignal, stopSignal),
 		};
 	}
 

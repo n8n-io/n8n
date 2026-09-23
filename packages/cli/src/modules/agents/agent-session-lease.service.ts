@@ -109,13 +109,3 @@ export class AgentSessionLeaseService {
 		lease.controller.abort(new AgentSessionLeaseLostError());
 	}
 }
-
-/** Combines a turn's abort signal with the signal that fires when its session lease is lost. */
-export function withLeaseSignal(
-	signal: AbortSignal | undefined,
-	leaseSignal: AbortSignal | undefined,
-): AbortSignal | undefined {
-	if (!leaseSignal) return signal;
-	if (!signal) return leaseSignal;
-	return AbortSignal.any([signal, leaseSignal]);
-}

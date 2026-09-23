@@ -125,6 +125,24 @@ function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> 
 	});
 }
 
+/** A run that streams one delta and answers an abort with its terminal chunks, as the SDK does. */
+function makeAbortableStream(signal: AbortSignal | undefined): ReadableStream<StreamChunk> {
+	return new ReadableStream<StreamChunk>({
+		start(controller) {
+			controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+			signal?.addEventListener('abort', () => {
+				controller.enqueue({ type: 'error', error: new Error('Agent run was aborted') });
+				controller.enqueue({
+					type: 'finish',
+					finishReason: 'error',
+					usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+				});
+				controller.close();
+			});
+		},
+	});
+}
+
 function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 	const chunks: StreamChunk[] = [
 		{ type: 'text-start', id: 'text-1' },
@@ -816,7 +834,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(onExecutionRecorded).toHaveBeenCalledWith('finalized-execution');
 		});
 
-		it('cancels an early-closed stream and finalizes before callbacks and lease release', async () => {
+		it('stops an early-closed run and finalizes after it ends, before callbacks and lease release', async () => {
 			const {
 				stream,
 				sdkStart,
@@ -827,14 +845,20 @@ describe('AgentExecutionOrchestratorService', () => {
 				runtime,
 			} = makeTurn();
 			const cancel = vi.fn();
-			const sdkStream = new ReadableStream<StreamChunk>({
-				start(controller) {
-					controller.enqueue({ type: 'text-start', id: 'text-1' });
-					controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial answer' });
-				},
-				cancel,
+			let sdkStream!: ReadableStream<StreamChunk>;
+			sdkStart.mockImplementation(async (...args: unknown[]) => {
+				const { abortSignal } = args.at(-1) as { abortSignal?: AbortSignal };
+				sdkStream = new ReadableStream<StreamChunk>({
+					start(controller) {
+						controller.enqueue({ type: 'text-start', id: 'text-1' });
+						controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial answer' });
+						// The SDK closes its stream when the abort path of the run is done.
+						abortSignal?.addEventListener('abort', () => controller.close());
+					},
+					cancel,
+				});
+				return { stream: sdkStream };
 			});
-			sdkStart.mockResolvedValue({ stream: sdkStream });
 			const finalization = createDeferredPromise<string>();
 			executionService.finalizeExecution.mockReturnValue(finalization.promise);
 
@@ -844,7 +868,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const closing = stream.return(undefined);
 			await vi.waitFor(() => expect(executionService.finalizeExecution).toHaveBeenCalled());
 
-			expect(cancel).toHaveBeenCalledTimes(1);
+			expect(cancel).not.toHaveBeenCalled();
 			expect(sdkStream.locked).toBe(false);
 			expect(onExecutionRecorded).not.toHaveBeenCalled();
 			expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
@@ -1106,6 +1130,33 @@ describe('AgentExecutionOrchestratorService', () => {
 			lease.abort();
 
 			expect(streamOptions.abortSignal?.aborted).toBe(true);
+		});
+
+		it('stops the run and reads it to its end before the turn settles when the consumer leaves early', async () => {
+			const { service, executionService } = makeService();
+			const runtime = makeRuntime();
+			runtime.agent.stream.mockImplementation(
+				async (_input: unknown, options: { abortSignal?: AbortSignal }) => ({
+					runId: 'runtime-run-1',
+					stream: makeAbortableStream(options.abortSignal),
+				}),
+			);
+
+			for await (const _chunk of streamChat(service, runtime)) break;
+
+			const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+			expect(streamOptions.abortSignal?.aborted).toBe(true);
+			// The usage of the drained terminal chunk proves that the turn settled after the run closed.
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({
+						finishReason: 'cancelled',
+						error: null,
+						usage: expect.objectContaining({ totalTokens: 5 }),
+					}),
+				}),
+			);
 		});
 	});
 

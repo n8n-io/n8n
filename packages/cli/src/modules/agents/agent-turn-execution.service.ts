@@ -21,10 +21,10 @@ import {
 	type StartedExecution,
 	type StartExecutionParams,
 } from './agent-execution.service';
-import { withLeaseSignal } from './agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
+import { anyAbortSignal } from './utils/abort-signal';
 import { streamAgentChunks } from './utils/agent-stream';
 import { createAttributionTracker } from './utils/mcp-attribution';
 
@@ -81,6 +81,8 @@ interface TurnExecutionState {
 	executionError?: unknown;
 	receivedFinish: boolean;
 	suspendedRunId?: string;
+	/** Stops the SDK run when the consumer of the turn stops reading early. */
+	stopRun: AbortController;
 }
 
 interface PreviewExecutionControl {
@@ -133,7 +135,11 @@ export class AgentTurnExecutionService {
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
 		let turn: AgentTurnRequest | undefined;
 		let previewControl: PreviewExecutionControl | undefined;
-		const state: TurnExecutionState = { executionStarted: false, receivedFinish: false };
+		const state: TurnExecutionState = {
+			executionStarted: false,
+			receivedFinish: false,
+			stopRun: new AbortController(),
+		};
 		const recorder = this.createRecorder(
 			config.toolRegistry,
 			() => state.executionId,
@@ -214,7 +220,11 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<StreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (const value of streamAgentChunks(stream)) {
+		const stopOnEarlyExit = {
+			abortRun: () => state.stopRun.abort(),
+			onDrainedChunk: (chunk: StreamChunk) => recorder.record(chunk),
+		};
+		for await (const value of streamAgentChunks(stream, stopOnEarlyExit)) {
 			const chunk = config.includeHitlToolDetails
 				? withApprovalToolDetails(value, config.toolRegistry)
 				: value;
@@ -431,8 +441,12 @@ export class AgentTurnExecutionService {
 			},
 		);
 		state.executionId = executionId;
-		turn.options.abortSignal = withLeaseSignal(turn.options.abortSignal, leaseSignal);
-		turn.options.abortSignal?.throwIfAborted();
+		turn.options.abortSignal = anyAbortSignal(
+			turn.options.abortSignal,
+			leaseSignal,
+			state.stopRun.signal,
+		);
+		turn.options.abortSignal.throwIfAborted();
 		return executionId;
 	}
 
