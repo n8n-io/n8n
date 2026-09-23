@@ -10,19 +10,13 @@ export class ProcessTitleService {
 	@OnLeaderTakeover()
 	@OnLeaderStepdown()
 	update() {
-		const { instanceType, hostId, isDocker, isMultiMain, isLeader } = this.instanceSettings;
-		// A single main and one-off commands keep `n8n <command>` from `bin/n8n`.
-		if (instanceType === 'main' && !isMultiMain) return;
+		process.title = this.toTitle();
+	}
 
-		const label = isMultiMain ? (isLeader ? 'leader' : 'follower') : instanceType;
+	private toTitle() {
+		const { instanceType, instanceRole, hostId, isDocker } = this.instanceSettings;
 		// In a container the hostname already identifies the process.
-		if (isDocker) {
-			process.title = `n8n ${label}`;
-			return;
-		}
-
-		// `hostId` is `<instanceType>-<id>`, see `InstanceSettings`.
-		const id = hostId.slice(instanceType.length + 1);
-		process.title = `n8n ${label}-${id}`;
+		const name = isDocker ? instanceType : hostId;
+		return instanceRole === 'unset' ? `n8n ${name}` : `n8n ${instanceRole} ${name}`;
 	}
 }

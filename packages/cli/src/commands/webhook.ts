@@ -12,6 +12,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { JwtService } from '@/services/jwt.service';
+import { ProcessTitleService } from '@/services/process-title.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -70,6 +71,7 @@ export class Webhook extends BaseCommand {
 
 		this.logger.info('Starting n8n webhook process...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
+		Container.get(ProcessTitleService).update();
 
 		await super.init();
 		Container.get(DeprecationService).warn();

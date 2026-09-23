@@ -314,8 +314,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
-			Container.get(ProcessTitleService).update();
 		}
+		Container.get(ProcessTitleService).update();
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();

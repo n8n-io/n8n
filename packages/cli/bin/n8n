@@ -6,8 +6,6 @@ const path = require('path');
 // did get started from another folder that the root one.
 process.env.NODE_CONFIG_DIR = process.env.NODE_CONFIG_DIR || path.join(__dirname, 'config');
 
-process.title = `n8n ${process.argv[2] ?? 'start'}`;
-
 // Check if version should be displayed
 const versionFlags = ['-v', '-V', '--version'];
 if (versionFlags.includes(process.argv.slice(-1)[0])) {

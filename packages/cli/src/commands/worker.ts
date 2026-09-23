@@ -22,6 +22,7 @@ import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
+import { ProcessTitleService } from '@/services/process-title.service';
 
 import { BaseCommand } from './base-command';
 
@@ -111,6 +112,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		this.logger.debug('Starting n8n worker...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
+		Container.get(ProcessTitleService).update();
 
 		await this.setConcurrency();
 		await super.init();
