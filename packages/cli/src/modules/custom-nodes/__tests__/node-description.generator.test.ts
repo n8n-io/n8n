@@ -315,7 +315,7 @@ describe('injectOperationsIntoParent', () => {
 		const [resource, customOperation, chargeOperation, ...inputs] = injected.properties;
 		expect(resource.options).toEqual([
 			{ name: 'Charge', value: 'charge' },
-			expect.objectContaining({ name: 'Custom Operation', value: CUSTOM_RESOURCE_VALUE }),
+			expect.objectContaining({ name: 'Custom', value: CUSTOM_RESOURCE_VALUE }),
 		]);
 		expect(chargeOperation.displayOptions).toEqual({ show: { resource: ['charge'] } });
 		expect(customOperation).toMatchObject({

@@ -140,3 +140,6 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 - [x] Nodes panel: "Create custom node" as the last list item and highlighted on empty search
 - [x] Remove the header button and the hidden virtual node types for operations
 - [ ] UI walk-through of the new flow by the author
+- [x] Rename user-facing "operations" to "actions"; new seed set (3 actions: Stripe, GitHub,
+      Slack; 3 nodes: Acme Billing, Open-Meteo Weather, Feature Flags) with automatic
+      re-seed on an outdated set and a "Reset demo data" button in Settings

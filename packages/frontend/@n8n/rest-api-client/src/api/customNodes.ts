@@ -81,3 +81,7 @@ export async function previewCustomOperation(
 ): Promise<INodeTypeDescription> {
 	return await makeRestApiRequest(context, 'POST', `${BASE}/preview`, payload);
 }
+
+export async function reseedCustomNodes(context: IRestApiContext): Promise<CustomNodeListItem[]> {
+	return await makeRestApiRequest(context, 'POST', `${BASE}/reseed`);
+}

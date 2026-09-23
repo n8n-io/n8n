@@ -9,9 +9,13 @@
    N8N_CUSTOM_NODES_MOCKUP=true pnpm start
    ```
 
-   The first boot creates the `custom_node_definition` table and seeds two
-   examples: the Stripe **Create Payment Link** custom operation and the
-   **Acme Billing** custom node.
+   The first boot creates the `custom_node_definition` table and seeds the
+   demo set: three custom actions on built-in nodes (Stripe **Create Payment
+   Link**, GitHub **React to Issue**, Slack **Set User Status**) and three
+   custom nodes (**Acme Billing**, **Open-Meteo Weather** which calls a real
+   public API without a key, **Feature Flags**). Settings → Custom nodes →
+   *Reset demo data* restores this set at any time; a changed seed set is
+   also re-applied automatically on restart.
 
 2. Import `docs/custom-nodes-mockup/fixtures/mock-stripe-workflow.json`
    (Workflow menu → *Import from File*) and **activate** it. It mocks
@@ -48,9 +52,9 @@ Add an **HTTP Request** node:
 Run it once with a pinned input item `{ "priceId": "price_demo" }` so the
 audience sees the mock response.
 
-## 3. Save as custom operation (2 min — the money shot)
+## 3. Save as custom action (2 min — the money shot)
 
-Click **Save as custom operation…** at the top of the node parameters.
+Click **Save as custom action…** at the top of the node parameters.
 
 - **Choose**: the wizard already selected *Stripe* as parent (it recognised
   the `stripeApi` credential). Name it `Create Payment Link (demo)`.
@@ -61,16 +65,16 @@ Click **Save as custom operation…** at the top of the node parameters.
 - **Review**: the right column shows the generated parameters: *Price*
   (required) and *Additional Fields → Quantity*. Click **Create**.
 
-Toast: "Custom operation saved. Find it under Stripe in the nodes panel."
+Toast: "Custom action saved. Find it under Stripe in the nodes panel."
 
 ## 4. Use it like a built-in operation (1.5 min)
 
 1. Open the nodes panel, search **Stripe**, click it.
-2. Scroll to the **CUSTOM OPERATION ACTIONS** group at the bottom of the
+2. Scroll to the **CUSTOM ACTIONS** group at the bottom of the
    actions list. Both the seeded *Create Payment Link* and your new operation
    are there.
 3. Click yours. A regular **Stripe** node lands on the canvas. Open the
-   Resource dropdown: it now contains *Custom Operation*; the Operation
+   Resource dropdown: it now contains *Custom*; the Operation
    dropdown lists your operations. Below them: exactly two parameters,
    *Price* and *Additional Fields*.
 4. Fill `Price` = `price_demo`, select the Stripe credential, run it. The mock
@@ -83,17 +87,18 @@ still work unchanged.
 
 ## 5. Custom node for a service without a node (1 min)
 
-Open the nodes panel again, search **Acme**. *Acme Billing* is a regular
-node with the uploaded logo. Click it: two actions, *Create Invoice* and
-*Get Invoice*. Add *Get Invoice*, set Invoice ID `inv_123`, pick the Header
-Auth credential, change the URL in Settings only if you want to hit the mock
-(`baseUrl` is `https://billing.acme.example/api/v2`; for a live call, edit
-the node in Settings → Custom nodes and set the base URL to
-`http://localhost:5678/webhook/mock-acme/api/v2`).
+Open the nodes panel again, search **Weather**. *Open-Meteo Weather* is a
+regular node with its own logo and no credential. Click it: two actions,
+*Get Current Weather* and *Search City*. Add *Get Current Weather*, keep the
+Berlin coordinates, run it: a live response from the public Open-Meteo API,
+no key needed. *Acme Billing* and *Feature Flags* show the same for
+fictional internal APIs with Header Auth / Bearer Auth (point *Acme
+Billing*'s base URL at `http://localhost:5678/webhook/mock-acme/api/v2` in
+Settings → Custom nodes to hit the mock).
 
 ## 6. Edit in Settings → new version → old workflow stays pinned (1.5 min)
 
-1. Settings → **Custom nodes**. The list shows both custom operations and
+1. Settings → **Custom nodes**. The list shows both custom actions and
    the custom node with active version and version count.
 2. On your operation choose **Edit (new version)**. In *Fields*, add a URL
    input or change the display name of *Price* to "Stripe Price ID". In

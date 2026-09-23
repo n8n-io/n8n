@@ -24,6 +24,19 @@ const uiStore = useUIStore();
 const customNodesStore = useCustomNodesStore();
 
 const logoInput = ref<HTMLInputElement>();
+const reseeding = ref(false);
+
+async function onReseed() {
+	reseeding.value = true;
+	try {
+		await customNodesStore.reseed();
+		toast.showMessage({ title: i18n.baseText('settings.customNodes.reseed.success'), type: 'success' });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('customNodes.wizard.error.save'));
+	} finally {
+		reseeding.value = false;
+	}
+}
 const logoTarget = ref<CustomNodeListItem | null>(null);
 
 const operations = computed(() => customNodesStore.operations);
@@ -103,12 +116,22 @@ async function onDelete(item: CustomNodeListItem) {
 					{{ i18n.baseText('settings.customNodes.description') }}
 				</N8nText>
 			</div>
-			<N8nButton
-				icon="plus"
-				:label="i18n.baseText('settings.customNodes.createButton')"
-				data-test-id="custom-nodes-create-button"
-				@click="openWizard"
-			/>
+			<div :class="$style.headerActions">
+				<N8nButton
+					variant="outline"
+					icon="refresh-cw"
+					:loading="reseeding"
+					:label="i18n.baseText('settings.customNodes.reseedButton')"
+					data-test-id="custom-nodes-reseed-button"
+					@click="onReseed"
+				/>
+				<N8nButton
+					icon="plus"
+					:label="i18n.baseText('settings.customNodes.createButton')"
+					data-test-id="custom-nodes-create-button"
+					@click="openWizard"
+				/>
+			</div>
 		</div>
 
 		<N8nEmptyState
@@ -170,6 +193,12 @@ async function onDelete(item: CustomNodeListItem) {
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--spacing--md);
+}
+
+.headerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex: none;
 }
 
 .description {

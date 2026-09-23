@@ -22,6 +22,13 @@ export class CustomNodesController {
 		return await this.service.list();
 	}
 
+	/** Demo helper: restore the seeded example nodes and actions. */
+	@Post('/reseed')
+	async reseed() {
+		await this.service.reseed();
+		return await this.service.list();
+	}
+
 	@Post('/preview')
 	async preview(
 		_req: AuthenticatedRequest,

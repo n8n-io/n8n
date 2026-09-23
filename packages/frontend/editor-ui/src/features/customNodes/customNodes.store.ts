@@ -13,6 +13,7 @@ import {
 	createCustomOperation,
 	deleteCustomNodeDefinition,
 	getCustomNodes,
+	reseedCustomNodes,
 	setCustomOperationActiveVersion,
 	updateCustomNode,
 	updateCustomOperation,
@@ -81,6 +82,11 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE, () => {
 		return result;
 	}
 
+	async function reseed() {
+		items.value = await reseedCustomNodes(rootStore.restApiContext);
+		await refreshNodeTypes();
+	}
+
 	async function remove(id: string) {
 		await deleteCustomNodeDefinition(rootStore.restApiContext, id);
 		await Promise.all([fetchAll(), refreshNodeTypes()]);
@@ -98,6 +104,7 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE, () => {
 		createNode,
 		updateNode,
 		uploadIcon,
+		reseed,
 		remove,
 	};
 });

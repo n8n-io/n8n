@@ -109,7 +109,7 @@ clear: an added operation should be a Stripe operation, not a new node. The
 branch now does that:
 
 - `ParentNodePatcher` (`packages/cli/src/modules/custom-nodes/parent-node.patcher.ts`)
-  adds a **Custom Operation** entry to the parent's `resource` dropdown, an
+  adds a **Custom** entry to the parent's `resource` dropdown, an
   `operation` dropdown for that resource listing the custom operations, and
   the operations' inputs (with `displayOptions` on resource + operation). It
   patches both the served description (`types/nodes.json`) and the loaded
@@ -121,7 +121,7 @@ branch now does that:
   Otherwise the original `execute` runs unchanged. The Stripe source is not
   modified; the patch is applied in memory after every registry rebuild.
 - The nodes panel needs no special code: `resourceCategories` turns the new
-  resource into a "Custom Operation Actions" group automatically, and
+  resource into a "Custom Actions" group automatically, and
   selecting one adds a regular Stripe node with `resource`/`operation` set.
 - Consequence for versioning: a node on the canvas is a Stripe node and has no
   custom-operation version of its own. All nodes follow the **active**
@@ -135,7 +135,7 @@ branch now does that:
 
 | | Inside the parent (current) | Virtual node type (first iteration) |
 | --- | --- | --- |
-| Node on canvas | a real Stripe node, `resource: __customOperations__` | own type `n8n-custom.<id>` |
+| Node on canvas | a real Stripe node, `resource: Custom` | own type `n8n-custom.<id>` |
 | Versioning | instance-wide active version | native per-node `typeVersion` |
 | Touches `nodes-base` source | no (in-memory patch) | no |
 | Risk | wraps the parent's `execute`; shares the parent's parameter namespace | panel integration patch; not "really" a Stripe node |
@@ -269,3 +269,10 @@ their operations as options of one `operation` parameter.
    the definition schema should mirror `INodeTypeDescription` more closely?
 6. Telemetry: how do we count usage of custom operations per parent node to
    learn which built-in operations are missing?
+
+## Naming
+
+Users see **actions** everywhere (nodes panel, settings, wizard, seeds), as
+in the rest of n8n. Internal identifiers keep `operation` (`CustomOperationDefinition`,
+the `operation` node parameter, `/custom-nodes/operations` routes) because
+that is what the node parameter is called in every built-in node.

@@ -21,11 +21,7 @@ import { Push } from '@/push';
 import { CustomNodesNodeLoader } from './custom-nodes-node-loader';
 import { generateOperationNodeDescriptions } from './node-description.generator';
 import { ParentNodePatcher } from './parent-node.patcher';
-import {
-	seedAcmeBillingNode,
-	seedAcmeOperations,
-	seedStripePaymentLink,
-} from './custom-nodes.seed';
+import { SEED_ID_PREFIX, seedIds, seedSet } from './custom-nodes.seed';
 import { CustomNodeDefinitionEntity } from './database/custom-node-definition.entity';
 import { CustomNodeDefinitionRepository } from './database/custom-node-definition.repository';
 
@@ -56,24 +52,36 @@ export class CustomNodesService {
 		this.parentNodePatcher.apply(loader.getDefinitions().operations);
 	}
 
-	/** Seeds demo data on an empty table and loads the node types. */
+	/** Seeds demo data on an empty table (or an outdated seed) and loads the node types. */
 	async init() {
-		if ((await this.repository.countAll()) === 0) {
-			await this.seed();
+		if ((await this.repository.countAll()) === 0 || (await this.isSeedOutdated())) {
+			await this.reseed(false);
 		}
 		await this.refreshNodeTypes(false);
 	}
 
-	private async seed() {
+	/** True when a seed row of the current set is missing, i.e. the seed set changed. */
+	private async isSeedOutdated() {
+		const existing = new Set(await this.repository.findIdsWithPrefix(SEED_ID_PREFIX));
+		if (existing.size === 0) return false; // user removed the demo data on purpose
+		return seedIds().some((id) => !existing.has(id));
+	}
+
+	/** Replaces every seeded row with the current demo set. User-created rows are kept. */
+	async reseed(refresh = true) {
 		this.logger.info('Seeding custom node demo definitions');
-		const stripe = seedStripePaymentLink();
-		const acme = seedAcmeBillingNode();
-		const acmeOps = seedAcmeOperations();
+		await this.repository.deleteWithIdPrefix(SEED_ID_PREFIX);
+
+		const set = seedSet();
 		await this.repository.save([
-			this.toEntity(stripe.id, stripe.name, 'operation', stripe),
-			this.toEntity(acme.id, acme.displayName, 'node', acme),
-			...acmeOps.map((op) => this.toEntity(op.id, op.name, 'operation', op)),
+			...set.actions.map((action) => this.toEntity(action.id, action.name, 'operation', action)),
+			...set.nodes.flatMap(({ node, operations }) => [
+				this.toEntity(node.id, node.displayName, 'node', node),
+				...operations.map((op) => this.toEntity(op.id, op.name, 'operation', op)),
+			]),
 		]);
+
+		if (refresh) await this.refreshNodeTypes();
 	}
 
 	private toEntity(

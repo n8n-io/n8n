@@ -393,7 +393,7 @@ export function generateCustomNodeDescription(
 
 /** Value of the extra `resource` option that groups custom operations in a parent node. */
 export const CUSTOM_RESOURCE_VALUE = '__customOperations__';
-export const CUSTOM_RESOURCE_NAME = 'Custom Operation';
+export const CUSTOM_RESOURCE_NAME = 'Custom';
 
 function findOptionsProperty(properties: INodeProperties[], name: string) {
 	return properties.find((property) => property.name === name && property.type === 'options');
@@ -437,7 +437,7 @@ export function injectOperationsIntoParent(
 				{
 					name: CUSTOM_RESOURCE_NAME,
 					value: CUSTOM_RESOURCE_VALUE,
-					description: 'Operations defined on this instance',
+					description: 'Custom actions defined on this instance',
 				},
 			],
 		};
