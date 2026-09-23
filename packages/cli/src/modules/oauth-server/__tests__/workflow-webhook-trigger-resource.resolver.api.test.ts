@@ -42,17 +42,19 @@ const webhookNode = ({
 	disabled = false,
 	requireExecuteAccess,
 	options,
+	typeVersion = 2.1,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
 	options?: { oauthClient?: string };
+	typeVersion?: number;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
 	type: WEBHOOK_NODE_TYPE,
-	typeVersion: 2.1,
+	typeVersion,
 	position: [0, 0],
 	disabled,
 	parameters: {
@@ -246,29 +248,68 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should resolve as first-party by default, letting the trigger URL act as its own virtual client', async () => {
+	// Only a GET can ever be redirected through the browser flow (a redirect carries a
+	// URL and nothing else), so only a GET-resolved trigger may act as its own virtual
+	// client. A POST trigger keeps its prior shape: arbitrary OAuth clients (DCR) still
+	// work, but the trigger URL itself imposes no redirect-URI restriction.
+	test('should resolve a POST trigger as non-first-party (arbitrary OAuth clients)', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode());
 
 		const resource = await resolveResource(webhookPath);
 
-		// No redirect-URI restriction of its own: unlike a DCR client, the single
-		// registered redirect_uri (the trigger URL) is what constrains the flow.
-		expect(resource?.isFirstParty).toBe(true);
+		expect(resource?.isFirstParty).toBeUndefined();
 		expect(resource?.getAllowedRedirectUris).toBeUndefined();
 		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
 		expect(resource?.getAudiences()).toEqual([resourceUrlFor(webhookPath)]);
 		expect(resource?.getResourceUrl()).toContain('?method=POST');
 	});
 
-	test('should resolve as non-first-party when the node is set to Bearer Token Only', async () => {
+	test('should resolve a GET trigger as non-first-party when oauthClient is unset on a pre-2.2 node, preserving prior behavior for workflows saved before this option existed', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode(), { methods: ['GET'] });
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		expect(resource?.isFirstParty).toBeUndefined();
+	});
+
+	test('should resolve a GET trigger as first-party when oauthClient is unset on a 2.2+ node, defaulting to auto', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode({ typeVersion: 2.2 }), {
+			methods: ['GET'],
+		});
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		expect(resource?.isFirstParty).toBe(true);
+	});
+
+	test('should resolve a GET trigger as first-party when the node opts in via Auto-Detect, letting the trigger URL act as its own virtual client', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(
+			webhookPath,
+			webhookNode({ options: { oauthClient: 'auto' } }),
+			{ methods: ['GET'] },
+		);
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		// No redirect-URI restriction of its own: unlike a DCR client, the single
+		// registered redirect_uri (the trigger URL) is what constrains the flow.
+		expect(resource?.isFirstParty).toBe(true);
+		expect(resource?.getAllowedRedirectUris).toBeUndefined();
+	});
+
+	test('should resolve as non-first-party when the node is set to Bearer Token Only, even for GET', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(
 			webhookPath,
 			webhookNode({ options: { oauthClient: 'bearer' } }),
+			{ methods: ['GET'] },
 		);
 
-		const resource = await resolveResource(webhookPath);
+		const resource = await resolveResource(webhookPath, 'GET');
 
 		// Arbitrary OAuth clients (DCR) still work; the trigger URL just can't act as
 		// its own virtual client, so a browser can never be redirected through it.

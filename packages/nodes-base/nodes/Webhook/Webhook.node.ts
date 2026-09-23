@@ -11,7 +11,13 @@ import type {
 	INodeProperties,
 	N8nOAuth2BrowserFlowMode,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node, n8nOAuth2Auth } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	Node,
+	n8nOAuth2Auth,
+	resolveOAuthClientMode,
+} from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -50,8 +56,8 @@ export class Webhook extends Node {
 		iconColor: 'magenta',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2, 2.1],
-		defaultVersion: 2.1,
+		version: [1, 1.1, 2, 2.1, 2.2],
+		defaultVersion: 2.2,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -260,8 +266,11 @@ export class Webhook extends Node {
 					// A tokenless browser GET is bounced through this instance's own
 					// authorization server instead of being 401'd, so a human can just
 					// click the link. Machine callers still need a bearer token up front.
-					// `options.oauthClient` overrides the auto-detection when set.
-					browserFlow: options.oauthClient ?? 'auto',
+					// Defaults to `auto` for a node created at `nodeVersion` 2.2 or newer;
+					// a workflow saved before `oauthClient` existed keeps its original
+					// bearer-only behavior instead (see `resolveOAuthClientMode`), matching
+					// the resolvers' same version-gated default for `isFirstParty`.
+					browserFlow: resolveOAuthClientMode(options.oauthClient, nodeVersion),
 				});
 				if (authResult === 'handled') {
 					// Token missing/invalid: the helper already sent the response.

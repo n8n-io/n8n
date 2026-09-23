@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { REDACTED, redactedHeaders } from '../src/auth-redaction';
 import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interfaces';
-import { n8nOAuth2Auth } from '../src/n8n-oauth2-auth';
+import { n8nOAuth2Auth, resolveOAuthClientMode } from '../src/n8n-oauth2-auth';
 
 const WEBHOOK_URL = 'https://n8n.example.com/webhook/protected-path';
 const USER = { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' };
@@ -286,5 +286,24 @@ describe('n8nOAuth2Auth', () => {
 				`${WEBHOOK_URL}?method=GET`,
 			);
 		});
+	});
+});
+
+describe('resolveOAuthClientMode', () => {
+	it('returns the explicit mode regardless of node version', () => {
+		expect(resolveOAuthClientMode('bearer', 1)).toBe('bearer');
+		expect(resolveOAuthClientMode('bearer', 2.2)).toBe('bearer');
+		expect(resolveOAuthClientMode('browser', 1)).toBe('browser');
+		expect(resolveOAuthClientMode('auto', 1)).toBe('auto');
+	});
+
+	it('defaults an unset mode to bearer below the version threshold, preserving prior behavior for workflows saved before the option existed', () => {
+		expect(resolveOAuthClientMode(undefined, 1)).toBe('bearer');
+		expect(resolveOAuthClientMode(undefined, 2.1)).toBe('bearer');
+	});
+
+	it('defaults an unset mode to auto at or above the version threshold', () => {
+		expect(resolveOAuthClientMode(undefined, 2.2)).toBe('auto');
+		expect(resolveOAuthClientMode(undefined, 3)).toBe('auto');
 	});
 });

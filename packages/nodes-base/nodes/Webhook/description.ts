@@ -405,6 +405,11 @@ export const optionsProperty: INodeProperties = {
 			],
 			default: 'auto',
 			displayOptions: { show: { '/authentication': ['n8nOAuth2'] } },
+			// Same as the authentication selector: a mode, never a runtime value. The
+			// resolver reads the raw parameter to decide whether the trigger may act as
+			// its own virtual OAuth client, so it can't be allowed to diverge from what
+			// the node resolves at request time.
+			noDataExpression: true,
 			description:
 				'How a request without a bearer token is handled when using n8n User Auth (OAuth2). Only GET requests can be redirected.',
 		},

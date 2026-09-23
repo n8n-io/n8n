@@ -5,12 +5,39 @@ import { n8nBrowserOAuth2Flow } from './n8n-browser-oauth2-flow';
 
 /**
  * How a tokenless request is handled:
- * - `auto` (default): redirect a browser navigation, 401 everything else.
+ * - `auto`: redirect a browser navigation, 401 everything else.
  * - `browser`: always redirect a GET, skipping the navigation heuristic.
  * - `bearer`: never redirect, always 401 — the resource is also not first-party
  *   (see the webhook resolvers), so the AS refuses its URL as a virtual client too.
+ *
+ * An unset value resolves to `auto` or `bearer` depending on node version — see
+ * {@link resolveOAuthClientMode}.
  */
 export type N8nOAuth2BrowserFlowMode = 'auto' | 'browser' | 'bearer';
+
+/**
+ * The Webhook node's `typeVersion` at which an unset `oauthClient` starts
+ * defaulting to `'auto'` instead of `'bearer'`. Below this version the option
+ * didn't exist yet, so a workflow saved before it did must keep its original,
+ * narrower (bearer-only, non-first-party) behavior on upgrade; only a node
+ * created — or explicitly re-saved — at this version or newer opts in
+ * automatically.
+ */
+export const WEBHOOK_OAUTH_CLIENT_DEFAULT_VERSION = 2.2;
+
+/**
+ * Resolves the effective `oauthClient` mode: an explicit value always wins; an
+ * unset one defaults to `'auto'` for nodes at or above
+ * `WEBHOOK_OAUTH_CLIENT_DEFAULT_VERSION` and to `'bearer'` below it. Shared by the
+ * Webhook node (the runtime redirect decision) and its protected-resource
+ * resolvers (the static `isFirstParty` grant) so the two can't diverge.
+ */
+export function resolveOAuthClientMode(
+	oauthClient: N8nOAuth2BrowserFlowMode | undefined,
+	typeVersion: number,
+): N8nOAuth2BrowserFlowMode {
+	return oauthClient ?? (typeVersion >= WEBHOOK_OAUTH_CLIENT_DEFAULT_VERSION ? 'auto' : 'bearer');
+}
 
 function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;

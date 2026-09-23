@@ -45,17 +45,19 @@ const webhookNode = ({
 	disabled = false,
 	requireExecuteAccess,
 	options,
+	typeVersion = 2.1,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
 	options?: { oauthClient?: string };
+	typeVersion?: number;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
 	type: WEBHOOK_NODE_TYPE,
-	typeVersion: 2.1,
+	typeVersion,
 	position: [0, 0],
 	disabled,
 	parameters: {
@@ -175,21 +177,54 @@ describe('protected resource metadata for test webhook triggers', () => {
 		expect(workflowName).toBe('Unsaved workflow');
 	});
 
-	test('should resolve as first-party by default, letting the trigger URL act as its own virtual client', async () => {
+	// Only a GET can ever be redirected through the browser flow, so only a
+	// GET-resolved trigger may act as its own virtual client.
+	test('should resolve a POST trigger as non-first-party (arbitrary OAuth clients)', async () => {
 		const webhookPath = randomUUID();
 		await registerTestWebhook(webhookPath, webhookNode());
 
 		const resource = await resolveResource(webhookPath);
 
+		expect(resource?.isFirstParty).toBeUndefined();
+	});
+
+	test('should resolve a GET trigger as non-first-party when oauthClient is unset on a pre-2.2 node, preserving prior behavior for workflows saved before this option existed', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, webhookNode(), { methods: ['GET'] });
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		expect(resource?.isFirstParty).toBeUndefined();
+	});
+
+	test('should resolve a GET trigger as first-party when oauthClient is unset on a 2.2+ node, defaulting to auto', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, webhookNode({ typeVersion: 2.2 }), { methods: ['GET'] });
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		expect(resource?.isFirstParty).toBe(true);
+	});
+
+	test('should resolve a GET trigger as first-party when the node opts in via Auto-Detect, letting the trigger URL act as its own virtual client', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, webhookNode({ options: { oauthClient: 'auto' } }), {
+			methods: ['GET'],
+		});
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
 		expect(resource?.isFirstParty).toBe(true);
 		expect(resource?.getAllowedRedirectUris).toBeUndefined();
 	});
 
-	test('should resolve as non-first-party when the node is set to Bearer Token Only', async () => {
+	test('should resolve as non-first-party when the node is set to Bearer Token Only, even for GET', async () => {
 		const webhookPath = randomUUID();
-		await registerTestWebhook(webhookPath, webhookNode({ options: { oauthClient: 'bearer' } }));
+		await registerTestWebhook(webhookPath, webhookNode({ options: { oauthClient: 'bearer' } }), {
+			methods: ['GET'],
+		});
 
-		const resource = await resolveResource(webhookPath);
+		const resource = await resolveResource(webhookPath, 'GET');
 
 		expect(resource?.isFirstParty).toBeUndefined();
 	});

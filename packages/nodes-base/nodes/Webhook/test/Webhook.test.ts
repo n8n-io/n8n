@@ -74,6 +74,7 @@ describe('Test Webhook Node', () => {
 				type: 'options',
 				default: 'auto',
 				displayOptions: { show: { '/authentication': ['n8nOAuth2'] } },
+				noDataExpression: true,
 			});
 			expect(oauthClientOption?.options).toEqual([
 				expect.objectContaining({ value: 'auto' }),
@@ -319,8 +320,46 @@ describe('Test Webhook Node', () => {
 		});
 
 		describe('browser flow', () => {
-			it('redirects a tokenless browser GET instead of 401ing, under auto-detect', async () => {
+			it('still 401s a tokenless browser GET when oauthClient is unset on a pre-2.2 node, preserving prior behavior for workflows saved before this option existed', async () => {
+				// beforeEach sets typeVersion 2.1, below the 2.2 threshold where unset
+				// starts defaulting to auto.
 				req.headers.accept = 'text/html';
+
+				const result = await node.webhook(context);
+
+				expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+				expect(res.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('redirects a tokenless browser GET instead of 401ing when oauthClient is unset on a 2.2+ node, defaulting to auto', async () => {
+				req.headers.accept = 'text/html';
+				context.getNode.mockReturnValue({
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2.2,
+					name: 'Webhook',
+				} as any);
+				context.beginN8nOAuth2Flow.mockResolvedValue('https://n8n.test/oauth/authorize?…');
+
+				const result = await node.webhook(context);
+
+				expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
+					`${WEBHOOK_URL}?method=GET`,
+					expect.any(Object),
+				);
+				expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('redirects a tokenless browser GET instead of 401ing, once the node opts in via Auto-Detect', async () => {
+				req.headers.accept = 'text/html';
+				context.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'options') return { oauthClient: 'auto' };
+					if (paramName === 'responseMode') return 'onReceived';
+					if (paramName === 'authentication') return 'n8nOAuth2';
+					if (paramName === 'httpMethod') return 'GET';
+					return undefined;
+				});
 				context.beginN8nOAuth2Flow.mockResolvedValue('https://n8n.test/oauth/authorize?…');
 
 				const result = await node.webhook(context);

@@ -1,7 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import type { N8nOAuth2BrowserFlowMode } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, resolveOAuthClientMode } from 'n8n-workflow';
 
 import type {
 	ProtectedResource,
@@ -143,17 +144,24 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			// One list, served live and sealed into the grant, so the audiences a run is
 			// verified against don't change when the registration goes away.
 			const audiences = methods.map(urlFor);
-			const nodeOptions = node.parameters.options as { oauthClient?: string } | undefined;
+			const nodeOptions = node.parameters.options as
+				| { oauthClient?: N8nOAuth2BrowserFlowMode }
+				| undefined;
+			// Same as the production resolver: first-party lets the trigger URL act as its
+			// own virtual client, restricted to GET (the only method a redirect can ever
+			// reach). `resolveOAuthClientMode` defaults an unset `oauthClient` to `auto`
+			// only for a node created at typeVersion 2.2 or newer; a workflow saved before
+			// the option existed keeps its prior, narrower behavior.
+			const allowsBrowserFlow =
+				requestedMethod === 'GET' &&
+				resolveOAuthClientMode(nodeOptions?.oauthClient, node.typeVersion) !== 'bearer';
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
 				getResourceUrl: () => urlFor(requestedMethod),
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
-				// Same as the production resolver: first-party lets the trigger URL act as
-				// its own virtual client so a browser can be redirected through
-				// /oauth/authorize. A node forced to "Bearer Token Only" opts out.
-				...(nodeOptions?.oauthClient !== 'bearer' && { isFirstParty: true }),
+				...(allowsBrowserFlow && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,

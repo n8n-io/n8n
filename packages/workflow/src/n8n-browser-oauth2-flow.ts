@@ -63,19 +63,22 @@ function readCookie(req: Request): string | null {
 }
 
 /**
- * True for a request that only a browser navigation can produce. Prefers
- * `Sec-Fetch-Mode`, a forbidden header name page script cannot set, over `Accept`,
- * which any caller can spoof — spoofing buys nothing since both outcomes still
- * require full AS authentication, but a real `fetch()` from a page must not be
- * redirected. Falls back to `Accept: text/html` when Fetch Metadata is absent
- * (older browsers, a proxy that strips the headers).
+ * True for a request that only a *top-level* browser navigation can produce —
+ * the address bar changing, not a page embedding the URL in a frame. `Sec-Fetch-Mode:
+ * navigate` alone doesn't distinguish those: an `<iframe src="...">` on someone
+ * else's page reports `navigate` too, so a hidden iframe could otherwise ride the
+ * victim's own session into a silent, no-click redirect through `/oauth/authorize`.
+ * `Sec-Fetch-Dest` closes that: only `document` (or its absence, for the
+ * Fetch-Metadata-less fallback below) is a real top-level load; `iframe`/`frame` is
+ * rejected outright before the `Sec-Fetch-Mode`/`Accept` checks even run.
  *
- * `force` skips this check entirely for the "always redirect" node setting; only
- * the GET requirement still applies, since a redirect cannot carry a POST body.
+ * `force` skips this check entirely for the "always redirect" node setting. Callers
+ * must check the request method separately: this function assumes it is already GET.
  */
 function isBrowserNavigation(req: Request, force: boolean): boolean {
-	if (req.method !== 'GET') return false;
 	if (force) return true;
+	const dest = req.headers['sec-fetch-dest'];
+	if (typeof dest === 'string' && dest !== 'document') return false;
 	const mode = req.headers['sec-fetch-mode'];
 	if (typeof mode === 'string') return mode === 'navigate';
 	return (req.headers.accept ?? '').includes('text/html');
@@ -136,6 +139,14 @@ export const n8nBrowserOAuth2Flow = async (
 ): Promise<N8nBrowserOAuth2Outcome> => {
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
+
+	// GET-only for the whole flow, not just the navigation heuristic below: a redirect
+	// carries a URL and nothing else, so nothing here — the AS callback, the one-hop
+	// cookie — can legitimately arrive on another method. Checked first so a POST
+	// carrying a stray cookie or spoofed `code`/`state` can't reach either branch.
+	if (req.method !== 'GET') {
+		return 'not-applicable';
+	}
 
 	const { code, state, error } = (req.query ?? {}) as Record<string, unknown>;
 	const isCallback = typeof code === 'string' && typeof state === 'string';

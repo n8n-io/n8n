@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import type { N8nOAuth2BrowserFlowMode } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, resolveOAuthClientMode } from 'n8n-workflow';
 
 import type {
 	ProtectedResource,
@@ -158,7 +159,21 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			// One list, served live and sealed into the grant, so the audiences a run is
 			// verified against don't change when the resource stops resolving.
 			const audiences = methods.map(urlFor);
-			const nodeOptions = node.parameters.options as { oauthClient?: string } | undefined;
+			const nodeOptions = node.parameters.options as
+				| { oauthClient?: N8nOAuth2BrowserFlowMode }
+				| undefined;
+			// First-party lets the trigger URL act as its own virtual client, so a browser
+			// can be redirected through /oauth/authorize with no client registration. Only
+			// a GET can ever take that redirect (a redirect carries a URL and nothing
+			// else), so a resource resolved for any other method is never first-party —
+			// otherwise a token could be minted via the virtual client for a method the
+			// browser flow could never have reached. `resolveOAuthClientMode` defaults an
+			// unset `oauthClient` to `auto` only for a node created at typeVersion 2.2 or
+			// newer; a workflow saved before the option existed keeps its prior, narrower
+			// behavior. No getAllowedRedirectUris: a DCR client keeps its own.
+			const allowsBrowserFlow =
+				requestedMethod === 'GET' &&
+				resolveOAuthClientMode(nodeOptions?.oauthClient, node.typeVersion) !== 'bearer';
 			return {
 				// Identity = the trigger, so the method is deliberately absent: editing the
 				// node's method list must not rotate the id and drop the user's consent.
@@ -174,12 +189,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
-				// First-party lets the trigger URL act as its own virtual client, so a
-				// browser can be redirected through /oauth/authorize with no client
-				// registration. A node forced to "Bearer Token Only" opts out, so the AS
-				// refuses that client_id outright — no getAllowedRedirectUris: a DCR client
-				// keeps its own registered redirect URIs.
-				...(nodeOptions?.oauthClient !== 'bearer' && { isFirstParty: true }),
+				...(allowsBrowserFlow && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
