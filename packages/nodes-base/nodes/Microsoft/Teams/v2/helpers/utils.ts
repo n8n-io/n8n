@@ -273,6 +273,16 @@ export async function resolveUserTarget(
 }
 
 /**
+ * Builds one `aadUserConversationMember` entry. `userRef` is the full `user@odata.bind` URL:
+ * the two endpoints document different key forms, so each call site composes its own.
+ */
+export const aadUserConversationMember = (userRef: string, role: string) => ({
+	'@odata.type': '#microsoft.graph.aadUserConversationMember',
+	roles: [role],
+	'user@odata.bind': userRef,
+});
+
+/**
  * Resolves every mention row to a Graph user or team tag. Graph stores `mentions[].mentioned`
  * verbatim and resolves nothing: a UPN, a well-formed but nonexistent GUID or a bogus tag ID is
  * accepted with a 200 and a mention that notifies nobody. So each row is looked up first, which

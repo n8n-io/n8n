@@ -113,7 +113,7 @@ export class EngineV2ExecutionReader {
 		return {
 			workflowIds: scope,
 			status,
-			mode: query.mode,
+			hostMode: query.mode,
 			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
 			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
 			before: query.before ? { createdAt: query.before.timestamp, id: query.before.id } : undefined,
@@ -128,7 +128,7 @@ export class EngineV2ExecutionReader {
 			id: item.id,
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
-			mode: toV1Mode(item.mode),
+			mode: toV1Mode(item.hostMode),
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -175,7 +175,7 @@ export class EngineV2ExecutionReader {
 		return {
 			id: snapshot.id,
 			workflowId: snapshot.workflowId,
-			mode: toV1Mode(snapshot.mode),
+			mode: toV1Mode(snapshot.hostMode),
 			status: toV1Status(snapshot.status),
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,

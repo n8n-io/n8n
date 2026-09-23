@@ -4,8 +4,9 @@ Static analysis for monorepo dependency hygiene. Built on `@n8n/rules-engine`.
 
 ## What it does
 
-Scans all `package.json` files across the monorepo and flags:
+Scans repository files for structural and dependency-policy violations:
 
+- **ADR convention violations** — ADR filenames, locations, metadata, sections, owners, spacing, and local references that do not match the repository format
 - **Hardcoded catalog deps** — dependencies using a pinned version when `pnpm-workspace.yaml` already defines a catalog entry
 - **Cross-package version drift** — the same dependency appearing in multiple packages with different versions
 - **Encryption boundary coverage** — every package that depends on `n8n-core` or `@n8n/db` composes the encryption-boundary ESLint config at `error` severity and contains no ESLint directive that silences it

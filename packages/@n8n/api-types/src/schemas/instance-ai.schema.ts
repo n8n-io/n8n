@@ -235,6 +235,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'instance-context',
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
@@ -334,6 +335,75 @@ export function isSafeObjectKey(key: string): boolean {
 	return !UNSAFE_OBJECT_KEYS.has(key);
 }
 
+// Instance context summary and later reads.
+
+export const instanceContextSurfaceSchema = z.enum([
+	'activity-list',
+	'activity-expand',
+	'node-usage',
+	'workflow-read',
+]);
+
+export type InstanceContextSurface = z.infer<typeof instanceContextSurfaceSchema>;
+
+/** Each surface has a depth. The map must cover every surface in the schema. */
+export const INSTANCE_CONTEXT_SURFACE_DEPTH: Record<InstanceContextSurface, 0 | 1 | 2 | 3> = {
+	'activity-list': 1,
+	'activity-expand': 2,
+	'node-usage': 2,
+	'workflow-read': 3,
+};
+
+export const instanceContextReachSchema = z.object({
+	surfaces: z
+		.array(instanceContextSurfaceSchema)
+		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty if none.'),
+});
+
+/** Store the surfaces only. Derive depth from the shared map. */
+export type InstanceContextReach = z.infer<typeof instanceContextReachSchema>;
+
+export const instanceContextLegsSchema = z.object({
+	inventory: z
+		.number()
+		.int()
+		.describe("Workflows named in the inventory leg. Only ever on a thread's opening block."),
+	events: z.number().int().describe('Activity entries listed.'),
+	runs: z.number().int().describe('Workflows contributing a run summary.'),
+});
+
+export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
+
+/** Keep a failed read distinct from a disabled feature or an empty result. */
+export const instanceContextAbsenceReasonSchema = z.enum([
+	'disabled',
+	'machine-follow-up',
+	'empty',
+	'failed',
+]);
+
+export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;
+
+export const instanceContextInjectionSchema = z.discriminatedUnion('state', [
+	z.object({
+		state: z.literal('injected'),
+		isUpdate: z
+			.boolean()
+			.describe('An addition to a block this thread already saw, rather than a full window.'),
+		legs: instanceContextLegsSchema,
+		chars: z.number().int().describe('Rendered block length, tag included.'),
+	}),
+	z.object({ state: z.literal('absent'), reason: instanceContextAbsenceReasonSchema }),
+]);
+
+/** What a turn was handed, or why it was handed nothing. */
+export type InstanceContextInjection = z.infer<typeof instanceContextInjectionSchema>;
+
+/** Send the summary only. The raw context block stays on the server. */
+export const instanceContextPayloadSchema = z.object({
+	injection: instanceContextInjectionSchema,
+});
+
 // ---------------------------------------------------------------------------
 // Event payloads
 // ---------------------------------------------------------------------------
@@ -360,6 +430,8 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/** Report all context reads when the turn ends. */
+	contextReach: instanceContextReachSchema.optional(),
 	/**
 	 * Workflow IDs the run-finish reap soft-deleted — intermediate
 	 * stepping-stones the agent created but never promoted to the main
@@ -1219,6 +1291,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('instance-context'),
+		...eventBase,
+		payload: instanceContextPayloadSchema,
+	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
@@ -1567,6 +1644,9 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */
 	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Eval override: observer threshold for THIS thread, so driving compaction
+	 *  for one case does not lower it for every conversation on the instance. */
+	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -1790,7 +1870,17 @@ export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
-	| { type: 'child'; agentId: string; responseId?: string };
+	| { type: 'child'; agentId: string; responseId?: string }
+	/** Store the context summary in the timeline so normal history replay restores it. */
+	| {
+			type: 'instance-context';
+			/** Match by run ID so each follow-up updates its own row. */
+			runId: string;
+			injection: InstanceContextInjection;
+			/** Absent until the run finishes. */
+			reach?: InstanceContextReach;
+			responseId?: string;
+	  };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -2540,11 +2630,6 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables MCP connections for Instance AI */
-export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
-
-export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
-
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
@@ -2555,6 +2640,9 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
+export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
@@ -2568,6 +2656,9 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/** Instance rollout gate for shared activity recording and retrieval. */
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
@@ -2671,6 +2762,22 @@ export interface InstanceAiEvalAgentScenarioSeed {
 export interface InstanceAiEvalAgentSkippedFeature {
 	feature: string;
 	reason: string;
+}
+
+export interface InstanceAiEvalObservation {
+	marker: 'critical' | 'important' | 'info' | 'completion';
+	text: string;
+	tokenCount: number;
+}
+
+/** What observational memory holds for a thread. The rows themselves, not the rendered
+ *  system prompt — a prompt or SDK rename must not read as "never compacted". */
+export interface InstanceAiEvalThreadMemoryResponse {
+	/** Live observations, oldest first. Empty when nothing has been observed. */
+	observations: InstanceAiEvalObservation[];
+	/** Null until the observer runs; `lastObservedMessageId` is the compaction
+	 *  cursor, so everything up to it is masked out of the agent's window. */
+	cursor: { lastObservedMessageId: string; lastObservedAt: string } | null;
 }
 
 export interface InstanceAiEvalAgentExecutionResult {

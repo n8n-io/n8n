@@ -12,37 +12,42 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry).toBeDefined();
 	});
 
-	it('is gated by the node type policies license feature, so an unlicensed instance skips init', () => {
+	it('is gated by the type availability policies license feature, so an unlicensed instance skips init', () => {
 		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
 
-		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	// The available-types controller injects the node registry, whose import chain takes
 	// several seconds to transform — more than the default per-test timeout.
-	it('registers the instance, project and available-types controllers on init', async () => {
+	//
+	// Asserted by class name, read off the registry `init()` itself populated — the same
+	// reason the check-registration test below never imports the check class directly.
+	// Importing a controller module here (even just to get a class reference to look up)
+	// would register it via its own `@RestController`/`@Get` decorators regardless of
+	// whether `init()` still imports it, making the assertion pass even after a regression.
+	it('registers the node-types and credential-types instance, project and available-types controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
 
-		const { TypeAvailabilityPolicyInstanceController } = await import(
-			'../type-availability-policy-instance.controller.js'
-		);
-		const { TypeAvailabilityPolicyProjectController } = await import(
-			'../type-availability-policy-project.controller.js'
-		);
-		const { AvailableTypesController } = await import('../available-types.controller.js');
 		const registry = Container.get(ControllerRegistryMetadata);
+		const routeCountByName = new Map(
+			Array.from(registry.controllerClasses).map((controllerClass) => [
+				controllerClass.name,
+				registry.getControllerMetadata(controllerClass).routes.size,
+			]),
+		);
 
-		expect(
-			registry.getControllerMetadata(TypeAvailabilityPolicyInstanceController as never).routes.size,
-		).toBeGreaterThan(0);
-		expect(
-			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
-		).toBeGreaterThan(0);
-		expect(
-			registry.getControllerMetadata(AvailableTypesController as never).routes.size,
-		).toBeGreaterThan(0);
+		for (const name of [
+			'TypeAvailabilityPolicyInstanceController',
+			'TypeAvailabilityPolicyProjectController',
+			'CredentialTypePolicyInstanceController',
+			'CredentialTypePolicyProjectController',
+			'AvailableTypesController',
+		]) {
+			expect(routeCountByName.get(name)).toBeGreaterThan(0);
+		}
 	}, 30_000);
 
 	// Registration is what makes the check run at all: the decision service reads the registry
@@ -51,7 +56,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	// Asserted by class name, because importing the check to compare identities would run
 	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
 	// its repositories. Either one would make this pass with `init()` no longer importing it.
-	it('registers the node type policy check on init', async () => {
+	it('registers both policy checks on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -61,6 +66,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			.map((checkClass) => checkClass.name);
 
 		expect(registered).toContain('NodeTypePolicyCheck');
+		expect(registered).toContain('CredentialTypePolicyCheck');
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

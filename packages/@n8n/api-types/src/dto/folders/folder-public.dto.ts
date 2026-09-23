@@ -3,12 +3,14 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	deleteFolderQueryFieldDocs,
 	folderContentCountFieldDocs,
 	folderFieldDocs,
 	folderListFieldDocs,
 	folderListQueryFieldDocs,
 	folderProjectFieldDocs,
 	folderProjectIconOpenApi,
+	updateFolderFieldDocs,
 } from './folder-public.openapi';
 import {
 	filterValidator,
@@ -17,15 +19,14 @@ import {
 	takeValidator,
 	VALID_SORT_OPTIONS,
 } from './list-folder-query.dto';
+import { folderIdSchema, folderNameSchema } from '../../schemas/folder.schema';
 import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import { projectTypeSchema, type ProjectIcon } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 
-/** The project a folder lives in, reduced to the columns the list query loads. */
 const folderProjectPublicSchema = z.object({
 	id: z.string().openapi(folderProjectFieldDocs.id),
 	name: z.string().openapi(folderProjectFieldDocs.name),
-	// Legacy rows may hold a type the current enum no longer lists, and a response mismatch is a 500.
 	type: z
 		.string()
 		.openapi({ ...folderProjectFieldDocs.type, enum: [...projectTypeSchema.options] }),
@@ -43,10 +44,6 @@ const folderTagPublicSchema = z.object({
 	name: z.string(),
 });
 
-/**
- * Every field is optional because the `select` query parameter decides which columns the route
- * loads: an unselected field is absent from the response, not null.
- */
 export const folderPublicSchema = z.object({
 	id: z.string().openapi(folderFieldDocs.id),
 	name: z.string().optional().openapi(folderFieldDocs.name),
@@ -76,7 +73,6 @@ export class ListFoldersQueryPublicDto extends Z.class(
 		select: selectValidator.openapi(folderListQueryFieldDocs.select),
 		sortBy: z
 			.enum(VALID_SORT_OPTIONS, {
-				// Keep the wording the legacy validator produced, so the 400 body does not change.
 				message: `must be equal to one of the allowed values: ${VALID_SORT_OPTIONS.join(', ')}`,
 			})
 			.optional()
@@ -87,12 +83,61 @@ export class ListFoldersQueryPublicDto extends Z.class(
 	{ strict: true },
 ) {}
 
-export class FolderDetailsPublicDto extends Z.class({
+const folderCorePublicShape = {
 	id: z.string().openapi(folderFieldDocs.id),
 	name: z.string().openapi(folderFieldDocs.name),
 	parentFolderId: z.string().nullable().openapi(folderFieldDocs.parentFolderId),
 	createdAt: z.string().datetime().openapi(folderFieldDocs.createdAt),
 	updatedAt: z.string().datetime().openapi(folderFieldDocs.updatedAt),
+};
+
+export class UpdatedFolderPublicDto extends Z.class(folderCorePublicShape, { strict: true }) {}
+
+export class FolderDetailsPublicDto extends Z.class({
+	...folderCorePublicShape,
 	totalSubFolders: z.number().int().openapi(folderContentCountFieldDocs.totalSubFolders),
 	totalWorkflows: z.number().int().openapi(folderContentCountFieldDocs.totalWorkflows),
 }) {}
+
+const updateFolderPublicSchema = z
+	.object({
+		name: folderNameSchema.optional().openapi(updateFolderFieldDocs.name),
+		parentFolderId: folderIdSchema.optional().openapi(updateFolderFieldDocs.parentFolderId),
+	})
+	.strict()
+	.refine(({ name, parentFolderId }) => name !== undefined || parentFolderId !== undefined, {
+		message: 'At least one field is required',
+	})
+	.openapi({ minProperties: 1 });
+
+type UpdateFolderPublic = z.infer<typeof updateFolderPublicSchema>;
+
+export class UpdateFolderPublicDto implements UpdateFolderPublic {
+	name?: string;
+
+	parentFolderId?: string;
+
+	static schema = updateFolderPublicSchema;
+
+	constructor(data: UpdateFolderPublic) {
+		Object.assign(this, updateFolderPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateFolderPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateFolderPublicSchema.parse(data);
+	}
+}
+
+export class DeleteFolderQueryPublicDto extends Z.class(
+	{
+		transferToFolderId: folderIdSchema
+			.min(1, 'must not be empty')
+			.optional()
+			.openapi(deleteFolderQueryFieldDocs.transferToFolderId),
+	},
+	{ strict: true },
+) {}

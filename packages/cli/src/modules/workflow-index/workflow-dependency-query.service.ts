@@ -470,10 +470,12 @@ export class WorkflowDependencyQueryService {
 				return ids.filter((id) => accessible.has(id));
 			}
 			case 'credential': {
+				// The dependency graph only ever exposes a credential's id, name and type.
 				const accessible = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
 					ids,
 					user,
 					['credential:read'],
+					{ visibilityOnly: true },
 				);
 				return ids.filter((id) => accessible.has(id));
 			}

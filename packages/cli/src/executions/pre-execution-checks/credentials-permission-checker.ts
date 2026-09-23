@@ -81,8 +81,8 @@ export class CredentialsPermissionChecker {
 			throw new InaccessibleCredentialForUserError(credIdsToNodes[unavailableCredentials[0].id][0]);
 		}
 
-		// A user with instance-wide credential listing can use any credential.
-		if (hasGlobalScope(user, 'credential:list')) return;
+		// A user who may use any credential on the instance needs no further check.
+		if (hasGlobalScope(user, 'credential:use')) return;
 
 		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
@@ -140,10 +140,18 @@ export class CredentialsPermissionChecker {
 		if (
 			homeProject.type === 'personal' &&
 			homeProjectOwner &&
-			hasGlobalScope(homeProjectOwner, 'credential:list')
+			hasGlobalScope(homeProjectOwner, 'credential:use')
 		) {
-			// Workflow belongs to a project by a user with privileges
-			// so all credentials are usable. Skip credential checks.
+			// Workflow belongs to a personal project whose owner may use any credential
+			// on the instance, so all credentials are usable. Skip credential checks.
+			//
+			// This skip is deliberately wider than the NDV picker, which offers a
+			// personal-project owner only personal credentials: here a team-project
+			// credential passes too. "The instance owner can run anything" is the
+			// intended contract, so it is not narrowed. The consequence is that the
+			// picker's personal-only restriction is cosmetic for Owner/Admin — a
+			// hand-edited or imported workflow in their personal space still runs a
+			// team credential.
 			return { homeProject, inaccessibleIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);

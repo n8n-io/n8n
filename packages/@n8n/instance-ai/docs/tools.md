@@ -61,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agents` | 1 |
-| `build-workflow`, `ask-user`, `parse-file` | single-purpose |
+| `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
 
@@ -413,6 +413,26 @@ provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
 replacement.
 
+For edits, only `INVALID_PARAMETER`, `chat_model_validation`,
+`HARDCODED_CREDENTIALS`, and `SWITCH_NO_OUTPUT_CONNECTIONS` can become
+informational. Missing saved state or a finding without a node name keeps the
+finding blocking. Other codes keep their original severity.
+
+For `HARDCODED_CREDENTIALS`, compare the saved authentication values, credential
+selection, and destination settings. The URL must be fixed and unchanged.
+Wiring, timeout, response formatting, and non-auth headers or query fields do not
+introduce a new hardcoded value. Changed auth, destination settings, or enabled
+state still block. Expression URLs stay blocking because their destination
+depends on execution data.
+
+For `SWITCH_NO_OUTPUT_CONNECTIONS`, check whether the same enabled Switch already
+had no main outputs. Changes to its inputs or rules leave that finding
+informational, including connecting an existing parked Switch. New or re-enabled
+Switches and removal of existing output branches remain blocking. These checks
+do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
+so `build-workflow` makes the final decision. Preserve unrelated nodes and report
+any remaining blocker instead of expanding the edit.
+
 ### `workflows(action="delete")`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
@@ -454,7 +474,7 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+**Setup panel** (`118_instance_ai_setup_overhaul: variant`): the normal setup call
 analyzes the whole workflow, including bound slots. It publishes the `setup-items`
 snapshot and confirms that it reached storage. It then saves the build's setup
 routing marker. Only after both steps succeed does it return
@@ -726,6 +746,10 @@ Cancel a running execution.
 
 ## `credentials` (6 actions)
 
+The instance PostHog flag `120_credential_descriptions` controls description
+fields and selection guidance. Only boolean `true` enables them. When the flag
+is false or missing, `list` and `get` omit `description`, including managed entries.
+
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
 > `credentials(action="setup")`) or Computer Use browser credential capture.
@@ -741,9 +765,12 @@ List credentials accessible to the current user. Never exposes secrets.
 | `limit` | number | no | Page size. Default 50 and maximum 200 |
 | `offset` | number | no | Number of credentials to skip. Default 0 |
 
-**Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
-A Gateway credits managed entry can have `id: null` and
-`__aiGatewayManaged: true`.
+**Returns**: `{ credentials: [{ id, name, type, description }], total, hasMore, hint? }`.
+Descriptions have a 256-character preview limit, including the truncation marker.
+An unset description returns `null`. Read the descriptions when several credentials
+share one type. Use `get` to read the full text if the preview does not resolve the choice.
+A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
+`__aiGatewayManaged: true`, and `description: null`.
 
 ### `credentials(action="get")`
 
@@ -753,8 +780,9 @@ Get credential metadata. Never returns decrypted secrets.
 |-------|------|----------|-------------|
 | `credentialId` | string | yes | Credential ID |
 
-**Returns**: credential metadata from the credential service. It never contains
-decrypted secret values.
+**Returns**: `{ id, name, type, description, nodesWithAccess? }`.
+The description contains the full stored text, or `null` when unset.
+The response never contains credential secret data.
 
 ### `credentials(action="delete")`
 
@@ -807,7 +835,7 @@ a service. When `needsBrowserSetup=true`, the orchestrator should load the
 directly, then call `credentials(action="setup")` again to select the created
 credential.
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
+**Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
 to a workflow (`workflowId`, or the workflow this run last saved) and the stage
 is not `finalize`, the tool does not suspend. It merges the credential types
 into the workflow's durable `setup-items` snapshot and returns
@@ -980,6 +1008,46 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
+## `searchModels`
+
+Preliminary models.dev catalog search when choosing a model without a relevant
+credential or a suitable named builder-hint recommendation. The `model-selection`
+skill activates this deferred tool when model-bearing node definitions are
+inspected. It can also be discovered with `search_tools` and loaded with
+`load_tool`. Activation does not call the catalog. If a provider credential or Gateway credits is
+available, use `nodes(action="explore-resources")` with that credential instead.
+Do not use catalog search to validate an unfamiliar model or to recover from a
+failed credential lookup.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `provider` | string | yes | Canonical catalog provider ID, such as `openai`, `google`, `anthropic`, `openrouter`, `aws-bedrock`, or `azure-openai`. Trimmed and case-insensitive. Model-family names are not provider IDs. |
+| `query` | string | no | Case-insensitive substring match on model IDs or names, applied before sorting and limiting. Trimmed; blank means no filter. Maximum 100 characters. |
+| `limit` | integer | no | Default 10, minimum 1, maximum 10. |
+
+For Claude through OpenRouter, use `provider: "openrouter", query: "claude"`.
+For OpenAI through OpenRouter, use `query: "openai"`. `hasMore` counts only
+matching eligible models.
+
+Returns recent non-deprecated models whose catalog input and output modalities
+both include text. Preview models remain eligible. Results are ordered by a valid ISO release
+date, newest first, then by model ID. Missing or invalid dates sort last and are
+returned as `null`. Existing catalog alias normalization removes equivalent
+dated snapshots where the catalog identifies a latest alias.
+
+The result includes exact IDs, model metadata, catalog pricing, `hasMore`,
+`source`, `fetchedAt`, `freshness`, and `credentialAccess: "not_checked"`.
+Missing metadata is `null`. Status is `ok`, `unknown_provider`,
+`no_matching_models`, or `catalog_unavailable`. Absence from this limited
+catalog result does not establish that a model is invalid.
+
+The public catalog cache is shared across requests for one hour. Refreshes have
+a five-second deadline. On failure, a snapshot younger than 24 hours can be
+returned with `freshness: "stale"`. Older snapshots are not returned. Cancelling
+one caller stops its wait without cancelling a refresh shared with other callers.
+
+---
+
 ## `data-tables` (11 actions)
 
 Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
@@ -1143,6 +1211,11 @@ Question type is `single`, `multi`, or `text`. The UI adds its own free-text
 choice to select questions. The result is `{ answered: false }` when the user
 dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
 question text added to every answer.
+
+A skipped question grants no additional permission. Defaults apply only to
+unspecified details within the requested task. A skipped request to expand scope
+leaves the existing state intact. Report any remaining blocker without asking
+the same question again.
 
 ---
 

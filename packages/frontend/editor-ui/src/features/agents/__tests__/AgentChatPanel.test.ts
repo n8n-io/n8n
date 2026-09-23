@@ -688,6 +688,28 @@ describe('AgentChatPanel', () => {
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
+	it('queues an outside message until the current stream finishes', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Test these instructions');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
+			'Test these instructions',
+		);
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		isStreamingMock.value = false;
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+	});
+
 	it.each([
 		[
 			'the session changes',
@@ -795,6 +817,7 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('modelValue')).toBe('keep this draft');
 		expect(chatInput.props('disabled')).toBe(true);
 		expect(sendMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
 	});
 
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {
