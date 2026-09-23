@@ -473,7 +473,8 @@ export function findUncoveredAncestors(args: {
 	const sources = [...ancestors].filter(
 		(name) => directParents(connectionsByDestination, nodesByName, name).length === 0,
 	);
-	const startPoints = sources.filter(isClean);
+	// The engine applies the loop rule to the node its walk starts from as well.
+	const startPoints = sources.filter((name) => isClean(name) && !isUnfinishedLoop(name));
 	if (startPoints.length === 0) return [...ancestors];
 
 	const uncovered = new Set<string>();

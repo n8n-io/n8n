@@ -461,6 +461,31 @@ describe('planStepRun', () => {
 				planStepRun({ nodes: loopNodes, connections, targetName: 'Target', ...input });
 			const mockItems = toExecutionItems([{ id: 1 }]);
 
+			it('refuses a replay that starts at an unfinished loop with no input', () => {
+				// Loop "loop" -> Target, and nothing feeds the Loop node. With no
+				// trigger, the engine starts its walk at the Loop node and still
+				// applies the loop rule to it.
+				const sourceLoop = connect(['Loop:1', 'Target']);
+				const priorRunData: IRunData = { Loop: [loopDone] };
+
+				expect(plan(sourceLoop, { priorRunData }).unhonoredInput?.upstreamNodeNames).toEqual([
+					'Loop',
+				]);
+
+				const graph = DirectedGraph.fromNodesAndConnections(loopNodes, sourceLoop);
+				const loop = graph.getNodes().get('Loop')!;
+				const target = graph.getNodes().get('Target')!;
+				const subgraph = findSubgraph({ graph, destination: target, trigger: loop });
+				const startNodes = findStartNodes({
+					graph: subgraph,
+					trigger: loop,
+					destination: target,
+					runData: priorRunData,
+					pinData: {},
+				});
+				expect([...startNodes].map((startNode) => startNode.name)).toEqual(['Loop']);
+			});
+
 			describe('with the target after the done output', () => {
 				// Trigger -> Loop; Loop "loop" -> Body -> Loop; Loop "done" -> Target.
 				const afterDone = connect(
