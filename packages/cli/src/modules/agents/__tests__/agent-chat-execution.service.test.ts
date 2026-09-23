@@ -8,11 +8,9 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import {
-	AgentChatExecutionService,
-	AgentTurnAlreadyRunningError,
-} from '../agent-chat-execution.service';
+import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';

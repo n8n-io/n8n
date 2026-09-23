@@ -2,7 +2,6 @@ import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/ba
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -10,6 +9,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import {
@@ -25,12 +25,6 @@ export interface CancelSuspendedRunParams {
 	agentId: string;
 	runId: string;
 	resourceId: string;
-}
-
-export class AgentTurnAlreadyRunningError extends UserError {
-	constructor() {
-		super('A turn is already running in this conversation.');
-	}
 }
 
 @Service()

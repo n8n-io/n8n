@@ -25,11 +25,9 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
-import {
-	AgentChatExecutionService,
-	AgentTurnAlreadyRunningError,
-} from './agent-chat-execution.service';
+import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { threadBelongsTo } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream } from './agent-sse-stream';
