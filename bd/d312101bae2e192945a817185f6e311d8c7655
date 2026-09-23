@@ -43,6 +43,7 @@ packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.t
   s_782619aac31c26::t_2ae33ab1d26877 283,1139-1173
   s_782619aac31c26::t_551ade8067d9b7 42
   s_782619aac31c26::t_e07d07d64f38ee 1174-1175
+  s_782619aac31c26::t_a4d82e1632764d 214,219
 packages/cli/src/modules/agents/agent-turn-execution.service.ts
   s_782619aac31c26::t_f3a8236f6ecec5 24,130,192,194-207,274-281,533
 packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
