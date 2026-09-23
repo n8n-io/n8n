@@ -1,5 +1,6 @@
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
@@ -146,6 +147,7 @@ export type McpAppsResolution = {
 
 /** User experience gates and the shared instance activity gate. */
 export type McpFeatureFlags = {
+	credentialDescriptionsEnabled?: boolean;
 	mcpApps: McpAppsResolution;
 	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
@@ -267,6 +269,7 @@ export class McpService {
 		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
 
 		return {
+			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			// Multivariate flag: only the `variant` arm enables the feature.
@@ -465,6 +468,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
+					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
 				}),
 			},
 		);
@@ -601,6 +605,7 @@ export class McpService {
 			this.credentialsService,
 			this.telemetry,
 			this.aiGatewayService,
+			featureFlags.credentialDescriptionsEnabled === true,
 		);
 
 		const listN8nGatewayServicesTool = createListN8nGatewayServicesTool(

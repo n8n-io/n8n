@@ -9,6 +9,7 @@ import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -55,6 +56,7 @@ export class InstanceReportingService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly license: License,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		outboundHttp: OutboundHttp,
@@ -66,7 +68,7 @@ export class InstanceReportingService {
 			// collector, so the URL is never user-controlled.
 			useDefaultSsrfPolicy: 'unsafe',
 			baseURL: this.config.instanceReportingBaseUrl.replace(/\/+$/, ''),
-			// An unset token drops the header, so an unauthenticated receiver works.
+			// An unset token drops the header; the license certificate is the credential then.
 			headers: () => ({
 				authorization: this.config.instanceReportingAuthToken
 					? `Bearer ${this.config.instanceReportingAuthToken}`
@@ -93,9 +95,23 @@ export class InstanceReportingService {
 	 * daily point while every sample sits 24 hours apart; re-measuring hours later
 	 * would stretch one interval and skew the whole series.
 	 *
+	 * The credential is the license certificate, sent in the body, unless a
+	 * bearer token is configured; then the token goes in the header and the
+	 * certificate is not sent at all.
+	 *
 	 * @throws when delivery fails, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
+		const licenseCert = this.config.instanceReportingAuthToken
+			? undefined
+			: await this.license.loadCertStr();
+		if (licenseCert === '') {
+			this.logger.warn(
+				'Skipping the instance report because this instance has no license certificate.',
+			);
+			return;
+		}
+
 		const now = new Date();
 		let report = await this.reportRepository.findTodaysPending(now);
 
@@ -126,6 +142,7 @@ export class InstanceReportingService {
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
 			n8nVersion: N8N_VERSION,
 			dataPoints: report.dataPoints,
+			...(licenseCert ? { licenseCert } : {}),
 		};
 
 		try {
@@ -137,7 +154,7 @@ export class InstanceReportingService {
 				returnFullResponse: true,
 				// Inspect the status here rather than catching a generic request error.
 				ignoreHttpStatusErrors: true,
-				// A redirect would forward the auth token to whatever host it names.
+				// A redirect would forward the credential to whatever host it names.
 				disableFollowRedirect: true,
 			});
 

@@ -1,6 +1,7 @@
 import {
 	AGENT_EVALS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
@@ -183,7 +184,17 @@ export class PostHogClient {
 		} catch {
 			// Apply local overrides when PostHog is not available.
 		}
-		return this.applyEnvOverrides(data);
+		const overridden = this.applyEnvOverrides(data);
+		// The editor and backend must use the same instance result.
+		const credentialDescriptionsEnabled =
+			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		return {
+			...overridden,
+			featureFlags: {
+				...overridden.featureFlags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+			},
+		};
 	}
 
 	private async fetchFlagsFromPostHog({

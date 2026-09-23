@@ -11,6 +11,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
+import MistralIcon from './assets/client-icons/mistral.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
 
@@ -25,6 +26,7 @@ const BRAND_ICONS: Record<McpClientBrandName, Component> = {
 	cursor: CursorIcon,
 	vscode: VsCodeIcon,
 	openai: OpenAiIcon,
+	mistral: MistralIcon,
 };
 
 // Client names are bounded (a user's own registered clients), so memoizing the

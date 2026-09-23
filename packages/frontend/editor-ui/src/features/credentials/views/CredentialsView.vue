@@ -97,6 +97,7 @@ const allCredentials = computed<Resource[]>(() =>
 		resourceType: 'credential',
 		id: credential.id,
 		name: credential.name,
+		description: credential.description,
 		value: '',
 		updatedAt: credential.updatedAt,
 		createdAt: credential.createdAt,

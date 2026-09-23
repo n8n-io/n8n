@@ -326,7 +326,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionCrashService.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {

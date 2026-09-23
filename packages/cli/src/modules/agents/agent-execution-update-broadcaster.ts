@@ -1,6 +1,5 @@
 import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -8,9 +7,9 @@ import { InstanceSettings } from 'n8n-core';
 import { Push } from '@/push';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { RoleService } from '@/services/role.service';
 
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import { AgentPushRecipientsService } from './agent-push-recipients.service';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
@@ -20,12 +19,11 @@ type AgentExecutionUpdate = PushPayload<'agentExecutionUpdated'>;
 export class AgentExecutionUpdateBroadcaster {
 	constructor(
 		private readonly logger: Logger,
-		private readonly userRepository: UserRepository,
+		private readonly recipients: AgentPushRecipientsService,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly threadRepository: AgentExecutionThreadRepository,
-		private readonly roleService: RoleService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -80,15 +78,7 @@ export class AgentExecutionUpdateBroadcaster {
 	}
 
 	private async getRecipients(thread: AgentExecutionThread): Promise<string[]> {
-		const [globalRoleSlugs, projectRoleSlugs] = await Promise.all([
-			this.roleService.rolesWithScope('global', ['agent:read']),
-			this.roleService.rolesWithScope('project', ['agent:read']),
-		]);
-		const userIds = await this.userRepository.findIdsWithGlobalOrProjectRoles({
-			projectIds: [thread.projectId],
-			projectRoleSlugs,
-			globalRoleSlugs,
-		});
+		const userIds = await this.recipients.getProjectReaders(thread.projectId);
 		return userIds.filter((id) => threadBelongsTo(thread, thread.projectId, thread.agentId, id));
 	}
 

@@ -12,6 +12,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
+import type { License } from '@/license';
 import type { InsightsService } from '@/modules/insights/insights.service';
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -31,10 +32,13 @@ interface ReportPayload {
 	label?: string;
 	n8nVersion: string;
 	dataPoints: Array<{ kind: string; name: string; value: number; date?: string }>;
+	licenseCert?: string;
 }
 
 const REPORT_DATE = '2026-03-25';
 const BATCH_ID = 'batch-id-1';
+/** Opaque to this module: whatever `License.loadCertStr()` returns is sent as is. */
+const LICENSE_CERT = 'base64-license-cert';
 
 const OWNER_MOCK = mock<User>({ id: 'owner-id' });
 
@@ -91,6 +95,7 @@ interface Harness {
 	service: InstanceReportingService;
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	insightsService: Mocked<InsightsService>;
+	license: Mocked<License>;
 	http: HttpRequestClient;
 	eventService: Mocked<EventService>;
 	clientOptions: HttpRequestClientOptions | undefined;
@@ -115,6 +120,9 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
 
+	const license = mock<License>();
+	license.loadCertStr.mockResolvedValue(LICENSE_CERT);
+
 	const http = mock<HttpRequestClient>();
 	vi.mocked(http.request).mockResolvedValue({ statusCode: 201, body: '', headers: {} });
 
@@ -135,12 +143,13 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		mock<InstanceSettings>({ instanceId: 'abc123' }),
 		ownershipService,
 		licenseMetricsRepository,
+		license,
 		mockLogger(),
 		eventService,
 		outboundHttp,
 	);
 
-	return { service, reportRepository, insightsService, http, eventService, clientOptions };
+	return { service, reportRepository, insightsService, license, http, eventService, clientOptions };
 }
 
 describe('InstanceReportingService', () => {
@@ -206,7 +215,7 @@ describe('InstanceReportingService', () => {
 			expect(clientOptions?.timeout).toBe(30_000);
 		});
 
-		test('does not follow redirects, so the auth token reaches only the configured host', async () => {
+		test('does not follow redirects, so the credential reaches only the configured host', async () => {
 			const { service, http } = makeHarness();
 
 			await service.sendReport();
@@ -239,19 +248,68 @@ describe('InstanceReportingService', () => {
 			expect(body(http)).not.toHaveProperty('label');
 		});
 
-		test('sends the auth token as a bearer token when configured', () => {
-			const { clientOptions } = makeHarness(
-				makeConfig({ instanceReportingAuthToken: 'secret-token' }),
-			);
+		test('sends the license certificate in the body as the credential', async () => {
+			const { service, http, clientOptions } = makeHarness();
 
-			expect(clientHeaders(clientOptions).authorization).toBe('Bearer secret-token');
+			await service.sendReport();
+
+			expect(body(http).licenseCert).toBe(LICENSE_CERT);
+			// No token: the certificate is the whole credential, and an `undefined`
+			// default header is dropped before the request goes out.
+			expect(clientHeaders(clientOptions).authorization).toBeUndefined();
 		});
 
-		test('omits the Authorization header when no auth token is configured', () => {
-			const { clientOptions } = makeHarness();
+		test('reads the certificate fresh for every report, so a renewed license is sent', async () => {
+			const { service, license, http, reportRepository } = makeHarness();
 
-			// An `undefined` default header is dropped before the request goes out.
-			expect(clientHeaders(clientOptions).authorization).toBeUndefined();
+			await service.sendReport();
+			license.loadCertStr.mockResolvedValue('renewed-license-cert');
+			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+
+			await service.sendReport();
+
+			expect(body(http, 1).licenseCert).toBe('renewed-license-cert');
+		});
+
+		test('sends nothing and measures nothing without a license certificate', async () => {
+			const { service, license, http, reportRepository, insightsService } = makeHarness();
+			license.loadCertStr.mockResolvedValue('');
+
+			// Resolves rather than throws: this is not a delivery failure to retry.
+			await expect(service.sendReport()).resolves.toBeUndefined();
+
+			expect(http.request).not.toHaveBeenCalled();
+			expect(insightsService.getInsightsByTime).not.toHaveBeenCalled();
+			expect(reportRepository.createPending).not.toHaveBeenCalled();
+		});
+
+		describe('with an auth token configured', () => {
+			const tokenConfig = () => makeConfig({ instanceReportingAuthToken: 'secret-token' });
+
+			test('sends the token as a bearer token', () => {
+				const { clientOptions } = makeHarness(tokenConfig());
+
+				expect(clientHeaders(clientOptions).authorization).toBe('Bearer secret-token');
+			});
+
+			test('does not send or read the license certificate', async () => {
+				const { service, http, license } = makeHarness(tokenConfig());
+
+				await service.sendReport();
+
+				expect(body(http)).not.toHaveProperty('licenseCert');
+				expect(license.loadCertStr).not.toHaveBeenCalled();
+			});
+
+			// The token is the whole credential, so an unlicensed instance still reports.
+			test('reports without a license certificate', async () => {
+				const { service, http, license } = makeHarness(tokenConfig());
+				license.loadCertStr.mockResolvedValue('');
+
+				await service.sendReport();
+
+				expect(http.request).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		test('queries the instance owner insights for the reported UTC day', async () => {

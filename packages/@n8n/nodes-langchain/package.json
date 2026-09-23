@@ -230,6 +230,7 @@
     "@types/temp": "^0.9.1",
     "@vitest/coverage-v8": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
+    "fast-check": "catalog:",
     "nock": "catalog:",
     "typescript": "catalog:typescript-tooling",
     "vitest": "catalog:",
