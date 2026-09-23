@@ -488,7 +488,7 @@ function handleOpenChange(value: boolean) {
 	}
 
 	.searchInput {
-		margin-top: var(--spacing--2xs);
+		margin-top: 0;
 		margin-bottom: var(--spacing--lg);
 	}
 }

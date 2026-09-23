@@ -328,10 +328,6 @@ function onOpenAutoFocus(event: Event) {
 	padding: 0;
 }
 
-.footer {
-	margin-top: var(--spacing--md);
-}
-
 .footerLayout {
 	display: flex;
 	align-items: center;

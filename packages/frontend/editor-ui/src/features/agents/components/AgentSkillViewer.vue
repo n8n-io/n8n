@@ -760,7 +760,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
 }
 
 .allowedToolOption {

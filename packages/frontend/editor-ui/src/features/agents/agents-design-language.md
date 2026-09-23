@@ -35,7 +35,7 @@ design work.
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
 | Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
 | Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                            |
-| Body       | Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
+| Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
 | Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
 
@@ -50,6 +50,10 @@ when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
 scrollbars on MCP, node, or workflow configuration content. A picker can use a
 stable minimum height. A configuration step must use its natural height.
+
+Do not add top padding or a top margin to a modal's first content wrapper. The
+shell supplies that space. Use the flush body only for a full-bleed workspace.
+The workspace must then own all of its edge spacing.
 
 When a nested credential dialog is open, release the parent focus trap and
 block parent dismissal. The nested dialog owns Escape until it closes.

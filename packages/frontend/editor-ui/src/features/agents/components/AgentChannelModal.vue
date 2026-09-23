@@ -658,7 +658,7 @@ watch(
 .channelList {
 	display: flex;
 	flex-direction: column;
-	padding-block: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
 }
 
 .setupView,
@@ -666,6 +666,5 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--md) 0;
 }
 </style>
