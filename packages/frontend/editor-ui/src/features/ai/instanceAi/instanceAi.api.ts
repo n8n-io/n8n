@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	AiPreferenceScope,
 	ComputerUseChannel,
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
@@ -250,7 +251,14 @@ export async function editPreferenceCard(
 	context: IRestApiContext,
 	threadId: string,
 	preferenceId: string,
-	body: { runId: string; toolCallId: string; content: string },
+	body: {
+		runId: string;
+		toolCallId: string;
+		content: string;
+		scope: AiPreferenceScope;
+		projectId: string | null;
+		userId: string | null;
+	},
 ): Promise<InstanceAiPreferenceCardEditResponse> {
 	return await makeRestApiRequest<InstanceAiPreferenceCardEditResponse>(
 		context,
