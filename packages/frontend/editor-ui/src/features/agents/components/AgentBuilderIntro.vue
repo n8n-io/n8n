@@ -5,7 +5,7 @@
  * chatting about it) and offers one-click starter templates. The host owns
  * the apply; this component only emits the chosen template.
  */
-import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_TEMPLATES, type AgentTemplate } from '../agentTemplates';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
@@ -41,18 +41,27 @@ const i18n = useI18n();
 					<N8nText size="small" :class="$style.exampleLabel">
 						{{ i18n.baseText(template.labelKey) }}
 					</N8nText>
-					<N8nText size="xsmall" :class="$style.exampleDescription">
+					<N8nText
+						size="xsmall"
+						color="text-light"
+						:class="$style.exampleDescription"
+						:title="i18n.baseText(template.descriptionKey)"
+					>
 						{{ i18n.baseText(template.descriptionKey) }}
 					</N8nText>
 				</span>
 				<N8nButton
+					:class="$style.exampleAction"
 					variant="ghost"
 					size="medium"
-					icon="arrow-right"
 					icon-only
 					:aria-label="i18n.baseText(template.labelKey)"
 					@click.stop="emit('select', template)"
-				/>
+				>
+					<template #icon>
+						<N8nIcon icon="arrow-right" color="text-light" size="medium" />
+					</template>
+				</N8nButton>
 			</div>
 		</div>
 	</div>
@@ -105,6 +114,13 @@ const i18n = useI18n();
 }
 
 .exampleDescription {
-	color: var(--color--text--tint-1);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.exampleAction {
+	flex: 0 0 auto;
 }
 </style>

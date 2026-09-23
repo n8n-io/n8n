@@ -179,8 +179,8 @@ describe('applyAgentTemplate', () => {
 		});
 	});
 
-	it('writes a draft credential for the linkedin outreach tool', () => {
-		const template = AGENT_TEMPLATES.find((t) => t.id === 'linkedin-outreach')!;
+	it('writes a draft credential and availability parameters for the meeting times tool', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'propose-meeting-times')!;
 		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
 		const tool = result?.tools?.[0];
 
@@ -189,9 +189,10 @@ describe('applyAgentTemplate', () => {
 			const cred = Object.values(tool.node.credentials ?? {})[0];
 			expect(cred?.id).toBe('');
 			expect(tool.node.nodeParameters).toMatchObject({
-				resource: 'post',
-				operation: 'create',
-				person: expect.stringContaining('$fromAI'),
+				resource: 'calendar',
+				operation: 'availability',
+				timeMin: expect.stringContaining('$fromAI'),
+				timeMax: expect.stringContaining('$fromAI'),
 			});
 		}
 	});
@@ -203,7 +204,7 @@ describe('AGENT_TEMPLATES', () => {
 			'morning-news-brief',
 			'process-incoming-emails',
 			'qualify-new-leads',
-			'linkedin-outreach',
+			'propose-meeting-times',
 		]);
 	});
 

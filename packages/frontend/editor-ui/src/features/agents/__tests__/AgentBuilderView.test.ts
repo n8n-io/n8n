@@ -371,15 +371,15 @@ const baseTextFn = (
 		'agents.builder.templates.morningNewsBrief.label': 'Morning news brief',
 		'agents.builder.templates.processIncomingEmails.label': 'Process incoming emails',
 		'agents.builder.templates.qualifyNewLeads.label': 'Qualify new leads',
-		'agents.builder.templates.linkedinOutreach.label': 'LinkedIn outreach',
+		'agents.builder.templates.proposeMeetingTimes.label': 'Propose meeting times',
 		'agents.builder.templates.morningNewsBrief.description':
 			"Sends a daily summary of today's top headlines.",
 		'agents.builder.templates.processIncomingEmails.description':
 			'Reads new emails and updates your calendar or sheet.',
 		'agents.builder.templates.qualifyNewLeads.description':
 			'Scores and routes new leads from your CRM.',
-		'agents.builder.templates.linkedinOutreach.description':
-			'Drafts and sends personalized connection messages on LinkedIn.',
+		'agents.builder.templates.proposeMeetingTimes.description':
+			'Finds open calendar slots and suggests meeting times.',
 	};
 	if (key === 'agents.builder.externalUpdate.time') {
 		const minutes = options?.adjustToNumber ?? 0;

@@ -133,32 +133,34 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		},
 	},
 	{
-		id: 'linkedin-outreach',
-		labelKey: 'agents.builder.templates.linkedinOutreach.label',
-		descriptionKey: 'agents.builder.templates.linkedinOutreach.description',
-		icon: 'link',
-		gradient: { from: '#0A66C2', to: '#22D3EE', angle: 145, fromStop: 0, toStop: 96 },
+		id: 'propose-meeting-times',
+		labelKey: 'agents.builder.templates.proposeMeetingTimes.label',
+		descriptionKey: 'agents.builder.templates.proposeMeetingTimes.description',
+		icon: 'calendar',
+		gradient: { from: '#0F766E', to: '#2DD4BF', angle: 150, fromStop: 4, toStop: 96 },
 		config: {
-			name: 'LinkedIn Outreach',
+			name: 'Propose Meeting Times',
 			instructions:
-				'You are a LinkedIn outreach agent. Draft personalized connection messages based on the recipient’s profile and shared interests. Send messages that are professional, concise, and likely to generate a response.',
+				'You are a scheduling agent. Find open slots on the user’s Google Calendar and suggest a few meeting times. Match the requested duration and time window. Do not book a meeting until the user confirms a time.',
 			tools: [
 				{
 					type: 'node',
-					name: 'LinkedIn',
-					description: 'Send connection messages and interact with the LinkedIn API.',
+					name: 'Google Calendar',
+					description: 'Find open slots on Google Calendar.',
 					node: {
-						nodeType: 'n8n-nodes-base.linkedIn',
-						nodeTypeVersion: 1,
-						// `create` requires the person to post as. A runtime value
-						// keeps the tool valid before a credential is connected.
+						nodeType: 'n8n-nodes-base.googleCalendar',
+						nodeTypeVersion: 1.3,
+						// Availability needs an interval. Runtime values keep the
+						// tool valid before a calendar is connected.
 						nodeParameters: {
-							resource: 'post',
-							operation: 'create',
-							person: "={{ $fromAI('person', 'LinkedIn person to post as', 'string') }}",
-							text: "={{ $fromAI('text', 'The message to post', 'string') }}",
+							resource: 'calendar',
+							operation: 'availability',
+							timeMin: "={{ $fromAI('timeMin', 'Start of the interval to check', 'string') }}",
+							timeMax: "={{ $fromAI('timeMax', 'End of the interval to check', 'string') }}",
 						},
-						credentials: { linkedInOAuth2Api: { id: '', name: 'linkedInOAuth2Api' } },
+						credentials: {
+							googleCalendarOAuth2Api: { id: '', name: 'googleCalendarOAuth2Api' },
+						},
 					},
 				},
 			],
