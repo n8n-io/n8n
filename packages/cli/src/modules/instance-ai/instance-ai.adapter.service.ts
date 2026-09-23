@@ -1,6 +1,7 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -456,6 +457,7 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			credentialDescriptionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -475,6 +477,7 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -493,6 +496,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
@@ -608,6 +612,7 @@ export class InstanceAiAdapterService {
 		folderExplorationEnabled: boolean;
 		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
+		credentialDescriptionsEnabled: boolean;
 		/** Shared activity recording and retrieval use the same instance gate. */
 		instanceContextEnabled: boolean;
 	}> {
@@ -625,6 +630,7 @@ export class InstanceAiAdapterService {
 			// Keep the gates closed if the client cannot start an evaluation.
 		}
 		return {
+			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
@@ -2455,7 +2461,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
-							description: c.description,
+							...(c.description !== undefined && { description: c.description }),
 						}),
 					);
 				}
@@ -2479,7 +2485,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
-							description: c.description,
+							...(c.description !== undefined && { description: c.description }),
 						}),
 					);
 				}
@@ -2496,7 +2502,7 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						description: c.description,
+						...(c.description !== undefined && { description: c.description }),
 					}),
 				);
 			},
@@ -2507,7 +2513,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					description: credential.description,
+					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
 			},
 

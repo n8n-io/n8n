@@ -192,6 +192,7 @@ export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
 	credentialDescriptionSchema,
 } from './schemas/credential-description.schema';
+export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -432,6 +433,11 @@ export {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	computerUseChannelSchema,
+	INSTANCE_CONTEXT_SURFACE_DEPTH,
+	instanceContextSurfaceSchema,
+	instanceContextReachSchema,
+	instanceContextAbsenceReasonSchema,
+	instanceContextInjectionSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -587,6 +593,11 @@ export type {
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
+	InstanceContextSurface,
+	InstanceContextReach,
+	InstanceContextLegs,
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
 	InstanceAiMessage,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,

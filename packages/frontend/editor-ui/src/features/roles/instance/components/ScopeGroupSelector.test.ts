@@ -122,6 +122,65 @@ describe('ScopeGroupSelector', () => {
 		expect(getByText('Manage all roles (instance and project)')).toBeTruthy();
 	});
 
+	describe('credential group', () => {
+		it('renders the three credential rungs, all unchecked by default', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+			for (const slug of ['view', 'use', 'manage']) {
+				expect(getByTestId(`scope-option-credential-${slug}`).getAttribute('aria-checked')).toBe(
+					'false',
+				);
+			}
+		});
+
+		it('checks View and leaves Use and Manage unchecked, not mixed', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.View] },
+			});
+			expect(getByTestId('scope-option-credential-view').getAttribute('aria-checked')).toBe('true');
+			expect(getByTestId('scope-option-credential-use').getAttribute('aria-checked')).toBe('false');
+			expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+		});
+
+		it('disables View when Use is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Use] },
+			});
+			expect(getByTestId('scope-option-credential-view').getAttribute('aria-checked')).toBe('true');
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+		});
+
+		it('disables both View and Use when Manage is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Manage] },
+			});
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-manage')).not.toBeDisabled();
+		});
+
+		it('emits the Use scope set when Use is toggled on', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [] },
+			});
+			await userEvent.click(getByTestId('scope-option-credential-use'));
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(new Set(scopes)).toEqual(new Set(INSTANCE_SCOPE_GROUPS.credential.Use));
+		});
+
+		it('downgrades Manage to Use when Manage is toggled off', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Manage] },
+			});
+			await userEvent.click(getByTestId('scope-option-credential-manage'));
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(new Set(scopes)).toEqual(new Set(INSTANCE_SCOPE_GROUPS.credential.Use));
+		});
+	});
+
 	describe('privilege-escalation warning', () => {
 		it('renders the members warning when a user scope is selected', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
@@ -142,6 +201,26 @@ describe('ScopeGroupSelector', () => {
 				props: { modelValue: ['role:read', 'role:manageProject'] },
 			});
 			expect(getByTestId('scope-escalation-warning-role')).toBeTruthy();
+		});
+
+		it('renders the credentials warning when credential Manage is selected', () => {
+			// Manage carries `credential:update`, which also unlocks plaintext decrypt.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Manage] },
+			});
+			expect(getByTestId('scope-escalation-warning-credential')).toBeTruthy();
+		});
+
+		it('does not render the credentials warning for View or Use', () => {
+			for (const option of [
+				INSTANCE_SCOPE_GROUPS.credential.View,
+				INSTANCE_SCOPE_GROUPS.credential.Use,
+			]) {
+				const { queryByTestId } = renderComponent(ScopeGroupSelector, {
+					props: { modelValue: [...option] },
+				});
+				expect(queryByTestId('scope-escalation-warning-credential')).toBeNull();
+			}
 		});
 
 		it('does not render a warning for a non-escalating scope', () => {

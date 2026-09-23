@@ -6095,6 +6095,7 @@ describe('resolveExperimentGates', () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
@@ -6169,6 +6170,7 @@ describe('resolveExperimentGates', () => {
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
@@ -6204,6 +6206,7 @@ describe('resolveExperimentGates', () => {
 		stubContainer({});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
@@ -6219,6 +6222,7 @@ describe('resolveExperimentGates', () => {
 		getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unreachable'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,

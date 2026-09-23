@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -18,6 +19,8 @@ import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
@@ -407,7 +410,7 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByTestId('credential-save-button')).not.toBeInTheDocument());
 	});
 
-	test('hides menu item when credential is managed', async () => {
+	test('shows all tabs for an unmanaged credential', async () => {
 		const credentialsStore = useCredentialsStore();
 
 		credentialsStore.state.credentials = {
@@ -429,7 +432,8 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByText('Sharing')).toBeInTheDocument());
 	});
 
-	test('shows menu item when credential is not managed', async () => {
+	test('shows Connection and Details for a managed credential', async () => {
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		const credentialsStore = useCredentialsStore();
 
 		credentialsStore.state.credentials = {
@@ -446,8 +450,8 @@ describe('CredentialEdit', () => {
 			},
 		});
 
-		await retry(() => expect(queryByText('Details')).not.toBeInTheDocument());
-		await retry(() => expect(queryByText('Connection')).not.toBeInTheDocument());
+		await retry(() => expect(queryByText('Details')).toBeInTheDocument());
+		await retry(() => expect(queryByText('Connection')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Sharing')).not.toBeInTheDocument());
 	});
 
@@ -1337,6 +1341,218 @@ describe('CredentialEdit', () => {
 
 			return { credentialsStore, uiStore, ...renderResult };
 		};
+
+		describe('descriptions', () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+
+			const setupExistingCredential = (overrides: Partial<ICredentialsResponse> = {}) => {
+				const { credentialsStore, pinia } = setupNewCredential(credentialType);
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+				const credential = createCredentialResponse({
+					createdAt: '2026-05-22T10:00:00.000Z',
+					updatedAt: '2026-05-22T10:00:00.000Z',
+					description: 'Use for test reports',
+					...overrides,
+				});
+				credentialsStore.state.credentials = { [credential.id]: credential };
+				credentialsStore.getCredentialData.mockResolvedValue(credential);
+				const render = () =>
+					renderComponent({
+						props: {
+							activeId: credential.id,
+							modalName: CREDENTIAL_EDIT_MODAL_KEY,
+							mode: 'edit',
+						},
+						pinia,
+					});
+
+				return { credentialsStore, credential, render };
+			};
+
+			test('keeps the previous Details layout and omits descriptions from saves when disabled', async () => {
+				const { credentialsStore, credential, render } = setupExistingCredential();
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+				credentialsStore.updateCredential.mockResolvedValue(credential);
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				expect(view.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument();
+				expect(view.getByText('Created')).toBeInTheDocument();
+				expect(view.queryByTestId('credential-save-button')).not.toBeInTheDocument();
+				await userEvent.click(view.getByText('Connection'));
+				const name = view.getByTestId('credential-name');
+				await userEvent.click(name);
+				const nameInput = within(name).getByRole('textbox');
+				await userEvent.clear(nameInput);
+				await userEvent.type(nameInput, 'Renamed credential{enter}');
+				await userEvent.click(
+					within(view.getByTestId('credential-save-button')).getByRole('button'),
+				);
+				await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalledTimes(1));
+				expect(credentialsStore.updateCredential.mock.calls[0][0].data).not.toHaveProperty(
+					'description',
+				);
+				expect(credential.description).toBe('Use for test reports');
+			});
+
+			test('keeps the managed credential sidebar hidden when disabled', async () => {
+				const { render } = setupExistingCredential({ isManaged: true });
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+				const view = render();
+				await waitFor(() => expect(view.getByTestId('credential-edit-dialog')).toBeInTheDocument());
+				expect(view.queryByText('Details')).not.toBeInTheDocument();
+				expect(view.queryByText('Sharing')).not.toBeInTheDocument();
+			});
+
+			test('keeps Details hidden for Templated Custom Auth when disabled', async () => {
+				const { pinia } = setupNewCredential({
+					...credentialType,
+					name: TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+				});
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+				const view = renderComponent({
+					props: {
+						activeId: TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'new',
+					},
+					pinia,
+				});
+				await waitFor(() => expect(view.getByText('Connection')).toBeInTheDocument());
+				expect(view.queryByText('Details')).not.toBeInTheDocument();
+			});
+
+			test('saves the description in one request and shows it after reopening', async () => {
+				const { credentialsStore, credential, render } = setupExistingCredential();
+				const savedCredential = { ...credential, description: 'Use for production reports' };
+				credentialsStore.updateCredential.mockResolvedValue(savedCredential);
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+				const saveButton = within(view.getByTestId('credential-save-button')).getByRole('button');
+				expect(input).toHaveValue(credential.description);
+				expect(saveButton).toBeDisabled();
+
+				await userEvent.clear(input);
+				await userEvent.type(input, `  ${savedCredential.description}  `);
+				await userEvent.click(saveButton);
+
+				await waitFor(() => expect(input).toHaveValue(savedCredential.description));
+				expect(credentialsStore.updateCredential).toHaveBeenCalledExactlyOnceWith({
+					id: credential.id,
+					data: expect.objectContaining({
+						description: `  ${savedCredential.description}  `,
+						data: {},
+					}),
+				});
+				expect(saveButton).toBeDisabled();
+
+				view.unmount();
+				credentialsStore.getCredentialData.mockResolvedValue(savedCredential);
+				const reopened = render();
+				await userEvent.click(await reopened.findByText('Details'));
+				expect(reopened.getByRole('textbox', { name: 'Description' })).toHaveValue(
+					savedCredential.description,
+				);
+			});
+
+			test.each(['', '   '])('clears the description when saved as %j', async (description) => {
+				const { credentialsStore, credential, render } = setupExistingCredential();
+				const clearedCredential = { ...credential, description: null };
+				credentialsStore.updateCredential.mockResolvedValue(clearedCredential);
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+				await userEvent.clear(input);
+				if (description) await userEvent.type(input, description);
+				await userEvent.click(
+					within(view.getByTestId('credential-save-button')).getByRole('button'),
+				);
+
+				await waitFor(() =>
+					expect(credentialsStore.updateCredential).toHaveBeenCalledExactlyOnceWith({
+						id: credential.id,
+						data: expect.objectContaining({ description }),
+					}),
+				);
+				await waitFor(() => expect(input).toHaveValue(''));
+				view.unmount();
+				credentialsStore.getCredentialData.mockResolvedValue(clearedCredential);
+				const reopened = render();
+				await userEvent.click(await reopened.findByText('Details'));
+				expect(reopened.getByRole('textbox', { name: 'Description' })).toHaveValue('');
+			});
+
+			test('limits description input to 512 characters', async () => {
+				const description = 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
+				const { render } = setupExistingCredential({ description });
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+
+				await userEvent.type(input, 'b');
+
+				expect(input).toHaveValue(description);
+			});
+
+			test.each<[string, Scope[], boolean]>([
+				['read-only', ['credential:read'], false],
+				['managed', ['credential:read', 'credential:update'], true],
+			])('keeps a %s credential description read-only', async (_name, scopes, isManaged) => {
+				const { credentialsStore, credential, render } = setupExistingCredential({
+					scopes,
+					isManaged,
+				});
+				const view = render();
+				await userEvent.click(await view.findByText('Details'));
+				const input = view.getByRole('textbox', { name: 'Description' });
+
+				expect(input).toHaveAttribute('readonly');
+				await userEvent.type(input, 'changed');
+				expect(input).toHaveValue(credential.description);
+				expect(view.queryByTestId('credential-save-button')).not.toBeInTheDocument();
+				expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
+			});
+
+			test.each([credentialType.name, TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE])(
+				'saves a description before the first save from the assistant modal for %s',
+				async (name) => {
+					const { credentialsStore, pinia } = setupNewCredential(
+						{ ...credentialType, name },
+						{ hideAskAssistant: true },
+					);
+					mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+					const view = renderComponent({
+						props: { activeId: name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+						pinia,
+					});
+					await userEvent.click(await view.findByText('Details'));
+					const input = view.getByRole('textbox', { name: 'Description' });
+					expect(input).toHaveValue('');
+					expect(view.queryByText('Created')).not.toBeInTheDocument();
+					await userEvent.type(input, 'Use for production reports');
+					await userEvent.click(
+						within(view.getByTestId('credential-save-button')).getByRole('button'),
+					);
+
+					await waitFor(() =>
+						expect(credentialsStore.createNewCredential).toHaveBeenCalledTimes(1),
+					);
+					expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: name,
+							description: 'Use for production reports',
+							data: {},
+						}),
+						'personal-project',
+						undefined,
+					);
+				},
+			);
+		});
 
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {

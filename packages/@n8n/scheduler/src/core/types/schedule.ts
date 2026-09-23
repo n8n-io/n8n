@@ -103,6 +103,11 @@ export interface ScheduledJob {
 	nextRunAt: Date | null; // the next instant the materializer materializes from.
 	lastFiredAt: Date | null;
 	maxAttempts: number;
+	/**
+	 * How many of this job's occurrences may run at the same time. `null` means no
+	 * limit. At least 1 when set.
+	 */
+	concurrencyLimit: number | null;
 	/** What to do with occurrences that came due while nothing ran them. */
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	/** How late an occurrence may be before {@link misfirePolicy} applies to it. */
