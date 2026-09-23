@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { OperationContext } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
@@ -10,6 +11,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentBackgroundJobRepository,
@@ -130,6 +132,7 @@ export class AgentBackgroundJobService {
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly updateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -142,18 +145,38 @@ export class AgentBackgroundJobService {
 	async registerSubAgentJob(
 		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
+		// During a turn, the job is created only while the turn owns its session lease.
+		const receipt = await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) => await this.insertSubAgentJob(params, ctx),
+		);
+		if (receipt.status === 'started') {
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(
+				params.parentAgentId,
+				params.parentThreadId,
+			);
+		}
+		return receipt;
+	}
+
+	private async insertSubAgentJob(
+		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
+		ctx: OperationContext,
+	): Promise<BackgroundJobReceipt> {
 		const running = await this.jobRepository.countRunningSubAgentsByParentThread(
 			params.parentThreadId,
+			ctx,
 		);
 		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
 
-		await this.jobRepository.insertJob({
-			...params,
-			kind: 'subagent',
-			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
-		});
-		this.updateBroadcaster.notifyBackgroundJobsUpdated(params.parentAgentId, params.parentThreadId);
-
+		await this.jobRepository.insertJob(
+			{
+				...params,
+				kind: 'subagent',
+				timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
+			},
+			ctx,
+		);
 		return { status: 'started', jobId: params.id };
 	}
 
@@ -165,11 +188,15 @@ export class AgentBackgroundJobService {
 	): Promise<BackgroundJobReceipt> {
 		const { executionId, ...job } = params;
 
-		const outcome = await this.jobRepository.insertWorkflowJobOrGetExisting({
-			...job,
-			kind: 'workflow',
-			childExecutionId: executionId,
-		});
+		// During a turn, the job is created only while the turn owns its session lease.
+		const outcome = await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) =>
+				await this.jobRepository.insertWorkflowJobOrGetExisting(
+					{ ...job, kind: 'workflow', childExecutionId: executionId },
+					ctx,
+				),
+		);
 		if (outcome.inserted) {
 			this.updateBroadcaster.notifyBackgroundJobsUpdated(
 				params.parentAgentId,
@@ -216,8 +243,12 @@ export class AgentBackgroundJobService {
 		return await this.consumeMail(parentThreadId, jobIds);
 	}
 
+	/** A turn that lost its session lease must not mark results as delivered. */
 	private async consumeMail(parentThreadId: string, jobIds: string[]): Promise<number> {
-		const count = await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
+		const count = await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) => await this.jobRepository.markMailConsumed(parentThreadId, jobIds, ctx),
+		);
 		// Clear pending cards when a foreground turn consumes results without a signal.
 		if (count > 0 && jobIds[0]) await this.notifyJobUpdateById(jobIds[0]);
 		return count;

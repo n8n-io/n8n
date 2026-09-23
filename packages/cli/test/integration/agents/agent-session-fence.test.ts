@@ -1,13 +1,19 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentSessionLeaseLostError } from '@/modules/agents/agent-session-lease-lost.error';
 import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
+import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
@@ -15,6 +21,7 @@ import { AgentMessageRepository } from '@/modules/agents/repositories/agent-mess
 import { AgentResourceRepository } from '@/modules/agents/repositories/agent-resource.repository';
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 /**
  * Each area checks that a turn whose lease another main took over cannot
@@ -51,6 +58,7 @@ describe('Fenced agent session writes', () => {
 	});
 
 	afterEach(async () => {
+		await Container.get(AgentBackgroundJobRepository).delete({});
 		await Container.get(AgentThreadRepository).delete({});
 		await Container.get(AgentResourceRepository).delete({});
 		await agentRepo.delete({});
@@ -161,6 +169,68 @@ describe('Fenced agent session writes', () => {
 			await expect(store.claimForResume?.('run-parked', state)).resolves.toBe(true);
 			await store.delete('run-parked');
 			expect(await storage.getStatus('run-parked', agentId)).toEqual({ status: 'expired' });
+
+			staleTurn.settle();
+		});
+	});
+
+	describe('background jobs', () => {
+		it('rejects the job writes of a turn whose lease another main took over', async () => {
+			const threadId = uuid();
+			const jobRows = Container.get(AgentBackgroundJobRepository);
+			const jobs = new AgentBackgroundJobService(
+				jobRows,
+				Container.get(AgentExecutionRepository),
+				mock<ExecutionPersistence>(),
+				mock<Publisher>(),
+				mockLogger(),
+				Container.get(AgentsConfig),
+				mock<AgentExecutionUpdateBroadcaster>(),
+				sessionLeases,
+			);
+			const parent = {
+				parentAgentId: agentId,
+				parentThreadId: threadId,
+				parentResourceId: 'user-1',
+				parentPrincipalHash: 'principal-hash',
+			};
+			const subAgentJob = {
+				...parent,
+				id: uuid(),
+				title: 'Research',
+				subAgentId: 'sub-agent-1',
+				childThreadId: uuid(),
+			};
+			const workflowJob = {
+				...parent,
+				id: uuid(),
+				title: 'Lookup',
+				workflowId: 'workflow-1',
+				executionId: 'execution-1',
+			};
+			const staleTurn = await startStaleTurn(threadId);
+
+			await expect(
+				staleTurn.write(async () => await jobs.registerSubAgentJob(subAgentJob)),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			await expect(
+				staleTurn.write(async () => await jobs.registerWorkflowJob(workflowJob)),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			await expect(
+				staleTurn.write(async () => await jobs.markMailConsumed(threadId, [subAgentJob.id])),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			expect(await jobRows.countBy({ parentThreadId: threadId })).toBe(0);
+
+			await expect(jobs.registerSubAgentJob(subAgentJob)).resolves.toEqual({
+				status: 'started',
+				jobId: subAgentJob.id,
+			});
+			await expect(jobs.registerWorkflowJob(workflowJob)).resolves.toEqual({
+				status: 'started',
+				jobId: workflowJob.id,
+			});
+			// The jobs are still running, so there are no results to mark.
+			await expect(jobs.markMailConsumed(threadId, [subAgentJob.id])).resolves.toBe(0);
 
 			staleTurn.settle();
 		});

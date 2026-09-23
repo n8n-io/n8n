@@ -1,5 +1,6 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
 import {
@@ -44,13 +45,13 @@ export type BackgroundJobGroupItem = Pick<
 >;
 
 @Service()
-export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob> {
-	constructor(dataSource: DataSource) {
-		super(AgentBackgroundJob, dataSource.manager);
+export class AgentBackgroundJobRepository extends BaseRepository<AgentBackgroundJob> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentBackgroundJob, dataSource.manager, transactionRunner);
 	}
 
-	async insertJob(job: NewAgentBackgroundJob): Promise<void> {
-		await this.insert({ ...job, status: 'running' });
+	async insertJob(job: NewAgentBackgroundJob, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).insert(AgentBackgroundJob, { ...job, status: 'running' });
 	}
 
 	/**
@@ -59,26 +60,36 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	 */
 	async insertWorkflowJobOrGetExisting(
 		job: NewWorkflowJob,
+		ctx: OperationContext,
 	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
-		await this.createQueryBuilder()
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
 			.insert()
 			.into(AgentBackgroundJob)
 			.values({ ...job, status: 'running' })
 			.orIgnore()
 			.execute();
 
-		const inserted = await this.existsBy({ id: job.id });
+		const inserted = await manager.existsBy(AgentBackgroundJob, { id: job.id });
 		if (inserted) return { inserted: true };
 
-		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
+		const existing = await manager.findOne(AgentBackgroundJob, {
+			where: { childExecutionId: job.childExecutionId },
+		});
 		if (existing) return { inserted: false, existing };
 
 		throw new OperationalError('Failed to register workflow background job');
 	}
 
 	/** Running sub-agent jobs only: parked workflow jobs do not count toward the cap. */
-	async countRunningSubAgentsByParentThread(parentThreadId: string): Promise<number> {
-		return await this.count({ where: { parentThreadId, kind: 'subagent', status: 'running' } });
+	async countRunningSubAgentsByParentThread(
+		parentThreadId: string,
+		ctx: OperationContext,
+	): Promise<number> {
+		return await this.managerFor(ctx).count(AgentBackgroundJob, {
+			where: { parentThreadId, kind: 'subagent', status: 'running' },
+		});
 	}
 
 	async findByParentThread(parentThreadId: string, ids?: string[]): Promise<AgentBackgroundJob[]> {
@@ -115,11 +126,16 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 			.getMany();
 	}
 
-	async markMailConsumed(parentThreadId: string, ids: string[]): Promise<number> {
+	async markMailConsumed(
+		parentThreadId: string,
+		ids: string[],
+		ctx: OperationContext,
+	): Promise<number> {
 		if (ids.length === 0) return 0;
 
-		const result = await this.createQueryBuilder()
-			.update()
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(AgentBackgroundJob)
 			.set({ notifiedAt: new Date() })
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')

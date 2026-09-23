@@ -67,7 +67,7 @@ function setup(
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	backgroundJobService.markMailConsumed.mockImplementation(
-		async (...args) => await jobRepository.markMailConsumed(...args),
+		async (threadId, jobIds) => await jobRepository.markMailConsumed(threadId, jobIds, {}),
 	);
 	const executionRepository = mock<AgentExecutionRepository>();
 	const agentRepository = mock<AgentRepository>();
@@ -328,7 +328,7 @@ describe('AgentWakeService', () => {
 		const { service, orchestrator, jobRepository, backgroundJobService } = setup();
 		backgroundJobService.markMailConsumed.mockImplementation(async (...args) => {
 			expect(service.isWakeActive('thread-1')).toBe(false);
-			return await jobRepository.markMailConsumed(...args);
+			return await jobRepository.markMailConsumed(args[0], args[1], {});
 		});
 
 		await service.attemptWake('thread-1');
@@ -341,7 +341,7 @@ describe('AgentWakeService', () => {
 				identity: expect.objectContaining({ type: 'draft', principalHash }),
 			}),
 		);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], {});
 	});
 
 	it('delivers results that arrive during a wake and stops after the queue is empty', async () => {
@@ -368,8 +368,8 @@ describe('AgentWakeService', () => {
 			expect(orchestrator.executeForWake).toHaveBeenLastCalledWith(
 				expect.objectContaining({ message: expect.stringContaining('Later result') }),
 			);
-			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(1, 'thread-1', ['job-1']);
-			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(2, 'thread-1', ['job-2']);
+			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(1, 'thread-1', ['job-1'], {});
+			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(2, 'thread-1', ['job-2'], {});
 
 			jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([]);
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS * 3);
@@ -399,7 +399,7 @@ describe('AgentWakeService', () => {
 					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 				}),
 			);
-			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], {});
 
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 			expect(lockService.withLease).toHaveBeenCalledTimes(2);
@@ -652,7 +652,11 @@ describe('AgentWakeService', () => {
 
 		expect(service.isWakeActive('thread-1')).toBe(false);
 		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(2);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			['job-1'],
+			{},
+		);
 	});
 
 	it('stops after three failed wakes for the same pending jobs', async () => {

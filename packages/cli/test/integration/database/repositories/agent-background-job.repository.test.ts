@@ -145,9 +145,9 @@ describe('AgentBackgroundJobRepository', () => {
 		const foreignId = uuid();
 		await insertJob({ id: foreignId, parentThreadId: 'thread-2' });
 
-		await expect(repository.markMailConsumed('thread-1', [])).resolves.toBe(0);
+		await expect(repository.markMailConsumed('thread-1', [], {})).resolves.toBe(0);
 		await expect(
-			repository.markMailConsumed('thread-1', [selectedId, runningId, foreignId]),
+			repository.markMailConsumed('thread-1', [selectedId, runningId, foreignId], {}),
 		).resolves.toBe(1);
 
 		const selected = await repository.findById(selectedId);
@@ -244,6 +244,7 @@ describe('AgentBackgroundJobRepository', () => {
 				logger,
 				agentsConfig,
 				mock<AgentExecutionUpdateBroadcaster>(),
+				Container.get(AgentSessionLeaseService),
 			);
 			const wakeService = new AgentWakeService(
 				repository,

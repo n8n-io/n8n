@@ -1,3 +1,4 @@
+import type { OperationContext, Transaction } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -23,6 +24,7 @@ import {
 	settlementStatusForExecution,
 } from '../agent-background-job.service';
 import { AgentWakeService } from '../agent-wake.service';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 
 function makeWorkflowJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJob {
 	return makeJob({
@@ -84,6 +86,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.findRunningPastTimeout.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
+	const sessionLeases = mockSessionLeases();
 	const service = new AgentBackgroundJobService(
 		jobRepository,
 		executionRepository,
@@ -92,9 +95,11 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		logger,
 		agentsConfig,
 		updateBroadcaster,
+		sessionLeases,
 	);
 	return {
 		service,
+		sessionLeases,
 		jobRepository,
 		executionRepository,
 		executionPersistence,
@@ -132,9 +137,46 @@ describe('markMailConsumed', () => {
 			expect(wakeService.isWakeActive).toHaveBeenCalledWith('thread-1');
 			expect(count).toBe(active ? 0 : 1);
 			if (active) expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
-			else expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+			else expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], {});
 		},
 	);
+});
+
+describe('fenced job writes', () => {
+	it('creates jobs and marks results as delivered in fenced transactions', async () => {
+		const { service, jobRepository, sessionLeases } = setup();
+		const trxCtx: OperationContext = { trx: mock<Transaction>() };
+		sessionLeases.fencedWrite.mockImplementation(async (_ctx, write) => await write(trxCtx));
+		jobRepository.markMailConsumed.mockResolvedValue(0);
+
+		await service.registerSubAgentJob(registerParams);
+		await service.registerWorkflowJob({
+			id: 'job-2',
+			parentAgentId: 'agent-1',
+			parentThreadId: 'thread-1',
+			parentResourceId: 'draft-chat:user-1',
+			parentPrincipalHash: 'principal-hash',
+			title: 'My Workflow',
+			workflowId: 'workflow-1',
+			executionId: 'exec-1',
+		});
+		await service.markMailConsumed('thread-1', ['job-1']);
+
+		expect(sessionLeases.fencedWrite).toHaveBeenCalledTimes(3);
+		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith(
+			'thread-1',
+			trxCtx,
+		);
+		expect(jobRepository.insertJob).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'job-1' }),
+			trxCtx,
+		);
+		expect(jobRepository.insertWorkflowJobOrGetExisting).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'job-2', childExecutionId: 'exec-1' }),
+			trxCtx,
+		);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], trxCtx);
+	});
 });
 
 describe('background task notifications', () => {
@@ -246,7 +288,7 @@ describe('registerSubAgentJob', () => {
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
+		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith('thread-1', {});
 	});
 });
 
@@ -475,7 +517,7 @@ describe('cancel', () => {
 
 		expect(outcome).toBe('cancelled');
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], {});
 		expect(controller.signal.aborted).toBe(true);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
@@ -654,6 +696,7 @@ describe('registerWorkflowJob', () => {
 				childExecutionId: 'exec-1',
 				workflowId: 'workflow-1',
 			}),
+			{},
 		);
 		// No timeout: the execution's own lifecycle governs how long it may wait.
 		expect(jobRepository.insertWorkflowJobOrGetExisting.mock.calls[0][0]).not.toHaveProperty(
