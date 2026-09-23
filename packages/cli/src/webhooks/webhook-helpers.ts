@@ -1113,7 +1113,7 @@ export async function executeWebhook(
 		// Before the run, because a short workflow answers before `startExecution`
 		// returns and nothing replays a missed response. The id is minted here, so
 		// the run and the listener agree on it.
-		if (routesToEngineV2) {
+		if (routesToEngineV2 && responseMode !== 'onReceived') {
 			const engineExecutionId = createExecutionIdV2();
 			pending = Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
 			runData.engineExecutionId = engineExecutionId;
@@ -1208,6 +1208,8 @@ export async function executeWebhook(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
+
+		if (routesToEngineV2 && responseMode === 'onReceived') return executionId;
 
 		/**
 		 * The data plane's answer for this run. A run that never answers is reported
