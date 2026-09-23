@@ -46,6 +46,9 @@ const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 });
 
+// Keep an in-place popper outside a scroll container's clipping area.
+const inPlacePopperOptions: { strategy: 'fixed' } = { strategy: 'fixed' };
+
 const GLOBAL_GROUP: ProjectListItem = {
 	id: 'all_users',
 	name: props.allUsersLabel ?? locale.baseText('projects.sharing.allUsers'),
@@ -235,6 +238,7 @@ watch(
 				:disabled="props.readonly || !!props.disabledTooltip"
 				:clearable
 				:teleported="props.teleported"
+				:popper-options="props.teleported ? undefined : inPlacePopperOptions"
 				:popper-class="$style.popper"
 				@update:model-value="onProjectSelected"
 				@clear="emit('clear')"
