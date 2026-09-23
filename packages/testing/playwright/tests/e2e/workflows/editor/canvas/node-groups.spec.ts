@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
+import type { TestRequirements } from '../../../../../Types';
 
 const FIXTURE = 'Canvas-node-groups-fixture.json';
 const IF_FIXTURE = 'Canvas-node-groups-if-fixture.json';
@@ -16,6 +17,11 @@ const STICKY_FIXTURE_SET_A_ID = 'a1b2c3d4-0000-4000-8000-000000000002';
 const STICKY_FIXTURE_SET_B_ID = 'a1b2c3d4-0000-4000-8000-000000000003';
 const STICKY_FIXTURE_STICKY_ID = 'a1b2c3d4-0000-4000-8000-000000000004';
 const AUTOSAVE_TIMEOUT = 5_000;
+const EMPTY_CANVAS_GROUPS_REQUIREMENTS: TestRequirements = {
+	storage: {
+		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '121_empty_canvas_groups': true }),
+	},
+};
 
 // PERSISTED_FIXTURE has 4 workflow nodes but one group containing 2 of them.
 // Groups load collapsed by default, so only 2 canvas nodes render (trigger + Set C).
@@ -29,7 +35,8 @@ test.describe(
 	() => {
 		let workflowId: string;
 
-		test.beforeEach(async ({ n8n }) => {
+		test.beforeEach(async ({ n8n, setupRequirements }) => {
+			await setupRequirements(EMPTY_CANVAS_GROUPS_REQUIREMENTS);
 			const importResult = await n8n.start.fromImportedWorkflow(FIXTURE);
 			workflowId = importResult.workflowId;
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);

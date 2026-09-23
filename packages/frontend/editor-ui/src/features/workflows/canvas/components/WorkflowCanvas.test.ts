@@ -14,8 +14,12 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { mockedStore } from '@/__tests__/utils';
+
+const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
+
+vi.mock('../composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
+}));
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -51,10 +55,10 @@ const renderComponent = createComponentRenderer(WorkflowCanvas, {
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	mockEmptyCanvasGroupsEnabled.value = true;
 
 	const nodeTypesStore = useNodeTypesStore();
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 
 	setupWorkflow(
 		createTestWorkflow({
@@ -130,7 +134,7 @@ describe('WorkflowCanvas', () => {
 			nodeGroups: [{ id: 'g1', name: 'Empty group', nodeIds: [anchor.id] }],
 		});
 		setupWorkflow(workflow);
-		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+		mockEmptyCanvasGroupsEnabled.value = false;
 
 		const { container } = renderComponent();
 
