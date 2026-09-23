@@ -8,12 +8,15 @@ import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
-const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+const { mockWorkflowDocumentStore, openDocumentIds } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: { mergeSettings: vi.fn() },
+	openDocumentIds: new Set<string>(),
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+	useExistingWorkflowDocumentStore: vi.fn((id: string) =>
+		openDocumentIds.has(id) ? mockWorkflowDocumentStore : undefined,
+	),
 	createWorkflowDocumentId: (id: string) => id,
 }));
 
@@ -78,6 +81,7 @@ describe('registerShellCapabilities', () => {
 		};
 
 		beforeEach(() => {
+			openDocumentIds.clear();
 			registerShellCapabilities();
 			workflowsListStore = useWorkflowsListStore();
 		});
@@ -111,10 +115,12 @@ describe('registerShellCapabilities', () => {
 			expect(workflowsListStore.workflowsById['wf-unknown']).toBeUndefined();
 		});
 
-		it('merges the new value into the document store for every id', () => {
+		it('merges the new value only into open document stores', () => {
+			openDocumentIds.add('wf-1');
+
 			capabilityRegistry.use(capabilities.workflowMcpAccessSync)(['wf-1', 'wf-2'], false);
 
-			expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledTimes(2);
+			expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledTimes(1);
 			expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({
 				availableInMCP: false,
 			});

@@ -4,7 +4,7 @@ import type { IWorkflowSettings, ModalKey } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
+	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
@@ -35,7 +35,8 @@ const syncWorkflowMcpAccess = (workflowIds: string[], availableInMCP: boolean) =
 			}
 		}
 
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).mergeSettings({
+		// Only an open document needs the value. A document opened later loads it from the server.
+		useExistingWorkflowDocumentStore(createWorkflowDocumentId(workflowId))?.mergeSettings({
 			availableInMCP,
 		});
 	}
