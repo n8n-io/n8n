@@ -18,7 +18,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import chunk from 'lodash/chunk';
-import type { ErrorReporter, InstanceSettings, StorageConfig } from 'n8n-core';
+import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { createRequire } from 'node:module';
 import { v4 as uuid } from 'uuid';
@@ -42,6 +42,7 @@ import {
 	AgentExecutionService,
 	type StartedExecution,
 } from '@/modules/agents/agent-execution.service';
+import { AgentSessionLeaseLostError } from '@/modules/agents/agent-session-lease-lost.error';
 import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
@@ -64,7 +65,6 @@ import {
 	AgentExecutionRepository,
 	EXECUTION_LIVENESS_GRACE_MS,
 } from '@/modules/agents/repositories/agent-execution.repository';
-import { AgentSessionLeaseRepository } from '@/modules/agents/repositories/agent-session-lease.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createMember, createAdmin } from '../../shared/db/users';
@@ -73,6 +73,8 @@ import { createMember, createAdmin } from '../../shared/db/users';
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
 	'@n8n/db/dist/services/typeorm-transaction',
 ) as typeof import('@n8n/db/dist/services/typeorm-transaction');
+
+const isPostgres = process.env.DB_TYPE === 'postgresdb';
 
 describe('AgentExecutionRepository', () => {
 	let repository: AgentExecutionRepository;
@@ -142,6 +144,7 @@ describe('AgentExecutionRepository', () => {
 			: threadRepo;
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
+		const sessionLeases = new AgentSessionLeaseService(mockLogger(), executions);
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
@@ -157,16 +160,13 @@ describe('AgentExecutionRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
 			txRunner,
-			new AgentSessionLeaseService(
-				mockLogger(),
-				new AgentSessionLeaseRepository(connection ?? repository.manager.connection, txRunner),
-				mock<InstanceSettings>({ hostId: 'main-test' }),
-			),
+			sessionLeases,
 			Object.assign(new AgentsConfig(), { messageQueueEnabled }),
 		);
 		return {
 			txRunner,
 			threads,
+			sessionLeases,
 			executionService,
 			attachmentService,
 			executionLogStore,
@@ -985,14 +985,21 @@ describe('AgentExecutionRepository', () => {
 			});
 		});
 
-		it('marks the previous execution interrupted when another main takes over an expired lease', async () => {
+		const makeStale = async (executionId: string) =>
+			await repository.update(executionId, {
+				updatedAt: new Date(Date.now() - EXECUTION_LIVENESS_GRACE_MS - 60_000),
+			});
+
+		it('takes over the session from a turn whose heartbeat is stale', async () => {
 			const thread = await createThread();
 			const params = startParams(thread.id);
 			const local = recordingServices();
 			const remote = recordingServices(mock(), peer);
 			const stale = await local.executionService.startExecutionRecording(params, new Date());
-			const leases = new AgentSessionLeaseRepository(repository.manager.connection, local.txRunner);
-			await leases.update({ threadId: thread.id }, { expiresAt: new Date(Date.now() - 60_000) });
+			await expect(
+				remote.executionService.startExecutionRecording(params, new Date()),
+			).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			await makeStale(stale.executionId);
 
 			const takeover = await remote.executionService.startExecutionRecording(params, new Date());
 
@@ -1002,17 +1009,104 @@ describe('AgentExecutionRepository', () => {
 			expect(await repository.findOneByOrFail({ id: takeover.executionId })).toMatchObject({
 				status: 'running',
 			});
+			await local.sessionLeases.renew(stale.executionId);
+			expect(stale.leaseSignal?.reason).toBeInstanceOf(AgentSessionLeaseLostError);
 			await expect(
 				local.executionService.finalizeExecution(stale.executionId, {
 					...params,
 					record: finishedRecord(),
 				}),
-			).rejects.toThrow('Agent execution is no longer running');
+			).rejects.toBeInstanceOf(AgentSessionLeaseLostError);
 			await remote.executionService.finalizeExecution(takeover.executionId, {
 				...params,
 				record: finishedRecord(),
 			});
 		});
+
+		it('rejects the timeline and terminal writes of a turn whose session was taken over', async () => {
+			const thread = await createThread();
+			const params = startParams(thread.id);
+			const local = recordingServices();
+			const remote = recordingServices(mock(), peer);
+			const stale = await local.executionService.startExecutionRecording(params, new Date());
+			await makeStale(stale.executionId);
+			const takeover = await remote.executionService.startExecutionRecording(params, new Date());
+
+			local.executionService.recordTimelineSnapshot({
+				...params,
+				executionId: stale.executionId,
+				timeline: [{ type: 'text', content: 'Late output', timestamp: 1 }],
+			});
+			await expect(
+				local.executionService.finalizeExecution(stale.executionId, {
+					...params,
+					record: finishedRecord(),
+				}),
+			).rejects.toBeInstanceOf(AgentSessionLeaseLostError);
+
+			expect(await repository.findOneByOrFail({ id: stale.executionId })).toMatchObject({
+				status: 'interrupted',
+				timeline: null,
+			});
+			await remote.executionService.finalizeExecution(takeover.executionId, {
+				...params,
+				record: finishedRecord(),
+			});
+		});
+
+		it.skipIf(!isPostgres)(
+			'admits a start that waits for the terminal write of a stale-looking turn',
+			async () => {
+				const thread = await createThread();
+				const params = startParams(thread.id);
+				const finishing = await createExecution({
+					threadId: thread.id,
+					status: 'running',
+					startedAt: new Date(),
+				});
+				await makeStale(finishing.id);
+				const peerTxRunner = new TypeOrmTransactionRunner(peer, mockLogger());
+				const peerExecutions = new AgentExecutionRepository(peer, peerTxRunner);
+				const written = createDeferredPromise<OperationContext>();
+				const commit = createDeferredPromise();
+				const terminalWrite = peerTxRunner.run({}, async (ctx) => {
+					await peerExecutions.updateIfRunning(
+						finishing.id,
+						{
+							status: 'success',
+							stoppedAt: new Date(),
+							duration: 1,
+							timeline: null,
+							storedAt: 'db',
+							error: null,
+							failureSummary: null,
+						},
+						ctx,
+					);
+					written.resolve(ctx);
+					await commit.promise;
+				});
+				const peerCtx = await written.promise;
+				const { executionService } = recordingServices();
+
+				const start = executionService.startExecutionRecording(params, new Date());
+				await waitForPeerLock(peerCtx);
+				commit.resolve();
+				await terminalWrite;
+				const started = await start;
+
+				expect(await repository.findOneByOrFail({ id: finishing.id })).toMatchObject({
+					status: 'success',
+				});
+				expect(await repository.findOneByOrFail({ id: started.executionId })).toMatchObject({
+					status: 'running',
+				});
+				await executionService.finalizeExecution(started.executionId, {
+					...params,
+					record: finishedRecord(),
+				});
+			},
+		);
 	});
 
 	it.each([false, true])(

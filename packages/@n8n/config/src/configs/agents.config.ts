@@ -80,9 +80,10 @@ export class AgentsConfig {
 	backgroundTasksEnabled: boolean = false;
 
 	/**
-	 * Enable the agent message queue, which is still in development: a
-	 * database lease allows one agent turn at a time per session. Must be set
-	 * to the same value on mains and workers — workers run agent workflow nodes.
+	 * Enable the agent message queue, which is still in development: the
+	 * running execution of an agent turn holds its session, so one turn at a
+	 * time runs per session. Must be set to the same value on mains and
+	 * workers — workers run agent workflow nodes.
 	 */
 	@Env('N8N_AGENTS_MESSAGE_QUEUE_ENABLED')
 	messageQueueEnabled: boolean = false;

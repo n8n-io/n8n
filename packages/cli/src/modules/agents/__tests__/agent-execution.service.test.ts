@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
-import type { TransactionRunner } from '@n8n/db';
+import type { OperationContext, Transaction, TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -102,14 +102,9 @@ describe('AgentExecutionService', () => {
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
-		sessionLeases.acquire.mockImplementation(async (request) => ({
-			...request,
-			ownerToken: 'lease-token',
-			epoch: 1,
-			previousExecutionId: null,
-		}));
+		agentExecutionRepository.findRunningInSessionForUpdate.mockResolvedValue([]);
 		sessionLeases.hold.mockReturnValue(new AbortController().signal);
-		sessionLeases.isLost.mockReturnValue(false);
+		sessionLeases.isHeld.mockReturnValue(false);
 		agentsConfig.messageQueueEnabled = true;
 
 		service = new AgentExecutionService(
@@ -188,6 +183,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				id,
 				expect.objectContaining({ timeline: initialTimeline }),
+				{},
 			);
 		});
 
@@ -226,7 +222,6 @@ describe('AgentExecutionService', () => {
 				await titleLookupStarted.promise;
 				await vi.advanceTimersByTimeAsync(30_000);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
-				expect(sessionLeases.renew).toHaveBeenCalledWith('thread-1', 'execution-1');
 				titleLookup.resolve(null);
 				const { executionId } = await recording;
 
@@ -252,10 +247,26 @@ describe('AgentExecutionService', () => {
 				await vi.advanceTimersByTimeAsync(30_000);
 
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
-				expect(sessionLeases.renew).toHaveBeenCalledOnce();
-				expect(sessionLeases.release).toHaveBeenCalledWith('thread-1', executionId);
+				expect(sessionLeases.renew).not.toHaveBeenCalled();
+				expect(sessionLeases.release).toHaveBeenCalledWith(executionId);
 			} finally {
 				titleLookup.resolve(null);
+				vi.useRealTimers();
+			}
+		});
+
+		it('renews a held session lease without a second heartbeat write', async () => {
+			vi.useFakeTimers();
+			try {
+				await startSnapshotExecution();
+				sessionLeases.isHeld.mockReturnValue(true);
+
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(sessionLeases.hold).toHaveBeenCalledWith('execution-1');
+				expect(sessionLeases.renew).toHaveBeenCalledWith('execution-1');
+				expect(agentExecutionRepository.touchRunning).not.toHaveBeenCalled();
+			} finally {
 				vi.useRealTimers();
 			}
 		});
@@ -285,22 +296,21 @@ describe('AgentExecutionService', () => {
 
 			expect(first).toEqual({ executionId: 'execution-1', leaseSignal: undefined });
 			expect(second).toEqual({ executionId: 'execution-2', leaseSignal: undefined });
-			expect(sessionLeases.acquire).not.toHaveBeenCalled();
+			expect(agentExecutionRepository.findRunningInSessionForUpdate).not.toHaveBeenCalled();
 			expect(sessionLeases.hold).not.toHaveBeenCalled();
 			for (const { executionId } of [first, second]) {
 				await service.finalizeExecution(executionId, { ...params, record: makeMessageRecord() });
 			}
 		});
 
-		it('rejects the turn inside the recording transaction when another turn holds the session', async () => {
+		it('rejects the turn inside the recording transaction while a live turn runs on the session', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread(),
 				created: false,
 			});
-			agentExecutionRepository.saveInContext.mockResolvedValue(
-				mock<AgentExecution>({ id: 'execution-1' }),
-			);
-			sessionLeases.acquire.mockRejectedValue(new AgentTurnAlreadyRunningError());
+			agentExecutionRepository.findRunningInSessionForUpdate.mockResolvedValue([
+				{ ...runningExecution('execution-0'), stale: false },
+			]);
 
 			await expect(
 				service.startExecutionRecording(
@@ -317,31 +327,60 @@ describe('AgentExecutionService', () => {
 			).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 
 			expect(txRunner.run).toHaveBeenCalledOnce();
+			expect(agentExecutionRepository.saveInContext).not.toHaveBeenCalled();
+			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
 			expect(sessionLeases.hold).not.toHaveBeenCalled();
 			expect(executionUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		});
 
-		it('interrupts the execution whose expired lease it took over', async () => {
-			sessionLeases.acquire.mockImplementation(async (request) => ({
-				...request,
-				ownerToken: 'lease-token',
-				epoch: 2,
-				previousExecutionId: 'execution-0',
-			}));
-			agentExecutionRepository.findRunningById.mockResolvedValue({
-				id: 'execution-0',
-				threadId: 'thread-1',
-				startedAt: new Date(0),
-				updatedAt: new Date(0),
-				timeline: null,
+		it('interrupts the executions of stale turns in the recording transaction', async () => {
+			const trxCtx: OperationContext = { trx: mock<Transaction>() };
+			txRunner.run.mockImplementation(async (_ctx, fn) => await fn(trxCtx));
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
 			});
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			agentExecutionRepository.saveInContext.mockResolvedValue(
+				mock<AgentExecution>({ id: 'execution-1' }),
+			);
+			agentExecutionRepository.findRunningInSessionForUpdate.mockResolvedValue([
+				{ ...runningExecution('execution-0'), stale: true },
+			]);
 
-			await startSnapshotExecution();
+			await service.startExecutionRecording(
+				{
+					access: previewAccess,
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+				},
+				new Date(),
+			);
 
-			expect(agentExecutionRepository.findRunningById).toHaveBeenCalledWith('execution-0');
+			expect(agentExecutionRepository.findRunningInSessionForUpdate).toHaveBeenCalledWith(
+				'thread-1',
+				trxCtx,
+			);
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-0',
 				expect.objectContaining({ status: 'interrupted' }),
+				trxCtx,
+			);
+			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionRepository.saveInContext.mock.invocationCallOrder[0],
+			);
+			expect(sessionLeases.hold).toHaveBeenCalledWith('execution-1');
+			await vi.waitFor(() =>
+				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith(
+					expect.objectContaining({ executionId: 'execution-0' }),
+				),
+			);
+			// Clients hear about the interrupted execution only after the recording transaction.
+			expect(agentExecutionThreadRepository.findOneBy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				agentExecutionRepository.saveInContext.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -354,22 +393,32 @@ describe('AgentExecutionService', () => {
 			).rejects.toThrow('Agent execution is no longer running');
 
 			expect(errorReporter.error).toHaveBeenCalled();
-			expect(sessionLeases.release).toHaveBeenCalledWith('thread-1', 'execution-1');
+			expect(sessionLeases.release).toHaveBeenCalledWith('execution-1');
 		});
 
 		it('does not report a finalization that failed because the lease was lost', async () => {
 			const params = await startSnapshotExecution();
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(false);
-			sessionLeases.isLost.mockReturnValue(true);
+			sessionLeases.isHeld.mockReturnValue(true);
 
 			await expect(
 				service.finalizeExecution('execution-1', { ...params, record: makeMessageRecord() }),
 			).rejects.toBeInstanceOf(AgentSessionLeaseLostError);
 
 			expect(errorReporter.error).not.toHaveBeenCalled();
-			expect(sessionLeases.release).toHaveBeenCalledWith('thread-1', 'execution-1');
+			expect(sessionLeases.release).toHaveBeenCalledWith('execution-1');
 		});
 	});
+
+	function runningExecution(id: string) {
+		return {
+			id,
+			threadId: 'thread-1',
+			startedAt: new Date(0),
+			updatedAt: new Date(0),
+			timeline: null,
+		};
+	}
 
 	async function startSnapshotExecution() {
 		agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
@@ -578,6 +627,7 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
+			{},
 		);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
@@ -650,6 +700,7 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				{},
 			);
 			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
@@ -743,6 +794,7 @@ describe('AgentExecutionService', () => {
 						storedAt: 'db',
 						failureSummary: null,
 					}),
+					{},
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 				if (shouldDeleteBlob) {
@@ -1137,6 +1189,7 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 					failureSummary: null,
 				}),
+				{},
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
@@ -1198,6 +1251,7 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				{},
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
 		});

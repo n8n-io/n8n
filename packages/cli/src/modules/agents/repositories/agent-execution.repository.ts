@@ -24,6 +24,8 @@ export type RunningAgentExecution = Pick<
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
 >;
 
+export type SessionRunningExecution = RunningAgentExecution & { stale: boolean };
+
 type AgentExecutionFinalizationValues = Pick<
 	AgentExecution,
 	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error' | 'failureSummary'
@@ -55,26 +57,46 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 
 	/** Running executions whose last heartbeat is older than the liveness grace. */
 	async findStaleRunning(): Promise<RunningAgentExecution[]> {
-		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -EXECUTION_LIVENESS_GRACE_MS);
 		return await this.find({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
-			where: {
-				status: 'running',
-				updatedAt: Raw((updatedAt) => `${updatedAt} <= ${staleBefore}`),
-			},
+			where: { status: 'running', updatedAt: Raw((updatedAt) => this.isStale(updatedAt)) },
 		});
+	}
+
+	/**
+	 * Locks the running executions of a session in the transaction of `ctx` and
+	 * reads from the locked rows whether their heartbeat is stale. SQLite needs
+	 * no row lock, because it serializes writers with `BEGIN IMMEDIATE`.
+	 */
+	async findRunningInSessionForUpdate(
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<SessionRunningExecution[]> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(AgentExecution, 'execution')
+			.select([
+				'execution.id',
+				'execution.threadId',
+				'execution.startedAt',
+				'execution.updatedAt',
+				'execution.timeline',
+			])
+			.addSelect(`CASE WHEN ${this.isStale('execution."updatedAt"')} THEN 1 ELSE 0 END`, 'stale')
+			.where({ threadId, status: 'running' });
+		if (this.isPostgres) query.setLock('pessimistic_write');
+		const { entities, raw } = await query.getRawAndEntities<{
+			execution_id: string;
+			stale: number | string;
+		}>();
+		const staleIds = new Set(
+			raw.filter((row) => Number(row.stale) === 1).map((row) => row.execution_id),
+		);
+		return entities.map((execution) => ({ ...execution, stale: staleIds.has(execution.id) }));
 	}
 
 	// TODO(AGENT-1031): Remove with the message queue flag. The session lease replaces this check.
 	async existsRunningByThread(threadId: string): Promise<boolean> {
 		return await this.existsBy({ threadId, status: 'running' });
-	}
-
-	async findRunningById(executionId: string): Promise<RunningAgentExecution | null> {
-		return await this.findOne({
-			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
-			where: { id: executionId, status: 'running' },
-		});
 	}
 
 	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {
@@ -104,8 +126,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.update(
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
 			{ id: executionId, status: 'running' },
 			values as QueryDeepPartialEntity<AgentExecution>,
 		);
@@ -281,5 +305,11 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			select: ['id', 'threadId', 'storedAt'],
 			where: { thread: { agentId }, storedAt: Not('db') },
 		});
+	}
+
+	/** SQL condition that the heartbeat in `updatedAtColumn` is older than the liveness grace. */
+	private isStale(updatedAtColumn: string): string {
+		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -EXECUTION_LIVENESS_GRACE_MS);
+		return `${updatedAtColumn} <= ${staleBefore}`;
 	}
 }

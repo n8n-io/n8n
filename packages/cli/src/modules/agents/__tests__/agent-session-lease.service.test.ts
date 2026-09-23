@@ -1,140 +1,98 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { OperationContext } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentSessionLeaseLostError } from '../agent-session-lease-lost.error';
 import { AgentSessionLeaseService, withLeaseSignal } from '../agent-session-lease.service';
-import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
-import type { AgentSessionLeaseRepository } from '../repositories/agent-session-lease.repository';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
-const request = { threadId: 'thread-1', agentId: 'agent-1', executionId: 'execution-1' };
-const ctx: OperationContext = {};
+const executionId = 'execution-1';
 
 describe('AgentSessionLeaseService', () => {
-	const repository = mock<AgentSessionLeaseRepository>();
+	const executionRepository = mock<AgentExecutionRepository>();
 	let service: AgentSessionLeaseService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository.acquire.mockResolvedValue({ acquired: true, epoch: 3, previousExecutionId: null });
-		repository.renew.mockResolvedValue(true);
-		repository.release.mockResolvedValue(true);
-		service = new AgentSessionLeaseService(
-			mockLogger(),
-			repository,
-			mock<InstanceSettings>({ hostId: 'main-1' }),
-		);
+		executionRepository.touchRunning.mockResolvedValue(true);
+		service = new AgentSessionLeaseService(mockLogger(), executionRepository);
 	});
 
-	async function holdLease() {
-		const grant = await service.acquire(request, ctx);
-		return { grant, signal: service.hold(grant) };
-	}
+	it('renews the lease with a heartbeat of the execution', async () => {
+		const signal = service.hold(executionId);
 
-	it('acquires the lease for this main and returns the grant', async () => {
-		repository.acquire.mockResolvedValue({
-			acquired: true,
-			epoch: 4,
-			previousExecutionId: 'execution-0',
-		});
+		await service.renew(executionId);
 
-		const grant = await service.acquire(request, ctx);
-
-		expect(repository.acquire).toHaveBeenCalledWith(
-			expect.objectContaining({ ...request, ownerHostId: 'main-1', ownerToken: grant.ownerToken }),
-			120_000,
-			ctx,
-		);
-		expect(grant).toMatchObject({ ...request, epoch: 4, previousExecutionId: 'execution-0' });
+		expect(executionRepository.touchRunning).toHaveBeenCalledWith(executionId);
+		expect(signal.aborted).toBe(false);
 	});
 
-	it('rejects as busy when another turn holds the session', async () => {
-		repository.acquire.mockResolvedValue({ acquired: false });
+	it('aborts the turn at once when its execution no longer runs', async () => {
+		const signal = service.hold(executionId);
+		executionRepository.touchRunning.mockResolvedValue(false);
 
-		await expect(service.acquire(request, ctx)).rejects.toBeInstanceOf(
-			AgentTurnAlreadyRunningError,
-		);
-	});
+		await service.renew(executionId);
 
-	it('refuses a session while an older local turn on it is still settling', async () => {
-		await holdLease();
-
-		await expect(
-			service.acquire({ ...request, executionId: 'execution-2' }, ctx),
-		).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
-		expect(repository.acquire).toHaveBeenCalledOnce();
+		expect(signal.reason).toBeInstanceOf(AgentSessionLeaseLostError);
 	});
 
 	it('aborts the turn after two failed renewals in a row', async () => {
-		const { signal } = await holdLease();
-		repository.renew.mockRejectedValue(new Error('database unavailable'));
+		const signal = service.hold(executionId);
+		executionRepository.touchRunning.mockRejectedValue(new Error('database unavailable'));
 
-		await service.renew(request.threadId, request.executionId);
+		await service.renew(executionId);
 		expect(signal.aborted).toBe(false);
-		await service.renew(request.threadId, request.executionId);
+		await service.renew(executionId);
 
-		expect(signal.aborted).toBe(true);
 		expect(signal.reason).toBeInstanceOf(AgentSessionLeaseLostError);
-		expect(service.isLost(request.threadId, request.executionId)).toBe(true);
 	});
 
 	it('counts a renewal that is still in progress at the next heartbeat as failed', async () => {
-		const { signal } = await holdLease();
+		const signal = service.hold(executionId);
 		const pending = createDeferredPromise<boolean>();
-		repository.renew.mockReturnValueOnce(pending.promise);
+		executionRepository.touchRunning.mockReturnValueOnce(pending.promise);
 
-		const firstRenewal = service.renew(request.threadId, request.executionId);
-		await service.renew(request.threadId, request.executionId);
-		await service.renew(request.threadId, request.executionId);
+		const firstRenewal = service.renew(executionId);
+		await service.renew(executionId);
+		await service.renew(executionId);
 
 		expect(signal.aborted).toBe(true);
 		pending.resolve(true);
 		await firstRenewal;
 	});
 
-	it('aborts the turn at once when another main took over the lease', async () => {
-		const { signal } = await holdLease();
-		repository.renew.mockResolvedValue(false);
-
-		await service.renew(request.threadId, request.executionId);
-
-		expect(signal.reason).toBeInstanceOf(AgentSessionLeaseLostError);
-	});
-
 	it('resets the failure count after a successful renewal', async () => {
-		const { signal } = await holdLease();
-		repository.renew
+		const signal = service.hold(executionId);
+		executionRepository.touchRunning
 			.mockRejectedValueOnce(new Error('database unavailable'))
 			.mockResolvedValueOnce(true)
 			.mockRejectedValueOnce(new Error('database unavailable'));
 
-		await service.renew(request.threadId, request.executionId);
-		await service.renew(request.threadId, request.executionId);
-		await service.renew(request.threadId, request.executionId);
+		await service.renew(executionId);
+		await service.renew(executionId);
+		await service.renew(executionId);
 
 		expect(signal.aborted).toBe(false);
 	});
 
-	it('frees the local slot even when the release query fails', async () => {
-		const { grant } = await holdLease();
-		repository.release.mockRejectedValue(new Error('database unavailable'));
+	it('forgets a released lease without a database call', async () => {
+		service.hold(executionId);
 
-		await service.release(request.threadId, request.executionId);
+		service.release(executionId);
+		await service.renew(executionId);
 
-		expect(repository.release).toHaveBeenCalledWith(request.threadId, grant.ownerToken);
-		await expect(service.acquire(request, ctx)).resolves.toMatchObject(request);
+		expect(service.isHeld(executionId)).toBe(false);
+		expect(executionRepository.touchRunning).not.toHaveBeenCalled();
 	});
 
-	it('ignores renewals and releases for an execution that does not hold the lease', async () => {
-		await holdLease();
+	it('ignores renewals and releases for an execution that holds no lease', async () => {
+		service.hold(executionId);
 
-		await service.renew(request.threadId, 'other-execution');
-		await service.release(request.threadId, 'other-execution');
+		await service.renew('other-execution');
+		service.release('other-execution');
 
-		expect(repository.renew).not.toHaveBeenCalled();
-		expect(repository.release).not.toHaveBeenCalled();
+		expect(executionRepository.touchRunning).not.toHaveBeenCalled();
+		expect(service.isHeld(executionId)).toBe(true);
 	});
 });
 

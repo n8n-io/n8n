@@ -7,7 +7,7 @@ import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
 const entityManager = mockEntityManager(AgentExecution);
-const mockDataSource = { manager: entityManager };
+const mockDataSource = { manager: entityManager, options: { type: 'sqlite' } };
 
 describe('AgentExecutionRepository', () => {
 	let repository: AgentExecutionRepository;
