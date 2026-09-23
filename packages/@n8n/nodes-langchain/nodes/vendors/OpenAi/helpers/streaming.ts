@@ -87,6 +87,42 @@ function isChatResponse(value: unknown): value is ChatResponse {
 	return typeof value === 'object' && value !== null && ('output' in value || 'status' in value);
 }
 
+/** A real response stream is async-iterable; a parsed JSON body is not. */
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+	);
+}
+
+/**
+ * Turn a full (non-SSE) `/responses` body into a result. A terminal `failed`
+ * body is reported as an error so gateway failures do not pass as success.
+ */
+function finalizeFullBody(ctx: IExecuteFunctions, body: unknown): ChatResponse {
+	const parsed =
+		typeof body === 'string' || Buffer.isBuffer(body)
+			? jsonParse<unknown>(Buffer.isBuffer(body) ? body.toString('utf-8') : body, {
+					fallbackValue: null,
+				})
+			: body;
+
+	if (isChatResponse(parsed)) {
+		if (parsed.status === 'failed') {
+			throw new NodeApiError(ctx.getNode(), {
+				message: parsed.error?.message ?? 'The model failed to answer',
+				code: parsed.error?.code ?? null,
+			});
+		}
+		return parsed;
+	}
+
+	throw new NodeOperationError(ctx.getNode(), 'The streamed response ended without a result', {
+		description: 'The model did not send a completed response. Try again.',
+	});
+}
+
 /**
  * Reads a streamed `/responses` call and returns the response object that the terminal event
  * carries. The result has the same shape as a non-streamed call, so callers are unaffected.
@@ -103,38 +139,51 @@ export async function collectStreamedResponse(
 	let response: ChatResponse | undefined;
 	const rawChunks: Buffer[] = [];
 
-	for await (const event of parseEvents(
-		readActiveStream(stream, rawChunks, idleTimeoutMs, abortSignal),
-	)) {
-		switch (event.type) {
-			case 'response.completed':
-			case 'response.incomplete':
-				response = event.response;
-				break;
-			case 'response.failed':
-				throw new NodeApiError(ctx.getNode(), {
-					message: event.response?.error?.message ?? 'The model failed to answer',
-				});
-			case 'error':
-				throw new NodeApiError(ctx.getNode(), {
-					message: event.message ?? event.error?.message ?? 'The response stream failed',
-					code: event.code ?? event.error?.code ?? null,
-				});
-			default:
-				break;
+	// Some gateways (and the evaluation HTTP mock) ignore `stream: true` and hand
+	// back the parsed JSON body instead of an SSE stream. That body is not
+	// iterable, so finalize it directly rather than reading it as a stream.
+	if (!isAsyncIterable(stream)) {
+		return finalizeFullBody(ctx, stream);
+	}
+
+	try {
+		for await (const event of parseEvents(
+			readActiveStream(stream, rawChunks, idleTimeoutMs, abortSignal),
+		)) {
+			switch (event.type) {
+				case 'response.completed':
+				case 'response.incomplete':
+					response = event.response;
+					break;
+				case 'response.failed':
+					throw new NodeApiError(ctx.getNode(), {
+						message: event.response?.error?.message ?? 'The model failed to answer',
+					});
+				case 'error':
+					throw new NodeApiError(ctx.getNode(), {
+						message: event.message ?? event.error?.message ?? 'The response stream failed',
+						code: event.code ?? event.error?.code ?? null,
+					});
+				default:
+					break;
+			}
 		}
+	} catch (error) {
+		// Terminal-event errors already carry node context; keep them as-is.
+		if (error instanceof NodeApiError || error instanceof NodeOperationError) throw error;
+		// Idle timeout, cancellation, or a socket failure surfaces as a plain
+		// Error out of the iterator. Rewrap it so the caller keeps node context.
+		throw new NodeOperationError(
+			ctx.getNode(),
+			error instanceof Error ? error.message : 'The response stream failed',
+			{ description: 'The response stream stopped before it completed.' },
+		);
 	}
 
 	if (response) return response;
 
-	// Some gateways (and the evaluation HTTP mock) ignore `stream: true` and
-	// return the full JSON body instead of an SSE stream. Parse the buffered
-	// body so those callers still get a result.
+	// A stream that ended without a terminal event may still have carried the
+	// full JSON body (a gateway that streamed the body verbatim). Parse it.
 	const raw = Buffer.concat(rawChunks).toString('utf-8').trim();
-	const parsed = raw ? jsonParse<unknown>(raw, { fallbackValue: null }) : null;
-	if (isChatResponse(parsed)) return parsed;
-
-	throw new NodeOperationError(ctx.getNode(), 'The streamed response ended without a result', {
-		description: 'The model did not send a completed response. Try again.',
-	});
+	return finalizeFullBody(ctx, raw);
 }

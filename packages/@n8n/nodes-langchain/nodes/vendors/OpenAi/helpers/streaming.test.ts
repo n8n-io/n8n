@@ -21,7 +21,7 @@ describe('collectStreamedResponse', () => {
 
 	beforeEach(() => {
 		ctx = mockDeep<IExecuteFunctions>();
-		ctx.getNode.mockReturnValue(
+		vi.mocked(ctx.getNode).mockReturnValue(
 			mock<INode>({
 				id: 'test-node',
 				name: 'Test Node',
@@ -93,6 +93,51 @@ describe('collectStreamedResponse', () => {
 		await expect(collectStreamedResponse(ctx, stream)).rejects.toThrow(
 			'The streamed response ended without a result',
 		);
+	});
+
+	it('should finalize a full JSON body returned instead of a stream', async () => {
+		const body = completedResponse as unknown as ChatResponse;
+
+		const response = await collectStreamedResponse(ctx, body as unknown as Readable);
+
+		expect(response).toEqual(completedResponse);
+	});
+
+	it('should throw when a full JSON body reports a failed status', async () => {
+		const failed = {
+			status: 'failed',
+			error: { message: 'Upstream failed' },
+		} as unknown as ChatResponse;
+
+		await expect(collectStreamedResponse(ctx, failed as unknown as Readable)).rejects.toThrow(
+			'Upstream failed',
+		);
+	});
+
+	it('should finalize a full JSON body streamed without a terminal event', async () => {
+		const stream = sseStream([JSON.stringify(completedResponse)]);
+
+		const response = await collectStreamedResponse(ctx, stream);
+
+		expect(response).toEqual(completedResponse);
+	});
+
+	it('should rewrap an idle timeout as a node error', async () => {
+		const stream = new Readable({ read() {} }); // never emits, never ends
+
+		await expect(collectStreamedResponse(ctx, stream, { idleTimeoutMs: 10 })).rejects.toThrow(
+			'sent no data',
+		);
+	});
+
+	it('should rewrap a cancellation as a node error', async () => {
+		const stream = new Readable({ read() {} });
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(
+			collectStreamedResponse(ctx, stream, { abortSignal: controller.signal }),
+		).rejects.toThrow('cancelled');
 	});
 
 	it('should skip events that are not valid JSON', async () => {
