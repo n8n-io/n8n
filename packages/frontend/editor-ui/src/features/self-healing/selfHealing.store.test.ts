@@ -255,6 +255,21 @@ describe('useSelfHealingStore', () => {
 			expect(leadOf('could_not_fix')).toMatch(/^No fix prepared/);
 		});
 
+		it('resolves an outcome item without publishing anything', () => {
+			const couldNotFix = store
+				.getInboxItems('open')
+				.find((item) => store.getInboxKind(item.id) === 'could_not_fix');
+			if (!couldNotFix) throw new Error('missing seed');
+
+			const response = store.decide(couldNotFix.id, { decision: 'approved' });
+
+			expect(response.autoPublish).toBeUndefined();
+			expect(store.getDetail(couldNotFix.id)?.state).toBe('closed');
+			expect(store.getActivity(couldNotFix.id).map((entry) => entry.type)).not.toContain(
+				'workflow.published',
+			);
+		});
+
 		it('reports what each investigation cost', () => {
 			const items = store.getInboxItems('open');
 			const kindOf = (kind: string) => items.find((item) => store.getInboxKind(item.id) === kind);

@@ -10,9 +10,8 @@ import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useSelfHealingStore } from '../selfHealing.store';
 
 /**
- * Replaces the approve/request-changes popover for the two inbox kinds that
- * are not reviews: one button that takes the user to where the next step
- * happens.
+ * The next step for the two inbox kinds that are not reviews, shown under
+ * their description. The Review button stays in the tab row for every kind.
  */
 const props = defineProps<{
 	reviewId: string;
@@ -37,6 +36,7 @@ async function onContinueInChat() {
 	<div v-if="outcome" :class="$style.actions" data-test-id="self-healing-outcome-actions">
 		<N8nButton
 			v-if="outcome.action?.type === 'open_credential'"
+			variant="outline"
 			size="small"
 			icon="key-round"
 			:label="i18n.baseText('selfHealing.outcome.action.openCredential')"
@@ -45,6 +45,7 @@ async function onContinueInChat() {
 		/>
 		<N8nButton
 			v-else
+			variant="outline"
 			size="small"
 			icon="message-circle"
 			:label="i18n.baseText('selfHealing.outcome.action.continueInChat')"
@@ -59,5 +60,6 @@ async function onContinueInChat() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 }
 </style>

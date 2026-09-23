@@ -118,7 +118,8 @@ const selectedListItem = computed(() =>
 const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
 // Self-healing prototype: "needs you" and "could not fix" items share the review
-// layout but carry no diff and offer a next step instead of a decision.
+// layout but carry no diff. Their next step sits in the description, and
+// approving only marks them resolved.
 const selectedOutcome = computed(() =>
 	selectedReviewId.value ? selfHealingStore.getOutcome(selectedReviewId.value) : null,
 );
@@ -394,10 +395,14 @@ onUnmounted(() => {
 						:tab="detailTab"
 						:deciding="deciding"
 						:show-changes="!selectedOutcome"
+						:approve-label="
+							selectedOutcome ? i18n.baseText('selfHealing.outcome.action.resolve') : ''
+						"
+						:show-request-changes="!selectedOutcome"
 						@update:tab="onDetailTabChange"
 						@decide="onDecide(selectedItem.id, $event)"
 					>
-						<template v-if="selectedOutcome" #actions>
+						<template v-if="selectedOutcome" #description-footer>
 							<SelfHealingOutcomeActions :review-id="selectedItem.id" />
 						</template>
 					</WorkflowReviewDetailTabs>

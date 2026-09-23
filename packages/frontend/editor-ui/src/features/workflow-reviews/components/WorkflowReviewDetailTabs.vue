@@ -21,8 +21,11 @@ const props = withDefaults(
 		deciding: boolean;
 		/** Off for items that carry no diff, such as a self-healing report. */
 		showChanges?: boolean;
+		/** Passed to the decision popover. */
+		approveLabel?: string;
+		showRequestChanges?: boolean;
 	}>(),
-	{ showChanges: true },
+	{ showChanges: true, approveLabel: '', showRequestChanges: true },
 );
 
 // A deep link to the changes tab falls back to activity when there is no diff.
@@ -84,6 +87,8 @@ const ineligibilityHint = computed(() => {
 const showApprovedAndPublished = computed(() => {
 	const review = detail.value;
 	if (!review || review.state !== 'closed' || review.decision !== 'approved') return false;
+	// An item without a diff published nothing, whatever its version pointers say.
+	if (!props.showChanges) return false;
 
 	return (
 		review.workflows.length > 0 &&
@@ -125,16 +130,16 @@ const tabOptions = computed(() => [
 			<!-- Gated on `detail`, not `review`: eligibility only arrives with the
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
-				<slot name="actions">
-					<WorkflowReviewDecisionPopover
-						:deciding="deciding"
-						:viewer-can-decide="viewerCanDecide"
-						:viewer-can-comment="viewerCanComment"
-						:ineligibility-hint="ineligibilityHint"
-						@decide="emit('decide', $event)"
-						@comment-posted="emit('update:tab', 'activity')"
-					/>
-				</slot>
+				<WorkflowReviewDecisionPopover
+					:deciding="deciding"
+					:viewer-can-decide="viewerCanDecide"
+					:viewer-can-comment="viewerCanComment"
+					:ineligibility-hint="ineligibilityHint"
+					:approve-label="approveLabel"
+					:show-request-changes="showRequestChanges"
+					@decide="emit('decide', $event)"
+					@comment-posted="emit('update:tab', 'activity')"
+				/>
 			</div>
 		</div>
 
@@ -169,6 +174,7 @@ const tabOptions = computed(() => [
 							>
 								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
 							</N8nText>
+							<slot name="description-footer" />
 						</div>
 					</template>
 					<template v-if="showApprovedAndPublished" #footer>
