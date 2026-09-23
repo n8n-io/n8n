@@ -7,13 +7,20 @@ import type {
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
-import { Expression, isIndefiniteWait, isNodeClassInstance, UnexpectedError } from 'n8n-workflow';
+import {
+	Expression,
+	isNodeClassInstance,
+	UnexpectedError,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import {
 	EngineRequestNotSupportedError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
+	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
@@ -43,15 +50,21 @@ import {
  * input, not the value the node returned before pausing, is what the step emits
  * at the deadline.
  *
- * A sentinel (`WAIT_INDEFINITELY`, `WAIT_FOR_SUB_EXECUTION`) means the node
- * expects a resume request, which nothing can deliver yet: the data plane has
+ * A sentinel means no deadline ends the wait. `WAIT_FOR_SUB_EXECUTION` waits
+ * for a child execution, and sub-workflow steps do not exist yet, so the step
+ * fails rather than complete as if the child had finished. `WAIT_INDEFINITELY`
+ * waits for a resume request, which nothing can deliver yet: the data plane has
  * no resolve endpoint and the control plane no resume route. Until those land,
- * the call stays a no-op and the step completes with the node's outputs, as
- * it does today.
+ * that call stays a no-op and the step completes with the node's outputs.
  */
 function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): StepExecutionResult {
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined || isIndefiniteWait(waitTill)) return { outputs };
+	if (waitTill === undefined || waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
+		return { outputs };
+	}
+	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
+		throw new UnsupportedWaitError('a sub-execution');
+	}
 
 	return {
 		wait: {

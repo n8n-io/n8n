@@ -86,3 +86,13 @@ export class EngineRequestNotSupportedError extends UserError {
 		);
 	}
 }
+
+/**
+ * A wait for a child execution. Sub-workflow steps do not exist on engine 2.0
+ * yet, so the step fails instead of completing as if the child had finished.
+ */
+export class UnsupportedWaitError extends UserError {
+	constructor(waitsFor: 'a sub-execution') {
+		super(`Engine 2.0 cannot wait for ${waitsFor} yet`);
+	}
+}

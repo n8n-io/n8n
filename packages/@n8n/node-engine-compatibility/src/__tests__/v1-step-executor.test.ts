@@ -19,6 +19,7 @@ import {
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
+	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from '../errors';
 import { V1StepExecutor } from '../v1-step-executor';
@@ -391,14 +392,22 @@ describe('V1StepExecutor', () => {
 		});
 
 		// Nothing can deliver a resume request yet, and a year-3000 deadline would
-		// strand the execution, so a sentinel keeps today's no-op behaviour.
-		it.each([
-			['WAIT_INDEFINITELY', WAIT_INDEFINITELY],
-			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION],
-		])('completes with what the node returned for the %s sentinel', async (_, sentinel) => {
-			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
+		// strand the execution, so this sentinel keeps today's no-op behaviour.
+		it('completes with what the node returned for the WAIT_INDEFINITELY sentinel', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: WAIT_INDEFINITELY.toISOString() });
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			expect(result).toEqual({ outputs: returned });
+		});
+
+		// Sub-workflow steps do not exist yet, so completing the step would report
+		// a child that never finished.
+		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_FOR_SUB_EXECUTION.toISOString(),
+			});
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(UnsupportedWaitError);
+			await expect(execution).rejects.toThrow('Engine 2.0 cannot wait for a sub-execution yet');
 		});
 	});
 
