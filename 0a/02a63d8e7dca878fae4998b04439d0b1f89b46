@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_782619aac31c26::t_b4696cb585e076 936-970,1015-1031
+  s_782619aac31c26::t_7bfabfb82c9be1 1032
+packages/cli/src/modules/agents/utils/__tests__/abort-signal.test.ts
+  s_782619aac31c26::t_0b4230ab12e8e2 1-26
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_782619aac31c26::t_87be58a166f0ef 27,84-85,138-142,223-227,444-448
+packages/cli/src/modules/agents/__tests__/agent-session-lease.service.test.ts
+  s_782619aac31c26::t_0b4230ab12e8e2 8
+packages/cli/src/modules/agents/utils/__tests__/agent-stream.test.ts
+  s_782619aac31c26::t_11ef010e64c683 90
+  s_782619aac31c26::t_9875b82ccedf4d 1-32,34-80,95-103
+  s_782619aac31c26::t_2f951777f7df6f 33
+  s_782619aac31c26::t_8f4abb4bb0a14b 81-89,91-94
+packages/cli/src/modules/agents/utils/agent-stream.ts
+  s_782619aac31c26::t_39a1ba2175c49a 3-17,20,43-78
+  s_782619aac31c26::t_8f4abb4bb0a14b 23-25,30-31,33,37
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_782619aac31c26::t_b4696cb585e076 76-93,470-512
+  s_782619aac31c26::t_91ceadd8e5cb66 513
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_f4b3599c90b8fa 837,848-860,871
+  s_782619aac31c26::t_b4696cb585e076 128-145,1134-1159
+  s_782619aac31c26::t_b7e1a019935bd5 1160
+packages/cli/src/modules/agents/utils/abort-signal.ts
+  s_782619aac31c26::t_31c7673867ace4 1-5
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_782619aac31c26::t_77baea3c660099 52
+  s_782619aac31c26::t_87be58a166f0ef 244-245,319,416,423-427
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_782619aac31c26::t_77baea3c660099 60,373-374,377-384,394,444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0a02a63d8e7dca878fae4998b04439d0b1f89b46",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
