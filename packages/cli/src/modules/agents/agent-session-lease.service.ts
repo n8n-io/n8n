@@ -11,6 +11,12 @@ import { AgentSessionLeaseRepository } from './repositories/agent-session-lease.
 /** Another main can take over a lease that is not renewed within this time. */
 export const SESSION_LEASE_TTL_MS = 120_000;
 
+/**
+ * How long a resume that a person started waits for the session. It covers
+ * the finalization of the turn that suspended, which still holds the lease.
+ */
+export const INTERACTIVE_RESUME_SESSION_WAIT_MS = 5_000;
+
 /** Renewals that can fail in a row before the local turn is aborted. */
 const MAX_FAILED_RENEWALS = 2;
 

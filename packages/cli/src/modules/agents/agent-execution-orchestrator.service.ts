@@ -47,6 +47,7 @@ import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
+import { AgentResumeAlreadyHandledError } from './agent-resume-already-handled.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
 	encodeIntegrationMessageContext,
@@ -164,6 +165,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** How long to wait while another turn holds the session. Defaults to no wait. */
+	sessionWaitMs?: number;
 	abortSignal?: AbortSignal;
 }
 
@@ -848,6 +851,8 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			includeHitlToolDetails: !config.usePublishedVersion,
 			previewChat: config.previewChat,
+			sessionWaitMs: config.sessionWaitMs,
+			assertCanStart: async () => await this.assertResumePending(config),
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
@@ -855,6 +860,21 @@ export class AgentExecutionOrchestratorService {
 			},
 			prepare: async () => await this.prepareChatResume(config, checkpoint, runtime),
 		});
+	}
+
+	/**
+	 * A resume can start only while its checkpoint is still suspended. A resume
+	 * that waited for the session can find it handled by another resume.
+	 */
+	private async assertResumePending({ runId, agentId }: ResumeChatConfig): Promise<void> {
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
+		if (
+			checkpointStatus.status === 'active' &&
+			checkpointStatus.checkpoint.status === 'suspended'
+		) {
+			return;
+		}
+		throw new AgentResumeAlreadyHandledError();
 	}
 
 	private async prepareChatResume(

@@ -9,6 +9,7 @@ import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { sleep } from '@n8n/utils/sleep';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentSessionMode } from './utils/agent-thread-access';
@@ -51,10 +52,17 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
+	/** How long to wait while another turn holds the session. Defaults to no wait. */
+	sessionWaitMs?: number;
+	/** Runs before each start attempt. Throws when the turn must not start anymore. */
+	assertCanStart?: () => Promise<void>;
 	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
 }
+
+/** Interval between start attempts while another turn holds the session. */
+const SESSION_WAIT_POLL_MS = 250;
 
 interface TurnExecutionState {
 	executionId?: string;
@@ -358,20 +366,57 @@ export class AgentTurnExecutionService {
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 	): Promise<string> {
-		turn.options.abortSignal?.throwIfAborted();
-		const { executionId, leaseSignal } = await this.startExecution(
-			{
-				...turn.recording,
-				...(config.backgroundJobSignal
-					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
-					: {}),
-			},
-			recorder.startedAt,
-		);
+		const { executionId, leaseSignal } = await this.startWhenSessionFree(turn, config, recorder);
 		state.executionId = executionId;
 		turn.options.abortSignal = withLeaseSignal(turn.options.abortSignal, leaseSignal);
 		turn.options.abortSignal.throwIfAborted();
 		return executionId;
+	}
+
+	/** Starts the execution, waiting up to `sessionWaitMs` while another turn holds the session. */
+	private async startWhenSessionFree(
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+	): Promise<StartedExecution> {
+		const deadline = Date.now() + (config.sessionWaitMs ?? 0);
+		for (;;) {
+			const started = await this.tryStart(turn, config, recorder, deadline);
+			if (started) return started;
+			await sleep(SESSION_WAIT_POLL_MS, turn.options.abortSignal);
+		}
+	}
+
+	/** Returns null while another turn holds the session and the wait has not ended. */
+	private async tryStart(
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		deadline: number,
+	): Promise<StartedExecution | null> {
+		turn.options.abortSignal?.throwIfAborted();
+		await config.assertCanStart?.();
+		try {
+			return await this.startExecution(
+				this.recordingParams(turn, config, recorder),
+				recorder.startedAt,
+			);
+		} catch (error) {
+			if (error instanceof AgentTurnAlreadyRunningError && Date.now() < deadline) return null;
+			throw error;
+		}
+	}
+
+	private recordingParams(
+		turn: AgentTurnRequest,
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+	): StartExecutionParams {
+		if (!config.backgroundJobSignal) return turn.recording;
+		return {
+			...turn.recording,
+			initialTimeline: structuredClone(recorder.getMessageRecord().timeline),
+		};
 	}
 
 	private async startAcceptedTurn(
