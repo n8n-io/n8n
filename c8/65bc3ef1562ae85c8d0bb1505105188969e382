@@ -2,6 +2,8 @@ packages/cli/src/modules/agents/agent-session-lease.service.ts
   s_782619aac31c26::t_0a873e25caad56 20-25
 packages/cli/src/modules/agents/agent-workflow-execution.service.ts
   s_782619aac31c26::t_0a873e25caad56 486
+  s_782619aac31c26::t_6fa8fea2b26018 37
+  s_782619aac31c26::t_4d9c23163d9887 488-492
 packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
   s_782619aac31c26::t_88b54e18402a48 432-438,440-441,443
   s_782619aac31c26::t_91ee4bad77ba28 20,406,411-413,415-431,439,442,444-449
