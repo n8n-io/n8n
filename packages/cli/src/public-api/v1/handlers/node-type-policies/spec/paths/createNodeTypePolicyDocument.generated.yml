@@ -1,19 +1,12 @@
-operationId: updatePolicyDocument
+operationId: createNodeTypePolicyDocument
 tags:
   - NodeTypePolicy
-summary: Replace the rules of a node type policy document
-description: Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.
+summary: Create a node type policy document
+description: Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.
 x-required-scope: nodeTypePolicy:manage
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
-parameters:
-  - schema:
-      type: string
-    required: true
-    description: The ID of the node type policy document.
-    name: policyId
-    in: path
 requestBody:
   required: true
   content:
@@ -65,14 +58,10 @@ requestBody:
                 - id
                 - action
                 - selector
-          version:
-            type: integer
-            minimum: 0
         required:
           - rules
-          - version
 responses:
-  '200':
+  '201':
     description: Operation successful.
     content:
       application/json:
@@ -84,10 +73,6 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
-  '404':
-    $ref: ../../../../shared/spec/responses/notFound.yml
-  '409':
-    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '503':

@@ -11,8 +11,8 @@ import {
 	PutProjectPolicyDto,
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
-	nodeTypePolicyIdParamSchema,
-	nodeTypePolicyScopeIdParamSchema,
+	credentialTypePolicyIdParamSchema,
+	credentialTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -42,14 +42,14 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
+import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
 
-const tags = ['NodeTypePolicy'];
+const tags = ['CredentialTypePolicy'];
 
 function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicDto {
 	return {
@@ -64,18 +64,18 @@ function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicD
 }
 
 /**
- * Public API surface for node type availability policies. Every route delegates to the same
- * `TypeAvailabilityPolicyService` methods as the internal `/rest` controllers and reuses their
- * request DTOs, so validation, RBAC, and audit events are identical on both surfaces. Only the
- * response shapes differ, as public allowlists.
+ * Public API surface for credential type availability policies. Every route delegates to the
+ * same `TypeAvailabilityPolicyService` methods as the internal `/rest` controllers and reuses
+ * their request DTOs, so validation, RBAC, and audit events are identical on both surfaces. Only
+ * the response shapes differ, as public allowlists.
  */
-@PublicApiController('/node-type-policies')
-export class NodeTypePoliciesPublicController {
+@PublicApiController('/credential-type-policies')
+export class CredentialTypePoliciesPublicController {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
 
 	private async service() {
 		if (!this.moduleRegistry.isActive('type-availability-policies')) {
-			throw new ServiceUnavailableError('Node type policies module is not enabled');
+			throw new ServiceUnavailableError('Credential type policies module is not enabled');
 		}
 		const { TypeAvailabilityPolicyService } = await import(
 			'@/modules/type-availability-policies/type-availability-policy.service.js'
@@ -85,17 +85,17 @@ export class NodeTypePoliciesPublicController {
 
 	@Get('/instance')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Retrieve the instance node type policy')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('Retrieve the instance credential type policy')
 	@ApiDescription(
 		'Returns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getNodeTypeInstancePolicy(): Promise<PolicyEffectivePublicDto> {
-		const effective = await (await this.service()).getEffectivePolicy(NODE_TYPES_KIND, null);
+	async getCredentialTypeInstancePolicy(): Promise<PolicyEffectivePublicDto> {
+		const effective = await (await this.service()).getEffectivePolicy(CREDENTIAL_TYPES_KIND, null);
 
 		return {
 			scopeId: effective.scopeId,
@@ -107,9 +107,9 @@ export class NodeTypePoliciesPublicController {
 
 	@Put('/instance')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Replace the instance node type policy')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('Replace the instance credential type policy')
 	@ApiDescription(
 		'Sets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
 	)
@@ -117,13 +117,13 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putNodeTypeInstancePolicy(
+	async putCredentialTypeInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: PutInstancePolicyDto,
 	): Promise<PolicyEffectiveWriteResultPublicDto> {
 		const result = await (await this.service()).setEffectivePolicy(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			null,
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
@@ -141,21 +141,24 @@ export class NodeTypePoliciesPublicController {
 
 	@Get('/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@ProjectScope('nodeTypePolicy:manage')
-	@ApiSummary("Retrieve a project's node type policy")
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@ProjectScope('credentialTypePolicy:manage')
+	@ApiSummary("Retrieve a project's credential type policy")
 	@ApiDescription(
 		"Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getNodeTypeProjectPolicy(
+	async getCredentialTypeProjectPolicy(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<PolicyEffectivePublicDto> {
-		const effective = await (await this.service()).getEffectivePolicy(NODE_TYPES_KIND, projectId);
+		const effective = await (await this.service()).getEffectivePolicy(
+			CREDENTIAL_TYPES_KIND,
+			projectId,
+		);
 
 		return {
 			scopeId: effective.scopeId,
@@ -167,9 +170,9 @@ export class NodeTypePoliciesPublicController {
 
 	@Put('/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@ProjectScope('nodeTypePolicy:manage')
-	@ApiSummary("Replace a project's node type policy")
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@ProjectScope('credentialTypePolicy:manage')
+	@ApiSummary("Replace a project's credential type policy")
 	@ApiDescription(
 		"Sets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
 	)
@@ -177,14 +180,14 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putNodeTypeProjectPolicy(
+	async putCredentialTypeProjectPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body dto: PutProjectPolicyDto,
 	): Promise<PolicyEffectiveWriteResultPublicDto> {
 		const result = await (await this.service()).setEffectivePolicy(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			projectId,
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
@@ -202,14 +205,14 @@ export class NodeTypePoliciesPublicController {
 
 	@Get('/policies')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('List node type policy documents')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('List credential type policy documents')
 	@ApiDescription('Returns a cursor-paginated list of reusable policy documents.')
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
-	async listNodeTypePolicyDocuments(
+	async listCredentialTypePolicyDocuments(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListNodeTypePolicyDocumentsQueryDto,
@@ -217,7 +220,7 @@ export class NodeTypePoliciesPublicController {
 		const { offset, limit } = resolveOffsetPagination(query);
 
 		const { items, count } = await (await this.service()).listPolicyDocumentsPage(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			offset,
 			limit,
 		);
@@ -230,22 +233,22 @@ export class NodeTypePoliciesPublicController {
 
 	@Post('/policies')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Create a node type policy document')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('Create a credential type policy document')
 	@ApiDescription(
 		'Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(503)
-	async createNodeTypePolicyDocument(
+	async createCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreatePolicyDocumentDto,
 	): Promise<PolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).createPolicyDocument(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			dto.rules,
 			req.user.id,
 		);
@@ -255,19 +258,19 @@ export class NodeTypePoliciesPublicController {
 
 	@Get('/policies/:policyId')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Retrieve a node type policy document')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('Retrieve a credential type policy document')
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async getNodeTypePolicyDocument(
+	async getCredentialTypePolicyDocument(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
+		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
 	): Promise<PolicyDocumentPublicDto> {
-		const policy = await (await this.service()).getPolicyDocument(NODE_TYPES_KIND, policyId);
+		const policy = await (await this.service()).getPolicyDocument(CREDENTIAL_TYPES_KIND, policyId);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
 		}
@@ -277,9 +280,9 @@ export class NodeTypePoliciesPublicController {
 
 	@Put('/policies/:policyId')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Replace the rules of a node type policy document')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('Replace the rules of a credential type policy document')
 	@ApiDescription(
 		"Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
 	)
@@ -288,14 +291,14 @@ export class NodeTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async updateNodeTypePolicyDocument(
+	async updateCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
+		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
 		@Body dto: UpdatePolicyDocumentDto,
 	): Promise<PolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).updatePolicyDocument(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			policyId,
 			dto.rules,
 			dto.version,
@@ -307,9 +310,9 @@ export class NodeTypePoliciesPublicController {
 
 	@Delete('/policies/:policyId')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Delete a node type policy document')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary('Delete a credential type policy document')
 	@ApiDescription(
 		'Deletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.',
 	)
@@ -318,18 +321,18 @@ export class NodeTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async deleteNodeTypePolicyDocument(
+	async deleteCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
+		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
 	): Promise<void> {
-		await (await this.service()).deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
+		await (await this.service()).deletePolicyDocument(CREDENTIAL_TYPES_KIND, policyId, req.user.id);
 	}
 
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
-	@ApiKeyScope('nodeTypePolicy:manage')
-	@GlobalScope('nodeTypePolicy:manage')
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary("Replace a scope's attached policy documents")
 	@ApiDescription(
 		"Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
@@ -338,14 +341,14 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async replaceNodeTypePolicyAttachments(
+	async replaceCredentialTypePolicyAttachments(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,
+		@Param('scopeId', credentialTypePolicyScopeIdParamSchema) scopeId: string,
 		@Body dto: ReplaceAttachmentsDto,
 	): Promise<PolicyAttachmentsPublicDto> {
 		const result = await (await this.service()).replaceAttachments(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			scopeId,
 			dto.attachments,
 			req.user.id,

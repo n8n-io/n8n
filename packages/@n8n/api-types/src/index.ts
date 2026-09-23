@@ -153,6 +153,8 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
+	credentialTypePolicyIdParamSchema,
+	credentialTypePolicyScopeIdParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,

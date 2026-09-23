@@ -12,56 +12,59 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
+import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { EffectivePolicy } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 
-import { NodeTypePoliciesPublicController } from '../node-type-policies.public.controller';
+import { CredentialTypePoliciesPublicController } from '../credential-type-policies.public.controller';
 
 /**
  * Every public route must carry the same guards as the internal controllers it mirrors: the
- * type availability policies license feature, the `nodeTypePolicy:manage` API-key scope, and a
- * `nodeTypePolicy:manage` RBAC check that is global-only everywhere except on the two
- * project-scoped routes.
+ * node type policies license feature (shared with credential type policies), the
+ * `credentialTypePolicy:manage` API-key scope, and a `credentialTypePolicy:manage` RBAC check
+ * that is global-only everywhere except on the two project-scoped routes.
  */
-describe('NodeTypePoliciesPublicController route metadata', () => {
+describe('CredentialTypePoliciesPublicController route metadata', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-		NodeTypePoliciesPublicController as never,
+		CredentialTypePoliciesPublicController as never,
 	);
 	const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, route]) => ({
 		handlerName,
 		route,
 	}));
-	const projectHandlers = new Set(['getNodeTypeProjectPolicy', 'putNodeTypeProjectPolicy']);
+	const projectHandlers = new Set([
+		'getCredentialTypeProjectPolicy',
+		'putCredentialTypeProjectPolicy',
+	]);
 
 	it('registers every route of the internal instance and project controllers', () => {
 		expect(routeCases.map(({ handlerName }) => handlerName).sort()).toEqual(
 			[
-				'createNodeTypePolicyDocument',
-				'deleteNodeTypePolicyDocument',
-				'getNodeTypeInstancePolicy',
-				'getNodeTypePolicyDocument',
-				'getNodeTypeProjectPolicy',
-				'listNodeTypePolicyDocuments',
-				'putNodeTypeInstancePolicy',
-				'putNodeTypeProjectPolicy',
-				'replaceNodeTypePolicyAttachments',
-				'updateNodeTypePolicyDocument',
+				'createCredentialTypePolicyDocument',
+				'deleteCredentialTypePolicyDocument',
+				'getCredentialTypeInstancePolicy',
+				'getCredentialTypePolicyDocument',
+				'getCredentialTypeProjectPolicy',
+				'listCredentialTypePolicyDocuments',
+				'putCredentialTypeInstancePolicy',
+				'putCredentialTypeProjectPolicy',
+				'replaceCredentialTypePolicyAttachments',
+				'updateCredentialTypePolicyDocument',
 			].sort(),
 		);
 	});
 
 	it.each(routeCases)(
-		'$handlerName requires the nodeTypePolicy:manage API key scope',
+		'$handlerName requires the credentialTypePolicy:manage API key scope',
 		({ route }) => {
-			expect(route.apiKeyScope).toBe('nodeTypePolicy:manage');
+			expect(route.apiKeyScope).toBe('credentialTypePolicy:manage');
 		},
 	);
 
 	it.each(routeCases)(
-		'$handlerName is gated by a nodeTypePolicy:manage RBAC check',
+		'$handlerName is gated by a credentialTypePolicy:manage RBAC check',
 		({ route }) => {
-			expect(route.accessScope?.scope).toBe('nodeTypePolicy:manage');
+			expect(route.accessScope?.scope).toBe('credentialTypePolicy:manage');
 		},
 	);
 
@@ -73,7 +76,7 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 	);
 
 	it.each(routeCases)(
-		'$handlerName is gated by the type availability policies license feature',
+		'$handlerName is gated by the node type policies license feature',
 		({ route }) => {
 			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		},
@@ -96,9 +99,9 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 	});
 });
 
-describe('NodeTypePoliciesPublicController with the module disabled', () => {
+describe('CredentialTypePoliciesPublicController with the module disabled', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
-	const controller = new NodeTypePoliciesPublicController(moduleRegistry);
+	const controller = new CredentialTypePoliciesPublicController(moduleRegistry);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 
@@ -107,25 +110,27 @@ describe('NodeTypePoliciesPublicController with the module disabled', () => {
 	});
 
 	it('answers 503 before touching the service', async () => {
-		await expect(controller.getNodeTypeInstancePolicy()).rejects.toThrow(ServiceUnavailableError);
-		await expect(controller.getNodeTypeProjectPolicy(req, res, 'project-id')).rejects.toThrow(
+		await expect(controller.getCredentialTypeInstancePolicy()).rejects.toThrow(
 			ServiceUnavailableError,
 		);
-		await expect(controller.getNodeTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+		await expect(controller.getCredentialTypeProjectPolicy(req, res, 'project-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
-		await expect(controller.deleteNodeTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+		await expect(controller.getCredentialTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
+		await expect(
+			controller.deleteCredentialTypePolicyDocument(req, res, 'policy-id'),
+		).rejects.toThrow(ServiceUnavailableError);
 
 		expect(moduleRegistry.isActive).toHaveBeenCalledWith('type-availability-policies');
 	});
 });
 
-describe('NodeTypePoliciesPublicController handler bodies', () => {
+describe('CredentialTypePoliciesPublicController handler bodies', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const service = mock<TypeAvailabilityPolicyService>();
-	const controller = new NodeTypePoliciesPublicController(moduleRegistry);
+	const controller = new CredentialTypePoliciesPublicController(moduleRegistry);
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }) });
 	const res = mock<Response>();
 
@@ -144,7 +149,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 
 	const effectivePolicy: EffectivePolicy = {
 		scopeId: 'scope-id',
-		kind: NODE_TYPES_KIND,
+		kind: CREDENTIAL_TYPES_KIND,
 		projectId: null,
 		defaultAction: 'allow',
 		version: 3,
@@ -160,12 +165,12 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
-	it('getNodeTypeInstancePolicy reads the null-project scope and maps the response', async () => {
+	it('getCredentialTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);
 
-		const result = await controller.getNodeTypeInstancePolicy();
+		const result = await controller.getCredentialTypeInstancePolicy();
 
-		expect(service.getEffectivePolicy).toHaveBeenCalledWith(NODE_TYPES_KIND, null);
+		expect(service.getEffectivePolicy).toHaveBeenCalledWith(CREDENTIAL_TYPES_KIND, null);
 		expect(result).toEqual({
 			scopeId: effectivePolicy.scopeId,
 			rules: effectivePolicy.rules,
@@ -174,12 +179,12 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('getNodeTypeProjectPolicy reads the given project scope and maps the response', async () => {
+	it('getCredentialTypeProjectPolicy reads the given project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue({ ...effectivePolicy, projectId: 'project-id' });
 
-		const result = await controller.getNodeTypeProjectPolicy(req, res, 'project-id');
+		const result = await controller.getCredentialTypeProjectPolicy(req, res, 'project-id');
 
-		expect(service.getEffectivePolicy).toHaveBeenCalledWith(NODE_TYPES_KIND, 'project-id');
+		expect(service.getEffectivePolicy).toHaveBeenCalledWith(CREDENTIAL_TYPES_KIND, 'project-id');
 		expect(result).toEqual({
 			scopeId: effectivePolicy.scopeId,
 			rules: effectivePolicy.rules,
@@ -188,18 +193,15 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('putNodeTypeInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
+	it('putCredentialTypeInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
 
-		const result: PolicyEffectiveWriteResultPublicDto = await controller.putNodeTypeInstancePolicy(
-			req,
-			res,
-			dto,
-		);
+		const result: PolicyEffectiveWriteResultPublicDto =
+			await controller.putCredentialTypeInstancePolicy(req, res, dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			null,
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
@@ -214,14 +216,14 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('putNodeTypeProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
+	it('putCredentialTypeProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutProjectPolicyDto;
 
-		const result = await controller.putNodeTypeProjectPolicy(req, res, 'project-id', dto);
+		const result = await controller.putCredentialTypeProjectPolicy(req, res, 'project-id', dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
-			NODE_TYPES_KIND,
+			CREDENTIAL_TYPES_KIND,
 			'project-id',
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
