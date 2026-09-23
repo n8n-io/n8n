@@ -53,9 +53,10 @@ or do both. When it does both, the first of the two ends the wait.
    declaration and returns it as the step result. How a wait is implemented is
    the engine's decision and not the node's. Engine v1 sleeps in the process for
    a short time wait. Engine v2 declares every wait, including a wait with no
-   deadline. The converter does not rewrite wait nodes. This one mechanism
-   covers the Wait node, all send-and-wait nodes, and expression-valued wait
-   parameters.
+   deadline. A wait for a sub-execution is no declaration: the shim fails that
+   step until a sub-workflow step exists. The converter does not rewrite wait
+   nodes. This one mechanism covers the Wait node, all send-and-wait nodes, and
+   expression-valued wait parameters.
 2. **The engine suspends the step.** A step that returns a declaration moves to
    the new `waiting` status. `waiting` is not a settled status. Therefore the
    existing settlement rules stop the engine from planning the steps behind it.
@@ -182,6 +183,10 @@ or do both. When it does both, the first of the two ends the wait.
   or sweeps, so the bound is one sweep interval. Engine v1 fires a short time
   wait on time and loses it if the worker dies, so engine v2 matches v1 on time
   and improves on it after a failure.
+- A v1 node that waits for a sub-execution fails on engine v2. The step does not
+  complete at once, because a step that completed would report a child that
+  never ran. A sub-workflow step will carry that wait; the Context puts it out
+  of scope here.
 - Because the execution row records a status that the step rows decide, one
   statement must calculate the status and write it. Two statements are not
   enough. A step could change between the read and the write. The write would
