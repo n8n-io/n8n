@@ -54,7 +54,20 @@ export class LmChatOllama implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			ollamaModel,
-			ollamaOptions,
+			{
+				...ollamaOptions,
+				options: [
+					...(ollamaOptions.options ?? []),
+					{
+						displayName: 'Streaming',
+						name: 'streaming',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to stream the response as it is generated. Disable to receive the full response at once.',
+					},
+				],
+			},
 		],
 	};
 
