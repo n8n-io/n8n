@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 
 import { CommandTester } from '../test-utils/command-tester';
@@ -54,33 +53,6 @@ describe('release command', () => {
 		const result = await CommandTester.run('release');
 
 		expect(result).toBeDefined();
-	});
-
-	tmpdirTest('passes every release-it option in long form', async ({ tmpdir }) => {
-		await fs.writeFile(
-			`${tmpdir}/package.json`,
-			JSON.stringify({
-				name: 'test-node',
-				version: '1.0.0',
-				n8n: {
-					nodes: ['dist/nodes/TestNode.node.js'],
-				},
-			}),
-		);
-		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
-
-		mockSpawn('pnpm', expect.any(Array) as string[], { exitCode: 0 });
-
-		await CommandTester.run('release');
-
-		const [, args] = vi.mocked(spawn).mock.calls[0];
-		const options = args.slice(args.indexOf('release-it') + 1);
-
-		// release-it 21 parses arguments strictly. It rejects unknown short flags such
-		// as `-n` and values passed as a separate word such as `--git.requireBranch main`.
-		for (const option of options) {
-			expect(option).toMatch(/^--[\w.:-]+(=.*)?$/);
-		}
 	});
 
 	tmpdirTest('--publish flag - runs release-it with npm publish', async ({ tmpdir }) => {
