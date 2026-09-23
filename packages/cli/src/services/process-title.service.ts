@@ -14,9 +14,15 @@ export class ProcessTitleService {
 		// A single main and one-off commands keep `n8n <command>` from `bin/n8n`.
 		if (instanceType === 'main' && !isMultiMain) return;
 
-		const role = isMultiMain ? (isLeader ? 'leader' : 'follower') : undefined;
+		const label = isMultiMain ? (isLeader ? 'leader' : 'follower') : instanceType;
 		// In a container the hostname already identifies the process.
-		const name = isDocker ? instanceType : hostId;
-		process.title = ['n8n', role, name].filter(Boolean).join(' ');
+		if (isDocker) {
+			process.title = `n8n ${label}`;
+			return;
+		}
+
+		// `hostId` is `<instanceType>-<id>`, see `InstanceSettings`.
+		const id = hostId.slice(instanceType.length + 1);
+		process.title = `n8n ${label}-${id}`;
 	}
 }
