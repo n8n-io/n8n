@@ -67,6 +67,39 @@ describe('extractImagesFromObservation', () => {
 		expect(result.images).toHaveLength(1);
 	});
 
+	it('normalizes mime type casing: "image/PNG" is accepted like "image/png"', () => {
+		const observation = JSON.stringify(mcpImageBlock({ mimeType: 'image/PNG' }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0].mimeType).toBe('image/png');
+	});
+
+	it('rejects an unsupported format regardless of casing (e.g. "Image/SVG+XML")', () => {
+		const observation = JSON.stringify(mcpImageBlock({ mimeType: 'Image/SVG+XML' }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(0);
+		expect(result.omitted).toBe(1);
+	});
+
+	it('trims whitespace around the mime type before checking it', () => {
+		const observation = JSON.stringify(mcpImageBlock({ mimeType: ' image/png ' }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0].mimeType).toBe('image/png');
+	});
+
+	it('omits a data-URI-prefix-only payload (no base64 after the prefix) as empty, not as a broken data URL', () => {
+		const observation = JSON.stringify(mcpImageBlock({ data: 'data:image/png;base64,' }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(0);
+		expect(result.omitted).toBe(1);
+		expect(result.text).toContain('empty image data');
+	});
+
 	it('preserves an own "__proto__" JSON key instead of silently dropping it via prototype reassignment', () => {
 		// Built from a raw JSON string, not a JS object literal: `{__proto__: x}` as
 		// object-literal syntax sets the prototype (no own property is created at

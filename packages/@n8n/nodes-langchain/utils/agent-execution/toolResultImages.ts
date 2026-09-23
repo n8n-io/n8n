@@ -57,6 +57,19 @@ interface McpImageBlock {
 	mimeType: string;
 }
 
+// MIME type tokens are case-insensitive (RFC 2045) — an MCP server is free to send
+// "image/PNG" or "Image/Png" and it means the same thing as "image/png". Every check
+// against a mime type (the structural `image/` prefix check below, and the
+// SUPPORTED_IMAGE_MIME_TYPES whitelist in extractImagesFromValue) normalizes through
+// this first so casing can't cause a valid image to be missed or misclassified.
+// The trim() is the same defense against the same failure mode: a server that pads
+// the value with whitespace (" image/png") would otherwise fail the structural
+// `image/` prefix check entirely, and the image would fall back to the original bug
+// this file exists to fix — silent, undetected base64 text in the ToolMessage.
+function normalizeMimeType(mimeType: string): string {
+	return mimeType.trim().toLowerCase();
+}
+
 // Structural check only: is this shaped like an MCP image content block at all.
 // Whether it's actually safe to forward to a model (supported mime type,
 // non-empty data) is decided separately in extractImagesFromValue, so an
@@ -69,7 +82,7 @@ function isMcpImageBlock(value: unknown): value is McpImageBlock {
 		block.type === 'image' &&
 		typeof block.data === 'string' &&
 		typeof block.mimeType === 'string' &&
-		block.mimeType.startsWith('image/')
+		normalizeMimeType(block.mimeType).startsWith('image/')
 	);
 }
 
@@ -99,7 +112,13 @@ function extractImagesFromValue(
 	if (depth > MAX_SCAN_DEPTH) return value;
 
 	if (isMcpImageBlock(value)) {
-		if (!SUPPORTED_IMAGE_MIME_TYPES.has(value.mimeType) || value.data.length === 0) {
+		const normalizedMimeType = normalizeMimeType(value.mimeType);
+		// Strip any `data:...;base64,` prefix before checking for emptiness: a
+		// payload that's only that prefix (no actual base64 after it) decodes to
+		// an empty string post-strip even though `value.data` itself is non-empty
+		// — checking the raw field would miss that and forward a broken data URL.
+		const raw = stripDataUriPrefix(value.data);
+		if (!SUPPORTED_IMAGE_MIME_TYPES.has(normalizedMimeType) || raw.length === 0) {
 			// Not a size problem — a format models reject outright (svg/tiff/bmp/heic/...)
 			// or an empty payload. Forwarding it would 400 the whole agent run, so treat
 			// it the same as "omitted", just with a note that says why.
@@ -107,13 +126,12 @@ function extractImagesFromValue(
 			return {
 				type: 'image',
 				note:
-					value.data.length === 0
+					raw.length === 0
 						? 'image omitted: empty image data'
 						: `image omitted: unsupported image format "${value.mimeType}"`,
 			};
 		}
 
-		const raw = stripDataUriPrefix(value.data);
 		if (maxImageBytes !== undefined && estimateDecodedBytes(raw) > maxImageBytes) {
 			state.omitted++;
 			return {
@@ -121,7 +139,9 @@ function extractImagesFromValue(
 				note: `image omitted: exceeds the ${(maxImageBytes / (1024 * 1024)).toFixed(1)} MB passthrough limit`,
 			};
 		}
-		collected.push({ mimeType: value.mimeType, data: raw });
+		// Store the normalized mime type so the data-URL builder in
+		// buildToolImageHumanMessage doesn't need to normalize it again.
+		collected.push({ mimeType: normalizedMimeType, data: raw });
 		return { type: 'image', note: 'image attached to the model as a separate message' };
 	}
 
