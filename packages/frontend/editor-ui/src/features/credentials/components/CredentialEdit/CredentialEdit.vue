@@ -178,7 +178,9 @@ const pendingAuthType = ref<string | null>(null);
 // Pending OAuth connect flow; aborted on re-click and on unmount so its
 // listeners and backend polling don't outlive the modal.
 const oauthFlowAbortController = ref<AbortController | null>(null);
+let isUnmounted = false;
 onBeforeUnmount(() => {
+	isUnmounted = true;
 	oauthFlowAbortController.value?.abort();
 });
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
@@ -701,13 +703,25 @@ async function useGatewayCredits(): Promise<void> {
 	const node = workflowContextNode.value;
 	const type = credentialTypeName.value;
 	if (!node || !type || !showAiGatewayErrorNudge.value) return;
+	const sourceWorkflowDocumentStore = workflowDocumentStore.value;
 	const previousCredentials = { ...(node.credentials ?? {}) };
-	const updateCredentials = (credentials: INode['credentials']) => {
-		workflowDocumentStore.value.updateNodeProperties({
-			name: node.name,
+	const updateCredentials = (credentials: INode['credentials'], nodeName = node.name) => {
+		sourceWorkflowDocumentStore.updateNodeProperties({
+			name: nodeName,
 			properties: { credentials },
 		});
 		nodeHelpers.updateNodesCredentialsIssues();
+	};
+	const getCurrentContextNode = () => {
+		if (
+			isUnmounted ||
+			workflowDocumentStore.value !== sourceWorkflowDocumentStore ||
+			credentialTypeName.value !== type
+		) {
+			return null;
+		}
+		const currentNode = workflowContextNode.value;
+		return currentNode?.id === node.id ? currentNode : null;
 	};
 
 	updateCredentials({
@@ -715,9 +729,11 @@ async function useGatewayCredits(): Promise<void> {
 		[type]: { id: null, name: '', __aiGatewayManaged: true },
 	});
 	if (!(await aiGateway.saveAfterToggle())) {
-		updateCredentials(previousCredentials);
+		const currentNode = getCurrentContextNode();
+		if (currentNode) updateCredentials(previousCredentials, currentNode.name);
 		return;
 	}
+	if (!getCurrentContextNode()) return;
 
 	const workflowId = telemetryWorkflowId.value || undefined;
 	telemetry.track('User toggled n8n connect credential', {

@@ -451,6 +451,20 @@ describe('aiGateway.store', () => {
 			).toBe(true);
 		});
 
+		it('should ignore hidden properties present only in resolved defaults', async () => {
+			mockGetGatewayConfig.mockResolvedValue(config);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeEligible(node, 'openAiApi', {
+					resource: 'text',
+					operation: 'message',
+					baseURL: 'https://api.openai.com/v1',
+				}),
+			).toBe(true);
+		});
+
 		it.each([
 			['unsupported node', { ...node, type: 'unknownNode' }, 'openAiApi'],
 			['unsupported credential type', node, 'anthropicApi'],

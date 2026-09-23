@@ -1775,6 +1775,12 @@ describe('CredentialEdit', () => {
 				title: 'Switched to Gateway credits',
 				type: 'success',
 			});
+			expect(telemetryTrackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+				credential_type: credentialType.name,
+				node_type: contextNode.type,
+				mode: 'n8n_connect',
+				workflow_id: 'test-workflow-id',
+			});
 			expect(telemetryTrackMock).toHaveBeenCalledWith('Node credential assigned', {
 				credential_type: credentialType.name,
 				node_type: contextNode.type,
@@ -1894,6 +1900,24 @@ describe('CredentialEdit', () => {
 				'Node credential assigned',
 				expect.objectContaining({ source: 'credential_error_nudge' }),
 			);
+		});
+
+		test('does not roll back after the modal unmounts while the save is pending', async () => {
+			const save = Promise.withResolvers<boolean>();
+			saveAfterGatewayToggleMock.mockReturnValue(save.promise);
+			const { getByTestId, unmount, workflowDocumentStore } = await setupGatewayCredentialError();
+			await waitFor(() =>
+				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
+			);
+
+			await userEvent.click(getByTestId('gateway-credits-credential-error-nudge-action'));
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledOnce();
+
+			unmount();
+			save.resolve(false);
+			await save.promise;
+
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledOnce();
 		});
 
 		test('does not call onCredentialCreated when updating a credential', async function () {
