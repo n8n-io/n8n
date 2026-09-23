@@ -33,6 +33,7 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
@@ -276,7 +277,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			logger,
 			n8nCheckpointStorage,
 			agentExecutionService,
-			new AgentTurnExecutionService(logger, agentExecutionService),
+			new AgentTurnExecutionService(
+				logger,
+				agentExecutionService,
+				mock<AgentChatExecutionService>(),
+			),
 			telemetry,
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
@@ -285,6 +290,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSandboxRuntimeService,
 			agentRepository,
 			mock<AiConfig>(),
+			mock<AgentChatExecutionService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

@@ -248,8 +248,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
-		let status: ChatMessage['status'] =
-			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
+		let status: ChatMessage['status'];
+		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
+		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
+		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
@@ -286,7 +288,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
-				} else if (msg.executionStatus === 'error') {
+				} else if (failed) {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
 				} else {
@@ -311,7 +313,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (!rebuilt) continue;
-				if (rebuilt.resolvedAt === undefined && msg.executionStatus !== 'error') {
+				if (rebuilt.resolvedAt === undefined && !failed && msg.executionStatus !== 'running') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
@@ -406,7 +408,7 @@ export function applyOpenSuspensions(
 				hasOpenToolCall = true;
 			} else if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
 				toolCall.state = TOOL_CALL_STATE.ERROR;
-			} else {
+			} else if (msg.status !== CHAT_MESSAGE_STATUS.STREAMING) {
 				toolCall.state = TOOL_CALL_STATE.CANCELLED;
 				toolCall.canceled = true;
 			}

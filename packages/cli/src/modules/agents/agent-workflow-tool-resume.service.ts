@@ -245,6 +245,7 @@ export class AgentWorkflowToolResumeService {
 			resumeData,
 			user,
 			previewChat: agentRun.previewChat,
+			automaticPreviewContinuation: true,
 			response: '',
 		});
 
