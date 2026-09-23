@@ -88,10 +88,10 @@ describe('diskCaseToLangTracerCreate', () => {
 	it('forwards typed scenario seed tables so lang-tracer stores their rows', () => {
 		const seedDataTables = [
 			{
-				id: 'mcv2CustomersTbl0001',
+				id: 'seed-table-1',
 				name: 'Customers',
 				columns: [{ name: 'email', type: 'string' as const }],
-				rows: [{ email: 'dana@harbor.example' }],
+				rows: [{ email: 'ada@example.com' }],
 			},
 		];
 		const body = diskCaseToLangTracerCreate(

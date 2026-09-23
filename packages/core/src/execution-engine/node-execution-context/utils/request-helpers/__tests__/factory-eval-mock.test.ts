@@ -5,19 +5,16 @@ import type { EvalLlmMockHandler } from '@/execution-engine';
 
 import { getRequestHelperFunctions } from '../factory';
 
-// The eval mock answers before any real HTTP client runs, so it has to agree
-// with those clients on status errors: a request that opted out of throwing on
-// non-2xx (`simple: false` on the legacy helper, `ignoreHttpStatusErrors` on
-// the axios one) gets the response back instead of an error.
+// A request that opted out of throwing on non-2xx gets the mocked response back, as with the real clients.
 describe('request helpers under the eval mock', () => {
 	const workflow = mock<Workflow>();
-	const node = mock<INode>({ name: 'Enrich A', type: 'n8n-nodes-base.httpRequest' });
+	const node = mock<INode>({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' });
 	const notFound = {
 		statusCode: 404,
 		headers: { 'content-type': 'application/json' },
 		body: { error: 'not found' },
 	};
-	const url = 'https://enrich-a.example.com/api/company';
+	const url = 'https://api.example.com/items';
 
 	function helpersUnderMock(handler: EvalLlmMockHandler) {
 		const additionalData = mockDeep<IWorkflowExecuteAdditionalData>();

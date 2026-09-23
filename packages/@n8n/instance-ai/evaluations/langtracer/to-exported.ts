@@ -12,8 +12,6 @@ export interface LangTracerScenario {
 	dataSetup?: string;
 	successCriteria?: string;
 	requires?: string;
-	/** Typed seed tables with rows (TRUST-311). lang-tracer stores them on create
-	 *  and PATCH and emits them on export, so the round-trip check compares them. */
 	seedDataTables?: ExecutionScenario['seedDataTables'];
 }
 

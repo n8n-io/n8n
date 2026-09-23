@@ -165,8 +165,7 @@ export function serializeMockToHttpResponse(
  * slots: `body`, `formData` (multipart), and `form` (URL-encoded) — fold them
  * all into `body` so the mock layer sees the payload regardless of transport
  * encoding (the binary redactor reduces multipart to part metadata before the
- * LLM). The legacy `simple: false` (the HTTP Request node's "Never Error") is
- * the opt-out from throwing on non-2xx, so it becomes `ignoreHttpStatusErrors`.
+ * LLM). `simple: false` becomes `ignoreHttpStatusErrors`.
  */
 export function normalizeLegacyRequest(
 	uriOrObject: string | IRequestOptions,
@@ -199,9 +198,8 @@ export function normalizeLegacyRequest(
  * When `returnFullResponse` is true, serializes to `{ body: Buffer, headers, statusCode }`
  * matching the shape that nodes expect from real HTTP responses.
  * For error responses (status >= 400), throws an error matching the HTTP library's
- * error shape so nodes handle it identically to real HTTP failures — unless the
- * request opted out via `ignoreHttpStatusErrors` (legacy `simple: false`), in
- * which case the response is handed back, as the real clients do.
+ * error shape so nodes handle it identically to real HTTP failures, unless the
+ * request set `ignoreHttpStatusErrors`.
  * Returns `undefined` if the handler did not produce a response.
  */
 export async function callEvalMockHandler(
@@ -224,10 +222,7 @@ export async function callEvalMockHandler(
 	return returnFullResponse ? serializeMockToHttpResponse(response, requestOptions) : response.body;
 }
 
-/**
- * Same rule as the real client (`@n8n/backend-network` `toAxiosRequest`): `true`
- * accepts every status, the config form accepts every status not in `except`.
- */
+// Same rule as @n8n/backend-network: `true` ignores every status, the config form all but `except`.
 function ignoresStatusError(
 	option: IHttpRequestOptions['ignoreHttpStatusErrors'],
 	statusCode: number,

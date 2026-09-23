@@ -100,9 +100,8 @@ export async function fetchAgentScenarioContext(
 /**
  * Execute one scenario against a built first-class Agent and verify the
  * result — the agent-artifact counterpart of runScenario. The agent reasons
- * with its real model; its tools' outbound HTTP is served by the mock layer,
- * while its Data Table tools read the real per-thread table, so the scenario's
- * declared rows are seeded first (TRUST-311).
+ * with its real model; its tools' outbound HTTP is served by the mock layer and
+ * its Data Table tools read the real table, seeded with the scenario's rows first.
  */
 export async function executeAgentScenario(
 	client: N8nClient,

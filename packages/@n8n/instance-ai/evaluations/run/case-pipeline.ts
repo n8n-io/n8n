@@ -34,9 +34,7 @@ import {
 import { BUILD_ONLY_SCENARIO_NAME, type DatasetExampleInputs } from '../langsmith/dataset-sync';
 import type { BuildExpectationResult, ExecutionScenario, WorkflowTestCase } from '../types';
 
-/** A scenario that declares seed tables must not run without them (MCP and
- *  prebuilt builds never seed data tables) — executing anyway would grade the
- *  artifact against empty tables and report the miss as a builder failure. */
+// A seeded scenario run against empty tables would blame the builder for a harness miss.
 const NO_SEED_MAPPING_REASON =
 	'Scenario declares seedDataTables but the build provided no seeded-table mapping ' +
 	'(MCP/prebuilt builds do not seed data tables) — refusing to run without the declared rows';
@@ -307,8 +305,6 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			});
 		}
 
-		// TRUST-311: a seeded row resets + seeds its declared table rows just before
-		// it runs; the agent and the workflow branch both need the build's mapping.
 		const seedContext: ScenarioSeedContext | undefined =
 			build.threadId && build.seededScenarioTableIdsByName
 				? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
@@ -446,7 +442,6 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					planRejections: build.proxyDecisionStats?.rejection ?? 0,
 				});
 			};
-			// Rows of one seeded case share tables by name — same gate as the workflow branch.
 			return scenariosRequireSerialSeeding(authoredScenarios)
 				? await withSerialSeeding(cacheKey, runAgentScenario)
 				: await runAgentScenario();

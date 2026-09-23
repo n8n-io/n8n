@@ -30,18 +30,17 @@ const silentLogger: EvalLogger = {
 	isVerbose: false,
 };
 
-// Structurally an ExecutionScenario (see agent-scenario-artifact.test.ts).
 const scenario = {
 	name: 'known-customer',
 	description: 'A known customer is looked up.',
-	dataSetup: 'The Customers table contains Dana.',
-	successCriteria: 'The agent finds Dana.',
+	dataSetup: 'The Customers table contains Ada.',
+	successCriteria: 'The agent finds Ada.',
 	seedDataTables: [
 		{
 			id: 'seed-table-1',
 			name: 'Customers',
 			columns: [{ name: 'email', type: 'string' as const }],
-			rows: [{ email: 'dana@harbor.example' }],
+			rows: [{ email: 'ada@example.com' }],
 		},
 	],
 };
@@ -50,13 +49,13 @@ const agentRun = {
 	runId: 'run-1',
 	success: true,
 	errors: [],
-	finalText: 'Found Dana.',
+	finalText: 'Found Ada.',
 	model: 'openai/gpt-5-mini',
 	finishReason: 'stop',
 	toolCalls: [],
 	modelTurns: [],
 	seed: {
-		openingMessage: 'From dana@harbor.example: help',
+		openingMessage: 'From ada@example.com: help',
 		globalContext: '',
 		toolHints: {},
 		warnings: [],
