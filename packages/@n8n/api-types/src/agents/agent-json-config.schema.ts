@@ -1,7 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
-import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentApprovalSchema, AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -280,18 +280,9 @@ export const McpServerConfigSchema = z
 			])
 			.optional()
 			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
-		approval: z
-			.discriminatedUnion('mode', [
-				z.object({ mode: z.literal('global') }).strict(),
-				z
-					.object({
-						mode: z.literal('selected'),
-						tools: z.array(z.string().min(1)).min(1),
-					})
-					.strict(),
-			])
-			.optional()
-			.describe('Human-in-the-loop approval. Absent = no approval required'),
+		approval: AgentApprovalSchema.optional().describe(
+			'Human-in-the-loop approval. Absent = no approval required',
+		),
 		connectionTimeoutMs: z
 			.number()
 			.int()

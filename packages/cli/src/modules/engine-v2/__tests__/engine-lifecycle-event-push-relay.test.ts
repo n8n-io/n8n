@@ -26,6 +26,7 @@ const executionStarted: LifecycleEvent = {
 	executionId: EXECUTION_ID,
 	workflowId: WORKFLOW_ID,
 	mode: 'manual',
+	hostMode: 'manual',
 	at: '2026-08-25T10:00:00.000Z',
 };
 

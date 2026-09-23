@@ -35,17 +35,10 @@ export type {
 } from './lifecycle-events';
 
 export {
-	ExecutionResponseChannel,
 	executionResponseSchema,
-	InMemoryResponseTransport,
-	noopResponseTransport,
+	noopExecutionResponseSender,
 } from './response-channel';
-export type {
-	EndedMessage,
-	ExecutionResponse,
-	ResponseTransport,
-	Unsubscribe,
-} from './response-channel';
+export type { EndedMessage, ExecutionResponse, ExecutionResponseSender } from './response-channel';
 
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';

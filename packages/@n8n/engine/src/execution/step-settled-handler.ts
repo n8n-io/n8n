@@ -7,7 +7,7 @@ import {
 	type GraphNode,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import type { ExecutionResponseChannel } from '../response-channel';
+import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -36,7 +36,7 @@ export class StepSettledHandler {
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
-		private readonly responseChannel: ExecutionResponseChannel,
+		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -227,7 +227,7 @@ export class StepSettledHandler {
 			);
 		}
 
-		this.responseChannel.publish({
+		this.responseSender.send({
 			type: 'ended',
 			executionId: execution.id,
 			workflowId: execution.workflowId,

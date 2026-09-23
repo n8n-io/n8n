@@ -161,6 +161,15 @@ export function buildPastConversationsBlock(section: string): string {
 }
 
 /**
+ * How one section reads once `buildThreadContextBlock` stores it. A freshly rendered
+ * section must pass through this before it is compared against a copy extracted from a
+ * persisted message, or a section containing the close tag never compares equal.
+ */
+export function asStoredThreadContextSection(section: string): string {
+	return section.trim().replaceAll(THREAD_CONTEXT_CLOSE_TAG, '&lt;/thread-context&gt;');
+}
+
+/**
  * Wrap per-turn ambient context into one leading block. The user text stays last.
  * On the turn rather than in the system prompt for prompt-caching reasons.
  */
@@ -168,7 +177,7 @@ export function buildThreadContextBlock(sections: Array<string | undefined>): st
 	const parts = sections
 		.map((section) => section?.trim())
 		.filter((section): section is string => Boolean(section))
-		.map((section) => section.replaceAll(THREAD_CONTEXT_CLOSE_TAG, '&lt;/thread-context&gt;'));
+		.map(asStoredThreadContextSection);
 	if (parts.length === 0) return '';
 	return `${THREAD_CONTEXT_OPEN_TAG}\n${parts.join('\n\n')}\n${THREAD_CONTEXT_CLOSE_TAG}`;
 }
@@ -200,13 +209,32 @@ export function withPastConversations(message: string, section: string): string 
 }
 
 /**
- * Carry the user's saved AI preferences. First turn of a thread only, so the text
- * is paid for once per conversation. The block arrives already tagged and escaped
- * from `AiPreferenceService`, so the same block serves every AI surface.
- * On the turn rather than in the system prompt for prompt-caching reasons.
+ * Carry the user's saved AI preferences as a trailing block. New turns place the block
+ * inside the leading `<thread-context>` instead. Kept for older stored messages and tests
+ * that rebuild that shape.
  */
 export function withAiPreferences(message: string, block: string): string {
 	return `${message}\n\n${block}`;
+}
+
+/**
+ * Matches the service-written preferences block inside one `<thread-context>` block. The
+ * renderer escapes the tags out of user text, so the first close tag is always the real one.
+ */
+const AI_PREFERENCES_BLOCK = /<ai-preferences>\n[\s\S]*?\n<\/ai-preferences>/;
+
+/**
+ * The ai-preferences block a stored user message carries, exactly as stored, or `undefined`.
+ * Read from the leading internal blocks only, so a tag lookalike in the user's own text is
+ * never read as a block the service wrote. The per-turn injection compares this against a
+ * fresh render to decide whether a turn re-sends the block (CONTEXT-139); compare against
+ * `asStoredThreadContextSection(freshBlock)`, never the raw render.
+ */
+export function extractAiPreferencesBlock(stored: string): string | undefined {
+	const threadContext = leadingInternalBlocks(stored).find((block) =>
+		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
+	);
+	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
 /** Longest a user-supplied value may be inside a block. Matches the instance-context bound. */

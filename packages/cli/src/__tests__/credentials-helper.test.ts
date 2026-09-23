@@ -1047,13 +1047,10 @@ describe('CredentialsHelper', () => {
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				{ id: 'cred-123', type: 'oAuth2Api' },
-				expect.objectContaining({
-					id: 'cred-123',
-					name: 'Test OAuth2 Credential',
-					type: 'oAuth2Api',
+				{
 					data: expect.any(String),
 					updatedAt: expect.any(Date),
-				}),
+				},
 			);
 
 			const updateCall = credentialsRepository.update.mock.calls[0];
@@ -1277,11 +1274,10 @@ describe('CredentialsHelper', () => {
 				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
 				expect(credentialsRepository.update).toHaveBeenCalledWith(
 					{ id: 'cred-789', type: 'oAuth2Api' },
-					expect.objectContaining({
-						id: 'cred-789',
+					{
 						data: expect.any(String),
 						updatedAt: expect.any(Date),
-					}),
+					},
 				);
 
 				// Verify OAuth token was updated in database
@@ -1324,11 +1320,10 @@ describe('CredentialsHelper', () => {
 				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
 				expect(credentialsRepository.update).toHaveBeenCalledWith(
 					{ id: 'cred-789', type: 'oAuth2Api' },
-					expect.objectContaining({
-						id: 'cred-789',
+					{
 						data: expect.any(String),
 						updatedAt: expect.any(Date),
-					}),
+					},
 				);
 
 				// Verify OAuth token was updated in database

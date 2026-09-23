@@ -40,6 +40,13 @@ export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
+export {
+	discoverDataPublicSchema,
+	DiscoverPublicDto,
+	DiscoverQueryPublicDto,
+} from './discover/discover-public.dto';
+export type { DiscoverDataPublic } from './discover/discover-public.dto';
+
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
@@ -111,6 +118,11 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 export { ChangeEmailRequestDto } from './user/change-email-request.dto';
 export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
 export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
+export { ListUsersQueryDto } from './user/list-users-query.dto';
+export { GetUserQueryDto } from './user/get-user-query.dto';
+export { UserPublicDto, UserListPublicDto, userPublicSchema } from './user/user-public.dto';
+export { CreateUsersPublicDto, InvitedUsersPublicDto } from './user/create-users-public.dto';
+export { DeleteUserQueryPublicDto } from './user/delete-user-query-public.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -257,6 +269,7 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	DeleteFolderQueryPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
 	FolderDetailsPublicDto,
