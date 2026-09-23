@@ -319,6 +319,46 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
+	test('applyEvent folds a preference-card fact onto its tool call before the stream delivers it', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					result: {
+						ok: true,
+						preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+					},
+				},
+			}),
+		);
+
+		// The endpoint returned the fact; the card applies it without waiting for SSE.
+		activeRuntime(registry).applyEvent({
+			type: 'preference-card',
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+		});
+
+		const toolCall = activeRuntime(registry).messages[0].agentTree?.toolCalls.find(
+			(tc) => tc.toolCallId === 'tc-1',
+		);
+		expect(toolCall?.preferenceCard).toEqual({ state: 'undone', content: undefined });
+		expect(activeRuntime(registry).activeRunId).toBe('run-1');
+	});
+
 	test('setup-items SSE events fold last-wins per workflowId', () => {
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
 		capturedOnMessage!(
@@ -359,6 +399,98 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
 		expect(items).toHaveLength(1);
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
+	});
+
+	test('preferences-applied SSE events replace the applied payload, empty included', () => {
+		const runtime = activeRuntime(registry);
+		expect(runtime.appliedPreferences).toBeNull();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'pref-1', scope: 'user' }],
+					renderedLength: 40,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+			}),
+		);
+		// An empty payload is an answer: the turn applied none.
+		expect(runtime.appliedPreferences).toEqual({
+			preferences: [],
+			renderedLength: 0,
+			injectedThisTurn: false,
+		});
+	});
+
+	test('the applied payload survives thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 40,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-0',
+			},
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+		expect(runtime.appliedPreferences?.carriedFromRunId).toBe('run-0');
+	});
+
+	test('a live payload that arrived during restore is not overwritten by the persisted one', async () => {
+		let resolveMessages!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveMessages = resolve;
+			}),
+		);
+		// The SSE mock is wired to the active thread, so hydrate that one.
+		const runtime = activeRuntime(registry);
+		const hydration = runtime.loadHistoricalMessages();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-9',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'live', scope: 'user' }],
+					renderedLength: 12,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		resolveMessages({
+			threadId: activeThreadId,
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'stale', scope: 'user' }],
+				renderedLength: 12,
+				injectedThisTurn: true,
+			},
+		});
+		await hydration;
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['live']);
 	});
 
 	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
