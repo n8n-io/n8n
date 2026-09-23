@@ -52,9 +52,10 @@ or do both. When it does both, the first of the two ends the wait.
    a deadline, a request, or both. The shim translates the call into a wait
    declaration and returns it as the step result. How a wait is implemented is
    the engine's decision and not the node's. Engine v1 sleeps in the process for
-   a short time wait. Engine v2 declares every wait. The converter does not
-   rewrite wait nodes. This one mechanism covers the Wait node, all
-   send-and-wait nodes, and expression-valued wait parameters.
+   a short time wait. Engine v2 declares every wait, including a wait with no
+   deadline. The converter does not rewrite wait nodes. This one mechanism
+   covers the Wait node, all send-and-wait nodes, and expression-valued wait
+   parameters.
 2. **The engine suspends the step.** A step that returns a declaration moves to
    the new `waiting` status. `waiting` is not a settled status. Therefore the
    existing settlement rules stop the engine from planning the steps behind it.
@@ -172,14 +173,15 @@ or do both. When it does both, the first of the two ends the wait.
   engine v1 sleeps through in the process. Such a wait costs a row write and a
   re-dispatch that engine v1 avoids. In exchange it survives a worker restart,
   and the engine can cancel it and report it.
-- A wait fires at most one sweep tick after its deadline on the replica that
-  suspended it. The engine re-arms the sweep when it suspends a step whose
-  deadline is earlier than the sweep's next pass, so a short time wait does not
-  wait for that pass. Another replica's sweeper skips the row while the first
-  one holds it (`SKIP LOCKED`), and takes it over only if the first replica dies
-  before its timer fires; then the bound is one sweep interval. Engine v1 fires
-  a short time wait on time and loses it if the worker dies, so engine v2
-  matches v1 on time and improves on it after a failure.
+- A wait fires within a second of its deadline on the replica that suspended it.
+  The engine re-arms the sweep when it suspends a step whose deadline is earlier
+  than the sweep's next pass, so a short time wait does not wait for that pass.
+  Another replica cannot fire it twice: the sweep flips `waiting` to `queued` in
+  one statement, so a row already resumed is not due. If the suspending replica
+  dies before its timer fires, another replica finds the row when it next arms
+  or sweeps, so the bound is one sweep interval. Engine v1 fires a short time
+  wait on time and loses it if the worker dies, so engine v2 matches v1 on time
+  and improves on it after a failure.
 - Because the execution row records a status that the step rows decide, one
   statement must calculate the status and write it. Two statements are not
   enough. A step could change between the read and the write. The write would
