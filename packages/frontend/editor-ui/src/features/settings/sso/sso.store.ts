@@ -35,6 +35,26 @@ export const useSSOStore = defineStore('sso', () => {
 	const getSSORedirectUrl = async (existingRedirect?: string) =>
 		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
 
+	/**
+	 * Browser URL that starts the login with the active SSO protocol. SAML asks the
+	 * backend for its redirect; OIDC has a static login endpoint that takes the
+	 * in-app destination as a query parameter and returns there after the callback.
+	 */
+	const getSsoLoginUrl = async (existingRedirect = ''): Promise<string> => {
+		if (isDefaultAuthenticationSaml.value) {
+			return await getSSORedirectUrl(existingRedirect);
+		}
+
+		const oidcLoginUrl = oidc.value.loginUrl;
+		if (!oidcLoginUrl) {
+			throw new Error('The OIDC login URL is not configured');
+		}
+		if (!existingRedirect) return oidcLoginUrl;
+
+		const separator = oidcLoginUrl.includes('?') ? '&' : '?';
+		return `${oidcLoginUrl}${separator}${new URLSearchParams({ redirect: existingRedirect })}`;
+	};
+
 	const initialize = (options: {
 		authenticationMethod: AuthenticationMethod;
 		managedByEnv?: boolean;
@@ -211,6 +231,7 @@ export const useSSOStore = defineStore('sso', () => {
 	return {
 		showSsoLoginButton,
 		getSSORedirectUrl,
+		getSsoLoginUrl,
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,
