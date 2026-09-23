@@ -355,7 +355,6 @@ defineExpose({
 							[$style.adaptiveTextarea]: effectiveLayout() === 'adaptive',
 						},
 						'ignore-key-press-node-creator',
-						'ignore-key-press-canvas',
 					]"
 					:style="textareaStyle"
 					:placeholder="hasNoCredits ? '' : placeholder"

@@ -19,6 +19,7 @@ import {
 	onMounted,
 	onUnmounted,
 	ref,
+	useTemplateRef,
 	watch,
 } from 'vue';
 import { useRouter } from 'vue-router';
@@ -36,6 +37,7 @@ import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	provisionSubjectThread,
 	stashPendingComposerDraft,
@@ -48,6 +50,7 @@ import InstanceAiConversation from '../components/InstanceAiConversation.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
+import { useKeybindings } from '@/app/composables/useKeybindings';
 
 const props = defineProps<{
 	subject: InstanceAiEmbedSubject;
@@ -447,10 +450,26 @@ const ThreadScope = defineComponent({
 			);
 	},
 });
+
+const panel = useTemplateRef<HTMLElement>('panel');
+
+function isEscapeDisabled() {
+	return panel.value?.contains(document.activeElement) !== true;
+}
+
+useKeybindings({
+	Escape: {
+		disabled: isEscapeDisabled,
+		run: () => {
+			emit('close');
+		},
+		allowInInputs: true,
+	},
+});
 </script>
 
 <template>
-	<div :class="$style.panel" data-test-id="instance-ai-embed-panel">
+	<div :class="$style.panel" ref="panel" data-test-id="instance-ai-embed-panel">
 		<InstanceAiViewHeader
 			:thread-id="activeThreadId"
 			:thread-list="{ filter: threadFilter, navigate: false, disabled: building }"
@@ -494,10 +513,10 @@ const ThreadScope = defineComponent({
 						@click="openFullAssistant"
 					/>
 				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.embed.close')"
+				<KeyboardShortcutTooltip
 					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
+					:label="i18n.baseText('instanceAi.embed.close')"
+					:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 				>
 					<N8nIconButton
 						icon="x"
@@ -508,7 +527,7 @@ const ThreadScope = defineComponent({
 						data-test-id="instance-ai-embed-close"
 						@click="emit('close')"
 					/>
-				</N8nTooltip>
+				</KeyboardShortcutTooltip>
 			</template>
 		</InstanceAiViewHeader>
 		<div :class="$style.body">

@@ -154,6 +154,7 @@ useKeybindings({
 	Escape: {
 		disabled: isEscapeDisabled,
 		run: close,
+		allowInInputs: true,
 	},
 });
 </script>
