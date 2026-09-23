@@ -149,6 +149,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
 
 defineOptions({
@@ -223,6 +224,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -1046,7 +1048,8 @@ async function onAddNodesAndConnections(
 }
 
 async function onAddEmptyGroup(connectToLastInteractedNode = false) {
-	if (!checkIfEditingIsAllowed() || isAddingEmptyGroup.value) return;
+	if (!emptyCanvasGroupsEnabled.value || !checkIfEditingIsAllowed() || isAddingEmptyGroup.value)
+		return;
 	isAddingEmptyGroup.value = true;
 	// Seed generic placement at the viewport center while retaining collision handling for later groups.
 	if (

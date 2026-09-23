@@ -6,6 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
+import { getEmptyGroupAnchor, type IConnections } from 'n8n-workflow';
 import {
 	computed,
 	effectScope,
@@ -19,7 +20,11 @@ import {
 	type EffectScope,
 } from 'vue';
 import type { CanvasEventBusEvents, GroupExpansionMode } from '../canvas.types';
-import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
+import {
+	createEmptyCanvasRenderData,
+	mapConnectionsToVisibleNodes,
+	type CanvasRenderData,
+} from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import {
 	aggregateGroupExecution,
@@ -37,6 +42,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { useEmptyCanvasGroupsFlag } from '../composables/useEmptyCanvasGroupsFlag';
 
 defineOptions({
 	inheritAttrs: false,
@@ -94,24 +100,54 @@ watch(
 onScopeDispose(() => renderDataScope?.stop());
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
+
+// Empty groups remain in the workflow data, but their anchor nodes are excluded from the canvas when disabled.
+const nodesToExclude = computed(() => {
+	if (emptyCanvasGroupsEnabled.value) return new Set<string>();
+
+	const nodes = workflowDocumentStore.value.allNodes;
+	return new Set(
+		workflowDocumentStore.value.allGroups.flatMap((group) => {
+			const anchor = getEmptyGroupAnchor(group, nodes);
+			return anchor ? [anchor.id] : [];
+		}),
+	);
+});
 
 const nodes = computed(() => {
-	return props.showFallbackNodes
+	const visibleNodes = props.showFallbackNodes
 		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
 		: workflowDocumentStore.value.allNodes;
+	return visibleNodes.filter((node) => !nodesToExclude.value.has(node.id));
 });
-const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
+const connections = computed<IConnections>(() =>
+	emptyCanvasGroupsEnabled.value
+		? workflowDocumentStore.value.connectionsBySourceNode
+		: mapConnectionsToVisibleNodes(
+				workflowDocumentStore.value.connectionsBySourceNode,
+				nodes.value,
+			),
+);
+
+const allGroups = computed(() => {
+	if (emptyCanvasGroupsEnabled.value) return workflowDocumentStore.value.allGroups;
+
+	return workflowDocumentStore.value.allGroups.filter(
+		(group) => !getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes),
+	);
+});
 
 const nodeGroupView = useCanvasNodeGroupView({
 	workflowId: () => workflowDocumentStore.value.workflowId,
-	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
+	getCurrentGroupIds: () => allGroups.value.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
 const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
 	workflowId: () => workflowDocumentStore.value.workflowId,
-	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
+	getCurrentGroups: () => allGroups.value,
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 });
 
@@ -125,7 +161,6 @@ watch(
 	},
 );
 
-const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
 
@@ -173,10 +208,10 @@ watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
 
 const layoutComponents = computed(() =>
 	// Without groups there can be no pushes — skip building per-node components.
-	workflowDocumentStore.value.allGroups.length === 0
+	allGroups.value.length === 0
 		? []
 		: buildNodeGroupLayoutComponents({
-				allGroups: workflowDocumentStore.value.allGroups,
+				allGroups: allGroups.value,
 				nodes: nodes.value,
 				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
