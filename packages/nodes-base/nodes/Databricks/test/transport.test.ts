@@ -122,6 +122,7 @@ describe('listJobRuns', () => {
 	it.each([
 		['an HTML body', '<html>sign in</html>'],
 		['a runs field that is not a list', { runs: 'none' }],
+		['a runs list with a null entry', { runs: [run(1), null] }],
 	])('rejects %s instead of returning an empty page', async (_label, response) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue(response);
@@ -381,6 +382,7 @@ describe('listPipelineEvents', () => {
 	it.each([
 		['an HTML body', '<html>sign in</html>'],
 		['an events field that is not a list', { events: 'none' }],
+		['an events list with a null entry', { events: [event('e1'), null] }],
 	])('rejects %s instead of returning an empty page', async (_label, response) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue(response);

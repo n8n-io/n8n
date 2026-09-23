@@ -18,7 +18,8 @@ describe('getSystemPrompt — setup panel', () => {
 		const prompt = getSystemPrompt({ setupPanelEnabled: true });
 
 		expect(prompt).not.toContain('opens the inline setup card');
-		expect(prompt).toContain('setup panel next to the chat');
+		expect(prompt).toContain('setup panel while the workflow is being built');
+		expect(prompt).not.toContain('next to the chat');
 		expect(prompt).toContain('<workflow-setup-state>');
 		expect(prompt).toContain('end your turn');
 		expect(prompt).toContain('When the result has `announced: true`');

@@ -37,6 +37,7 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
+	withMandatoryInstanceScopes,
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -214,13 +215,21 @@ export class RoleService {
 			return undefined;
 		}
 
-		if (scopeSlugs.length === 0) {
+		// Mandatory options are baseline behaviour for every instance role, so the write
+		// path adds them even when the caller leaves them out. The editor does the same
+		// on the form, so a role saved through either surface holds the same scopes.
+		// Both branches dedup, because `findByList` returns distinct rows and a repeated
+		// input slug would otherwise be reported as invalid.
+		const requested =
+			roleType === 'global' ? withMandatoryInstanceScopes(scopeSlugs) : [...new Set(scopeSlugs)];
+
+		if (requested.length === 0) {
 			return [];
 		}
 
-		const scopes = await this.scopeRepository.findByList(scopeSlugs);
-		if (scopes.length !== scopeSlugs.length) {
-			const invalidScopes = scopeSlugs.filter((slug) => !scopes.some((s) => s.slug === slug));
+		const scopes = await this.scopeRepository.findByList(requested);
+		if (scopes.length !== requested.length) {
+			const invalidScopes = requested.filter((slug) => !scopes.some((s) => s.slug === slug));
 			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
 		}
 

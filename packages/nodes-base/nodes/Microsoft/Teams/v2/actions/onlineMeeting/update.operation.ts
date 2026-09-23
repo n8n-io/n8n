@@ -10,15 +10,9 @@ import { updateDisplayOptions } from '@utils/utilities';
 import { resolveAttendees, updateAttendeesField } from './attendees';
 import { resolveMeetingId } from './meetingLocator';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import {
-	isSet,
-	meetingHint,
-	meetingRequest,
-	meetingsPath,
-	optionalText,
-	toGraphUtc,
-} from './shared';
+import { isSet, meetingHint, meetingRequest, meetingsPath, toGraphUtc } from './shared';
 import { meetingRLC } from '../../descriptions';
+import { optionalText } from '../../helpers/parameters';
 import { rewriteNotFound } from '../../transport';
 
 const properties: INodeProperties[] = [

@@ -10,13 +10,15 @@ import { BackendModule } from '@n8n/decorators';
  */
 @BackendModule({
 	name: 'type-availability-policies',
-	licenseFlag: LICENSE_FEATURES.NODE_TYPE_POLICIES,
+	licenseFlag: LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES,
 })
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 	async init() {
 		// Side-effecting imports: register the controllers' routes via `@RestController`.
 		await import('./type-availability-policy-instance.controller.js');
 		await import('./type-availability-policy-project.controller.js');
+		await import('./credential-type-policy-instance.controller.js');
+		await import('./credential-type-policy-project.controller.js');
 		await import('./available-types.controller.js');
 
 		// Side-effecting import: `@PolicyCheck` registers the check on class definition.

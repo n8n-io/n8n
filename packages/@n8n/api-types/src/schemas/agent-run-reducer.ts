@@ -482,6 +482,24 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'instance-context': {
+			// Store the row on the root so history replay restores it.
+			const root = ensureAgent(state, state.rootAgentId);
+			// Match by run ID. A message group can contain several turns.
+			const alreadyShown = root?.timeline.some(
+				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+			);
+			if (root && !alreadyShown) {
+				root.timeline.push({
+					type: 'instance-context',
+					runId: event.runId,
+					injection: event.payload.injection,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tasks-update': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
@@ -499,6 +517,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// semantics: last event wins per workflowId.
 			const root = ensureAgent(state, state.rootAgentId);
 			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.latestSetupAnnouncement = {
+					workflowId: event.payload.workflowId,
+					agentId: ensureAgent(state, event.agentId)?.agentId ?? event.agentId,
+					timestamp: eventTimestamp(event),
+				};
 				root.setupItemsByWorkflowId = {
 					...root.setupItemsByWorkflowId,
 					[event.payload.workflowId]: event.payload.items,
@@ -544,6 +567,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				root.status = state.status;
 				if (state.status === 'cancelled') {
 					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
+				// The terminal event contains reads from all segments. Match it to this run's row.
+				const { contextReach } = event.payload;
+				const contextEntry = root.timeline.find(
+					(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+				);
+				if (contextReach && contextEntry?.type === 'instance-context') {
+					contextEntry.reach = contextReach;
 				}
 			}
 			// A terminated run can't have tool calls still in-flight.

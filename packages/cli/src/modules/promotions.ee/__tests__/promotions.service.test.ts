@@ -894,6 +894,84 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('readBranchPackage', () => {
+		const commitSha = 'c'.repeat(40);
+		const workflowPath = 'n8n-export/projects/orders-p1/workflows/order-w1/workflow.json';
+
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForProject.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package of the branch at one commit and reads files from that commit', async () => {
+			gitService.listBranchTree.mockResolvedValue({
+				commitSha,
+				lsTreeOutput:
+					[
+						'100644 blob p1\tn8n-export/projects/orders-p1/project.json',
+						`100644 blob w1\t${workflowPath}`,
+						'100644 blob x1\tn8n-export/projects/other-p2/project.json',
+					].join('\0') + '\0',
+			});
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([[workflowPath, '{"id":"w1"}']]));
+
+			const branch = await service.readBranchPackage('p1', 'apply');
+
+			expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
+			expect(gitService.listBranchTree).toHaveBeenCalledWith(
+				expect.objectContaining({
+					remoteUrl: REMOTE_URL,
+					branchName: 'dev',
+					configId: CONFIG_ID,
+					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+					pathspecs: [
+						'n8n-export/projects/',
+						'n8n-export/credentials/',
+						'n8n-export/data-tables/',
+						'n8n-export/variables/',
+						'n8n-export/tags/',
+					],
+				}),
+			);
+			expect(branch.commitSha).toBe(commitSha);
+			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
+				{ entityId: 'p1', type: 'project' },
+				{ entityId: 'w1', type: 'workflow' },
+			]);
+			await expect(branch.readFiles([workflowPath])).resolves.toEqual(
+				new Map([[workflowPath, '{"id":"w1"}']]),
+			);
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitSha,
+					branchName: 'dev',
+					configId: CONFIG_ID,
+					filePaths: [workflowPath],
+				}),
+			);
+		});
+
+		it('lists a branch without commits as empty and refuses to read a file from it', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			const branch = await service.readBranchPackage('p1', 'apply');
+
+			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
+				'no exported package',
+			);
+			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
+		});
+
+		it('refuses to read before the direction is cloned', async () => {
+			gitService.hasCheckout.mockResolvedValueOnce(false);
+
+			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not cloned');
+			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 
@@ -927,6 +1005,7 @@ describe('PromotionsService', () => {
 
 		beforeEach(async () => {
 			bindingPreflight.checkDirectory.mockResolvedValue({
+				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
 				conflicts: [],
@@ -1005,6 +1084,7 @@ describe('PromotionsService', () => {
 			{ project: { id: 'p1', name: 'Orders' }, workflows: [{ id: 'w1', name: 'Process order' }] },
 		];
 		const unresolved: PromotionBindingPreflightResult = {
+			missingProjects: [],
 			missingBindings: [
 				{
 					kind: 'variable',
@@ -1048,11 +1128,25 @@ describe('PromotionsService', () => {
 			expectedSource: { configId: CONFIG_ID, branchName: 'dev', commitSha: 'remotesha' },
 		};
 
+		it('imports when only projects are missing', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [{ id: 'p1', name: 'Orders' }],
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: [],
+			});
+			expect(await service.apply('conn1', actor)).toMatchObject({ status: 'applied' });
+			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalled();
+		});
+
 		it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
 			'blocks on %s before import or reconciliation',
 			async (group) => {
 				await mkdir(packageFolder, { recursive: true });
 				const preflight = {
+					missingProjects: [],
 					missingBindings: [],
 					accessRequirements: [],
 					conflicts: [],
@@ -1091,6 +1185,7 @@ describe('PromotionsService', () => {
 			});
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
 				conflicts: [],
@@ -1114,6 +1209,7 @@ describe('PromotionsService', () => {
 		it('imports with warnings on initial Apply', async () => {
 			await mkdir(packageFolder, { recursive: true });
 			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
 				conflicts: [],

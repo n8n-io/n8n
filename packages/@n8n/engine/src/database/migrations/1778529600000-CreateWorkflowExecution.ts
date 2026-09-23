@@ -19,7 +19,6 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 					{
 						name: 'caller_context',
 						type: 'jsonb',
-						default: "'{}'",
 						comment:
 							'Supplied by the caller at start (user, project, host mode). The engine stores and forwards it to step executors without reading it. Not the engine-internal per-request context.',
 					},

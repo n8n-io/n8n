@@ -4,7 +4,8 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { attendeesField, resolveAttendees } from './attendees';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import { meetingRequest, meetingsPath, requiredText, toGraphUtc } from './shared';
+import { meetingRequest, meetingsPath, toGraphUtc } from './shared';
+import { requiredText } from '../../helpers/parameters';
 
 const properties: INodeProperties[] = [
 	{

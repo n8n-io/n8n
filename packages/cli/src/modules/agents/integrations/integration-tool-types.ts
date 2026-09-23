@@ -1,4 +1,8 @@
-import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentApproval,
+	AgentIntegrationConfig,
+	N8N_CHAT_INTEGRATION_TYPE,
+} from '@n8n/api-types';
 import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -29,6 +33,21 @@ export type IntegrationMessageTarget =
  */
 export type ReplyExpectation = 'required' | 'optional';
 
+export interface TelegramMessageAttachmentContext {
+	type: 'image' | 'file' | 'video' | 'audio';
+	file_id: string;
+	file_unique_id?: string;
+}
+
+/** Allow-listed platform data from the inbound message. */
+export type IntegrationPlatformMessageContext = {
+	type: 'telegram';
+	chat_id: string;
+	message_id: string;
+	message_thread_id?: string;
+	attachments: TelegramMessageAttachmentContext[];
+};
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -36,6 +55,7 @@ export interface IntegrationMessageContext {
 	messageId?: string;
 	interactingUserId?: string;
 	agentUserId?: string;
+	platformMessage?: IntegrationPlatformMessageContext;
 	subject?: IntegrationMessageSubject;
 	replyExpectation?: ReplyExpectation;
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
@@ -108,7 +128,13 @@ export interface IntegrationToolOperationDefinition<Name extends string = string
 export type IntegrationContextQueryDefinition =
 	IntegrationToolOperationDefinition<IntegrationContextQuery>;
 
-export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction>;
+export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction> & {
+	/**
+	 * The action reaches outside the conversation the agent was addressed in.
+	 * These are the actions a channel pre-selects when approval is turned on.
+	 */
+	sensitive?: boolean;
+};
 
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
@@ -122,6 +148,8 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	/** Actions this channel gates behind human approval. Absent = none. */
+	approval?: AgentApproval;
 }
 
 export interface IntegrationMessageContextStore {

@@ -2,7 +2,6 @@ import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
 	PublicApiCreateDataTableDto,
-	PublicTestRunStatus,
 	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
@@ -35,18 +34,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 export declare namespace TestRunRequest {
 	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
 	// resolves it from `req.params.id`); `runId` is the test run id.
-	type GetMany = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{},
-		{
-			status?: PublicTestRunStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-		}
-	>;
 	type GetOne = AuthenticatedRequest<{ id: string; runId: string }>;
 	type GetCases = AuthenticatedRequest<
 		{ id: string; runId: string },
@@ -59,12 +46,7 @@ export declare namespace TestRunRequest {
 			lastId?: string;
 		}
 	>;
-	type Create = AuthenticatedRequest<{ id: string }>;
 	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
-}
-
-export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
 }
 
 export declare namespace WorkflowRequest {
@@ -108,13 +90,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
-	>;
-
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthlessRequest<
@@ -128,25 +103,6 @@ export declare namespace UserRequest {
 		}
 	>;
 }
-
-export declare namespace CredentialRequest {
-	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-}
-
-export declare namespace InsightsRequest {
-	type GetSummary = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			startDate?: string;
-			endDate?: string;
-			projectId?: string;
-		}
-	>;
-}
-
-export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
 
@@ -166,7 +122,7 @@ export interface IDependency {
 }
 
 export interface IJsonSchema {
-	additionalProperties: boolean;
+	additionalProperties: false;
 	type: 'object';
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];

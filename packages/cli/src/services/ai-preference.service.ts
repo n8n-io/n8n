@@ -133,6 +133,19 @@ export class AiPreferenceService {
 		return groupAiPreferences(rows, projects);
 	}
 
+	async getApplicableForProject(user: User, projectId: string): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user).has(projectId, 'read');
+		const project = readable ? await this.projectRepository.findOneBy({ id: projectId }) : null;
+		// Global access does not include another user's personal project.
+		const foreignPersonal =
+			project?.type === 'personal' &&
+			(await this.projectRepository.getPersonalProjectForUser(user.id))?.id !== project.id;
+		if (!project || foreignPersonal) {
+			throw new NotFoundError(`Project with id ${projectId} not found`);
+		}
+		return await this.getApplicable(user.id, [project]);
+	}
+
 	/**
 	 * For callers with no current project, such as the MCP server. A project counts when the
 	 * caller may read its preferences, the same rule as the REST read, so a membership that
@@ -635,8 +648,25 @@ function singleLine(text: string): string {
 }
 
 /**
+ * A turn sends the block again whenever its text changed, so the conversation can hold an
+ * older copy the model already read. Worded without the literal tags: user text cannot carry
+ * them either (they are escaped out), so the first close tag in a stored message is always
+ * the real one.
+ */
+export const AI_PREFERENCES_REPLACES_EARLIER =
+	'This block replaces every earlier ai-preferences block in this conversation. Apply this one and set the earlier copies aside.';
+
+/**
+ * Sent when every preference is gone but an earlier turn of the conversation carried a
+ * block: silence would leave the model applying the deleted preferences. Constant text, so
+ * the change rule treats it like any other block and a thread that stays empty carries it
+ * once.
+ */
+export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not apply preferences an earlier block carried.\n</ai-preferences>`;
+
+/**
  * The same text as `renderAiPreferences`, wrapped in one tagged block, or `undefined` when there
- * is nothing to say. Used by the Instance AI opening turn, which needs a block it can strip out
+ * is nothing to say. Used by the Instance AI turn, which needs a block it can strip out
  * of the stored message; the tags are escaped out of the user text first so it cannot close the
  * block. A tool result has no wrapper, so the MCP tool uses the unwrapped renderer directly.
  */
@@ -651,7 +681,7 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 		})),
 	});
 	if (body === '') return undefined;
-	return `<ai-preferences>\n${body}\n</ai-preferences>`;
+	return `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n${body}\n</ai-preferences>`;
 }
 
 /** Escapes the text of one item and keeps its id, so the block cannot be closed from inside. */

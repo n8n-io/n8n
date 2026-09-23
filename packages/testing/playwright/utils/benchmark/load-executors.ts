@@ -10,8 +10,8 @@
  */
 import type { MetricsHelper } from 'n8n-containers';
 
-import { waitForThroughput } from './throughput-measure';
-import type { ThroughputResult } from './throughput-measure';
+import { measureStageWindows, measureSteadyPhases, waitForThroughput } from './throughput-measure';
+import type { CompletionCounterReader, ThroughputResult } from './throughput-measure';
 import type { LoadProfile, TriggerHandle } from './types';
 
 /** Context shared by every executor — metrics + measurement plumbing, no load specifics. */
@@ -20,6 +20,7 @@ export interface ExecutorContext {
 	metrics: MetricsHelper;
 	baselineCounter: number;
 	metricQuery: string;
+	counterReader?: CompletionCounterReader;
 	timeoutMs: number;
 	nodeCount: number;
 }
@@ -30,7 +31,7 @@ export interface ExecutorResult {
 	expectedExecutions: number;
 	/** Wall-clock when load production started (set for steady; preloaded uses activation time). */
 	publishStart?: number;
-	/** Wall-clock when load production was scheduled to end (set for steady-rate runs only). */
+	/** Wall-clock when load production ended (set for steady and staged runs). */
 	publishEndAt?: number;
 	/** Stage boundaries for staged-rate runs (passed through for downstream reporting). */
 	stageBoundaries?: number[];
@@ -59,6 +60,7 @@ async function runPreloaded(load: PreloadedLoad, ctx: ExecutorContext): Promise<
 		timeoutMs: ctx.timeoutMs,
 		baselineValue: ctx.baselineCounter,
 		metricQuery: ctx.metricQuery,
+		counterReader: ctx.counterReader,
 	});
 
 	return {
@@ -91,9 +93,15 @@ async function runSteady(load: SteadyLoad, ctx: ExecutorContext): Promise<Execut
 			timeoutMs: ctx.timeoutMs,
 			baselineValue: ctx.baselineCounter,
 			metricQuery: ctx.metricQuery,
+			counterReader: ctx.counterReader,
 			publishEndAt,
 		}),
 	]);
+	const actualPublishEndAt = publishStart + publishRes.actualDurationMs;
+	Object.assign(
+		throughputResult,
+		measureSteadyPhases(throughputResult.samples, publishStart, actualPublishEndAt),
+	);
 
 	console.log(
 		`[LOAD] Published ${publishRes.totalPublished} messages in ${publishRes.actualDurationMs}ms`,
@@ -103,7 +111,7 @@ async function runSteady(load: SteadyLoad, ctx: ExecutorContext): Promise<Execut
 		throughputResult,
 		expectedExecutions: expectedTotal,
 		publishStart,
-		publishEndAt,
+		publishEndAt: actualPublishEndAt,
 	};
 }
 
@@ -119,9 +127,8 @@ async function runStaged(load: StagedLoad, ctx: ExecutorContext): Promise<Execut
 		0,
 	);
 
-	// Stage boundaries are predictable from the stages config: each boundary
-	// is `start + cumulative_durations`. Computing them upfront lets the
-	// throughput sampler split per-stage as soon as samples arrive.
+	// Scheduled boundaries let the sampler collect while publishing. The result
+	// is recalculated with the publisher's actual boundaries after both finish.
 	const publishStart = Date.now();
 	const stageBoundaries: number[] = [publishStart];
 	let cumMs = publishStart;
@@ -146,10 +153,16 @@ async function runStaged(load: StagedLoad, ctx: ExecutorContext): Promise<Execut
 			timeoutMs: ctx.timeoutMs,
 			baselineValue: ctx.baselineCounter,
 			metricQuery: ctx.metricQuery,
+			counterReader: ctx.counterReader,
 			publishEndAt,
 			stageBoundaries,
 		}),
 	]);
+	const actualStageBoundaries = [
+		publishRes.stages[0]?.startTimeMs ?? publishStart,
+		...publishRes.stages.map((stage) => stage.endTimeMs),
+	];
+	throughputResult.perStage = measureStageWindows(throughputResult.samples, actualStageBoundaries);
 
 	console.log(
 		`[LOAD] Staged publish complete: ${publishRes.totalPublished} messages across ${publishRes.stages.length} stages`,
@@ -158,9 +171,9 @@ async function runStaged(load: StagedLoad, ctx: ExecutorContext): Promise<Execut
 	return {
 		throughputResult,
 		expectedExecutions: expectedTotal,
-		publishStart,
-		publishEndAt,
-		stageBoundaries,
+		publishStart: actualStageBoundaries[0],
+		publishEndAt: actualStageBoundaries.at(-1),
+		stageBoundaries: actualStageBoundaries,
 	};
 }
 
