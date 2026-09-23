@@ -69,7 +69,8 @@ jobs:
     steps:
       # Defaults for the CLA endpoints, status context, comment marker and label
       # are already n8n's production values.
-      - uses: n8n-io/github-actions/cla-check@931777df53ace1bdb31d2bf5c63c9f2d27451c35 # cla-check/v1.0.0
-        with:
+    - uses: n8n-io/github-actions/cla-check@ea082925743265a61d9fd0a69a32b211551f88f0 # v1.0.2:
+      with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          pr-number: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
