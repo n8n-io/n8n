@@ -22,7 +22,6 @@ type UpdatePackageRequest = AuthenticatedRequest<
 type CommunityPackageHandlers = {
 	installPackage: PublicAPIEndpoint<InstallPackageRequest>;
 	updatePackage: PublicAPIEndpoint<UpdatePackageRequest>;
-	uninstallPackage: PublicAPIEndpoint<AuthenticatedRequest<{ name: string }>>;
 };
 
 const communityPackageHandlers: CommunityPackageHandlers = {
@@ -56,16 +55,6 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 				'notFound',
 			);
 			return res.json(toCommunityPackagePublic(updated));
-		},
-	],
-
-	uninstallPackage: [
-		publicApiScope('communityPackage:uninstall'),
-		async (req, res) => {
-			const lifecycle = Container.get(CommunityPackagesLifecycleService);
-
-			await lifecycle.uninstall(req.params.name, req.user, 'notFound');
-			return res.status(204).send();
 		},
 	],
 };

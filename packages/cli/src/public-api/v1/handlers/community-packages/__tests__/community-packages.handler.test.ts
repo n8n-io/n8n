@@ -194,44 +194,4 @@ describe('CommunityPackages Handler', () => {
 			});
 		});
 	});
-
-	describe('uninstallPackage', () => {
-		it('should uninstall a package successfully', async () => {
-			const req = {
-				params: { name: 'n8n-nodes-test' },
-				user: mockUser,
-			};
-
-			mockLifecycle.uninstall.mockResolvedValue(undefined);
-
-			await handler.uninstallPackage[handler.uninstallPackage.length - 1](req, mockResponse);
-
-			expect(mockLifecycle.uninstall).toHaveBeenCalledWith('n8n-nodes-test', mockUser, 'notFound');
-			expect(mockResponse.status).toHaveBeenCalledWith(204);
-		});
-
-		it('should throw NotFoundError when package is not installed', async () => {
-			const req = {
-				params: { name: 'n8n-nodes-missing' },
-				user: mockUser,
-			};
-
-			mockLifecycle.uninstall.mockRejectedValue(
-				new NotFoundError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED),
-			);
-
-			const handlerFn = handler.uninstallPackage[handler.uninstallPackage.length - 1];
-			let caught: unknown;
-			try {
-				await handlerFn(req, mockResponse);
-			} catch (error) {
-				caught = error;
-			}
-			expect(caught).toBeInstanceOf(NotFoundError);
-			expect(caught).toMatchObject({
-				message: RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
-				httpStatusCode: 404,
-			});
-		});
-	});
 });

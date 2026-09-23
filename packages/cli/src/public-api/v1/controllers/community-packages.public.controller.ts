@@ -1,12 +1,19 @@
-import { CommunityPackageListPublicDto, ListCommunityPackagesQueryDto } from '@n8n/api-types';
+import {
+	CommunityPackageListPublicDto,
+	ListCommunityPackagesQueryDto,
+	communityPackageNameParamSchema,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
+	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Delete,
 	Get,
+	Param,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
@@ -35,5 +42,21 @@ export class CommunityPackagesPublicController {
 		const packages = await this.communityPackagesLifecycleService.listInstalledPackages();
 
 		return packages.map(toCommunityPackagePublic);
+	}
+
+	@Delete('/:name')
+	@ApiKeyScope('communityPackage:uninstall')
+	@ApiSummary('Uninstall a community package')
+	@ApiDescription('Uninstall a community package by name.')
+	@ApiTags(['CommunityPackage'])
+	@ApiResponse(204)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async uninstallPackage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('name', communityPackageNameParamSchema) packageName: string,
+	): Promise<void> {
+		await this.communityPackagesLifecycleService.uninstall(packageName, req.user, 'notFound');
 	}
 }

@@ -324,6 +324,36 @@ describe('Community packages (Public API)', () => {
 	});
 
 	describe('DELETE /community-packages/:name', () => {
+		it('should return 403 when API key lacks communityPackage:uninstall scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.delete(`/community-packages/${encodeURIComponent(mockPackageName())}`);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('should return 400 when package name is invalid', async () => {
+			const name = 'invalid-package-name';
+			communityPackagesService.parseNpmPackageName.mockImplementation(() => {
+				throw new Error('Package name must start with n8n-nodes-');
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/community-packages/${encodeURIComponent(name)}`);
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({ message: 'Package name must start with n8n-nodes-' });
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
+		});
+
 		it('should return 404 when package is not installed', async () => {
 			const name = mockPackageName();
 			communityPackagesService.parseNpmPackageName.mockReturnValue({

@@ -52,6 +52,9 @@ export const credentialIdParamSchema = stringIdParamSchema('The ID of the creden
 export const credentialTypeNameParamSchema = stringIdParamSchema(
 	'The credential type name that you want to get the schema for',
 );
+export const communityPackageNameParamSchema = z
+	.string()
+	.openapi({ param: { description: 'npm package name' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',
