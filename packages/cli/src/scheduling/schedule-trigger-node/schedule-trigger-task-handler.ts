@@ -4,7 +4,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { CRON_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
@@ -75,7 +75,10 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			settingsTimezone && settingsTimezone !== 'DEFAULT'
 				? settingsTimezone
 				: this.globalConfig.generic.timezone;
-		const item = buildScheduleTriggerItem(task.scheduledFor, timezone);
+		const item =
+			node.type === CRON_NODE_TYPE
+				? { json: {} }
+				: buildScheduleTriggerItem(task.scheduledFor, timezone);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,

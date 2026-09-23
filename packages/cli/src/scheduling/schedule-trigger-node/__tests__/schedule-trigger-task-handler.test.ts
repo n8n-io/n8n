@@ -6,7 +6,7 @@ import type { ExecutionEntity, ExecutionRepository, Project } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -48,7 +48,12 @@ describe('ScheduleTriggerTaskHandler', () => {
 	// The reporter the executor hands to `execute`; `dispatched()` fires the spy above.
 	const report = createDispatchReporter(onDispatch);
 
-	const triggerNode = mock<INode>({ id: 'node-1', name: 'Schedule Trigger', disabled: false });
+	const triggerNode = mock<INode>({
+		id: 'node-1',
+		name: 'Schedule Trigger',
+		type: SCHEDULE_TRIGGER_NODE_TYPE,
+		disabled: false,
+	});
 
 	// Plain data objects, not mock proxies: the handler reads them as values.
 	const buildWorkflowData = (overrides: Partial<IWorkflowBase> = {}): IWorkflowBase =>
@@ -98,6 +103,32 @@ describe('ScheduleTriggerTaskHandler', () => {
 	});
 
 	describe('handoff', () => {
+		test('dispatches a Cron occurrence with an empty item and the existing dedup key', async () => {
+			const cronNode = mock<INode>({
+				id: 'node-1',
+				name: 'Cron',
+				type: CRON_NODE_TYPE,
+				disabled: false,
+			});
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ nodes: [cronNode] }),
+			);
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				cronNode,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				undefined,
+				'7:2026-07-06T07:30:00.000Z',
+			);
+			expect(decision).toBe(createDispatchReporter(vi.fn()).dispatched());
+			expect(onDispatch).toHaveBeenCalledTimes(1);
+		});
+
 		test('creates a trigger execution with the occurrence-derived dedup key', async () => {
 			await handler.execute(buildTask(), report);
 
