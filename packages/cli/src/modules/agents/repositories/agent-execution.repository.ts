@@ -1,11 +1,23 @@
 import type { AgentExecutionStatus } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	dbNowLiteral,
+	dbNowPlusMsLiteral,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, IsNull, Not, Raw } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+
+/**
+ * A running execution without a heartbeat for this long belongs to a turn that
+ * stopped. Compared on the database clock.
+ */
+export const EXECUTION_LIVENESS_GRACE_MS = 2 * 60 * 1000;
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -25,8 +37,11 @@ type AgentExecutionFinalizationValues = Pick<
 
 @Service()
 export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	private readonly isPostgres: boolean;
+
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(AgentExecution, dataSource.manager, transactionRunner);
+		this.isPostgres = dataSource.options.type === 'postgres';
 	}
 
 	async saveInContext(execution: AgentExecution, ctx: OperationContext): Promise<AgentExecution> {
@@ -38,10 +53,15 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
 	}
 
-	async findRunning(): Promise<RunningAgentExecution[]> {
+	/** Running executions whose last heartbeat is older than the liveness grace. */
+	async findStaleRunning(): Promise<RunningAgentExecution[]> {
+		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -EXECUTION_LIVENESS_GRACE_MS);
 		return await this.find({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
-			where: { status: 'running' },
+			where: {
+				status: 'running',
+				updatedAt: Raw((updatedAt) => `${updatedAt} <= ${staleBefore}`),
+			},
 		});
 	}
 
@@ -61,8 +81,13 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC', id: 'DESC' } });
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	/** Refreshes the heartbeat. Returns false when the execution no longer runs. */
+	async touchRunning(executionId: string): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running' },
+			{ updatedAt: () => dbNowLiteral(this.isPostgres) },
+		);
+		return result.affected === 1;
 	}
 
 	async updateTimelineIfRunning(
@@ -71,7 +96,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	): Promise<boolean> {
 		const result = await this.update({ id: executionId, status: 'running' }, {
 			timeline,
-			updatedAt: new Date(),
+			updatedAt: () => dbNowLiteral(this.isPostgres),
 		} as QueryDeepPartialEntity<AgentExecution>);
 		return result.affected === 1;
 	}

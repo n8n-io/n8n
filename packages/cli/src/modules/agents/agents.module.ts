@@ -124,6 +124,9 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
+			const { EXECUTION_LIVENESS_GRACE_MS } = await import(
+				'./repositories/agent-execution.repository.js'
+			);
 			const sweep = () => {
 				void Container.get(AgentInterruptedExecutionSweeper)
 					.sweep()
@@ -132,10 +135,7 @@ export class AgentsModule implements ModuleInterface {
 					});
 			};
 			sweep();
-			this.interruptedExecutionSweepTimer = setInterval(
-				sweep,
-				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
-			);
+			this.interruptedExecutionSweepTimer = setInterval(sweep, EXECUTION_LIVENESS_GRACE_MS);
 			this.interruptedExecutionSweepTimer.unref();
 		}
 

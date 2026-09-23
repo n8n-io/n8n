@@ -60,7 +60,10 @@ import type { AgentExecution } from '@/modules/agents/entities/agent-execution.e
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
-import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	EXECUTION_LIVENESS_GRACE_MS,
+} from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentSessionLeaseRepository } from '@/modules/agents/repositories/agent-session-lease.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -1137,7 +1140,7 @@ describe('AgentExecutionRepository', () => {
 			timeline,
 		});
 		await repository.update(executionId, {
-			updatedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS - 1),
+			updatedAt: new Date(Date.now() - EXECUTION_LIVENESS_GRACE_MS - 1),
 		});
 		const sweeper = new AgentInterruptedExecutionSweeper(
 			mockLogger(),
@@ -1182,6 +1185,46 @@ describe('AgentExecutionRepository', () => {
 		} as Partial<AgentExecution>);
 		return await repository.save(execution);
 	};
+
+	describe('liveness', () => {
+		it('refreshes the heartbeat of a running execution on the database clock', async () => {
+			const thread = await createThread();
+			const running = await createExecution({ threadId: thread.id, status: 'running' });
+			const finished = await createExecution({ threadId: thread.id });
+			await repository.update(running.id, { updatedAt: new Date(0) });
+			const before = new Date();
+
+			// An instance clock far in the past must not reach the row.
+			vi.useFakeTimers({ now: new Date('2000-01-01T00:00:00.000Z'), toFake: ['Date'] });
+			let touched: boolean;
+			let touchedFinished: boolean;
+			try {
+				touched = await repository.touchRunning(running.id);
+				touchedFinished = await repository.touchRunning(finished.id);
+			} finally {
+				vi.useRealTimers();
+			}
+
+			expect(touched).toBe(true);
+			expect(touchedFinished).toBe(false);
+			const { updatedAt } = await repository.findOneByOrFail({ id: running.id });
+			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime() - 60_000);
+		});
+
+		it('finds only running executions whose heartbeat is older than the grace', async () => {
+			const thread = await createThread();
+			const stale = await createExecution({ threadId: thread.id, status: 'running' });
+			await createExecution({ threadId: thread.id, status: 'running' });
+			const finished = await createExecution({ threadId: thread.id });
+			const staleSince = new Date(Date.now() - EXECUTION_LIVENESS_GRACE_MS - 60_000);
+			await repository.update(stale.id, { updatedAt: staleSince });
+			await repository.update(finished.id, { updatedAt: staleSince });
+
+			const found = await repository.findStaleRunning();
+
+			expect(found.map(({ id }) => id)).toEqual([stale.id]);
+		});
+	});
 
 	it('filters private sessions before pagination and preserves their owner on reuse', async () => {
 		const owner = await createMember();

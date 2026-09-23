@@ -38,7 +38,7 @@ describe('AgentInterruptedExecutionSweeper', () => {
 			startedAt: new Date(0),
 			updatedAt: new Date(0),
 		} as AgentExecution;
-		repository.findRunning.mockResolvedValue([execution]);
+		repository.findStaleRunning.mockResolvedValue([execution]);
 		executionService.finalizeInterruptedExecution.mockResolvedValue(true);
 
 		await sweeper.sweep();
@@ -46,32 +46,15 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution);
 	});
 
-	it('leaves a recently active execution running in another process', async () => {
-		const { sweeper, repository, executionService } = setup();
-		repository.findRunning.mockResolvedValue([
-			{
-				id: 'execution-1',
-				threadId: 'thread-1',
-				status: 'running',
-				startedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS * 2),
-				updatedAt: new Date(),
-			} as AgentExecution,
-		]);
-
-		await sweeper.sweep();
-
-		expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
-	});
-
 	it('runs full reconciliation when the feature is on, and still reconciles workflow jobs when it is off', async () => {
 		const disabled = setup();
-		disabled.repository.findRunning.mockResolvedValue([]);
+		disabled.repository.findStaleRunning.mockResolvedValue([]);
 		await disabled.sweeper.sweep();
 		expect(disabled.backgroundJobService.reconcile).not.toHaveBeenCalled();
 		expect(disabled.backgroundJobService.reconcileWorkflowJobs).toHaveBeenCalled();
 
 		const enabled = setup({ backgroundTasksEnabled: true });
-		enabled.repository.findRunning.mockResolvedValue([]);
+		enabled.repository.findStaleRunning.mockResolvedValue([]);
 		await enabled.sweeper.sweep();
 		expect(enabled.backgroundJobService.reconcile).toHaveBeenCalled();
 		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
@@ -79,7 +62,7 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 	it('checks for pending job results after reconciliation', async () => {
 		const { sweeper, repository, agentWakeService } = setup();
-		repository.findRunning.mockResolvedValue([]);
+		repository.findStaleRunning.mockResolvedValue([]);
 
 		await sweeper.sweep();
 

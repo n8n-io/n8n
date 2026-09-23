@@ -9,8 +9,6 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 
 @Service()
 export class AgentInterruptedExecutionSweeper {
-	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: AgentExecutionRepository,
@@ -23,22 +21,16 @@ export class AgentInterruptedExecutionSweeper {
 	}
 
 	async sweep(): Promise<void> {
-		let running;
+		let stale;
 		try {
-			running = await this.executionRepository.findRunning();
+			stale = await this.executionRepository.findStaleRunning();
 		} catch (error) {
 			this.logger.error('Failed to query running agent executions', { error });
 			return;
 		}
 
-		for (const execution of running) {
+		for (const execution of stale) {
 			try {
-				if (
-					execution.updatedAt.getTime() >
-					Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS
-				) {
-					continue;
-				}
 				if (await this.executionService.finalizeInterruptedExecution(execution)) {
 					this.logger.info('Marked abandoned agent execution as interrupted', {
 						executionId: execution.id,
