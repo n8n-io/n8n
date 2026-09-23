@@ -478,6 +478,9 @@ export class AgentExecutionOrchestratorService {
 						messageContext,
 						await this.integrationMessageContextService.getLatestForIncoming(memory.threadId),
 					);
+					// TODO: Write the context after the turn takes the session lease when integration
+					// messages go through the message queue. Until then, a message that is rejected
+					// as busy can overwrite the context of the running turn.
 					await this.integrationMessageContextService.installIncoming(
 						messageContext,
 						memory,
@@ -1079,6 +1082,9 @@ export class AgentExecutionOrchestratorService {
 			previewChat,
 			sessionMode,
 		} = config;
+		// TODO: Write the context after the turn takes the session lease when Preview messages
+		// go through the message queue. Until then, a Preview message that is rejected as busy
+		// can overwrite the context of the running turn.
 		const messageContext = await this.installDraftMessageContext(memory, user.id);
 		return this.streamChatResponse({
 			access,

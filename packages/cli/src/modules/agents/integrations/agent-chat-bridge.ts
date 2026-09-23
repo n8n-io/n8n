@@ -141,7 +141,7 @@ function stillWaitingNotice(suspendPayload: unknown): string {
 	return `⏳ ${title} — use the buttons on that card and I'll continue from there.`;
 }
 
-/** Reply sent when a message arrives while another turn runs on the session. */
+/** Interim reply for a message that arrives while another turn runs on the session. */
 const SESSION_BUSY_NOTICE =
 	"⏳ I'm still working on your previous message. Send this one again after my reply.";
 
@@ -686,6 +686,8 @@ export class AgentChatBridge {
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
 		// that is not going to run.
+		// TODO: Store the message and run it after the approval when the message queue
+		// holds messages during open approvals. Until then, the message is not run.
 		if (await this.postStillWaitingReply(thread, session.memory.threadId.id)) return;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inbound.attachments,
@@ -825,6 +827,8 @@ export class AgentChatBridge {
 				statusHandle,
 			});
 		} catch (error) {
+			// TODO: Remove when integration messages go through the message queue. Until
+			// then, a message that arrives while another turn runs on the session is not run.
 			if (error instanceof AgentTurnAlreadyRunningError) {
 				await statusHandle?.clearBeforeResponse();
 				await this.rejectBusyTurn(thread, attachments);

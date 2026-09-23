@@ -1089,6 +1089,9 @@ export class ChatIntegrationService {
 					})
 				: memoryState;
 
+			// TODO: Set `concurrency: 'concurrent'` when integration messages go through the
+			// message queue. The default 'drop' strategy discards a message while a handler
+			// for the same thread holds the lock, for at most 30 seconds.
 			chat = new Chat({
 				userName: `n8n-agent-${agentId}`,
 				// Use the platform type as the adapter key (e.g. 'slack') so that

@@ -229,6 +229,7 @@ export class AgentChatController {
 			send({
 				type: 'error',
 				message: errorMessage,
+				// TODO: Queue the message instead when Preview messages go through the message queue.
 				...(error instanceof AgentTurnAlreadyRunningError
 					? { errorCode: 'turn_already_running' }
 					: {}),
