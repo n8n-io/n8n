@@ -1,6 +1,7 @@
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { testDb } from '@n8n/backend-test-utils';
 import {
+	dbNowLiteral,
 	ScheduledJob,
 	ScheduledJobRepository,
 	ScheduledTask,
@@ -385,9 +386,9 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			);
 
 			// The other half of the claim's candidate select: the slot ranking that
-			// decides which of a limited job's pending rows may be claimed. It reads
-			// every pending and running row of every limited job, so its cost tracks
-			// the limited backlog rather than the batch. Kept in step by hand with
+			// decides which of a limited job's pending rows may be claimed. It ranks
+			// claimable pending rows and counts all running rows. Its cost tracks the
+			// limited backlog rather than the batch. Kept in step by hand with
 			// `ScheduledTaskRepository.allowedByConcurrencyLimitSql`.
 			const jobTable = dataSource.getMetadata(ScheduledJob).tablePath;
 			const limitedSlotSelect = `SELECT ranked."id"
@@ -403,7 +404,11 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 					FROM ${taskTable} c
 					JOIN ${jobTable} cj ON cj."id" = c."jobId"
 					WHERE cj."concurrencyLimit" IS NOT NULL
-						AND c."status" IN ('pending', 'running')
+						AND (c."status" = 'running'
+							OR (c."status" = 'pending'
+								AND (c."missedAfter" IS NULL
+									OR c."missedAfter" > ${dbNowLiteral(isPostgres)}
+									OR c."attempts" > 0)))
 				) ranked
 				WHERE ranked."status" = 'pending' AND ranked."slot" <= ranked."freeSlots"`;
 			await profileRead(

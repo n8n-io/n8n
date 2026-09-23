@@ -284,7 +284,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * token). Due-ness uses the DB clock, and reaches `lookaheadMs` into the future
 	 * so the executor can fire each task precisely at its `runAt`.
 	 *
-	 * Rows past their deadline are left alone (see {@link claimableSql}).
+	 * Rows past their deadline are left alone and hold no slot (see {@link claimableSql}).
 	 *
 	 * A job's `concurrencyLimit` caps how many of its occurrences run at once.
 	 * The claim takes at most `concurrencyLimit` minus the job's `running` rows,
@@ -292,10 +292,6 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * (see {@link allowedByConcurrencyLimitSql}). The cap applies before
 	 * `batchSize`, so a held-back job never crowds out other jobs. A job with a
 	 * `null` limit has no cap.
-	 *
-	 * Limited jobs select a prefix of their `pending` rows before the claim applies
-	 * the deadline filter, so an expired row can hold a slot until the reaper
-	 * retires it.
 	 *
 	 * Postgres also locks each selected job and checks its row version. A claim
 	 * skips jobs changed since its snapshot, then writes a new job row version.
@@ -349,9 +345,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				FROM ${this.tableName} c
 				JOIN ${this.jobTableName} cj ON cj."id" = c."jobId"
 				WHERE cj."concurrencyLimit" IS NOT NULL
-					AND c."status" IN (
-						'${ScheduledTaskStatus.Pending}',
-						'${ScheduledTaskStatus.Running}'
+					AND (
+						c."status" = '${ScheduledTaskStatus.Running}'
+						OR (c."status" = '${ScheduledTaskStatus.Pending}' AND ${this.claimableSql('c.')})
 					)
 			) ranked
 			WHERE ranked."status" = '${ScheduledTaskStatus.Pending}'

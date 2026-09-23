@@ -283,7 +283,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(await runningCountOf(limited.id)).toBe(1);
 		});
 
-		it('counts an occurrence already running elsewhere against the limit', async () => {
+		it('counts an occurrence already running elsewhere against the limit, even past its deadline', async () => {
 			const limited = await createLimitedJob(1);
 			await createTask({
 				jobId: limited.id,
@@ -291,6 +291,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 				claimedBy: HOST_B,
 				leaseExpiresAt: new Date(Date.now() + 60_000),
 				leaseEpoch: 1,
+				missedAfter: new Date(Date.now() - 60_000),
 			});
 			const due = await createTask({ jobId: limited.id });
 
@@ -375,7 +376,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(retired.startedAt).toBeNull();
 		});
 
-		it('waits for an expired slot holder to retire before claiming the next occurrence', async () => {
+		it('claims the next occurrence without waiting for an expired one to retire', async () => {
 			const limited = await createLimitedJob(1);
 			const expired = await createTask({
 				jobId: limited.id,
@@ -387,13 +388,32 @@ describe('ScheduledTaskRepository executor methods', () => {
 				runAt: new Date(Date.now() - 20_000),
 			});
 
-			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(0);
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((task) => task.id)).toEqual([ready.id]);
+			expect(await statusOf(expired.id)).toBe('pending');
 			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect(await statusOf(expired.id)).toBe('missed');
+		});
+
+		it('lets a retry past its deadline take a slot', async () => {
+			const limited = await createLimitedJob(1);
+			const retry = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 30_000),
+				missedAfter: new Date(Date.now() - 60_000),
+				attempts: 1,
+				maxAttempts: 2,
+			});
+			const next = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 20_000),
+			});
 
 			const claimed = await taskRepository.claimDueTasks(claimOpts());
 
-			expect(await statusOf(expired.id)).toBe('missed');
-			expect(claimed.map((task) => task.id)).toEqual([ready.id]);
+			expect(claimed.map((task) => task.id)).toEqual([retry.id]);
+			expect(await statusOf(next.id)).toBe('pending');
 		});
 
 		it('fills the batch with other jobs when a limited job holds occurrences back', async () => {
