@@ -28,6 +28,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { AgentResumeAlreadyHandledError } from '../agent-resume-already-handled.error';
 import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -422,10 +423,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				);
 				const result = collect(stream);
 				const signal = await started.promise;
-				// The session lease is held by the running resume.
-				executionService.startExecutionRecording.mockRejectedValue(
-					new AgentTurnAlreadyRunningError(),
-				);
 				const resumeAgain = async () =>
 					await collect(
 						service.resumeForChat({
@@ -440,7 +437,9 @@ describe('AgentExecutionOrchestratorService', () => {
 						}),
 					);
 
-				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+				// The running resume claimed the checkpoint, so a second resume is refused
+				// before it records anything.
+				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentResumeAlreadyHandledError);
 
 				await chatExecutionService.handleCancel({
 					projectId,
@@ -450,6 +449,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 
+				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
 				expect(runtime.agent.resume).toHaveBeenCalledOnce();
 				expect(signal.aborted).toBe(true);
 				release.resolve();
@@ -870,6 +870,72 @@ describe('AgentExecutionOrchestratorService', () => {
 				sandboxPrincipalHash: userPrincipalHash,
 			});
 
+		function makeResume(sessionWaitMs: number) {
+			const fixtures = makeService();
+			const runtime = makeRuntime();
+			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			fixtures.checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: makeCheckpoint(),
+			});
+			const resume = async () =>
+				await collect(
+					fixtures.service.resumeForChat({
+						user,
+						usePublishedVersion: false,
+						agentId,
+						projectId,
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						resumeData: { approved: true },
+						previewChat: true,
+						sessionWaitMs,
+					}),
+				);
+			return { ...fixtures, runtime, resume };
+		}
+
+		it('waits for the session and resumes once the other turn ends', async () => {
+			const { executionService, runtime, resume } = makeResume(5_000);
+			executionService.startExecutionRecording
+				.mockRejectedValueOnce(new AgentTurnAlreadyRunningError())
+				.mockResolvedValueOnce(startedExecution('execution-1'));
+
+			await resume();
+
+			expect(executionService.startExecutionRecording).toHaveBeenCalledTimes(2);
+			expect(runtime.agent.resume).toHaveBeenCalledOnce();
+		});
+
+		it('rejects the resume as busy when the session wait ends', async () => {
+			const { executionService, runtime, resume } = makeResume(300);
+			executionService.startExecutionRecording.mockRejectedValue(
+				new AgentTurnAlreadyRunningError(),
+			);
+
+			await expect(resume()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+
+			expect(executionService.startExecutionRecording.mock.calls.length).toBeGreaterThan(1);
+			expect(runtime.agent.resume).not.toHaveBeenCalled();
+		});
+
+		it('checks before each attempt that the checkpoint is still suspended', async () => {
+			const { executionService, checkpointStorage, runtime, resume } = makeResume(5_000);
+			executionService.startExecutionRecording.mockImplementationOnce(async () => {
+				// Another resume claims the checkpoint while this one waits.
+				checkpointStorage.getStatus.mockResolvedValue({
+					status: 'active',
+					checkpoint: { ...makeCheckpoint(), status: 'running' },
+				});
+				throw new AgentTurnAlreadyRunningError();
+			});
+
+			await expect(resume()).rejects.toBeInstanceOf(AgentResumeAlreadyHandledError);
+
+			expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+			expect(runtime.agent.resume).not.toHaveBeenCalled();
+		});
+
 		it('passes a busy session through without recording a failed execution', async () => {
 			const { service, executionService } = makeService();
 			executionService.startExecutionRecording.mockRejectedValue(
@@ -1116,9 +1182,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			],
 			genieAttribution,
 		);
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(resumed);
 
@@ -2347,9 +2416,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		).rejects.toThrow(UserError);
 		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('expired-run', agentId);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -2522,6 +2594,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: {
+				status: 'suspended',
 				persistence: {
 					threadId: 'thread-1',
 					resourceId: 'platform-user-1',
@@ -2621,7 +2694,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		]);
 		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		const stream = service.resumeForChat({
@@ -2861,9 +2937,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -2894,9 +2973,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		executionService.findLatestSuspendedRun.mockResolvedValueOnce({ source: 'telegram' } as never);
@@ -2936,9 +3018,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		executionService.findLatestSuspendedRun.mockResolvedValueOnce(null);
@@ -2970,9 +3055,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
 		Object.defineProperty(agentRunTracingService, 'enabled', { value: false });
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -3005,9 +3093,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			},
 		]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+			},
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
