@@ -465,7 +465,7 @@ async function continueApply() {
 }
 
 .pendingItem {
-	border-color: var(--color--warning);
+	border-color: var(--border-color--warning);
 	color: var(--text-color--warning);
 }
 
