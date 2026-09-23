@@ -14,8 +14,8 @@ Some consumers keep data or use an older n8n version after a shared contract cha
 build can pass even when these consumers cannot use the new contract. Different contracts need
 different checks. A schema comparison cannot show whether an existing guarantee still holds.
 
-We need to detect incompatible changes before they reach existing consumers. The check must use
-the contract and the output it verifies, without making an unrelated release job responsible.
+We need to detect incompatible changes before they reach existing consumers. Each check needs
+access to the contract and the output it verifies.
 
 ## Decision
 
@@ -24,10 +24,8 @@ which consumers must remain compatible. The check compares the proposed output w
 prior contract or a supported consumer. A change in the same pull request cannot replace its own
 baseline.
 
-We run the check where its required output exists. A build check runs after the build. A check of
-independently published data runs before publication. We use code health for rules it can evaluate
-and a dedicated check when the contract needs other inputs. We do not add unrelated checks to the
-SBOM release job.
+We run each check where its required output exists. A check of built output runs after the build.
+A check of independently published data runs before publication.
 
 ## Alternatives Considered
 
@@ -41,8 +39,7 @@ SBOM release job.
 
 - Contract owners must name the consumers and prior contract that each check protects.
 - Checks run at different stages. Each check must block the change before consumers receive it.
-- Some checks need a build or a supported client version. Code health alone cannot verify every
-  contract.
+- Some checks need a build or a supported client version.
 - An intentional incompatible change needs a migration or a reviewed exception.
 
 ## Links
