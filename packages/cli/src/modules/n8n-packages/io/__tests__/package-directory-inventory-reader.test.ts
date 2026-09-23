@@ -42,10 +42,7 @@ describe('PackageDirectoryInventoryReader', () => {
 				'projects/alpha-p1/workflows/root-w1/workflow.json': workflow('w1', 'Root'),
 				'projects/alpha-p1/workflows/root-w1/workflow-metadata.json': { publishedVersionId: null },
 				'projects/alpha-p1/folders/f1/folder.json': { id: 'f1', name: 'F1' },
-				'projects/alpha-p1/folders/f1/folders/f2/workflows/deep-w2/workflow.json': workflow(
-					'w2',
-					'Deep',
-				),
+				'projects/alpha-p1/folders/f1/f2/workflows/deep-w2/workflow.json': workflow('w2', 'Deep'),
 				'projects/alpha-p1/credentials/gh-c1/credential.json': credential('c1'),
 				'projects/alpha-p1/variables/region/variable.json': variable('REGION'),
 				'credentials/gh-c2/credential.json': credential('c2'),
@@ -57,7 +54,7 @@ describe('PackageDirectoryInventoryReader', () => {
 		expect(inventory.projects).toEqual([{ path: 'projects/alpha-p1', id: 'p1', name: 'Alpha' }]);
 		expect(inventory.workflows.map(({ content, ...rest }) => rest)).toEqual([
 			{
-				path: 'projects/alpha-p1/folders/f1/folders/f2/workflows/deep-w2/workflow.json',
+				path: 'projects/alpha-p1/folders/f1/f2/workflows/deep-w2/workflow.json',
 				projectId: 'p1',
 				id: 'w2',
 				name: 'Deep',
@@ -86,6 +83,18 @@ describe('PackageDirectoryInventoryReader', () => {
 			},
 			{ path: 'variables/region/variable.json', projectId: null, variable: variable('REGION') },
 		]);
+	});
+
+	it.each([
+		['directly in a project', 'projects/p1/workflows/w/workflow.json'],
+		['one folder deep', 'projects/p1/folders/f1/workflows/w/workflow.json'],
+		['two folders deep', 'projects/p1/folders/f1/f2/workflows/w/workflow.json'],
+		['three folders deep', 'projects/p1/folders/f1/f2/f3/workflows/w/workflow.json'],
+	])('accepts a workflow %s', async (_label, path) => {
+		const inventory = await reader.read(
+			sourceOf({ 'projects/p1/project.json': project('p1'), [path]: workflow('w') }),
+		);
+		expect(inventory.workflows.map((wf) => wf.path)).toEqual([path]);
 	});
 
 	it('returns an empty inventory for a directory without entity files', async () => {

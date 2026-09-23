@@ -255,14 +255,22 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 	return segments.length === 3 && segments[0] === PACKAGE_ENTITY_LAYOUT[kind].directory;
 }
 
-/** `workflows/<entry>/workflow.json`, optionally below one or more `folders/<entry>/` levels. */
+/**
+ * `workflows/<entry>/workflow.json`, optionally below a single `folders/` prefix
+ * with one or more nested folder levels (`folders/<entry>/<entry>/workflows/...`).
+ */
 function isWorkflowLocation(segments: string[]): boolean {
 	let start = 0;
-	while (
-		segments[start] === PACKAGE_ENTITY_LAYOUT.folders.directory &&
-		segments.length - start > 3
-	) {
-		start += 2;
+	if (segments[start] === PACKAGE_ENTITY_LAYOUT.folders.directory) {
+		start += 1;
+		// Folder directory names are `<slug>-<id>`, so none equals the bare
+		// `workflows` keyword; stop at the first `workflows/` segment.
+		while (
+			start < segments.length &&
+			segments[start] !== PACKAGE_ENTITY_LAYOUT.workflows.directory
+		) {
+			start += 1;
+		}
 	}
 	return isCollectionLocation(segments.slice(start), 'workflows');
 }
