@@ -285,7 +285,7 @@ jobs:
     name: Unit tests
     if: needs.install-and-build.outputs.unit == 'true'
     uses: ./.github/workflows/test-unit-reusable.yml
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
@@ -297,7 +297,7 @@ jobs:
     name: Typecheck
     if: needs.install-and-build.outputs.ci == 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     env:
       # Inherited by every worker turbo spawns, so the real budget is
       # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
@@ -318,7 +318,7 @@ jobs:
     name: Lint
     if: needs.install-and-build.outputs.ci == 'true'
     uses: ./.github/workflows/test-linting-reusable.yml
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -326,7 +326,7 @@ jobs:
     name: Check packaging
     if: needs.install-and-build.outputs.ci == 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -345,7 +345,7 @@ jobs:
   # cache hit instead of racing to rebuild.
   prepare-docker:
     name: Prepare Docker
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: >-
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
@@ -413,7 +413,7 @@ jobs:
   # the production-bundle e2e job bundles around.
   dev-server-smoke:
     name: Dev-server boot smoke
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.dev_server_smoke == 'true' && github.event_name != 'merge_group'
     uses: ./.github/workflows/test-dev-server-smoke-reusable.yml
     with:
@@ -426,7 +426,7 @@ jobs:
   # release.
   frontend-declarations:
     name: Frontend declarations
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.frontend_declarations == 'true'
     uses: ./.github/workflows/test-frontend-declarations-reusable.yml
     with:
@@ -434,7 +434,7 @@ jobs:
 
   db-tests:
     name: DB Tests
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.db == 'true'
     uses: ./.github/workflows/test-db-reusable.yml
     with:
@@ -459,7 +459,7 @@ jobs:
 
   security-checks:
     name: Security Checks
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.workflows == 'true'
     uses: ./.github/workflows/sec-ci-reusable.yml
     with:
@@ -468,7 +468,7 @@ jobs:
 
   workflow-scripts:
     name: Workflow scripts
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.workflow_scripts == 'true'
     uses: ./.github/workflows/test-workflow-scripts-reusable.yml
     with:
@@ -480,10 +480,11 @@ jobs:
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
   instance-ai-discovery-evals:
     name: Instance AI Discovery Evals
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: >-
       !cancelled() &&
       needs.install-and-build.result == 'success' &&
+      needs.format-check.result == 'success' &&
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
