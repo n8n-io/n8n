@@ -47,6 +47,14 @@ const jsonwebtokenSigningRestriction = {
 		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
 };
 
+// `jsonwebtoken` declares no `exports`, so `jsonwebtoken/sign` and its siblings
+// resolve straight to the same functions and would slip past a name-only rule.
+const jsonwebtokenSubpathRestriction = {
+	group: ['jsonwebtoken/*'],
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -208,6 +216,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
+						patterns: [jsonwebtokenSubpathRestriction],
 					},
 				],
 			},
@@ -227,6 +236,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
+						patterns: [jsonwebtokenSubpathRestriction],
 					},
 				],
 			},
@@ -248,7 +258,10 @@ export default defineConfig({
 			rules: {
 				'no-restricted-imports': [
 					'error',
-					{ paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction] },
+					{
+						paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
+						patterns: [jsonwebtokenSubpathRestriction],
+					},
 				],
 			},
 		},
