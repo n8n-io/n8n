@@ -169,6 +169,13 @@ describe('SourceControlImportService', () => {
 		credentialsRepository.runInTransaction.mockImplementation(
 			async (ctx, fn) => await fn(transactionManager, ctx),
 		);
+		// The sealed write still goes through `credentialsRepository.upsert` underneath, so
+		// existing assertions on its payload keep working; the id it returns is whatever the
+		// imported content already carries, same as the unsealed call this replaces.
+		credentialsRepository.upsertImportedContent.mockImplementation(async (content) => {
+			await credentialsRepository.upsert(content, ['id']);
+			return (content as { id?: string }).id ?? 'generated-id';
+		});
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 

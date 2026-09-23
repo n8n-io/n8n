@@ -122,11 +122,18 @@ export type CredentialDecryptContext = {
  */
 export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
 
+/**
+ * What's being imported, plus where it's landing and how it arrived.
+ *
+ * `workflow` and `credential` are mutually exclusive, and neither key exists on the other
+ * arm — not even as `undefined` — so `'workflow' in context` / `'credential' in context`
+ * narrows cleanly. A workflow-only implementer checks the tag once (`if (!('workflow' in
+ * context)) return NO_VIOLATIONS`) rather than getting a value it can access without asking.
+ */
 export type ContentImportContext = {
-	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
 	readonly transport: ContentImportTransport;
-};
+} & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
 
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {

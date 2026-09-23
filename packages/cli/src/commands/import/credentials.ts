@@ -1,6 +1,7 @@
 import { credentialDescriptionSchema } from '@n8n/api-types';
 import {
 	CredentialsEntity,
+	CredentialsRepository,
 	DbLock,
 	DbLockService,
 	Project,
@@ -10,7 +11,7 @@ import {
 	GLOBAL_OWNER_ROLE,
 	type OperationContext,
 } from '@n8n/db';
-import { Command } from '@n8n/decorators';
+import { Command, type PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
@@ -25,6 +26,8 @@ import { z } from 'zod';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import { BaseCommand } from '../base-command';
 
@@ -125,6 +128,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			exclude,
 		});
 
+		const skipped: Array<{ id?: string; name?: string; violations: string[] }> = [];
+
 		await Container.get(DbLockService).withLock(
 			DbLock.INSTANCE_AI_SETTINGS,
 			async (transactionManager, ctx) => {
@@ -142,12 +147,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				}
 
 				for (const credential of credentials) {
-					await this.storeCredential(transactionManager, credential, project, ctx);
+					const skip = await this.storeCredential(transactionManager, credential, project, ctx);
+					if (skip) skipped.push(skip);
 				}
 			},
 		);
 
-		this.reportSuccess(credentials.length);
+		this.reportSuccess(credentials.length - skipped.length);
+		this.reportSkipped(skipped);
 	}
 
 	async catch(error: Error) {
@@ -163,12 +170,23 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		);
 	}
 
+	private reportSkipped(skipped: Array<{ id?: string; name?: string; violations: string[] }>) {
+		if (skipped.length === 0) return;
+
+		this.logger.warn(
+			`Skipped ${skipped.length} ${skipped.length === 1 ? 'credential' : 'credentials'} blocked by the content-import policy:`,
+		);
+		for (const { id, name, violations } of skipped) {
+			this.logger.warn(`  - ${name ?? id ?? 'unknown'}: ${violations.join(', ')}`);
+		}
+	}
+
 	private async storeCredential(
 		transactionManager: EntityManager,
 		credential: Partial<CredentialsEntity>,
 		project: Project,
 		ctx: OperationContext,
-	) {
+	): Promise<{ id?: string; name?: string; violations: string[] } | undefined> {
 		await Container.get(CredentialDescriptionsService).stripIfDisabled(credential);
 		if (credential.description !== undefined) {
 			const parsed = credentialDescriptionSchema.safeParse(credential.description);
@@ -226,8 +244,41 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
 		}
 
-		const result = await transactionManager.upsert(CredentialsEntity, credential, ['id']);
-		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
+		// The payload may omit `type` on an update that doesn't change it (e.g. --exclude=type);
+		// the policy check and the sealed write both need a concrete type to bind to.
+		const type = credential.type ?? existing?.type;
+		if (type === undefined) {
+			throw new UserError(
+				`Credential "${credential.id ?? credential.name ?? 'unknown'}" is missing a type`,
+			);
+		}
+		credential.type = type;
+
+		let cleared: PolicyCleared<'contentImport'>;
+		try {
+			cleared = await Container.get(PolicyEnforcementService).enforceContentImport({
+				credential: { id: credential.id ?? null, type },
+				projectId: credential.usageScope === 'instance' ? null : project.id,
+				transport: 'cli',
+			});
+		} catch (error) {
+			if (!(error instanceof PolicyViolationError)) throw error;
+
+			this.logger.warn(
+				`Skipping credential ${credential.id ?? credential.name ?? 'unknown'}: blocked by the content-import policy`,
+			);
+
+			return {
+				id: credential.id,
+				name: credential.name,
+				violations: error.violations.map((violation) => violation.message),
+			};
+		}
+
+		const credentialsId = await Container.get(CredentialsRepository).upsertImportedContent(
+			{ ...credential, type },
+			{ ...ctx, policyCleared: cleared },
+		);
 
 		if (credential.usageScope === 'instance') {
 			// Instance credentials are instance-owned and must not retain project sharing rows.
@@ -251,6 +302,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				['credentialsId', 'projectId'],
 			);
 		}
+
+		return undefined;
 	}
 
 	private async validateInstanceCredentialData(

@@ -1,11 +1,11 @@
-import { assertClearedFor, credentialContentSubject } from '@n8n/decorators';
+import { assertClearedFor, credentialContentSubject, credentialSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	CredentialsEntity,
@@ -35,6 +35,13 @@ export class CredentialIdConflictError extends UserError {
 }
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
+
+/**
+ * An import payload the clearance can bind to: `type` is what the subject hashes, and `id` is
+ * concrete rather than the function form a `QueryDeepPartialEntity` would otherwise allow.
+ */
+type UpsertableCredentialContent = QueryDeepPartialEntity<CredentialsEntity> &
+	Pick<CredentialsEntity, 'type'> & { id?: string };
 
 export type CredentialSharingRelation =
 	| 'shared'
@@ -211,6 +218,33 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	): Promise<void> {
 		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
 		await this.managerFor(ctx).update(CredentialsEntity, id, content);
+	}
+
+	/**
+	 * Persists an imported credential row, gated on a clearance for `contentImport`.
+	 *
+	 * An import can match an existing row or insert a new one, so the subject binds to the id
+	 * when there is one and to the type hash otherwise — the same rule `WorkflowRepository`'s
+	 * `upsertImportedContent` applies to workflows.
+	 */
+	async upsertImportedContent(
+		content: UpsertableCredentialContent,
+		ctx: OperationContext,
+	): Promise<string> {
+		assertClearedFor(
+			ctx.policyCleared,
+			'contentImport',
+			credentialSubject({ id: content.id ?? null, type: content.type }),
+		);
+
+		const result = await this.managerFor(ctx).upsert(CredentialsEntity, content, ['id']);
+		const id = result.identifiers.at(0)?.id;
+
+		if (typeof id !== 'string') {
+			throw new UnexpectedError('Upsert of an imported credential returned no id');
+		}
+
+		return id;
 	}
 
 	async saveInstanceCredential(
