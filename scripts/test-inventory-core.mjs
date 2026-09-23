@@ -50,7 +50,7 @@ function filePath(file, target, repoRoot) {
 	return relative(repoRoot, isAbsolute(path) ? path : join(repoRoot, target.dir, path));
 }
 
-export function listedFiles(output, target, repoRoot) {
+function listedFiles(output, target, repoRoot) {
 	return [
 		...new Set(
 			output
@@ -73,7 +73,7 @@ function leafCount(tasks) {
 	return count;
 }
 
-export function countDynamicTests(serialized, target, repoRoot) {
+function countDynamicTests(serialized, target, repoRoot) {
 	let tests;
 	try {
 		tests = JSON.parse(serialized);
@@ -101,18 +101,7 @@ export function countDynamicTests(serialized, target, repoRoot) {
 	};
 }
 
-export function collectTarget(
-	target,
-	index,
-	{
-		outputDir,
-		dynamic,
-		timeoutSeconds,
-		repoRoot,
-		spawnProcess = spawn,
-		killProcess = process.kill,
-	},
-) {
+export function collectTarget(target, index, { outputDir, dynamic, timeoutSeconds, repoRoot }) {
 	return new Promise((resolve) => {
 		const outputFile = join(outputDir, `${index}.json`);
 		const env = {
@@ -134,7 +123,7 @@ export function collectTarget(
 		};
 		const timer = setTimeout(() => {
 			try {
-				if (activePid) killProcess(-activePid, 'SIGKILL');
+				if (activePid) process.kill(-activePid, 'SIGKILL');
 			} catch {}
 			finish({ error: `timed out after ${timeoutSeconds}s` });
 		}, timeoutSeconds * 1000);
@@ -148,7 +137,7 @@ export function collectTarget(
 				'--no-color',
 				...(target.config ? ['--config', target.config] : []),
 			];
-			const child = spawnProcess('pnpm', args, {
+			const child = spawn('pnpm', args, {
 				cwd: join(repoRoot, target.dir),
 				detached: true,
 				env,
@@ -220,6 +209,9 @@ export function aggregateInventory(results, dynamic) {
 	const prLanes = lanes.filter(
 		({ lane }) => lane !== 'frontend-nightly' && lane !== 'not-in-unit-ci',
 	);
+	const missingCaseCounts = dynamic
+		? prLanes.reduce((total, lane) => total + lane.missingCaseCounts, 0)
+		: 0;
 	return {
 		schemaVersion: 1,
 		mode: dynamic ? 'dynamic' : 'files',
@@ -230,10 +222,11 @@ export function aggregateInventory(results, dynamic) {
 			packages: new Set(prResults.map((result) => result.package)).size,
 			targets: prResults.length,
 			files: prLanes.reduce((total, lane) => total + lane.files, 0),
-			tests: dynamic ? prLanes.reduce((total, lane) => total + lane.tests, 0) : null,
-			missingCaseCounts: dynamic
-				? prLanes.reduce((total, lane) => total + lane.missingCaseCounts, 0)
-				: 0,
+			tests:
+				dynamic && missingCaseCounts === 0
+					? prLanes.reduce((total, lane) => total + lane.tests, 0)
+					: null,
+			missingCaseCounts,
 			errors: prLanes.reduce((total, lane) => total + lane.errors, 0),
 		},
 		lanes,

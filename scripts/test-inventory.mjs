@@ -107,11 +107,14 @@ try {
 }
 
 const output = aggregateInventory(results, values.dynamic);
+const incomplete = results.some(
+	(result) => result.error || (values.dynamic && result.tests === null),
+);
 if (values.json) {
 	await new Promise((resolve) =>
 		process.stdout.write(`${JSON.stringify(output, null, 2)}\n`, resolve),
 	);
-	process.exit(results.some((result) => result.error) ? 1 : 0);
+	process.exit(incomplete ? 1 : 0);
 }
 
 function table(rows, columns) {
@@ -155,4 +158,4 @@ if (errors.length) {
 	process.stderr.write('\nCollection errors:\n');
 	for (const error of errors) process.stderr.write(`- ${error.package}: ${error.error}\n`);
 }
-process.exitCode = errors.length ? 1 : 0;
+process.exitCode = incomplete ? 1 : 0;
