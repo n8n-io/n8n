@@ -153,6 +153,7 @@ jobs:
             # data plane, and the executions code merges v1 and v2 rows. A path
             # this list misses skips `e2e-engine`, and `required-checks` counts
             # a skipped job as a pass, so the gap would be silent.
+            # Use force-engine-e2e when changing the engine job in this workflow.
             engine-e2e:
               packages/@n8n/engine/**
               packages/@n8n/node-engine-compatibility/**
@@ -165,7 +166,6 @@ jobs:
               packages/cli/src/workflow-runner.ts
               packages/testing/containers/**
               packages/testing/playwright/**
-              .github/workflows/ci-pull-requests.yml
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
