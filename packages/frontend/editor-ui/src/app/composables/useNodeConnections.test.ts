@@ -6,8 +6,8 @@ import type {
 	CanvasNodeData,
 } from '@/features/workflows/canvas/canvas.types';
 import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 	CanvasConnectionMode,
 } from '@/features/workflows/canvas/canvas.types';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
@@ -255,7 +255,7 @@ describe('useNodeConnections', () => {
 			expect(isValidConnection(connection)).toBe(true);
 		});
 
-		it('accepts a visual group target handle as a main input', () => {
+		it('accepts a group input handle', () => {
 			const connection = {
 				source: 'node1',
 				target: 'group:g1',
@@ -264,17 +264,17 @@ describe('useNodeConnections', () => {
 					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
-				targetHandle: CANVAS_NODE_GROUP_HANDLE_LEFT,
+				targetHandle: CANVAS_NODE_GROUP_INPUT_HANDLE,
 			};
 
 			expect(isValidConnection(connection)).toBe(true);
 		});
 
-		it('accepts a visual group source handle as a main output', () => {
+		it('accepts a group output handle', () => {
 			const connection = {
 				source: 'group:g1',
 				target: 'node1',
-				sourceHandle: CANVAS_NODE_GROUP_HANDLE_RIGHT,
+				sourceHandle: CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
 					type: NodeConnectionTypes.Main,

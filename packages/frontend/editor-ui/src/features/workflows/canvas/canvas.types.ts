@@ -1,10 +1,11 @@
-import type {
-	ExecutionStatus,
-	IConnections,
-	INodeConnections,
-	INodeParameterResourceLocator,
-	IWorkflowGroup,
-	NodeConnectionType,
+import {
+	NodeConnectionTypes,
+	type ExecutionStatus,
+	type IConnections,
+	type INodeConnections,
+	type INodeParameterResourceLocator,
+	type IWorkflowGroup,
+	type NodeConnectionType,
 } from 'n8n-workflow';
 import type {
 	Connection,
@@ -164,8 +165,8 @@ export type CanvasNode = Node<CanvasNodeData>;
 
 export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
 export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
-export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
-export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+export const CANVAS_NODE_GROUP_INPUT_HANDLE = `${CanvasConnectionMode.Input}/${NodeConnectionTypes.Main}/0`;
+export const CANVAS_NODE_GROUP_OUTPUT_HANDLE = `${CanvasConnectionMode.Output}/${NodeConnectionTypes.Main}/0`;
 
 // Host override for group expansion; leaves persisted view state untouched.
 export type GroupExpansionMode = 'all' | 'errored';
