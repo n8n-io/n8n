@@ -23,7 +23,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_session_lease](agent_session_lease.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -181,7 +180,6 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_session_lease" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -571,17 +569,6 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId PK
-}
-"agent_session_lease" {
-  varchar_36_ agentId FK
-  datetime_3_ createdAt
-  INTEGER epoch
-  varchar_36_ executionId
-  datetime_3_ expiresAt
-  varchar_255_ ownerHostId
-  varchar ownerToken
-  varchar_128_ threadId PK
-  datetime_3_ updatedAt
 }
 "agent_task_definition" {
   varchar_36_ agentId FK
