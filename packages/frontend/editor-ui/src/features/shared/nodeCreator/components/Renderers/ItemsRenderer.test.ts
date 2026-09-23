@@ -150,6 +150,17 @@ describe('ItemsRenderer', () => {
 		}
 	});
 
+	it('should show the navigation arrow for views but not commands', async () => {
+		const { container } = renderComponent({
+			pinia: createTestingPinia(),
+			props: { elements: [mockViewCreateElement(), mockCommandCreateElement()] },
+		});
+		await nextTick();
+
+		expect(container.querySelector('.view [data-icon="arrow-right"]')).toBeInTheDocument();
+		expect(container.querySelector('.command [data-icon="arrow-right"]')).not.toBeInTheDocument();
+	});
+
 	it('should separate a command from preceding items only when browsing', async () => {
 		const command = mockCommandCreateElement();
 		const { container, rerender } = renderComponent({

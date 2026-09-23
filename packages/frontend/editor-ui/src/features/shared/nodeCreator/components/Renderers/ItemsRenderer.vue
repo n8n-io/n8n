@@ -210,6 +210,7 @@ watch(
 					<ViewItem
 						v-else-if="item.type === 'view' || item.type === 'command'"
 						:view="item.properties"
+						:show-action-arrow="item.type === 'view'"
 						:class="$style.viewItem"
 					/>
 
