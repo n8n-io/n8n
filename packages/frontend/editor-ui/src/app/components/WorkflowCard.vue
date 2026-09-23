@@ -70,6 +70,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
+	PUBLISH: 'publish',
 	TOGGLE_FAVORITE: 'toggleFavorite',
 };
 
@@ -106,6 +107,7 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:unpublished': [value: { id: string }];
+	'workflow:published': [value: { id: string }];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [
 		value: {
@@ -234,6 +236,18 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('folders.actions.moveToFolder'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
+		});
+	}
+
+	if (
+		!isWorkflowPublished.value &&
+		workflowPermissions.value.publish &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		items.push({
+			label: locale.baseText('menuActions.publish'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.PUBLISH,
 		});
 	}
 
@@ -451,6 +465,9 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
 			await unpublishWorkflow();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.PUBLISH:
+			await publishWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
 			await toggleMCPAccess(true);
 			break;
@@ -460,6 +477,25 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
 			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
 			break;
+	}
+}
+
+async function publishWorkflow() {
+	// The list item does not carry versionId; fetch the full workflow to get it.
+	const workflow = await workflowsListStore.fetchWorkflow(props.data.id);
+	if (!workflow.versionId) {
+		toast.showMessage({
+			title: locale.baseText('workflows.item.publish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const result = await workflowActivate.publishWorkflow(props.data.id, workflow.versionId, {
+		name: props.data.name,
+	});
+	if (result.success) {
+		emit('workflow:published', { id: props.data.id });
 	}
 }
 
