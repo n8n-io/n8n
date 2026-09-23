@@ -88,7 +88,7 @@ const modalOpen = ref(false);
 					<N8nText size="small" color="text-light">
 						{{
 							i18n.baseText('instanceAi.preferenceCard.appliesTo', {
-								interpolate: { scope: i18n.baseText('instanceAi.preferenceCard.scope.user') },
+								interpolate: { scope: i18n.baseText('settings.context.preferences.scope.user') },
 							})
 						}}
 					</N8nText>

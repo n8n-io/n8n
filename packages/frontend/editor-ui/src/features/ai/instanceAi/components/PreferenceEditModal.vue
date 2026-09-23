@@ -6,7 +6,8 @@ import {
 	N8nCallout,
 	N8nDialog,
 	N8nDialogFooter,
-	N8nInput,
+	N8nFormInput,
+	N8nIcon,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -16,6 +17,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { Rule, RuleGroup } from '@/Interface';
 
 import { editPreferenceCard, undoPreferenceCard } from '../instanceAi.api';
 import { useThread } from '../instanceAi.store';
@@ -54,15 +56,13 @@ watch(open, (isOpen) => {
 	errorMessage.value = '';
 });
 
+// The same rules, counter, and cap as the preference modal on the settings page.
+const contentValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'REQUIRED' },
+	{ name: 'MAX_LENGTH', config: { maximum: AI_PREFERENCE_CONTENT_MAX_LENGTH } },
+];
+
 const validation = computed(() => aiPreferenceContentSchema.safeParse(draft.value));
-const validationMessage = computed(() => {
-	if (validation.value.success) return '';
-	return draft.value.trim().length > AI_PREFERENCE_CONTENT_MAX_LENGTH
-		? i18n.baseText('instanceAi.preferenceCard.validation.tooLong', {
-				interpolate: { max: AI_PREFERENCE_CONTENT_MAX_LENGTH },
-			})
-		: i18n.baseText('instanceAi.preferenceCard.validation.empty');
-});
 
 // Nothing to accept when the text is unchanged: the preference is already saved.
 const isDirty = computed(() => draft.value.trim() !== props.content);
@@ -153,27 +153,27 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 		@update:open="onOpenChange"
 	>
 		<div :class="$style.form">
-			<N8nInputLabel
+			<N8nFormInput
+				v-model="draft"
+				name="content"
+				type="textarea"
+				focus-initially
+				required
 				:label="i18n.baseText('instanceAi.preferenceCard.modal.textLabel')"
-				color="text-dark"
-			>
-				<!-- No maxlength: the limit must be able to fire as a message that names it. -->
-				<N8nInput
-					v-model="draft"
-					type="textarea"
-					:rows="3"
-					:disabled="busy"
-					data-test-id="instance-ai-preference-modal-text"
-				/>
-			</N8nInputLabel>
+				:autosize="{ minRows: 3, maxRows: 8 }"
+				:maxlength="AI_PREFERENCE_CONTENT_MAX_LENGTH"
+				:validate-on-blur="false"
+				:validation-rules="contentValidationRules"
+				:disabled="busy"
+				data-test-id="instance-ai-preference-modal-text"
+			/>
 			<N8nText
-				v-if="validationMessage"
+				:class="$style.counter"
 				size="small"
-				color="danger"
-				tag="p"
-				data-test-id="instance-ai-preference-modal-validation"
+				color="text-light"
+				data-test-id="instance-ai-preference-modal-counter"
 			>
-				{{ validationMessage }}
+				{{ draft.length }} / {{ AI_PREFERENCE_CONTENT_MAX_LENGTH }}
 			</N8nText>
 
 			<N8nInputLabel
@@ -182,13 +182,17 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 			>
 				<N8nSelect
 					:model-value="USER_SCOPE_VALUE"
+					size="large"
 					disabled
 					:teleported="false"
 					data-test-id="instance-ai-preference-modal-scope"
 				>
+					<template #prefix>
+						<N8nIcon icon="user" />
+					</template>
 					<N8nOption
 						:value="USER_SCOPE_VALUE"
-						:label="i18n.baseText('instanceAi.preferenceCard.scope.user')"
+						:label="i18n.baseText('settings.context.preferences.scope.user')"
 					/>
 				</N8nSelect>
 			</N8nInputLabel>
@@ -235,6 +239,11 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 	padding: var(--spacing--sm) 0;
 	border-bottom: var(--border-width) dashed var(--color--foreground);
 	margin-bottom: var(--spacing--sm);
+}
+
+.counter {
+	align-self: flex-end;
+	margin-top: calc(-1 * var(--spacing--xs));
 }
 
 /* Removal is the one destructive action here, so it sits apart from Cancel and Save. */

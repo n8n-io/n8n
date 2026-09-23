@@ -84,9 +84,11 @@ function renderHistory(overrides: Partial<InstanceAiToolCallState> = {}) {
 	});
 }
 
-async function openModal() {
+/** Opens the modal and returns its textarea. The test id sits on the N8nFormInput wrapper. */
+async function openModal(): Promise<HTMLTextAreaElement> {
 	await userEvent.click(screen.getByTestId('instance-ai-preference-card-edit'));
-	return await screen.findByTestId('instance-ai-preference-modal-text');
+	const wrapper = await screen.findByTestId('instance-ai-preference-modal-text');
+	return wrapper.querySelector('textarea')!;
 }
 
 describe('PreferenceCard', () => {
@@ -207,15 +209,20 @@ describe('PreferenceCard', () => {
 	});
 
 	describe('the edit modal', () => {
-		it('opens with the stored text and a disabled scope of "Just you"', async () => {
+		// The same scope label, required mark, cap, and counter as the settings page modal.
+		it('opens with the stored text and a disabled scope that reads as on the settings page', async () => {
 			renderActive();
 			const input = await openModal();
 
 			expect(input).toHaveValue(STORED_TEXT);
+			expect(input).toHaveAttribute('maxlength', String(AI_PREFERENCE_CONTENT_MAX_LENGTH));
+			expect(screen.getByTestId('instance-ai-preference-modal-counter')).toHaveTextContent(
+				`${STORED_TEXT.length} / ${AI_PREFERENCE_CONTENT_MAX_LENGTH}`,
+			);
 			const scope = screen.getByTestId('instance-ai-preference-modal-scope');
 			const scopeInput = scope.querySelector('input');
 			expect(scopeInput).toBeDisabled();
-			expect(scopeInput).toHaveValue('instanceAi.preferenceCard.scope.user');
+			expect(scopeInput).toHaveValue('settings.context.preferences.scope.user');
 		});
 
 		it('disables Save while the text is unchanged', async () => {
@@ -225,19 +232,19 @@ describe('PreferenceCard', () => {
 			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
 		});
 
-		it('disables Save on empty text and names the rule', async () => {
+		it('disables Save on empty text and the counter reads zero', async () => {
 			renderActive();
 			const input = await openModal();
 
 			await userEvent.clear(input);
 
 			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
-			expect(screen.getByTestId('instance-ai-preference-modal-validation')).toHaveTextContent(
-				'instanceAi.preferenceCard.validation.empty',
+			expect(screen.getByTestId('instance-ai-preference-modal-counter')).toHaveTextContent(
+				`0 / ${AI_PREFERENCE_CONTENT_MAX_LENGTH}`,
 			);
 		});
 
-		it('disables Save past the limit and names the limit', async () => {
+		it('caps the text at the limit and the counter follows', async () => {
 			renderActive();
 			const input = await openModal();
 
@@ -246,10 +253,11 @@ describe('PreferenceCard', () => {
 			await userEvent.click(input);
 			await userEvent.paste('a'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH + 1));
 
-			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
-			expect(screen.getByTestId('instance-ai-preference-modal-validation')).toHaveTextContent(
-				`instanceAi.preferenceCard.validation.tooLong:{"max":${AI_PREFERENCE_CONTENT_MAX_LENGTH}}`,
+			expect(input).toHaveValue('a'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH));
+			expect(screen.getByTestId('instance-ai-preference-modal-counter')).toHaveTextContent(
+				`${AI_PREFERENCE_CONTENT_MAX_LENGTH} / ${AI_PREFERENCE_CONTENT_MAX_LENGTH}`,
 			);
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeEnabled();
 		});
 
 		it('Save calls the endpoint, applies the returned fact and closes', async () => {
