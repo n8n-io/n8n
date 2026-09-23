@@ -1,6 +1,7 @@
 packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
   s_782619aac31c26::t_5f32eec70dc0ee 48,75-76,1013-1049,1055-1080,1084-1087,1089-1093
   s_13d2093edecceb::t_f6c6d2393acfb6 1081-1083,1088
+  s_782619aac31c26::t_7c9883d620a266 1050-1054
 packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
   s_782619aac31c26::t_26a2f59cded095 71,73-77,84,86-87
   s_782619aac31c26::t_b9b10486a6f52c 15
