@@ -34,7 +34,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'Azure OpenAI Chat Model',
@@ -101,6 +101,14 @@ export class LmChatAzureOpenAi implements INodeType {
 			};
 			const hasModelKwargs = Object.keys(modelKwargs).length > 0;
 
+			// Azure exposes no way to ask a deployment which API it answers on, so this is the user's
+			// call. Absent on version 1 nodes, which keep the forced Chat Completions behaviour.
+			const responsesApiEnabled = this.getNodeParameter(
+				'responsesApiEnabled',
+				itemIndex,
+				false,
+			) as boolean;
+
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
 			switch (authenticationMethod) {
@@ -147,6 +155,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					maxRetries: options.maxRetries ?? 2,
 					configuration,
 					callbacks: [new N8nLlmTracing(this)],
+					// The Foundry base URL already ends in /openai/v1, so LangChain appends /responses
+					// or /chat/completions to a path Azure serves either way.
+					useResponsesApi: responsesApiEnabled,
 					modelKwargs: hasModelKwargs ? modelKwargs : undefined,
 					onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 				});
@@ -155,10 +166,24 @@ export class LmChatAzureOpenAi implements INodeType {
 				return { response: model };
 			}
 
+			// The classic route addresses a deployment, so its base URL ends in
+			// /openai/deployments/<name>. Azure serves the Responses API outside that prefix, so the
+			// call would go to a path that does not exist. Say so rather than let it fail as a
+			// connection error. See: https://github.com/langchain-ai/langchainjs/issues/9038
+			if (responsesApiEnabled) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The Responses API needs a credential using the Azure AI Foundry endpoint type',
+					{
+						itemIndex,
+						description:
+							"This credential uses the classic endpoint type, which addresses a deployment directly and has no Responses API. Switch the credential to Azure AI Foundry, or turn off 'Use Responses API'.",
+					},
+				);
+			}
+
 			const model = new AzureChatOpenAI({
-				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
-				// so the Responses API hits an invalid endpoint and causes a connection error.
-				// See: https://github.com/langchain-ai/langchainjs/issues/9038
+				// Forced off: see the check above.
 				useResponsesApi: false,
 				// Model name is required so logs are correct
 				// Also ensures internal logic (like mapping "maxTokens" to "maxCompletionTokens") is correct

@@ -23,6 +23,19 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Use Responses API',
+		name: 'responsesApiEnabled',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to call the deployment on the Responses API instead of Chat Completions. Azure does not tell us which one a deployment supports, so set this to match your deployment: leave it off for a chat-completions deployment, turn it on for a Responses-only one. Needs a credential using the Azure AI Foundry endpoint type.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+	},
 	getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 	{
 		displayName:
