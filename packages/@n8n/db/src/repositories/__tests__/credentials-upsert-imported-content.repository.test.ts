@@ -73,6 +73,21 @@ describe('CredentialsRepository.upsertImportedContent', () => {
 		expect(entityManager.upsert).not.toHaveBeenCalled();
 	});
 
+	// The load-bearing negative: an existing row binds by id, not by type — a token cleared
+	// for one credential's id must not unlock a write to a different row of the same type.
+	it('throws and writes nothing when the clearance is for a different existing id', async () => {
+		const cleared = clearanceFor({ id: 'cred-2', type: 'slackApi' });
+
+		await expect(
+			credentialsRepository.upsertImportedContent(
+				{ id: 'cred-1', name: 'Imported', type: 'slackApi' },
+				{ policyCleared: cleared },
+			),
+		).rejects.toThrow();
+
+		expect(entityManager.upsert).not.toHaveBeenCalled();
+	});
+
 	// An import is not a save: a credentialSave clearance must not unlock the import write.
 	it('throws and writes nothing when the clearance is for another enforcement point', async () => {
 		const content = { id: 'cred-1', name: 'Imported', type: 'slackApi' };

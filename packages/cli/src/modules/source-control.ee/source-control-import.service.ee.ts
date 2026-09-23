@@ -1104,6 +1104,36 @@ export class SourceControlImportService {
 					isResolvable = false,
 					resolvableAllowFallback = false,
 				} = credential;
+
+				const targetOwnerProject = await this.resolveTargetOwnerProject(
+					credential.ownedBy,
+					personalProject,
+				);
+
+				// Enforced before decrypting or merging existing data: a blocked type is skipped,
+				// not fatal, and must not depend on that data being readable in the first place —
+				// an undecryptable existing row must not fail the whole pull for a credential the
+				// policy would have refused anyway.
+				let cleared: PolicyCleared<'contentImport'>;
+				try {
+					cleared = await this.policyEnforcementService.enforceContentImport({
+						credential: { id: credential.id ?? null, type },
+						projectId: targetOwnerProject.id,
+						transport: 'source-control',
+					});
+				} catch (error) {
+					if (!(error instanceof PolicyViolationError)) throw error;
+
+					this.logger.warn(`Skipping credential ${id}: blocked by the content-import policy`);
+
+					return {
+						id,
+						name: candidate.file,
+						type,
+						contentImportPolicy: { violations: error.violations, checkErrors: [] },
+					};
+				}
+
 				const newCredentialObject = new Credentials({ id, name }, type);
 
 				if (existingCredential?.data) {
@@ -1124,32 +1154,6 @@ export class SourceControlImportService {
 					// This prevents importing invalid data that should have not been synched in the first place
 					const sanitizedData = sanitizeCredentialData(data);
 					await newCredentialObject.setData(sanitizedData);
-				}
-				const targetOwnerProject = await this.resolveTargetOwnerProject(
-					credential.ownedBy,
-					personalProject,
-				);
-
-				// Resolved before the write so the clearance binds to the project the credential
-				// lands in. A blocked type is skipped, not fatal — the rest of the pull still lands.
-				let cleared: PolicyCleared<'contentImport'>;
-				try {
-					cleared = await this.policyEnforcementService.enforceContentImport({
-						credential: { id: credential.id ?? null, type },
-						projectId: targetOwnerProject.id,
-						transport: 'source-control',
-					});
-				} catch (error) {
-					if (!(error instanceof PolicyViolationError)) throw error;
-
-					this.logger.warn(`Skipping credential ${id}: blocked by the content-import policy`);
-
-					return {
-						id,
-						name: candidate.file,
-						type,
-						contentImportPolicy: { violations: error.violations, checkErrors: [] },
-					};
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);

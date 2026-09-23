@@ -723,6 +723,50 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('adds the reason a skipped credential was blocked to the pull result, while the rest of the pull lands', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const credentialStatus = mock<SourceControlledFile>({
+				id: 'cred-1',
+				type: 'credential',
+				status: 'modified',
+				location: 'remote',
+				conflict: false,
+			});
+			mockStatusService.getStatus.mockResolvedValueOnce([credentialStatus]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([
+				{
+					id: 'cred-1',
+					name: 'cred-1.json',
+					type: 'slackApi',
+					contentImportPolicy: {
+						violations: [
+							{
+								kind: 'credential-type-unavailable',
+								checkId: 'test.check',
+								message: 'not allowed',
+							},
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(result.statusResult[0]).toMatchObject({
+				contentImportPolicy: {
+					violations: [
+						{ kind: 'credential-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+					],
+					checkErrors: [],
+				},
+			});
+		});
+
 		it('logs violations and publishing errors for a workflow with no matching status entry, without throwing', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			// No matching SourceControlledFile for 'workflow-missing' in the status result.
