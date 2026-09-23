@@ -8869,7 +8869,6 @@
 	"promotions.bindings.status.resolved": "Resolved",
 	"promotions.bindings.status.missing": "Needs setup",
 	"promotions.bindings.status.access": "Access required",
-	"promotions.bindings.create": "Create",
 	"promotions.bindings.createNamed": "Create {name}",
 	"promotions.bindings.close": "Close",
 	"promotions.bindings.continue": "Continue",
