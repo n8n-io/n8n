@@ -64,17 +64,13 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
 	azureADTokenProvider: () => Promise<string>;
 }
 
-/**
- * Audience the node has always minted Entra ID tokens for. Existing tenants
- * have consented to this one, so inference keeps requesting it unchanged.
- */
+/** Audience for the node's inference requests. */
 export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.com';
 
 /**
- * Audience required by the Foundry deployments-list call. Also valid for
- * inference, but requested only where it's needed: an existing tenant may not
- * have consented to it, so widening every token to this audience would be a
- * silent breaking change for current Entra ID users.
+ * Audience for the Foundry deployments-list call. Each tenant's Entra ID app
+ * registration grants access per audience, so this is requested only for the
+ * call that needs it, not for every token the node mints.
  */
 export const AZURE_AI_FOUNDRY_AUDIENCE = 'https://ai.azure.com';
 

@@ -1,7 +1,7 @@
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { requireFoundryEndpoint } from '../credentials/resolveFoundryEndpoint';
+import { requireFoundryEndpoint } from '../credentials/requireFoundryEndpoint';
 
 const mockNode: INode = {
 	id: '1',

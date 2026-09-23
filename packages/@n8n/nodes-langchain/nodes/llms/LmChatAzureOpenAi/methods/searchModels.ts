@@ -4,7 +4,7 @@ import type { ILoadOptionsFunctions, INode, INodeListSearchResult } from 'n8n-wo
 import { NodeOperationError } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredential';
-import { requireFoundryEndpoint } from '../credentials/resolveFoundryEndpoint';
+import { requireFoundryEndpoint } from '../credentials/requireFoundryEndpoint';
 import { AuthenticationType, AZURE_AI_FOUNDRY_AUDIENCE } from '../types';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
@@ -54,8 +54,7 @@ export async function searchModels(
 			'azureEntraCognitiveServicesOAuth2Api',
 		);
 		baseURL = resolveBaseURL(this.getNode(), credential);
-		// Only this call requests the Foundry audience: an existing tenant may not
-		// have consented to it, so inference (oauth2.ts) keeps the old one.
+		// Mints a token for the Foundry audience, which this call needs.
 		const token = await new N8nOAuth2TokenCredential(
 			this.getNode(),
 			credential,

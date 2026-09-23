@@ -1,6 +1,6 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
-import { requireFoundryEndpoint } from './resolveFoundryEndpoint';
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
 /**

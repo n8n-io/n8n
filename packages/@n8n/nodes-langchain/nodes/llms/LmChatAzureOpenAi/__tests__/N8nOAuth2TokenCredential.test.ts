@@ -94,7 +94,7 @@ describe('N8nOAuth2TokenCredential', () => {
 			);
 		});
 
-		it('requests the cognitiveservices audience by default, unchanged for existing tenants', async () => {
+		it('requests the cognitiveservices audience by default', async () => {
 			await credential.getToken();
 
 			expect(MockClientOAuth2.init).toHaveBeenCalledWith(

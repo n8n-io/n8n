@@ -19,8 +19,7 @@ export async function setupOAuth2Authentication(
 	try {
 		const credential =
 			await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(credentialName);
-		// Create a TokenCredential. No audience override: inference keeps requesting
-		// the audience every existing tenant has already consented to.
+		// Mints tokens for the inference audience (the default).
 		const entraTokenCredential = new N8nOAuth2TokenCredential(this.getNode(), credential);
 		const deploymentDetails = await entraTokenCredential.getDeploymentDetails();
 
