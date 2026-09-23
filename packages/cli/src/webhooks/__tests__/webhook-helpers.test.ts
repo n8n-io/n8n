@@ -2164,6 +2164,24 @@ describe('executeWebhook on engine 2.0', () => {
 				{ data: { message: 'Error in workflow' }, responseCode: 500 },
 			]);
 		});
+
+		it('answers with a timeout when the run does not send an ended message', async () => {
+			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const pending = waitForResponse.mock.results[0]?.value;
+
+			expect(pending).toBeDefined();
+			pending?.resolve({ status: 'timeout' });
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{
+					data: { message: 'The workflow did not answer in time' },
+					responseCode: 504,
+				},
+			]);
+		});
 	});
 
 	describe('rejections', () => {
