@@ -562,7 +562,6 @@ describe('CredentialEdit', () => {
 			});
 
 			await waitFor(() => {
-				expect(getByTestId('editCredential-modal')).toBeInTheDocument();
 				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
 			});
 		});
@@ -584,7 +583,7 @@ describe('CredentialEdit', () => {
 			try {
 				await waitFor(() => {
 					expect(credentialsStore.getCredentialData).toHaveBeenCalled();
-					expect(getByTestId('editCredential-modal')).toBeInTheDocument();
+					expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
 				});
 			} finally {
 				consoleErrorSpy.mockRestore();
