@@ -1232,6 +1232,23 @@ describe('SystemTaskRunner', () => {
 			});
 		});
 
+		it('emits the timers as started before it starts them, so a scheduling failure stands', async () => {
+			const { runner, metadata, eventService } = setup();
+			dummy.schedule = { kind: 'cron', cronExpression: 'not-a-cron', timezone: 'UTC' };
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+
+			const order = (event: string) =>
+				(eventService.emit as unknown as { mock: { calls: Emitted[] } }).mock.calls.findIndex(
+					([name]) => name === event,
+				);
+			expect(order('system-task-timers-started')).toBeGreaterThanOrEqual(0);
+			expect(order('system-task-timers-started')).toBeLessThan(
+				order('system-task-scheduling-failed'),
+			);
+		});
+
 		it('emits the runs of a durable task as durable', async () => {
 			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, durableScheduler, eventService } = setup(durably);
