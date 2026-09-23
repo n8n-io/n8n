@@ -11,7 +11,7 @@ import { CommunityPackagesLifecycleService } from '@/modules/community-packages/
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
-import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
+import { toCommunityPackagePublicDto } from '../community-packages.mapper';
 
 const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
@@ -73,7 +73,9 @@ describe('CommunityPackages Handler', () => {
 				mockUser,
 				'publicApi',
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(mockInstalledPackage));
+			expect(mockResponse.json).toHaveBeenCalledWith(
+				toCommunityPackagePublicDto(mockInstalledPackage),
+			);
 		});
 
 		it('should forward verify:false to lifecycle when explicitly provided', async () => {
@@ -142,36 +144,6 @@ describe('CommunityPackages Handler', () => {
 		});
 	});
 
-	describe('getInstalledPackages', () => {
-		it('should return installed packages', async () => {
-			const req = { user: mockUser };
-
-			mockLifecycle.listInstalledPackages.mockResolvedValue([mockInstalledPackage]);
-
-			await handler.getInstalledPackages[handler.getInstalledPackages.length - 1](
-				req,
-				mockResponse,
-			);
-
-			expect(mockResponse.json).toHaveBeenCalledWith(
-				mapToCommunityPackageList([mockInstalledPackage]),
-			);
-		});
-
-		it('should return empty array when no packages installed', async () => {
-			const req = { user: mockUser };
-
-			mockLifecycle.listInstalledPackages.mockResolvedValue([]);
-
-			await handler.getInstalledPackages[handler.getInstalledPackages.length - 1](
-				req,
-				mockResponse,
-			);
-
-			expect(mockResponse.json).toHaveBeenCalledWith([]);
-		});
-	});
-
 	describe('updatePackage', () => {
 		it('should update a package successfully', async () => {
 			const req = {
@@ -194,7 +166,7 @@ describe('CommunityPackages Handler', () => {
 				mockUser,
 				'notFound',
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(updatedPackage));
+			expect(mockResponse.json).toHaveBeenCalledWith(toCommunityPackagePublicDto(updatedPackage));
 		});
 
 		it('should throw NotFoundError when package is not installed', async () => {

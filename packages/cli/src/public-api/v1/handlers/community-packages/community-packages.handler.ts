@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
-import { mapToCommunityPackage, mapToCommunityPackageList } from './community-packages.mapper';
+import { toCommunityPackagePublicDto } from './community-packages.mapper';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
@@ -21,7 +21,6 @@ type UpdatePackageRequest = AuthenticatedRequest<
 
 type CommunityPackageHandlers = {
 	installPackage: PublicAPIEndpoint<InstallPackageRequest>;
-	getInstalledPackages: PublicAPIEndpoint<AuthenticatedRequest>;
 	updatePackage: PublicAPIEndpoint<UpdatePackageRequest>;
 	uninstallPackage: PublicAPIEndpoint<AuthenticatedRequest<{ name: string }>>;
 };
@@ -38,16 +37,7 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 				'publicApi',
 			);
 
-			return res.json(mapToCommunityPackage(installedPackage));
-		},
-	],
-
-	getInstalledPackages: [
-		publicApiScope('communityPackage:list'),
-		async (_req, res) => {
-			const lifecycle = Container.get(CommunityPackagesLifecycleService);
-			const packages = await lifecycle.listInstalledPackages();
-			return res.json(mapToCommunityPackageList(packages));
+			return res.json(toCommunityPackagePublicDto(installedPackage));
 		},
 	],
 
@@ -65,7 +55,7 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 				req.user,
 				'notFound',
 			);
-			return res.json(mapToCommunityPackage(updated));
+			return res.json(toCommunityPackagePublicDto(updated));
 		},
 	],
 
