@@ -238,7 +238,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	);
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
-	chatIntegrationService.getChatInstance.mockReturnValue(params.chat);
+	chatIntegrationService.getChatInstanceForTools.mockResolvedValue(params.chat);
 	const actionExecutor = new ChatIntegrationActionExecutor(
 		chatIntegrationService,
 		registry,

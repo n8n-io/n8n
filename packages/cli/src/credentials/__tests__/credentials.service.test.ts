@@ -1,3 +1,5 @@
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import type { PostHogClient } from '@/posthog';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
@@ -107,6 +109,8 @@ describe('CredentialsService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const credentialTypes = mock<CredentialTypes>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const postHogClient = mock<PostHogClient>();
+	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 	const credentialDependencyService = mock<CredentialDependencyService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
@@ -155,10 +159,12 @@ describe('CredentialsService', () => {
 		eventService,
 		transactionRunner,
 		policyEnforcementService,
+		credentialDescriptions,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		policyEnforcementService.enforceCredentialSave.mockResolvedValue(cleared);
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
@@ -383,6 +389,17 @@ describe('CredentialsService', () => {
 
 			expect(prepared.description).toBe('Read-only key for reporting.');
 		});
+
+		it.each([false, undefined])(
+			'ignores description updates when the flag is %s',
+			async (enabled) => {
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				for (const description of [null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)]) {
+					const prepared = await prepare(description);
+					expect(prepared.description).toBeUndefined();
+				}
+			},
+		);
 
 		it.each([
 			['an empty string', ''],
@@ -2917,6 +2934,26 @@ describe('CredentialsService', () => {
 
 				expect(result[0].description).toBe(description);
 				expect(result[0]).not.toHaveProperty('data');
+			},
+		);
+
+		it.each([false, undefined])(
+			'omits descriptions from workflow-scoped lists when the flag is %s',
+			async (enabled) => {
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				const credential = Object.assign(new CredentialsEntity(), regularCredential, {
+					description: 'Read-only reporting account',
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([credential]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).not.toHaveProperty('description');
+				expect(credential.description).toBe('Read-only reporting account');
 			},
 		);
 

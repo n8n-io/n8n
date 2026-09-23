@@ -1186,15 +1186,16 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('workflow-menu-item-version-history');
 		await this.page.waitForURL(/\/history(?:\/|$)/);
 		await expect(this.getWorkflowHistoryCloseButton()).toBeVisible();
+		// The history list loads asynchronously. Wait for it to settle so a later
+		// close click is not dropped by the re-render when loading finishes.
+		await expect(this.page.getByTestId('workflow-history-list-item').first()).toBeVisible();
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
 		await this.getWorkflowHistoryCloseButton().click();
-		// History still shows the workflow canvas, so canvas-ready is not enough
-		// to know we are back on the editor.
-		await this.page.waitForURL((url) => !/\/history(?:\/|$)/.test(url.pathname), {
-			timeout: 30_000,
-		});
+		// Don't wait on the URL here (as openWorkflowHistory does): this close is a
+		// client-side route change and waitForURL races the SPA router. Wait on the
+		// editor UI instead.
 		await expect(this.getWorkflowHistoryCloseButton()).toBeHidden();
 		await expect(this.page.getByTestId('workflow-menu')).toBeVisible();
 	}

@@ -105,6 +105,18 @@ describe('autoDetectResponseMode', () => {
 		expect(result).toBe('hostedChat');
 	});
 
+	test('should return formPage for an enabled form child after a disabled child', () => {
+		const workflowStartNode = mock<INode>({ type: FORM_TRIGGER_NODE_TYPE, name: 'startNode' });
+		workflow.getChildNodes.mockReturnValue(['disabledChild']);
+		workflow.nodes.disabledChild = mock<INode>({ type: FORM_NODE_TYPE, disabled: true });
+		expect(autoDetectResponseMode(workflowStartNode, workflow, 'POST')).toBeUndefined();
+
+		workflow.getChildNodes.mockReturnValue(['disabledChild', 'enabledChild']);
+		workflow.nodes.enabledChild = mock<INode>({ type: FORM_NODE_TYPE, disabled: false });
+
+		expect(autoDetectResponseMode(workflowStartNode, workflow, 'POST')).toBe('formPage');
+	});
+
 	test('should return undefined if start node is WAIT_NODE_TYPE with resume not equal to form', () => {
 		const workflowStartNode = mock<INode>({
 			type: WAIT_NODE_TYPE,

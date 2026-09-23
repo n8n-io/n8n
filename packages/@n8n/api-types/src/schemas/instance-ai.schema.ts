@@ -1,6 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
+import type { AiPreferenceDto } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -239,6 +240,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
+	'preference-card',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -1172,6 +1174,17 @@ export const setupItemsPayloadSchema = z.object({
 		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
+/** A later fact about a preference the `save_user_preference` tool saved in this run:
+ *  the user edited it or undid it from the card. Appended by the card endpoints, not
+ *  by the tool, and only while the card is on the latest turn. */
+export const preferenceCardPayloadSchema = z.object({
+	toolCallId: z.string(),
+	preferenceId: z.string(),
+	state: z.enum(['edited', 'undone']),
+	content: z.string().optional(),
+});
+export type PreferenceCardPayload = z.infer<typeof preferenceCardPayloadSchema>;
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -1188,7 +1201,7 @@ export const threadTitleUpdatedPayloadSchema = z.object({
  * An empty `preferences` array says that the turn applied none. No event at all says that
  * the code path never ran, which is a different fact.
  *
- * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
+ * This schema defines that shape. The turn publishes the event that carries it.
  */
 const appliedPreferenceSchema = z.object({
 	/** Stable row id, so a reader can link to the preference or edit it. */
@@ -1303,6 +1316,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: aiPreferencesAppliedPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('preference-card'),
+		...eventBase,
+		payload: preferenceCardPayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1344,6 +1362,7 @@ export type InstanceAiPreferencesAppliedEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'preferences-applied' }
 >;
+export type InstanceAiPreferenceCardEvent = Extract<InstanceAiEvent, { type: 'preference-card' }>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1821,6 +1840,21 @@ export interface InstanceAiSendMessageResponse {
 }
 
 /**
+ * Both preference-card endpoints hand back the fact they published, so the card
+ * that called them renders the new state at once instead of waiting for the
+ * stream to deliver the same fact. Applying it twice sets the same fields.
+ */
+export interface InstanceAiPreferenceCardUndoResponse {
+	ok: true;
+	event: InstanceAiPreferenceCardEvent;
+}
+
+export interface InstanceAiPreferenceCardEditResponse {
+	preference: AiPreferenceDto;
+	event: InstanceAiPreferenceCardEvent;
+}
+
+/**
  * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
  * tell the two cases apart. They need different copy and different advice: an instance
  * limit is transient and not the user's fault, so retrying is right; a user limit means
@@ -1862,6 +1896,8 @@ export interface InstanceAiToolCallState {
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
+	/** Set by a `preference-card` fact; absent means the tool result is the state. */
+	preferenceCard?: { state: 'edited' | 'undone'; content?: string };
 	startedAt?: string;
 	completedAt?: string;
 }
@@ -2164,6 +2200,7 @@ const instanceAiPermissionsSchema = z.object({
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
+	createPreference: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2191,6 +2228,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
 	executeMcpTool: 'require_approval',
+	// The save_user_preference tool writes first and lets the user edit or undo
+	// from the chat card, so there is no approval step for require_approval to
+	// gate. always_allow is the only workable default; blocked is the feature off.
+	createPreference: 'always_allow',
 };
 
 /**
@@ -2404,7 +2445,13 @@ export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSche
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	permissions: instanceAiPermissionsSchema.partial().optional(),
+	permissions: instanceAiPermissionsSchema
+		.partial()
+		.refine((permissions) => permissions.createPreference !== 'require_approval', {
+			message: 'createPreference supports always_allow and blocked only',
+			path: ['createPreference'],
+		})
+		.optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),
@@ -2640,6 +2687,9 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
+export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 

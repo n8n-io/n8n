@@ -39,7 +39,7 @@ describe('system task provisioning', () => {
 		name: TASK_NAME,
 		schedule: { kind: 'interval', intervalSeconds: 60 },
 		effects: 'idempotent',
-		durable: true,
+		placement: { scope: 'cluster', durable: true },
 		run: async () => {},
 		...over,
 	});
