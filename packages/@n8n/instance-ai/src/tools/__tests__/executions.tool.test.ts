@@ -4,6 +4,7 @@ import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
+import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import { createExecutionsTool } from '../executions.tool';
 import { recordLiveRunVerification } from '../orchestration/verification/record-live-run';
 
@@ -480,8 +481,18 @@ describe('executions tool', () => {
 
 			it('returns the recorded claim with the run result', async () => {
 				const context = createAllowedContext();
-				const claim = { level: 'verified', publishReady: true };
-				vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim as never);
+				const claim: VerificationClaim = {
+					level: 'verified',
+					plannedNodeCount: 1,
+					reachedNodeCount: 1,
+					nodesNotReached: [],
+					simulatedNodes: [],
+					pinnedNodes: [],
+					unprovenTargets: [],
+					publishReady: true,
+					liveTestRecommended: false,
+				};
+				vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim);
 
 				const tool = createExecutionsTool(context);
 				const result = await executeTool(
