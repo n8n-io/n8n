@@ -82,7 +82,7 @@ describe('LmChatOpenAi', () => {
 				displayName: 'OpenAI Chat Model',
 				name: 'lmChatOpenAi',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3],
+				version: [1, 1.1, 1.2, 1.3, 1.4],
 				description: 'For advanced usage with an AI chain',
 			});
 		});
@@ -114,6 +114,28 @@ describe('LmChatOpenAi', () => {
 						name: 'extraBody',
 						type: 'json',
 						default: '{}',
+					}),
+				]),
+			});
+		});
+
+		it('should expose streaming as a v1.4 option enabled by default', () => {
+			const options = lmChatOpenAi.description.properties.find(
+				(property) => property?.name === 'options',
+			);
+
+			expect(options).toMatchObject({
+				options: expect.arrayContaining([
+					expect.objectContaining({
+						displayName: 'Stream Responses',
+						name: 'streaming',
+						type: 'boolean',
+						default: true,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.4 } }],
+							},
+						},
 					}),
 				]),
 			});
@@ -427,6 +449,86 @@ describe('LmChatOpenAi', () => {
 			);
 		});
 
+		it('should create an actionable error when upstream rejects streaming', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			const failedAttemptHandler = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0][1];
+
+			expect(() =>
+				failedAttemptHandler?.({
+					message: 'Unrecognized request argument supplied: stream_options',
+				}),
+			).toThrow(
+				'The model or the endpoint rejected the streaming request. Turn off "Stream Responses" in the OpenAI Chat Model node options to send one non-streamed request.',
+			);
+		});
+
+		it('should create an actionable error when the organization cannot stream the model', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-5';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			const failedAttemptHandler = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0][1];
+
+			expect(() =>
+				failedAttemptHandler?.({
+					message: 'Your organization must be verified to stream this model',
+				}),
+			).toThrow('Turn off "Stream Responses"');
+		});
+
+		it('should not treat unrelated upstream failures as streaming errors', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			const failedAttemptHandler = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0][1];
+
+			expect(() =>
+				failedAttemptHandler?.({ message: 'Invalid response received from upstream server' }),
+			).not.toThrow();
+		});
+
+		it('should not treat streaming errors specially when streaming is disabled', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { streaming: false };
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			const failedAttemptHandler = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0][1];
+
+			expect(() =>
+				failedAttemptHandler?.({
+					message: 'Unrecognized request argument supplied: stream_options',
+				}),
+			).not.toThrow();
+		});
+
 		it('should use default values for maxRetries when not provided', async () => {
 			const mockContext = setupMockContext();
 
@@ -444,6 +546,55 @@ describe('LmChatOpenAi', () => {
 					maxRetries: 2,
 				}),
 			);
+		});
+
+		it('should enable streaming and streaming usage by default for v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					streaming: true,
+					streamUsage: true,
+				}),
+			);
+		});
+
+		it('should leave streaming defaults untouched when the v1.4 option is turned off', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { streaming: false };
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI.mock.calls[0][0]).not.toHaveProperty('streaming');
+			expect(MockedChatOpenAI.mock.calls[0][0]).not.toHaveProperty('streamUsage');
+		});
+
+		it('should not change streaming behavior for versions below v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI.mock.calls[0][0]).not.toHaveProperty('streaming');
+			expect(MockedChatOpenAI.mock.calls[0][0]).not.toHaveProperty('streamUsage');
 		});
 
 		it('should set supportsStrictToolCalling to false for OpenAI-compatible backends', async () => {
