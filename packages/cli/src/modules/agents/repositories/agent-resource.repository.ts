@@ -1,5 +1,6 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 
@@ -15,14 +16,15 @@ export interface ChatSessionGeneration {
 const CHAT_SESSION_GENERATION_KEY = 'chatSessionGeneration';
 
 @Service()
-export class AgentResourceRepository extends Repository<AgentResourceEntity> {
-	constructor(dataSource: DataSource) {
-		super(AgentResourceEntity, dataSource.manager);
+export class AgentResourceRepository extends BaseRepository<AgentResourceEntity> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentResourceEntity, dataSource.manager, transactionRunner);
 	}
 
-	async ensureExists(resourceId: string): Promise<void> {
+	async ensureExists(resourceId: string, ctx: OperationContext): Promise<void> {
 		// Concurrent callers can create the same resource. Keep the first row.
-		await this.createQueryBuilder()
+		await this.managerFor(ctx)
+			.createQueryBuilder()
 			.insert()
 			.into(AgentResourceEntity)
 			.values({ id: resourceId, metadata: null })

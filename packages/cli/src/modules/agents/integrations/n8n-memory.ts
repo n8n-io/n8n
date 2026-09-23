@@ -51,6 +51,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { isUniqueConstraintError } from '@/response-helper';
 
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
@@ -92,6 +93,7 @@ export class N8nMemory {
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {}
 
 	getImplementation(agentId: string) {
@@ -107,6 +109,7 @@ export class N8nMemory {
 			this.memoryEntryCandidateRepository,
 			this.memoryEntryLockRepository,
 			this.memoryEntrySourceRepository,
+			this.sessionLeases,
 		);
 	}
 }
@@ -131,6 +134,7 @@ export class N8nMemoryImpl
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {}
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
@@ -163,10 +167,21 @@ export class N8nMemoryImpl
 		return this.toThread(entity);
 	}
 
+	/** A transcript write: during a turn it is fenced by the session lease. */
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
-		await this.resourceRepository.ensureExists(thread.resourceId);
+		return await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) => await this.writeThread(thread, ctx),
+		);
+	}
 
-		const existing = await this.threadRepository.findOneBy({ id: thread.id });
+	private async writeThread(
+		thread: Omit<Thread, 'createdAt' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<Thread> {
+		await this.resourceRepository.ensureExists(thread.resourceId, ctx);
+
+		const existing = await this.threadRepository.findByIdInContext(thread.id, ctx);
 
 		if (existing) {
 			// `resourceId` is treated as immutable on existing threads. Some thread
@@ -179,7 +194,7 @@ export class N8nMemoryImpl
 				// message context, so caller updates merge into the existing blob.
 				existing.metadata = this.mergeThreadMetadata(existing.metadata, thread.metadata);
 			}
-			const saved = await this.threadRepository.save(existing);
+			const saved = await this.threadRepository.saveInContext(existing, ctx);
 			return this.toThread(saved);
 		}
 
@@ -189,7 +204,7 @@ export class N8nMemoryImpl
 			title: thread.title ?? null,
 			metadata: thread.metadata ? JSON.stringify(thread.metadata) : null,
 		});
-		const saved = await this.threadRepository.save(entity);
+		const saved = await this.threadRepository.saveInContext(entity, ctx);
 		return this.toThread(saved);
 	}
 
@@ -276,6 +291,7 @@ export class N8nMemoryImpl
 		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
+	/** A transcript write: during a turn it is fenced by the session lease. */
 	async saveMessages(args: {
 		threadId: string;
 		resourceId: string;
@@ -304,12 +320,19 @@ export class N8nMemoryImpl
 			} as QueryDeepPartialEntity<AgentMessageEntity>;
 		});
 
-		await this.messageRepository.upsert(entities, ['id']);
+		await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) => await this.messageRepository.upsertMessages(entities, ctx),
+		);
 	}
 
+	/** A transcript write: during a turn it is fenced by the session lease. */
 	async deleteMessages(messageIds: string[]): Promise<void> {
 		if (messageIds.length === 0) return;
-		await this.messageRepository.delete(messageIds);
+		await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) => await this.messageRepository.deleteByIds(messageIds, ctx),
+		);
 	}
 
 	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
@@ -590,7 +613,7 @@ export class N8nMemoryImpl
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate> {
 		const resourceId = episodicMemoryWriteScopeId(candidate);
-		await this.resourceRepository.ensureExists(resourceId);
+		await this.resourceRepository.ensureExists(resourceId, {});
 		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate({
 			agentId: this.agentId,
 			...candidate,
@@ -631,7 +654,7 @@ export class N8nMemoryImpl
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null> {
 		const resourceId = episodicMemoryWriteScopeId(scope);
-		await this.resourceRepository.ensureExists(resourceId);
+		await this.resourceRepository.ensureExists(resourceId, {});
 
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
@@ -688,7 +711,7 @@ export class N8nMemoryImpl
 		const resourceId = sourceThreadId
 			? episodicMemoryWriteScopeId({ resourceId: entry.resourceId, threadId: sourceThreadId })
 			: entry.resourceId;
-		await this.resourceRepository.ensureExists(resourceId);
+		await this.resourceRepository.ensureExists(resourceId, {});
 
 		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
 			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);

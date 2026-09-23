@@ -1,4 +1,5 @@
 import { hashEpisodicMemoryEvidence, type NewObservationLogEntry } from '@n8n/agents';
+import type { OperationContext, Transaction } from '@n8n/db';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -20,9 +21,10 @@ import type { AgentMessageRepository } from '../../repositories/agent-message.re
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
-import { AgentResourceRepository } from '../../repositories/agent-resource.repository';
+import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -32,13 +34,7 @@ describe('N8nMemory', () => {
 	let messageRepository: Mocked<AgentMessageRepository>;
 	let threadRepository: Mocked<AgentThreadRepository>;
 	let resourceRepository: Mocked<AgentResourceRepository>;
-	let resourceInsertQueryBuilder: {
-		insert: Mock;
-		into: Mock;
-		values: Mock;
-		orIgnore: Mock;
-		execute: Mock;
-	};
+	let sessionLeases: ReturnType<typeof mockSessionLeases>;
 	let observationRepository: Mocked<AgentObservationRepository>;
 	let observationCursorRepository: Mocked<AgentObservationCursorRepository>;
 	let observationLockRepository: Mocked<AgentObservationLockRepository>;
@@ -77,17 +73,8 @@ describe('N8nMemory', () => {
 		memoryEntryCandidateRepository = mock<AgentMemoryEntryCandidateRepository>();
 		memoryEntryLockRepository = mock<AgentMemoryEntryLockRepository>();
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
-		resourceInsertQueryBuilder = {
-			insert: vi.fn().mockReturnThis(),
-			into: vi.fn().mockReturnThis(),
-			values: vi.fn().mockReturnThis(),
-			orIgnore: vi.fn().mockReturnThis(),
-			execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
-		};
-		resourceRepository.createQueryBuilder.mockReturnValue(resourceInsertQueryBuilder as never);
-		resourceRepository.ensureExists.mockImplementation(
-			AgentResourceRepository.prototype.ensureExists.bind(resourceRepository),
-		);
+		resourceRepository.ensureExists.mockResolvedValue(undefined);
+		sessionLeases = mockSessionLeases();
 		transactionDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionObservationCreate = vi.fn((input) => ({ ...input }) as AgentObservationEntity);
 		transactionObservationFind = vi.fn().mockResolvedValue([]);
@@ -205,6 +192,7 @@ describe('N8nMemory', () => {
 			memoryEntryCandidateRepository,
 			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
+			sessionLeases,
 		);
 		memory = memoryService.getImplementation('agent-1');
 	});
@@ -251,8 +239,8 @@ describe('N8nMemory', () => {
 				],
 			});
 
-			expect(messageRepository.upsert).toHaveBeenCalledTimes(1);
-			const [entities] = messageRepository.upsert.mock.calls[0];
+			expect(messageRepository.upsertMessages).toHaveBeenCalledTimes(1);
+			const [entities] = messageRepository.upsertMessages.mock.calls[0];
 			const content = (entities as Array<{ content: { content: unknown[] } }>)[0].content;
 			const filePart = content.content[1] as Record<string, unknown>;
 			expect(filePart.data).toBeUndefined();
@@ -448,6 +436,38 @@ describe('N8nMemory', () => {
 		});
 	});
 
+	describe('transcript writes', () => {
+		it('runs each transcript write in one fenced transaction', async () => {
+			const trxCtx: OperationContext = { trx: mock<Transaction>() };
+			sessionLeases.fencedWrite.mockImplementation(async (_ctx, write) => await write(trxCtx));
+			threadRepository.findByIdInContext.mockResolvedValue(null);
+			threadRepository.create.mockImplementation((input) => input as AgentThreadEntity);
+			threadRepository.saveInContext.mockImplementation(async (thread) => thread);
+			const message = { id: 'm-1', createdAt: new Date(), role: 'user' as const, content: [] };
+
+			await memory.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await memory.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message],
+			});
+			await memory.deleteMessages(['m-1']);
+
+			expect(sessionLeases.fencedWrite).toHaveBeenCalledTimes(3);
+			expect(resourceRepository.ensureExists).toHaveBeenCalledWith('user-1', trxCtx);
+			expect(threadRepository.findByIdInContext).toHaveBeenCalledWith('thread-1', trxCtx);
+			expect(threadRepository.saveInContext).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'thread-1' }),
+				trxCtx,
+			);
+			expect(messageRepository.upsertMessages).toHaveBeenCalledWith(
+				[expect.objectContaining({ id: 'm-1' })],
+				trxCtx,
+			);
+			expect(messageRepository.deleteByIds).toHaveBeenCalledWith(['m-1'], trxCtx);
+		});
+	});
+
 	describe('saveThread — existing row', () => {
 		it('preserves the original resourceId instead of overwriting with the caller’s', async () => {
 			// Shared threads (e.g. the test-chat thread keyed by agentId) are
@@ -459,8 +479,8 @@ describe('N8nMemory', () => {
 				title: null,
 				metadata: null,
 			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			threadRepository.findByIdInContext.mockResolvedValue(existing);
+			threadRepository.saveInContext.mockImplementation(async (e) => e);
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -469,8 +489,9 @@ describe('N8nMemory', () => {
 				metadata: undefined,
 			});
 
-			expect(threadRepository.save).toHaveBeenCalledWith(
+			expect(threadRepository.saveInContext).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'thread-1', resourceId: 'original-user' }),
+				{},
 			);
 		});
 
@@ -483,8 +504,8 @@ describe('N8nMemory', () => {
 				title: null,
 				metadata: null,
 			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			threadRepository.findByIdInContext.mockResolvedValue(existing);
+			threadRepository.saveInContext.mockImplementation(async (e) => e);
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -493,11 +514,7 @@ describe('N8nMemory', () => {
 				metadata: undefined,
 			});
 
-			expect(resourceInsertQueryBuilder.values).toHaveBeenCalledWith({
-				id: 'different-user',
-				metadata: null,
-			});
-			expect(resourceInsertQueryBuilder.orIgnore).toHaveBeenCalled();
+			expect(resourceRepository.ensureExists).toHaveBeenCalledWith('different-user', {});
 		});
 
 		it('merges metadata updates instead of replacing existing thread metadata', async () => {
@@ -513,8 +530,8 @@ describe('N8nMemory', () => {
 				title: null,
 				metadata: JSON.stringify({ currentMessageContext }),
 			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			threadRepository.findByIdInContext.mockResolvedValue(existing);
+			threadRepository.saveInContext.mockImplementation(async (e) => e);
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -523,10 +540,11 @@ describe('N8nMemory', () => {
 				metadata: { summary: 'Support thread' },
 			});
 
-			expect(threadRepository.save).toHaveBeenCalledWith(
+			expect(threadRepository.saveInContext).toHaveBeenCalledWith(
 				expect.objectContaining({ metadata: expect.any(String) }),
+				{},
 			);
-			const savedThread = threadRepository.save.mock.calls[0][0] as AgentThreadEntity;
+			const savedThread = threadRepository.saveInContext.mock.calls[0][0];
 			expect(JSON.parse(savedThread.metadata ?? '{}')).toEqual({
 				currentMessageContext,
 				summary: 'Support thread',
@@ -1385,10 +1403,7 @@ describe('N8nMemory', () => {
 			expect(transactionMemoryEntryCreate).toHaveBeenCalledWith(
 				expect.objectContaining({ agentId: 'agent-1', resourceId: 'thread:thread-1' }),
 			);
-			expect(resourceInsertQueryBuilder.values).toHaveBeenCalledWith({
-				id: 'thread:thread-1',
-				metadata: null,
-			});
+			expect(resourceRepository.ensureExists).toHaveBeenCalledWith('thread:thread-1', {});
 			expect(result).toMatchObject({ id: 'merged-memory-1', resourceId: 'thread:thread-1' });
 		});
 

@@ -130,7 +130,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			await this.threadRepository.save(existing);
 			return;
 		}
-		await this.resourceRepository.ensureExists(origin.resourceId);
+		await this.resourceRepository.ensureExists(origin.resourceId, {});
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: derivedThreadId,
@@ -154,7 +154,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			await this.threadRepository.save(existing);
 			return;
 		}
-		await this.resourceRepository.ensureExists(originThreadId);
+		await this.resourceRepository.ensureExists(originThreadId, {});
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: originThreadId,
@@ -182,7 +182,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			return;
 		}
 
-		await this.resourceRepository.ensureExists(resourceId ?? threadId);
+		await this.resourceRepository.ensureExists(resourceId ?? threadId, {});
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: threadId,
