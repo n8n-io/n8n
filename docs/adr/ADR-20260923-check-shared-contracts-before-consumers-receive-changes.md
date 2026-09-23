@@ -4,7 +4,7 @@ Date: 2026-09-23
 
 Status: Active
 
-Decision Owner: Catalysts
+Decision Owner: Developer Platform
 
 Source: https://github.com/n8n-io/n8n/pull/36252
 
