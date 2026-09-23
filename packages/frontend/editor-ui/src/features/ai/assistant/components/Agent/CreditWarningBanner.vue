@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { round2 } from './creditFormatting';
 
 const props = withDefaults(
@@ -27,7 +26,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const cloudPlanStore = useCloudPlanStore();
-const { isEligible: isTopUpEligible } = useAssistantTopUpEligibility();
 
 const bannerText = computed(() => {
 	if (props.amountsHidden) {
@@ -45,15 +43,13 @@ const bannerText = computed(() => {
 	});
 });
 
-const ctaLabel = computed(() => {
-	if (props.amountsHidden) {
-		return i18n.baseText('aiAssistant.builder.creditBanner.upgrade');
-	}
-	if (isTopUpEligible.value) {
-		return i18n.baseText('aiAssistant.builder.settings.getMoreCredits');
-	}
-	return i18n.baseText('aiAssistant.builder.creditBanner.getMore');
-});
+const ctaLabel = computed(() =>
+	i18n.baseText(
+		props.amountsHidden
+			? 'aiAssistant.builder.creditBanner.upgrade'
+			: 'aiAssistant.builder.creditBanner.getMore',
+	),
+);
 
 const getNextMonth = () => {
 	const now = new Date();

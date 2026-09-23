@@ -24,21 +24,9 @@ vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	})),
 }));
 
-let mockIsTopUpEligible = false;
-vi.mock('@n8n/stores/composables/useAssistantTopUpEligibility', () => ({
-	useAssistantTopUpEligibility: vi.fn(() => ({
-		isEligible: {
-			get value() {
-				return mockIsTopUpEligible;
-			},
-		},
-	})),
-}));
-
 describe('CreditWarningBanner', () => {
 	beforeEach(() => {
 		mockUserIsTrialing = false;
-		mockIsTopUpEligible = false;
 	});
 
 	// Most call sites sit above a detached, fully rounded chat input, so the
@@ -94,27 +82,6 @@ describe('CreditWarningBanner', () => {
 		expect(text).toContain('aiAssistant.builder.creditBanner.trialText');
 	});
 
-	// Paid cohort with Cloud UBB top-up eligibility gets a label that reads correctly
-	// for a top-up destination rather than a plan upgrade.
-	it('labels the action "Get more credits" when top-up is eligible', () => {
-		mockIsTopUpEligible = true;
-		const wrapper = mount(CreditWarningBanner, {
-			props: { creditsRemaining: 5, creditsQuota: 800 },
-		});
-
-		const cta = wrapper.get('[data-test-id="credit-banner-get-more"]').text();
-		expect(cta).toContain('aiAssistant.builder.settings.getMoreCredits');
-	});
-
-	it('keeps the "Get more" label when top-up is not eligible', () => {
-		const wrapper = mount(CreditWarningBanner, {
-			props: { creditsRemaining: 5, creditsQuota: 800 },
-		});
-
-		const cta = wrapper.get('[data-test-id="credit-banner-get-more"]').text();
-		expect(cta).toContain('aiAssistant.builder.creditBanner.getMore');
-	});
-
 	// The activation-capped trial cohort is never shown a balance,
 	// so the banner has to warn them without quoting one.
 	describe('when amounts are hidden', () => {
@@ -131,17 +98,6 @@ describe('CreditWarningBanner', () => {
 		});
 
 		it('labels the action as an upgrade rather than getting more', () => {
-			const wrapper = mount(CreditWarningBanner, {
-				props: { creditsRemaining: 0, creditsQuota: 800, amountsHidden: true },
-			});
-
-			const cta = wrapper.get('[data-test-id="credit-banner-get-more"]').text();
-			expect(cta).toContain('aiAssistant.builder.creditBanner.upgrade');
-		});
-
-		// The activation-capped cohort ignores top-up eligibility — top-up is paid-only.
-		it('keeps the upgrade label even when top-up would otherwise apply', () => {
-			mockIsTopUpEligible = true;
 			const wrapper = mount(CreditWarningBanner, {
 				props: { creditsRemaining: 0, creditsQuota: 800, amountsHidden: true },
 			});
