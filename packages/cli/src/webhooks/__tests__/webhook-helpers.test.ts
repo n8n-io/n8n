@@ -257,7 +257,7 @@ describe('setupResponseNodePromise', () => {
 	const errorReporter = mockInstance(ErrorReporter);
 	const logger = mockInstance(Logger);
 
-	let responsePromise: IDeferredPromise<IN8nHttpFullResponse>;
+	let responsePromise: IDeferredPromise<IExecuteResponsePromiseData>;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -265,7 +265,7 @@ describe('setupResponseNodePromise', () => {
 		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
 		vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-forms allow-scripts');
 
-		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+		responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
 
 		res.header.mockReturnValue(res);
 		res.end.mockReturnValue(res);
@@ -295,6 +295,29 @@ describe('setupResponseNodePromise', () => {
 		});
 		expect(res.end).toHaveBeenCalled();
 	});
+
+	test.each(['response', 123, true, null])(
+		'should handle primitive response body %j',
+		async (body) => {
+			setupResponseNodePromise(
+				responsePromise,
+				res,
+				responseCallback,
+				workflowStartNode,
+				executionId,
+				workflow,
+			);
+
+			responsePromise.resolve({ body, headers: {}, statusCode: 200 });
+			await new Promise(process.nextTick);
+
+			expect(responseCallback).toHaveBeenCalledWith(null, {
+				data: body,
+				headers: {},
+				responseCode: 200,
+			});
+		},
+	);
 
 	test('should handle binary data with ID', async () => {
 		const mockStream = mock<Readable>();
@@ -551,7 +574,7 @@ describe('setupResponseNodePromise', () => {
 			workflow,
 		);
 
-		responsePromise.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE as IN8nHttpFullResponse);
+		responsePromise.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
 		await new Promise(process.nextTick);
 
 		expect(errorReporter.error).not.toHaveBeenCalled();
