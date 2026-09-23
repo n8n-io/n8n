@@ -318,7 +318,6 @@ function isEnabledFormPageNode(node: INode): boolean {
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
 }
 
-// eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
