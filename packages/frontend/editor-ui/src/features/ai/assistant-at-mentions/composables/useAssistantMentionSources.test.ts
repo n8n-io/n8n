@@ -54,10 +54,17 @@ describe('createWorkflowMentionSourceProvider', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('resolves recent workflows for the active project and excludes artifacts', async () => {
+	it('shows recents first and backfills project workflows while excluding artifacts', async () => {
 		const recentWorkflowsStore = useRecentWorkflowsStore();
+		const workflowsListStore = useWorkflowsListStore();
 		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockResolvedValue([
 			makeWorkflow('recent', 'Recent workflow'),
+		]);
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockResolvedValue([
+			makeWorkflow('recent', 'Recent workflow'),
+			makeWorkflow('artifact', 'Artifact workflow'),
+			makeWorkflow('backfill-1', 'Backfill workflow 1'),
+			makeWorkflow('backfill-2', 'Backfill workflow 2'),
 		]);
 		const source = createWorkflowMentionSourceProvider({
 			projectId: ref('project-1'),
@@ -69,10 +76,55 @@ describe('createWorkflowMentionSourceProvider', () => {
 		expect(recentWorkflowsStore.resolveRecentWorkflows).toHaveBeenCalledWith('project-1', [
 			'artifact',
 		]);
-		expect(items[0]).toMatchObject({
-			key: 'workflow:recent:recent',
-			source: 'workflows',
+		expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			isArchived: false,
+			select: ['id', 'name', 'updatedAt'],
+			options: {
+				take: 12,
+				skip: 0,
+				sortBy: 'updatedAt:desc',
+				includeScopes: false,
+			},
 		});
+		expect(items.map(({ workflowId }) => workflowId)).toEqual([
+			'recent',
+			'backfill-1',
+			'backfill-2',
+		]);
+	});
+
+	it('does not backfill when ten recent workflows are available', async () => {
+		const recentWorkflowsStore = useRecentWorkflowsStore();
+		const workflowsListStore = useWorkflowsListStore();
+		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockResolvedValue(
+			Array.from({ length: 10 }, (_, index) =>
+				makeWorkflow(`recent-${index}`, `Recent workflow ${index}`),
+			),
+		);
+		const searchSpy = vi.spyOn(workflowsListStore, 'searchWorkflows');
+		const source = createWorkflowMentionSourceProvider({
+			projectId: 'project-1',
+			artifactWorkflowIds: [],
+		});
+
+		expect(await source.browse()).toHaveLength(10);
+		expect(searchSpy).not.toHaveBeenCalled();
+	});
+
+	it('keeps recent workflows when the backfill request fails', async () => {
+		const recentWorkflowsStore = useRecentWorkflowsStore();
+		const workflowsListStore = useWorkflowsListStore();
+		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockResolvedValue([
+			makeWorkflow('recent', 'Recent workflow'),
+		]);
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockRejectedValue(new Error('Unavailable'));
+		const source = createWorkflowMentionSourceProvider({
+			projectId: 'project-1',
+			artifactWorkflowIds: [],
+		});
+
+		expect((await source.browse()).map(({ workflowId }) => workflowId)).toEqual(['recent']);
 	});
 
 	it('searches bounded workflow metadata without scope enrichment', async () => {

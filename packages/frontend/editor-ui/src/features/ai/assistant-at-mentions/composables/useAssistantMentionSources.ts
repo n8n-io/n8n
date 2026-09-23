@@ -18,6 +18,7 @@ import { searchMentionItems } from '../utils/searchMentionItems';
 import type { useArtifactMentionIndex } from './useArtifactMentionIndex';
 
 type ArtifactMentionIndex = ReturnType<typeof useArtifactMentionIndex>;
+const MAX_WORKFLOW_BROWSE_CANDIDATES = 50;
 
 export function createArtifactMentionSourceProvider(options: {
 	artifacts: MaybeRefOrGetter<readonly WorkflowArtifactReference[]>;
@@ -53,11 +54,35 @@ export function createWorkflowMentionSourceProvider(options: {
 			const projectId = toValue(options.projectId)?.trim();
 			if (!projectId) return [];
 
-			const workflows = await recentWorkflowsStore.resolveRecentWorkflows(
+			const artifactWorkflowIds = toValue(options.artifactWorkflowIds);
+			const recentWorkflows = await recentWorkflowsStore.resolveRecentWorkflows(
 				projectId,
-				toValue(options.artifactWorkflowIds),
+				artifactWorkflowIds,
 			);
-			return workflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+			if (recentWorkflows.length >= MAX_MENTION_RESULTS) {
+				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+			}
+
+			const excludedIds = new Set([...artifactWorkflowIds, ...recentWorkflows.map(({ id }) => id)]);
+			try {
+				const backfillWorkflows = await workflowsListStore.searchWorkflows({
+					projectId,
+					isArchived: false,
+					select: ['id', 'name', 'updatedAt'],
+					options: {
+						take: Math.min(MAX_MENTION_RESULTS + excludedIds.size, MAX_WORKFLOW_BROWSE_CANDIDATES),
+						skip: 0,
+						sortBy: 'updatedAt:desc',
+						includeScopes: false,
+					},
+				});
+				return [...recentWorkflows, ...backfillWorkflows.filter(({ id }) => !excludedIds.has(id))]
+					.slice(0, MAX_MENTION_RESULTS)
+					.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+			} catch (error) {
+				if (recentWorkflows.length === 0) throw error;
+				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+			}
 		},
 		async search(query) {
 			const projectId = toValue(options.projectId)?.trim();
