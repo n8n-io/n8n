@@ -22,6 +22,7 @@ import { formatSubAgentToolOutput } from '../format-sub-agent-tool-output';
 import type { SubAgentRunResult, SubAgentRunner } from '../sub-agent-runner';
 
 const projectId = 'project-1';
+const parentAgentId = 'parent-agent-1';
 
 const source: SubAgentSource = {
 	agentId: 'agent-2',
@@ -72,6 +73,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('forwards inline sub-agent runtime options into delegate tool metadata', () => {
 		const resolveInlineSubAgentProviderTools = vi.fn().mockReturnValue([]);
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -117,6 +119,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -168,6 +171,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('forwards the parent persistence scope to the runner', async () => {
 		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -199,6 +203,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('forwards the parent telemetry from the tool context to the foreground runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -226,6 +231,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('omits telemetry from the runner context when the parent run has none', async () => {
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -244,6 +250,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('selects a configured n8n agent source by subAgentId', async () => {
 		const selectedSource: SubAgentSource = { agentId: 'agent-2' };
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: {
 				'agent-2': selectedSource,
@@ -276,6 +283,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('returns a failed tool output when the foreground runner throws', async () => {
 		runner.run.mockRejectedValue(new Error('child failed'));
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -343,6 +351,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -428,6 +437,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	])('finishes a configured child resume when the $name error is terminal', async ({ error }) => {
 		runner.resumeForeground.mockRejectedValue(error);
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -477,6 +487,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('routes configured child cancellation without resuming the child', async () => {
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,

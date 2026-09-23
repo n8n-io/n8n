@@ -13,9 +13,19 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { jsonSizeExceeds } from '@n8n/utils/json/json-size-exceeds';
+<<<<<<< HEAD
 import { BinaryDataService, FileLocation, FileTooLargeError } from 'n8n-core';
+=======
+import {
+	BinaryDataConfig,
+	BinaryDataService,
+	encodeBufferBody,
+	FileLocation,
+	FileTooLargeError,
+} from 'n8n-core';
+>>>>>>> 522d8795b03406bc31d7c096f95431e7894000b6
 import type { BinaryData } from 'n8n-core';
-import { BINARY_ENCODING, jsonParse, OperationalError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -27,9 +37,6 @@ import { Readable } from 'node:stream';
 import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 
 const MIB = 1024 * 1024;
-
-/** Sentinel key marking a base64-encoded Buffer body relayed inline through the queue. */
-export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
 
 /**
  * Sentinel key recording an offloaded body's original form, so it can be restored.
@@ -385,27 +392,6 @@ export class WebhookResponseRelay {
 	}
 }
 
-/**
- * Reverses the inline base64 envelope on main, restoring a Buffer body. Every
- * other body passes through, an offloaded one included: main streams that from
- * storage rather than materializing it.
- *
- * @param response Relayed response. Mutated and returned.
- * @returns The same `response`.
- */
-export function decodeRelayedWebhookResponse<T>(response: T): T {
-	if (!hasResponseBody(response)) {
-		return response;
-	}
-
-	const encoded = encodedBufferIn(response.body);
-	if (encoded !== undefined) {
-		response.body = Buffer.from(encoded, BINARY_ENCODING);
-	}
-
-	return response;
-}
-
 function withInlineLimit(guidance: string, limitInMib: number): string {
 	return `The limit is ${limitInMib} MiB. ${guidance}`;
 }
@@ -421,14 +407,6 @@ function withResponseSize(guidance: string, byteLength: number): string {
  */
 function base64Size(byteLength: number): number {
 	return Math.ceil(byteLength / 3) * 4;
-}
-
-function encodeBufferBody(response: IN8nHttpFullResponse): IN8nHttpFullResponse {
-	if (Buffer.isBuffer(response.body)) {
-		response.body = { [ENCODED_BUFFER_KEY]: response.body.toString(BINARY_ENCODING) };
-	}
-
-	return response;
 }
 
 /**
@@ -526,16 +504,6 @@ function clearOffloadMarker(response: IN8nHttpFullResponse): void {
 
 function hasResponseBody(response: unknown): response is IN8nHttpFullResponse {
 	return typeof response === 'object' && response !== null && 'body' in response;
-}
-
-/** The base64 payload of an {@link ENCODED_BUFFER_KEY} envelope, if the body is one. */
-function encodedBufferIn(body: IN8nHttpFullResponse['body']): string | undefined {
-	if (typeof body !== 'object' || body === null || !(ENCODED_BUFFER_KEY in body)) {
-		return undefined;
-	}
-
-	const encoded = body[ENCODED_BUFFER_KEY];
-	return typeof encoded === 'string' ? encoded : undefined;
 }
 
 function isPlainJson(payload: unknown): payload is IDataObject {

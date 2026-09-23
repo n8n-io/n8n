@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.40.0",
+  "version": "2.41.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -168,6 +168,7 @@
       "dist/nodes/trigger/ChatTrigger/ChatTrigger.node.js",
       "dist/nodes/trigger/ChatTrigger/Chat.node.js",
       "dist/nodes/vector_store/VectorStoreAzureAISearch/VectorStoreAzureAISearch.node.js",
+      "dist/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.js",
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreMilvus/VectorStoreMilvus.node.js",
       "dist/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.js",
@@ -204,6 +205,7 @@
     "@types/sanitize-html": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
+    "fast-check": "catalog:",
     "nock": "catalog:",
     "typescript": "catalog:typescript-tooling",
     "vitest": "catalog:",

@@ -340,6 +340,9 @@ describe('McpService scope enforcement', () => {
 		);
 
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 2',
 			cursor: {
 				activityMark: 1,
@@ -354,7 +357,7 @@ describe('McpService scope enforcement', () => {
 		);
 
 		// Empty read plus an estate that exists: the client must not be told the instance is empty.
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
 		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
 			NOTHING_EXPOSED_TEXT,
