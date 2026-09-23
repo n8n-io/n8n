@@ -1,0 +1,19 @@
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_2ae87efc35a707 27-28,86-89,93-94,117-119,138,156-158,161-163,178-180,182-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c1f0a6a6a0e79a14d1b0cf6dd9a25c8266827f8e",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
