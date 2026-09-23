@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed, useAttrs, useCssModule } from 'vue';
 
 interface CardProps {
 	hoverable?: boolean;
@@ -10,12 +10,20 @@ const props = withDefaults(defineProps<CardProps>(), {
 	hoverable: false,
 });
 
+const attrs = useAttrs();
+
+function hasClickHandler(): boolean {
+	return Boolean(attrs.onClick);
+}
+
 const $style = useCssModule();
-const classes = computed(() => ({
-	card: true,
-	[$style.card]: true,
-	[$style.hoverable]: props.hoverable,
-}));
+const classes = computed(function getClasses() {
+	return {
+		card: true,
+		[$style.card]: true,
+		[$style.hoverable]: props.hoverable || hasClickHandler(),
+	};
+});
 </script>
 
 <template>
