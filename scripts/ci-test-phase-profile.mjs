@@ -3,8 +3,6 @@
 import { execFile } from 'node:child_process';
 import { parseArgs, promisify } from 'node:util';
 
-import { vitestWindow } from './vitest-phase-markers.mjs';
-
 const exec = promisify(execFile);
 const USAGE = `Usage: pnpm profile:ci-tests -- --run <GitHub Actions run ID> [flags]
 
@@ -13,12 +11,11 @@ All percentages use each job's elapsed time as the denominator.
 
 Phases:
   runnerSetup   Job start through test step start (includes checkout, install, build)
-  vitestSetup   Test step start through first test module start
-  vitestRun     First test module start through last test module end
-  teardown      Last test module end through job end (includes coverage and uploads)
+  testCommand   Test step start through end (includes Vitest setup and tests)
+  teardown      Test step end through job end (includes uploads and post actions)
 
-Vitest setup and run require phase markers from an instrumented CI run.
-Old runs show null for both and retain the unsplit test-command duration.
+GitHub step timings cannot split Vitest setup from tests. Use the local
+profile:vitest command for that split without changing CI.
 Cache counts include all Turbo tasks in the test step, including dependencies.
 
 Flags:
@@ -87,8 +84,7 @@ function phaseProfile(job) {
 	const totalSeconds = seconds(job.started_at, job.completed_at);
 	const phases = {
 		runnerSetup: seconds(job.started_at, test.started_at),
-		vitestSetup: null,
-		vitestRun: null,
+		testCommand: seconds(test.started_at, test.completed_at),
 		teardown: seconds(test.completed_at, job.completed_at),
 	};
 	return {
@@ -98,20 +94,11 @@ function phaseProfile(job) {
 		nodeVersion: match[1] ?? null,
 		totalSeconds,
 		phases,
-		phasePercent: percent(phases, totalSeconds),
-		unattributedTestCommandSeconds: seconds(test.started_at, test.completed_at),
+		phasePercent: Object.fromEntries(
+			Object.entries(phases).map(([name, duration]) => [name, (duration / totalSeconds) * 100]),
+		),
 		testStep: { startedAt: test.started_at, completedAt: test.completed_at },
-		completedAt: job.completed_at,
 	};
-}
-
-function percent(phases, totalSeconds) {
-	return Object.fromEntries(
-		Object.entries(phases).map(([name, duration]) => [
-			name,
-			duration === null ? null : (duration / totalSeconds) * 100,
-		]),
-	);
 }
 
 function testCache(log, testStep) {
@@ -140,19 +127,6 @@ function testActivity(log, cache) {
 	return 'unknown';
 }
 
-function addVitestPhases(job, log) {
-	const window = vitestWindow(log, job.testStep.startedAt, job.testStep.completedAt);
-	if (!window) return;
-	const setupStart = Date.parse(job.testStep.startedAt);
-	const end = Date.parse(job.completedAt);
-	job.phases.vitestSetup = (window.first - setupStart) / 1000;
-	job.phases.vitestRun = (window.last - window.first) / 1000;
-	job.phases.teardown = (end - window.last) / 1000;
-	job.phasePercent = percent(job.phases, job.totalSeconds);
-	job.unattributedTestCommandSeconds = null;
-	job.profiledVitestProcesses = window.processes;
-}
-
 function groupEntries(jobs) {
 	const groups = new Map();
 	for (const job of jobs) {
@@ -172,8 +146,6 @@ function groupEntries(jobs) {
 				elapsedSeconds: slowest.totalSeconds,
 				phases: slowest.phases,
 				phasePercent: slowest.phasePercent,
-				unattributedTestCommandSeconds: slowest.unattributedTestCommandSeconds,
-				profiledVitestProcesses: slowest.profiledVitestProcesses ?? 0,
 				cache: slowest.cache,
 				activity: slowest.activity,
 			};
@@ -184,7 +156,7 @@ function groupEntries(jobs) {
 function table(entries) {
 	const column = (value, width) => String(value).padStart(width);
 	return [
-		'Node     Entry point                  Jobs  Total   Runner setup  Vitest setup  Vitest run  Teardown  Turbo cache  Activity               Unsplit test step',
+		'Node     Entry point                  Jobs  Total   Runner setup  Test command  Teardown  Turbo cache  Activity',
 		...entries.map((row) =>
 			[
 				(row.nodeVersion ?? 'default').padEnd(8),
@@ -192,20 +164,10 @@ function table(entries) {
 				column(row.shards, 4),
 				column(`${row.elapsedSeconds}s`, 6),
 				column(`${row.phasePercent.runnerSetup.toFixed(1)}%`, 13),
-				column(
-					row.phasePercent.vitestSetup === null
-						? '—'
-						: `${row.phasePercent.vitestSetup.toFixed(1)}%`,
-					12,
-				),
-				column(
-					row.phasePercent.vitestRun === null ? '—' : `${row.phasePercent.vitestRun.toFixed(1)}%`,
-					10,
-				),
+				column(`${row.phasePercent.testCommand.toFixed(1)}%`, 13),
 				column(`${row.phasePercent.teardown.toFixed(1)}%`, 10),
 				row.cache ? `${row.cache.cached}/${row.cache.total}` : '?',
 				row.activity.padEnd(22),
-				row.unattributedTestCommandSeconds === null ? '' : `${row.unattributedTestCommandSeconds}s`,
 			].join(' '),
 		),
 	].join('\n');
@@ -222,7 +184,6 @@ async function main() {
 			const log = await ghApi(`repos/${values.repo}/actions/jobs/${job.id}/logs`, true);
 			job.cache = testCache(log, job.testStep);
 			job.activity = testActivity(log, job.cache);
-			addVitestPhases(job, log);
 		} catch {
 			job.cache = null;
 			job.activity = 'unknown';
@@ -242,11 +203,8 @@ async function main() {
 		definitions: {
 			runnerSetup:
 				'Job start to test command start (includes checkout, setup-nodejs, install, and Build)',
-			vitestSetup: 'Test step start to first instrumented test module start',
-			vitestRun:
-				'First instrumented test module start to last module end (includes overlapping module setup)',
-			teardown:
-				'With markers: last test module end to job end (includes coverage and uploads). Without markers: test step end to job end.',
+			testCommand: 'Test step start to end (includes in-process setup, tests, and coverage)',
+			teardown: 'Test step end to job end (includes uploads and post actions)',
 		},
 		entryPoints: groupEntries(jobs),
 		jobs,
@@ -255,7 +213,7 @@ async function main() {
 	else {
 		process.stdout.write(`${table(output.entryPoints)}\n`);
 		process.stdout.write(
-			'Percentages use the slowest shard per entry point. Old or cached jobs have an unsplit test step.\n',
+			'Percentages use the slowest shard per entry point. Test command includes Vitest setup.\n',
 		);
 	}
 }
