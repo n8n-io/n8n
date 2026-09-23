@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionResponse, ExecutionResponseSender, FailureMessage } from '@n8n/engine';
+import type { ExecutionResponse, ExecutionResponseSender, UndeliverableMessage } from '@n8n/engine';
 import { toResult } from '@n8n/utils/result';
 
 import type { InMemoryExecutionResponseChannel } from './in-memory-execution-response-channel';
@@ -34,7 +34,7 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 				type: response.type,
 				error: serialized.error,
 			});
-			return this.failureFrame(response.executionId, {
+			return this.undeliverableFrame(response.executionId, {
 				code: 'RESPONSE_SERIALIZATION_FAILED',
 				message: 'The execution response could not be serialized.',
 			});
@@ -45,7 +45,7 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 				executionId: response.executionId,
 				type: response.type,
 			});
-			return this.failureFrame(response.executionId, {
+			return this.undeliverableFrame(response.executionId, {
 				code: 'RESPONSE_TOO_LARGE',
 				message: `The execution response exceeds the maximum size of ${this.maxFrameBytes} bytes.`,
 			});
@@ -54,7 +54,11 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 		return serialized.result;
 	}
 
-	private failureFrame(executionId: string, error: FailureMessage['error']): string {
-		return JSON.stringify({ type: 'failure', executionId, error } satisfies FailureMessage);
+	private undeliverableFrame(executionId: string, error: UndeliverableMessage['error']): string {
+		return JSON.stringify({
+			type: 'undeliverable',
+			executionId,
+			error,
+		} satisfies UndeliverableMessage);
 	}
 }

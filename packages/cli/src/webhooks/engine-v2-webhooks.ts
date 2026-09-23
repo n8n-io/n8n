@@ -156,7 +156,7 @@ export class EngineV2Webhooks {
 		return {
 			mode: executionMode,
 			startedAt: new Date(),
-			status: outcome.status === 'failed' ? 'error' : 'success',
+			status: outcome.status === 'completed' ? 'success' : 'error',
 			// The data plane holds the run. This object never reaches a store.
 			storedAt: 'db',
 			data: createRunExecutionData({
@@ -164,7 +164,7 @@ export class EngineV2Webhooks {
 					runData,
 					lastNodeExecuted,
 					error:
-						outcome.status === 'failed'
+						outcome.status !== 'completed'
 							? new WorkflowOperationError(outcome.error?.message ?? 'The workflow failed')
 							: undefined,
 				},

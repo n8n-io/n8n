@@ -163,13 +163,13 @@ describe('EngineV2WebhookResponder', () => {
 		const pending = responder.waitForResponse(createExecutionIdV2());
 
 		deliver({
-			type: 'failure',
+			type: 'undeliverable',
 			executionId: pending.executionId,
 			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 		});
 
 		await expect(pending.settled).resolves.toEqual({
-			status: 'failed',
+			status: 'undeliverable',
 			error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 		});
 	});

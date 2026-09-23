@@ -37,7 +37,7 @@ describe('in-memory execution responses', () => {
 		expect(publish).toHaveBeenCalledExactlyOnceWith(
 			'exec-1',
 			JSON.stringify({
-				type: 'failure',
+				type: 'undeliverable',
 				executionId: 'exec-1',
 				error: {
 					code: 'RESPONSE_TOO_LARGE',
@@ -59,7 +59,7 @@ describe('in-memory execution responses', () => {
 		expect(publish).toHaveBeenCalledExactlyOnceWith(
 			'exec-1',
 			JSON.stringify({
-				type: 'failure',
+				type: 'undeliverable',
 				executionId: 'exec-1',
 				error: {
 					code: 'RESPONSE_SERIALIZATION_FAILED',

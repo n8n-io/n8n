@@ -18,7 +18,7 @@ import type { executionResponseSchema } from './execution-response.schema';
 export type ExecutionResponse = z.infer<typeof executionResponseSchema>;
 
 /** The intended response could not be produced or carried. */
-export type FailureMessage = Extract<ExecutionResponse, { type: 'failure' }>;
+export type UndeliverableMessage = Extract<ExecutionResponse, { type: 'undeliverable' }>;
 
 /**
  * The run is over. Always the last response an execution sends.

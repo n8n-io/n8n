@@ -42,7 +42,7 @@ export type {
 	EndedMessage,
 	ExecutionResponse,
 	ExecutionResponseSender,
-	FailureMessage,
+	UndeliverableMessage,
 } from './response-channel';
 
 export { UnimplementedError } from './common';

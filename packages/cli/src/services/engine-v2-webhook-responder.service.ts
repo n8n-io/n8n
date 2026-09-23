@@ -87,9 +87,9 @@ export class EngineV2WebhookResponder {
 
 	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
 		try {
-			if (received.type === 'failure') {
+			if (received.type === 'undeliverable') {
 				response.resolve({
-					status: 'failed',
+					status: 'undeliverable',
 					error: { name: received.error.code, message: received.error.message },
 				});
 				return;
