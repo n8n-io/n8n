@@ -39,7 +39,7 @@ lints and tests here without edits:
 | Concern | Setup | Mirrors |
 | --- | --- | --- |
 | TypeScript | `common.go` + `backend.go`, `lib` es2023, `strictFunctionTypes`, `strictPropertyInitialization` and `useUnknownInCatchVariables` off | `packages/cli/tsconfig.json` |
-| Lint | `oxlint --type-aware`, then the ESLint guardrails pass. `eslint.config.mjs` is the policy twin that code-health and the guardrails read | `packages/cli/oxlint.config.mts`, `eslint.guardrails.config.mjs` |
+| Lint | `oxlint --type-aware`. `eslint.config.mjs` is the policy twin that code-health reads | `packages/cli/oxlint.config.mts`, `eslint.config.mjs` |
 | Tests | Vitest with the decorators config, one fork per file, the same `N8N_USER_FOLDER` and `N8N_ENCRYPTION_KEY` setup | `packages/cli/vitest.config.base.ts`, `test/setup-test-folder.ts` |
 
 Two things do not carry over on purpose:

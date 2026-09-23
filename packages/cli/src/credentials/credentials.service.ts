@@ -23,6 +23,7 @@ import type {
 	OperationContext,
 	CredentialSharingRelation,
 } from '@n8n/db';
+import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import {
@@ -69,6 +70,7 @@ import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -76,6 +78,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
+import { CredentialDescriptionsService } from './credential-descriptions.service';
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
@@ -187,6 +190,7 @@ type WorkflowCredentialResult = {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	scopes: Scope[];
@@ -233,6 +237,8 @@ export class CredentialsService {
 		private readonly dbLockService: DbLockService,
 		private readonly eventService: EventService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -300,6 +306,10 @@ export class CredentialsService {
 	): Promise<
 		CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject> | CredentialsEntity>
 	> {
+		if (listQueryOptions.select?.description && !(await this.credentialDescriptions.isEnabled())) {
+			delete listQueryOptions.select.description;
+			if (Object.keys(listQueryOptions.select).length === 0) delete listQueryOptions.select;
+		}
 		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
@@ -488,6 +498,7 @@ export class CredentialsService {
 		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
+		await this.credentialDescriptions.stripIfDisabled(credentials);
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
 			// we end up filtering out all the other relations, meaning that if
@@ -622,10 +633,12 @@ export class CredentialsService {
 			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
 		>;
 
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		const result = enriched.map((c) => ({
 			id: c.id,
 			name: c.name,
 			type: c.type,
+			...(descriptionsEnabled && { description: c.description }),
 			createdAt: c.createdAt.toISOString(),
 			updatedAt: c.updatedAt.toISOString(),
 			scopes: c.scopes,
@@ -649,10 +662,11 @@ export class CredentialsService {
 	}
 
 	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
-		// If the workflow is owned by a personal project and the owner of the
-		// project has global read permissions it can use all personal credentials.
+		// If the workflow is owned by a personal project and the owner of the project
+		// may use any credential on the instance, it can use all personal credentials.
+		// Keyed on the personal-project owner, not the requester.
 		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
-		if (user && hasGlobalScope(user, 'credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -662,11 +676,11 @@ export class CredentialsService {
 	}
 
 	async findAllCredentialIdsForProject(projectId: string): Promise<CredentialsEntity[]> {
-		// If this is a personal project and the owner of the project has global
-		// read permissions then all workflows in that project can use all
+		// If this is a personal project and the owner of the project may use any
+		// credential on the instance, then all workflows in that project can use all
 		// credentials of all personal projects.
 		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
-		if (user && hasGlobalScope(user, 'credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -736,8 +750,9 @@ export class CredentialsService {
 		const dataMerge = options?.dataMerge ?? 'unredact';
 
 		const mergedData = deepCopy(data);
-		if (data.description !== undefined) {
-			mergedData.description = parseCredentialDescription(data.description);
+		await this.credentialDescriptions.stripIfDisabled(mergedData);
+		if (mergedData.description !== undefined) {
+			mergedData.description = parseCredentialDescription(mergedData.description);
 		}
 		if (mergedData.data) {
 			mergedData.data = this.applyDataMerge(
@@ -927,11 +942,15 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
+		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
+		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
 
-		const persist = async (transactionManager: EntityManager) => {
-			// Update the credentials in DB
-			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
+		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type);
+		if (cleared === null) return null;
+
+		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
+			await this.credentialsRepository.updateContent(credentialId, newCredentialData, ctx);
 
 			if (options?.deleteUserEntries) {
 				await this.connectionStatusProxy.deleteAllUserEntries(credentialId, transactionManager);
@@ -952,7 +971,10 @@ export class CredentialsService {
 
 		let result: CredentialsEntity | null;
 		if (!options?.instanceCredential) {
-			result = await this.credentialsRepository.manager.transaction(persist);
+			result = await this.credentialsRepository.runInTransaction(
+				{ policyCleared: cleared },
+				persist,
+			);
 		} else {
 			const instanceCredential = options.instanceCredential;
 			const hookedData = await this.getValidatedInstanceCredentialHookData(
@@ -969,12 +991,13 @@ export class CredentialsService {
 						undefined,
 						ctx,
 					);
-					return await persist(transactionManager);
+					return await persist(transactionManager, { ...ctx, policyCleared: cleared });
 				},
 			);
 		}
 
 		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
+		if (result) await this.credentialDescriptions.stripIfDisabled(result);
 		const enriched: (CredentialsEntity & CredentialConnectionStatus) | null = result;
 		if (enriched && options?.user) {
 			await this.populateConnectedByMe([enriched], options.user);
@@ -1039,27 +1062,35 @@ export class CredentialsService {
 				data: decryptedData,
 			}));
 
-		if (data.description !== undefined) {
+		if (prepared.description !== undefined) {
 			encrypted.description = prepared.description;
 		}
 
 		if (!options.skipExternalHooks) {
 			await this.externalHooks.run('credentials.update', [encrypted]);
 		}
+		await this.credentialDescriptions.stripIfDisabled(encrypted);
 		const hookedData = await this.getValidatedInstanceCredentialHookData(
 			encrypted,
 			credential.id,
 			credential.type,
 		);
 		await this.validateInstanceCredentialUpdate(credential, hookedData, undefined, ctx);
+		// The type cannot change here, so the check sees the same stored and new type.
+		const cleared = await this.policyEnforcementService.enforceCredentialSave({
+			credential: { id: credential.id, type: credential.type },
+			storedCredential: { id: credential.id, type: credential.type },
+			projectId: null,
+		});
 		const updated = await this.credentialsRepository.updateInstanceCredential(
 			credential.id,
 			encrypted,
-			ctx,
+			{ ...ctx, policyCleared: cleared },
 		);
 		if (!updated) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
+		await this.credentialDescriptions.stripIfDisabled(updated);
 		return updated;
 	}
 
@@ -1091,55 +1122,92 @@ export class CredentialsService {
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
+		await this.credentialDescriptions.stripIfDisabled(encryptedData);
 		await this.externalHooks.run('credentials.create', [encryptedData]);
+		await this.credentialDescriptions.stripIfDisabled(newCredential);
 
-		const { manager: dbManager } = this.credentialsRepository;
-		const result = await dbManager.transaction(async (transactionManager) => {
-			const project = await this.projectService.getProjectWithScope(
-				user,
-				projectId,
-				['credential:create'],
-				transactionManager,
+		// Authorize first: a caller without access to the project must not learn its policy verdict.
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:create',
+		]);
+		if (project === null) {
+			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
+				throw new NotFoundError('Project not found');
+			}
+			throw new ForbiddenError(
+				"You don't have the permissions to save the credential in this project.",
 			);
+		}
 
-			if (project === null) {
-				if (!(await transactionManager.existsBy(Project, { id: projectId }))) {
-					throw new NotFoundError('Project not found');
+		// Gate the save on policy before persisting, so the author learns about a blocked type
+		// while setting the credential up rather than at run time. No stored credential: this one is new.
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
+
+		const result = await this.credentialsRepository.runInTransaction(
+			{ policyCleared: cleared },
+			async (transactionManager, ctx) => {
+				const savedCredential = await this.credentialsRepository.createContent(newCredential, ctx);
+
+				savedCredential.data = newCredential.data;
+
+				const newSharedCredential = this.sharedCredentialsRepository.create({
+					role: 'credential:owner',
+					credentials: savedCredential,
+					projectId: project.id,
+				});
+
+				await transactionManager.save<SharedCredentials>(newSharedCredential);
+
+				if (decryptedCredentialData) {
+					await this.credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential(
+						{
+							credentialId: savedCredential.id,
+							decryptedCredentialData,
+							entityManager: transactionManager,
+						},
+					);
 				}
-				throw new ForbiddenError(
-					"You don't have the permissions to save the credential in this project.",
-				);
-			}
 
-			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
-
-			savedCredential.data = newCredential.data;
-
-			const newSharedCredential = this.sharedCredentialsRepository.create({
-				role: 'credential:owner',
-				credentials: savedCredential,
-				projectId: project.id,
-			});
-
-			await transactionManager.save<SharedCredentials>(newSharedCredential);
-
-			if (decryptedCredentialData) {
-				await this.credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential(
-					{
-						credentialId: savedCredential.id,
-						decryptedCredentialData,
-						entityManager: transactionManager,
-					},
-				);
-			}
-
-			return savedCredential;
-		});
+				return savedCredential;
+			},
+		);
 		this.logger.debug('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});
+		await this.credentialDescriptions.stripIfDisabled(result);
 		return result;
+	}
+
+	/**
+	 * Gates an update on policy before persisting. The stored type comes from the database, so a
+	 * check can grandfather an edit that keeps its type and still refuse a switch to a blocked one.
+	 *
+	 * @returns `null` when there is no such credential, which the caller reports as not found.
+	 */
+	private async enforceCredentialUpdate(
+		credentialId: string,
+		newType: string | undefined,
+	): Promise<PolicyCleared<'credentialSave'> | null> {
+		const stored = await this.credentialsRepository.findOneBy({ id: credentialId });
+		if (!stored) return null;
+		const owningProject =
+			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+
+		return await this.policyEnforcementService.enforceCredentialSave({
+			credential: { id: credentialId, type: newType ?? stored.type },
+			storedCredential: { id: credentialId, type: stored.type },
+			projectId: owningProject?.id ?? null,
+		});
+	}
+
+	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
+	private async enforceCredentialCreate(type: string, projectId: string | null) {
+		return await this.policyEnforcementService.enforceCredentialSave({
+			credential: { id: null, type },
+			storedCredential: null,
+			projectId,
+		});
 	}
 
 	private async insertProjectCredential(
@@ -1150,7 +1218,9 @@ export class CredentialsService {
 		decryptedCredentialData: ICredentialDataDecryptedObject,
 	) {
 		const newCredential = this.credentialsRepository.create({ ...credential, ...encryptedData });
+		await this.credentialDescriptions.stripIfDisabled(encryptedData);
 		await this.externalHooks.run('credentials.create', [encryptedData]);
+		await this.credentialDescriptions.stripIfDisabled(newCredential);
 		const externalSecretProviderIds =
 			await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
 				decryptedCredentialData,
@@ -1166,7 +1236,8 @@ export class CredentialsService {
 				"You don't have the permissions to save the credential in this project.",
 			);
 		}
-		return await this.transactionRunner.run({}, async (ctx) => {
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
+		const saved = await this.transactionRunner.run({ policyCleared: cleared }, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
 				newCredential,
 				project.id,
@@ -1174,6 +1245,8 @@ export class CredentialsService {
 				ctx,
 			);
 		});
+		await this.credentialDescriptions.stripIfDisabled(saved);
+		return saved;
 	}
 
 	async findCredentialOwningProject(credentialId: string) {
@@ -1272,8 +1345,18 @@ export class CredentialsService {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
-	async testById(userId: User['id'], credentialId: string) {
-		const storedCredential = await this.credentialsFinderService.findById(credentialId);
+	/**
+	 * Tests a stored credential by id. Takes the user rather than a user id: testing
+	 * makes a live call with the secret, so it has to go through the finder, which
+	 * requires `credential:use` for a caller who is not a member of the credential's
+	 * project. The route's `credential:read` scope decorator cannot express that.
+	 */
+	async testById(user: User, credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
 
 		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
 		if (!storedCredential || storedCredential.usageScope !== 'project') {
@@ -1281,7 +1364,7 @@ export class CredentialsService {
 		}
 
 		const credentials = await this.prepareCredentialsForTest({ storedCredential });
-		return await this.test(userId, credentials);
+		return await this.test(user.id, credentials);
 	}
 
 	async testWithCredentials(user: User, credentials: ICredentialsDecrypted) {
@@ -1598,6 +1681,7 @@ export class CredentialsService {
 			});
 			if (instanceCredential) {
 				const { data: _, ...rest } = instanceCredential;
+				await this.credentialDescriptions.stripIfDisabled(rest);
 				if (includeDecryptedData) {
 					const decryptedData = await this.decrypt(instanceCredential);
 					// We never want to expose the oauthTokenData to the frontend, but it
@@ -1619,9 +1703,12 @@ export class CredentialsService {
 				// are required for decrypting the data.
 				await this.getSharing(user, credentialId, [
 					'credential:read',
-					// TODO: Enable this once the scope exists and has been added to the
-					// global:owner role.
-					// 'credential:decrypt',
+					// Decryption needs edit rights, exactly as the enterprise path requires.
+					// A see-only instance role holds read but not update, so it falls
+					// through to the metadata-only lookup below.
+					'credential:update',
+					// TODO: Replace credential:update with credential:decrypt once the scope
+					// exists and has been added to the global:owner role.
 				])
 			: null;
 
@@ -1642,6 +1729,7 @@ export class CredentialsService {
 		const { credentials: credential } = sharing;
 
 		const { data: _, ...rest } = credential;
+		await this.credentialDescriptions.stripIfDisabled(rest);
 
 		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.populateConnectedByMe([enriched], user);
@@ -1989,7 +2077,9 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
-		encryptedCredential.description = parseCredentialDescription(opts.description);
+		if (await this.credentialDescriptions.isEnabled()) {
+			encryptedCredential.description = parseCredentialDescription(opts.description);
+		}
 
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;
@@ -2026,6 +2116,7 @@ export class CredentialsService {
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
+		await this.credentialDescriptions.stripIfDisabled(credential);
 		return { ...credential, scopes };
 	}
 
@@ -2067,17 +2158,22 @@ export class CredentialsService {
 		);
 		this.validateInstanceCredentialData(hookedData);
 		this.validateCredentialData(opts.type, hookedData);
+		await this.credentialDescriptions.stripIfDisabled(encryptedCredential);
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
-			description: parseCredentialDescription(opts.description),
+			...((await this.credentialDescriptions.isEnabled()) && {
+				description: parseCredentialDescription(opts.description),
+			}),
 			isManaged: false,
 			isResolvable: false,
 			usageScope: 'instance' as const,
 		});
 
+		// After the hooks ran: the type checked has to be the type written.
+		const cleared = await this.enforceCredentialCreate(credentialEntity.type, null);
 		const savedCredential = await this.credentialsRepository.saveInstanceCredential(
 			credentialEntity,
-			ctx,
+			{ ...ctx, policyCleared: cleared },
 		);
 
 		this.logger.debug('New instance credential created', {
@@ -2085,6 +2181,7 @@ export class CredentialsService {
 			ownerId: user.id,
 		});
 
+		await this.credentialDescriptions.stripIfDisabled(savedCredential);
 		return savedCredential;
 	}
 

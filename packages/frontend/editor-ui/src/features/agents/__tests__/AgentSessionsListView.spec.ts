@@ -78,6 +78,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
 	},
+	N8nBadge: {
+		props: ['leadingIcon'],
+		template: '<span><span :data-icon="leadingIcon" /><slot /></span>',
+	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCheckbox: {
 		props: ['modelValue', 'label'],
@@ -174,6 +178,7 @@ import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {
 		id: 'thread-1',
+		canContinueInPreview: true,
 		agentId: 'agent-1',
 		agentName: 'Agent',
 		parentThreadId: null,

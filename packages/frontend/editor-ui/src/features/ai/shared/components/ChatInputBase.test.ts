@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { nextTick, ref } from 'vue';
+import { defineComponent, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
@@ -210,6 +210,40 @@ describe('ChatInputBase', () => {
 		});
 
 		expect(getByTestId('chat-input-voice-button')).toBeInTheDocument();
+	});
+
+	it('should expose the native textarea', () => {
+		const inputRef = ref<InstanceType<typeof ChatInputBase>>();
+		const Host = defineComponent({
+			components: { ChatInputBase },
+			setup: () => ({ inputRef }),
+			template: `
+				<ChatInputBase
+					ref="inputRef"
+					model-value=""
+					:is-streaming="false"
+					:can-submit="true"
+				/>
+			`,
+		});
+		const renderHost = createComponentRenderer(Host);
+		const { getByRole } = renderHost();
+
+		expect(inputRef.value?.getInputElement()).toBe(getByRole('textbox'));
+	});
+
+	it('should render custom right actions with built-in controls', () => {
+		const { getByTestId } = renderComponent({
+			props: makeProps({ showAttach: true, showVoice: true }),
+			slots: {
+				'right-actions': '<button data-test-id="custom-right-action">Mention</button>',
+			},
+		});
+
+		expect(getByTestId('custom-right-action')).toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+		expect(getByTestId('chat-input-voice-button')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-send-button')).toBeInTheDocument();
 	});
 
 	it('should emit stop when stop button is clicked', () => {

@@ -766,4 +766,11 @@ describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
 			'the orchestrator will provision them and call you again',
 		);
 	});
+
+	it('tells the builder to use Sessions tab for agent history', () => {
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('say Sessions tab for history');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'Never say Runs, Executions, or Activity History for agents.',
+		);
+	});
 });

@@ -71,12 +71,14 @@ export class InstanceAiModule implements ModuleInterface {
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = settingsService.isAgentEnabled();
+		const mcpConnectionsAvailable = service.areMcpConnectionsAvailable();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
 		const setupCompleted = await settingsService.isSetupCompleted();
 		return {
 			enabled,
+			mcpConnectionsAvailable,
 			localGatewayDisabled,
 			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
@@ -87,7 +89,6 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
-			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 

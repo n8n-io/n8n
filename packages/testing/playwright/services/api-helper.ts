@@ -18,8 +18,8 @@ import {
 	INSTANCE_CHAT_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
-import { AgentApiHelper } from './agent-api-helper';
 import { CredentialApiHelper } from './credential-api-helper';
+import { AgentApiHelper } from './agent-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { InstanceAiApiHelper } from './instance-ai-api-helper';
@@ -80,7 +80,6 @@ const DB_TAGS = {
 
 export class ApiHelpers {
 	request: APIRequestContext;
-	agents: AgentApiHelper;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
 	metrics: MetricsApiHelper;
@@ -88,6 +87,7 @@ export class ApiHelpers {
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	agents: AgentApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
@@ -106,7 +106,6 @@ export class ApiHelpers {
 		readonly options: ApiHelpersOptions = {},
 	) {
 		this.request = requestContext;
-		this.agents = new AgentApiHelper(this);
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
 		this.metrics = new MetricsApiHelper(this);
@@ -114,6 +113,7 @@ export class ApiHelpers {
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.agents = new AgentApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);

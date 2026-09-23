@@ -25,13 +25,16 @@ import {
 	Body,
 	Param,
 	Query,
+	Middleware,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import type { NextFunction, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
+import { CredentialDescriptionsService } from './credential-descriptions.service';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
@@ -66,7 +69,23 @@ export class CredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
+
+	@Middleware()
+	async stripDisabledDescription(
+		req: CredentialRequest.Update,
+		_res: Response,
+		next: NextFunction,
+	) {
+		try {
+			// Strip before DTO validation so disabled descriptions cannot reject a request.
+			if (req.body) await this.credentialDescriptions.stripIfDisabled(req.body);
+			next();
+		} catch (error) {
+			next(error);
+		}
+	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(
@@ -140,6 +159,7 @@ export class CredentialsController {
 			req.params.credentialId,
 		);
 
+		await this.credentialDescriptions.stripIfDisabled(credential);
 		return { ...credential, scopes };
 	}
 
@@ -216,6 +236,9 @@ export class CredentialsController {
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
 			credentialName: newCredential.name,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: newCredential.description?.length ?? 0,
+			}),
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -320,7 +343,7 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
-		if (body.description !== undefined) {
+		if (preparedCredentialData.description !== undefined) {
 			newCredentialData.description = preparedCredentialData.description;
 		}
 
@@ -383,6 +406,9 @@ export class CredentialsController {
 			credentialId: credential.id,
 			// The updated entity, so a rename records the new name rather than the one it replaced.
 			credentialName: responseData.name,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: responseData.description?.length ?? 0,
+			}),
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 			jweEnabled: updatedData.jweEnabled === true,
@@ -493,10 +519,13 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
+		// Read to compute the share diff; `credential:share` below is the real gate, so
+		// visibility is enough here.
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:read'],
+			{ visibilityOnly: true },
 		);
 
 		if (!credential) {

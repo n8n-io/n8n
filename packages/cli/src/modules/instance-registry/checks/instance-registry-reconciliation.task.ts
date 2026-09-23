@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { CheckService } from './check.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
@@ -21,9 +21,11 @@ export class InstanceRegistryReconciliationTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
-
-	readonly runOnTakeover = true;
+	readonly placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: false,
+		runOnTakeover: true,
+	};
 
 	constructor(private readonly checkService: CheckService) {}
 

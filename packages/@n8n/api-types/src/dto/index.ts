@@ -40,6 +40,13 @@ export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
+export {
+	discoverDataPublicSchema,
+	DiscoverPublicDto,
+	DiscoverQueryPublicDto,
+} from './discover/discover-public.dto';
+export type { DiscoverDataPublic } from './discover/discover-public.dto';
+
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
@@ -111,6 +118,11 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 export { ChangeEmailRequestDto } from './user/change-email-request.dto';
 export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
 export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
+export { ListUsersQueryDto } from './user/list-users-query.dto';
+export { GetUserQueryDto } from './user/get-user-query.dto';
+export { UserPublicDto, UserListPublicDto, userPublicSchema } from './user/user-public.dto';
+export { CreateUsersPublicDto, InvitedUsersPublicDto } from './user/create-users-public.dto';
+export { DeleteUserQueryPublicDto } from './user/delete-user-query-public.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -257,11 +269,14 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	DeleteFolderQueryPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
 	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
 	folderPublicSchema,
+	UpdateFolderPublicDto,
+	UpdatedFolderPublicDto,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 
@@ -296,29 +311,29 @@ export type {
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
-} from './node-type-policies/policy-rule.types';
-export { policySelectorSchema } from './node-type-policies/policy-selector.schema';
+} from './type-availability-policies/policy-rule.types';
+export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
 export {
 	nonDelegatingPolicyActionSchema,
 	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
 	policyRuleListSchema,
 	policyRuleSchema,
-} from './node-type-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './node-type-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
-export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+} from './type-availability-policies/policy-rule.schema';
+export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
+export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
+export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
+export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
 	ListNodeTypePolicyDocumentsQueryDto,
-	NodeTypePolicyAttachmentsPublicDto,
-	NodeTypePolicyDocumentListPublicDto,
-	NodeTypePolicyDocumentPublicDto,
-	NodeTypePolicyDocumentWriteResultPublicDto,
-	NodeTypePolicyEffectivePublicDto,
-	NodeTypePolicyEffectiveWriteResultPublicDto,
-} from './node-type-policies/node-type-policy-public.dto';
+	PolicyAttachmentsPublicDto,
+	PolicyDocumentListPublicDto,
+	PolicyDocumentPublicDto,
+	PolicyDocumentWriteResultPublicDto,
+	PolicyEffectivePublicDto,
+	PolicyEffectiveWriteResultPublicDto,
+} from './type-availability-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,

@@ -2210,6 +2210,7 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
+					@replace-node="onClickReplaceNode"
 				/>
 			</Suspense>
 		</WorkflowCanvas>

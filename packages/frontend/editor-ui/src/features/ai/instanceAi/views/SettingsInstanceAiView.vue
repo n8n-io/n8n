@@ -8,7 +8,7 @@ import {
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -33,7 +33,6 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -58,8 +57,6 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
-	useInstanceAiMcpConnectionsExperiment();
 const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
@@ -227,19 +224,12 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		labelKey: 'settings.n8nAgent.permissions.group.web',
 		keys: ['fetchUrl', 'webSearch'],
 	},
+	{
+		id: 'mcp',
+		labelKey: 'settings.n8nAgent.permissions.group.mcp',
+		keys: ['executeMcpTool'],
+	},
 ];
-
-const MCP_PERMISSION_GROUP: PermissionGroup = {
-	id: 'mcp',
-	labelKey: 'settings.n8nAgent.permissions.group.mcp',
-	keys: ['executeMcpTool'],
-};
-
-const permissionGroups = computed(() =>
-	isMcpConnectionsExperimentEnabled.value
-		? [...PERMISSION_GROUPS, MCP_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -473,7 +463,7 @@ function openAiUsageSettings() {
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
 			<template #titleTrailing>
-				<N8nPreviewTag size="medium" />
+				<N8nPreviewBadge size="medium" />
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -669,7 +659,7 @@ function openAiUsageSettings() {
 								<N8nText bold size="medium" color="text-dark">
 									{{ i18n.baseText('settings.n8nAgent.search.label') }}
 								</N8nText>
-								<N8nBadge theme="success" size="xsmall">
+								<N8nBadge variant="success" size="xsmall">
 									{{ i18n.baseText('settings.n8nAgent.search.recommended') }}
 								</N8nBadge>
 							</span>
@@ -740,7 +730,6 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				v-if="isMcpConnectionsExperimentEnabled"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>
@@ -769,7 +758,7 @@ function openAiUsageSettings() {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						v-for="group in permissionGroups"
+						v-for="group in PERMISSION_GROUPS"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
 						:class="{ [$style.dim]: isGroupLocked(group) }"

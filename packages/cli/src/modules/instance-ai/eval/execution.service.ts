@@ -490,6 +490,7 @@ export class EvalExecutionService {
 			startNode,
 			hints.triggerContent,
 			binaryRequirement,
+			hints.triggerEmitsNoItems,
 		);
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
@@ -761,7 +762,12 @@ export class EvalExecutionService {
 		startNode: INode,
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
+		triggerEmitsNoItems = false,
 	): IPinData {
+		// A pinned empty array is "this node emitted nothing": downstream nodes stay idle,
+		// which is the point of a "no new items" scenario. No pin at all would instead
+		// start the trigger with one injected empty item.
+		if (triggerEmitsNoItems) return { [startNode.name]: [] };
 		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
 
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays
@@ -1019,7 +1025,7 @@ export class EvalExecutionService {
 			success: false,
 			nodeResults,
 			errors: [`Execution failed: ${message}`],
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -1129,7 +1135,7 @@ export class EvalExecutionService {
 			success: allErrors.length === 0,
 			nodeResults,
 			errors: allErrors,
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -1152,6 +1158,16 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+/** `warnings` is the channel the verification artifact renders as FRAMEWORK ISSUE flags. */
+function withInterceptionGaps(
+	hints: MockHints,
+	credentialsHelper: EvalMockedCredentialsHelper | undefined,
+): MockHints {
+	const gaps = credentialsHelper?.interceptionGaps ?? [];
+	if (gaps.length === 0) return hints;
+	return { ...hints, warnings: [...hints.warnings, ...gaps] };
 }
 
 /** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
@@ -1223,6 +1239,8 @@ function synthesizePlaceholderValue(hint: string): string {
 	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
 	if (h.includes('chat') && h.includes('id')) return '100000000';
 	if (h.includes('telegram')) return '100000000';
+	// Page, account and object ids: the node validates the shape, so a word is rejected.
+	if (/\bid\b/.test(h) || h.includes('account')) return '100000000';
 	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
 	if (selectedResourceValue) return selectedResourceValue;
 	return '__evalMockValue';
